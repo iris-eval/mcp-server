@@ -1,11 +1,13 @@
 node_modules
 .git
 coverage
-src
-tests
 *.db
 *.db-journal
 *.db-wal
 .env
 .env.*
+dist
+docs
+examples
+scripts
 dashboard/node_modules
