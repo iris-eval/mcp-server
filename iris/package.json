@@ -1,6 +1,6 @@
 {
   "name": "@iris-eval/mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP-native agent evaluation and observability server",
   "type": "module",
   "main": "dist/index.js",
