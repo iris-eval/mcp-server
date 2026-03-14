@@ -1,0 +1,77 @@
+{
+  "name": "@iris-eval/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP-native agent evaluation and observability server",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "iris-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run tests/integration/",
+    "clean": "rm -rf dist coverage",
+    "seed:demo": "tsx scripts/seed-demo-data.ts",
+    "demo": "tsx scripts/demo.ts"
+  },
+  "keywords": [
+    "mcp",
+    "agent",
+    "evaluation",
+    "observability",
+    "tracing",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iris-eval/mcp-server.git"
+  },
+  "homepage": "https://github.com/iris-eval/mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/iris-eval/mcp-server/issues"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "server.json"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "better-sqlite3": "^11.0.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
+    "pino": "^10.3.1",
+    "safe-regex2": "^5.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

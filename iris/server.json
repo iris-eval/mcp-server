@@ -1,0 +1,69 @@
+{
+  "name": "iris-eval",
+  "version": "0.1.0",
+  "description": "MCP-native agent evaluation and observability server",
+  "homepage": "https://github.com/iris-eval/mcp-server",
+  "packages": {
+    "npm": {
+      "name": "@iris-eval/mcp-server",
+      "registry": "https://registry.npmjs.org"
+    },
+    "oci": {
+      "name": "ghcr.io/iris-eval/mcp-server",
+      "registry": "ghcr.io"
+    }
+  },
+  "tools": [
+    {
+      "name": "log_trace",
+      "description": "Log an agent execution trace with spans, tool calls, and metrics"
+    },
+    {
+      "name": "evaluate_output",
+      "description": "Evaluate agent output quality using configurable rules"
+    },
+    {
+      "name": "get_traces",
+      "description": "Query stored traces with filters, pagination, and summary stats"
+    }
+  ],
+  "resources": [
+    {
+      "uri": "iris://dashboard/summary",
+      "description": "Dashboard summary with key metrics and trends"
+    },
+    {
+      "uri_template": "iris://traces/{trace_id}",
+      "description": "Full trace detail with spans and evaluation results"
+    }
+  ],
+  "env": {
+    "IRIS_TRANSPORT": {
+      "description": "Transport type: stdio or http",
+      "default": "stdio"
+    },
+    "IRIS_PORT": {
+      "description": "HTTP transport port",
+      "default": "3000"
+    },
+    "IRIS_DB_PATH": {
+      "description": "SQLite database path",
+      "default": "~/.iris/iris.db"
+    },
+    "IRIS_LOG_LEVEL": {
+      "description": "Log level: debug, info, warn, error",
+      "default": "info"
+    },
+    "IRIS_DASHBOARD": {
+      "description": "Enable web dashboard",
+      "default": "false"
+    },
+    "IRIS_API_KEY": {
+      "description": "API key for HTTP authentication (optional, recommended for production)"
+    },
+    "IRIS_ALLOWED_ORIGINS": {
+      "description": "Comma-separated list of allowed CORS origins",
+      "default": "http://localhost:*"
+    }
+  }
+}

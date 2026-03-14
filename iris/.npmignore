@@ -1,0 +1,13 @@
+src/
+tests/
+docker/
+.github/
+dashboard/src/
+coverage/
+.eslintrc.json
+.prettierrc
+vitest.config.ts
+tsconfig.json
+tsconfig.build.json
+*.db
+.env

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iris — MCP-Native Agent Eval & Observability</title>
+  <meta name="description" content="Open-source observability for AI agents. Trace logging, quality evaluation, and drift detection via the Model Context Protocol.">
+  <style>
+    :root {
+      --bg-primary: #0a0a0b;
+      --bg-secondary: #141416;
+      --bg-tertiary: #1c1c1f;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-success: #22c55e;
+      --accent-tool: #3b82f6;
+      --accent-llm: #a855f7;
+      --border: #27272a;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 100px 24px 80px;
+    }
+    .hero h1 {
+      font-size: 3.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+    .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 150ms ease;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); color: white; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); color: var(--text-primary); }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      padding: 60px 0;
+    }
+    .feature {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+    }
+    .feature-icon {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      line-height: 40px;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+    .feature h3 { font-size: 1.2rem; margin-bottom: 8px; }
+    .feature p { color: var(--text-secondary); font-size: 0.95rem; }
+
+    /* Code */
+    .quickstart {
+      padding: 60px 0;
+      text-align: center;
+    }
+    .quickstart h2 { font-size: 2rem; margin-bottom: 8px; }
+    .quickstart .subtitle { color: var(--text-secondary); margin-bottom: 32px; }
+    .code-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 32px;
+      text-align: left;
+      max-width: 600px;
+      margin: 0 auto;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      overflow-x: auto;
+    }
+    .code-block .comment { color: var(--text-muted); }
+    .code-block .cmd { color: var(--accent-success); }
+
+    /* Screenshot */
+    .screenshot-section {
+      padding: 60px 0;
+      text-align: center;
+    }
+    .screenshot-section h2 { font-size: 2rem; margin-bottom: 32px; }
+    .screenshot-placeholder {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 80px 40px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    /* Works With */
+    .works-with {
+      padding: 60px 0;
+      text-align: center;
+    }
+    .works-with h2 { font-size: 2rem; margin-bottom: 32px; }
+    .works-with-grid {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .works-with-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 24px;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--text-secondary); }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2.2rem; }
+      .hero p { font-size: 1.05rem; }
+      .features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>See what your AI agents<br>are <span>actually doing</span>.</h1>
+      <p>Iris is an open-source MCP server for agent trace logging, quality evaluation, and observability. Works with any MCP-compatible framework.</p>
+      <div class="hero-buttons">
+        <a href="https://github.com/iris-eval/mcp-server#quickstart" class="btn btn-primary">Get Started</a>
+        <a href="https://github.com/iris-eval/mcp-server" class="btn btn-secondary">View on GitHub</a>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <div class="feature-icon" style="background: rgba(59,130,246,0.15); color: #3b82f6;">T</div>
+        <h3>Trace Logging</h3>
+        <p>Log every agent execution with spans, tool calls, token usage, and cost. Structured traces with parent-child span relationships, just like OpenTelemetry.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background: rgba(168,85,247,0.15); color: #a855f7;">E</div>
+        <h3>Quality Evaluation</h3>
+        <p>Score agent outputs against 12 built-in rules for completeness, relevance, safety, and cost. Add custom rules with regex, keywords, or JSON schema validation.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background: rgba(34,197,94,0.15); color: #22c55e;">O</div>
+        <h3>Observability Dashboard</h3>
+        <p>Dark-mode web dashboard with real-time trace viewer, span trees, evaluation results, and summary charts. Self-hosted, no cloud dependency.</p>
+      </div>
+    </section>
+
+    <section class="quickstart">
+      <h2>Up and running in 60 seconds</h2>
+      <p class="subtitle">No accounts, no API keys, no cloud. Just install and go.</p>
+      <div class="code-block">
+        <span class="comment"># Install and start</span><br>
+        <span class="cmd">npx</span> @iris-eval/mcp-server --dashboard<br><br>
+        <span class="comment"># Or add to Claude Desktop config</span><br>
+        { "mcpServers": { "iris": { "command": "<span class="cmd">npx</span>",<br>
+        &nbsp;&nbsp;"args": ["@iris-eval/mcp-server"] } } }
+      </div>
+    </section>
+
+    <section class="screenshot-section">
+      <h2>Built for developers</h2>
+      <!-- Replace with actual screenshot after running seed:demo -->
+      <div class="screenshot-placeholder">
+        Dashboard screenshot coming soon — run <code>npm run seed:demo</code> to generate demo data
+      </div>
+    </section>
+
+    <section class="works-with">
+      <h2>Works with any MCP-compatible agent</h2>
+      <div class="works-with-grid">
+        <div class="works-with-item">Claude Desktop</div>
+        <div class="works-with-item">Cursor</div>
+        <div class="works-with-item">LangChain</div>
+        <div class="works-with-item">CrewAI</div>
+        <div class="works-with-item">AutoGen</div>
+        <div class="works-with-item">Custom Agents</div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>
+        Iris is open source under the MIT License.
+        <a href="https://github.com/iris-eval/mcp-server">GitHub</a> &middot;
+        <a href="https://npmjs.com/package/@iris-eval/mcp-server">npm</a> &middot;
+        <a href="https://github.com/iris-eval/mcp-server/blob/main/LICENSE">License</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

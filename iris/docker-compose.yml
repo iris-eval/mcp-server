@@ -1,0 +1,17 @@
+services:
+  iris-mcp:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - iris-data:/data
+    environment:
+      - IRIS_TRANSPORT=http
+      - IRIS_PORT=3000
+      - IRIS_DB_PATH=/data/iris.db
+      - IRIS_DASHBOARD=true
+      - IRIS_LOG_LEVEL=info
+    restart: unless-stopped
+
+volumes:
+  iris-data:

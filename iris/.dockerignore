@@ -1,0 +1,11 @@
+node_modules
+.git
+coverage
+src
+tests
+*.db
+*.db-journal
+*.db-wal
+.env
+.env.*
+dashboard/node_modules
