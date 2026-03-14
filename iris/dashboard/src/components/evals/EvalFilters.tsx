@@ -13,11 +13,22 @@ const styles = {
     color: 'var(--text-primary)',
     fontSize: 'var(--font-size-sm)',
   } as const,
+  input: {
+    padding: 'var(--space-2) var(--space-3)',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: 'var(--border-radius-sm)',
+    color: 'var(--text-primary)',
+    fontSize: 'var(--font-size-sm)',
+    width: '160px',
+  } as const,
 };
 
 interface EvalFilterValues {
   eval_type: string;
   passed: string;
+  since: string;
+  until: string;
 }
 
 export function EvalFilters({
@@ -50,6 +61,20 @@ export function EvalFilters({
         <option value="true">Passed</option>
         <option value="false">Failed</option>
       </select>
+      <input
+        style={styles.input}
+        type="datetime-local"
+        value={values.since}
+        onChange={(e) => onChange({ ...values, since: e.target.value })}
+        placeholder="Since"
+      />
+      <input
+        style={styles.input}
+        type="datetime-local"
+        value={values.until}
+        onChange={(e) => onChange({ ...values, until: e.target.value })}
+        placeholder="Until"
+      />
     </div>
   );
 }

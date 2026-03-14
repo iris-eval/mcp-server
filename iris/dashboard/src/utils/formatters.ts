@@ -21,6 +21,7 @@ export function formatTimestamp(iso: string): string {
 
 export function formatTimeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 0) return 'just now';
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;

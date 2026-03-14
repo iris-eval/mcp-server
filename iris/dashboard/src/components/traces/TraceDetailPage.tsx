@@ -42,7 +42,7 @@ export function TraceDetailPage() {
       {/* Metadata */}
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', padding: 'var(--space-5)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
-          <div><span style={{ color: 'var(--text-muted)' }}>Trace ID</span><br /><code>{trace.trace_id}</code></div>
+          <div><span style={{ color: 'var(--text-muted)' }}>Trace ID</span><br /><code title={trace.trace_id} style={{ fontSize: 'var(--font-size-xs)' }}>{trace.trace_id.slice(0, 12)}...{trace.trace_id.slice(-4)}</code></div>
           <div><span style={{ color: 'var(--text-muted)' }}>Agent</span><br /><strong>{trace.agent_name}</strong></div>
           <div><span style={{ color: 'var(--text-muted)' }}>Framework</span><br />{trace.framework ? <Badge label={trace.framework} /> : '—'}</div>
           <div><span style={{ color: 'var(--text-muted)' }}>Latency</span><br />{trace.latency_ms != null ? <LatencyDisplay ms={trace.latency_ms} /> : '—'}</div>

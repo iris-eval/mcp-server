@@ -86,9 +86,11 @@ async function seed() {
     const timestamp = hoursAgo(hoursBack);
     const isError = i === 7 || i === 19; // 2 error traces
     const latencyMs = isError ? randomBetween(5000, 30000) : randomBetween(200, 5000);
-    const promptTokens = Math.floor(randomBetween(50, 5000));
-    const completionTokens = Math.floor(randomBetween(20, 10000));
-    const costPerToken = 0.0001;
+    const promptTokens = Math.floor(randomBetween(50, 2000));
+    const completionTokens = Math.floor(randomBetween(20, 1500));
+    // Realistic pricing: ~$3/M input tokens, ~$15/M output tokens (Claude Sonnet range)
+    const inputCost = promptTokens * 0.000003;
+    const outputCost = completionTokens * 0.000015;
 
     const input = randomChoice(INPUTS);
     const output = isError ? '' : randomChoice(OUTPUTS);
@@ -114,7 +116,7 @@ async function seed() {
         completion_tokens: completionTokens,
         total_tokens: promptTokens + completionTokens,
       },
-      cost_usd: (promptTokens + completionTokens) * costPerToken,
+      cost_usd: Math.round((inputCost + outputCost) * 10000) / 10000,
       metadata: { model: randomChoice(['claude-3-sonnet', 'claude-3-haiku', 'gpt-4o-mini']), session_id: `sess-${i}` },
       timestamp,
     };

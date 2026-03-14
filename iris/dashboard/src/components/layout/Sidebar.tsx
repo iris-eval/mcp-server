@@ -15,6 +15,13 @@ const styles = {
     color: 'var(--accent-primary)',
     marginBottom: 'var(--space-8)',
     padding: 'var(--space-2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-2)',
+  } as const,
+  logoIcon: {
+    width: '24px',
+    height: '24px',
   } as const,
   nav: {
     display: 'flex',
@@ -45,7 +52,14 @@ const links = [
 export function Sidebar() {
   return (
     <aside style={styles.sidebar}>
-      <div style={styles.logo}>Iris</div>
+      <div style={styles.logo}>
+        <svg style={styles.logoIcon} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5"/>
+          <circle cx="16" cy="16" r="7" fill="currentColor" opacity="0.3"/>
+          <circle cx="16" cy="16" r="3.5" fill="currentColor"/>
+        </svg>
+        Iris
+      </div>
       <nav style={styles.nav}>
         {links.map(({ to, label }) => (
           <NavLink
