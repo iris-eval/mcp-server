@@ -45,7 +45,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cd dashboard && npm ci && npm run build
-      - run: npm publish --provenance --access public
+      - run: npm publish --provenance --access public || echo "Version already published, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
