@@ -7,8 +7,7 @@
 
 Iris is an open-source [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that provides trace logging, quality evaluation, and drift detection for AI agents. Any MCP-compatible agent framework can discover and invoke Iris tools.
 
-<!-- TODO: Replace with actual dashboard screenshot after running seed:demo -->
-<!-- ![Iris Dashboard](docs/assets/dashboard-screenshot.png) -->
+![Iris Dashboard](../docs/assets/dashboard-overview.png)
 
 ## Quickstart
 
@@ -161,7 +160,7 @@ Start with `--dashboard` flag to enable the web UI at `http://localhost:6920`.
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
-- [Roadmap](docs/roadmap.md) — What's coming next
+- [Roadmap](../docs/roadmap.md) — What's coming next
 
 ## License
 
