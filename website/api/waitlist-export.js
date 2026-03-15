@@ -1,17 +1,12 @@
 import { Redis } from "@upstash/redis";
 
-// Admin-only endpoint to export waitlist data
-// Protected by WAITLIST_ADMIN_KEY environment variable
-// Usage: GET /api/waitlist-export?key=YOUR_ADMIN_KEY
-
 export default async function handler(req, res) {
-  res.set("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Content-Type-Options", "nosniff");
 
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Auth check — constant-time comparison
   const adminKey = process.env.WAITLIST_ADMIN_KEY;
   if (!adminKey) {
     return res.status(503).json({ error: "Admin endpoint not configured" });
@@ -57,8 +52,8 @@ export default async function handler(req, res) {
             `${e.email || ""},${e.timestamp || ""},${e.source || ""},${e.consent || ""}`
         )
         .join("\n");
-      res.set("Content-Type", "text/csv");
-      res.set(
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
         "Content-Disposition",
         `attachment; filename="iris-waitlist-${new Date().toISOString().slice(0, 10)}.csv"`
       );
@@ -77,7 +72,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Constant-time string comparison to prevent timing attacks
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let result = 0;
