@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iris — See what your AI agents are actually doing</title>
+  <meta name="description" content="The first MCP-native eval & observability tool for AI agents. Log traces, evaluate quality, track costs. Open-source.">
+  <meta property="og:title" content="Iris — MCP-Native Agent Eval & Observability">
+  <meta property="og:description" content="See what your AI agents are actually doing. Log traces, evaluate quality, track costs.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://iris-eval.com">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@iris_eval">
+  <meta name="twitter:title" content="Iris — MCP-Native Agent Eval & Observability">
+  <meta name="twitter:description" content="See what your AI agents are actually doing. The first MCP-native eval & observability tool.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ===== NAV ===== -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <svg class="nav-logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="13" stroke="#6366f1" stroke-width="2"/>
+          <circle cx="14" cy="14" r="6" fill="#6366f1"/>
+          <circle cx="14" cy="14" r="2.5" fill="#0a0a0b"/>
+        </svg>
+        <span>Iris</span>
+      </a>
+      <div class="nav-links">
+        <a href="https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md" target="_blank">Roadmap</a>
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank">Docs</a>
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="nav-github">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="hero-grid-bg"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <div class="hero-badges">
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="hero-badge">
+          <img src="https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat&logo=github&color=6366f1&labelColor=1a1a2e" alt="GitHub stars" loading="lazy">
+        </a>
+        <a href="https://www.npmjs.com/package/@iris-eval/mcp-server" target="_blank" class="hero-badge">
+          <img src="https://img.shields.io/npm/dm/@iris-eval/mcp-server?style=flat&logo=npm&color=6366f1&labelColor=1a1a2e" alt="npm downloads" loading="lazy">
+        </a>
+        <span class="hero-badge hero-badge-text">v0.1.2 &middot; MIT Licensed</span>
+      </div>
+      <h1 class="hero-headline">
+        See what your AI agents<br>
+        <span class="hero-headline-accent">are actually doing.</span>
+      </h1>
+      <p class="hero-sub">
+        The first MCP-native eval &amp; observability tool. Log traces, evaluate quality,
+        track costs. Open-source core. One command to start.
+      </p>
+      <div class="hero-ctas">
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Get Started
+        </a>
+        <a href="#waitlist" class="btn btn-secondary">Join Cloud Waitlist</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROBLEM: APM vs IRIS ===== -->
+  <section class="problem" id="problem">
+    <div class="section-inner">
+      <p class="section-label">The Problem</p>
+      <h2 class="section-title">Your APM thinks everything is fine.</h2>
+      <p class="section-desc">Traditional monitoring sees HTTP status codes and latency. It has no idea your agent just leaked a credit card number, hallucinated an answer, or burned $0.47 on a single query.</p>
+
+      <div class="comparison">
+        <div class="comparison-panel comparison-apm reveal-left">
+          <div class="comparison-header">
+            <span class="comparison-dot comparison-dot--green"></span>
+            What your APM sees
+          </div>
+          <div class="comparison-body comparison-body--apm">
+            <div class="apm-row"><span class="apm-label">Status</span><span class="apm-value apm-ok">200 OK</span></div>
+            <div class="apm-row"><span class="apm-label">Latency</span><span class="apm-value">143ms</span></div>
+            <div class="apm-row"><span class="apm-label">Memory</span><span class="apm-value">245 MB</span></div>
+            <div class="apm-row"><span class="apm-label">CPU</span><span class="apm-value">12%</span></div>
+            <div class="apm-row"><span class="apm-label">Throughput</span><span class="apm-value">847 req/min</span></div>
+            <div class="apm-row apm-row--status"><span class="apm-label">Health</span><span class="apm-value apm-ok">&#10003; All systems operational</span></div>
+          </div>
+        </div>
+
+        <div class="comparison-vs">vs</div>
+
+        <div class="comparison-panel comparison-iris reveal-right">
+          <div class="comparison-header">
+            <svg class="comparison-iris-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="14" cy="14" r="13" stroke="#6366f1" stroke-width="2"/>
+              <circle cx="14" cy="14" r="6" fill="#6366f1"/>
+              <circle cx="14" cy="14" r="2.5" fill="#12131f"/>
+            </svg>
+            What Iris sees
+          </div>
+          <div class="comparison-body comparison-body--iris">
+            <div class="iris-alert iris-alert--danger">
+              <span class="iris-alert-icon">&#9888;</span>
+              <div>
+                <strong>PII Detected</strong>
+                <span>SSN pattern found in output (***-**-6789)</span>
+              </div>
+            </div>
+            <div class="iris-alert iris-alert--warning">
+              <span class="iris-alert-icon">&#9888;</span>
+              <div>
+                <strong>Injection Risk</strong>
+                <span>Prompt manipulation attempt in user input</span>
+              </div>
+            </div>
+            <div class="iris-alert iris-alert--danger">
+              <span class="iris-alert-icon">$</span>
+              <div>
+                <strong>Cost: $0.47 / query</strong>
+                <span>Above $0.10 threshold &middot; 4.7x over budget</span>
+              </div>
+            </div>
+            <div class="iris-alert iris-alert--warning">
+              <span class="iris-alert-icon">&#8230;</span>
+              <div>
+                <strong>Hallucination Markers</strong>
+                <span>"As an AI language model" detected in output</span>
+              </div>
+            </div>
+            <div class="iris-alert iris-alert--info">
+              <span class="iris-alert-icon">&#8594;</span>
+              <div>
+                <strong>Tool call #3 returned error</strong>
+                <span>database_lookup timed out after 30s</span>
+              </div>
+            </div>
+            <div class="iris-score">
+              <span class="iris-score-label">Quality Score</span>
+              <span class="iris-score-value iris-score--fail">0.32 / 1.0 &mdash; FAIL</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DASHBOARD PREVIEW ===== -->
+  <section class="dashboard-section" id="dashboard">
+    <div class="section-inner">
+      <p class="section-label">Product in Action</p>
+      <h2 class="section-title">A real dashboard, not a status page.</h2>
+      <p class="section-desc">Navigate traces, drill into spans, see exactly where things went wrong. Every tool call, every token, every dollar.</p>
+
+      <div class="dashboard-mockup reveal-up">
+        <div class="dash-chrome">
+          <div class="dash-chrome-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="dash-chrome-url">localhost:6920</span>
+        </div>
+        <div class="dash-body">
+          <!-- Sidebar -->
+          <div class="dash-sidebar">
+            <div class="dash-sidebar-logo">
+              <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+                <circle cx="14" cy="14" r="13" stroke="#6366f1" stroke-width="2"/>
+                <circle cx="14" cy="14" r="6" fill="#6366f1"/>
+                <circle cx="14" cy="14" r="2.5" fill="#141416"/>
+              </svg>
+              <span>Iris</span>
+            </div>
+            <div class="dash-sidebar-nav">
+              <div class="dash-nav-item active">Dashboard</div>
+              <div class="dash-nav-item">Traces</div>
+              <div class="dash-nav-item">Evaluations</div>
+            </div>
+          </div>
+          <!-- Main content -->
+          <div class="dash-main">
+            <!-- Summary cards -->
+            <div class="dash-cards">
+              <div class="dash-card">
+                <span class="dash-card-label">Total Traces</span>
+                <span class="dash-card-value" data-count="1847">0</span>
+              </div>
+              <div class="dash-card">
+                <span class="dash-card-label">Avg Score</span>
+                <span class="dash-card-value" data-count-decimal="0.84">0</span>
+              </div>
+              <div class="dash-card">
+                <span class="dash-card-label">Pass Rate</span>
+                <span class="dash-card-value" data-count-pct="91">0%</span>
+              </div>
+              <div class="dash-card">
+                <span class="dash-card-label">Total Cost</span>
+                <span class="dash-card-value" data-count-cost="127.43">$0</span>
+              </div>
+            </div>
+            <!-- Chart area -->
+            <div class="dash-chart">
+              <div class="dash-chart-title">Traces / Hour</div>
+              <div class="dash-chart-bars">
+                <div class="dash-bar" style="--h: 30%"><span>12</span></div>
+                <div class="dash-bar" style="--h: 55%"><span>22</span></div>
+                <div class="dash-bar" style="--h: 45%"><span>18</span></div>
+                <div class="dash-bar" style="--h: 70%"><span>28</span></div>
+                <div class="dash-bar" style="--h: 85%"><span>34</span></div>
+                <div class="dash-bar" style="--h: 65%"><span>26</span></div>
+                <div class="dash-bar" style="--h: 90%"><span>36</span></div>
+                <div class="dash-bar" style="--h: 75%"><span>30</span></div>
+                <div class="dash-bar" style="--h: 100%"><span>40</span></div>
+                <div class="dash-bar" style="--h: 60%"><span>24</span></div>
+                <div class="dash-bar" style="--h: 40%"><span>16</span></div>
+                <div class="dash-bar" style="--h: 50%"><span>20</span></div>
+              </div>
+            </div>
+            <!-- Recent traces -->
+            <div class="dash-traces">
+              <div class="dash-traces-title">Recent Traces</div>
+              <div class="dash-trace-row">
+                <span class="dash-trace-agent">research-agent</span>
+                <span class="dash-trace-score pass">0.92</span>
+                <span class="dash-trace-cost">$0.03</span>
+                <span class="dash-trace-time">2s ago</span>
+              </div>
+              <div class="dash-trace-row">
+                <span class="dash-trace-agent">code-review-bot</span>
+                <span class="dash-trace-score pass">0.87</span>
+                <span class="dash-trace-cost">$0.12</span>
+                <span class="dash-trace-time">15s ago</span>
+              </div>
+              <div class="dash-trace-row">
+                <span class="dash-trace-agent">support-agent</span>
+                <span class="dash-trace-score fail">0.41</span>
+                <span class="dash-trace-cost">$0.47</span>
+                <span class="dash-trace-time">1m ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== THREE PILLARS ===== -->
+  <section class="pillars" id="features">
+    <div class="section-inner">
+      <p class="section-label">Three Tools. Complete Visibility.</p>
+      <h2 class="section-title">Everything you need to trust your agents.</h2>
+      <div class="pillars-grid">
+        <div class="pillar reveal-up">
+          <div class="pillar-icon pillar-icon--trace">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          </div>
+          <h3>Trace</h3>
+          <p class="pillar-tagline">Every execution. Every tool call. Every token.</p>
+          <div class="pillar-detail">
+            <code>log_trace</code> captures full agent runs with hierarchical spans, per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly.
+          </div>
+        </div>
+        <div class="pillar reveal-up" style="--delay: 0.1s">
+          <div class="pillar-icon pillar-icon--eval">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          </div>
+          <h3>Eval</h3>
+          <p class="pillar-tagline">12 built-in rules. PII, injection, hallucination, cost.</p>
+          <div class="pillar-detail">
+            <code>evaluate_output</code> scores quality across completeness, relevance, safety, and cost. Returns per-rule pass/fail with actionable suggestions. Add custom rules via Zod schemas.
+          </div>
+        </div>
+        <div class="pillar reveal-up" style="--delay: 0.2s">
+          <div class="pillar-icon pillar-icon--cost">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <h3>Cost</h3>
+          <p class="pillar-tagline">See what your agents actually cost you.</p>
+          <div class="pillar-detail">
+            Aggregate cost across all agents over any time window. Not just per-trace — total spend visibility. Set budget thresholds and get flagged when agents burn too much.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SETUP ===== -->
+  <section class="setup" id="setup">
+    <div class="section-inner">
+      <p class="section-label">60 Seconds to First Trace</p>
+      <h2 class="section-title">Add four lines. You're done.</h2>
+      <p class="section-desc">Add Iris to your Claude Desktop MCP config. Works with Claude Desktop, Cursor, any MCP agent.</p>
+
+      <div class="setup-code reveal-up">
+        <div class="code-header">
+          <span class="code-filename">claude_desktop_config.json</span>
+          <button class="code-copy" data-copy="config" aria-label="Copy to clipboard">
+            <svg class="code-copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <svg class="code-check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        </div>
+        <pre class="code-block"><code>{
+  <span class="code-key">"mcpServers"</span>: {
+    <span class="code-key">"iris-eval"</span>: {
+      <span class="code-key">"command"</span>: <span class="code-str">"npx"</span>,
+      <span class="code-key">"args"</span>: [<span class="code-str">"@iris-eval/mcp-server"</span>]
+    }
+  }
+}</code></pre>
+      </div>
+
+      <div class="setup-or">or install globally</div>
+
+      <div class="setup-code setup-code--sm reveal-up">
+        <div class="code-header">
+          <span class="code-filename">terminal</span>
+          <button class="code-copy" data-copy="install" aria-label="Copy to clipboard">
+            <svg class="code-copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <svg class="code-check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        </div>
+        <pre class="code-block"><code><span class="code-prompt">$</span> npm install -g @iris-eval/mcp-server
+<span class="code-prompt">$</span> iris-mcp --dashboard</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOUNDER STORY ===== -->
+  <section class="story">
+    <div class="section-inner">
+      <div class="story-content reveal-up">
+        <div class="story-quote-mark">&ldquo;</div>
+        <p class="story-text">
+          I kept running into the same problem building AI agents: once they're running,
+          you have no visibility into what they're actually doing. Traditional monitoring
+          tells you the request succeeded. It can't tell you the agent leaked PII,
+          hallucinated an answer, or burned through your budget on a single query.
+        </p>
+        <p class="story-text">
+          So I built Iris. An MCP server that any agent discovers and uses automatically.
+          No SDK. No code changes. Just add it to your config and start seeing everything.
+        </p>
+        <div class="story-author">
+          <div class="story-author-info">
+            <span class="story-author-role">Founder &amp; Builder</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ROADMAP ===== -->
+  <section class="roadmap" id="roadmap">
+    <div class="section-inner">
+      <p class="section-label">Where This Is Going</p>
+      <h2 class="section-title">Built in public. Shipping fast.</h2>
+      <div class="roadmap-timeline">
+        <div class="roadmap-item roadmap-item--done reveal-up">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-card">
+            <span class="roadmap-version">v0.1</span>
+            <span class="roadmap-status roadmap-status--done">Released</span>
+            <h4>Core MCP Server</h4>
+            <p>3 tools, 12 eval rules, SQLite storage, web dashboard, production security</p>
+          </div>
+        </div>
+        <div class="roadmap-item reveal-up" style="--delay: 0.08s">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-card">
+            <span class="roadmap-version">v0.2</span>
+            <span class="roadmap-status">Planned</span>
+            <h4>Cloud Tier</h4>
+            <p>PostgreSQL, multi-tenancy, team dashboards, API key management</p>
+          </div>
+        </div>
+        <div class="roadmap-item reveal-up" style="--delay: 0.16s">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-card">
+            <span class="roadmap-version">v0.3</span>
+            <span class="roadmap-status">Planned</span>
+            <h4>Alerting</h4>
+            <p>Alert rules, webhooks, email notifications, retention policies</p>
+          </div>
+        </div>
+        <div class="roadmap-item reveal-up" style="--delay: 0.24s">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-card">
+            <span class="roadmap-version">v0.4</span>
+            <span class="roadmap-status">Planned</span>
+            <h4>LLM-as-Judge</h4>
+            <p>Semantic evaluation, OpenTelemetry export, drift detection, A/B testing</p>
+          </div>
+        </div>
+        <div class="roadmap-item reveal-up" style="--delay: 0.32s">
+          <div class="roadmap-marker"></div>
+          <div class="roadmap-card">
+            <span class="roadmap-version">v0.5</span>
+            <span class="roadmap-status">Planned</span>
+            <h4>Enterprise</h4>
+            <p>SSO/SAML, RBAC, audit logs, SOC 2 compliance</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WAITLIST ===== -->
+  <section class="waitlist" id="waitlist">
+    <div class="section-inner">
+      <div class="waitlist-card">
+        <div class="waitlist-glow"></div>
+        <p class="section-label">Cloud Tier — Coming Soon</p>
+        <h2 class="section-title">Team dashboards. Alerting.<br>Managed infrastructure.</h2>
+        <p class="section-desc">As your team grows, Iris grows with you. Get early access to the cloud tier.</p>
+        <form class="waitlist-form" id="waitlist-form">
+          <div class="waitlist-input-wrap">
+            <input type="email" class="waitlist-input" placeholder="you@company.com" required aria-label="Email address">
+            <button type="submit" class="btn btn-primary waitlist-btn">Get Early Access</button>
+          </div>
+          <p class="waitlist-note">No spam. We'll email you when it's ready.</p>
+        </form>
+        <div class="waitlist-success" id="waitlist-success" style="display:none">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>You're on the list. We'll be in touch.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+          <circle cx="14" cy="14" r="13" stroke="#6366f1" stroke-width="2"/>
+          <circle cx="14" cy="14" r="6" fill="#6366f1"/>
+          <circle cx="14" cy="14" r="2.5" fill="#0a0a0b"/>
+        </svg>
+        <span>Iris</span>
+        <span class="footer-sep">&middot;</span>
+        <span class="footer-license">MIT Licensed</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank">GitHub</a>
+        <a href="https://www.npmjs.com/package/@iris-eval/mcp-server" target="_blank">npm</a>
+        <a href="https://x.com/iris_eval" target="_blank">@iris_eval</a>
+        <a href="mailto:hello@iris-eval.com">hello@iris-eval.com</a>
+        <a href="https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md" target="_blank">Roadmap</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
