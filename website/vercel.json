@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/.well-known/mcp.json",
+      "destination": "/.well-known/mcp.json"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
