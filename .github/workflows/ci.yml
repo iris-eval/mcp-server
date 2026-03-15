@@ -17,6 +17,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - run: bash scripts/check-version.sh
       - run: npm run lint
       - run: npm run typecheck
 

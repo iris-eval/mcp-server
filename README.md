@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-Iris is an open-source [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that provides trace logging, quality evaluation, and drift detection for AI agents. Any MCP-compatible agent framework can discover and invoke Iris tools.
+Iris is an open-source [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that provides trace logging, quality evaluation, and cost tracking for AI agents. Any MCP-compatible agent framework can discover and invoke Iris tools.
 
 ![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 

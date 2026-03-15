@@ -1,6 +1,6 @@
 {
   "name": "iris-eval",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "MCP-native agent evaluation and observability server",
   "homepage": "https://github.com/iris-eval/mcp-server",
   "packages": {

@@ -1,5 +1,7 @@
 # Twitter/X Launch Thread
 
+> **Note:** X posts have a 280-character limit (free tier) or 25,000 (Premium). Drafts below were trimmed to fit before publishing. Keep future drafts within limits.
+
 ---
 
 **Tweet 1 (Announcement)**
