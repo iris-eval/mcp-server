@@ -9,14 +9,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
     return res.status(200).json({ count: 0 });
   }
 
   try {
     const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
     });
 
     const count = await redis.scard("waitlist:emails");
