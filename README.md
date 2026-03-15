@@ -9,6 +9,8 @@ Iris is an open-source [Model Context Protocol](https://modelcontextprotocol.io/
 
 ![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 
+[![iris-eval/mcp-server MCP server](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/card.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server)
+
 ## Quickstart
 
 ```bash
