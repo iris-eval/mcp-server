@@ -8,73 +8,62 @@ const revealObserver = new IntersectionObserver(
       }
     });
   },
-  { threshold: 0.15 }
+  { threshold: 0.12 }
 );
+document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
 
-document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right').forEach((el) => {
-  revealObserver.observe(el);
+// ===== Hero Word Swap =====
+const swapEl = document.getElementById('hero-swap');
+if (swapEl) {
+  const words = ['actually doing.', 'actually costing.', 'actually leaking.'];
+  let idx = 0;
+  setInterval(() => {
+    swapEl.style.opacity = '0';
+    swapEl.style.transform = 'translateY(8px)';
+    setTimeout(() => {
+      idx = (idx + 1) % words.length;
+      swapEl.textContent = words[idx];
+      swapEl.style.opacity = '1';
+      swapEl.style.transform = 'translateY(0)';
+    }, 300);
+  }, 3000);
+}
+
+// ===== Product Tabs =====
+document.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
 });
 
-// ===== Dashboard Mockup Animation =====
-const dashboardMockup = document.querySelector('.dashboard-mockup');
-if (dashboardMockup) {
-  const dashObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          dashboardMockup.classList.add('animated');
-          animateCounters();
-          dashObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.3 }
-  );
-  dashObserver.observe(dashboardMockup);
-}
+// ===== Stat Counters =====
+const counterObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.dataset.count, 10);
+        if (isNaN(target)) return;
+        animateCount(el, 0, target, 1000);
+        counterObserver.unobserve(el);
+      }
+    });
+  },
+  { threshold: 0.5 }
+);
+document.querySelectorAll('[data-count]').forEach((el) => counterObserver.observe(el));
 
-// ===== Counter Animation =====
-function animateCounters() {
-  // Integer counter
-  document.querySelectorAll('[data-count]').forEach((el) => {
-    const target = parseInt(el.dataset.count, 10);
-    animateValue(el, 0, target, 1200, (v) => v.toLocaleString());
-  });
-
-  // Decimal counter (scores)
-  document.querySelectorAll('[data-count-decimal]').forEach((el) => {
-    const target = parseFloat(el.dataset.countDecimal);
-    animateValue(el, 0, target, 1200, (v) => v.toFixed(2));
-  });
-
-  // Percentage counter
-  document.querySelectorAll('[data-count-pct]').forEach((el) => {
-    const target = parseInt(el.dataset.countPct, 10);
-    animateValue(el, 0, target, 1200, (v) => Math.round(v) + '%');
-  });
-
-  // Cost counter
-  document.querySelectorAll('[data-count-cost]').forEach((el) => {
-    const target = parseFloat(el.dataset.countCost);
-    animateValue(el, 0, target, 1200, (v) => '$' + v.toFixed(2));
-  });
-}
-
-function animateValue(el, start, end, duration, formatter) {
-  const startTime = performance.now();
-
+function animateCount(el, start, end, duration) {
+  const t0 = performance.now();
   function step(now) {
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    // Ease out cubic
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const current = start + (end - start) * eased;
-    el.textContent = formatter(current);
-    if (progress < 1) {
-      requestAnimationFrame(step);
-    }
+    const p = Math.min((now - t0) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (end - start) * eased).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
   }
-
   requestAnimationFrame(step);
 }
 
@@ -91,23 +80,20 @@ const copyTexts = {
   install: `npm install -g @iris-eval/mcp-server\niris-mcp --dashboard`,
 };
 
-document.querySelectorAll('.code-copy').forEach((btn) => {
+document.querySelectorAll('.copy-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    const key = btn.dataset.copy;
-    const text = copyTexts[key];
+    const text = copyTexts[btn.dataset.copy];
     if (!text) return;
-
     navigator.clipboard.writeText(text).then(() => {
       btn.classList.add('copied');
-      const copyIcon = btn.querySelector('.code-copy-icon');
-      const checkIcon = btn.querySelector('.code-check-icon');
-      if (copyIcon) copyIcon.style.display = 'none';
-      if (checkIcon) checkIcon.style.display = 'block';
-
+      const ci = btn.querySelector('.copy-icon');
+      const ch = btn.querySelector('.check-icon');
+      if (ci) ci.style.display = 'none';
+      if (ch) ch.style.display = 'block';
       setTimeout(() => {
         btn.classList.remove('copied');
-        if (copyIcon) copyIcon.style.display = 'block';
-        if (checkIcon) checkIcon.style.display = 'none';
+        if (ci) ci.style.display = 'block';
+        if (ch) ch.style.display = 'none';
       }, 2000);
     });
   });
@@ -115,20 +101,18 @@ document.querySelectorAll('.code-copy').forEach((btn) => {
 
 // ===== Waitlist Form =====
 const waitlistForm = document.getElementById('waitlist-form');
-const waitlistSuccess = document.getElementById('waitlist-success');
+const waitlistOk = document.getElementById('waitlist-ok');
 
 if (waitlistForm) {
   waitlistForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const emailInput = waitlistForm.querySelector('input[type="email"]');
-    const submitBtn = waitlistForm.querySelector('button[type="submit"]');
-    const email = emailInput.value.trim();
-
+    const input = waitlistForm.querySelector('input[type="email"]');
+    const btn = waitlistForm.querySelector('button[type="submit"]');
+    const email = input.value.trim();
     if (!email) return;
 
-    // Disable button during submission
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Joining...';
+    btn.disabled = true;
+    btn.textContent = 'Joining...';
 
     try {
       const res = await fetch('/api/waitlist', {
@@ -136,60 +120,59 @@ if (waitlistForm) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
       if (res.ok) {
         waitlistForm.style.display = 'none';
-        waitlistSuccess.style.display = 'flex';
+        waitlistOk.style.display = 'flex';
       } else {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 429) {
-          submitBtn.textContent = 'Too many attempts';
-        } else {
-          submitBtn.textContent = data.error || 'Something went wrong';
-        }
+        btn.textContent = res.status === 429 ? 'Too many attempts' : data.error || 'Something went wrong';
         setTimeout(() => {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Get Early Access';
+          btn.disabled = false;
+          btn.textContent = 'Get Early Access';
         }, 3000);
       }
     } catch {
-      // Network error — fall back to localStorage
-      const waitlist = JSON.parse(localStorage.getItem('iris-waitlist') || '[]');
-      if (!waitlist.includes(email)) {
-        waitlist.push(email);
-        localStorage.setItem('iris-waitlist', JSON.stringify(waitlist));
+      // Fallback to localStorage
+      const list = JSON.parse(localStorage.getItem('iris-waitlist') || '[]');
+      if (!list.includes(email)) {
+        list.push(email);
+        localStorage.setItem('iris-waitlist', JSON.stringify(list));
       }
       waitlistForm.style.display = 'none';
-      waitlistSuccess.style.display = 'flex';
+      waitlistOk.style.display = 'flex';
     }
   });
 }
 
-// ===== Fetch Waitlist Count (social proof) =====
-(async function loadWaitlistCount() {
+// ===== Waitlist Count =====
+(async function () {
   try {
     const res = await fetch('/api/waitlist-count');
     if (res.ok) {
       const { count } = await res.json();
       if (count > 0) {
-        const note = document.querySelector('.waitlist-note');
-        if (note) {
-          note.textContent = `${count} developer${count === 1 ? '' : 's'} on the waitlist. No spam.`;
-        }
+        const note = document.getElementById('waitlist-note');
+        if (note) note.textContent = `${count} developer${count === 1 ? '' : 's'} on the waitlist. No spam.`;
       }
     }
-  } catch {
-    // Silently fail — count is a nice-to-have
-  }
+  } catch {}
 })();
 
-// ===== Smooth scroll for anchor links =====
-document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-  anchor.addEventListener('click', (e) => {
+// ===== Smooth Scroll =====
+document.querySelectorAll('a[href^="#"]').forEach((a) => {
+  a.addEventListener('click', (e) => {
     e.preventDefault();
-    const target = document.querySelector(anchor.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    const t = document.querySelector(a.getAttribute('href'));
+    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 });
+
+// ===== Nav Background on Scroll =====
+const nav = document.getElementById('nav');
+if (nav) {
+  window.addEventListener('scroll', () => {
+    nav.style.background = window.scrollY > 60
+      ? 'rgba(3,7,18,.92)'
+      : 'rgba(3,7,18,.75)';
+  }, { passive: true });
+}
