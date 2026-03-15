@@ -4,9 +4,11 @@
 
 **Tweet 1 (Announcement)**
 
-Introducing Iris -- open-source observability for AI agents.
+I built the first MCP-native eval & observability tool for AI agents.
 
-Log traces, evaluate output quality, and monitor cost. MCP-native, self-hosted, SQLite-powered.
+Iris is an open-source MCP server. Add it to your agent's config and it can log traces, evaluate output quality, and track what your agents are actually costing you.
+
+No SDK. No code changes.
 
 github.com/iris-eval/mcp-server
 
@@ -14,33 +16,33 @@ github.com/iris-eval/mcp-server
 
 **Tweet 2 (Problem)**
 
-AI agents fail silently. The output looks plausible but is wrong. Costs spike. PII leaks into responses. Traditional APM shows HTTP 200 and calls it a day.
+AI agents fail silently. The output looks plausible but is wrong. Costs spike with no visibility. PII leaks into responses. Traditional APM sees HTTP 200 and calls it a day.
 
-There is no standard way to monitor agent quality across runs.
+Your agents are black boxes in production. There hasn't been a standard way to monitor agent quality across runs — until now.
 
 ---
 
 **Tweet 3 (Solution)**
 
-Iris is an MCP server -- not an SDK. Any MCP-compatible agent uses it automatically. No code changes needed.
+Iris is an MCP server, not an SDK. Any MCP-compatible agent discovers and uses it automatically.
 
 3 tools:
-- log_trace: record execution traces
-- evaluate_output: score quality
-- get_traces: query history
+- log_trace: full execution traces with spans, tool calls, token usage, cost
+- evaluate_output: score quality against 12 built-in rules
+- get_traces: query history with filters
 
-Works with Claude Desktop, Cursor, custom agents.
+Works with Claude Desktop, Cursor, any MCP agent.
 
 ---
 
-**Tweet 4 (Dashboard)**
+**Tweet 4 (Dashboard + Cost)**
 
-Dark-mode web dashboard with real-time trace monitoring:
+The dashboard shows you what's actually happening inside your agents:
 
-- Summary cards (total traces, avg score, pass rate, cost)
-- Trace list with filters
-- Span tree view for each execution
+- Aggregate cost across all your agents over any time window
+- Hierarchical span tree — see exactly where in the chain things go wrong
 - Eval scores with per-rule breakdown
+- Per-tool-call latency — find your bottleneck
 
 [SCREENSHOT: dashboard overview page]
 
@@ -50,9 +52,9 @@ Dark-mode web dashboard with real-time trace monitoring:
 
 12 built-in eval rules across 4 categories:
 
-Completeness: output length, coverage
-Relevance: keyword overlap, hallucination markers
-Safety: PII detection, injection patterns, blocklist
+Completeness: output length, coverage, sentence count
+Relevance: keyword overlap, hallucination markers, topic consistency
+Safety: PII detection (SSN, credit card, phone, email), injection patterns, blocklist
 Cost: USD threshold, token efficiency
 
 Plus custom rules via Zod schemas.
@@ -61,12 +63,14 @@ Plus custom rules via Zod schemas.
 
 **Tweet 6 (CTA)**
 
-MIT licensed. Self-hosted. TypeScript.
+Open-source core. Self-hosted. MIT licensed. TypeScript.
 
+```
 npm install -g @iris-eval/mcp-server
 iris-mcp --dashboard
+```
 
 GitHub: github.com/iris-eval/mcp-server
 npm: npmjs.com/package/@iris-eval/mcp-server
 
-Star the repo if this is useful.
+Star the repo if this is useful. Check the roadmap for what's coming next.
