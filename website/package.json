@@ -1,0 +1,10 @@
+{
+  "name": "iris-eval-website",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.0"
+  }
+}

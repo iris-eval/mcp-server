@@ -118,21 +118,70 @@ const waitlistForm = document.getElementById('waitlist-form');
 const waitlistSuccess = document.getElementById('waitlist-success');
 
 if (waitlistForm) {
-  waitlistForm.addEventListener('submit', (e) => {
+  waitlistForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = waitlistForm.querySelector('input[type="email"]').value;
+    const emailInput = waitlistForm.querySelector('input[type="email"]');
+    const submitBtn = waitlistForm.querySelector('button[type="submit"]');
+    const email = emailInput.value.trim();
 
-    // Store locally for now — replace with actual API endpoint
-    const waitlist = JSON.parse(localStorage.getItem('iris-waitlist') || '[]');
-    if (!waitlist.includes(email)) {
-      waitlist.push(email);
-      localStorage.setItem('iris-waitlist', JSON.stringify(waitlist));
+    if (!email) return;
+
+    // Disable button during submission
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Joining...';
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (res.ok) {
+        waitlistForm.style.display = 'none';
+        waitlistSuccess.style.display = 'flex';
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          submitBtn.textContent = 'Too many attempts';
+        } else {
+          submitBtn.textContent = data.error || 'Something went wrong';
+        }
+        setTimeout(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Get Early Access';
+        }, 3000);
+      }
+    } catch {
+      // Network error — fall back to localStorage
+      const waitlist = JSON.parse(localStorage.getItem('iris-waitlist') || '[]');
+      if (!waitlist.includes(email)) {
+        waitlist.push(email);
+        localStorage.setItem('iris-waitlist', JSON.stringify(waitlist));
+      }
+      waitlistForm.style.display = 'none';
+      waitlistSuccess.style.display = 'flex';
     }
-
-    waitlistForm.style.display = 'none';
-    waitlistSuccess.style.display = 'flex';
   });
 }
+
+// ===== Fetch Waitlist Count (social proof) =====
+(async function loadWaitlistCount() {
+  try {
+    const res = await fetch('/api/waitlist-count');
+    if (res.ok) {
+      const { count } = await res.json();
+      if (count > 0) {
+        const note = document.querySelector('.waitlist-note');
+        if (note) {
+          note.textContent = `${count} developer${count === 1 ? '' : 's'} on the waitlist. No spam.`;
+        }
+      }
+    }
+  } catch {
+    // Silently fail — count is a nice-to-have
+  }
+})();
 
 // ===== Smooth scroll for anchor links =====
 document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
