@@ -1,0 +1,49 @@
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      irisApiKey:
+        type: string
+        description: API key for authenticating with the Iris MCP server.
+      irisDbPath:
+        type: string
+        description: Path to the SQLite database file.
+        default: ./iris.db
+      irisLogLevel:
+        type: string
+        description: "Log level: debug, info, warn, error, silent."
+        default: info
+        enum:
+          - debug
+          - info
+          - warn
+          - error
+          - silent
+      irisDashboard:
+        type: boolean
+        description: Enable the built-in web dashboard.
+        default: false
+      irisPort:
+        type: number
+        description: Port for the HTTP transport or dashboard.
+        default: 3410
+  commandFunction:
+    |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', '@iris-eval/mcp-server'],
+      env: {
+        IRIS_API_KEY: config.irisApiKey || undefined,
+        IRIS_DB_PATH: config.irisDbPath || undefined,
+        IRIS_LOG_LEVEL: config.irisLogLevel || undefined,
+        IRIS_DASHBOARD: config.irisDashboard ? 'true' : undefined,
+        IRIS_PORT: config.irisPort ? String(config.irisPort) : undefined
+      }
+    })
+  exampleConfig:
+    irisDbPath: ./iris.db
+    irisLogLevel: info
+    irisDashboard: false

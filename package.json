@@ -26,11 +26,19 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "agent",
+    "ai-agent",
     "evaluation",
     "observability",
     "tracing",
-    "llm"
+    "llm",
+    "claude",
+    "agent-evaluation",
+    "ai-observability",
+    "pii-detection",
+    "cost-tracking"
   ],
   "author": "",
   "license": "MIT",
