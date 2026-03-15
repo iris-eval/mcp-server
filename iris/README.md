@@ -160,7 +160,7 @@ Start with `--dashboard` flag to enable the web UI at `http://localhost:6920`.
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
-- [Roadmap](../docs/roadmap.md) — What's coming next
+- [Roadmap](docs/roadmap.md) — What's coming next
 
 ## License
 
