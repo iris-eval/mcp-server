@@ -4,7 +4,7 @@
 
 ```bash
 git clone https://github.com/iris-eval/mcp-server.git
-cd iris
+cd mcp-server
 npm install
 ```
 
