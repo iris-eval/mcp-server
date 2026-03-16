@@ -1,41 +1,101 @@
 # Iris — MCP-Native Agent Eval & Observability
 
 [![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
+[![npm downloads](https://img.shields.io/npm/dw/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![CI](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-Iris is an open-source [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that provides trace logging, quality evaluation, and cost tracking for AI agents. Any MCP-compatible agent framework can discover and invoke Iris tools.
+**See what your AI agents are actually doing.** Iris is an open-source MCP server that logs every trace, evaluates output quality, and tracks costs across all your agents. Any MCP-compatible agent discovers and uses it automatically — no SDK, no code changes.
 
 ![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 
+## The Problem
+
+Your agents are running in production. Traditional monitoring sees `200 OK` and moves on. It has no idea the agent just:
+
+- Leaked a social security number in its response
+- Hallucinated an answer with zero factual grounding
+- Burned $0.47 on a single query — 4.7x your budget threshold
+- Made 6 tool calls when 2 would have sufficed
+
+Iris sees all of it.
+
+## What You Get
+
+| | |
+|---|---|
+| **Trace Logging** | Hierarchical span trees with per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly. |
+| **Output Evaluation** | 12 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection, prompt injection patterns, hallucination markers. Add custom rules with Zod schemas. |
+| **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
+| **Web Dashboard** | Real-time dark-mode UI with trace visualization, eval results, and cost breakdowns. |
+
 ## Quickstart
 
+Add Iris to your Claude Desktop (or Cursor, Claude Code, Windsurf) MCP config:
+
+```json
+{
+  "mcpServers": {
+    "iris-eval": {
+      "command": "npx",
+      "args": ["@iris-eval/mcp-server"]
+    }
+  }
+}
+```
+
+That's it. Your agent discovers Iris and starts logging traces automatically.
+
+Want the dashboard?
+
 ```bash
+npx @iris-eval/mcp-server --dashboard
+# Open http://localhost:6920
+```
+
+### Other Install Methods
+
+```bash
+# Global install
 npm install -g @iris-eval/mcp-server
-iris-mcp
-```
+iris-mcp --dashboard
 
-Or run directly:
-
-```bash
-npx @iris-eval/mcp-server
-```
-
-### Docker
-
-```bash
+# Docker
 docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 ```
 
-## Configuration
+## MCP Tools
 
-Iris looks for config in this order (later overrides earlier):
+Iris registers three tools that any MCP-compatible agent can invoke:
 
-1. Built-in defaults
-2. `~/.iris/config.json`
-3. Environment variables (`IRIS_*`)
-4. CLI arguments
+- **`log_trace`** — Log an agent execution with spans, tool calls, token usage, and cost
+- **`evaluate_output`** — Score output quality against completeness, relevance, safety, and cost rules
+- **`get_traces`** — Query stored traces with filtering, pagination, and time-range support
+
+Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
+
+## Cloud Tier (Coming Soon)
+
+Self-hosted Iris runs on your machine with SQLite. As your team grows, the cloud tier adds PostgreSQL, team dashboards, alerting, and managed infrastructure.
+
+[Join the waitlist](https://iris-eval.com#waitlist) to get early access.
+
+## Examples
+
+- [Claude Desktop setup](examples/claude-desktop/) — MCP config for stdio and HTTP modes
+- [TypeScript](examples/typescript/basic-usage.ts) — MCP SDK client usage
+- [LangChain](examples/langchain/observe-agent.py) — Agent instrumentation
+- [CrewAI](examples/crewai/observe-crew.py) — Crew observability
+
+## Community
+
+- [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
+- [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
+- [Contributing Guide](CONTRIBUTING.md) — How to contribute
+- [Roadmap](docs/roadmap.md) — What's coming next
+
+<details>
+<summary><strong>Configuration & Security</strong></summary>
 
 ### CLI Arguments
 
@@ -61,107 +121,29 @@ Iris looks for config in this order (later overrides earlier):
 | `IRIS_API_KEY` | API key for HTTP authentication |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
 
-## Security
+### Security
 
-When using the HTTP transport, Iris includes production-grade security:
+When using HTTP transport, Iris includes:
 
-- **Authentication** — Set `IRIS_API_KEY` or `--api-key` to require `Authorization: Bearer <key>` on all endpoints (except `/health`). Recommended for any network-exposed deployment.
-- **CORS** — Restricted to `http://localhost:*` by default. Configure with `IRIS_ALLOWED_ORIGINS`.
-- **Rate limiting** — 100 requests/minute for dashboard API, 20 requests/minute for MCP endpoints. Configurable via `~/.iris/config.json`.
-- **Security headers** — Helmet middleware applies CSP, X-Frame-Options, X-Content-Type-Options, and other standard headers.
-- **Input validation** — All query parameters validated with Zod schemas. Malformed requests return 400.
-- **Request size limits** — Body payloads limited to 1MB by default.
-- **Safe regex** — User-supplied regex patterns in custom eval rules are validated against ReDoS attacks.
-- **Structured logging** — JSON logs to stderr via pino. Never writes to stdout (reserved for stdio transport).
+- API key authentication with timing-safe comparison
+- CORS restricted to localhost by default
+- Rate limiting (100 req/min API, 20 req/min MCP)
+- Helmet security headers
+- Zod input validation on all routes
+- ReDoS-safe regex for custom eval rules
+- 1MB request body limits
 
 ```bash
-# Production deployment example
+# Production deployment
 iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
 ```
 
-## MCP Tools
+</details>
 
-### `log_trace`
+---
 
-Log an agent execution trace with spans, tool calls, and metrics.
+If Iris is useful to you, [consider starring the repo](https://github.com/iris-eval/mcp-server) — it helps others find it.
 
-**Input:**
-- `agent_name` (required) — Name of the agent
-- `input` — Agent input text
-- `output` — Agent output text
-- `tool_calls` — Array of tool call records
-- `latency_ms` — Execution time in milliseconds
-- `token_usage` — `{ prompt_tokens, completion_tokens, total_tokens }`
-- `cost_usd` — Total cost in USD
-- `metadata` — Arbitrary key-value metadata
-- `spans` — Array of span objects for detailed tracing
+[![Star on GitHub](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
 
-### `evaluate_output`
-
-Evaluate agent output quality using configurable rules.
-
-**Input:**
-- `output` (required) — The text to evaluate
-- `eval_type` — Type: `completeness`, `relevance`, `safety`, `cost`, `custom`
-- `expected` — Expected output for comparison
-- `trace_id` — Link evaluation to a trace
-- `custom_rules` — Array of custom rule definitions
-
-### `get_traces`
-
-Query stored traces with filters and pagination.
-
-**Input:**
-- `agent_name` — Filter by agent name
-- `framework` — Filter by framework
-- `since` — ISO timestamp lower bound
-- `until` — ISO timestamp upper bound
-- `min_score` / `max_score` — Score range filter
-- `limit` — Results per page (default 50)
-- `offset` — Pagination offset
-
-## MCP Resources
-
-- `iris://dashboard/summary` — Dashboard summary statistics
-- `iris://traces/{trace_id}` — Full trace detail with spans and evals
-
-## Claude Desktop
-
-Add Iris to your Claude Desktop MCP config:
-
-```json
-{
-  "mcpServers": {
-    "iris-eval": {
-      "command": "npx",
-      "args": ["@iris-eval/mcp-server"]
-    }
-  }
-}
-```
-
-Then ask Claude to "log a trace" or "evaluate this output" — Iris tools are automatically available.
-
-See [examples/claude-desktop/](examples/claude-desktop/) for more configuration options.
-
-## Web Dashboard
-
-Start with `--dashboard` flag to enable the web UI at `http://localhost:6920`.
-
-## Examples
-
-- [Claude Desktop setup](examples/claude-desktop/) — MCP config for stdio and HTTP modes
-- [TypeScript](examples/typescript/basic-usage.ts) — MCP SDK client usage
-- [LangChain](examples/langchain/observe-agent.py) — Agent instrumentation
-- [CrewAI](examples/crewai/observe-crew.py) — Crew observability
-
-## Community
-
-- [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
-- [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
-- [Contributing Guide](CONTRIBUTING.md) — How to contribute
-- [Roadmap](docs/roadmap.md) — What's coming next
-
-## License
-
-MIT
+MIT Licensed.

@@ -9,7 +9,9 @@
   <meta property="og:description" content="See what your AI agents are actually doing. The first MCP-native eval & observability tool.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://iris-eval.com">
+  <meta property="og:image" content="https://iris-eval.com/og-social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://iris-eval.com/og-social-preview.png">
   <meta name="twitter:site" content="@iris_eval">
   <meta name="twitter:title" content="Iris — MCP-Native Agent Eval & Observability">
   <meta name="twitter:description" content="See what your AI agents are actually doing. Log traces, evaluate quality, track costs.">
@@ -49,7 +51,7 @@
     <div class="container hero-content">
       <div class="hero-eyebrow">
         <span class="hero-tag">Open Source</span>
-        <span class="hero-version">v0.1.2</span>
+        <span class="hero-version">v0.1.3</span>
         <span class="hero-sep"></span>
         <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="hero-stars-link">
           <img src="https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat&logo=github&color=6366f1&labelColor=0f172a" alt="GitHub stars" height="20">
@@ -281,6 +283,7 @@
           <span class="stat-sub">Add to MCP config. You're done.</span>
         </div>
       </div>
+      <p class="stats-cta">Self-hosted today. <a href="#waitlist">Team dashboards and alerting coming soon.</a></p>
     </div>
   </section>
 
@@ -320,6 +323,41 @@
           </div>
           <pre class="code-body"><code><span class="cp">$</span> npm install -g @iris-eval/mcp-server
 <span class="cp">$</span> iris-mcp --dashboard</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WAITLIST -->
+  <section class="section waitlist" id="waitlist">
+    <div class="container">
+      <div class="waitlist-card">
+        <div class="waitlist-glow"></div>
+        <span class="section-label">Cloud Tier &mdash; Coming Soon</span>
+        <h2 class="section-title">Team dashboards. Alerting.<br>Managed infrastructure.</h2>
+        <p class="section-desc">As your team grows, Iris grows with you. Get early access to the cloud tier.</p>
+        <form class="waitlist-form" id="waitlist-form">
+          <div class="waitlist-row">
+            <input type="email" class="waitlist-input" placeholder="you@company.com" required aria-label="Email address">
+            <button type="submit" class="btn btn-primary btn-lg waitlist-btn">Get Early Access</button>
+          </div>
+          <p class="waitlist-note" id="waitlist-note">No spam. We'll email when it's ready.</p>
+        </form>
+        <div class="waitlist-ok" id="waitlist-ok" style="display:none">
+          <div class="waitlist-ok-inner">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="waitlist-ok-msg">You're on the list. We'll email when the cloud tier is ready.</span>
+            <div class="waitlist-ok-ctas">
+              <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="btn btn-outline btn-sm waitlist-ok-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                Star on GitHub
+              </a>
+              <a href="https://x.com/iris_eval" target="_blank" class="btn btn-outline btn-sm waitlist-ok-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                Follow @iris_eval
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -393,29 +431,6 @@
         <div class="rm-item reveal"><div class="rm-dot"></div><div class="rm-card"><span class="rm-ver">v0.3</span><span class="rm-status">Planned</span><h4>Alerting &amp; Retention</h4><p>Alert rules, webhooks, email notifications, retention policies</p></div></div>
         <div class="rm-item reveal"><div class="rm-dot"></div><div class="rm-card"><span class="rm-ver">v0.4</span><span class="rm-status">Planned</span><h4>LLM-as-Judge</h4><p>Semantic evaluation, OpenTelemetry export, drift detection, A/B testing</p></div></div>
         <div class="rm-item reveal"><div class="rm-dot"></div><div class="rm-card"><span class="rm-ver">v0.5</span><span class="rm-status">Planned</span><h4>Enterprise</h4><p>SSO/SAML, RBAC, audit logs, SOC 2 compliance</p></div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- WAITLIST -->
-  <section class="section waitlist" id="waitlist">
-    <div class="container">
-      <div class="waitlist-card">
-        <div class="waitlist-glow"></div>
-        <span class="section-label">Cloud Tier &mdash; Coming Soon</span>
-        <h2 class="section-title">Team dashboards. Alerting.<br>Managed infrastructure.</h2>
-        <p class="section-desc">As your team grows, Iris grows with you. Get early access to the cloud tier.</p>
-        <form class="waitlist-form" id="waitlist-form">
-          <div class="waitlist-row">
-            <input type="email" class="waitlist-input" placeholder="you@company.com" required aria-label="Email address">
-            <button type="submit" class="btn btn-primary btn-lg waitlist-btn">Get Early Access</button>
-          </div>
-          <p class="waitlist-note" id="waitlist-note">No spam. We'll email when it's ready.</p>
-        </form>
-        <div class="waitlist-ok" id="waitlist-ok" style="display:none">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>You're on the list. We'll be in touch.</span>
-        </div>
       </div>
     </div>
   </section>

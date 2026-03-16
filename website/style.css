@@ -258,6 +258,14 @@ button{font-family:inherit;cursor:pointer}
 .waitlist-btn{flex-shrink:0}
 .waitlist-note{font-size:.78rem;color:var(--text-3);margin-top:12px;position:relative}
 .waitlist-ok{display:flex;align-items:center;justify-content:center;gap:8px;font-size:.95rem;color:var(--green);position:relative}
+.waitlist-ok-inner{display:flex;flex-direction:column;align-items:center;gap:16px}
+.waitlist-ok-msg{font-size:.95rem;color:var(--green)}
+.waitlist-ok-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.waitlist-ok-btn{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;padding:8px 16px;border:1px solid var(--border);border-radius:8px;color:var(--text-1);text-decoration:none;transition:all .2s}
+.waitlist-ok-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.06)}
+.stats-cta{text-align:center;margin-top:32px;font-size:.88rem;color:var(--text-3)}
+.stats-cta a{color:var(--accent-h);text-decoration:underline;text-underline-offset:3px}
+.stats-cta a:hover{color:var(--accent)}
 @media(max-width:600px){.waitlist-row{flex-direction:column}.waitlist-card{padding:40px 24px}}
 
 /* FOOTER */
