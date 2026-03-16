@@ -22,8 +22,8 @@
     .pricing-hero{padding:120px 0 48px;text-align:center}
     .pricing-hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.15;letter-spacing:-.03em;margin-bottom:16px}
     .pricing-hero p{font-size:1.1rem;color:var(--text-2);max-width:560px;margin:0 auto}
-    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:48px 0 64px;align-items:start}
-    .pricing-card{background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:36px 32px;position:relative}
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:48px 0 64px}
+    .pricing-card{background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:36px 32px;position:relative;display:flex;flex-direction:column}
     .pricing-card.featured{border-color:var(--accent);box-shadow:0 0 40px rgba(99,102,241,.12)}
     .pricing-card.featured::before{content:'Coming Soon';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:4px 14px;border-radius:999px}
     .pricing-tier{font-family:'JetBrains Mono',monospace;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px}
@@ -32,7 +32,7 @@
     .pricing-price{font-size:2.5rem;font-weight:800;margin-bottom:4px}
     .pricing-price span{font-size:.95rem;font-weight:400;color:var(--text-3)}
     .pricing-period{font-size:.82rem;color:var(--text-3);margin-bottom:28px}
-    .pricing-features{list-style:none;padding:0;margin:0 0 28px}
+    .pricing-features{list-style:none;padding:0;margin:0 0 28px;flex:1}
     .pricing-features li{padding:8px 0;font-size:.88rem;color:var(--text-2);display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(45,45,74,.3)}
     .pricing-features li:last-child{border-bottom:none}
     .pricing-features li svg{flex-shrink:0;margin-top:2px;color:var(--accent)}
@@ -43,9 +43,12 @@
     .pricing-cta-outline:hover{border-color:var(--accent);color:var(--accent)}
     .pricing-faq{max-width:720px;margin:0 auto 80px}
     .pricing-faq h2{font-size:1.8rem;font-weight:700;text-align:center;margin-bottom:32px}
-    .faq-item{border-bottom:1px solid var(--border);padding:20px 0}
-    .faq-q{font-size:1rem;font-weight:600;color:var(--text-1);margin-bottom:8px}
-    .faq-a{font-size:.9rem;color:var(--text-2);line-height:1.7}
+    .faq-item{border-bottom:1px solid var(--border)}
+    .faq-item summary{font-size:1rem;font-weight:600;color:var(--text-1);padding:20px 0;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+    .faq-item summary::-webkit-details-marker{display:none}
+    .faq-item summary::after{content:'+';font-size:1.2rem;color:var(--text-3);transition:transform .2s}
+    .faq-item[open] summary::after{content:'\2212'}
+    .faq-a{font-size:.9rem;color:var(--text-2);line-height:1.7;padding:0 0 20px}
     .pricing-note{text-align:center;color:var(--text-3);font-size:.82rem;margin-bottom:64px}
     @media(max-width:768px){.pricing-grid{grid-template-columns:1fr;max-width:420px;margin-left:auto;margin-right:auto}}
   </style>
@@ -76,8 +79,8 @@
 
   <div class="pricing-hero">
     <div class="container">
-      <h1>Simple, usage-based pricing.</h1>
-      <p>Self-host free forever with the MIT-licensed open-source core. The cloud tier adds team features and managed infrastructure.</p>
+      <h1>Free to self-host. Cloud tier coming soon.</h1>
+      <p>The open-source core is MIT licensed with no limits. The cloud tier adds team dashboards, alerting, and managed infrastructure.</p>
     </div>
   </div>
 
@@ -109,8 +112,8 @@
         <div class="pricing-tier">Cloud</div>
         <div class="pricing-name">Pro</div>
         <div class="pricing-desc">For teams that need shared visibility, alerting, and managed infrastructure. No SQLite files to wrangle.</div>
-        <div class="pricing-price">Usage-based</div>
-        <div class="pricing-period">Starting ~$25/mo. Pay for what you use.</div>
+        <div class="pricing-price">Coming soon</div>
+        <div class="pricing-period">Pricing announced with cloud tier launch.</div>
         <ul class="pricing-features">
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Everything in Self-Hosted, plus:</li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Team dashboards with shared views</li>
@@ -129,8 +132,8 @@
         <div class="pricing-tier">Cloud</div>
         <div class="pricing-name">Enterprise</div>
         <div class="pricing-desc">For organizations with compliance requirements and dedicated support needs.</div>
-        <div class="pricing-price">Custom</div>
-        <div class="pricing-period">Annual contract. Dedicated onboarding.</div>
+        <div class="pricing-price">Coming soon</div>
+        <div class="pricing-period">Pricing announced with cloud tier launch.</div>
         <ul class="pricing-features">
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Everything in Pro, plus:</li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>SSO / SAML (Okta, Azure AD, Google)</li>
@@ -146,41 +149,41 @@
 
     </div>
 
-    <p class="pricing-note">All plans include unlimited eval rules, both transports (stdio + HTTP), and full API access. Cloud pricing is usage-based on traces ingested, not seats.</p>
+    <p class="pricing-note">All plans include unlimited eval rules, both transports (stdio + HTTP), and full API access.</p>
 
     <!-- FAQ -->
     <div class="pricing-faq">
       <h2>Frequently asked questions</h2>
 
-      <div class="faq-item">
-        <div class="faq-q">Is the open-source version really free forever?</div>
+      <details class="faq-item">
+        <summary>Is the open-source version really free forever?</summary>
         <div class="faq-a">Yes. The self-hosted version is MIT licensed with no usage limits, no account required, and no features gated behind a paid tier. You can run it in production indefinitely at no cost.</div>
-      </div>
+      </details>
 
-      <div class="faq-item">
-        <div class="faq-q">What's the difference between self-hosted and cloud?</div>
+      <details class="faq-item">
+        <summary>What's the difference between self-hosted and cloud?</summary>
         <div class="faq-a">Self-hosted runs on your machine with SQLite storage. You manage everything. The cloud tier runs on managed infrastructure with PostgreSQL, adds team features (shared dashboards, alerting, API key management), and handles ops so you don't have to.</div>
-      </div>
+      </details>
 
-      <div class="faq-item">
-        <div class="faq-q">Why usage-based instead of per-seat?</div>
-        <div class="faq-a">Observability is a team concern. Per-seat pricing penalizes collaboration — it makes teams hesitate to give access to the people who need visibility. Usage-based pricing means everyone on your team can see what agents are doing, and you only pay for the volume of traces you ingest.</div>
-      </div>
+      <details class="faq-item">
+        <summary>How will cloud tier pricing work?</summary>
+        <div class="faq-a">We're still finalizing the pricing model. Waitlist members will have input on pricing and get founding-member rates. Our goal is to make it accessible for small teams while scaling for larger organizations.</div>
+      </details>
 
-      <div class="faq-item">
-        <div class="faq-q">When will the cloud tier be available?</div>
+      <details class="faq-item">
+        <summary>When will the cloud tier be available?</summary>
         <div class="faq-a">We're building it now. Join the waitlist to get early access and founding-member pricing. Waitlist members also get a direct line to shape what we build.</div>
-      </div>
+      </details>
 
-      <div class="faq-item">
-        <div class="faq-q">Can I migrate from self-hosted to cloud later?</div>
+      <details class="faq-item">
+        <summary>Can I migrate from self-hosted to cloud later?</summary>
         <div class="faq-a">Yes. We're building a migration path to import your SQLite traces into the cloud tier's PostgreSQL storage. Your evaluation rules and dashboard configuration will transfer as well.</div>
-      </div>
+      </details>
 
-      <div class="faq-item">
-        <div class="faq-q">Do you support EU AI Act compliance?</div>
+      <details class="faq-item">
+        <summary>Do you support EU AI Act compliance?</summary>
         <div class="faq-a">Iris's trace logging and evaluation capabilities directly support the traceability requirements in the EU AI Act (Article 14, effective August 2026). The Enterprise tier will include audit logs and retention policies designed for regulatory compliance.</div>
-      </div>
+      </details>
     </div>
   </div>
 
@@ -228,5 +231,19 @@
     </div>
   </footer>
 
+  <script>
+  // FAQ click tracking — logs to console and Vercel Analytics (if available)
+  document.querySelectorAll('.faq-item').forEach(item => {
+    item.addEventListener('toggle', () => {
+      if (item.open) {
+        const q = item.querySelector('summary').textContent.trim();
+        console.log('[FAQ]', q);
+        // Vercel Web Analytics custom event (if va is loaded)
+        if (window.va) window.va('event', { name: 'faq_click', data: { question: q } });
+      }
+    });
+  });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
