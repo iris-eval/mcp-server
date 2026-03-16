@@ -28,10 +28,10 @@
     .pricing-card.featured::before{content:'Coming Soon';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:4px 14px;border-radius:999px}
     .pricing-tier{font-family:'JetBrains Mono',monospace;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px}
     .pricing-name{font-size:1.4rem;font-weight:700;margin-bottom:4px}
-    .pricing-desc{font-size:.88rem;color:var(--text-3);margin-bottom:24px;line-height:1.5}
-    .pricing-price{font-size:2.5rem;font-weight:800;margin-bottom:4px}
+    .pricing-desc{font-size:.88rem;color:var(--text-3);margin-bottom:24px;line-height:1.5;min-height:4.2em}
+    .pricing-price{font-size:2.5rem;font-weight:800;margin-bottom:4px;min-height:1.2em;display:flex;align-items:baseline;justify-content:center}
     .pricing-price span{font-size:.95rem;font-weight:400;color:var(--text-3)}
-    .pricing-period{font-size:.82rem;color:var(--text-3);margin-bottom:28px}
+    .pricing-period{font-size:.82rem;color:var(--text-3);margin-bottom:28px;text-align:center}
     .pricing-features{list-style:none;padding:0;margin:0 0 28px;flex:1}
     .pricing-features li{padding:8px 0;font-size:.88rem;color:var(--text-2);display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(45,45,74,.3)}
     .pricing-features li:last-child{border-bottom:none}
@@ -65,6 +65,7 @@
       <div class="nav-links">
         <a href="/#features">Features</a>
         <a href="/pricing">Pricing</a>
+        <a href="/#research">Research</a>
         <a href="https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md" target="_blank">Roadmap</a>
         <a href="https://github.com/iris-eval/mcp-server" target="_blank">Docs</a>
       </div>
@@ -91,7 +92,7 @@
       <div class="pricing-card">
         <div class="pricing-tier">Self-Hosted</div>
         <div class="pricing-name">Open Source</div>
-        <div class="pricing-desc">Everything you need to evaluate and observe your MCP agents. Your machine, your data.</div>
+        <div class="pricing-desc">Everything you need to evaluate and observe your MCP agents. Your machine, your data, no account required.</div>
         <div class="pricing-price">$0<span> forever</span></div>
         <div class="pricing-period">MIT Licensed. No limits. No account required.</div>
         <ul class="pricing-features">
@@ -131,7 +132,7 @@
       <div class="pricing-card">
         <div class="pricing-tier">Cloud</div>
         <div class="pricing-name">Enterprise</div>
-        <div class="pricing-desc">For organizations with compliance requirements and dedicated support needs.</div>
+        <div class="pricing-desc">For organizations with compliance requirements, dedicated support, and security certifications.</div>
         <div class="pricing-price">Coming soon</div>
         <div class="pricing-period">Pricing announced with cloud tier launch.</div>
         <ul class="pricing-features">
