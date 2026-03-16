@@ -49,7 +49,7 @@ button{font-family:inherit;cursor:pointer}
 .nav-brand{display:flex;align-items:center;gap:10px}
 .nav-logo{width:26px;height:26px}
 .nav-wordmark{font-size:1.15rem;font-weight:700;letter-spacing:-.02em;color:var(--text-0)}
-.nav-links{display:flex;gap:28px;margin-left:48px;font-size:.9rem;color:var(--text-2)}
+.nav-links{display:flex;gap:24px;margin-left:40px;font-size:.88rem;color:var(--text-2);white-space:nowrap}
 .nav-links a:hover{color:var(--text-0)}
 .nav-actions{display:flex;align-items:center;gap:16px;margin-left:auto}
 .nav-gh{color:var(--text-2);display:flex;align-items:center}
@@ -156,7 +156,7 @@ button{font-family:inherit;cursor:pointer}
 .eval-rule:last-of-type{border-bottom:1px solid var(--border)}
 .eval-cat{font-size:.6rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3)}
 .eval-name{color:var(--text-1)}
-.eval-badge{font-size:.6rem;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:3px;text-transform:uppercase}
+.eval-badge{font-size:.6rem;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:3px;text-transform:uppercase;min-width:40px;text-align:center}
 .eval-pass{background:rgba(34,197,94,.12);color:var(--green)}
 .eval-warn{background:rgba(245,158,11,.12);color:var(--amber)}
 .eval-fail{background:rgba(239,68,68,.12);color:var(--red)}
