@@ -51,11 +51,13 @@
     <div class="container hero-content">
       <div class="hero-eyebrow">
         <span class="hero-tag">Open Source</span>
-        <span class="hero-version">v0.1.3</span>
-        <span class="hero-sep"></span>
-        <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="hero-stars-link">
-          <img src="https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat&logo=github&color=6366f1&labelColor=0f172a" alt="GitHub stars" height="20">
-        </a>
+      </div>
+      <div class="hero-badges">
+        <a href="https://npmjs.com/package/@iris-eval/mcp-server" target="_blank"><img src="https://img.shields.io/npm/v/@iris-eval/mcp-server?color=6366f1&labelColor=0f172a" alt="npm version" height="20"></a>
+        <a href="https://npmjs.com/package/@iris-eval/mcp-server" target="_blank"><img src="https://img.shields.io/npm/dw/@iris-eval/mcp-server?color=6366f1&labelColor=0f172a" alt="npm downloads" height="20"></a>
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank"><img src="https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat&logo=github&color=6366f1&labelColor=0f172a" alt="GitHub stars" height="20"></a>
+        <a href="https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml" target="_blank"><img src="https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml/badge.svg" alt="CI" height="20"></a>
+        <a href="https://github.com/iris-eval/mcp-server/blob/main/LICENSE" target="_blank"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" height="20"></a>
       </div>
       <h1 class="hero-h1">
         See what your AI agents are<br>
@@ -291,9 +293,9 @@
   <section class="section setup" id="setup">
     <div class="container">
       <div class="section-header center">
-        <span class="section-label">Quick Start</span>
+        <span class="section-label">Open Source &mdash; Free Forever to Self-Host</span>
         <h2 class="section-title">60 seconds to first trace.</h2>
-        <p class="section-desc">Add Iris to your Claude Desktop MCP config. Works with Claude Desktop, Cursor, any MCP-compatible agent.</p>
+        <p class="section-desc">Install Iris locally and start seeing what your agents are doing. Works with Claude Desktop, Cursor, Windsurf, or any MCP-compatible agent. Free, MIT-licensed, your data stays on your machine.</p>
       </div>
       <div class="setup-grid">
         <div class="code-card reveal">
@@ -334,15 +336,32 @@
       <div class="waitlist-card">
         <div class="waitlist-glow"></div>
         <span class="section-label">Cloud Tier &mdash; Coming Soon</span>
-        <h2 class="section-title">Team dashboards. Alerting.<br>Managed infrastructure.</h2>
-        <p class="section-desc">As your team grows, Iris grows with you. Get early access to the cloud tier.</p>
-        <form class="waitlist-form" id="waitlist-form">
-          <div class="waitlist-row">
-            <input type="email" class="waitlist-input" placeholder="you@company.com" required aria-label="Email address">
-            <button type="submit" class="btn btn-primary btn-lg waitlist-btn">Get Early Access</button>
+        <h2 class="section-title">Your agents are running.<br>Now make your team see them too.</h2>
+        <p class="section-desc">The open-source core runs on your machine. The cloud tier is built for teams that need shared visibility.</p>
+        <div class="waitlist-features">
+          <div class="waitlist-feature">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <div><strong>Team dashboards</strong><span>Shared trace views, eval results, and cost breakdowns across your whole org</span></div>
           </div>
-          <p class="waitlist-note" id="waitlist-note">No spam. We'll email when it's ready.</p>
-        </form>
+          <div class="waitlist-feature">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <div><strong>Alerting</strong><span>Get notified when agents exceed cost thresholds, fail evals, or leak PII</span></div>
+          </div>
+          <div class="waitlist-feature">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <div><strong>Managed infrastructure</strong><span>PostgreSQL, multi-tenancy, API key management. No SQLite files to wrangle.</span></div>
+          </div>
+        </div>
+        <div class="waitlist-cta-block">
+          <p class="waitlist-incentive">Waitlist members get early access, founding-member pricing, and a direct line to shape the roadmap.</p>
+          <form class="waitlist-form" id="waitlist-form">
+            <div class="waitlist-row">
+              <input type="email" class="waitlist-input" placeholder="you@company.com" required aria-label="Email address">
+              <button type="submit" class="btn btn-primary btn-lg waitlist-btn">Get Early Access</button>
+            </div>
+            <p class="waitlist-note" id="waitlist-note">No spam. One email when the cloud tier launches.</p>
+          </form>
+        </div>
         <div class="waitlist-ok" id="waitlist-ok" style="display:none">
           <div class="waitlist-ok-inner">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>

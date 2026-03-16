@@ -11,3 +11,4 @@ coverage/
 data/
 .DS_Store
 *.tsbuildinfo
+.mcpregistry_*
