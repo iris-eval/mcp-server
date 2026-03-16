@@ -47,7 +47,7 @@
     "type": "git",
     "url": "git+https://github.com/iris-eval/mcp-server.git"
   },
-  "homepage": "https://github.com/iris-eval/mcp-server#readme",
+  "homepage": "https://iris-eval.com",
   "bugs": {
     "url": "https://github.com/iris-eval/mcp-server/issues"
   },
