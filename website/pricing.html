@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — Iris</title>
+  <meta name="description" content="Iris pricing. Self-host free forever with MIT license. Cloud tier coming soon with team dashboards, alerting, and managed infrastructure.">
+  <meta property="og:title" content="Pricing — Iris">
+  <meta property="og:description" content="Self-host free forever. Cloud tier coming soon.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://iris-eval.com/pricing">
+  <meta property="og:image" content="https://iris-eval.com/og-social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://iris-eval.com/og-social-preview.png">
+  <meta name="twitter:site" content="@iris_eval">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' stroke='%236366f1' stroke-width='6' fill='none'/><circle cx='50' cy='50' r='22' fill='%236366f1'/><circle cx='50' cy='50' r='9' fill='%23030712'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .pricing-hero{padding:120px 0 48px;text-align:center}
+    .pricing-hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.15;letter-spacing:-.03em;margin-bottom:16px}
+    .pricing-hero p{font-size:1.1rem;color:var(--text-2);max-width:560px;margin:0 auto}
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:48px 0 64px;align-items:start}
+    .pricing-card{background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:36px 32px;position:relative}
+    .pricing-card.featured{border-color:var(--accent);box-shadow:0 0 40px rgba(99,102,241,.12)}
+    .pricing-card.featured::before{content:'Coming Soon';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:4px 14px;border-radius:999px}
+    .pricing-tier{font-family:'JetBrains Mono',monospace;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px}
+    .pricing-name{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+    .pricing-desc{font-size:.88rem;color:var(--text-3);margin-bottom:24px;line-height:1.5}
+    .pricing-price{font-size:2.5rem;font-weight:800;margin-bottom:4px}
+    .pricing-price span{font-size:.95rem;font-weight:400;color:var(--text-3)}
+    .pricing-period{font-size:.82rem;color:var(--text-3);margin-bottom:28px}
+    .pricing-features{list-style:none;padding:0;margin:0 0 28px}
+    .pricing-features li{padding:8px 0;font-size:.88rem;color:var(--text-2);display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(45,45,74,.3)}
+    .pricing-features li:last-child{border-bottom:none}
+    .pricing-features li svg{flex-shrink:0;margin-top:2px;color:var(--accent)}
+    .pricing-cta{display:block;width:100%;text-align:center;padding:12px;border-radius:8px;font-size:.9rem;font-weight:600;text-decoration:none;transition:all .2s}
+    .pricing-cta-primary{background:var(--accent);color:#fff}
+    .pricing-cta-primary:hover{opacity:.9}
+    .pricing-cta-outline{border:1px solid var(--border);color:var(--text-1);background:transparent}
+    .pricing-cta-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .pricing-faq{max-width:720px;margin:0 auto 80px}
+    .pricing-faq h2{font-size:1.8rem;font-weight:700;text-align:center;margin-bottom:32px}
+    .faq-item{border-bottom:1px solid var(--border);padding:20px 0}
+    .faq-q{font-size:1rem;font-weight:600;color:var(--text-1);margin-bottom:8px}
+    .faq-a{font-size:.9rem;color:var(--text-2);line-height:1.7}
+    .pricing-note{text-align:center;color:var(--text-3);font-size:.82rem;margin-bottom:64px}
+    @media(max-width:768px){.pricing-grid{grid-template-columns:1fr;max-width:420px;margin-left:auto;margin-right:auto}}
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="container nav-inner">
+      <a href="/" class="nav-brand">
+        <svg class="nav-logo" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#6366f1" stroke-width="2"/><circle cx="14" cy="14" r="6" fill="#6366f1"/><circle cx="14" cy="14" r="2.5" fill="#030712"/></svg>
+        <span class="nav-wordmark">Iris</span>
+      </a>
+      <div class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/pricing">Pricing</a>
+        <a href="https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md" target="_blank">Roadmap</a>
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank">Docs</a>
+      </div>
+      <div class="nav-actions">
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="nav-gh">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        </a>
+        <a href="/#waitlist" class="btn btn-sm btn-primary">Get Early Access</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="pricing-hero">
+    <div class="container">
+      <h1>Simple, usage-based pricing.</h1>
+      <p>Self-host free forever with the MIT-licensed open-source core. The cloud tier adds team features and managed infrastructure.</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="pricing-grid">
+
+      <!-- SELF-HOSTED -->
+      <div class="pricing-card">
+        <div class="pricing-tier">Self-Hosted</div>
+        <div class="pricing-name">Open Source</div>
+        <div class="pricing-desc">Everything you need to evaluate and observe your MCP agents. Your machine, your data.</div>
+        <div class="pricing-price">$0<span> forever</span></div>
+        <div class="pricing-period">MIT Licensed. No limits. No account required.</div>
+        <ul class="pricing-features">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>3 MCP tools (log_trace, evaluate_output, get_traces)</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>12 built-in eval rules + custom rules</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Web dashboard with trace visualization</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>SQLite storage (zero infrastructure)</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Production security (auth, rate limiting, CORS)</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Cost tracking per trace</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Docker + npm + npx install</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Community support (GitHub Issues + Discussions)</li>
+        </ul>
+        <a href="https://github.com/iris-eval/mcp-server" target="_blank" class="pricing-cta pricing-cta-outline">Get Started</a>
+      </div>
+
+      <!-- CLOUD PRO -->
+      <div class="pricing-card featured">
+        <div class="pricing-tier">Cloud</div>
+        <div class="pricing-name">Pro</div>
+        <div class="pricing-desc">For teams that need shared visibility, alerting, and managed infrastructure. No SQLite files to wrangle.</div>
+        <div class="pricing-price">Usage-based</div>
+        <div class="pricing-period">Starting ~$25/mo. Pay for what you use.</div>
+        <ul class="pricing-features">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Everything in Self-Hosted, plus:</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Team dashboards with shared views</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Alerting (webhook + email notifications)</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>PostgreSQL (managed, no ops burden)</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>90-day trace retention</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>API key management</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>CSV/JSON data export</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Priority support</li>
+        </ul>
+        <a href="/#waitlist" class="pricing-cta pricing-cta-primary">Join Waitlist</a>
+      </div>
+
+      <!-- ENTERPRISE -->
+      <div class="pricing-card">
+        <div class="pricing-tier">Cloud</div>
+        <div class="pricing-name">Enterprise</div>
+        <div class="pricing-desc">For organizations with compliance requirements and dedicated support needs.</div>
+        <div class="pricing-price">Custom</div>
+        <div class="pricing-period">Annual contract. Dedicated onboarding.</div>
+        <ul class="pricing-features">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Everything in Pro, plus:</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>SSO / SAML (Okta, Azure AD, Google)</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>RBAC with custom roles</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Audit logs with export</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>SOC 2 Type II documentation</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Custom retention policies</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>SLA with uptime guarantee</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Dedicated support + onboarding</li>
+        </ul>
+        <a href="mailto:hello@iris-eval.com" class="pricing-cta pricing-cta-outline">Contact Us</a>
+      </div>
+
+    </div>
+
+    <p class="pricing-note">All plans include unlimited eval rules, both transports (stdio + HTTP), and full API access. Cloud pricing is usage-based on traces ingested, not seats.</p>
+
+    <!-- FAQ -->
+    <div class="pricing-faq">
+      <h2>Frequently asked questions</h2>
+
+      <div class="faq-item">
+        <div class="faq-q">Is the open-source version really free forever?</div>
+        <div class="faq-a">Yes. The self-hosted version is MIT licensed with no usage limits, no account required, and no features gated behind a paid tier. You can run it in production indefinitely at no cost.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">What's the difference between self-hosted and cloud?</div>
+        <div class="faq-a">Self-hosted runs on your machine with SQLite storage. You manage everything. The cloud tier runs on managed infrastructure with PostgreSQL, adds team features (shared dashboards, alerting, API key management), and handles ops so you don't have to.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Why usage-based instead of per-seat?</div>
+        <div class="faq-a">Observability is a team concern. Per-seat pricing penalizes collaboration — it makes teams hesitate to give access to the people who need visibility. Usage-based pricing means everyone on your team can see what agents are doing, and you only pay for the volume of traces you ingest.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">When will the cloud tier be available?</div>
+        <div class="faq-a">We're building it now. Join the waitlist to get early access and founding-member pricing. Waitlist members also get a direct line to shape what we build.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Can I migrate from self-hosted to cloud later?</div>
+        <div class="faq-a">Yes. We're building a migration path to import your SQLite traces into the cloud tier's PostgreSQL storage. Your evaluation rules and dashboard configuration will transfer as well.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Do you support EU AI Act compliance?</div>
+        <div class="faq-a">Iris's trace logging and evaluation capabilities directly support the traceability requirements in the EU AI Act (Article 14, effective August 2026). The Enterprise tier will include audit logs and retention policies designed for regulatory compliance.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <svg viewBox="0 0 28 28" fill="none" width="24" height="24"><circle cx="14" cy="14" r="13" stroke="#6366f1" stroke-width="2"/><circle cx="14" cy="14" r="6" fill="#6366f1"/><circle cx="14" cy="14" r="2.5" fill="#030712"/></svg>
+            <span>Iris</span>
+          </div>
+          <p class="footer-tagline">MCP-native agent eval &amp; observability.<br>Open-source core. MIT Licensed.</p>
+          <div class="footer-social">
+            <a href="https://github.com/iris-eval/mcp-server" target="_blank" aria-label="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
+            <a href="https://x.com/iris_eval" target="_blank" aria-label="X"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+            <a href="mailto:hello@iris-eval.com" aria-label="Email"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg></a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <a href="/#features">Features</a>
+          <a href="/pricing">Pricing</a>
+          <a href="https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md" target="_blank">Roadmap</a>
+          <a href="https://github.com/iris-eval/mcp-server/blob/main/CHANGELOG.md" target="_blank">Changelog</a>
+        </div>
+        <div class="footer-col">
+          <h4>Resources</h4>
+          <a href="/#research">Research</a>
+          <a href="https://github.com/iris-eval/mcp-server" target="_blank">Documentation</a>
+          <a href="https://github.com/iris-eval/mcp-server/tree/main/examples" target="_blank">Examples</a>
+          <a href="https://github.com/iris-eval/mcp-server/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
+        </div>
+        <div class="footer-col">
+          <h4>Community</h4>
+          <a href="https://github.com/iris-eval/mcp-server/issues" target="_blank">GitHub Issues</a>
+          <a href="https://github.com/iris-eval/mcp-server/discussions" target="_blank">Discussions</a>
+          <a href="https://www.npmjs.com/package/@iris-eval/mcp-server" target="_blank">npm</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Iris. MIT Licensed.</span>
+        <span>hello@iris-eval.com</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
