@@ -1,5 +1,6 @@
 # Iris — MCP-Native Agent Eval & Observability
 
+[![GitHub stars](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
 [![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![npm downloads](https://img.shields.io/npm/dw/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![CI](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml)
