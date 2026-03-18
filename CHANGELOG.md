@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-03-15
+
+### Changed
+- Bumped version for npm registry alignment
+
+### Fixed
+- GitHub homepage URL (was Vercel preview URL, now iris-eval.com)
+- npm homepage URL (was GitHub README, now iris-eval.com)
+
+## [0.1.2] - 2026-03-14
+
+### Added
+- Website: iris-eval.com deployed on Vercel (static HTML, auto-deploys from main)
+- Waitlist API: POST /api/waitlist with Upstash Redis, rate limiting, CORS, GDPR-ready
+- Admin export: GET /api/waitlist-export with timing-safe auth
+- Vercel Web Analytics enabled
+- .well-known/mcp.json for agent auto-discovery
+- OG social preview image for link sharing
+- FUNDING.yml with sponsor button linking to waitlist
+- Pricing page with 3-tier model (Self-Hosted, Cloud Pro, Enterprise)
+- Langfuse comparison page at /compare/langfuse
+- Smithery marketplace config (smithery.yaml)
+- Published to Official MCP Registry, Glama, npm, Docker
+
+### Changed
+- README restructured: problem statement, value props table, cloud tier section, config collapsed into details
+- Hero badge colors updated
+
 ## [0.1.0] - 2026-03-13
 
 ### Added
