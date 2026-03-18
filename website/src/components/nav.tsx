@@ -5,10 +5,10 @@ import { useTheme } from "./theme-provider";
 import { IrisLogo } from "./iris-logo";
 
 const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Open Source", href: "#open-source" },
-  { label: "Roadmap", href: "#roadmap" },
+  { label: "Product", href: "/#product" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Open Source", href: "/#open-source" },
+  { label: "Roadmap", href: "/#roadmap" },
 ] as const;
 
 export function Nav(): React.ReactElement {
@@ -35,7 +35,7 @@ export function Nav(): React.ReactElement {
 
       <header className={`sticky top-0 z-40 transition-all duration-300 ${scrolled ? "border-b border-border-subtle bg-bg-base/80 backdrop-blur-xl" : "bg-transparent"}`}>
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8" aria-label="Primary">
-          <a href="#" className="flex items-center gap-2.5">
+          <a href="/" className="flex items-center gap-2.5">
             <IrisLogo size={30} />
             <span className="font-display text-[22px] font-bold tracking-tight text-text-primary">Iris</span>
           </a>
@@ -55,7 +55,7 @@ export function Nav(): React.ReactElement {
               )}
             </button>
             <a href="https://github.com/iris-eval/mcp-server" target="_blank" rel="noopener noreferrer" className="rounded-lg px-4 py-2 text-[14px] font-medium text-text-secondary transition-colors hover:bg-border-subtle hover:text-text-primary">GitHub</a>
-            <a href="#open-source" className="rounded-lg bg-iris-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-iris-600/20 transition-all hover:bg-iris-500">Get Started</a>
+            <a href="/#open-source" className="rounded-lg bg-iris-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-iris-600/20 transition-all hover:bg-iris-500">Get Started</a>
           </div>
 
           <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-text-secondary md:hidden" aria-label="Toggle menu" aria-expanded={mobileOpen}>
@@ -75,7 +75,7 @@ export function Nav(): React.ReactElement {
                 <button onClick={toggle} className="rounded-lg px-4 py-3 text-left text-[15px] text-text-secondary hover:bg-border-subtle">
                   {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                 </button>
-                <a href="#open-source" onClick={() => setMobileOpen(false)} className="rounded-lg bg-iris-600 px-5 py-3 text-center text-[15px] font-semibold text-white">Get Started</a>
+                <a href="/#open-source" onClick={() => setMobileOpen(false)} className="rounded-lg bg-iris-600 px-5 py-3 text-center text-[15px] font-semibold text-white">Get Started</a>
               </div>
             </div>
           </div>
