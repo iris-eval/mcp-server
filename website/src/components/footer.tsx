@@ -108,9 +108,11 @@ export function Footer(): React.ReactElement {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border-subtle pt-8 text-[12px] text-text-muted md:flex-row">
           <span>&copy; 2026 Iris. MIT Licensed.</span>
-          <a href="mailto:hello@iris-eval.com" className="transition-colors hover:text-text-secondary">
-            hello@iris-eval.com
-          </a>
+          <div className="flex items-center gap-4">
+            <a href="/privacy" className="transition-colors hover:text-text-secondary">Privacy</a>
+            <a href="/terms" className="transition-colors hover:text-text-secondary">Terms</a>
+            <a href="mailto:hello@iris-eval.com" className="transition-colors hover:text-text-secondary">hello@iris-eval.com</a>
+          </div>
         </div>
       </div>
     </footer>
