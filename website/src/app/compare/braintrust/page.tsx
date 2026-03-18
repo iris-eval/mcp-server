@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
+import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
   title: "Iris vs Braintrust — MCP-Native vs SDK-Based Observability & Eval",
@@ -187,6 +188,8 @@ export default function CompareBraintrust(): React.ReactElement {
           </div>
         </div>
       </section>
+
+      <CompareDisclaimer lastVerified="March 2026" competitor="Braintrust" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">
