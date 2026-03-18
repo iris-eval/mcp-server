@@ -1,3 +1,10 @@
+---
+title: "The State of MCP Agent Observability (March 2026)"
+date: 2026-03-14
+author: Ian Parent
+tags: [observability, mcp, agents, report, evaluation, cost-tracking]
+---
+
 # The State of MCP Agent Observability (March 2026)
 
 *The gap between deploying AI agents and understanding what they're doing.*
@@ -169,8 +176,8 @@ Iris is the first MCP-native eval and observability tool for AI agents. Open-sou
 
 If you're building agents and want to see what they're actually doing:
 
-**GitHub:** [github.com/iris-eval/iris](https://github.com/iris-eval/iris)
+**GitHub:** [github.com/iris-eval/mcp-server](https://github.com/iris-eval/mcp-server)
 
-**Waitlist (cloud tier):** [iris-eval.com/waitlist](https://iris-eval.com/waitlist)
+**Waitlist (cloud tier):** [iris-eval.com](https://iris-eval.com#waitlist)
 
 Star the repo if this report was useful. The roadmap is public.
