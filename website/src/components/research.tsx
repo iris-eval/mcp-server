@@ -4,14 +4,14 @@ const PUBS = [
     date: "March 2026",
     title: "The State of MCP Agent Observability",
     desc: "The gap between deploying AI agents and understanding what they're doing. Covers protocol-native observability, heuristic vs. semantic eval, cost visibility, and EU AI Act implications.",
-    href: "https://github.com/iris-eval/mcp-server/blob/main/docs/blog/002-state-of-mcp-agent-observability-2026.md",
+    href: "/blog/state-of-mcp-agent-observability-2026",
   },
   {
     type: "Blog",
     date: "March 2026",
     title: "Why Your AI Agents Need Observability",
     desc: "AI agents fail silently. Traditional monitoring can't see the difference between a correct response and a hallucinated one. Why protocol-native observability changes the equation.",
-    href: "https://github.com/iris-eval/mcp-server/blob/main/docs/blog/001-why-your-ai-agents-need-observability.md",
+    href: "/blog/why-your-ai-agents-need-observability",
   },
 ];
 
@@ -37,8 +37,6 @@ export function Research(): React.ReactElement {
             <a
               key={p.title}
               href={p.href}
-              target="_blank"
-              rel="noopener noreferrer"
               className="glow-card card-premium group overflow-hidden p-8"
             >
               <div className="mb-4 flex items-center gap-3">
@@ -59,6 +57,13 @@ export function Research(): React.ReactElement {
               </span>
             </a>
           ))}
+        </div>
+
+        <div className="mt-10 text-center">
+          <a href="/blog" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-text-accent transition-colors hover:text-iris-400">
+            View all posts
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+          </a>
         </div>
 
         {/* Survey */}

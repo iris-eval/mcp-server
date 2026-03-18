@@ -57,10 +57,11 @@ export function Footer(): React.ReactElement {
               </h4>
               <ul className="mt-4 space-y-3 text-[13px]">
                 {[
-                  { label: "Features", href: "#product" },
-                  { label: "Pricing", href: "#pricing" },
-                  { label: "Quick Start", href: "#open-source" },
-                  { label: "Roadmap", href: "#roadmap" },
+                  { label: "Features", href: "/#product" },
+                  { label: "Pricing", href: "/#pricing" },
+                  { label: "Blog", href: "/blog" },
+                  { label: "Quick Start", href: "/#open-source" },
+                  { label: "Roadmap", href: "/#roadmap" },
                 ].map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
