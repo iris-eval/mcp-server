@@ -35,8 +35,8 @@ export function TracesPerHourChart({ data }: { data: DataPoint[] }) {
         <AreaChart data={formatted}>
           <defs>
             <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
             </linearGradient>
           </defs>
           <XAxis dataKey="label" stroke="#71717a" fontSize={12} />
@@ -53,7 +53,7 @@ export function TracesPerHourChart({ data }: { data: DataPoint[] }) {
           <Area
             type="monotone"
             dataKey="count"
-            stroke="#6366f1"
+            stroke="#0d9488"
             fillOpacity={1}
             fill="url(#colorCount)"
           />

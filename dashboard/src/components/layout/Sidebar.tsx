@@ -55,8 +55,9 @@ export function Sidebar() {
       <div style={styles.logo}>
         <svg style={styles.logoIcon} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5"/>
-          <circle cx="16" cy="16" r="7" fill="currentColor" opacity="0.3"/>
-          <circle cx="16" cy="16" r="3.5" fill="currentColor"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor"/>
+          <circle cx="16" cy="16" r="3.5" fill="#0a0f0e"/>
+          <circle cx="13" cy="13.5" r="1.5" fill="white" opacity="0.6"/>
         </svg>
         Iris
       </div>
