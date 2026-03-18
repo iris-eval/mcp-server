@@ -1,0 +1,37 @@
+{
+  "name": "@iris-eval/langchain",
+  "version": "0.1.0",
+  "description": "Iris observability integration for LangChain — auto-trace LangChain agent runs via MCP",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "iris",
+    "langchain",
+    "mcp",
+    "observability",
+    "tracing",
+    "eval",
+    "ai-agent",
+    "llm"
+  ],
+  "author": "Ian Parent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iris-eval/mcp-server",
+    "directory": "packages/langchain"
+  },
+  "homepage": "https://iris-eval.com",
+  "peerDependencies": {
+    "langchain": ">=0.3.0",
+    "@langchain/core": ">=0.3.0"
+  },
+  "dependencies": {
+    "@iris-eval/mcp-server": "^0.1.3"
+  }
+}
