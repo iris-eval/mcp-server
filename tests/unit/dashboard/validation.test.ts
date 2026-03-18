@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { traceQuerySchema, evalQuerySchema, summaryQuerySchema } from '../../../src/dashboard/validation.js';
+import { traceQuerySchema, evalQuerySchema, summaryQuerySchema, exportTraceQuerySchema, exportEvalQuerySchema } from '../../../src/dashboard/validation.js';
 
 describe('traceQuerySchema', () => {
   it('should parse valid query with defaults', () => {
@@ -65,5 +65,65 @@ describe('summaryQuerySchema', () => {
 
   it('should reject hours > 8760', () => {
     expect(() => summaryQuerySchema.parse({ hours: '10000' })).toThrow();
+  });
+});
+
+describe('exportTraceQuerySchema', () => {
+  it('should default format to json', () => {
+    const result = exportTraceQuerySchema.parse({});
+    expect(result.format).toBe('json');
+  });
+
+  it('should accept csv format', () => {
+    const result = exportTraceQuerySchema.parse({ format: 'csv' });
+    expect(result.format).toBe('csv');
+  });
+
+  it('should accept json format', () => {
+    const result = exportTraceQuerySchema.parse({ format: 'json' });
+    expect(result.format).toBe('json');
+  });
+
+  it('should reject invalid format', () => {
+    expect(() => exportTraceQuerySchema.parse({ format: 'xml' })).toThrow();
+  });
+
+  it('should accept filters', () => {
+    const result = exportTraceQuerySchema.parse({ agent_name: 'bot', framework: 'langchain' });
+    expect(result.agent_name).toBe('bot');
+    expect(result.framework).toBe('langchain');
+  });
+
+  it('should not have limit or offset fields', () => {
+    const result = exportTraceQuerySchema.parse({});
+    expect((result as Record<string, unknown>).limit).toBeUndefined();
+    expect((result as Record<string, unknown>).offset).toBeUndefined();
+  });
+});
+
+describe('exportEvalQuerySchema', () => {
+  it('should default format to json', () => {
+    const result = exportEvalQuerySchema.parse({});
+    expect(result.format).toBe('json');
+  });
+
+  it('should accept csv format', () => {
+    const result = exportEvalQuerySchema.parse({ format: 'csv' });
+    expect(result.format).toBe('csv');
+  });
+
+  it('should coerce passed to boolean', () => {
+    const result = exportEvalQuerySchema.parse({ passed: 'false' });
+    expect(result.passed).toBe(false);
+  });
+
+  it('should reject invalid format', () => {
+    expect(() => exportEvalQuerySchema.parse({ format: 'tsv' })).toThrow();
+  });
+
+  it('should not have limit or offset fields', () => {
+    const result = exportEvalQuerySchema.parse({});
+    expect((result as Record<string, unknown>).limit).toBeUndefined();
+    expect((result as Record<string, unknown>).offset).toBeUndefined();
   });
 });
