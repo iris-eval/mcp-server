@@ -5,11 +5,11 @@ import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
-  title: "Iris vs Braintrust — MCP-Native vs SDK-Based Observability & Eval",
+  title: "Iris vs Braintrust — MCP-Native Agent Eval vs SDK-Based Eval",
   description:
     "Detailed comparison of Iris and Braintrust for AI agent observability. MCP-native zero-code integration vs SDK-based eval platform with datasets, experiments, and prompt playground.",
   openGraph: {
-    title: "Iris vs Braintrust — MCP-Native vs SDK-Based Observability & Eval",
+    title: "Iris vs Braintrust — MCP-Native Agent Eval vs SDK-Based Eval",
     description:
       "Detailed comparison of Iris and Braintrust for AI agent observability. Zero-code MCP integration vs SDK-powered eval and experiments.",
     url: "https://iris-eval.com/compare/braintrust",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris vs Braintrust — MCP-Native vs SDK-Based Observability & Eval",
+    title: "Iris vs Braintrust — MCP-Native Agent Eval vs SDK-Based Eval",
     description:
       "Detailed comparison of Iris and Braintrust. Zero-code MCP integration vs SDK-powered eval platform.",
     images: ["/og-compare-braintrust.png"],

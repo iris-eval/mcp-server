@@ -5,11 +5,11 @@ import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
-  title: "Iris vs Arize AI — MCP-Native vs Enterprise ML Observability",
+  title: "Iris vs Arize AI — MCP-Native Agent Eval vs Enterprise ML Platform",
   description:
     "Detailed comparison of Iris and Arize AI (Phoenix) for AI agent observability. MCP-native zero-code integration vs enterprise-grade ML monitoring with embeddings and drift detection.",
   openGraph: {
-    title: "Iris vs Arize AI — MCP-Native vs Enterprise ML Observability",
+    title: "Iris vs Arize AI — MCP-Native Agent Eval vs Enterprise ML Platform",
     description:
       "Detailed comparison of Iris and Arize AI for AI agent observability. Zero-code MCP integration vs OpenTelemetry-based enterprise platform.",
     url: "https://iris-eval.com/compare/arize",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris vs Arize AI — MCP-Native vs Enterprise ML Observability",
+    title: "Iris vs Arize AI — MCP-Native Agent Eval vs Enterprise ML Platform",
     description:
       "Detailed comparison of Iris and Arize AI. Zero-code MCP integration vs OpenTelemetry-based enterprise platform.",
     images: ["/og-compare-arize.png"],

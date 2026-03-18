@@ -1,6 +1,6 @@
 # @iris-eval/langchain
 
-Auto-trace LangChain agent runs with [Iris](https://iris-eval.com) — MCP-native eval and observability.
+Evaluate LangChain agent output with [Iris](https://iris-eval.com) — the agent eval standard for MCP. Auto-trace runs, score output quality, catch safety failures.
 
 ## Install
 

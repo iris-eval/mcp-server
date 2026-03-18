@@ -1,4 +1,4 @@
-# Iris — MCP-Native Agent Eval & Observability
+# Iris — The Agent Eval Standard for MCP
 
 [![GitHub stars](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
 [![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
@@ -6,20 +6,20 @@
 [![CI](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**See what your AI agents are actually doing.** Iris is an open-source MCP server that logs every trace, evaluates output quality, and tracks costs across all your agents. Any MCP-compatible agent discovers and uses it automatically — no SDK, no code changes.
+**Know whether your AI agents are actually good enough to ship.** Iris is an open-source MCP server that scores output quality, catches safety failures, and enforces cost budgets across all your agents. Any MCP-compatible agent discovers and uses it automatically — no SDK, no code changes.
 
 ![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 
 ## The Problem
 
-Your agents are running in production. Traditional monitoring sees `200 OK` and moves on. It has no idea the agent just:
+Your agents are running in production. Infrastructure monitoring sees `200 OK` and moves on. It has no idea the agent just:
 
 - Leaked a social security number in its response
 - Hallucinated an answer with zero factual grounding
 - Burned $0.47 on a single query — 4.7x your budget threshold
 - Made 6 tool calls when 2 would have sufficed
 
-Iris sees all of it.
+Iris evaluates all of it.
 
 ## What You Get
 
@@ -77,7 +77,7 @@ Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
 ## Cloud Tier (Coming Soon)
 
-Self-hosted Iris runs on your machine with SQLite. As your team grows, the cloud tier adds PostgreSQL, team dashboards, alerting, and managed infrastructure.
+Self-hosted Iris runs on your machine with SQLite. As your team's eval needs grow, the cloud tier adds PostgreSQL, team dashboards, alerting on quality regressions, and managed infrastructure.
 
 [Join the waitlist](https://iris-eval.com#waitlist) to get early access.
 

@@ -1,6 +1,6 @@
 # @iris-eval/autogen
 
-Auto-trace AutoGen multi-agent conversations with [Iris](https://iris-eval.com) — MCP-native eval and observability.
+Evaluate AutoGen multi-agent conversations with [Iris](https://iris-eval.com) — the agent eval standard for MCP. Score output quality, trace conversations, catch failures.
 
 > **Status:** Scaffolded. Full integration coming soon. Star the repo to get notified.
 

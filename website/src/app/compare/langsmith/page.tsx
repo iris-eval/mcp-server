@@ -5,11 +5,11 @@ import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
-  title: "Iris vs LangSmith — MCP-Native vs SDK-Based Observability",
+  title: "Iris vs LangSmith — MCP-Native Agent Eval vs Framework-Locked Tracing",
   description:
     "Detailed comparison of Iris and LangSmith for AI agent observability. MCP-native zero-code integration vs @traceable SDK decorators and cloud-first architecture.",
   openGraph: {
-    title: "Iris vs LangSmith — MCP-Native vs SDK-Based Observability",
+    title: "Iris vs LangSmith — MCP-Native Agent Eval vs Framework-Locked Tracing",
     description:
       "Detailed comparison of Iris and LangSmith for AI agent observability. Zero-code MCP integration vs @traceable decorators.",
     url: "https://iris-eval.com/compare/langsmith",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris vs LangSmith — MCP-Native vs SDK-Based Observability",
+    title: "Iris vs LangSmith — MCP-Native Agent Eval vs Framework-Locked Tracing",
     description:
       "Detailed comparison of Iris and LangSmith. Zero-code MCP integration vs @traceable decorators.",
     images: ["/og-compare-langsmith.png"],

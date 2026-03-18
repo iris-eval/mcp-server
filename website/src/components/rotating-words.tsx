@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-const WORDS = ["actually doing.", "actually leaking.", "actually costing."];
+const WORDS = ["actually shipping.", "actually leaking.", "actually failing."];
 
 export function RotatingWords(): React.ReactElement {
   const [index, setIndex] = useState(0);
@@ -36,7 +36,7 @@ export function RotatingWords(): React.ReactElement {
       </AnimatePresence>
       {/* Invisible sizer — occupies the width of the longest word */}
       <span className="invisible [grid-area:stack]" aria-hidden="true">
-        actually costing.
+        actually shipping.
       </span>
     </span>
   );

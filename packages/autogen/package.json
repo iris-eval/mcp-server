@@ -1,7 +1,7 @@
 {
   "name": "@iris-eval/autogen",
   "version": "0.1.0",
-  "description": "Iris observability integration for AutoGen — auto-trace multi-agent conversations via MCP",
+  "description": "Iris eval integration for AutoGen — evaluate multi-agent conversation output via MCP",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
-  "keywords": ["iris", "autogen", "mcp", "observability", "tracing", "multi-agent", "ai-agent"],
+  "keywords": ["iris", "autogen", "mcp", "eval", "agent-eval", "output-quality", "observability", "tracing", "multi-agent", "ai-agent"],
   "author": "Ian Parent",
   "license": "MIT",
   "repository": {

@@ -44,7 +44,7 @@ export function ProductTabs(): React.ReactElement {
           </p>
           <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
             Three tools.{" "}
-            <span className="text-gradient">Complete visibility.</span>
+            <span className="text-gradient">One quality standard.</span>
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
             Iris registers as an MCP server. Your agent discovers it and invokes

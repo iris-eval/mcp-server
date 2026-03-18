@@ -5,11 +5,11 @@ import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
-  title: "Iris vs Helicone — MCP-Native vs Proxy-Based Observability",
+  title: "Iris vs Helicone — MCP-Native Agent Eval vs Proxy-Based Monitoring",
   description:
     "Detailed comparison of Iris and Helicone for AI agent observability. MCP-native zero-code integration vs proxy-based request logging and cost analytics.",
   openGraph: {
-    title: "Iris vs Helicone — MCP-Native vs Proxy-Based Observability",
+    title: "Iris vs Helicone — MCP-Native Agent Eval vs Proxy-Based Monitoring",
     description:
       "Detailed comparison of Iris and Helicone for AI agent observability. Zero-code MCP integration vs proxy-based cost analytics.",
     url: "https://iris-eval.com/compare/helicone",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris vs Helicone — MCP-Native vs Proxy-Based Observability",
+    title: "Iris vs Helicone — MCP-Native Agent Eval vs Proxy-Based Monitoring",
     description:
       "Detailed comparison of Iris and Helicone. Zero-code MCP integration vs proxy-based cost analytics.",
     images: ["/og-compare-helicone.png"],

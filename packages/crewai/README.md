@@ -1,6 +1,6 @@
 # @iris-eval/crewai
 
-Auto-trace CrewAI multi-agent workflows with [Iris](https://iris-eval.com) — MCP-native eval and observability.
+Evaluate CrewAI multi-agent workflows with [Iris](https://iris-eval.com) — the agent eval standard for MCP. Score output quality, trace task execution, catch failures.
 
 > **Status:** Scaffolded. Full integration coming soon. Star the repo to get notified.
 

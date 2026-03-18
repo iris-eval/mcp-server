@@ -39,13 +39,14 @@ export function Problem(): React.ReactElement {
               The Problem
             </p>
             <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
-              Your monitoring has a{" "}
-              <span className="text-gradient">blind spot.</span>
+              Your agents pass every{" "}
+              <span className="text-gradient">health check.</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
-              Traditional APM sees HTTP status codes and latency. It has no idea
-              your agent just leaked a credit card number, hallucinated an
-              answer, or burned $0.47 on a single query.
+              Infrastructure monitoring tells you the request succeeded. It
+              cannot tell you the answer was wrong. Your agents need a quality
+              gate — something that scores every output for safety, accuracy,
+              and cost before it reaches a user.
             </p>
           </motion.div>
         </div>

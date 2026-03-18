@@ -1,7 +1,7 @@
 {
   "name": "@iris-eval/langchain",
   "version": "0.1.0",
-  "description": "Iris observability integration for LangChain — auto-trace LangChain agent runs via MCP",
+  "description": "Iris eval integration for LangChain — evaluate agent output quality via MCP",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -13,9 +13,11 @@
     "iris",
     "langchain",
     "mcp",
+    "eval",
+    "agent-eval",
+    "output-quality",
     "observability",
     "tracing",
-    "eval",
     "ai-agent",
     "llm"
   ],

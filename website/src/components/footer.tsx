@@ -45,7 +45,7 @@ export function Footer(): React.ReactElement {
               </span>
             </div>
             <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-              MCP-native agent eval &amp; observability. Open-source core. MIT
+              The agent eval standard for MCP. Open-source core. MIT
               Licensed.
             </p>
           </div>

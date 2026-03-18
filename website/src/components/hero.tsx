@@ -58,8 +58,9 @@ export function Hero(): React.ReactElement {
           </div>
 
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-text-secondary md:text-[20px]">
-            MCP-native eval and observability. Log every trace, evaluate output
-            quality, track costs across all your agents. One command to start.
+            The agent eval standard for MCP. Score output quality, catch safety
+            failures, enforce cost budgets — across every agent, every execution.
+            One command to start.
           </p>
 
           {/* CTAs */}

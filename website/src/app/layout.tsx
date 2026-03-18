@@ -23,9 +23,9 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://iris-eval.com"),
-  title: "Iris — MCP-Native Agent Eval & Observability",
+  title: "Iris — The Agent Eval Standard for MCP",
   description:
-    "The MCP-native eval and observability tool. Log every trace, evaluate output quality, track costs across all your agents. Open-source core. One command to start.",
+    "The agent eval standard for MCP. Score output quality, detect PII and injection attacks, enforce cost thresholds across all your agents. Open-source core, self-hosted, one command to start.",
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Iris — MCP-Native Agent Eval & Observability",
+    title: "Iris — The Agent Eval Standard for MCP",
     description:
-      "Log every trace, evaluate output quality, track costs across all your agents. Open-source core.",
+      "Score output quality, catch safety failures, enforce cost budgets across every MCP agent. Open-source core.",
     url: "https://iris-eval.com",
     siteName: "Iris",
     type: "website",
@@ -44,9 +44,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris — MCP-Native Agent Eval & Observability",
+    title: "Iris — The Agent Eval Standard for MCP",
     description:
-      "See what your AI agents are actually doing. Log traces, evaluate quality, track costs.",
+      "Score your agents. Catch PII leaks, hallucinations, and cost overruns before users do. Open-source MCP server.",
     images: ["/og-social-preview.png?v=2"],
     site: "@iris_eval",
   },

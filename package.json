@@ -1,7 +1,7 @@
 {
   "name": "@iris-eval/mcp-server",
   "version": "0.1.3",
-  "description": "MCP-native agent evaluation and observability server",
+  "description": "The agent eval standard for MCP — score output quality, catch safety failures, enforce cost budgets",
   "mcpName": "io.github.iris-eval/mcp-server",
   "type": "module",
   "main": "dist/index.js",
@@ -41,7 +41,10 @@
     "agent-evaluation",
     "ai-observability",
     "pii-detection",
-    "cost-tracking"
+    "cost-tracking",
+    "agent-eval",
+    "output-quality",
+    "quality-gate"
   ],
   "author": "",
   "license": "MIT",

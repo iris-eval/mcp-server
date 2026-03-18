@@ -5,11 +5,11 @@ import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
-  title: "Iris vs Langfuse — MCP-Native vs SDK-Based Observability",
+  title: "Iris vs Langfuse — MCP-Native Agent Eval vs SDK-Based Tracing",
   description:
     "Detailed comparison of Iris and Langfuse for AI agent observability. MCP-native zero-code integration vs SDK-based instrumentation.",
   openGraph: {
-    title: "Iris vs Langfuse — MCP-Native vs SDK-Based Observability",
+    title: "Iris vs Langfuse — MCP-Native Agent Eval vs SDK-Based Tracing",
     description:
       "Detailed comparison of Iris and Langfuse for AI agent observability. Zero-code MCP integration vs SDK decorators.",
     url: "https://iris-eval.com/compare/langfuse",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris vs Langfuse — MCP-Native vs SDK-Based Observability",
+    title: "Iris vs Langfuse — MCP-Native Agent Eval vs SDK-Based Tracing",
     description:
       "Detailed comparison of Iris and Langfuse. Zero-code MCP integration vs SDK decorators.",
     images: ["/og-compare-langfuse.png"],
