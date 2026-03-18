@@ -1,0 +1,22 @@
+name: Cross-post to Dev.to
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/blog/0**.md'
+
+jobs:
+  crosspost:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cross-post to Dev.to
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: node scripts/devto-crosspost.mjs
