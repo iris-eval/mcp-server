@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and Braintrust for AI agent observability. Zero-code MCP integration vs SDK-powered eval and experiments.",
     url: "https://iris-eval.com/compare/braintrust",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-braintrust.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs Braintrust — MCP-Native vs SDK-Based Observability & Eval",
     description:
       "Detailed comparison of Iris and Braintrust. Zero-code MCP integration vs SDK-powered eval platform.",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-braintrust.png"],
     site: "@iris_eval",
   },
 };

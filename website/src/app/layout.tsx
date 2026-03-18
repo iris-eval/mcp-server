@@ -40,14 +40,14 @@ export const metadata: Metadata = {
     url: "https://iris-eval.com",
     siteName: "Iris",
     type: "website",
-    images: ["/og-social-preview.png"],
+    images: ["/og-social-preview.png?v=2"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris — MCP-Native Agent Eval & Observability",
     description:
       "See what your AI agents are actually doing. Log traces, evaluate quality, track costs.",
-    images: ["/og-social-preview.png"],
+    images: ["/og-social-preview.png?v=2"],
     site: "@iris_eval",
   },
 };
