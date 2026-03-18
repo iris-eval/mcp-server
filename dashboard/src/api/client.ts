@@ -23,6 +23,16 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
   return res.json() as Promise<T>;
 }
 
+function buildExportUrl(path: string, params: Record<string, string>): string {
+  const url = new URL(path, window.location.origin);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') {
+      url.searchParams.set(key, value);
+    }
+  }
+  return url.toString();
+}
+
 export const api = {
   getTraces(params?: Record<string, string>): Promise<TraceQueryResult> {
     return fetchJson<TraceQueryResult>(`${API_BASE_URL}/traces`, params);
@@ -42,5 +52,13 @@ export const api = {
 
   getEvaluations(params?: Record<string, string>): Promise<EvalQueryResult> {
     return fetchJson<EvalQueryResult>(`${API_BASE_URL}/evaluations`, params);
+  },
+
+  getTracesExportUrl(params: Record<string, string>): string {
+    return buildExportUrl(`${API_BASE_URL}/traces/export`, params);
+  },
+
+  getEvaluationsExportUrl(params: Record<string, string>): string {
+    return buildExportUrl(`${API_BASE_URL}/evaluations/export`, params);
   },
 };

@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useEvals } from '../../api/hooks';
+import { api } from '../../api/client';
 import { EvalFilters } from './EvalFilters';
 import { EvalTable } from './EvalTable';
 import { EvalDetailCard } from './EvalDetailCard';
 import { Pagination } from '../shared/Pagination';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { ExportButton } from '../shared/ExportButton';
 import type { EvalResult } from '../../api/types';
 
 export function EvalListPage() {
@@ -22,11 +24,28 @@ export function EvalListPage() {
     return p;
   }, [filters, offset]);
 
+  const filterParams = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (filters.eval_type) p.eval_type = filters.eval_type;
+    if (filters.passed) p.passed = filters.passed;
+    if (filters.since) p.since = new Date(filters.since).toISOString();
+    if (filters.until) p.until = new Date(filters.until).toISOString();
+    return p;
+  }, [filters]);
+
   const { data, loading } = useEvals(params);
+
+  function handleExport(format: 'csv' | 'json') {
+    const url = api.getEvaluationsExportUrl({ ...filterParams, format });
+    window.open(url, '_blank');
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Evaluations</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Evaluations</h1>
+        <ExportButton onExport={handleExport} />
+      </div>
       <EvalFilters values={filters} onChange={(v) => { setFilters(v); setOffset(0); }} />
 
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>
