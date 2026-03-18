@@ -3,7 +3,7 @@ title: "Why Every MCP Agent Needs an Independent Observer"
 published: false
 description: "If the agent controls the logs, the logs are fiction. Here's why MCP agents need architecturally independent observability — and how to add it in one config change."
 tags: mcp, aiagents, observability, opensource
-canonical_url: https://github.com/iris-eval/mcp-server/blob/main/docs/blog/003-why-every-mcp-agent-needs-an-independent-observer.md
+canonical_url: https://iris-eval.com/blog/why-every-mcp-agent-needs-an-independent-observer
 ---
 
 There is a sentence I keep coming back to. I first saw it from @aginaut on X:
