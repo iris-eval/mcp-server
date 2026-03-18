@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
+import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
   title: "Iris vs Langfuse — MCP-Native vs SDK-Based Observability",
@@ -196,6 +197,8 @@ export default function CompareLangfuse(): React.ReactElement {
           </div>
         </div>
       </section>
+
+      <CompareDisclaimer lastVerified="March 2026" competitor="Langfuse" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

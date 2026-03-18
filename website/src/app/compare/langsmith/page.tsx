@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
+import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
   title: "Iris vs LangSmith — MCP-Native vs SDK-Based Observability",
@@ -186,6 +187,8 @@ export default function CompareLangsmith(): React.ReactElement {
           </div>
         </div>
       </section>
+
+      <CompareDisclaimer lastVerified="March 2026" competitor="LangSmith" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

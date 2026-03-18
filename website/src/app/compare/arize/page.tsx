@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
+import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
   title: "Iris vs Arize AI — MCP-Native vs Enterprise ML Observability",
@@ -190,6 +191,8 @@ export default function CompareArize(): React.ReactElement {
           </div>
         </div>
       </section>
+
+      <CompareDisclaimer lastVerified="March 2026" competitor="Arize" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
+import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
 export const metadata: Metadata = {
   title: "Iris vs Helicone — MCP-Native vs Proxy-Based Observability",
@@ -184,6 +185,8 @@ export default function CompareHelicone(): React.ReactElement {
           </div>
         </div>
       </section>
+
+      <CompareDisclaimer lastVerified="March 2026" competitor="Helicone" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">
