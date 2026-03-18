@@ -33,17 +33,21 @@ Move from single-user SQLite to team-scale infrastructure.
 
 ---
 
-## v0.3.0 -- Alerting and Retention
+## v0.3.0 -- Alerting, Retention, and Framework Integrations
 
 **Status: Planned**
 
-Automated notifications when agent quality degrades.
+Automated notifications when agent quality degrades, plus SDK adapters for non-MCP frameworks.
 
 - **Alert rules**: configurable conditions (e.g., average score drops below 0.6 over 1 hour, error rate exceeds 5%, cost per trace exceeds $0.50)
 - **Webhook notifications**: POST alert payloads to any URL (Slack, PagerDuty, custom endpoints)
 - **Email notifications**: SMTP integration for alert emails with summary and affected traces
 - **Retention policies**: automatic trace deletion after configurable TTL (e.g., 30 days), storage usage tracking
 - **Dashboard alert panel**: view active alerts, alert history, and configure rules from the UI
+- **Framework integration packages**: SDK adapters that pipe framework events to Iris for teams not yet on MCP
+  - `@iris-eval/langchain` — LangChain callback handler (scaffolded)
+  - `@iris-eval/crewai` — CrewAI workflow tracing (scaffolded)
+  - `@iris-eval/autogen` — AutoGen conversation tracing (scaffolded)
 
 ---
 
