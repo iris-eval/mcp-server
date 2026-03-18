@@ -21,6 +21,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration/",
+    "version:check": "bash scripts/check-version.sh",
+    "version:sync": "node scripts/sync-versions.mjs",
     "clean": "rm -rf dist coverage",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "demo": "tsx scripts/demo.ts"
