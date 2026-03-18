@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and Langfuse for AI agent observability. Zero-code MCP integration vs SDK decorators.",
     url: "https://iris-eval.com/compare/langfuse",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-langfuse.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs Langfuse — MCP-Native vs SDK-Based Observability",
     description:
       "Detailed comparison of Iris and Langfuse. Zero-code MCP integration vs SDK decorators.",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-langfuse.png"],
     site: "@iris_eval",
   },
 };

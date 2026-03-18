@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and Helicone for AI agent observability. Zero-code MCP integration vs proxy-based cost analytics.",
     url: "https://iris-eval.com/compare/helicone",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-helicone.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs Helicone — MCP-Native vs Proxy-Based Observability",
     description:
       "Detailed comparison of Iris and Helicone. Zero-code MCP integration vs proxy-based cost analytics.",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-helicone.png"],
     site: "@iris_eval",
   },
 };

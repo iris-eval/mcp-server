@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and LangSmith for AI agent observability. Zero-code MCP integration vs @traceable decorators.",
     url: "https://iris-eval.com/compare/langsmith",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-langsmith.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs LangSmith — MCP-Native vs SDK-Based Observability",
     description:
       "Detailed comparison of Iris and LangSmith. Zero-code MCP integration vs @traceable decorators.",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-langsmith.png"],
     site: "@iris_eval",
   },
 };

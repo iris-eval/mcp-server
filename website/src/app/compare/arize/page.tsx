@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and Arize AI for AI agent observability. Zero-code MCP integration vs OpenTelemetry-based enterprise platform.",
     url: "https://iris-eval.com/compare/arize",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-arize.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs Arize AI — MCP-Native vs Enterprise ML Observability",
     description:
       "Detailed comparison of Iris and Arize AI. Zero-code MCP integration vs OpenTelemetry-based enterprise platform.",
-    images: ["/og-social-preview.png"],
+    images: ["/og-compare-arize.png"],
     site: "@iris_eval",
   },
 };
