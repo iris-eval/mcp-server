@@ -6,24 +6,31 @@
  * Reads all blog posts from docs/blog/, formats them for Dev.to,
  * and creates or updates them via the Dev.to API.
  *
- * Requires: DEVTO_API_KEY environment variable
+ * Environment variables:
+ *   DEVTO_API_KEY  — Required. Get from https://dev.to/settings/extensions
+ *   MAX_NEW        — Max new posts to create per run (default 2, prevents spam)
+ *   DRY_RUN        — "true" to preview without posting
  *
- * How it works:
- * - Reads each docs/blog/0*.md file
- * - Parses YAML frontmatter for title, tags, date
- * - Generates slug and canonical_url pointing to iris-eval.com
- * - Checks if the post already exists on Dev.to (by canonical_url)
- * - Creates new posts or updates existing ones
- * - All posts are added to the "MCP Agent Observability" series
+ * Behavior:
+ *   - UPDATES existing posts (matched by canonical_url) — always, no limit
+ *   - CREATES new posts — limited to MAX_NEW per run to avoid spam flags
+ *   - All posts get canonical_url → iris-eval.com, series → "MCP Agent Observability"
+ *   - Posts are processed in filename order (001, 002, ...) so series order is correct
  *
- * To add to the automation: just create a new docs/blog/0XX-*.md file
- * with proper frontmatter. The script handles everything else.
+ * To cross-post a new blog:
+ *   1. Create docs/blog/0XX-my-post.md with YAML frontmatter
+ *   2. Push to main
+ *   3. Action runs, creates up to MAX_NEW new posts
+ *   4. Run manually with higher MAX_NEW to publish more in one batch
  */
 
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 const API_KEY = process.env.DEVTO_API_KEY;
+const MAX_NEW = parseInt(process.env.MAX_NEW || "2", 10);
+const DRY_RUN = process.env.DRY_RUN === "true";
+
 if (!API_KEY) {
   console.error("DEVTO_API_KEY not set. Skipping cross-post.");
   process.exit(0);
@@ -32,8 +39,6 @@ if (!API_KEY) {
 const BLOG_DIR = join(process.cwd(), "docs", "blog");
 const SERIES = "MCP Agent Observability";
 const BASE_URL = "https://iris-eval.com/blog";
-
-// Dev.to allows max 4 tags
 const DEFAULT_TAGS = ["mcp", "aiagents", "observability", "opensource"];
 
 function parseFrontmatter(raw) {
@@ -49,7 +54,10 @@ function parseFrontmatter(raw) {
     let val = line.slice(ci + 1).trim();
     if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
     if (val.startsWith("[") && val.endsWith("]")) {
-      val = val.slice(1, -1).split(",").map((s) => s.trim());
+      val = val
+        .slice(1, -1)
+        .split(",")
+        .map((s) => s.trim());
     }
     meta[key] = val;
   }
@@ -87,15 +95,14 @@ async function devtoRequest(method, path, body) {
 }
 
 async function getExistingArticles() {
-  // Fetch all published articles for this user
   const articles = await devtoRequest("GET", "/articles/me/all?per_page=100");
   return articles;
 }
 
 async function main() {
-  console.log("Cross-posting blog posts to Dev.to...\n");
+  console.log(`Cross-posting to Dev.to (max_new: ${MAX_NEW}, dry_run: ${DRY_RUN})\n`);
 
-  // Get all existing Dev.to articles to check for duplicates
+  // Get all existing Dev.to articles
   const existing = await getExistingArticles();
   const existingByCanonical = new Map();
   for (const article of existing) {
@@ -103,8 +110,9 @@ async function main() {
       existingByCanonical.set(article.canonical_url, article);
     }
   }
+  console.log(`Found ${existing.length} existing Dev.to article(s)\n`);
 
-  // Read all blog posts
+  // Read all blog posts (sorted by filename for correct series order)
   const files = readdirSync(BLOG_DIR)
     .filter((f) => f.endsWith(".md") && /^\d{3}-/.test(f))
     .sort();
@@ -127,44 +135,65 @@ async function main() {
     const canonicalUrl = `${BASE_URL}/${slug}`;
     const title = parsed.meta.title || filename;
 
-    // Build Dev.to tags (max 4, lowercase, no special chars)
-    const tags = DEFAULT_TAGS;
-
-    // Check if already exists
-    const existingArticle = existingByCanonical.get(canonicalUrl);
-
     const articleData = {
       article: {
         title,
         body_markdown: parsed.content,
         published: true,
         canonical_url: canonicalUrl,
-        tags,
+        tags: DEFAULT_TAGS,
         series: SERIES,
       },
     };
 
+    // Check if already exists on Dev.to
+    const existingArticle = existingByCanonical.get(canonicalUrl);
+
     try {
       if (existingArticle) {
-        // Update existing
-        await devtoRequest("PUT", `/articles/${existingArticle.id}`, articleData);
-        console.log(`  UPDATE: ${filename} → dev.to (id: ${existingArticle.id})`);
+        // Always update existing posts
+        if (DRY_RUN) {
+          console.log(`  DRY: Would UPDATE ${filename} (id: ${existingArticle.id})`);
+        } else {
+          await devtoRequest("PUT", `/articles/${existingArticle.id}`, articleData);
+          console.log(`  UPDATE: ${filename} (id: ${existingArticle.id})`);
+        }
         updated++;
-      } else {
-        // Create new
-        const result = await devtoRequest("POST", "/articles", articleData);
-        console.log(`  CREATE: ${filename} → dev.to (id: ${result.id}, url: ${result.url})`);
+      } else if (created < MAX_NEW) {
+        // Create new — but only up to MAX_NEW
+        if (DRY_RUN) {
+          console.log(`  DRY: Would CREATE ${filename} → ${canonicalUrl}`);
+        } else {
+          const result = await devtoRequest("POST", "/articles", articleData);
+          console.log(`  CREATE: ${filename} → ${result.url}`);
+        }
         created++;
+      } else {
+        console.log(`  DEFER: ${filename} (max_new limit reached, will create next run)`);
+        skipped++;
       }
     } catch (err) {
       console.error(`  ERROR: ${filename} — ${err.message}`);
     }
 
     // Rate limit: Dev.to allows 10 requests per 30 seconds
-    await new Promise((r) => setTimeout(r, 3500));
+    if (!DRY_RUN) {
+      await new Promise((r) => setTimeout(r, 4000));
+    }
   }
 
-  console.log(`\nDone. Created: ${created}, Updated: ${updated}, Skipped: ${skipped}`);
+  console.log(
+    `\nDone. Created: ${created}, Updated: ${updated}, Skipped/Deferred: ${skipped}`
+  );
+
+  if (skipped > 0 && created >= MAX_NEW) {
+    console.log(
+      `\nSome posts were deferred. Run again or increase MAX_NEW to publish more.`
+    );
+    console.log(
+      `Manual trigger: Actions → Cross-post to Dev.to → Run workflow → set max_new`
+    );
+  }
 }
 
 main().catch((err) => {
