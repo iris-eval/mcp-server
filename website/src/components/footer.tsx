@@ -50,7 +50,7 @@ export function Footer(): React.ReactElement {
             </p>
           </div>
 
-          <div className="flex gap-16">
+          <div className="flex flex-wrap gap-12 lg:gap-16">
             <div>
               <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">
                 Product
@@ -61,6 +61,24 @@ export function Footer(): React.ReactElement {
                   { label: "Pricing", href: "#pricing" },
                   { label: "Quick Start", href: "#open-source" },
                   { label: "Roadmap", href: "#roadmap" },
+                ].map((l) => (
+                  <li key={l.label}>
+                    <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">
+                Compare
+              </h4>
+              <ul className="mt-4 space-y-3 text-[13px]">
+                {[
+                  { label: "Iris vs Langfuse", href: "/compare/langfuse" },
+                  { label: "Iris vs LangSmith", href: "/compare/langsmith" },
+                  { label: "Iris vs Helicone", href: "/compare/helicone" },
+                  { label: "Iris vs Braintrust", href: "/compare/braintrust" },
+                  { label: "Iris vs Arize", href: "/compare/arize" },
                 ].map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
