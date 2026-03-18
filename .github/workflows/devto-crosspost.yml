@@ -1,10 +1,24 @@
 name: Cross-post to Dev.to
 
 on:
+  # Auto-trigger when blog posts change
   push:
     branches: [main]
     paths:
       - 'docs/blog/0**.md'
+
+  # Manual trigger with control over batch size
+  workflow_dispatch:
+    inputs:
+      max_new:
+        description: 'Max new posts to create (0 = updates only, default 2)'
+        required: false
+        default: '2'
+      dry_run:
+        description: 'Dry run — show what would happen without posting'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   crosspost:
@@ -19,4 +33,6 @@ jobs:
       - name: Cross-post to Dev.to
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          MAX_NEW: ${{ github.event.inputs.max_new || '2' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: node scripts/devto-crosspost.mjs
