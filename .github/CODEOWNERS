@@ -1,0 +1,20 @@
+# Iris Code Owners
+# All changes require review from the founder.
+
+# Default: founder reviews everything
+* @irparent
+
+# Website and playground — founder only, no exceptions
+website/ @irparent
+
+# Core product code
+src/ @irparent
+
+# Dashboard
+dashboard/ @irparent
+
+# Configuration and CI
+.github/ @irparent
+package.json @irparent
+tsconfig*.json @irparent
+smithery.yaml @irparent
