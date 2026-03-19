@@ -12,3 +12,6 @@ data/
 .DS_Store
 *.tsbuildinfo
 .mcpregistry_*
+demo-video/
+.agents/
+skills-lock.json
