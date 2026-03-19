@@ -40,14 +40,14 @@ export const metadata: Metadata = {
     url: "https://iris-eval.com",
     siteName: "Iris",
     type: "website",
-    images: ["/og-social-preview.png?v=2"],
+    images: ["/og-social-preview.png?v=3"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris — The Agent Eval Standard for MCP",
     description:
       "Score your agents. Catch PII leaks, hallucinations, and cost overruns before users do. Open-source MCP server.",
-    images: ["/og-social-preview.png?v=2"],
+    images: ["/og-social-preview.png?v=3"],
     site: "@iris_eval",
   },
 };

@@ -29,13 +29,13 @@ export async function generateMetadata({
       type: "article",
       publishedTime: String(post.date),
       authors: [post.author],
-      images: ["/og-social-preview.png"],
+      images: ["/og-social-preview.png?v=3"],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: ["/og-social-preview.png"],
+      images: ["/og-social-preview.png?v=3"],
       site: "@iris_eval",
     },
   };

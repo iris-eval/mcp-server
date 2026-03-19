@@ -12,7 +12,7 @@ export function Footer(): React.ReactElement {
           </h2>
           <p className="mt-5 text-lg text-text-secondary">
             See what your AI agents are actually doing. One command. No SDK.
-            Free forever.
+            Open-source core. MIT licensed.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
