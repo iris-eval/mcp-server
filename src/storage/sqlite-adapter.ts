@@ -1,5 +1,15 @@
 import Database from 'better-sqlite3';
-import type { IStorageAdapter, DashboardSummary, TraceQueryOptions, TraceQueryResult } from '../types/query.js';
+import type {
+  IStorageAdapter,
+  DashboardSummary,
+  TraceQueryOptions,
+  TraceQueryResult,
+  EvalStatsPeriod,
+  EvalStats,
+  EvalStatsTrendBucket,
+  EvalStatsRuleBreakdown,
+  EvalStatsFailure,
+} from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult } from '../types/eval.js';
 import { runMigrations } from './migrations/index.js';
@@ -239,6 +249,199 @@ export class SqliteAdapter implements IStorageAdapter {
       traces_per_hour: tracesPerHour,
       top_agents: topAgents,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Eval-stats endpoints (v0.2.0 dashboard)
+  // ---------------------------------------------------------------------------
+
+  private periodToSince(period: EvalStatsPeriod): string {
+    const hours = period === '24h' ? 24 : period === '7d' ? 168 : 720;
+    return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  }
+
+  async getEvalStats(period: EvalStatsPeriod): Promise<EvalStats> {
+    const since = this.periodToSince(period);
+
+    const agg = this.db.prepare(`
+      SELECT
+        COUNT(*)                                     AS total_evals,
+        COALESCE(AVG(score), 0)                      AS avg_score,
+        SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
+      FROM eval_results
+      WHERE created_at >= ?
+    `).get(since) as { total_evals: number; avg_score: number; passed_count: number };
+
+    const cost = this.db.prepare(`
+      SELECT COALESCE(SUM(cost_usd), 0) AS total_cost
+      FROM traces
+      WHERE timestamp >= ?
+    `).get(since) as { total_cost: number };
+
+    const agents = this.db.prepare(`
+      SELECT COUNT(DISTINCT agent_name) AS agent_count
+      FROM traces
+      WHERE timestamp >= ?
+    `).get(since) as { agent_count: number };
+
+    // Safety violations — scan rule_results JSON for failing safety rules.
+    // rule_results is stored as a JSON array of EvalRuleResult objects.
+    const safetyRows = this.db.prepare(`
+      SELECT rule_results
+      FROM eval_results
+      WHERE created_at >= ?
+        AND eval_type = 'safety'
+        AND passed = 0
+    `).all(since) as Array<{ rule_results: string }>;
+
+    const violations = { pii: 0, injection: 0, hallucination: 0 };
+    for (const row of safetyRows) {
+      const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(row.rule_results);
+      for (const r of rules) {
+        if (r.passed) continue;
+        if (r.ruleName === 'no_pii') violations.pii++;
+        if (r.ruleName === 'no_injection_patterns') violations.injection++;
+        if (r.ruleName === 'no_hallucination_markers') violations.hallucination++;
+      }
+    }
+
+    return {
+      passRate: agg.total_evals > 0
+        ? Math.round((agg.passed_count / agg.total_evals) * 1000) / 1000
+        : 0,
+      avgScore: Math.round(agg.avg_score * 1000) / 1000,
+      totalEvals: agg.total_evals,
+      safetyViolations: violations,
+      totalCost: Math.round(cost.total_cost * 100) / 100,
+      agentCount: agents.agent_count,
+      period,
+    };
+  }
+
+  async getEvalStatsTrend(period: EvalStatsPeriod): Promise<EvalStatsTrendBucket[]> {
+    const since = this.periodToSince(period);
+
+    // Determine bucket format for strftime
+    let bucketExpr: string;
+    if (period === '24h') {
+      // hourly buckets
+      bucketExpr = "strftime('%Y-%m-%dT%H:00:00Z', created_at)";
+    } else if (period === '7d') {
+      // 6-hour buckets: floor hour to nearest 6
+      bucketExpr =
+        "strftime('%Y-%m-%dT', created_at) || printf('%02d', (CAST(strftime('%H', created_at) AS INTEGER) / 6) * 6) || ':00:00Z'";
+    } else {
+      // daily buckets
+      bucketExpr = "strftime('%Y-%m-%dT00:00:00Z', created_at)";
+    }
+
+    const rows = this.db.prepare(`
+      SELECT
+        ${bucketExpr}                                  AS bucket,
+        COALESCE(AVG(score), 0)                        AS avg_score,
+        CASE WHEN COUNT(*) > 0
+          THEN CAST(SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS REAL) / COUNT(*)
+          ELSE 0 END                                   AS pass_rate,
+        COUNT(*)                                       AS eval_count
+      FROM eval_results
+      WHERE created_at >= ?
+      GROUP BY bucket
+      ORDER BY bucket
+    `).all(since) as Array<{
+      bucket: string;
+      avg_score: number;
+      pass_rate: number;
+      eval_count: number;
+    }>;
+
+    return rows.map((r) => ({
+      timestamp: r.bucket,
+      avgScore: Math.round(r.avg_score * 1000) / 1000,
+      passRate: Math.round(r.pass_rate * 1000) / 1000,
+      evalCount: r.eval_count,
+    }));
+  }
+
+  async getEvalStatsRules(period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]> {
+    const since = this.periodToSince(period);
+
+    const rows = this.db.prepare(`
+      SELECT rule_results
+      FROM eval_results
+      WHERE created_at >= ?
+    `).all(since) as Array<{ rule_results: string }>;
+
+    // Aggregate per-rule stats from the JSON arrays
+    const ruleMap = new Map<string, { totalRun: number; failCount: number }>();
+
+    for (const row of rows) {
+      const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(row.rule_results);
+      for (const r of rules) {
+        const entry = ruleMap.get(r.ruleName) ?? { totalRun: 0, failCount: 0 };
+        entry.totalRun++;
+        if (!r.passed) entry.failCount++;
+        ruleMap.set(r.ruleName, entry);
+      }
+    }
+
+    const result: EvalStatsRuleBreakdown[] = [];
+    for (const [rule, stats] of ruleMap) {
+      result.push({
+        rule,
+        passRate: stats.totalRun > 0
+          ? Math.round(((stats.totalRun - stats.failCount) / stats.totalRun) * 1000) / 1000
+          : 0,
+        totalRun: stats.totalRun,
+        failCount: stats.failCount,
+      });
+    }
+
+    // Sort by passRate ASC (worst rules first)
+    result.sort((a, b) => a.passRate - b.passRate);
+
+    return result;
+  }
+
+  async getEvalStatsFailures(period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]> {
+    const since = this.periodToSince(period);
+
+    const rows = this.db.prepare(`
+      SELECT
+        e.trace_id,
+        COALESCE(t.agent_name, 'unknown') AS agent_name,
+        e.rule_results,
+        e.score,
+        e.output_text,
+        e.created_at
+      FROM eval_results e
+      LEFT JOIN traces t ON t.trace_id = e.trace_id
+      WHERE e.created_at >= ?
+        AND e.passed = 0
+      ORDER BY e.created_at DESC
+      LIMIT ?
+    `).all(since, limit) as Array<{
+      trace_id: string | null;
+      agent_name: string;
+      rule_results: string;
+      score: number;
+      output_text: string;
+      created_at: string;
+    }>;
+
+    return rows.map((r) => {
+      // Find the first failing rule to surface as the primary rule
+      const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(r.rule_results);
+      const failingRule = rules.find((rule) => !rule.passed);
+
+      return {
+        traceId: r.trace_id ?? '',
+        agent: r.agent_name,
+        rule: failingRule?.ruleName ?? 'unknown',
+        score: Math.round(r.score * 1000) / 1000,
+        output: r.output_text.length > 200 ? r.output_text.slice(0, 200) + '...' : r.output_text,
+        timestamp: r.created_at,
+      };
+    });
   }
 
   async deleteTracesOlderThan(days: number): Promise<number> {

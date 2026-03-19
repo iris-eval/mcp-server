@@ -5,6 +5,10 @@ import type {
   DashboardSummary,
   FilterOptions,
   EvalQueryResult,
+  EvalStats,
+  EvalTrendPoint,
+  RuleBreakdown,
+  EvalFailure,
 } from './types';
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -42,5 +46,21 @@ export const api = {
 
   getEvaluations(params?: Record<string, string>): Promise<EvalQueryResult> {
     return fetchJson<EvalQueryResult>(`${API_BASE_URL}/evaluations`, params);
+  },
+
+  getEvalStats(period?: string): Promise<EvalStats> {
+    return fetchJson<EvalStats>(`${API_BASE_URL}/eval-stats`, period ? { period } : undefined);
+  },
+
+  getEvalTrend(period?: string): Promise<EvalTrendPoint[]> {
+    return fetchJson<EvalTrendPoint[]>(`${API_BASE_URL}/eval-stats/trend`, period ? { period } : undefined);
+  },
+
+  getEvalRules(): Promise<RuleBreakdown[]> {
+    return fetchJson<RuleBreakdown[]>(`${API_BASE_URL}/eval-stats/rules`);
+  },
+
+  getEvalFailures(limit?: number): Promise<EvalFailure[]> {
+    return fetchJson<EvalFailure[]>(`${API_BASE_URL}/eval-stats/failures`, limit ? { limit: String(limit) } : undefined);
   },
 };

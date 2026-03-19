@@ -23,3 +23,12 @@ export const evalQuerySchema = z.object({
 export const summaryQuerySchema = z.object({
   hours: z.coerce.number().int().min(1).max(8760).default(24),
 });
+
+export const evalStatsPeriodSchema = z.object({
+  period: z.enum(['24h', '7d', '30d']).default('24h'),
+});
+
+export const evalStatsFailuresSchema = z.object({
+  period: z.enum(['24h', '7d', '30d']).default('24h'),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+});

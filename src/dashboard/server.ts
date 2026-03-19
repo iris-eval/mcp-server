@@ -15,6 +15,7 @@ import { registerTraceRoutes } from './routes/traces.js';
 import { registerSummaryRoutes } from './routes/summary.js';
 import { registerEvaluationRoutes } from './routes/evaluations.js';
 import { registerFilterRoutes } from './routes/filters.js';
+import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerHealthRoutes } from './routes/health.js';
 
 export interface DashboardServer {
@@ -56,6 +57,7 @@ export function createDashboardServer(
   registerTraceRoutes(router, storage);
   registerSummaryRoutes(router, storage);
   registerEvaluationRoutes(router, storage);
+  registerEvalStatsRoutes(router, storage);
   registerFilterRoutes(router, storage);
   registerHealthRoutes(router, storage);
   app.use('/api/v1', router);

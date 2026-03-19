@@ -7,6 +7,10 @@ import type {
   DashboardSummary,
   FilterOptions,
   EvalQueryResult,
+  EvalStats,
+  EvalTrendPoint,
+  RuleBreakdown,
+  EvalFailure,
 } from './types';
 
 function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number) {
@@ -58,4 +62,24 @@ export function useFilters() {
 export function useEvals(params?: Record<string, string>) {
   const fetcher = useCallback(() => api.getEvaluations(params), [JSON.stringify(params)]);
   return useApiData<EvalQueryResult>(fetcher, 5000);
+}
+
+export function useEvalStats(period?: string) {
+  const fetcher = useCallback(() => api.getEvalStats(period), [period]);
+  return useApiData<EvalStats>(fetcher, 5000);
+}
+
+export function useEvalTrend(period?: string) {
+  const fetcher = useCallback(() => api.getEvalTrend(period), [period]);
+  return useApiData<EvalTrendPoint[]>(fetcher, 10000);
+}
+
+export function useEvalRules() {
+  const fetcher = useCallback(() => api.getEvalRules(), []);
+  return useApiData<RuleBreakdown[]>(fetcher, 10000);
+}
+
+export function useEvalFailures(limit?: number) {
+  const fetcher = useCallback(() => api.getEvalFailures(limit), [limit]);
+  return useApiData<EvalFailure[]>(fetcher, 5000);
 }

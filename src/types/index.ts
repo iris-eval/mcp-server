@@ -23,6 +23,11 @@ export type {
   TraceQueryOptions,
   TraceQueryResult,
   DashboardSummary,
+  EvalStatsPeriod,
+  EvalStats,
+  EvalStatsTrendBucket,
+  EvalStatsRuleBreakdown,
+  EvalStatsFailure,
   IStorageAdapter,
 } from './query.js';
 

@@ -93,3 +93,38 @@ export interface EvalQueryResult {
   results: EvalResult[];
   total: number;
 }
+
+/* ── Eval Stats (eval-first dashboard) ── */
+
+export interface EvalStats {
+  passRate: number;
+  avgScore: number;
+  totalEvals: number;
+  safetyViolations: { pii: number; injection: number; hallucination: number };
+  totalCost: number;
+  agentCount: number;
+  period: string;
+}
+
+export interface EvalTrendPoint {
+  timestamp: string;
+  avgScore: number;
+  passRate: number;
+  evalCount: number;
+}
+
+export interface RuleBreakdown {
+  rule: string;
+  passRate: number;
+  totalRun: number;
+  failCount: number;
+}
+
+export interface EvalFailure {
+  traceId: string;
+  agent: string;
+  rule: string;
+  score: number;
+  output: string;
+  timestamp: string;
+}
