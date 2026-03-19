@@ -6,24 +6,44 @@ import { ActOne } from "./act-one";
 import { ActTwo } from "./act-two";
 import { ActThree } from "./act-three";
 import { PlaygroundCta } from "./playground-cta";
+import { SocialProofBar } from "./social-proof-bar";
+import { ResultCard } from "./result-card";
+import { SCENARIOS, COMPARISON } from "./playground-data";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+export interface PlaygroundSession {
+  act1Guesses: Record<number, "PASS" | "FAIL">;
+  act1CorrectCount: number;
+  act2Choice: "A" | "B" | null;
+  act2Correct: boolean;
+  completedActs: number;
+}
+
+const INITIAL_SESSION: PlaygroundSession = {
+  act1Guesses: {},
+  act1CorrectCount: 0,
+  act2Choice: null,
+  act2Correct: false,
+  completedActs: 0,
+};
 
 export function PlaygroundShell() {
   const reduce = useReducedMotion();
   const [visibleActs, setVisibleActs] = useState(1);
+  const [session, setSession] = useState<PlaygroundSession>(INITIAL_SESSION);
   const actTwoRef = useRef<HTMLDivElement>(null);
   const actThreeRef = useRef<HTMLDivElement>(null);
 
   function unlockAct(act: number) {
     setVisibleActs((prev) => Math.max(prev, act));
+    setSession((prev) => ({ ...prev, completedActs: Math.max(prev.completedActs, act - 1) }));
   }
 
-  // Scroll to newly unlocked act with a delay so the DOM has rendered
+  // Scroll to newly unlocked act
   useEffect(() => {
     const ref = visibleActs === 2 ? actTwoRef : visibleActs === 3 ? actThreeRef : null;
     if (ref?.current) {
-      // Small delay to let React render the new act before scrolling
       const timer = setTimeout(() => {
         ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
@@ -31,13 +51,24 @@ export function PlaygroundShell() {
     }
   }, [visibleActs]);
 
-  // Expose scroll helper for child components
-  const scrollToAct = useCallback((ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      const headerOffset = 80; // sticky nav height
-      const elementPosition = ref.current.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: elementPosition - headerOffset, behavior: "smooth" });
-    }
+  // Act 1 guess tracking
+  const onAct1Guess = useCallback((scenarioIdx: number, guess: "PASS" | "FAIL") => {
+    setSession((prev) => {
+      const newGuesses = { ...prev.act1Guesses, [scenarioIdx]: guess };
+      const correctCount = Object.entries(newGuesses).filter(
+        ([idx, g]) => g === SCENARIOS[Number(idx)].verdict,
+      ).length;
+      return { ...prev, act1Guesses: newGuesses, act1CorrectCount: correctCount };
+    });
+  }, []);
+
+  // Act 2 choice tracking
+  const onAct2Choice = useCallback((choice: "A" | "B") => {
+    setSession((prev) => ({
+      ...prev,
+      act2Choice: choice,
+      act2Correct: choice === COMPARISON.correctChoice,
+    }));
   }, []);
 
   return (
@@ -81,7 +112,7 @@ export function PlaygroundShell() {
         </div>
       </div>
 
-      {/* Hero — tighter spacing */}
+      {/* Hero */}
       <section className="relative overflow-hidden pt-16 pb-8 lg:pt-20 lg:pb-12">
         <div className="hero-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" aria-hidden="true" />
         <div className="relative mx-auto max-w-4xl px-6 text-center lg:px-8">
@@ -105,21 +136,25 @@ export function PlaygroundShell() {
         </div>
       </section>
 
-      {/* Act 1 — always visible */}
-      <ActOne onComplete={() => unlockAct(2)} />
+      {/* Social proof */}
+      <SocialProofBar />
 
-      {/* Act 2 — unlocked after Act 1 */}
+      {/* Act 1 */}
+      <ActOne onComplete={() => unlockAct(2)} onGuess={onAct1Guess} />
+
+      {/* Act 2 */}
       {visibleActs >= 2 && (
         <div ref={actTwoRef}>
-          <ActTwo onComplete={() => unlockAct(3)} />
+          <ActTwo onComplete={() => unlockAct(3)} onChoice={onAct2Choice} />
         </div>
       )}
 
-      {/* Act 3 — unlocked after Act 2 */}
+      {/* Act 3 + Result Card + CTA */}
       {visibleActs >= 3 && (
         <div ref={actThreeRef}>
           <ActThree />
-          <PlaygroundCta />
+          <ResultCard session={session} />
+          <PlaygroundCta session={session} />
         </div>
       )}
     </div>

@@ -61,6 +61,7 @@ export interface Scenario {
   rules: RuleResult[];
   failedRule: string;
   lesson: string;
+  humanReviewSeconds: number;
 }
 
 export const SCENARIOS: Scenario[] = [
@@ -77,6 +78,7 @@ export const SCENARIOS: Scenario[] = [
     failedRule: "no_pii",
     lesson:
       "The credit card number is buried in paragraph 2. Easy to miss manually. Iris catches it every time.",
+    humanReviewSeconds: 45,
   },
   {
     id: "hallucination",
@@ -96,6 +98,7 @@ export const SCENARIOS: Scenario[] = [
     failedRule: "no_hallucination_markers",
     lesson:
       "The agent punted instead of answering. These hedging phrases indicate unreliable output.",
+    humanReviewSeconds: 15,
   },
   {
     id: "injection",
@@ -115,6 +118,7 @@ export const SCENARIOS: Scenario[] = [
     failedRule: "no_injection_patterns",
     lesson:
       "The agent REPEATED the injection attempt in its output. It should have sanitized or refused.",
+    humanReviewSeconds: 30,
   },
   {
     id: "cost-overrun",
@@ -130,6 +134,7 @@ export const SCENARIOS: Scenario[] = [
     failedRule: "cost_under_threshold",
     lesson:
       "The answer is fine. But $0.47 for a weather query? At 1,000 queries/day, that's $14,100/month.",
+    humanReviewSeconds: 60,
   },
 ];
 

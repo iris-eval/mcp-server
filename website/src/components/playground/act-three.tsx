@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { EvalScoreGauge } from "./eval-score-gauge";
 import { TrendChartSvg } from "./trend-chart-svg";
 import { RuleBreakdownBars } from "./rule-breakdown-bars";
+import { AnimatedCounter } from "../animated-counter";
 import {
   DASHBOARD_STATS,
   TREND_DATA,
@@ -21,13 +22,19 @@ const STATUS_STYLE: Record<string, string> = {
 
 function StatCard({
   label,
-  value,
+  numericValue,
+  decimals,
+  prefix,
+  suffix,
   sub,
   color,
   delay,
 }: {
   label: string;
-  value: string;
+  numericValue: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
   sub?: string;
   color?: string;
   delay: number;
@@ -45,7 +52,7 @@ function StatCard({
         className="mt-1 font-mono text-xl font-bold"
         style={{ color: color ?? "var(--text-primary)" }}
       >
-        {value}
+        <AnimatedCounter value={numericValue} decimals={decimals} prefix={prefix} suffix={suffix} />
       </div>
       {sub && (
         <div className="mt-0.5 text-[11px] text-text-muted">{sub}</div>
@@ -138,41 +145,45 @@ export function ActThree() {
                 <div className="grid flex-1 grid-cols-2 gap-3 lg:grid-cols-3">
                   <StatCard
                     label="Total Evals"
-                    value={DASHBOARD_STATS.totalEvals.toLocaleString()}
+                    numericValue={DASHBOARD_STATS.totalEvals}
                     sub="Last 7 days"
                     delay={0.2}
                   />
                   <StatCard
                     label="Avg Score"
-                    value={DASHBOARD_STATS.avgScore.toFixed(2)}
+                    numericValue={DASHBOARD_STATS.avgScore}
+                    decimals={2}
                     sub="+0.03 from last week"
                     color="var(--eval-pass)"
                     delay={0.3}
                   />
                   <StatCard
                     label="Total Cost"
-                    value={`$${DASHBOARD_STATS.totalCost.toFixed(2)}`}
+                    numericValue={DASHBOARD_STATS.totalCost}
+                    decimals={2}
+                    prefix="$"
                     sub="$18.20/day avg"
                     color="var(--eval-warn)"
                     delay={0.4}
                   />
                   <StatCard
                     label="Safety Violations"
-                    value={String(safetyTotal)}
+                    numericValue={safetyTotal}
                     sub={`${DASHBOARD_STATS.safetyViolations.pii} PII · ${DASHBOARD_STATS.safetyViolations.injection} injection · ${DASHBOARD_STATS.safetyViolations.hallucination} hallucination`}
                     color="var(--eval-fail)"
                     delay={0.5}
                   />
                   <StatCard
                     label="Pass Rate"
-                    value={`${Math.round(DASHBOARD_STATS.passRate * 100)}%`}
+                    numericValue={Math.round(DASHBOARD_STATS.passRate * 100)}
+                    suffix="%"
                     sub="87% of evals pass"
                     color="var(--eval-pass)"
                     delay={0.6}
                   />
                   <StatCard
                     label="Active Agents"
-                    value={String(DASHBOARD_STATS.agentCount)}
+                    numericValue={DASHBOARD_STATS.agentCount}
                     sub="Across all environments"
                     delay={0.7}
                   />

@@ -7,11 +7,13 @@ export function AnimatedCounter({
   value,
   prefix = "",
   suffix = "",
+  decimals,
   duration = 1.6,
 }: {
   value: number;
   prefix?: string;
   suffix?: string;
+  decimals?: number;
   duration?: number;
 }): React.ReactElement {
   const ref = useRef<HTMLSpanElement>(null);
@@ -31,16 +33,20 @@ export function AnimatedCounter({
       if (!start) start = ts;
       const progress = Math.min((ts - start) / (duration * 1000), 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.round(eased * value));
+      setDisplay(eased * value);
       if (progress < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }, [inView, value, duration, reduce]);
 
+  const formatted = decimals !== undefined
+    ? display.toFixed(decimals)
+    : Math.round(display).toLocaleString();
+
   return (
     <span ref={ref}>
       {prefix}
-      {display.toLocaleString()}
+      {formatted}
       {suffix}
     </span>
   );

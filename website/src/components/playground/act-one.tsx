@@ -4,27 +4,31 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ScenarioOutput } from "./scenario-output";
 import { EvalReveal } from "./eval-reveal";
+import { TimingComparison } from "./timing-comparison";
 import { SCENARIOS } from "./playground-data";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function ActOne({ onComplete }: { onComplete: () => void }) {
+interface ActOneProps {
+  onComplete: () => void;
+  onGuess: (scenarioIdx: number, guess: "PASS" | "FAIL") => void;
+}
+
+export function ActOne({ onComplete, onGuess }: ActOneProps) {
   const reduce = useReducedMotion();
   const [activeIdx, setActiveIdx] = useState(0);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [userGuess, setUserGuess] = useState<Record<number, "PASS" | "FAIL">>({});
-  const sectionRef = useRef<HTMLDivElement>(null);
   const scenarioRef = useRef<HTMLDivElement>(null);
 
   const scenario = SCENARIOS[activeIdx];
   const isRevealed = revealed.has(activeIdx);
   const allRevealed = revealed.size === SCENARIOS.length;
 
-  // Scroll the scenario card into view with offset for sticky headers
   const scrollToScenario = useCallback(() => {
     setTimeout(() => {
       if (scenarioRef.current) {
-        const headerOffset = 120; // sticky nav + progress bar
+        const headerOffset = 120;
         const elementPosition = scenarioRef.current.getBoundingClientRect().top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: "smooth" });
       }
@@ -34,6 +38,7 @@ export function ActOne({ onComplete }: { onComplete: () => void }) {
   function handleGuess(guess: "PASS" | "FAIL") {
     setUserGuess((prev) => ({ ...prev, [activeIdx]: guess }));
     setRevealed((prev) => new Set(prev).add(activeIdx));
+    onGuess(activeIdx, guess);
   }
 
   function handleTabSwitch(idx: number) {
@@ -51,7 +56,7 @@ export function ActOne({ onComplete }: { onComplete: () => void }) {
   }
 
   return (
-    <section ref={sectionRef} className="py-10 lg:py-14">
+    <section className="py-10 lg:py-14">
       <div className="mx-auto max-w-4xl px-6 lg:px-8">
         {/* Section header */}
         <motion.div
@@ -173,6 +178,9 @@ export function ActOne({ onComplete }: { onComplete: () => void }) {
                         failedRule={scenario.failedRule}
                         lesson={scenario.lesson}
                       />
+
+                      {/* You vs Iris timing */}
+                      <TimingComparison humanSeconds={scenario.humanReviewSeconds} />
 
                       {/* Next button */}
                       <div className="mt-6 flex justify-center">

@@ -2,13 +2,40 @@
 
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { SCENARIOS } from "./playground-data";
 
 const INSTALL_CMD = "npx @iris-eval/mcp-server@latest";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function PlaygroundCta() {
+interface PlaygroundSession {
+  act1Guesses: Record<number, "PASS" | "FAIL">;
+  act1CorrectCount: number;
+  completedActs: number;
+}
+
+const MISS_CONSEQUENCES: Record<string, string> = {
+  no_pii: "In production, that miss could expose customer credit cards.",
+  no_hallucination_markers: "Hedging like that erodes user trust over time.",
+  no_injection_patterns: "That injection pattern would have leaked your system prompt.",
+  cost_under_threshold: "At scale, that cost overrun adds up to $14,100/month.",
+};
+
+function getConsequence(session: PlaygroundSession): string {
+  // Find the first scenario the user got wrong
+  for (let i = 0; i < SCENARIOS.length; i++) {
+    const guess = session.act1Guesses[i];
+    if (guess && guess !== SCENARIOS[i].verdict) {
+      return MISS_CONSEQUENCES[SCENARIOS[i].failedRule] || "";
+    }
+  }
+  return "Now imagine doing that for every agent call, automatically.";
+}
+
+export function PlaygroundCta({ session }: { session: PlaygroundSession }) {
   const reduce = useReducedMotion();
   const [copied, setCopied] = useState(false);
+  const correct = session.act1CorrectCount;
+  const hasSession = Object.keys(session.act1Guesses).length > 0;
 
   async function handleCopy() {
     try {
@@ -16,7 +43,7 @@ export function PlaygroundCta() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: select the text
+      // fallback
     }
   }
 
@@ -28,13 +55,32 @@ export function PlaygroundCta() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: EASE }}
         >
-          <h2 className="font-display text-3xl font-extrabold tracking-tight text-text-primary sm:text-4xl">
-            Ready to eval your <span className="text-gradient">agents?</span>
-          </h2>
-          <p className="mt-4 text-lg text-text-secondary">
-            Everything you just experienced is what you get when you install Iris.
-            No signup. No SDK. One command.
-          </p>
+          {/* Personalized summary */}
+          {hasSession ? (
+            <>
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-text-primary sm:text-4xl">
+                You found{" "}
+                <span className={correct === 4 ? "text-eval-pass" : "text-eval-warn"}>
+                  {correct}/4
+                </span>{" "}
+                failures. Iris found{" "}
+                <span className="text-gradient">4/4</span> in 0.012s.
+              </h2>
+              <p className="mt-4 text-lg text-text-secondary">
+                {getConsequence(session)}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-text-primary sm:text-4xl">
+                Ready to eval your <span className="text-gradient">agents?</span>
+              </h2>
+              <p className="mt-4 text-lg text-text-secondary">
+                Everything you just experienced is what you get when you install Iris.
+                No signup. No SDK. One command.
+              </p>
+            </>
+          )}
 
           {/* Install command */}
           <div className="mx-auto mt-8 max-w-lg">

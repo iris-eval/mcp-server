@@ -120,13 +120,14 @@ function AgentCard({
   );
 }
 
-export function ActTwo({ onComplete }: { onComplete: () => void }) {
+export function ActTwo({ onComplete, onChoice }: { onComplete: () => void; onChoice: (choice: "A" | "B") => void }) {
   const reduce = useReducedMotion();
   const [chosen, setChosen] = useState<"A" | "B" | null>(null);
   const [revealed, setRevealed] = useState(false);
 
   function handleChoose(side: "A" | "B") {
     setChosen(side);
+    onChoice(side);
   }
 
   function handleReveal() {
