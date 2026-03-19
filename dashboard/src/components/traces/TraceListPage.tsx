@@ -46,7 +46,7 @@ function downloadFile(content: string, fileName: string, contentType: string): v
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function TraceListPage() {
