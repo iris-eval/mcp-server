@@ -44,7 +44,7 @@ export function TimingComparison({ humanSeconds }: TimingComparisonProps) {
 
   return (
     <div className="mt-4 rounded-xl border border-border-subtle bg-bg-surface p-5">
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-12">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-12" aria-live="polite">
         {/* Human side */}
         <div className="text-center">
           <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">

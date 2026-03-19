@@ -12,9 +12,10 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 interface ActOneProps {
   onComplete: () => void;
   onGuess: (scenarioIdx: number, guess: "PASS" | "FAIL") => void;
+  track: (event: string, data?: Record<string, string | number>) => void;
 }
 
-export function ActOne({ onComplete, onGuess }: ActOneProps) {
+export function ActOne({ onComplete, onGuess, track }: ActOneProps) {
   const reduce = useReducedMotion();
   const [activeIdx, setActiveIdx] = useState(0);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
@@ -32,10 +33,11 @@ export function ActOne({ onComplete, onGuess }: ActOneProps) {
         const elementPosition = scenarioRef.current.getBoundingClientRect().top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: "smooth" });
       }
-    }, 50);
+    }, 400);
   }, []);
 
   function handleGuess(guess: "PASS" | "FAIL") {
+    if (revealed.size === 0) track("act1_first_guess", { guess });
     setUserGuess((prev) => ({ ...prev, [activeIdx]: guess }));
     setRevealed((prev) => new Set(prev).add(activeIdx));
     onGuess(activeIdx, guess);
@@ -51,6 +53,7 @@ export function ActOne({ onComplete, onGuess }: ActOneProps) {
       setActiveIdx(activeIdx + 1);
       scrollToScenario();
     } else {
+      track("act1_completed", { correct: Object.entries(userGuess).filter(([idx, g]) => g === SCENARIOS[Number(idx)].verdict).length });
       onComplete();
     }
   }
@@ -77,10 +80,12 @@ export function ActOne({ onComplete, onGuess }: ActOneProps) {
         </motion.div>
 
         {/* Scenario tabs */}
-        <div className="mt-8 flex justify-center gap-2">
+        <div className="mt-8 flex justify-center gap-2" role="tablist" aria-label="Scenario tabs">
           {SCENARIOS.map((s, i) => (
             <button
               key={s.id}
+              role="tab"
+              aria-selected={i === activeIdx}
               onClick={() => handleTabSwitch(i)}
               className={`rounded-lg px-4 py-2 text-[13px] font-medium transition-colors ${
                 i === activeIdx

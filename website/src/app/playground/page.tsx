@@ -13,14 +13,14 @@ export const metadata: Metadata = {
       "Interactive demo: spot PII leaks in agent output, compare agent quality scores, explore the eval dashboard.",
     url: "https://iris-eval.com/playground",
     type: "website",
-    images: ["/og-social-preview.png?v=3"],
+    images: ["/og-playground.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris Playground — Try Agent Eval in 60 Seconds",
     description:
       "Spot PII leaks. Compare agent scores. Explore the eval dashboard. No install.",
-    images: ["/og-social-preview.png?v=3"],
+    images: ["/og-playground.png"],
     site: "@iris_eval",
   },
 };

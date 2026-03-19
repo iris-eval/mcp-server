@@ -42,12 +42,13 @@ function getShareText(correct: number): string {
   return `I missed ${4 - correct} agent failure${4 - correct > 1 ? "s" : ""} that @iris_eval caught instantly. Try the playground:`;
 }
 
-export function ResultCard({ session }: ResultCardProps) {
+export function ResultCard({ session, track }: ResultCardProps & { track: (event: string, data?: Record<string, string | number>) => void }) {
   const reduce = useReducedMotion();
   const { act1CorrectCount } = session;
   const msg = getMessage(act1CorrectCount);
 
   function handleShare() {
+    track("result_shared", { score: act1CorrectCount });
     const text = getShareText(act1CorrectCount);
     const url = "https://iris-eval.com/playground";
     window.open(
@@ -84,7 +85,7 @@ export function ResultCard({ session }: ResultCardProps) {
             </div>
 
             {/* Score comparison */}
-            <div className="mt-8 flex items-end justify-center gap-10">
+            <div className="mt-8 flex items-end justify-center gap-6 sm:gap-10">
               <div>
                 <div className="font-display text-5xl font-extrabold text-text-primary">
                   {act1CorrectCount}/4
@@ -124,6 +125,7 @@ export function ResultCard({ session }: ResultCardProps) {
             >
               <button
                 onClick={handleShare}
+                aria-label="Share your result on X"
                 className="inline-flex items-center gap-2 rounded-xl bg-iris-600 px-6 py-3 text-[14px] font-semibold text-white transition-all hover:bg-iris-500"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

@@ -44,7 +44,7 @@ export function EvalScoreGauge({ score, size = 120, delay = 0 }: EvalScoreGaugeP
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Score: ${score.toFixed(2)}`}>
         {/* Background arc */}
         <path
           d={bgPath}
@@ -75,10 +75,10 @@ export function EvalScoreGauge({ score, size = 120, delay = 0 }: EvalScoreGaugeP
         animate={{ opacity: 1 }}
         transition={{ delay: delay + 0.6, duration: 0.3 }}
       >
-        <span className="font-mono text-2xl font-bold" style={{ color }}>
+        <span className={`font-mono font-bold ${size < 100 ? "text-base" : "text-2xl"}`} style={{ color }}>
           {score.toFixed(2)}
         </span>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+        <span className={`font-semibold uppercase tracking-wider text-text-muted ${size < 100 ? "text-[8px]" : "text-[10px]"}`}>
           Score
         </span>
       </motion.div>

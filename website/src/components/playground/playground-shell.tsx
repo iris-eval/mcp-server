@@ -8,6 +8,7 @@ import { ActThree } from "./act-three";
 import { PlaygroundCta } from "./playground-cta";
 import { SocialProofBar } from "./social-proof-bar";
 import { ResultCard } from "./result-card";
+import { usePlaygroundAnalytics } from "./use-playground-analytics";
 import { SCENARIOS, COMPARISON } from "./playground-data";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -30,14 +31,35 @@ const INITIAL_SESSION: PlaygroundSession = {
 
 export function PlaygroundShell() {
   const reduce = useReducedMotion();
+  const { track } = usePlaygroundAnalytics();
   const [visibleActs, setVisibleActs] = useState(1);
   const [session, setSession] = useState<PlaygroundSession>(INITIAL_SESSION);
+  const [previousBest, setPreviousBest] = useState<number | null>(null);
   const actTwoRef = useRef<HTMLDivElement>(null);
   const actThreeRef = useRef<HTMLDivElement>(null);
+
+  // Track playground loaded + load previous best score
+  useEffect(() => {
+    track("playground_loaded");
+    const prev = localStorage.getItem("iris-playground-best");
+    if (prev) setPreviousBest(parseInt(prev));
+  }, [track]);
+
+  // Save best score on completion
+  useEffect(() => {
+    if (session.completedActs >= 3) {
+      const prev = localStorage.getItem("iris-playground-best");
+      const prevScore = prev ? parseInt(prev) : 0;
+      if (session.act1CorrectCount > prevScore) {
+        localStorage.setItem("iris-playground-best", String(session.act1CorrectCount));
+      }
+    }
+  }, [session.completedActs, session.act1CorrectCount]);
 
   function unlockAct(act: number) {
     setVisibleActs((prev) => Math.max(prev, act));
     setSession((prev) => ({ ...prev, completedActs: Math.max(prev.completedActs, act - 1) }));
+    if (act === 3) track("act2_completed");
   }
 
   // Scroll to newly unlocked act
@@ -45,8 +67,8 @@ export function PlaygroundShell() {
     const ref = visibleActs === 2 ? actTwoRef : visibleActs === 3 ? actThreeRef : null;
     if (ref?.current) {
       const timer = setTimeout(() => {
-        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
+        ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [visibleActs]);
@@ -74,7 +96,7 @@ export function PlaygroundShell() {
   return (
     <div>
       {/* Sticky progress indicator */}
-      <div className="sticky top-[56px] z-30 border-b border-border-subtle bg-bg-base/80 backdrop-blur-xl">
+      <div className="sticky top-[56px] z-30 border-b border-border-subtle bg-bg-base/80 backdrop-blur-xl" aria-label="Playground progress">
         <div className="mx-auto flex max-w-4xl items-center justify-center gap-3 px-6 py-3">
           {[
             { num: 1, label: "Spot the Failure" },
@@ -132,6 +154,11 @@ export function PlaygroundShell() {
               Judge agent output. See how Iris scores it. Explore the eval dashboard.
               No install, no signup.
             </p>
+            {previousBest !== null && (
+              <p className="mt-3 text-[13px] text-text-accent">
+                Your previous score: {previousBest}/4. Try to beat it.
+              </p>
+            )}
           </motion.div>
         </div>
       </section>
@@ -140,7 +167,7 @@ export function PlaygroundShell() {
       <SocialProofBar />
 
       {/* Act 1 */}
-      <ActOne onComplete={() => unlockAct(2)} onGuess={onAct1Guess} />
+      <ActOne onComplete={() => unlockAct(2)} onGuess={onAct1Guess} track={track} />
 
       {/* Act 2 */}
       {visibleActs >= 2 && (
@@ -152,9 +179,9 @@ export function PlaygroundShell() {
       {/* Act 3 + Result Card + CTA */}
       {visibleActs >= 3 && (
         <div ref={actThreeRef}>
-          <ActThree />
-          <ResultCard session={session} />
-          <PlaygroundCta session={session} />
+          <ActThree track={track} />
+          <ResultCard session={session} track={track} />
+          <PlaygroundCta session={session} track={track} />
         </div>
       )}
     </div>

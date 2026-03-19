@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { EvalScoreGauge } from "./eval-score-gauge";
 import { TrendChartSvg } from "./trend-chart-svg";
@@ -61,8 +62,12 @@ function StatCard({
   );
 }
 
-export function ActThree() {
+export function ActThree({ track }: { track: (event: string, data?: Record<string, string | number>) => void }) {
   const reduce = useReducedMotion();
+
+  useEffect(() => {
+    track("act3_reached");
+  }, [track]);
 
   const safetyTotal =
     DASHBOARD_STATS.safetyViolations.pii +

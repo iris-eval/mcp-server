@@ -31,7 +31,7 @@ function getConsequence(session: PlaygroundSession): string {
   return "Now imagine doing that for every agent call, automatically.";
 }
 
-export function PlaygroundCta({ session }: { session: PlaygroundSession }) {
+export function PlaygroundCta({ session, track }: { session: PlaygroundSession; track: (event: string, data?: Record<string, string | number>) => void }) {
   const reduce = useReducedMotion();
   const [copied, setCopied] = useState(false);
   const correct = session.act1CorrectCount;
@@ -105,6 +105,7 @@ export function PlaygroundCta({ session }: { session: PlaygroundSession }) {
               href="https://github.com/iris-eval/mcp-server"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track("cta_clicked", { target: "github" })}
               className="group inline-flex items-center rounded-xl bg-iris-600 px-8 py-4 text-[15px] font-semibold text-white shadow-lg shadow-iris-600/20 transition-all hover:bg-iris-500 hover:shadow-iris-500/30"
             >
               Star on GitHub
@@ -120,6 +121,7 @@ export function PlaygroundCta({ session }: { session: PlaygroundSession }) {
             </a>
             <a
               href="/#pricing"
+              onClick={() => track("cta_clicked", { target: "pricing" })}
               className="inline-flex items-center rounded-xl border border-border-default px-8 py-4 text-[15px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary"
             >
               Want managed hosting?
