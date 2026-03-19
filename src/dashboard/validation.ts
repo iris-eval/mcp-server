@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const MAX_EXPORT_LIMIT = 1000;
+
 export const traceQuerySchema = z.object({
   agent_name: z.string().optional(),
   framework: z.string().optional(),
@@ -16,6 +18,7 @@ export const exportTraceQuerySchema = z.object({
   framework: z.string().optional(),
   since: z.string().optional(),
   until: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(MAX_EXPORT_LIMIT).default(MAX_EXPORT_LIMIT),
   sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
   format: z.enum(['csv', 'json']).default('json'),
@@ -35,6 +38,7 @@ export const exportEvalQuerySchema = z.object({
   passed: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   since: z.string().optional(),
   until: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(MAX_EXPORT_LIMIT).default(MAX_EXPORT_LIMIT),
   format: z.enum(['csv', 'json']).default('json'),
 });
 

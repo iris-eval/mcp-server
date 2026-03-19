@@ -25,7 +25,7 @@ export function EvalListPage() {
   }, [filters, offset]);
 
   const filterParams = useMemo(() => {
-    const p: Record<string, string> = {};
+    const p: Record<string, string> = { limit: '1000' };
     if (filters.eval_type) p.eval_type = filters.eval_type;
     if (filters.passed) p.passed = filters.passed;
     if (filters.since) p.since = new Date(filters.since).toISOString();

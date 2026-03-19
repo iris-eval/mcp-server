@@ -6,6 +6,7 @@ interface ExportButtonProps {
 
 export function ExportButton({ onExport }: ExportButtonProps) {
   const [open, setOpen] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<'csv' | 'json' | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,7 +49,6 @@ export function ExportButton({ onExport }: ExportButtonProps) {
     display: 'block',
     width: '100%',
     padding: 'var(--space-2) var(--space-3)',
-    background: 'none',
     border: 'none',
     color: 'var(--text-primary)',
     fontSize: 'var(--font-size-sm)',
@@ -64,18 +64,18 @@ export function ExportButton({ onExport }: ExportButtonProps) {
       {open && (
         <div style={menuStyle}>
           <button
-            style={menuItemStyle}
+            style={{ ...menuItemStyle, background: hoveredItem === 'csv' ? 'var(--bg-tertiary)' : 'none' }}
             onClick={() => { onExport('csv'); setOpen(false); }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-tertiary)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+            onMouseEnter={() => setHoveredItem('csv')}
+            onMouseLeave={() => setHoveredItem(null)}
           >
             Export CSV
           </button>
           <button
-            style={menuItemStyle}
+            style={{ ...menuItemStyle, background: hoveredItem === 'json' ? 'var(--bg-tertiary)' : 'none' }}
             onClick={() => { onExport('json'); setOpen(false); }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-tertiary)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+            onMouseEnter={() => setHoveredItem('json')}
+            onMouseLeave={() => setHoveredItem(null)}
           >
             Export JSON
           </button>

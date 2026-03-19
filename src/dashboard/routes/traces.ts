@@ -1,25 +1,7 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
-import type { Trace } from '../../types/trace.js';
 import { traceQuerySchema, exportTraceQuerySchema } from '../validation.js';
-
-function tracesToCsv(traces: Trace[]): string {
-  const headers = ['trace_id', 'agent_name', 'framework', 'latency_ms', 'cost_usd', 'tool_calls_count', 'timestamp'];
-  const escape = (v: unknown): string => {
-    const s = v === null || v === undefined ? '' : String(v);
-    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const rows = traces.map((t) => [
-    t.trace_id,
-    t.agent_name,
-    t.framework ?? '',
-    t.latency_ms ?? '',
-    t.cost_usd ?? '',
-    t.tool_calls ? t.tool_calls.length : 0,
-    t.timestamp,
-  ].map(escape).join(','));
-  return [headers.join(','), ...rows].join('\n');
-}
+import { toCsv } from './csv.js';
 
 export function registerTraceRoutes(router: Router, storage: IStorageAdapter): void {
   router.get('/traces/export', async (req, res) => {
@@ -31,7 +13,7 @@ export function registerTraceRoutes(router: Router, storage: IStorageAdapter): v
         since: query.since,
         until: query.until,
       },
-      limit: 10000,
+      limit: query.limit,
       offset: 0,
       sort_by: query.sort_by,
       sort_order: query.sort_order,
@@ -41,7 +23,18 @@ export function registerTraceRoutes(router: Router, storage: IStorageAdapter): v
     if (query.format === 'csv') {
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(tracesToCsv(result.traces));
+      res.send(toCsv(
+        ['trace_id', 'agent_name', 'framework', 'latency_ms', 'cost_usd', 'tool_calls_count', 'timestamp'],
+        result.traces.map((t) => [
+          t.trace_id,
+          t.agent_name,
+          t.framework ?? '',
+          t.latency_ms ?? '',
+          t.cost_usd ?? '',
+          t.tool_calls ? t.tool_calls.length : 0,
+          t.timestamp,
+        ]),
+      ));
     } else {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
