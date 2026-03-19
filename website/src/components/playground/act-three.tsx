@@ -63,7 +63,7 @@ export function ActThree() {
     DASHBOARD_STATS.safetyViolations.hallucination;
 
   return (
-    <section className="border-t border-border-subtle py-20 lg:py-28">
+    <section className="border-t border-border-subtle py-10 lg:py-14">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
         {/* Section header */}
         <motion.div
