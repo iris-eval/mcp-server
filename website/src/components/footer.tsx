@@ -58,6 +58,7 @@ export function Footer(): React.ReactElement {
               <ul className="mt-4 space-y-3 text-[13px]">
                 {[
                   { label: "Features", href: "/#product" },
+                  { label: "Playground", href: "/playground" },
                   { label: "Pricing", href: "/#pricing" },
                   { label: "Blog", href: "/blog" },
                   { label: "Quick Start", href: "/#open-source" },
