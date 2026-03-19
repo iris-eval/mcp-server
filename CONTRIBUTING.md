@@ -1,5 +1,15 @@
 # Contributing to Iris
 
+Thank you for your interest in contributing to Iris. We welcome contributions that improve the project for everyone.
+
+## Contributor License Agreement
+
+By submitting a pull request, you agree to our [Contributor License Agreement](.github/CLA.md). This is required before any contribution can be reviewed or merged. The CLA ensures that the project can be maintained, distributed, and — if necessary — relicensed in the future.
+
+## Security
+
+If you discover a security vulnerability, **do not open a public issue**. Please email security@iris-eval.com instead. See [SECURITY.md](SECURITY.md) for details.
+
 ## Development Setup
 
 ```bash
