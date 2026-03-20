@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-03-20
+
+### Security
+- Fixed Helmet CSP — replaced `contentSecurityPolicy: false` with restrictive policy on HTTP transport
+- Added rate limiting to dashboard static file serving routes
+- Upgraded better-sqlite3 to 12.8.0 (bundled SQLite 3.51.3 — CVE-2025-6965)
+
+### Added
+- Post-install message with playground link, docs URL, and star prompt
+- Eval-first dashboard layout with score gauge, trend charts, and safety violation cards
+- API reference and architecture guide (`docs/`)
+- Custom eval rules guide and HTTP transport examples
+- SECURITY.md, CLA, CODEOWNERS, branch protection
+- Dependabot with grouped weekly updates
+- CodeQL security scanning (push, PR, weekly)
+- `npm audit --audit-level=high` in CI
+- `check-product-claims.sh` in CI — validates marketing claims match source code
+- Automated Dev.to blog cross-posting via GitHub Actions
+
+### Changed
+- Upgraded better-sqlite3 11.10.0 → 12.8.0
+- Upgraded typescript-eslint 8.57.0 → 8.57.1
+- Upgraded flatted 3.4.1 → 3.4.2
+- Upgraded GitHub Actions: checkout v6, setup-node v6, Docker actions v4/v7
+- README restructured with Docker badge, refined CTAs, and agent eval positioning
+
+### Fixed
+- Package description updated to "The agent eval standard for MCP"
+
 ## [0.1.3] - 2026-03-15
 
 ### Changed
