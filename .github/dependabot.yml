@@ -4,38 +4,83 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
     commit-message:
       prefix: "deps"
+    groups:
+      linting:
+        patterns:
+          - "@typescript-eslint/*"
+          - "eslint*"
+          - "prettier"
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      types:
+        patterns:
+          - "@types/*"
 
   - package-ecosystem: "npm"
     directory: "/website"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
     commit-message:
       prefix: "deps(website)"
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+      types:
+        patterns:
+          - "@types/*"
 
   - package-ecosystem: "npm"
     directory: "/dashboard"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
     commit-message:
       prefix: "deps(dashboard)"
+    groups:
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+      types:
+        patterns:
+          - "@types/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     labels:
       - "dependencies"
       - "ci"
     commit-message:
       prefix: "ci"
+    groups:
+      docker:
+        patterns:
+          - "docker/*"
+      github:
+        patterns:
+          - "actions/*"

@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: bash scripts/check-version.sh
       - run: bash scripts/check-product-claims.sh
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
 
