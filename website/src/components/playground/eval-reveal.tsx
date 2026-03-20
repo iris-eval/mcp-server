@@ -16,7 +16,7 @@ interface EvalRevealProps {
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 function ruleDisplayName(name: string): string {
-  return name.replace(/_/g, " ").replace(/\bno\b/g, "no").replace(/\bpii\b/gi, "PII");
+  return name.replace(/_/g, " ").replace(/\bpii\b/gi, "PII");
 }
 
 export function EvalReveal({ score, verdict, rules, failedRule, lesson, delay = 0 }: EvalRevealProps) {

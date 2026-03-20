@@ -21,8 +21,15 @@ export async function createHttpTransport(
 ): Promise<HttpTransportResult> {
   const app = express();
 
-  // Security headers (no CSP — API only, no HTML)
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // Security headers — API-only server, restrictive CSP
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+  }));
 
   // Body parser with size limit
   app.use(express.json({ limit: config.security.requestSizeLimit }));

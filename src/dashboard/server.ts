@@ -62,10 +62,11 @@ export function createDashboardServer(
   registerHealthRoutes(router, storage);
   app.use('/api/v1', router);
 
-  // Serve static dashboard files if built
+  // Serve static dashboard files if built (rate limited)
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const staticDir = join(currentDir, '..', '..', 'dist', 'dashboard');
   if (existsSync(staticDir)) {
+    app.use(createApiRateLimiter(config));
     app.use(express.static(staticDir));
     app.get('/{*path}', (_req, res) => {
       res.sendFile(join(staticDir, 'index.html'));

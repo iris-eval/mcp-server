@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
@@ -92,7 +93,7 @@ export default async function BlogPost({
 
         {/* Content */}
         <div className="prose-iris">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
             {post.content}
           </ReactMarkdown>
         </div>

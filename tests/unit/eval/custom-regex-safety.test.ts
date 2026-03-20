@@ -17,7 +17,8 @@ describe('custom regex safety', () => {
     const rule = createCustomRule({
       name: 'test',
       type: 'regex_match',
-      config: { pattern: '(a+)+$' },
+      // lgtm[js/redos] — intentionally testing ReDoS detection
+      config: { pattern: '(a+)+$' }, // codeql-suppress js/redos
     });
     const result = rule.evaluate({ output: 'aaaaaaaaaaaaaaa!' });
     expect(result.passed).toBe(false);
@@ -61,7 +62,8 @@ describe('custom regex safety', () => {
     const rule = createCustomRule({
       name: 'test',
       type: 'regex_no_match',
-      config: { pattern: '(a+)+$' },
+      // lgtm[js/redos] — intentionally testing ReDoS detection
+      config: { pattern: '(a+)+$' }, // codeql-suppress js/redos
     });
     const result = rule.evaluate({ output: 'test' });
     expect(result.passed).toBe(false);
