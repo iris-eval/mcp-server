@@ -57,6 +57,17 @@ for (const file of FILES) {
   }
 
   content.version = VERSION;
+
+  // Also sync nested package versions (e.g., server.json packages[].version)
+  if (Array.isArray(content.packages)) {
+    for (const pkg of content.packages) {
+      if (pkg.version && pkg.version !== VERSION) {
+        console.log(`  SYNC: ${file.path} packages[].version (${pkg.version} → ${VERSION})`);
+        pkg.version = VERSION;
+      }
+    }
+  }
+
   writeFileSync(file.path, JSON.stringify(content, null, 2) + "\n");
   console.log(`  SYNC: ${file.path} (${current} → ${VERSION})`);
   updated++;
