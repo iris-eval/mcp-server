@@ -25,7 +25,8 @@
     "version:sync": "node scripts/sync-versions.mjs",
     "clean": "rm -rf dist coverage",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "tsx scripts/demo.ts",
+    "postinstall": "echo \"\\n  ✅ Iris installed — the agent eval standard for MCP\\n  📖 Docs: https://iris-eval.com\\n  🎯 Try the playground: https://iris-eval.com/playground\\n  ⭐ Star us: https://github.com/iris-eval/mcp-server\\n\""
   },
   "keywords": [
     "mcp",
