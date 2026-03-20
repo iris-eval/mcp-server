@@ -67,9 +67,11 @@ function extractDescription(content: string): string {
 function filenameToSlug(filename: string): string {
   // 003-why-every-mcp-agent-needs-an-independent-observer.md → independent-observer
   // Use the full descriptive part after the number prefix
+  // Sanitize to URL-safe characters only (alphanumeric, hyphens)
   return filename
     .replace(/^\d+-/, "")
-    .replace(/\.md$/, "");
+    .replace(/\.md$/, "")
+    .replace(/[^a-zA-Z0-9-]/g, "");
 }
 
 export function getAllPosts(): BlogPost[] {
