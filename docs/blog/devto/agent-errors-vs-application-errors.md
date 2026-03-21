@@ -2,7 +2,7 @@
 title: "Agent Errors vs Application Errors: Why Your Error Tracker Can't See AI Failures"
 published: false
 description: "I have spent most of my career trusting error trackers. A TypeError fires, Sentry catches it, I get a Slack notification with a stack trace and breadcrumbs..."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, testing, ai, programming
 canonical_url: https://iris-eval.com/blog/agent-errors-vs-application-errors
 ---
 

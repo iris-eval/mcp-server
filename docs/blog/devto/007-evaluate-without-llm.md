@@ -2,7 +2,7 @@
 title: "How to Evaluate AI Agent Output Without Calling Another LLM"
 published: false
 description: "Most eval frameworks use LLM-as-judge. Here's how to run deterministic eval rules on MCP agent output in under a millisecond — no LLM, no SDK, no code changes."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, testing, ai, programming
 canonical_url: https://iris-eval.com/blog/how-to-evaluate-agent-output-without-llm
 ---
 

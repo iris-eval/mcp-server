@@ -2,7 +2,7 @@
 title: "MCP Meets OpenTelemetry: Bridging Agent Observability and Infrastructure Monitoring"
 published: false
 description: "There are two worlds in production observability right now, and they do not talk to each other...."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, architecture, observability, webdev
 canonical_url: https://iris-eval.com/blog/mcp-meets-opentelemetry
 ---
 

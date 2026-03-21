@@ -2,7 +2,7 @@
 title: "Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge"
 published: false
 description: "There is a default assumption in the agent eval space right now: if you want to evaluate agent output, you need an LLM to judge it. Feed the output to GPT-..."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, testing, ai, programming
 canonical_url: https://iris-eval.com/blog/heuristic-vs-semantic-eval
 ---
 

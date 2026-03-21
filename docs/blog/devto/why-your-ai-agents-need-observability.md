@@ -2,7 +2,7 @@
 title: "Why Your AI Agents Need Observability"
 published: false
 description: "You shipped an AI agent. It works... sometimes. A user reports a wrong answer. Another says it took 40 seconds. A third notices it leaked an email address ..."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, architecture, observability, webdev
 canonical_url: https://iris-eval.com/blog/why-your-ai-agents-need-observability
 ---
 

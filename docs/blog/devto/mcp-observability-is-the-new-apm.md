@@ -2,7 +2,7 @@
 title: "MCP Observability is the New APM"
 published: false
 description: "In 2010, application performance monitoring was a nice-to-have. Engineering teams shipped to production, watched their server logs, and hoped for the best...."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, architecture, observability, webdev
 canonical_url: https://iris-eval.com/blog/mcp-observability-is-the-new-apm
 ---
 

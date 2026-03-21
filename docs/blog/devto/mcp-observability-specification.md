@@ -2,7 +2,7 @@
 title: "Toward an MCP Observability Specification"
 published: false
 description: "The Model Context Protocol defines how agents discover and invoke tools. It defines resources, prompts, and transport mechanisms. It standardizes the inter..."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, architecture, observability, webdev
 canonical_url: https://iris-eval.com/blog/mcp-observability-specification
 ---
 

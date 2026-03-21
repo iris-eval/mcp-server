@@ -2,7 +2,7 @@
 title: "The Cost of Invisible Agents: What $0.47 Per Query Looks Like at Scale"
 published: false
 description: "Last month I got a message from a developer running a research agent in production. His APM dashboard looked fine. HTTP 200s across the board. P99 latency ..."
-tags: mcp, aiagents, observability, opensource
+tags: mcp, devops, productivity, opensource
 canonical_url: https://iris-eval.com/blog/the-cost-of-invisible-agents
 ---
 
