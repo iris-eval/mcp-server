@@ -7,6 +7,15 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 
+/** Sanitize a string for safe inclusion in JSON-LD structured data. */
+function sanitizeText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .slice(0, 500);
+}
+
 export function generateStaticParams(): { slug: string }[] {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
@@ -54,29 +63,29 @@ export default async function BlogPost({
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const jsonLd = {
+  const jsonLdString = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    headline: post.title,
-    datePublished: post.date,
+    headline: sanitizeText(post.title),
+    datePublished: sanitizeText(post.date),
     author: {
       "@type": "Person",
-      name: post.author,
+      name: sanitizeText(post.author),
     },
     publisher: {
       "@type": "Organization",
       name: "Iris",
       url: "https://iris-eval.com",
     },
-    description: post.description,
-    mainEntityOfPage: `https://iris-eval.com/blog/${slug}`,
-  };
+    description: sanitizeText(post.description),
+    mainEntityOfPage: `https://iris-eval.com/blog/${encodeURIComponent(slug)}`,
+  });
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString }}
       />
       <Nav />
 
