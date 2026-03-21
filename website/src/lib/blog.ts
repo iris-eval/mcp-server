@@ -10,6 +10,7 @@ export interface BlogPost {
   description: string;
   content: string;
   filename: string;
+  published: boolean;
 }
 
 const BLOG_DIR = join(process.cwd(), "..", "docs", "blog");
@@ -80,21 +81,31 @@ export function getAllPosts(): BlogPost[] {
     .sort()
     .reverse();
 
-  return files.map((filename) => {
-    const raw = readFileSync(join(BLOG_DIR, filename), "utf8");
-    const { meta, content } = parseFrontmatter(raw);
+  const now = new Date();
 
-    return {
-      slug: filenameToSlug(filename),
-      title: (meta.title as string) || filename,
-      date: (meta.date as string) || "2026-03-17",
-      author: (meta.author as string) || "Ian Parent",
-      tags: (meta.tags as string[]) || [],
-      description: (meta.description as string) || extractDescription(content),
-      content,
-      filename,
-    };
-  });
+  return files
+    .map((filename) => {
+      const raw = readFileSync(join(BLOG_DIR, filename), "utf8");
+      const { meta, content } = parseFrontmatter(raw);
+
+      return {
+        slug: filenameToSlug(filename),
+        title: (meta.title as string) || filename,
+        date: (meta.date as string) || "2026-03-17",
+        author: (meta.author as string) || "Ian Parent",
+        tags: (meta.tags as string[]) || [],
+        description: (meta.description as string) || extractDescription(content),
+        content,
+        filename,
+        published: meta.published !== false,
+      };
+    })
+    .filter((post) => {
+      // Hide posts with published: false or future dates
+      if (!post.published) return false;
+      const postDate = new Date(post.date);
+      return postDate <= now;
+    });
 }
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
