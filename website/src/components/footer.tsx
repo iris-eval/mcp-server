@@ -114,6 +114,8 @@ export function Footer(): React.ReactElement {
             <a href="/privacy" className="transition-colors hover:text-text-secondary">Privacy</a>
             <a href="/terms" className="transition-colors hover:text-text-secondary">Terms</a>
             <a href="mailto:hello@iris-eval.com" className="transition-colors hover:text-text-secondary">hello@iris-eval.com</a>
+            <span className="text-text-muted/60">·</span>
+            <span className="text-text-muted/60">Blog content is researched with AI assistance and reviewed for accuracy.</span>
           </div>
         </div>
       </div>
