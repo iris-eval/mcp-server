@@ -1,6 +1,7 @@
 ---
 title: "How to Evaluate AI Agent Output Without Calling Another LLM"
-date: 2026-03-17
+description: "A step-by-step tutorial for evaluating AI agent output using deterministic heuristic rules — no LLM-as-Judge, no added cost, sub-millisecond."
+date: 2026-03-16
 author: Ian Parent
 tags: [eval, agents, mcp, tutorial, heuristics, observability]
 ---
@@ -15,7 +16,7 @@ First, it is slow and expensive. Every evaluation requires an LLM inference call
 
 Second, it is recursive. Who evaluates the evaluator? If GPT-4o judges your agent's output and says it looks good, what happens when GPT-4o is wrong? You could add a third LLM to check the second one, but that way lies madness and an exponential cloud bill.
 
-There is a better approach for a large class of eval checks. You do not need an LLM to tell you whether an output contains a Social Security number. You do not need an LLM to check if the response is empty. You do not need an LLM to verify that the output mentions at least some of the keywords from the input. These are pattern-matching problems, and pattern matching is what regex and heuristics do in under a millisecond.
+There is a better approach for a large class of eval checks, one we explored in depth in [Heuristic vs Semantic Eval](/blog/heuristic-vs-semantic-eval). You do not need an LLM to tell you whether an output contains a Social Security number. You do not need an LLM to check if the response is empty. You do not need an LLM to verify that the output mentions at least some of the keywords from the input. These are pattern-matching problems, and pattern matching is what regex and heuristics do in under a millisecond.
 
 This post walks through how to set up deterministic eval rules for your MCP agents using Iris. Zero to first evaluated trace in under a minute. No SDK. No code changes. No LLM-as-judge.
 
@@ -54,7 +55,7 @@ Once Iris is in the MCP config, your agent has access to three tools:
 - **`evaluate_output`** — Run deterministic eval rules against an output and get pass/fail scores.
 - **`get_traces`** — Query stored traces by agent name, time range, score, or cost.
 
-The agent discovers these the same way it discovers any other MCP tool. The difference is that Iris runs in its own process with its own SQLite database. The agent does not grade its own work. The observer does.
+The agent discovers these the same way it discovers any other MCP tool. The difference is that Iris runs in its own process with its own SQLite database. The agent does not grade its own work. The observer does — a principle we explain in [Why Every MCP Agent Needs an Independent Observer](/blog/why-every-mcp-agent-needs-an-independent-observer).
 
 ## Log a Trace
 
@@ -233,7 +234,7 @@ Here is the full sequence. It takes under a minute.
 
 No SDK to install. No code to change. No functions to wrap. The protocol handles discovery. The eval rules handle quality checks. The dashboard handles visibility.
 
-That is what protocol-native observability looks like in practice.
+That is what protocol-native observability looks like in practice. Try it now in the [Iris Playground](/playground) to see eval rules running on sample agent outputs.
 
 ---
 

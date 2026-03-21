@@ -1,6 +1,7 @@
 ---
 title: "Toward an MCP Observability Specification"
-date: 2026-03-17
+description: "A proposal for standardizing MCP observability with trace schemas, eval interfaces, and cost metadata to prevent ecosystem fragmentation."
+date: 2026-03-16
 author: Ian Parent
 tags: [mcp, observability, specification, protocol, eval, traces, interoperability]
 ---
@@ -84,7 +85,7 @@ The spec should define a minimal trace object that any MCP-compatible observabil
 }
 ```
 
-This is not a new idea. OpenTelemetry solved this for distributed services a decade ago. The MCP trace schema does not need to reinvent span trees or trace context propagation. It needs to define what a trace means in the context of an agent making tool calls through MCP, with the fields that matter for agent-specific concerns: token usage, cost, model identity, and the relationship between agent reasoning and tool invocations.
+This is not a new idea. OpenTelemetry solved this for distributed services a decade ago, and as we explore in [MCP Meets OpenTelemetry](/blog/mcp-meets-opentelemetry), the structural mapping between agent traces and OTel spans is surprisingly natural. The MCP trace schema does not need to reinvent span trees or trace context propagation. It needs to define what a trace means in the context of an agent making tool calls through MCP, with the fields that matter for agent-specific concerns: token usage, cost, model identity, and the relationship between agent reasoning and tool invocations.
 
 The `metadata` field on both the trace and individual spans allows tools to extend the schema without breaking interoperability. The core fields are the contract. Everything else is optional enrichment.
 
@@ -137,7 +138,7 @@ The spec should define a standard tool interface for evaluation:
 }
 ```
 
-The key insight: the eval interface standardizes the contract, not the implementation. One tool might use heuristic regex matching. Another might use LLM-as-judge. A third might call out to a custom model. The spec defines what goes in and what comes out. How the scoring happens is the implementer's concern.
+The key insight: the eval interface standardizes the contract, not the implementation. One tool might use [heuristic regex matching](/blog/heuristic-vs-semantic-eval). Another might use LLM-as-judge. A third might call out to a custom model. The spec defines what goes in and what comes out. How the scoring happens is the implementer's concern.
 
 This means eval results from different tools are structurally comparable. A `safety` score of 0.85 from tool A and a `safety` score of 0.72 from tool B use the same schema, even if their internal methods differ. You can aggregate them, trend them, alert on them — without writing adapters.
 
@@ -214,6 +215,6 @@ What I am asking for:
 
 If you are building MCP tools, agent frameworks, or observability infrastructure, I want to hear what you have run into. What schema decisions have you made? What interoperability problems have you hit? What would a standard need to include for you to adopt it?
 
-The conversation is happening on [GitHub Discussions](https://github.com/iris-eval/iris/discussions) and in the [MCP Discord](https://discord.gg/mcp). Open an issue, start a thread, or reach out directly. The spec will be better if it reflects the experience of everyone building in this space, not just one team's perspective.
+Without standardization, the fragmented ecosystem will make it harder to achieve the [eval coverage](/blog/eval-coverage-the-metric-your-agents-are-missing) that production agents need. The conversation is happening on [GitHub Discussions](https://github.com/iris-eval/iris/discussions) and in the [MCP Discord](https://discord.gg/mcp). Open an issue, start a thread, or reach out directly. The spec will be better if it reflects the experience of everyone building in this space, not just one team's perspective.
 
 Observability that is protocol-native starts with a protocol that takes observability seriously. This is a proposal that it should.

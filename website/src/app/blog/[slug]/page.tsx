@@ -23,6 +23,9 @@ export async function generateMetadata({
   return {
     title: `${post.title} — Iris`,
     description: post.description,
+    alternates: {
+      canonical: `https://iris-eval.com/blog/${slug}`,
+    },
     openGraph: {
       title: post.title,
       description: post.description,
@@ -51,8 +54,30 @@ export default async function BlogPost({
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    datePublished: post.date,
+    author: {
+      "@type": "Person",
+      name: post.author,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Iris",
+      url: "https://iris-eval.com",
+    },
+    description: post.description,
+    mainEntityOfPage: `https://iris-eval.com/blog/${slug}`,
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav />
 
       <article className="mx-auto max-w-3xl px-6 pb-16 pt-32 lg:pt-40">

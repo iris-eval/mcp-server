@@ -90,7 +90,7 @@ export function getAllPosts(): BlogPost[] {
       date: (meta.date as string) || "2026-03-17",
       author: (meta.author as string) || "Ian Parent",
       tags: (meta.tags as string[]) || [],
-      description: extractDescription(content),
+      description: (meta.description as string) || extractDescription(content),
       content,
       filename,
     };

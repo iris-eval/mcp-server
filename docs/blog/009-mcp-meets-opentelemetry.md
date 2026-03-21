@@ -1,5 +1,6 @@
 ---
 title: "MCP Meets OpenTelemetry: Bridging Agent Observability and Infrastructure Monitoring"
+description: "How Iris bridges agent observability and infrastructure monitoring by exporting MCP traces as OpenTelemetry spans to Datadog and Grafana."
 date: 2026-03-17
 author: Ian Parent
 tags: [opentelemetry, observability, mcp, infrastructure, datadog, grafana, agents, tracing]
@@ -23,7 +24,7 @@ An agent starts producing bad outputs. The agent team opens their observability 
 
 Meanwhile, the infra team sees a different picture. Their Datadog dashboard shows that the vector database latency crossed 500ms at 2:45 PM. The retrieval endpoint started timing out. The connection pool hit its limit.
 
-Neither team has the full picture. The agent team is debugging a hallucination. The infra team is debugging a latency spike. The actual root cause -- degraded retrieval causing the agent to fall back on parametric knowledge instead of retrieved context -- is only visible if you can correlate both signals.
+Neither team has the full picture. The agent team is debugging a hallucination. The infra team is debugging a latency spike. This is the [independent observer problem](/blog/why-every-mcp-agent-needs-an-independent-observer) applied to cross-team visibility. The actual root cause -- degraded retrieval causing the agent to fall back on parametric knowledge instead of retrieved context -- is only visible if you can correlate both signals.
 
 This is not a tooling problem. It is an architectural one. Agent traces and infrastructure traces live in different systems with different schemas, different time bases, and no shared identifiers. There is no way to click from a hallucination in the agent dashboard to the infrastructure event that caused it.
 
@@ -110,7 +111,7 @@ The structural mapping is nearly one-to-one:
 | `attributes` | `attributes` | Key-value pairs. Iris uses JSON objects, OTel uses typed key-value arrays. |
 | `events` | `events` | Timestamped events with attributes. Same semantics, different serialization. |
 
-The only real gap is span kind. OTel does not have native `LLM` or `TOOL` span kinds. The emerging [Semantic Conventions for LLM](https://opentelemetry.io/docs/specs/semconv/gen-ai/) handle this by using `INTERNAL` as the span kind and putting the semantic type in attributes like `gen_ai.operation.name`. Iris can adopt the same convention at export time without losing information.
+This structural compatibility is why we proposed standard trace schemas in [Toward an MCP Observability Specification](/blog/toward-an-mcp-observability-specification). The only real gap is span kind. OTel does not have native `LLM` or `TOOL` span kinds. The emerging [Semantic Conventions for LLM](https://opentelemetry.io/docs/specs/semconv/gen-ai/) handle this by using `INTERNAL` as the span kind and putting the semantic type in attributes like `gen_ai.operation.name`. Iris can adopt the same convention at export time without losing information.
 
 ## The Export Path
 
@@ -138,7 +139,7 @@ Once agent traces live alongside infrastructure traces, you can answer questions
 
 **Cost attribution to infrastructure.** Your agent's cost per execution tripled last Tuesday. Was it a prompt change? No -- the Iris trace shows the same token count. The infrastructure traces show the retrieval endpoint started returning larger payloads after an index rebuild. More context in, more tokens out, higher cost. You would never find this in the agent dashboard alone.
 
-**SLA monitoring that includes quality.** Your infrastructure SLA says p99 latency under 2 seconds. Your agent SLA should also say eval score above 0.8. With both in the same system, you can build a single SLA dashboard that covers latency, availability, and output quality. When the SLA is breached, the alert includes both the infrastructure metric and the eval score.
+**SLA monitoring that includes quality.** Your infrastructure SLA says p99 latency under 2 seconds. Your agent SLA should also say eval score above 0.8, a metric that naturally degrades over time through what we call [eval drift](/blog/eval-drift-the-silent-quality-killer). With both in the same system, you can build a single SLA dashboard that covers latency, availability, and output quality. When the SLA is breached, the alert includes both the infrastructure metric and the eval score.
 
 **Anomaly correlation.** Your anomaly detection system flags a cluster of agent failures at 3 AM. The infrastructure traces show a certificate rotation happened at 2:58 AM. The agent traces show tool calls to an external API started failing at 3:01 AM. The connection is immediate when both signal types are in the same backend.
 

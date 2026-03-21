@@ -1,6 +1,7 @@
 ---
 title: "Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge"
-date: 2026-03-17
+description: "When sub-millisecond heuristic eval rules outperform LLM-as-Judge for PII detection, prompt injection, and cost threshold enforcement."
+date: 2026-03-15
 author: Ian Parent
 tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
 ---
@@ -49,7 +50,7 @@ const INJECTION_PATTERNS = [
 
 **Blocklist enforcement.** You have a list of phrases that should never appear in agent output. Checking whether a string contains a substring is not a job for an LLM.
 
-Every one of these evaluations is better served by a heuristic rule: faster, cheaper, deterministic, and easier to debug when something fails.
+Every one of these evaluations is better served by a heuristic rule: faster, cheaper, deterministic, and easier to debug when something fails. For a hands-on walkthrough, see [How to Evaluate Agent Output Without Calling Another LLM](/blog/how-to-evaluate-agent-output-without-llm).
 
 ## When Semantic Evaluation Wins
 
@@ -162,7 +163,9 @@ LLM-as-Judge is a powerful technique. I am building it into Iris because there a
 
 If you can express the check as a pattern, a threshold, or a string comparison, use a heuristic rule. Save the LLM for the evaluations that actually need one.
 
-Iris is open-source and MIT licensed. The 12 built-in rules are ready to use today. Add it to your MCP config and start evaluating your agent output in <1ms.
+The question of how to standardize these evaluation interfaces across the ecosystem is one we explore in [Toward an MCP Observability Specification](/blog/toward-an-mcp-observability-specification).
+
+Iris is open-source and MIT licensed. The 12 built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
 
 ```bash
 npx @iris-eval/mcp-server --dashboard

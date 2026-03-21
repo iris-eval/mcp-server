@@ -1,5 +1,6 @@
 ---
 title: "The State of MCP Agent Observability (March 2026)"
+description: "A comprehensive analysis of the MCP agent observability landscape in 2026, covering market trends, security gaps, and eval approaches."
 date: 2026-03-14
 author: Ian Parent
 tags: [observability, mcp, agents, report, evaluation, cost-tracking]
@@ -114,7 +115,7 @@ The practical reality for most teams today:
 | Quality assessment | Limited (keyword overlap) | Strong |
 | Hallucination detection | Markers only ("As an AI...") | Contextual analysis |
 
-Most production systems will need both. Heuristic rules as the always-on safety net — catching PII, injection, cost overruns — with semantic evaluation for periodic quality audits.
+Most production systems will need both. Heuristic rules as the always-on safety net — catching PII, injection, cost overruns — with semantic evaluation for periodic quality audits. We break down this tradeoff in detail in [Heuristic vs Semantic Eval](/blog/heuristic-vs-semantic-eval).
 
 ## 7. OpenTelemetry GenAI Semantic Conventions: The Standard Arrives
 
@@ -122,7 +123,7 @@ A prediction from earlier versions of this report has materialized: **OpenTeleme
 
 This matters because OpenTelemetry is the lingua franca of infrastructure observability. GenAI semantic conventions mean agent traces can flow through the same pipelines, dashboards, and alerting systems that teams already use for their HTTP services and databases. The "two worlds" problem — infrastructure observability in one tool, agent observability in another — has a standards-based path to convergence.
 
-Arize Phoenix and ContextForge are already building on these conventions. Any observability tool that doesn't align with OTel's GenAI semantics is building on a proprietary foundation that will require migration later.
+Arize Phoenix and ContextForge are already building on these conventions. Any observability tool that doesn't align with OTel's GenAI semantics is building on a proprietary foundation that will require migration later. We explore this convergence further in [MCP Meets OpenTelemetry](/blog/mcp-meets-opentelemetry).
 
 Iris's span structure has been OpenTelemetry-compatible since v0.1.0. As the GenAI conventions mature and tooling catches up, traces logged through Iris will integrate with the broader OTel ecosystem without transformation.
 
@@ -153,7 +154,7 @@ This doesn't mean every agent needs enterprise compliance tooling today. But it 
 **Near-term (2026):**
 - Protocol-native observability becomes a recognized category. More tools will build on MCP directly rather than as SDK wrappers.
 - Cost tracking becomes table stakes. Teams will demand per-execution cost visibility before approving agent deployments.
-- Heuristic eval adoption accelerates as teams realize they need automated safety nets, not just manual review.
+- Heuristic eval adoption accelerates as teams realize they need automated safety nets, not just manual review. The cost of not evaluating — what we call [the eval tax](/blog/the-ai-eval-tax) — is becoming impossible to ignore.
 - Security tooling catches up to protocol adoption. The 25% of MCP servers with no auth will shrink as managed hosting (Cloudflare, etc.) and security-first server implementations become the default.
 - MCP Apps and elicitation expand the observability surface. Tools that only trace request/response pairs will miss the interactive dimension.
 

@@ -1,6 +1,7 @@
 ---
 title: "The Cost of Invisible Agents: What $0.47 Per Query Looks Like at Scale"
-date: 2026-03-17
+description: "How invisible token costs compound to $14,000 monthly bills when agents lack per-trace cost tracking and budget threshold enforcement."
+date: 2026-03-15
 author: Ian Parent
 tags: [cost, observability, agents, mcp, evaluation, budgets]
 ---
@@ -11,7 +12,7 @@ Last month I got a message from a developer running a research agent in producti
 
 Then finance flagged an anomaly. The LLM API bill for one internal tool had hit $14,000 in a single month. The agent was burning $0.47 per query. At roughly 1,000 queries per day, that added up to $470/day before anyone with engineering access noticed. The APM dashboard never flinched because, from its perspective, nothing was wrong. Every request succeeded. Every response came back.
 
-This is the cost visibility gap in agent infrastructure, and it is wider than most teams realize.
+This is the cost visibility gap in agent infrastructure, and it is wider than most teams realize. It is one dimension of the broader [agent observability problem](/blog/why-your-ai-agents-need-observability) — but it is the one that hits your bank account.
 
 ## The Math That APM Cannot Do
 
@@ -55,7 +56,7 @@ Here is what it does not track:
 - **Cost by agent:** research-bot is 12x more expensive than support-bot
 - **Cost trend:** average cost per trace increased 340% over the last 72 hours
 
-The second list is the one that tells you about the $14,000 bill before finance does.
+The second list is the one that tells you about the $14,000 bill before finance does. As we argue in [MCP Observability is the New APM](/blog/mcp-observability-is-the-new-apm), this is not a limitation you can patch — it is a category mismatch.
 
 ## What Cost Visibility Actually Looks Like
 
@@ -169,7 +170,7 @@ With per-trace cost tracking and budget thresholds, you catch this on day one. T
 
 The pattern I keep seeing is teams treating LLM cost as a finance problem -- something you reconcile at the end of the month against an invoice. But cost is an engineering signal. A sudden spike in per-trace cost tells you something changed in your agent's behavior. A gradual upward drift in token usage might indicate context window bloat from conversation history that is not being pruned. A single agent consuming 60% of your total spend tells you where to optimize first.
 
-These are the same kinds of signals that latency monitoring and error tracking provide for traditional services. Cost just needs the same treatment: per-request tracking, aggregation, thresholds, and alerts.
+These are the same kinds of signals that latency monitoring and error tracking provide for traditional services. Cost just needs the same treatment: per-request tracking, aggregation, thresholds, and alerts. Without it, you are paying what we call [the eval tax](/blog/the-ai-eval-tax) — a compounding cost that grows silently until an incident makes it visible.
 
 That is what I built Iris to do. Not just for cost -- cost is one dimension alongside quality, safety, and completeness. But cost is the dimension that hits your bank account, and it is the one most teams are flying blind on.
 

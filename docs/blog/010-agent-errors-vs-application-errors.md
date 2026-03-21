@@ -1,5 +1,6 @@
 ---
 title: "Agent Errors vs Application Errors: Why Your Error Tracker Can't See AI Failures"
+description: "Why Sentry and Bugsnag can't detect hallucinations, PII leaks, or prompt injection — and what agent-level error tracking looks like."
 date: 2026-03-17
 author: Ian Parent
 tags: [observability, agents, error-tracking, eval, safety, pii]
@@ -29,7 +30,7 @@ Here is what actually happened:
 
 The agent hallucinated a return policy that does not exist. The response contained a customer's Social Security number that was present in the retrieval context and should have been redacted. The agent made four LLM calls instead of one because it entered a reasoning loop, burning $0.47 on a query that should have cost $0.03. And a cleverly worded input manipulated the agent into revealing its system prompt.
 
-Sentry sees nothing. Bugsnag sees nothing. Rollbar sees nothing. The request succeeded. The response is well-formed. Every error happened at the output layer, not the code layer. The failures are semantic, not syntactic.
+Sentry sees nothing. Bugsnag sees nothing. Rollbar sees nothing. The request succeeded. The response is well-formed. Every error happened at the output layer, not the code layer. The failures are semantic, not syntactic. This is exactly why [every MCP agent needs an independent observer](/blog/why-every-mcp-agent-needs-an-independent-observer) — self-reported logs cannot surface problems the agent does not recognize as problems.
 
 This is the gap. Your error tracker monitors whether the code executed correctly. Nobody is monitoring whether the output is correct.
 
@@ -73,7 +74,7 @@ Agent error tracking is pattern-based and rule-driven. Instead of catching excep
 
 **Hallucination markers** check for verifiable claims against the retrieval context. Did the agent cite a source that was not in its context? Did it state a number that does not appear in any retrieved document? These are heuristic checks, not perfect detection, but they catch a significant class of fabrication.
 
-Each of these is an eval rule. Each rule inspects the agent's output against a constraint. When the constraint is violated, the rule fires — the same way an error tracker fires when an exception is thrown. The unit of detection is different (constraint violation vs. exception), but the operational pattern is the same: catch failures, surface them, route them to someone who can fix the underlying cause.
+Each of these is an eval rule — the same [heuristic rules that run in sub-millisecond time](/blog/heuristic-vs-semantic-eval) without requiring an LLM. Each rule inspects the agent's output against a constraint. When the constraint is violated, the rule fires — the same way an error tracker fires when an exception is thrown. The unit of detection is different (constraint violation vs. exception), but the operational pattern is the same: catch failures, surface them, route them to someone who can fix the underlying cause.
 
 ## The Bridge
 
@@ -91,4 +92,4 @@ If you are running agents in production and your observability strategy is Sentr
 
 Your application error tracker should stay. It catches real bugs. But it needs a counterpart that operates at the output layer — one that understands what agent failure looks like and catches it with the same rigor.
 
-That is what eval rules are for. That is the layer that is missing.
+That is what eval rules are for. That is the layer that is missing. Try the [Iris Playground](/playground) to see these eval rules catching agent failures in real time.

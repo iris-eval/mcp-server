@@ -62,6 +62,22 @@ export default function RootLayout({
       <body
         className={`${display.variable} ${body.variable} ${mono.variable} font-body antialiased`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Iris",
+              url: "https://iris-eval.com",
+              logo: "https://iris-eval.com/iris-logo.svg",
+              sameAs: [
+                "https://github.com/iris-eval/mcp-server",
+                "https://x.com/iris_eval",
+              ],
+            }),
+          }}
+        />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -1,7 +1,8 @@
 ---
 title: "Why Your AI Agents Need Observability"
+description: "Learn why traditional APM fails for AI agents and how MCP-native observability with Iris provides the tracing and evaluation agents need."
 date: 2026-03-13
-author: Iris Team
+author: Ian Parent
 tags: [observability, agents, mcp, evaluation]
 ---
 
@@ -9,7 +10,7 @@ tags: [observability, agents, mcp, evaluation]
 
 You shipped an AI agent. It works... sometimes. A user reports a wrong answer. Another says it took 40 seconds. A third notices it leaked an email address in its response. But you have no logs, no metrics, no way to reproduce what happened. You check your APM dashboard and see HTTP 200s across the board. Everything looks fine. Everything is not fine.
 
-This is the observability gap for AI agents, and it is growing wider as agents get deployed into more critical workflows.
+This is the observability gap for AI agents, and it is growing wider as agents get deployed into more critical workflows. As we explore in [MCP Observability is the New APM](/blog/mcp-observability-is-the-new-apm), the tooling has not caught up to the complexity.
 
 ## Traditional APM Does Not Understand Agents
 
@@ -19,7 +20,7 @@ An agent execution is not a single request. It is a multi-step workflow: the LLM
 
 - Which tool call in the chain failed or returned unexpected data
 - Whether the LLM's reasoning steps were coherent
-- How much the execution cost in tokens and dollars
+- How much the execution cost in tokens and dollars — a problem we detail in [The Cost of Invisible Agents](/blog/the-cost-of-invisible-agents)
 - Whether the output quality degraded compared to last week
 - If the agent leaked PII in its response
 
@@ -113,7 +114,7 @@ Start Iris with `--dashboard` to enable a dark-mode web UI at `http://localhost:
 - **Span tree** view for each trace, showing the full execution path with timing
 - **Evaluation results** with per-rule scores and suggestions for improvement
 
-All data updates in real-time as new traces arrive.
+All data updates in real-time as new traces arrive. You can also try the [Iris Playground](/playground) to see eval rules in action before installing anything.
 
 ## Getting Started
 

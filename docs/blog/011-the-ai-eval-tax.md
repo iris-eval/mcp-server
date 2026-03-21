@@ -1,7 +1,8 @@
 ---
 title: "The AI Eval Tax: The Hidden Cost Every Agent Team Is Paying"
+description: "The eval tax is the compounding cost of every unscored agent output — in trust, engineering hours, and liability. Here's how to stop paying."
 date: 2026-03-21
-author: Iris Team
+author: Ian Parent
 tags: [eval-tax, agent-eval, production, cost, mcp, vocabulary]
 ---
 
@@ -54,7 +55,7 @@ Here's how the eval tax turns invisible costs into visible crises:
 
 Agent hallucinates → customer gets wrong answer → support escalation → engineering investigates (no trace data, can't reproduce) → customer churns → team adds manual review → review costs more than the tokens they saved → velocity collapses because every release requires human QA → competitors with eval infrastructure ship 3x faster.
 
-And it gets worse with scale. A 3% hallucination rate sounds manageable. But in a 10-step agent chain, Lusser's Law applies: 0.97^10 = 74% overall success rate. **26% of runs have at least one failure.** Nobody tracks this systematically. The failures hide in the long tail where your support team finds them weeks later.
+Left unchecked, quality degrades further through [eval drift](/blog/eval-drift-the-silent-quality-killer) — upstream model changes silently eroding output quality without any code change on your end. And it gets worse with scale. A 3% hallucination rate sounds manageable. But in a 10-step agent chain, Lusser's Law applies: 0.97^10 = 74% overall success rate. **26% of runs have at least one failure.** Nobody tracks this systematically. The failures hide in the long tail where your support team finds them weeks later.
 
 ## The Historical Parallel
 
@@ -75,7 +76,7 @@ A joint IBM and Microsoft study confirmed: TDD reduces post-release defects by [
 
 Where are we with agent eval? The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) tells us exactly: **89% of teams have observability** (is the agent running?), but **only 37% have inline eval** (is the answer right?). That 52-point gap is the eval tax manifesting as a metric. Most teams can tell you whether their agent returned a response. They cannot tell you whether the response was any good.
 
-We're in 2003. The tools exist. The culture hasn't caught up.
+This 52-point gap is what we call [the eval gap](/blog/the-eval-gap) — the distance between "agent works in demo" and "agent works in production." We're in 2003. The tools exist. The culture hasn't caught up.
 
 ## What the Tax Looks Like When It's Paid
 
@@ -83,7 +84,7 @@ The eval tax is paid either way. The question is whether you pay it on your sche
 
 **Paying later (the default):** Thousands per employee in verification costs. Hours every week in manual fact-checking. Human-in-the-loop at engineering salaries. Incident response when the hallucination reaches a customer. Legal fees when the customer calls a lawyer.
 
-**Paying now (the alternative):** Score every output across three dimensions — quality, safety, cost — inline, on every execution. Catch the hallucination before the customer sees it. Catch the PII leak before it leaves the system. Catch the $40 API call before it hits the invoice.
+**Paying now (the alternative):** Score every output across three dimensions — quality, safety, cost — inline, on every execution. This is what [the cost of invisible agents](/blog/the-cost-of-invisible-agents) looks like when you bring it under control. Catch the hallucination before the customer sees it. Catch the PII leak before it leaves the system. Catch the $40 API call before it hits the invoice.
 
 [Gartner predicts](https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-predicts-over-40-percent-of-agentic-ai-projects-will-be-canceled-by-end-of-2027) over 40% of agentic AI projects will be canceled by 2027 — citing escalating costs, unclear business value, and inadequate risk controls. The teams that survive are the ones that built eval infrastructure early, when the cultural window was still open.
 

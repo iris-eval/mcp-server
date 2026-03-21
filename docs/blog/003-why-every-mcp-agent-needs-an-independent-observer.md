@@ -1,6 +1,7 @@
 ---
 title: "Why Every MCP Agent Needs an Independent Observer"
-date: 2026-03-17
+description: "Why self-reported agent logs are structurally untrustworthy and how MCP enables architecturally independent observability for AI agents."
+date: 2026-03-15
 author: Ian Parent
 tags: [observability, agents, mcp, architecture, trust]
 ---
@@ -23,7 +24,7 @@ Consider a concrete scenario. You have a support agent that retrieves docs, synt
 - The response included a phone number from the training data, not from the retrieved documents.
 - The agent spent 800ms on a retry loop after the first retrieval call timed out, but only reported the successful attempt.
 
-None of this is visible in the agent's self-report. The agent did not "lie." It reported what it understood about its own execution. But an agent's understanding of its own execution is a lossy compression of what actually happened.
+None of this is visible in the agent's self-report. The agent did not "lie." It reported what it understood about its own execution. But an agent's understanding of its own execution is a lossy compression of what actually happened. These invisible failures are exactly the kind that traditional error trackers miss, as we explore in [Agent Errors vs Application Errors](/blog/agent-errors-vs-application-errors).
 
 This is not a hypothetical. I have seen this pattern in production agent deployments. The traces look clean. The outputs have problems. And the gap between the two makes debugging nearly impossible.
 
@@ -121,7 +122,7 @@ The current observability options for MCP agents fall into two buckets:
 
 **Log aggregation.** Pipe stdout to Elasticsearch or CloudWatch. You get text. You lose structure. No span trees, no tool-call attribution, no cost aggregation. Searching logs for "what did the agent do at 3:47 PM" is archaeology, not observability.
 
-What is missing is a third option: an independent MCP server that agents discover through the protocol, that runs in its own process, that stores traces in its own database, and that evaluates agent output using its own rules. Protocol-native, architecturally independent observability.
+What is missing is a third option: an independent MCP server that agents discover through the protocol, that runs in its own process, that stores traces in its own database, and that evaluates agent output using its own rules. Protocol-native, architecturally independent observability. And as we discuss in [MCP Meets OpenTelemetry](/blog/mcp-meets-opentelemetry), this independent observer can also bridge into your existing infrastructure monitoring stack.
 
 This is the gap. It exists because agent frameworks are focused on the agent side of the problem — how to build agents, how to orchestrate them, how to give them tools. The observation side is treated as an afterthought. Add some logging. Bolt on an SDK. Ship it.
 
@@ -145,4 +146,4 @@ npx @iris-eval/mcp-server --dashboard
 
 The code is at [github.com/iris-eval/mcp-server](https://github.com/iris-eval/mcp-server). Star the repo, open an issue, or just add it to your MCP config and see what your agents are actually doing.
 
-If the agent controls the logs, the logs are fiction. Give your agents an independent observer.
+If the agent controls the logs, the logs are fiction. Give your agents an independent observer. Try the [Iris Playground](/playground) to see independent evaluation in action.

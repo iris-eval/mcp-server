@@ -1,6 +1,7 @@
 ---
 title: "MCP Observability is the New APM"
-date: 2026-03-17
+description: "MCP observability is following the same adoption curve as APM — and teams without agent-native monitoring will face the same reckoning."
+date: 2026-03-16
 author: Ian Parent
 tags: [observability, apm, mcp, agents, category-creation, market]
 ---
@@ -19,7 +20,7 @@ APM became mandatory when web applications crossed a complexity threshold. Micro
 
 AI agents have crossed an equivalent threshold. A single agent execution is not a request-response cycle. It is a multi-step workflow: the LLM reasons, selects tools, calls them in sequence or parallel, handles errors, retries, synthesizes results, and produces output. A single run might span 5 tool calls, 3 inference steps, 12,000 tokens, and $0.04 in cost. The execution path is non-deterministic. The same input can produce different tool call sequences on different runs.
 
-This is not a web request. This is a distributed computation with stochastic components. And the tooling has not caught up to the complexity.
+This is not a web request. This is a distributed computation with stochastic components. And as we explored in [Why Your AI Agents Need Observability](/blog/why-your-ai-agents-need-observability), the tooling has not caught up to the complexity.
 
 ## Why Traditional APM Fails for Agents
 
@@ -71,11 +72,11 @@ I do not think this is a market that will be won by the largest company or the b
 
 If you are deploying AI agents today, here is the practical takeaway: you need observability that understands agents, not just HTTP requests. And the sooner you start instrumenting, the sooner you build the dataset that makes your agents reliable.
 
-Every agent execution you do not trace is a debugging session you cannot have later. Every output you do not evaluate is a quality regression you will not catch until a user reports it. Every cost you do not track is a budget surprise waiting to happen.
+Every agent execution you do not trace is a debugging session you cannot have later. Every output you do not evaluate is a quality regression you will not catch until a user reports it. Every cost you do not track is [a budget surprise waiting to happen](/blog/the-cost-of-invisible-agents).
 
 The teams that will ship reliable agents are not the ones with the most sophisticated models. They are the ones with the most visibility into what their agents are actually doing. The model is the engine. Observability is the instrument panel. You do not drive at highway speed without one.
 
-The APM parallel is not a metaphor. It is a prediction. Within two years, shipping agents without observability will look as reckless as shipping a microservices architecture without monitoring looked in 2016. The inflection is happening now.
+This is what we call [the eval gap](/blog/the-eval-gap) — the distance between "agent works in demo" and "agent works in production." The APM parallel is not a metaphor. It is a prediction. Within two years, shipping agents without observability will look as reckless as shipping a microservices architecture without monitoring looked in 2016. The inflection is happening now.
 
 ## Start Now
 

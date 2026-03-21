@@ -15,6 +15,26 @@ import { Footer } from "@/components/footer";
 export default function Home(): React.ReactElement {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "Iris",
+            applicationCategory: "DeveloperApplication",
+            operatingSystem: "Any",
+            url: "https://iris-eval.com",
+            description:
+              "The agent eval standard for MCP. Score output quality, catch safety failures, enforce cost budgets across all your agents.",
+            offers: {
+              "@type": "Offer",
+              price: "0",
+              priceCurrency: "USD",
+            },
+          }),
+        }}
+      />
       <ScrollProgress />
       <Nav />
       <main>
