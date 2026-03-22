@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-03-21
+
+### Security
+- Fixed stored XSS vulnerability in blog JSON-LD structured data (CodeQL alert #9) — added `sanitizeText()` with explicit HTML entity escaping for all file-sourced content rendered via `dangerouslySetInnerHTML`
+
+### Fixed
+- Server version string now reads from `package.json` dynamically — was hardcoded at 0.1.0 while package was 0.1.4
+- Package description refined to "The agent eval standard for MCP. Score every agent output for quality, safety, and cost."
+- MCP Registry manifest (`server.json`) description aligned with canonical messaging
+
+### Added
+- `pnpm-workspace.yaml` — authorizes better-sqlite3 and esbuild native module builds for pnpm v10+ environments (fixes Glama Docker build)
+- `glama.json` — Glama MCP registry server claiming and metadata
+- `sitemap.xml` — dynamic Next.js sitemap covering all pages with last-modified dates
+- `robots.txt` — search engine crawl directives with sitemap pointer
+- Canonical URLs on all blog posts via `alternates.canonical` metadata
+- JSON-LD structured data: `BlogPosting` on blog posts, `Organization` site-wide, `SoftwareApplication` on homepage
+- Future-date blog post filtering — posts with dates after current date are excluded from blog index, sitemap, and static generation
+- Internal cross-links across all 15 blog posts (43+ contextual links)
+- SEO-optimized `description` field in all blog post frontmatter
+- Blog posts 011–015: Agent Eval vocabulary series (Eval Tax, Eval Drift, Eval Gap, Eval Coverage, Eval-Driven Development)
+- Dev.to crosspost variants for vocabulary series with topic-specific tags
+- Google Search Console domain verification and sitemap submission
+
+### Changed
+- All blog post author attribution standardized to "Ian Parent" (was inconsistently "Iris Team")
+- Blog post dates staggered honestly across Mar 13–28 (was bulk Mar 17)
+- Dev.to tags diversified per article topic (was uniform `mcp, aiagents, observability, opensource`)
+- GitHub repository topics updated: added `evaluation`, `security`
+- `blog.ts` prefers frontmatter `description` over auto-extracted first paragraph
+
 ## [0.1.4] - 2026-03-20
 
 ### Security
