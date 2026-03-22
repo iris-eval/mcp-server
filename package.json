@@ -1,7 +1,7 @@
 {
   "name": "@iris-eval/mcp-server",
   "version": "0.1.4",
-  "description": "The agent eval standard for MCP — score output quality, catch safety failures, enforce cost budgets",
+  "description": "The agent eval standard for MCP. Score every agent output for quality, safety, and cost.",
   "mcpName": "io.github.iris-eval/mcp-server",
   "type": "module",
   "main": "dist/index.js",
