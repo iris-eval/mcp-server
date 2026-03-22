@@ -1,8 +1,18 @@
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import type { IrisConfig } from '../types/index.js';
 
 const irisHome = join(homedir(), '.iris');
+
+// Read version from package.json to avoid hardcoded drift
+let pkgVersion = '0.1.4';
+try {
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+  pkgVersion = pkg.version;
+} catch {
+  // Fallback if package.json isn't resolvable at runtime
+}
 
 export const defaultConfig: IrisConfig = {
   storage: {
@@ -11,7 +21,7 @@ export const defaultConfig: IrisConfig = {
   },
   server: {
     name: 'iris-eval',
-    version: '0.1.0',
+    version: pkgVersion,
   },
   transport: {
     type: 'stdio',
