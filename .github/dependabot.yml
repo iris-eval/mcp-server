@@ -34,6 +34,9 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "deps(website)"
+    ignore:
+      - dependency-name: "eslint"
+        versions: [">=10.0.0"]  # Blocked by eslint-config-next plugin peer deps (see #54)
     groups:
       react:
         patterns:
