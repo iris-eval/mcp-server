@@ -6,8 +6,13 @@ import { RotatingWords } from "./rotating-words";
 
 const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChain", "CrewAI", "MCP SDK", "AutoGen"];
 
+const GLAMA = {
+  src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg",
+  alt: "Glama AAA Score",
+  href: "https://glama.ai/mcp/servers/iris-eval/mcp-server",
+};
+
 const BADGES = [
-  { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama AAA Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server" },
   { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
   { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
   { src: "https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat-square&color=0d9488", alt: "GitHub stars", href: "https://github.com/iris-eval/mcp-server" },
@@ -31,11 +36,19 @@ export function Hero(): React.ReactElement {
           className="mx-auto max-w-4xl text-center"
         >
           {/* Open Source badge pill */}
-          <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-border-default bg-bg-raised/80 px-4 py-1.5 backdrop-blur-sm">
+          <div className="mb-4 inline-flex items-center gap-2.5 rounded-full border border-border-default bg-bg-raised/80 px-4 py-1.5 backdrop-blur-sm">
             <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-eval-pass" />
             <span className="font-mono text-[13px] text-text-secondary">
               Open Source
             </span>
+          </div>
+
+          {/* Glama AAA trust badge — own row */}
+          <div className="mb-4 flex justify-center">
+            <a href={GLAMA.href} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={GLAMA.src} alt={GLAMA.alt} height={24} className="h-6" />
+            </a>
           </div>
 
           {/* Shields.io badges row */}
