@@ -7,8 +7,9 @@ import { RotatingWords } from "./rotating-words";
 const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChain", "CrewAI", "MCP SDK", "AutoGen"];
 
 const BADGES = [
+  { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama AAA Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server" },
   { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
-  { src: "https://img.shields.io/npm/dw/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
+  { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
   { src: "https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat-square&color=0d9488", alt: "GitHub stars", href: "https://github.com/iris-eval/mcp-server" },
   { src: "https://img.shields.io/github/actions/workflow/status/iris-eval/mcp-server/ci.yml?style=flat-square&label=CI", alt: "CI status", href: "https://github.com/iris-eval/mcp-server/actions" },
   { src: "https://img.shields.io/badge/license-MIT-22c55e?style=flat-square", alt: "MIT License", href: "https://github.com/iris-eval/mcp-server/blob/main/LICENSE" },
