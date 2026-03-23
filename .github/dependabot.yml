@@ -10,6 +10,9 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "deps"
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]  # Blocked by @typescript-eslint peer deps (see #58)
     groups:
       linting:
         patterns:
