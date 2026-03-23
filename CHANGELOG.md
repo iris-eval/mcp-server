@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-03-23
+
+### Removed
+- Node 18 support — Node 18 reached EOL April 2025. Minimum is now Node 20.
+
+### Changed
+- Upgraded vitest 3.x → 4.x and @vitest/coverage-v8 3.x → 4.x
+- CI test matrix reduced from Node 18/20/22 to Node 20/22
+
 ## [0.1.5] - 2026-03-21
 
 ### Security
