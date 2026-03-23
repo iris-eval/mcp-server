@@ -53,5 +53,5 @@ mcp-server, mcp, model-context-protocol, eval, observability, ai-agent, tracing,
 ## Awesome List PR Template
 
 ```markdown
-- [Iris](https://github.com/iris-eval/mcp-server) - MCP-native eval and observability. Log traces, evaluate output quality, track costs. Zero code changes. [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
+- [Iris](https://github.com/iris-eval/mcp-server) - MCP-native eval and observability. Log traces, evaluate output quality, track costs. Zero code changes. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
 ```
