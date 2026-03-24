@@ -83,6 +83,50 @@ export default async function BlogPost({
     mainEntityOfPage: `https://iris-eval.com/blog/${encodeURIComponent(slug)}`,
   });
 
+  // FAQ schema for coined vocabulary terms — targets featured snippets
+  const vocabularyFAQ: Record<string, { question: string; answer: string }[]> = {
+    "the-ai-eval-tax": [
+      {
+        question: "What is the AI eval tax?",
+        answer: "The AI eval tax is the compounding cost of every agent output you did not evaluate. It manifests as customer trust erosion, engineering hours spent on manual review, liability exposure from undetected hallucinations, and revenue loss from agents that silently degrade in production. Teams pay this tax every time an agent returns a wrong answer and nobody catches it."
+      },
+    ],
+    "eval-drift-the-silent-quality-killer": [
+      {
+        question: "What is eval drift?",
+        answer: "Eval drift is the silent degradation of AI agent output quality over time, caused by upstream changes that are invisible to the team operating the agent. When model providers update weights, safety filters, or decoding parameters without announcement, agents that passed evaluation last month may be shipping broken outputs today. Eval drift is only detectable through continuous scoring on every agent execution."
+      },
+    ],
+    "the-eval-gap": [
+      {
+        question: "What is the eval gap?",
+        answer: "The eval gap is the distance between having observability (knowing your agent ran) and having inline evaluation (knowing the output was correct). Industry data shows 89% of teams have observability but only 37% have inline eval, creating a 52-point gap where agents appear healthy on dashboards while silently delivering poor-quality outputs to users."
+      },
+    ],
+    "the-eval-loop": [
+      {
+        question: "What is the eval loop?",
+        answer: "The eval loop is a continuous feedback cycle for agent quality: score every output, diagnose which specific rules are failing, calibrate thresholds based on production data, then re-score. Unlike one-time evaluation that happens before deployment, the eval loop runs for the lifetime of the agent, treating evals as a feedback signal rather than a gate."
+      },
+    ],
+  };
+
+  const faqItems = vocabularyFAQ[slug];
+  const faqJsonLd = faqItems
+    ? JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: item.answer,
+          },
+        })),
+      })
+    : null;
+
   const breadcrumbJsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -103,6 +147,12 @@ export default async function BlogPost({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: breadcrumbJsonLd }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: faqJsonLd }}
+        />
+      )}
       <Nav />
 
       <article className="mx-auto max-w-3xl px-6 pb-16 pt-32 lg:pt-40">
