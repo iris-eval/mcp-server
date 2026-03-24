@@ -4,10 +4,20 @@ import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
+/** Sanitize a string for safe inclusion in JSON-LD structured data. */
+function sanitizeText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .slice(0, 500);
+}
+
 export const metadata: Metadata = {
   title: "Iris vs Braintrust — MCP-Native Agent Eval vs SDK-Based Eval",
   description:
     "Detailed comparison of Iris and Braintrust for AI agent observability. MCP-native zero-code integration vs SDK-based eval platform with datasets, experiments, and prompt playground.",
+  alternates: { canonical: "https://iris-eval.com/compare/braintrust" },
   openGraph: {
     title: "Iris vs Braintrust — MCP-Native Agent Eval vs SDK-Based Eval",
     description:
@@ -23,6 +33,51 @@ export const metadata: Metadata = {
     images: ["/og-compare-braintrust.png"],
     site: "@iris_eval",
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      headline: sanitizeText("Iris vs Braintrust — MCP-Native Agent Eval vs SDK-Based Eval"),
+      description: sanitizeText(
+        "Detailed comparison of Iris and Braintrust for AI agent observability. MCP-native zero-code integration vs SDK-based eval platform with datasets, experiments, and prompt playground."
+      ),
+      url: "https://iris-eval.com/compare/braintrust",
+      publisher: {
+        "@type": "Organization",
+        name: "Iris",
+        url: "https://iris-eval.com",
+      },
+      mainEntityOfPage: "https://iris-eval.com/compare/braintrust",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: sanitizeText("What is the difference between Iris and Braintrust?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. Braintrust is a comprehensive SDK-based eval platform with datasets, experiments, prompt playground, and CI-integrated regression testing. Iris focuses on zero-code simplicity with heuristic eval rules, while Braintrust offers deeper evaluation workflows with LLM scoring and human review."
+            ),
+          },
+        },
+        {
+          "@type": "Question",
+          name: sanitizeText("Is Iris better than Braintrust for MCP agent evaluation?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "For MCP-compatible agents, Iris provides protocol-native integration with zero SDK overhead and free open-source licensing. Braintrust requires SDK imports but offers powerful experimentation workflows, dataset management, and multi-language support. The best choice depends on whether you need zero-code MCP simplicity or a full SDK-based eval and experimentation platform."
+            ),
+          },
+        },
+      ],
+    },
+  ],
 };
 
 const FEATURES = [
@@ -61,6 +116,10 @@ const BRAINTRUST_REASONS = [
 export default function CompareBraintrust(): React.ReactElement {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav />
 
       {/* Hero */}

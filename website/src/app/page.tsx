@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { ScrollProgress } from "@/components/scroll-progress";
 import { Hero } from "@/components/hero";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "https://iris-eval.com" },
+};
 import { Problem } from "@/components/problem";
 import { ProductTabs } from "@/components/product-tabs";
 import { BuiltFor } from "@/components/customers";

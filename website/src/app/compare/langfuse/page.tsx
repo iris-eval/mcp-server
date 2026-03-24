@@ -4,10 +4,20 @@ import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
+/** Sanitize a string for safe inclusion in JSON-LD structured data. */
+function sanitizeText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .slice(0, 500);
+}
+
 export const metadata: Metadata = {
   title: "Iris vs Langfuse — MCP-Native Agent Eval vs SDK-Based Tracing",
   description:
     "Detailed comparison of Iris and Langfuse for AI agent observability. MCP-native zero-code integration vs SDK-based instrumentation.",
+  alternates: { canonical: "https://iris-eval.com/compare/langfuse" },
   openGraph: {
     title: "Iris vs Langfuse — MCP-Native Agent Eval vs SDK-Based Tracing",
     description:
@@ -23,6 +33,51 @@ export const metadata: Metadata = {
     images: ["/og-compare-langfuse.png"],
     site: "@iris_eval",
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      headline: sanitizeText("Iris vs Langfuse — MCP-Native Agent Eval vs SDK-Based Tracing"),
+      description: sanitizeText(
+        "Detailed comparison of Iris and Langfuse for AI agent observability. MCP-native zero-code integration vs SDK-based instrumentation."
+      ),
+      url: "https://iris-eval.com/compare/langfuse",
+      publisher: {
+        "@type": "Organization",
+        name: "Iris",
+        url: "https://iris-eval.com",
+      },
+      mainEntityOfPage: "https://iris-eval.com/compare/langfuse",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: sanitizeText("What is the difference between Iris and Langfuse?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. Langfuse is an SDK-based observability platform with @observe decorators, prompt management, and 20+ framework integrations. Iris focuses on zero-code simplicity with a single SQLite file, while Langfuse offers broader framework support and enterprise compliance."
+            ),
+          },
+        },
+        {
+          "@type": "Question",
+          name: sanitizeText("Is Iris better than Langfuse for MCP agent evaluation?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "For MCP-compatible agents, Iris provides a protocol-native integration with no SDK overhead and sub-millisecond heuristic eval rules. Langfuse requires SDK decorators but offers LLM-as-Judge evaluation and more mature enterprise features. The best choice depends on whether your stack is MCP-native or requires broad framework support."
+            ),
+          },
+        },
+      ],
+    },
+  ],
 };
 
 const FEATURES = [
@@ -59,6 +114,10 @@ const LANGFUSE_REASONS = [
 export default function CompareLangfuse(): React.ReactElement {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav />
 
       {/* Hero */}

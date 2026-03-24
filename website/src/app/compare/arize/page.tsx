@@ -4,10 +4,20 @@ import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
+/** Sanitize a string for safe inclusion in JSON-LD structured data. */
+function sanitizeText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .slice(0, 500);
+}
+
 export const metadata: Metadata = {
   title: "Iris vs Arize AI — MCP-Native Agent Eval vs Enterprise ML Platform",
   description:
     "Detailed comparison of Iris and Arize AI (Phoenix) for AI agent observability. MCP-native zero-code integration vs enterprise-grade ML monitoring with embeddings and drift detection.",
+  alternates: { canonical: "https://iris-eval.com/compare/arize" },
   openGraph: {
     title: "Iris vs Arize AI — MCP-Native Agent Eval vs Enterprise ML Platform",
     description:
@@ -23,6 +33,51 @@ export const metadata: Metadata = {
     images: ["/og-compare-arize.png"],
     site: "@iris_eval",
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      headline: sanitizeText("Iris vs Arize AI — MCP-Native Agent Eval vs Enterprise ML Platform"),
+      description: sanitizeText(
+        "Detailed comparison of Iris and Arize AI (Phoenix) for AI agent observability. MCP-native zero-code integration vs enterprise-grade ML monitoring with embeddings and drift detection."
+      ),
+      url: "https://iris-eval.com/compare/arize",
+      publisher: {
+        "@type": "Organization",
+        name: "Iris",
+        url: "https://iris-eval.com",
+      },
+      mainEntityOfPage: "https://iris-eval.com/compare/arize",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: sanitizeText("What is the difference between Iris and Arize?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. Arize AI is an enterprise ML observability platform with Phoenix (open-source) for tracing and Arize AX (cloud) for advanced monitoring with embedding drift detection. Iris focuses on zero-code simplicity with MIT licensing, while Arize offers comprehensive ML monitoring across traditional and LLM applications."
+            ),
+          },
+        },
+        {
+          "@type": "Question",
+          name: sanitizeText("Is Iris better than Arize for MCP agent evaluation?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "For MCP-compatible agents, Iris provides protocol-native integration with zero OpenTelemetry setup and 60-second onboarding. Arize requires OpenTelemetry SDK instrumentation but offers advanced embedding drift detection, LLM-as-Judge evaluation, and enterprise-grade features like RBAC. The best choice depends on whether you need lightweight MCP-native observability or a full enterprise ML monitoring platform."
+            ),
+          },
+        },
+      ],
+    },
+  ],
 };
 
 const FEATURES = [
@@ -62,6 +117,10 @@ const ARIZE_REASONS = [
 export default function CompareArize(): React.ReactElement {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav />
 
       {/* Hero */}

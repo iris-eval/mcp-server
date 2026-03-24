@@ -4,10 +4,20 @@ import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
+/** Sanitize a string for safe inclusion in JSON-LD structured data. */
+function sanitizeText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .slice(0, 500);
+}
+
 export const metadata: Metadata = {
   title: "Iris vs Helicone — MCP-Native Agent Eval vs Proxy-Based Monitoring",
   description:
     "Detailed comparison of Iris and Helicone for AI agent observability. MCP-native zero-code integration vs proxy-based request logging and cost analytics.",
+  alternates: { canonical: "https://iris-eval.com/compare/helicone" },
   openGraph: {
     title: "Iris vs Helicone — MCP-Native Agent Eval vs Proxy-Based Monitoring",
     description:
@@ -23,6 +33,51 @@ export const metadata: Metadata = {
     images: ["/og-compare-helicone.png"],
     site: "@iris_eval",
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      headline: sanitizeText("Iris vs Helicone — MCP-Native Agent Eval vs Proxy-Based Monitoring"),
+      description: sanitizeText(
+        "Detailed comparison of Iris and Helicone for AI agent observability. MCP-native zero-code integration vs proxy-based request logging and cost analytics."
+      ),
+      url: "https://iris-eval.com/compare/helicone",
+      publisher: {
+        "@type": "Organization",
+        name: "Iris",
+        url: "https://iris-eval.com",
+      },
+      mainEntityOfPage: "https://iris-eval.com/compare/helicone",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: sanitizeText("What is the difference between Iris and Helicone?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. Helicone is a proxy-based AI gateway and observability platform that excels at cost analytics, semantic caching, and multi-provider routing. Iris focuses on zero-code MCP simplicity with a single SQLite file, while Helicone offers deep cost breakdowns and gateway features across 100+ providers."
+            ),
+          },
+        },
+        {
+          "@type": "Question",
+          name: sanitizeText("Is Iris better than Helicone for MCP agent evaluation?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "For MCP-compatible agents, Iris provides protocol-native integration with zero proxy latency and sub-millisecond heuristic eval rules. Helicone uses a proxy-based approach with 1-5ms latency but offers semantic caching, rate limiting, and multi-dimension cost analytics. The best choice depends on whether you need MCP-native observability or a full AI gateway with cost optimization."
+            ),
+          },
+        },
+      ],
+    },
+  ],
 };
 
 const FEATURES = [
@@ -59,6 +114,10 @@ const HELICONE_REASONS = [
 export default function CompareHelicone(): React.ReactElement {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav />
 
       {/* Hero */}
