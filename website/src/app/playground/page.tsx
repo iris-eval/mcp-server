@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Iris Playground — Try Agent Eval in 60 Seconds",
   description:
     "Interactive demo: spot PII leaks in agent output, compare agent quality scores, explore the eval dashboard. No install, no signup.",
+  alternates: { canonical: "https://iris-eval.com/playground" },
   openGraph: {
     title: "Iris Playground — Try Agent Eval in 60 Seconds",
     description:

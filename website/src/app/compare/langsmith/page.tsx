@@ -4,10 +4,20 @@ import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 
+/** Sanitize a string for safe inclusion in JSON-LD structured data. */
+function sanitizeText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .slice(0, 500);
+}
+
 export const metadata: Metadata = {
   title: "Iris vs LangSmith — MCP-Native Agent Eval vs Framework-Locked Tracing",
   description:
     "Detailed comparison of Iris and LangSmith for AI agent observability. MCP-native zero-code integration vs @traceable SDK decorators and cloud-first architecture.",
+  alternates: { canonical: "https://iris-eval.com/compare/langsmith" },
   openGraph: {
     title: "Iris vs LangSmith — MCP-Native Agent Eval vs Framework-Locked Tracing",
     description:
@@ -23,6 +33,51 @@ export const metadata: Metadata = {
     images: ["/og-compare-langsmith.png"],
     site: "@iris_eval",
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      headline: sanitizeText("Iris vs LangSmith — MCP-Native Agent Eval vs Framework-Locked Tracing"),
+      description: sanitizeText(
+        "Detailed comparison of Iris and LangSmith for AI agent observability. MCP-native zero-code integration vs @traceable SDK decorators and cloud-first architecture."
+      ),
+      url: "https://iris-eval.com/compare/langsmith",
+      publisher: {
+        "@type": "Organization",
+        name: "Iris",
+        url: "https://iris-eval.com",
+      },
+      mainEntityOfPage: "https://iris-eval.com/compare/langsmith",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: sanitizeText("What is the difference between Iris and LangSmith?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. LangSmith is LangChain's cloud-first observability platform with @traceable decorators and broad SDK support. Iris offers simple self-hosting with a single SQLite file, while LangSmith provides advanced evaluation workflows, auto-clustering, and enterprise compliance."
+            ),
+          },
+        },
+        {
+          "@type": "Question",
+          name: sanitizeText("Is Iris better than LangSmith for MCP agent evaluation?"),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: sanitizeText(
+              "For MCP-compatible agents, Iris provides protocol-native integration with zero SDK overhead and unlimited data retention. LangSmith requires @traceable decorators but offers LLM-as-Judge evaluation, human review workflows, and deep LangChain ecosystem integration. The best choice depends on whether you prioritize zero-code MCP simplicity or broad framework-locked tracing."
+            ),
+          },
+        },
+      ],
+    },
+  ],
 };
 
 const FEATURES = [
@@ -59,6 +114,10 @@ const LANGSMITH_REASONS = [
 export default function CompareLangsmith(): React.ReactElement {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav />
 
       {/* Hero */}

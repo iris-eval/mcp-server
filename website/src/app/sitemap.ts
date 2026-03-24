@@ -22,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const compareEntries: MetadataRoute.Sitemap = comparePages.map((slug) => ({
     url: `${baseUrl}/compare/${slug}`,
+    lastModified: new Date("2026-03-17"),
     changeFrequency: "monthly",
     priority: 0.6,
   }));

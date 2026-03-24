@@ -7,12 +7,21 @@ export const metadata: Metadata = {
   title: "Blog — Iris",
   description:
     "Original research and insights on MCP agent observability, evaluation methodology, and AI agent infrastructure.",
+  alternates: { canonical: "https://iris-eval.com/blog" },
   openGraph: {
     title: "Blog — Iris",
     description:
       "Research and insights on MCP agent observability and evaluation.",
     url: "https://iris-eval.com/blog",
     images: ["/og-social-preview.png?v=3"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog — Iris",
+    description:
+      "Research and insights on MCP agent observability and evaluation.",
+    images: ["/og-social-preview.png?v=3"],
+    site: "@iris_eval",
   },
 };
 

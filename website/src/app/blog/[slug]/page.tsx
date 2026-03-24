@@ -63,7 +63,7 @@ export default async function BlogPost({
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const jsonLdString = JSON.stringify({
+  const blogPostJsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: sanitizeText(post.title),
@@ -71,6 +71,7 @@ export default async function BlogPost({
     author: {
       "@type": "Person",
       name: sanitizeText(post.author),
+      url: "https://x.com/iparentx",
     },
     publisher: {
       "@type": "Organization",
@@ -78,14 +79,29 @@ export default async function BlogPost({
       url: "https://iris-eval.com",
     },
     description: sanitizeText(post.description),
+    articleBody: sanitizeText(post.content.slice(0, 1000)),
     mainEntityOfPage: `https://iris-eval.com/blog/${encodeURIComponent(slug)}`,
+  });
+
+  const breadcrumbJsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://iris-eval.com" },
+      { "@type": "ListItem", position: 2, name: "Blog", item: "https://iris-eval.com/blog" },
+      { "@type": "ListItem", position: 3, name: sanitizeText(post.title) },
+    ],
   });
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdString }}
+        dangerouslySetInnerHTML={{ __html: blogPostJsonLd }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: breadcrumbJsonLd }}
       />
       <Nav />
 
