@@ -1,0 +1,46 @@
+{
+  "name": "Iris",
+  "description": "MCP-native agent evaluation and observability server",
+  "homepage": "https://iris-eval.com",
+  "repository": "https://github.com/iris-eval/mcp-server",
+  "npm": "@iris-eval/mcp-server",
+  "version": "0.1.6",
+  "license": "MIT",
+  "transport": [
+    "stdio",
+    "http"
+  ],
+  "tools": [
+    {
+      "name": "log_trace",
+      "description": "Log an agent execution trace with spans, tool calls, and metrics"
+    },
+    {
+      "name": "evaluate_output",
+      "description": "Evaluate agent output quality using configurable rules"
+    },
+    {
+      "name": "get_traces",
+      "description": "Query stored traces with filters, pagination, and summary stats"
+    }
+  ],
+  "resources": [
+    {
+      "uri": "iris://dashboard/summary",
+      "description": "Dashboard summary with key metrics and trends"
+    }
+  ],
+  "install": {
+    "claude_desktop": {
+      "mcpServers": {
+        "iris": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "@iris-eval/mcp-server"
+          ]
+        }
+      }
+    }
+  }
+}
