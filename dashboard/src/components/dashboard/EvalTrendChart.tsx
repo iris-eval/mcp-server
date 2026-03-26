@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import type { EvalTrendPoint } from '../../api/types';
 
-type Period = '24h' | '7d' | '30d';
+type Period = '24h' | '7d' | '30d' | 'all';
 
 const periodLabels: Record<Period, string> = {
   '24h': '24 Hours',
   '7d': '7 Days',
   '30d': '30 Days',
+  'all': 'All Time',
 };
 
 function formatLabel(timestamp: string, period: Period): string {

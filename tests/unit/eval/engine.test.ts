@@ -62,6 +62,39 @@ describe('EvalEngine', () => {
     expect(customResult!.passed).toBe(true);
   });
 
+  it('should handle multiple custom rules without NaN scores', () => {
+    const engine = new EvalEngine(0.7);
+    const result = engine.evaluate('custom', passingContext, [
+      { name: 'min_len', type: 'min_length', config: { min_length: 10 } },
+      { name: 'has_pattern', type: 'regex_match', config: { pattern: '.' } },
+    ]);
+    expect(result.passed).toBe(true);
+    expect(Number.isFinite(result.score)).toBe(true);
+    expect(result.rule_results).toHaveLength(2);
+  });
+
+  it('should accept min_length with either config key name', () => {
+    const engine = new EvalEngine(0.7);
+    const r1 = engine.evaluate('custom', passingContext, [
+      { name: 'old_key', type: 'min_length', config: { length: 10 } },
+    ]);
+    const r2 = engine.evaluate('custom', passingContext, [
+      { name: 'new_key', type: 'min_length', config: { min_length: 10 } },
+    ]);
+    expect(r1.passed).toBe(true);
+    expect(r2.passed).toBe(true);
+  });
+
+  it('should not produce NaN when custom rule config is invalid', () => {
+    const engine = new EvalEngine(0.7);
+    const result = engine.evaluate('custom', passingContext, [
+      { name: 'bad_config', type: 'min_length', config: {} },
+      { name: 'good_rule', type: 'regex_match', config: { pattern: '.' } },
+    ]);
+    expect(Number.isFinite(result.score)).toBe(true);
+    expect(result.score).toBeGreaterThanOrEqual(0);
+  });
+
   it('should generate unique eval IDs', () => {
     const engine = new EvalEngine(0.7);
     const r1 = engine.evaluate('completeness', passingContext);

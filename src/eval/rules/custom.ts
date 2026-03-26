@@ -43,12 +43,18 @@ export function createCustomRule(definition: CustomRuleDefinition): EvalRule {
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? 'Forbidden pattern not found' : 'Forbidden pattern found in output' };
         }
         case 'min_length': {
-          const min = definition.config.length as number;
+          const min = (definition.config.min_length ?? definition.config.length) as number | undefined;
+          if (min == null || min <= 0) {
+            return { ruleName: definition.name, passed: false, score: 0, message: 'min_length rule requires config.min_length (positive number)' };
+          }
           const passed = context.output.length >= min;
           return { ruleName: definition.name, passed, score: passed ? 1 : context.output.length / min, message: passed ? `Length (${context.output.length}) meets minimum (${min})` : `Length (${context.output.length}) below minimum (${min})` };
         }
         case 'max_length': {
-          const max = definition.config.length as number;
+          const max = (definition.config.max_length ?? definition.config.length) as number | undefined;
+          if (max == null || max <= 0) {
+            return { ruleName: definition.name, passed: false, score: 0, message: 'max_length rule requires config.max_length (positive number)' };
+          }
           const passed = context.output.length <= max;
           return { ruleName: definition.name, passed, score: passed ? 1 : max / context.output.length, message: passed ? `Length (${context.output.length}) within maximum (${max})` : `Length (${context.output.length}) exceeds maximum (${max})` };
         }

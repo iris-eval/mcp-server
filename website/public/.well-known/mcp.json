@@ -4,7 +4,7 @@
   "homepage": "https://iris-eval.com",
   "repository": "https://github.com/iris-eval/mcp-server",
   "npm": "@iris-eval/mcp-server",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "license": "MIT",
   "transport": [
     "stdio",

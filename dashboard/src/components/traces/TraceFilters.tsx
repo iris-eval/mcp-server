@@ -43,11 +43,11 @@ export function TraceFilters({
   const { data: filters } = useFilters();
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} onClick={(e) => e.stopPropagation()}>
       <select
         style={styles.select}
         value={values.agent_name}
-        onChange={(e) => onChange({ ...values, agent_name: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, agent_name: e.target.value }); }}
       >
         <option value="">All Agents</option>
         {filters?.agent_names.map((name) => (
@@ -57,7 +57,7 @@ export function TraceFilters({
       <select
         style={styles.select}
         value={values.framework}
-        onChange={(e) => onChange({ ...values, framework: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, framework: e.target.value }); }}
       >
         <option value="">All Frameworks</option>
         {filters?.frameworks.map((fw) => (
@@ -68,14 +68,14 @@ export function TraceFilters({
         style={styles.input}
         type="datetime-local"
         value={values.since}
-        onChange={(e) => onChange({ ...values, since: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, since: e.target.value }); }}
         placeholder="Since"
       />
       <input
         style={styles.input}
         type="datetime-local"
         value={values.until}
-        onChange={(e) => onChange({ ...values, until: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, until: e.target.value }); }}
         placeholder="Until"
       />
     </div>

@@ -49,9 +49,11 @@ export class EvalEngine {
 
     const totalWeight = rules.reduce((sum, r) => sum + r.weight, 0);
     const weightedScore = rules.reduce((sum, rule, i) => {
-      return sum + ruleResults[i].score * rule.weight;
+      const ruleScore = Number.isFinite(ruleResults[i].score) ? ruleResults[i].score : 0;
+      return sum + ruleScore * rule.weight;
     }, 0);
-    const score = totalWeight > 0 ? weightedScore / totalWeight : 0;
+    const rawScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
+    const score = Number.isFinite(rawScore) ? rawScore : 0;
 
     const passed = score >= this.threshold;
 

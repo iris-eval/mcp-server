@@ -1,3 +1,5 @@
+import { formatCost } from '../../utils/formatters';
+
 interface SafetyViolations {
   pii: number;
   injection: number;
@@ -107,7 +109,7 @@ export function SafetyViolationsCard({ violations, totalCost }: Props) {
             marginTop: '2px',
           }}
         >
-          ${totalCost.toFixed(2)}
+          {formatCost(totalCost)}
         </div>
       </div>
     </div>

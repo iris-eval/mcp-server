@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-03-25
+
+### Fixed
+- Custom eval rules: `min_length`/`max_length` now accept both `config.min_length` and `config.length` key names — previously only `config.length` worked, causing silent NaN scores and database insert failures when using the intuitive key name
+- NaN guard in eval score aggregation — a single misconfigured rule can no longer crash the entire evaluation
+- Cost precision: standardized to 4 decimal places across all APIs (`getEvalStats` was rounding to 2, `getDashboardSummary` to 4)
+- Cost display: `formatCost()` now shows 4 decimals for all costs under $1 (was only under $0.01) — AI micro-costs in the $0.01-$0.99 range now display full precision
+- Cost display consistency: `SafetyViolationsCard` now uses `formatCost()` instead of direct `.toFixed(2)`
+- Dashboard summary: eval count excludes orphaned evaluations (those with no linked trace) so numbers tie out across views
+- Dashboard filter dropdowns no longer trigger table row navigation on click (both Traces and Evaluations tabs)
+- SQLite: added `busy_timeout = 5000` pragma to prevent blank trace detail page during concurrent read/write operations
+
+### Added
+- "All Time" period option on dashboard — previously only 24h/7d/30d were available, causing dashboard to show zeros when data was older than the default 7-day window
+- 3 regression tests for custom eval rules (multi-rule scoring, dual config key, invalid config resilience)
+
 ## [0.1.7] - 2026-03-25
 
 ### Fixed

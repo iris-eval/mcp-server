@@ -23,6 +23,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async initialize(): Promise<void> {
     this.db.pragma('journal_mode = WAL');
+    this.db.pragma('busy_timeout = 5000');
     this.db.pragma('foreign_keys = ON');
     runMigrations(this.db);
   }
@@ -256,6 +257,7 @@ export class SqliteAdapter implements IStorageAdapter {
   // ---------------------------------------------------------------------------
 
   private periodToSince(period: EvalStatsPeriod): string {
+    if (period === 'all') return '1970-01-01T00:00:00.000Z';
     const hours = period === '24h' ? 24 : period === '7d' ? 168 : 720;
     return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   }
@@ -269,7 +271,7 @@ export class SqliteAdapter implements IStorageAdapter {
         COALESCE(AVG(score), 0)                      AS avg_score,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
       FROM eval_results
-      WHERE created_at >= ?
+      WHERE created_at >= ? AND trace_id IS NOT NULL
     `).get(since) as { total_evals: number; avg_score: number; passed_count: number };
 
     const cost = this.db.prepare(`
@@ -312,7 +314,7 @@ export class SqliteAdapter implements IStorageAdapter {
       avgScore: Math.round(agg.avg_score * 1000) / 1000,
       totalEvals: agg.total_evals,
       safetyViolations: violations,
-      totalCost: Math.round(cost.total_cost * 100) / 100,
+      totalCost: Math.round(cost.total_cost * 10000) / 10000,
       agentCount: agents.agent_count,
       period,
     };

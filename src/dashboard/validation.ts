@@ -25,10 +25,10 @@ export const summaryQuerySchema = z.object({
 });
 
 export const evalStatsPeriodSchema = z.object({
-  period: z.enum(['24h', '7d', '30d']).default('24h'),
+  period: z.enum(['24h', '7d', '30d', 'all']).default('24h'),
 });
 
 export const evalStatsFailuresSchema = z.object({
-  period: z.enum(['24h', '7d', '30d']).default('24h'),
+  period: z.enum(['24h', '7d', '30d', 'all']).default('24h'),
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });

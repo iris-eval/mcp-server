@@ -26,7 +26,7 @@ export interface TraceQueryResult {
   offset: number;
 }
 
-export type EvalStatsPeriod = '24h' | '7d' | '30d';
+export type EvalStatsPeriod = '24h' | '7d' | '30d' | 'all';
 
 export interface EvalStats {
   passRate: number;

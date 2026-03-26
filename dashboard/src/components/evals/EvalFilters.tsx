@@ -39,11 +39,11 @@ export function EvalFilters({
   onChange: (values: EvalFilterValues) => void;
 }) {
   return (
-    <div style={styles.container}>
+    <div style={styles.container} onClick={(e) => e.stopPropagation()}>
       <select
         style={styles.select}
         value={values.eval_type}
-        onChange={(e) => onChange({ ...values, eval_type: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, eval_type: e.target.value }); }}
       >
         <option value="">All Types</option>
         <option value="completeness">Completeness</option>
@@ -55,7 +55,7 @@ export function EvalFilters({
       <select
         style={styles.select}
         value={values.passed}
-        onChange={(e) => onChange({ ...values, passed: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, passed: e.target.value }); }}
       >
         <option value="">All Results</option>
         <option value="true">Passed</option>
@@ -65,14 +65,14 @@ export function EvalFilters({
         style={styles.input}
         type="datetime-local"
         value={values.since}
-        onChange={(e) => onChange({ ...values, since: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, since: e.target.value }); }}
         placeholder="Since"
       />
       <input
         style={styles.input}
         type="datetime-local"
         value={values.until}
-        onChange={(e) => onChange({ ...values, until: e.target.value })}
+        onChange={(e) => { e.stopPropagation(); onChange({ ...values, until: e.target.value }); }}
         placeholder="Until"
       />
     </div>

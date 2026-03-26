@@ -10,7 +10,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { EmptyState } from '../shared/EmptyState';
 import { formatNumber } from '../../utils/formatters';
 
-type Period = '24h' | '7d' | '30d';
+type Period = '24h' | '7d' | '30d' | 'all';
 
 export function DashboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
