@@ -59,7 +59,7 @@ export function createDashboardServer(
   registerEvaluationRoutes(router, storage);
   registerEvalStatsRoutes(router, storage);
   registerFilterRoutes(router, storage);
-  registerHealthRoutes(router, storage);
+  registerHealthRoutes(router, storage, config.server.version);
   app.use('/api/v1', router);
 
   // Serve static dashboard files if built (rate limited)

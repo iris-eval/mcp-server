@@ -39,6 +39,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cd dashboard && npm ci && npm run build
+      - name: Verify package integrity
+        run: |
+          test -f dist/dashboard/server.js || (echo "FATAL: dist/dashboard/server.js missing after build" && exit 1)
+          test -f dist/dashboard/index.html || (echo "FATAL: dist/dashboard/index.html missing after build" && exit 1)
+          test -f dist/index.js || (echo "FATAL: dist/index.js missing after build" && exit 1)
+          node dist/index.js --help > /dev/null 2>&1
+          echo "Package integrity check passed"
       - run: npm publish --provenance --access public || echo "Version already published, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -6,7 +6,7 @@ import type { IrisConfig } from '../types/index.js';
 const irisHome = join(homedir(), '.iris');
 
 // Read version from package.json to avoid hardcoded drift
-let pkgVersion = '0.1.4';
+let pkgVersion = '0.1.7';
 try {
   const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
   pkgVersion = pkg.version;
