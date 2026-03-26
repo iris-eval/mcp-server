@@ -32,9 +32,11 @@ Iris evaluates all of it.
 | **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
 | **Web Dashboard** | Real-time dark-mode UI with trace visualization, eval results, and cost breakdowns. |
 
+**Requires Node.js 20 or later.** Check with `node --version`.
+
 ## Quickstart
 
-Add Iris to your Claude Desktop (or Cursor, Claude Code, Windsurf) MCP config:
+Add Iris to your MCP config. Works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible agent.
 
 ```json
 {
@@ -56,16 +58,45 @@ npx @iris-eval/mcp-server --dashboard
 # Open http://localhost:6920
 ```
 
+<details>
+<summary><strong>Setup by tool</strong></summary>
+
+#### Claude Desktop
+
+Edit your MCP config file:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add the JSON config above, then restart Claude Desktop.
+
+#### Claude Code
+
+```bash
+claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
+```
+
+Then restart the session (`/clear` or relaunch) for tools to load.
+
+> **Windows note:** Do *not* use `cmd /c` wrapper — it causes path parsing issues. The `npx` command works directly.
+
+#### Cursor / Windsurf
+
+Add to your workspace `.cursor/mcp.json` or global MCP settings using the JSON config above.
+
+</details>
+
 ### Other Install Methods
 
 ```bash
-# Global install
+# Global install (recommended for persistent data and faster startup)
 npm install -g @iris-eval/mcp-server
 iris-mcp --dashboard
 
 # Docker
 docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 ```
+
+> **Tip:** Global install (`npm install -g`) stores traces persistently at `~/.iris/iris.db`. With `npx`, traces persist in the same location, but startup is slower due to package resolution.
 
 ## MCP Tools
 
@@ -139,6 +170,68 @@ When using HTTP transport, Iris includes:
 ```bash
 # Production deployment
 iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
+```
+
+</details>
+
+<details>
+<summary><strong>Troubleshooting</strong></summary>
+
+### Iris won't start / `ERR_MODULE_NOT_FOUND`
+
+You may have a cached older version. Clear the npx cache and retry:
+
+```bash
+npx --yes @iris-eval/mcp-server@latest
+```
+
+Or install globally to avoid cache issues entirely:
+
+```bash
+npm install -g @iris-eval/mcp-server@latest
+```
+
+### Tools not showing up in Claude Code
+
+MCP tools only load at session start. After adding iris-eval, restart the session with `/clear` or relaunch the terminal.
+
+### Version check
+
+Verify which version is running:
+
+```bash
+npx @iris-eval/mcp-server --help
+# Shows "Iris MCP-Native Agent Eval & Observability Server vX.Y.Z"
+```
+
+### Updating
+
+```bash
+# If using npx (clears cache and fetches latest)
+npx --yes @iris-eval/mcp-server@latest
+
+# If installed globally
+npm update -g @iris-eval/mcp-server
+```
+
+### Node.js version
+
+Iris requires Node.js 20 or later. Node 18 reached EOL in April 2025 and is not supported.
+
+```bash
+node --version  # Must be v20.x or v22.x+
+```
+
+### Windows: `cmd /c` not needed
+
+Claude Code's `/doctor` may suggest wrapping npx with `cmd /c`. This is not needed and causes path parsing issues. Use `npx` directly:
+
+```bash
+# Correct
+claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
+
+# Wrong (causes /c to be parsed as a path)
+claude mcp add --transport stdio iris-eval -- cmd /c "npx @iris-eval/mcp-server"
 ```
 
 </details>
