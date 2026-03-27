@@ -8,6 +8,7 @@ const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChai
 
 const BADGES = [
   { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama AAA Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server" },
+  { src: "https://img.shields.io/badge/Cursor_Directory-Listed-171717?style=flat-square", alt: "Cursor Directory", href: "https://cursor.directory/plugins/iris" },
   { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
   { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
   { src: "https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat-square&color=0d9488", alt: "GitHub stars", href: "https://github.com/iris-eval/mcp-server" },

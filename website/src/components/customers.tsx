@@ -181,6 +181,15 @@ export function BuiltFor(): React.ReactElement {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.499h-3.464l.01-10.026h-3.456L12.04 18.84H5.113z"/></svg>
               <span className="text-[14px] font-medium">View on npm</span>
             </a>
+            <a
+              href="https://cursor.directory/plugins/iris"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2 text-text-secondary transition-colors hover:text-text-primary"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 0A2.5 2.5 0 000 2.5v19A2.5 2.5 0 002.5 24h19a2.5 2.5 0 002.5-2.5v-19A2.5 2.5 0 0021.5 0h-19zm9.5 4l8 8-8 8-2-2 6-6-6-6 2-2z"/></svg>
+              <span className="text-[14px] font-medium">Cursor Directory</span>
+            </a>
           </div>
         </div>
       </div>

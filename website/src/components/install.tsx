@@ -17,7 +17,7 @@ export function Install(): React.ReactElement {
           </p>
         </div>
 
-        <div className="mt-16 grid gap-8 lg:mt-20 lg:grid-cols-2">
+        <div className="mt-16 grid gap-8 lg:mt-20 lg:grid-cols-3">
           {/* MCP Config */}
           <div className="card-premium overflow-hidden">
             <div className="flex items-center gap-2 border-b border-border-subtle px-6 py-4">
@@ -62,6 +62,37 @@ export function Install(): React.ReactElement {
                   <span className="text-eval-pass">✓ Dashboard running at http://localhost:3838</span>
                 </code>
               </pre>
+            </div>
+          </div>
+
+          {/* Cursor one-click install */}
+          <div className="card-premium overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-border-subtle px-6 py-4">
+              <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+              <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+              <span className="ml-3 font-mono text-[12px] text-text-muted">
+                Cursor
+              </span>
+            </div>
+            <div className="flex flex-col items-center justify-center gap-5 p-6">
+              <a
+                href="cursor://anysphere.cursor-deeplink/mcp/install?name=server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19"
+                className="transition-opacity hover:opacity-80"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://cursor.com/deeplink/mcp-install-dark.svg"
+                  alt="Install Iris in Cursor"
+                  height={40}
+                  className="h-10"
+                />
+              </a>
+              <p className="text-center text-[13px] leading-relaxed text-text-muted">
+                One-click install for Cursor IDE.
+                <br />
+                No config file needed.
+              </p>
             </div>
           </div>
         </div>
