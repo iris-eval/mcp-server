@@ -108,6 +108,8 @@ But the insight is bigger than any single tool: **evals are not a gate. They are
 
 Stop treating evaluation as a tollbooth. Start treating it as a loss function. Score, diagnose, calibrate, re-score. Repeat.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *The eval loop starts with scoring every output. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*

@@ -161,6 +161,9 @@ export default function CompareArize(): React.ReactElement {
             60 seconds. If you need enterprise ML observability with drift
             detection, broad framework instrumentation, or advanced evaluation
             workflows, Arize is the more comprehensive platform.
+            <p className="mt-4 text-[13px] text-text-muted">
+              For background on agent evaluation methodology, see our <a href="/learn/agent-eval" className="text-iris-400 hover:text-iris-300 transition-colors">agent eval guide</a>.
+            </p>
           </div>
         </div>
       </section>

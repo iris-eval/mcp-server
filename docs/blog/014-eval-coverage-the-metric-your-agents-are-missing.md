@@ -84,6 +84,8 @@ The architectural advantage: when eval is an MCP tool the agent can invoke on an
 
 This is why the coverage framing matters: protocol-native eval makes high coverage a matter of agent configuration, not developer discipline. The same way CI pipelines made test coverage structural, MCP-native eval makes agent eval coverage structural.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *Iris is the agent eval standard for MCP. Add it to your MCP config and start scoring agent outputs inline. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*

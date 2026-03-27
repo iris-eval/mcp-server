@@ -68,6 +68,8 @@ But the real value is inline evaluation in production. Iris integrates at the MC
 
 The eval gap closes when you measure real performance, not demo performance. That's what inline evaluation enables.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *Iris is the agent eval standard for MCP. Try it in 60 seconds: [iris-eval.com/playground](https://iris-eval.com/playground)*

@@ -29,6 +29,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     {
+      url: `${baseUrl}/learn/agent-eval`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.95,
+    },
+    {
       url: baseUrl,
       lastModified: new Date(),
       changeFrequency: "weekly",

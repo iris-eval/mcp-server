@@ -157,6 +157,9 @@ export default function CompareLangsmith(): React.ReactElement {
             you need advanced evaluation workflows, auto-clustering, or
             enterprise compliance today, LangSmith is the more established
             platform.
+            <p className="mt-4 text-[13px] text-text-muted">
+              For background on agent evaluation methodology, see our <a href="/learn/agent-eval" className="text-iris-400 hover:text-iris-300 transition-colors">agent eval guide</a>.
+            </p>
           </div>
         </div>
       </section>

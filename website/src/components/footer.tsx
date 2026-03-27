@@ -72,6 +72,20 @@ export function Footer(): React.ReactElement {
             </div>
             <div>
               <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">
+                Learn
+              </h4>
+              <ul className="mt-4 space-y-3 text-[13px]">
+                {[
+                  { label: "Agent Eval Guide", href: "/learn/agent-eval" },
+                ].map((l) => (
+                  <li key={l.label}>
+                    <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">
                 Compare
               </h4>
               <ul className="mt-4 space-y-3 text-[13px]">

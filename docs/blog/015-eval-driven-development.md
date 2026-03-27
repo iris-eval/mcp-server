@@ -120,6 +120,8 @@ Custom eval rules extend these to your domain using a structured config format w
 
 That's EDD. Write the rules before the prompt. Measure against a standard, not a feeling. Ship when the rules say you're done, not when you run out of time.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *Iris is the agent eval standard for MCP. Start with EDD today: [iris-eval.com/playground](https://iris-eval.com/playground)*

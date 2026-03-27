@@ -154,6 +154,9 @@ export default function CompareLangfuse(): React.ReactElement {
             possible setup, Iris gets you there in 60 seconds. If you need broad
             framework support, prompt versioning, or enterprise certifications
             today, Langfuse is the more mature choice.
+            <p className="mt-4 text-[13px] text-text-muted">
+              For background on agent evaluation methodology, see our <a href="/learn/agent-eval" className="text-iris-400 hover:text-iris-300 transition-colors">agent eval guide</a>.
+            </p>
           </div>
         </div>
       </section>

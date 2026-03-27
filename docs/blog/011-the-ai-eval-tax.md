@@ -96,6 +96,8 @@ Iris exists because this problem is structural, not optional. It integrates at t
 
 But the insight is bigger than any single tool: **agents without evaluation are demos, not products.** The eval tax is the cost of treating production agents like demos. And the bill always comes due.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *You're already paying the eval tax. You just don't know how much.*

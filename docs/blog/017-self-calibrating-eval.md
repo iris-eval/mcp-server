@@ -89,6 +89,8 @@ The broader principle: an eval system that can't explain its own judgments is ju
 
 If you're running agent eval today with static thresholds, start tracking your scoring distributions over time. When the failure rate changes, ask: is the agent getting worse, or is the threshold stale? That question — and the infrastructure to answer it — is the difference between eval as a gate and eval as a co-pilot.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *Iris is the agent eval standard for MCP. Start scoring agent outputs inline and see how your eval distributions trend over time. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*

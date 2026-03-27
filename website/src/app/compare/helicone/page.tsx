@@ -155,6 +155,9 @@ export default function CompareHelicone(): React.ReactElement {
             possible setup with built-in eval, Iris gets you there in 60 seconds.
             If you need deep cost analytics, semantic caching, or a unified
             gateway across many LLM providers, Helicone is the stronger choice.
+            <p className="mt-4 text-[13px] text-text-muted">
+              For background on agent evaluation methodology, see our <a href="/learn/agent-eval" className="text-iris-400 hover:text-iris-300 transition-colors">agent eval guide</a>.
+            </p>
           </div>
         </div>
       </section>

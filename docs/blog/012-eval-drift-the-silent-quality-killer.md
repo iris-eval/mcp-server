@@ -74,6 +74,8 @@ Eval drift is not a bug in your code. It's a property of the environment your co
 
 Name the problem. Measure it. That's how you stop it from killing your product in silence.
 
+*For the complete picture, see our [Agent Eval: The Definitive Guide](/learn/agent-eval).*
+
 ---
 
 *Iris is the agent eval standard for MCP. Any MCP-compatible agent can discover Iris's eval tools and invoke them inline — no SDK, no code changes. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*
