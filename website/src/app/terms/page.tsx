@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: "Terms of Use — Iris",
   description: "Terms and conditions for using Iris and iris-eval.com.",
+  alternates: { canonical: "https://iris-eval.com/terms" },
 };
 
 export default function Terms(): React.ReactElement {

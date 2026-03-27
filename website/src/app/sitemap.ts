@@ -22,7 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const compareEntries: MetadataRoute.Sitemap = comparePages.map((slug) => ({
     url: `${baseUrl}/compare/${slug}`,
-    lastModified: new Date("2026-03-17"),
+    lastModified: new Date(),
     changeFrequency: "monthly",
     priority: 0.6,
   }));
@@ -48,15 +48,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...blogEntries,
     ...compareEntries,
-    {
-      url: `${baseUrl}/privacy`,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
   ];
 }

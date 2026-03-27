@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: "Privacy Policy — Iris",
   description: "How Iris collects, uses, and protects your data.",
+  alternates: { canonical: "https://iris-eval.com/privacy" },
 };
 
 export default function Privacy(): React.ReactElement {
