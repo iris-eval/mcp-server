@@ -1,7 +1,7 @@
 ---
 title: "The Eval Loop: Why Evals Are the Loss Function for Agent Quality"
 description: "Most teams treat eval as a one-time gate. The real pattern is a continuous loop: score, diagnose, calibrate, re-score. This is the eval loop — and it changes how you build agents."
-date: 2026-03-30
+date: 2026-03-29
 author: Ian Parent
 tags: [eval-loop, agent-eval, quality, calibration, mcp, vocabulary]
 devto_tags: [ai, testing, agenteval, programming]
