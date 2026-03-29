@@ -69,6 +69,9 @@ function parseFrontmatter(raw) {
     content = content.slice(firstLine.length).trim();
   }
 
+  // Convert relative URLs to absolute for Dev.to
+  content = content.replace(/\]\(\//g, "](https://iris-eval.com/");
+
   return { meta, content };
 }
 
