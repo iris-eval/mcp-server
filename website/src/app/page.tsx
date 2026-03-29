@@ -29,6 +29,9 @@ export default function Home(): React.ReactElement {
             name: "Iris",
             applicationCategory: "DeveloperApplication",
             operatingSystem: "Any",
+            downloadUrl: "https://www.npmjs.com/package/@iris-eval/mcp-server",
+            softwareVersion: "0.1.8",
+            applicationSubCategory: "AI Agent Evaluation",
             url: "https://iris-eval.com",
             description:
               "The agent eval standard for MCP. Score output quality, catch safety failures, enforce cost budgets across all your agents.",

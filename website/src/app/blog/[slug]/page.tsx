@@ -68,6 +68,7 @@ export default async function BlogPost({
     "@type": "BlogPosting",
     headline: sanitizeText(post.title),
     datePublished: sanitizeText(post.date),
+    dateModified: sanitizeText(post.date),
     author: {
       "@type": "Person",
       name: sanitizeText(post.author),
