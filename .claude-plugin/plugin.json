@@ -1,0 +1,14 @@
+{
+  "name": "iris",
+  "version": "0.1.8",
+  "description": "The agent eval standard for MCP. Score every agent output for quality, safety, and cost.",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://github.com/iris-eval"
+  },
+  "homepage": "https://iris-eval.com",
+  "repository": "https://github.com/iris-eval/mcp-server",
+  "license": "MIT",
+  "keywords": ["eval", "evaluation", "mcp", "quality", "safety", "cost", "agent", "scoring"]
+}
