@@ -21,13 +21,13 @@ This is the static threshold problem. And it's the reason most eval systems degr
 
 Every hardcoded threshold has an expiration date. The environment around your agent is constantly shifting:
 
-**Model provider changes.** Upstream providers update pricing, model weights, and decoding parameters without announcement. A [Stanford/Berkeley study](https://arxiv.org/abs/2307.09009) (Chen et al., 2023) found that GPT-4's code generation accuracy dropped from 52% to 10% in just three months — with no changelog, no API version bump. If your quality thresholds were calibrated to March outputs, they were wrong by June.
+**Model provider changes.** Upstream providers update pricing, model weights, and decoding parameters without announcement. A [Stanford/Berkeley study](https://arxiv.org/abs/2307.09009) (Chen et al., 2023) found that GPT-4's rate of directly executable code generations dropped from 52% to 10% in just three months — with no changelog, no API version bump. If your quality thresholds were calibrated to March outputs, they were wrong by June.
 
 **Input distribution shifts.** Your users don't send the same queries month over month. Seasonal patterns, feature launches, and user growth all change the distribution of inputs your agent handles. A cost threshold calibrated on developer queries breaks when your agent starts handling customer support.
 
 **Pricing changes.** Token costs are not static. When Anthropic, OpenAI, or Google adjust pricing — sometimes mid-quarter — every cost threshold in your eval system is instantly stale. Your $0.50 threshold might have been the 95th percentile at launch. After a price increase, it could be the 60th percentile. Same dollar figure, completely different meaning.
 
-The result is [eval drift](/blog/eval-drift-the-silent-quality-killer) manifesting not in the agent itself, but in the eval system that's supposed to catch it. Your quality gate is decaying alongside the thing it's measuring. The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) found only 37% of teams run online evals on production traffic — and of those, most are using static configurations that nobody revisits after deployment.
+The result is [eval drift](/blog/eval-drift-the-silent-quality-killer) manifesting not in the agent itself, but in the eval system that's supposed to catch it. Your quality gate is decaying alongside the thing it's measuring. The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) found only 37% of teams run online evals on production traffic — and the tooling ecosystem offers little support for revisiting those configurations after deployment.
 
 ## Threshold Drift vs. Actual Quality Drift
 
@@ -81,7 +81,7 @@ Self-calibrating eval works the same way. The system monitors the scoring enviro
 
 ## Where This Is Going
 
-Iris currently detects eval drift through scoring patterns — every eval result is persisted with a timestamp, and the dashboard surfaces trends over time. When your 7-day rolling average drops, you can see it. The scoring distribution data that makes self-calibrating eval possible is already being collected.
+Iris currently detects eval drift through scoring patterns — every eval result is persisted with a timestamp, and the dashboard surfaces trends over time. When your scores trend downward over the past 7 days, you can see it. The scoring distribution data that makes self-calibrating eval possible is already being collected.
 
 We're building toward eval advisor capabilities — the diagnostic layer that turns "your cost failure rate spiked" into "here's why, and here's what to adjust." This is what we're working on next. The pattern described in this post is the design target.
 

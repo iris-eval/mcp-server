@@ -23,7 +23,7 @@ Six weeks later, quality is degrading. Users are complaining. But nothing change
 
 What changed is everything outside the codebase. The model provider updated weights silently. The input distribution shifted as real users replaced test data. The edge cases multiplied. This is [eval drift](/blog/eval-drift-the-silent-quality-killer) — and it's invisible to teams that treated eval as a one-time event.
 
-A [Stanford/Berkeley study](https://arxiv.org/abs/2307.09009) (Chen et al., 2023) measured this directly: GPT-4's code generation accuracy dropped from 52% to 10% between March and June 2023, with no changelog and no API version bump. Teams that "passed eval" in March were shipping broken products in June without knowing it.
+A [Stanford/Berkeley study](https://arxiv.org/abs/2307.09009) (Chen et al., 2023) measured this directly: GPT-4's rate of directly executable code generations dropped from 52% to 10% between March and June 2023, with no changelog and no API version bump. Teams that "passed eval" in March were shipping degraded outputs in June without knowing it.
 
 One-shot eval creates a false sense of security. The score you got on Tuesday is not the score you have on Friday.
 
@@ -92,7 +92,7 @@ After three months, Team A's agent has silently degraded through eval drift. The
 
 Team B's agent has been continuously scored. When quality dipped in week 4, they tightened the relevance threshold. When a new failure pattern appeared in week 8, they added a rule. Their agent is measurably better in month 3 than it was at launch, not because the model improved, but because the eval loop caught problems early and calibration addressed them.
 
-The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) found that only 37% of teams have inline eval. That means 63% of teams are flying without a continuous quality signal. They shipped an agent that passed a test once. They have no loop.
+The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) found that only 37% of teams run online evals on production traffic. That means 63% of teams are flying without a continuous quality signal. They shipped an agent that passed a test once. They have no loop.
 
 The teams that build the eval loop into their agent infrastructure will compound quality improvements over time. The teams that don't will compound [the eval tax](/blog/the-ai-eval-tax) — the silent cost of every unscored output.
 

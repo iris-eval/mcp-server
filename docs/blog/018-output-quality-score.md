@@ -44,20 +44,20 @@ Without a composite score, teams face the same pattern:
 
 These aren't hypothetical scenarios. They're the operational reality of any team running agents in production without a rollup metric. The individual eval rules are essential for diagnosis — they tell you *what* is wrong. OQS tells you *whether* something is wrong.
 
-## How OQS Is Calculated
+## How OQS Works
 
-The calculation is a weighted average of individual rule scores, with one critical modifier: safety rules have veto power.
+The calculation is a weighted average of per-dimension scores, with one critical design principle: safety rules should have veto power.
 
 ```
-OQS = Σ (rule_score × rule_weight) / Σ (rule_weight)
+OQS = Σ (dimension_score × dimension_weight) / Σ (dimension_weight)
 
-Exception: if any safety rule scores 0, OQS = 0
+Recommended: if any safety rule scores 0, OQS = 0
 ```
 
-Default weights reflect the operational priority most teams converge on:
+A recommended weighting that reflects the operational priority most teams converge on:
 
-| Dimension | Default Weight | Rationale |
-|-----------|---------------|-----------|
+| Dimension | Recommended Weight | Rationale |
+|-----------|-------------------|-----------|
 | Completeness | 0.30 | Core output quality |
 | Relevance | 0.30 | On-topic accuracy |
 | Safety | 0.25 | Hard constraints (veto on zero) |
@@ -65,7 +65,7 @@ Default weights reflect the operational priority most teams converge on:
 
 Safety's veto is the key design decision. A response can be incomplete and still be acceptable. A response that leaks PII is never acceptable regardless of how well it answered the question. The veto ensures that a perfect completeness score can't mask a safety failure — if safety is zero, OQS is zero.
 
-Weights are configurable. A healthcare agent might weight safety at 0.40. A creative writing assistant might weight completeness at 0.50 and cost at 0.05. The defaults work for most agent use cases; the configurability exists because "most" isn't "all."
+Weights should be configurable. A healthcare agent might weight safety at 0.40. A creative writing assistant might weight completeness at 0.50 and cost at 0.05. The defaults work for most agent use cases; the configurability exists because "most" isn't "all."
 
 ## OQS in Practice
 
@@ -81,23 +81,26 @@ Here's what OQS looks like when it's operational:
 
 **Comparison:** Agent A has an OQS of 0.91. Agent B has an OQS of 0.72. Which one is production-ready? The question answers itself.
 
-## How Iris Implements OQS
+## How Iris Provides the Building Blocks
 
-When you call `evaluate_output` through Iris, the response includes individual rule scores *and* an overall score — the OQS. You don't have to calculate it yourself. You don't have to decide on an aggregation strategy. The tool returns a single number alongside the breakdown.
+Iris already evaluates each dimension independently. When you call `evaluate_output`, you get a score and detailed rule results for a given eval type:
 
 ```json
 {
-  "overall_score": 0.87,
-  "rules": {
-    "completeness_address_question": { "score": 0.92, "pass": true },
-    "relevance_on_topic": { "score": 0.85, "pass": true },
-    "safety_no_pii": { "score": 1.0, "pass": true },
-    "cost_token_budget": { "score": 0.71, "pass": true }
-  }
+  "score": 0.87,
+  "passed": true,
+  "rule_results": [
+    { "ruleName": "min_output_length", "score": 0.92, "passed": true },
+    { "ruleName": "keyword_overlap", "score": 0.85, "passed": true },
+    { "ruleName": "no_pii", "score": 1.0, "passed": true },
+    { "ruleName": "cost_under_threshold", "score": 0.71, "passed": true }
+  ]
 }
 ```
 
-The `overall_score` is the OQS. Use it for dashboards. Use it for alerts. Use it for SLOs. When it drops, drill into the individual rule scores to diagnose why.
+Run `evaluate_output` for each dimension (completeness, relevance, safety, cost), then compute your OQS as the weighted composite. The per-dimension scores are the building blocks. The composite is the decision metric. Every eval result is persisted with a timestamp, so your OQS trend is computable from the data Iris already collects.
+
+We're building toward a single-call composite OQS — one invocation that runs all dimensions and returns the rollup. The building blocks are shipping today. The rollup is next.
 
 This is the metric that makes the rest of the vocabulary operational. [Eval-Driven Development](/blog/eval-driven-development) needs a target score to iterate toward — that's OQS. [Eval drift](/blog/eval-drift-the-silent-quality-killer) is detected by tracking OQS over time. [The eval gap](/blog/the-eval-gap) is quantified by comparing OQS in staging versus production. [Eval coverage](/blog/eval-coverage-the-metric-your-agents-are-missing) tells you what percentage of outputs have an OQS at all. OQS is the number that connects the entire evaluation practice together.
 
@@ -113,7 +116,7 @@ OQS eliminates both failure modes. One number. One threshold. One trend line. Th
 
 ## Get Started
 
-OQS is available today in Iris. Add it to your MCP config, call `evaluate_output`, and the overall score is in the response.
+Iris gives you per-dimension eval scores today — the building blocks of OQS. Add it to your MCP config, call `evaluate_output` for each dimension, and compute the composite.
 
 ```bash
 npx @iris-eval/mcp-server@latest

@@ -134,6 +134,17 @@ async function main() {
       continue;
     }
 
+    // Skip future-dated posts — website handles scheduling, Dev.to should not publish early
+    if (parsed.meta.date) {
+      const postDate = new Date(parsed.meta.date);
+      const now = new Date();
+      if (postDate > now) {
+        console.log(`  SKIP: ${filename} (scheduled for ${parsed.meta.date}, not yet due)`);
+        skipped++;
+        continue;
+      }
+    }
+
     const slug = filenameToSlug(filename);
     const canonicalUrl = `${BASE_URL}/${slug}`;
     const title = parsed.meta.title || filename;
