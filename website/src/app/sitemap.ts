@@ -18,6 +18,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "helicone",
     "braintrust",
     "arize",
+    "deepeval",
+    "confident-ai",
+    "patronus-ai",
   ];
 
   const compareEntries: MetadataRoute.Sitemap = comparePages.map((slug) => ({
