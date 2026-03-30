@@ -30,6 +30,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
+  const learnTerms = [
+    "eval-tax",
+    "eval-drift",
+    "eval-gap",
+    "eval-coverage",
+    "eval-driven-development",
+    "eval-loop",
+    "self-calibrating-eval",
+    "output-quality-score",
+  ];
+
+  const learnTermEntries: MetadataRoute.Sitemap = learnTerms.map((term) => ({
+    url: `${baseUrl}/learn/${term}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.85,
+  }));
+
   return [
     {
       url: `${baseUrl}/learn`,
@@ -43,6 +61,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.95,
     },
+    ...learnTermEntries,
     {
       url: baseUrl,
       lastModified: new Date(),

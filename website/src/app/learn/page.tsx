@@ -29,43 +29,49 @@ const vocabularyTerms = [
     term: "Eval Drift",
     description:
       "Quality degradation over time as models and prompts change.",
-    href: "/blog/eval-drift-the-silent-quality-killer",
+    href: "/learn/eval-drift",
   },
   {
     term: "The Eval Tax",
     description:
       "The compounding cost of not evaluating agent outputs.",
-    href: "/blog/the-ai-eval-tax",
+    href: "/learn/eval-tax",
   },
   {
     term: "The Eval Gap",
     description:
       "The distance between demo performance and production reality.",
-    href: "/blog/the-eval-gap",
+    href: "/learn/eval-gap",
   },
   {
     term: "Eval Coverage",
     description:
       "The percentage of agent executions being evaluated.",
-    href: "/blog/eval-coverage-the-metric-your-agents-are-missing",
+    href: "/learn/eval-coverage",
   },
   {
     term: "Eval-Driven Development",
     description:
       "Write your eval rules before you write your prompt. TDD for agents.",
-    href: "/blog/eval-driven-development",
+    href: "/learn/eval-driven-development",
   },
   {
     term: "The Eval Loop",
     description:
       "The continuous cycle: score, diagnose, calibrate, re-score.",
-    href: "/blog/the-eval-loop",
+    href: "/learn/eval-loop",
   },
   {
     term: "Self-Calibrating Eval",
     description:
       "Eval systems that monitor their own scoring distribution and recommend adjustments.",
-    href: "/blog/self-calibrating-eval",
+    href: "/learn/self-calibrating-eval",
+  },
+  {
+    term: "Output Quality Score",
+    description:
+      "A composite metric that rolls completeness, relevance, safety, and cost into one number.",
+    href: "/learn/output-quality-score",
   },
 ];
 
@@ -164,8 +170,8 @@ export default function LearnIndex() {
 
         <div className="mt-12 rounded-lg border border-border-default bg-surface-primary p-6 text-center">
           <p className="text-text-secondary text-sm">
-            Dedicated learn pages for each term are coming soon. For now,
-            each links to its full blog post.
+            Each term has a dedicated reference page with definitions, detection patterns, and FAQ.
+            For deeper analysis, follow the link to the full blog post from each page.
           </p>
         </div>
       </main>
