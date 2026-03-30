@@ -11,6 +11,7 @@ export interface BlogPost {
   content: string;
   filename: string;
   published: boolean;
+  relatedPosts?: string[];
 }
 
 const BLOG_DIR = join(process.cwd(), "..", "docs", "blog");
@@ -98,6 +99,7 @@ export function getAllPosts(): BlogPost[] {
         content,
         filename,
         published: meta.published !== false,
+        relatedPosts: (meta.relatedPosts as string[]) || undefined,
       };
     })
     .filter((post) => {

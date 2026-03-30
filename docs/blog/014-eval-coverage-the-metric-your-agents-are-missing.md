@@ -4,6 +4,7 @@ description: "Eval coverage measures the percentage of agent executions that rec
 date: 2026-03-26
 author: Ian Parent
 tags: [eval-coverage, agent-eval, testing, mcp, vocabulary]
+relatedPosts: [the-ai-eval-tax, eval-driven-development, the-eval-loop]
 ---
 
 # Eval Coverage: The Metric Your AI Agents Are Missing

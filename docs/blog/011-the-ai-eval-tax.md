@@ -4,6 +4,7 @@ description: "The eval tax is the compounding cost of every unscored agent outpu
 date: 2026-03-21
 author: Ian Parent
 tags: [eval-tax, agent-eval, production, cost, mcp, vocabulary]
+relatedPosts: [eval-drift-the-silent-quality-killer, the-eval-gap, eval-coverage-the-metric-your-agents-are-missing]
 ---
 
 # The AI Eval Tax: The Hidden Cost Every Agent Team Is Paying

@@ -4,6 +4,7 @@ description: "The eval gap is why your AI demo works but production fails. Learn
 date: 2026-03-24
 author: Ian Parent
 tags: [eval-gap, agent-eval, production, mcp, vocabulary]
+relatedPosts: [the-ai-eval-tax, eval-driven-development, eval-coverage-the-metric-your-agents-are-missing]
 ---
 
 # The Eval Gap: Why Your AI Demo Works and Production Doesn't

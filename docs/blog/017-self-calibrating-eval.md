@@ -4,6 +4,7 @@ description: "Static eval thresholds break over time. Self-calibrating eval is t
 date: 2026-04-01
 author: Ian Parent
 tags: [self-calibrating-eval, eval-advisor, eval-drift, agent-eval, mcp, vocabulary]
+relatedPosts: [eval-drift-the-silent-quality-killer, the-eval-loop, output-quality-score]
 devto_tags: [ai, agenteval, programming, testing]
 ---
 

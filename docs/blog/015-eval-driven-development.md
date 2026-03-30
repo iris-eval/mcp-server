@@ -4,6 +4,7 @@ description: "Eval-Driven Development applies TDD principles to AI agents: defin
 date: 2026-03-28
 author: Ian Parent
 tags: [edd, eval-driven-development, agent-eval, tdd, mcp, vocabulary]
+relatedPosts: [eval-coverage-the-metric-your-agents-are-missing, the-eval-loop, the-eval-gap]
 ---
 
 # Eval-Driven Development: Write the Rules Before the Prompt

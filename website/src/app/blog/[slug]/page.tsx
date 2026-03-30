@@ -6,6 +6,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
+import { RelatedPosts } from "@/components/related-posts";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -198,6 +199,14 @@ export default async function BlogPost({
             {post.content}
           </ReactMarkdown>
         </div>
+
+        {/* Related Posts */}
+        {post.relatedPosts && post.relatedPosts.length > 0 && (() => {
+          const related = post.relatedPosts
+            .map((slug) => getPostBySlug(slug))
+            .filter((p): p is NonNullable<typeof p> => p != null);
+          return related.length > 0 ? <RelatedPosts posts={related} /> : null;
+        })()}
 
         {/* Waitlist CTA */}
         <div className="mt-16 rounded-2xl border border-border-glow bg-bg-card p-8 text-center">

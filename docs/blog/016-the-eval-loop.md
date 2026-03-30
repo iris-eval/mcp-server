@@ -4,6 +4,7 @@ description: "Most teams treat eval as a one-time gate. The real pattern is a co
 date: 2026-03-29
 author: Ian Parent
 tags: [eval-loop, agent-eval, quality, calibration, mcp, vocabulary]
+relatedPosts: [eval-drift-the-silent-quality-killer, self-calibrating-eval, eval-driven-development]
 devto_tags: [ai, testing, agenteval, programming]
 ---
 

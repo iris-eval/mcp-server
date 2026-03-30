@@ -4,6 +4,7 @@ description: "Output Quality Score (OQS) is a composite metric that rolls comple
 date: 2026-04-03
 author: Ian Parent
 tags: [output-quality-score, oqs, agent-eval, quality, mcp, vocabulary]
+relatedPosts: [self-calibrating-eval, eval-coverage-the-metric-your-agents-are-missing, the-ai-eval-tax]
 devto_tags: [ai, agenteval, programming, testing]
 ---
 

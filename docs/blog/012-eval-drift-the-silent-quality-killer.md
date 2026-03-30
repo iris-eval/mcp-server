@@ -4,6 +4,7 @@ description: "Eval drift is the silent degradation of agent quality caused by up
 date: 2026-03-22
 author: Ian Parent
 tags: [eval-drift, agent-eval, quality, mcp, vocabulary]
+relatedPosts: [the-ai-eval-tax, self-calibrating-eval, the-eval-loop]
 ---
 
 # Eval Drift: The Silent Quality Killer for AI Agents
