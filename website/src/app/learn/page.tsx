@@ -168,12 +168,6 @@ export default function LearnIndex() {
           ))}
         </div>
 
-        <div className="mt-12 rounded-lg border border-border-default bg-surface-primary p-6 text-center">
-          <p className="text-text-secondary text-sm">
-            Each term has a dedicated reference page with definitions, detection patterns, and FAQ.
-            For deeper analysis, follow the link to the full blog post from each page.
-          </p>
-        </div>
       </main>
     </>
   );

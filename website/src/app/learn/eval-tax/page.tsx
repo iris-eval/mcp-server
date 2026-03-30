@@ -92,8 +92,9 @@ export default function LearnEvalTax(): React.ReactElement {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="relative mx-auto max-w-4xl px-6 pt-32 pb-20 lg:pt-40">
-        <TableOfContents items={TOC_ITEMS} />
+      <div className="mx-auto max-w-6xl px-6 pt-32 pb-20 lg:pt-40">
+        <div className="lg:grid lg:grid-cols-[1fr_240px] lg:gap-16">
+        <article className="max-w-3xl text-[15px] leading-[1.8] text-text-secondary">
 
         {/* Breadcrumb */}
         <nav className="mb-8 text-sm text-text-muted">
@@ -177,6 +178,11 @@ export default function LearnEvalTax(): React.ReactElement {
         {/* FAQ */}
         <SectionHeading id="faq" level={2}>Frequently Asked Questions</SectionHeading>
         <FaqSection items={FAQ_ITEMS} />
+        </article>
+        <aside className="hidden lg:block">
+          <TableOfContents items={TOC_ITEMS} />
+        </aside>
+        </div>
       </div>
     </>
   );
