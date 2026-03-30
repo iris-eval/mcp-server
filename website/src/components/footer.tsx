@@ -77,6 +77,14 @@ export function Footer(): React.ReactElement {
               <ul className="mt-4 space-y-3 text-[13px]">
                 {[
                   { label: "Agent Eval Guide", href: "/learn/agent-eval" },
+                  { label: "The Eval Tax", href: "/learn/eval-tax" },
+                  { label: "Eval Drift", href: "/learn/eval-drift" },
+                  { label: "The Eval Gap", href: "/learn/eval-gap" },
+                  { label: "Eval Coverage", href: "/learn/eval-coverage" },
+                  { label: "EDD", href: "/learn/eval-driven-development" },
+                  { label: "The Eval Loop", href: "/learn/eval-loop" },
+                  { label: "Self-Calibrating Eval", href: "/learn/self-calibrating-eval" },
+                  { label: "Output Quality Score", href: "/learn/output-quality-score" },
                 ].map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>

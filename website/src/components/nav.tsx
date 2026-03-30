@@ -7,7 +7,7 @@ import { IrisLogo } from "./iris-logo";
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
   { label: "Playground", href: "/playground" },
-  { label: "Learn", href: "/learn/agent-eval" },
+  { label: "Learn", href: "/learn" },
   { label: "Pricing", href: "/#pricing" },
   { label: "Blog", href: "/blog" },
   { label: "Open Source", href: "/#open-source" },
