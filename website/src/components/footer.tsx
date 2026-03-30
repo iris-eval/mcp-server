@@ -95,6 +95,9 @@ export function Footer(): React.ReactElement {
                   { label: "Iris vs Helicone", href: "/compare/helicone" },
                   { label: "Iris vs Braintrust", href: "/compare/braintrust" },
                   { label: "Iris vs Arize", href: "/compare/arize" },
+                  { label: "Iris vs DeepEval", href: "/compare/deepeval" },
+                  { label: "Iris vs Confident AI", href: "/compare/confident-ai" },
+                  { label: "Iris vs Patronus AI", href: "/compare/patronus-ai" },
                 ].map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>

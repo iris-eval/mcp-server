@@ -319,7 +319,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <VocabularyCard
                 term="The Eval Tax"
                 definition="The compounding cost of every unscored agent output — in trust, engineering hours, and liability."
-                href="/blog/the-ai-eval-tax"
+                href="/learn/eval-tax"
               />
 
               <SectionHeading id="silent-degradation" level={3}>
@@ -347,7 +347,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <VocabularyCard
                 term="Eval Drift"
                 definition="Silent degradation of agent output quality over time — even when your code and prompts haven't changed."
-                href="/blog/eval-drift-the-silent-quality-killer"
+                href="/learn/eval-drift"
               />
 
               <SectionHeading id="production-gap" level={3}>
@@ -374,7 +374,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <VocabularyCard
                 term="The Eval Gap"
                 definition="The distance between 'demo works' and 'production works' — driven by input distribution, compound failure, and cost reality."
-                href="/blog/the-eval-gap"
+                href="/learn/eval-gap"
               />
 
               {/* ---- Section 3: Three-Layer Model ---- */}
@@ -524,7 +524,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <VocabularyCard
                 term="Eval Coverage"
                 definition="The percentage of agent executions that receive evaluation. The target is 100% — every output scored, not sampled."
-                href="/blog/eval-coverage-the-metric-your-agents-are-missing"
+                href="/learn/eval-coverage"
               />
 
               {/* ---- Section 6: Eval-Driven Development ---- */}
@@ -557,7 +557,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <VocabularyCard
                 term="Eval-Driven Development (EDD)"
                 definition="Define evaluation rules before writing agent prompts — the same way TDD defines tests before writing code."
-                href="/blog/eval-driven-development"
+                href="/learn/eval-driven-development"
               />
 
               {/* ---- Section 7: The Eval Loop ---- */}
