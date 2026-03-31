@@ -1,7 +1,7 @@
 ---
 title: "Self-Calibrating Eval: The End of Manual Threshold Tuning"
 description: "Static eval thresholds break over time. Self-calibrating eval is the pattern where the system monitors its own scoring distribution and recommends adjustments — always human-approved."
-date: 2026-04-01
+date: 2026-03-31
 author: Ian Parent
 tags: [self-calibrating-eval, eval-advisor, eval-drift, agent-eval, mcp, vocabulary]
 relatedPosts: [eval-drift-the-silent-quality-killer, the-eval-loop, output-quality-score]
