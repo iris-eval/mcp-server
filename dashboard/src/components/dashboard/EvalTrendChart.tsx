@@ -105,7 +105,7 @@ export function EvalTrendChart({ data, period, onPeriodChange }: Props) {
               color: '#fafafa',
               fontSize: '13px',
             }}
-            formatter={(value: number, name: string) => [
+            formatter={(value, name) => [
               `${value}%`,
               name === 'scorePercent' ? 'Avg Score' : 'Pass Rate',
             ]}

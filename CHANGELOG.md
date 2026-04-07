@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-04-07
+
+### Security
+- **Vite dev server vulnerabilities** — bumped vite to 8.0.6 across root and dashboard, resolving 6 GitHub Dependabot alerts:
+  - GHSA-v2wj-q39q-566r: `server.fs.deny` bypassed with queries (high)
+  - GHSA-p9ff-h696-f583: arbitrary file read via Vite Dev Server WebSocket (high)
+  - GHSA-4w7w-66w2-5vf9: path traversal in optimized deps `.map` handling (moderate)
+  - All three are dev-server-only (no impact on shipped artifacts), but worth eliminating
+- **Lodash removal from dashboard bundle** — bumped recharts 2.15.4 → 3.8.1, which drops the lodash dependency in favor of `es-toolkit`. Eliminates GHSA-r5fr-rjxr-66jc (`_.template` code injection) and GHSA-f23m-r3pf-42rh (prototype pollution) from the published dashboard. Bundle size dropped 47 KB (655 KB → 608 KB).
+
+### Changed
+- Bumped `@modelcontextprotocol/sdk` 1.28.0 → 1.29.0 (typings exports, ResourceSchema size field, `windowsHide` on Windows, capability extensions)
+- Bumped `express-rate-limit` 8.3.1 → 8.3.2
+- Bumped `react-router-dom` 7.13.2 → 7.14.0 (dashboard)
+- Bumped dev dependencies: `eslint` 10.1.0 → 10.2.0, `@typescript-eslint/*` 8.57.2 → 8.58.0, `@types/node` 25.5.0 → 25.5.2
+
+### Fixed
+- Recharts 3.x type compatibility: `EvalTrendChart` Tooltip formatter signature updated to match the new generic `Formatter<ValueType, NameType>` shape
+
 ## [0.1.8] - 2026-03-25
 
 ### Fixed
