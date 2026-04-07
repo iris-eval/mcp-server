@@ -1,6 +1,7 @@
 {
   "name": "@iris-eval/autogen",
   "version": "0.1.0",
+  "private": true,
   "description": "Iris eval integration for AutoGen — evaluate multi-agent conversation output via MCP",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
