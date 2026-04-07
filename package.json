@@ -1,6 +1,6 @@
 {
   "name": "@iris-eval/mcp-server",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "The agent eval standard for MCP. Score every agent output for quality, safety, and cost.",
   "mcpName": "io.github.iris-eval/mcp-server",
   "type": "module",
@@ -67,10 +67,10 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.8.0",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "^8.3.2",
     "helmet": "^8.1.0",
     "pino": "^10.3.1",
     "safe-regex2": "^5.1.0",
@@ -79,11 +79,11 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^5.0.0",
-    "@types/node": "^25.5.0",
-    "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.0",
+    "@types/node": "^25.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
     "@vitest/coverage-v8": "^4.1.1",
-    "eslint": "^10.1.0",
+    "eslint": "^10.2.0",
     "prettier": "^3.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.7.0",
