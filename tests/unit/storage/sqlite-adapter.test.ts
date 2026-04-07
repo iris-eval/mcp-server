@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
-import { sampleTrace, minimalTrace, errorTrace, allSampleTraces } from '../../fixtures/sample-traces.js';
+import { sampleTrace, minimalTrace, allSampleTraces } from '../../fixtures/sample-traces.js';
 import { generateEvalId } from '../../../src/utils/ids.js';
 
 describe('SqliteAdapter', () => {

@@ -4,7 +4,6 @@ import { homedir } from 'node:os';
 import type { IrisConfig } from '../types/index.js';
 import { defaultConfig } from './defaults.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepMerge(target: any, source: any): any {
   const result = { ...target };
   for (const key of Object.keys(source)) {

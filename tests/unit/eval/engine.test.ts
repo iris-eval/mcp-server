@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
-import { passingContext, failingContext, shortOutputContext } from '../../fixtures/sample-evals.js';
+import { passingContext, failingContext } from '../../fixtures/sample-evals.js';
 
 describe('EvalEngine', () => {
   it('should return passing result for good output', () => {
