@@ -3,6 +3,11 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { getAllPosts } from "@/lib/blog";
 
+// Revalidate hourly so date-scheduled posts become visible without a redeploy.
+// getAllPosts() filters by `new Date()` which is frozen at generation time,
+// so the page must regenerate for future-dated posts to appear.
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Blog — Iris",
   description:

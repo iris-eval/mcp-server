@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/lib/blog";
 
+// Regenerate hourly so future-dated posts enter the sitemap on schedule.
+export const revalidate = 3600;
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://iris-eval.com";
   const posts = getAllPosts();
