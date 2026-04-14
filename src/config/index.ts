@@ -42,6 +42,9 @@ function loadEnvVars(): Partial<IrisConfig> {
   if (process.env.IRIS_PORT) {
     config.transport = { ...(config.transport as object), port: parseInt(process.env.IRIS_PORT) };
   }
+  if (process.env.IRIS_HOST) {
+    config.transport = { ...(config.transport as object), host: process.env.IRIS_HOST };
+  }
   if (process.env.IRIS_DB_PATH) {
     config.storage = { type: 'sqlite', path: process.env.IRIS_DB_PATH };
   }

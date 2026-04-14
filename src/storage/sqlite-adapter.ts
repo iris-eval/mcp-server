@@ -14,6 +14,9 @@ import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult } from '../types/eval.js';
 import { runMigrations } from './migrations/index.js';
 
+const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
+const ALLOWED_SORT_ORDERS = new Set(['asc', 'desc']);
+
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
 
@@ -33,29 +36,50 @@ export class SqliteAdapter implements IStorageAdapter {
   }
 
   async insertTrace(trace: Trace): Promise<void> {
-    const stmt = this.db.prepare(`
+    const insertTraceStmt = this.db.prepare(`
       INSERT INTO traces (trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(
-      trace.trace_id,
-      trace.agent_name,
-      trace.framework ?? null,
-      trace.input ?? null,
-      trace.output ?? null,
-      trace.tool_calls ? JSON.stringify(trace.tool_calls) : null,
-      trace.latency_ms ?? null,
-      trace.token_usage ? JSON.stringify(trace.token_usage) : null,
-      trace.cost_usd ?? null,
-      trace.metadata ? JSON.stringify(trace.metadata) : null,
-      trace.timestamp,
-    );
+    const insertSpanStmt = this.db.prepare(`
+      INSERT INTO spans (span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
-    if (trace.spans) {
-      for (const span of trace.spans) {
-        await this.insertSpan({ ...span, trace_id: trace.trace_id });
+    const insertAll = this.db.transaction((t: Trace) => {
+      insertTraceStmt.run(
+        t.trace_id,
+        t.agent_name,
+        t.framework ?? null,
+        t.input ?? null,
+        t.output ?? null,
+        t.tool_calls ? JSON.stringify(t.tool_calls) : null,
+        t.latency_ms ?? null,
+        t.token_usage ? JSON.stringify(t.token_usage) : null,
+        t.cost_usd ?? null,
+        t.metadata ? JSON.stringify(t.metadata) : null,
+        t.timestamp,
+      );
+
+      if (t.spans) {
+        for (const span of t.spans) {
+          insertSpanStmt.run(
+            span.span_id,
+            t.trace_id,
+            span.parent_span_id ?? null,
+            span.name,
+            span.kind,
+            span.status_code,
+            span.status_message ?? null,
+            span.start_time,
+            span.end_time ?? null,
+            span.attributes ? JSON.stringify(span.attributes) : null,
+            span.events ? JSON.stringify(span.events) : null,
+          );
+        }
       }
-    }
+    });
+
+    insertAll(trace);
   }
 
   async getTrace(traceId: string): Promise<Trace | null> {
@@ -89,6 +113,13 @@ export class SqliteAdapter implements IStorageAdapter {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sortBy = options.sort_by ?? 'timestamp';
     const sortOrder = options.sort_order ?? 'desc';
+
+    if (!ALLOWED_SORT_COLUMNS.has(sortBy)) {
+      throw new Error(`Invalid sort column: ${sortBy}`);
+    }
+    if (!ALLOWED_SORT_ORDERS.has(sortOrder)) {
+      throw new Error(`Invalid sort order: ${sortOrder}`);
+    }
     const limit = options.limit ?? 50;
     const offset = options.offset ?? 0;
 

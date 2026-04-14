@@ -4,8 +4,16 @@ import { summaryQuerySchema } from '../validation.js';
 
 export function registerSummaryRoutes(router: Router, storage: IStorageAdapter): void {
   router.get('/summary', async (req, res) => {
-    const query = summaryQuerySchema.parse(req.query);
-    const summary = await storage.getDashboardSummary(query.hours);
-    res.json(summary);
+    try {
+      const query = summaryQuerySchema.parse(req.query);
+      const summary = await storage.getDashboardSummary(query.hours);
+      res.json(summary);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        return;
+      }
+      throw err;
+    }
   });
 }

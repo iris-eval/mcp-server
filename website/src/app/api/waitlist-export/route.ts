@@ -22,7 +22,10 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const providedKey = searchParams.get("key") || "";
+  const authHeader = request.headers.get("authorization") || "";
+  const providedKey = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : "";
   if (
     providedKey.length !== adminKey.length ||
     !timingSafeEqual(providedKey, adminKey)
