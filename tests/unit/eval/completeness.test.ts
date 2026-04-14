@@ -50,8 +50,9 @@ describe('completeness rules', () => {
 
     it('should skip when no expected output', () => {
       const result = expectedCoverage.evaluate({ output: 'Hello world' });
-      expect(result.passed).toBe(true);
-      expect(result.score).toBe(1);
+      expect(result.skipped).toBe(true);
+      expect(result.passed).toBe(false);
+      expect(result.score).toBe(0);
     });
 
     it('should fail when output misses expected terms', () => {

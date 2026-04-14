@@ -12,8 +12,10 @@ describe('cost rules', () => {
       expect(costUnderThreshold.evaluate(expensiveContext).passed).toBe(false);
     });
 
-    it('should pass when no cost info', () => {
-      expect(costUnderThreshold.evaluate({ output: 'test' }).passed).toBe(true);
+    it('should skip when no cost info', () => {
+      const result = costUnderThreshold.evaluate({ output: 'test' });
+      expect(result.skipped).toBe(true);
+      expect(result.passed).toBe(false);
     });
   });
 
@@ -31,7 +33,9 @@ describe('cost rules', () => {
     });
 
     it('should skip when no token usage', () => {
-      expect(tokenEfficiency.evaluate({ output: 'test' }).passed).toBe(true);
+      const result = tokenEfficiency.evaluate({ output: 'test' });
+      expect(result.skipped).toBe(true);
+      expect(result.passed).toBe(false);
     });
   });
 });

@@ -24,6 +24,8 @@ export interface EvalRuleResult {
   passed: boolean;
   score: number;
   message: string;
+  skipped?: boolean;
+  skipReason?: string;
 }
 
 export interface EvalResult {
@@ -37,6 +39,9 @@ export interface EvalResult {
   rule_results: EvalRuleResult[];
   suggestions: string[];
   created_at?: string;
+  rules_evaluated?: number;
+  rules_skipped?: number;
+  insufficient_data?: boolean;
 }
 
 export type CustomRuleType =

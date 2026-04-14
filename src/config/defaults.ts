@@ -34,6 +34,14 @@ export const defaultConfig: IrisConfig = {
   },
   eval: {
     defaultThreshold: 0.7,
+    ruleThresholds: {
+      min_output_length: 50,
+      min_sentences: 2,
+      keyword_overlap: 0.35,
+      topic_consistency: 0.10,
+      cost_threshold: 0.10,
+      max_token_ratio: 5,
+    },
   },
   logging: {
     level: 'info',

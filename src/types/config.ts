@@ -18,6 +18,14 @@ export interface IrisConfig {
   };
   eval: {
     defaultThreshold: number;
+    ruleThresholds?: {
+      min_output_length?: number;
+      min_sentences?: number;
+      keyword_overlap?: number;
+      topic_consistency?: number;
+      cost_threshold?: number;
+      max_token_ratio?: number;
+    };
   };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';

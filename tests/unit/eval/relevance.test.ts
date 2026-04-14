@@ -11,8 +11,9 @@ describe('relevance rules', () => {
 
     it('should skip when no input provided', () => {
       const result = keywordOverlap.evaluate({ output: 'Some output' });
-      expect(result.passed).toBe(true);
-      expect(result.score).toBe(1);
+      expect(result.skipped).toBe(true);
+      expect(result.passed).toBe(false);
+      expect(result.score).toBe(0);
     });
   });
 
@@ -33,7 +34,9 @@ describe('relevance rules', () => {
     });
 
     it('should skip when no input', () => {
-      expect(topicConsistency.evaluate({ output: 'Some text' }).passed).toBe(true);
+      const result = topicConsistency.evaluate({ output: 'Some text' });
+      expect(result.skipped).toBe(true);
+      expect(result.passed).toBe(false);
     });
   });
 });

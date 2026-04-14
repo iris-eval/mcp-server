@@ -6,7 +6,9 @@ export const minOutputLength: EvalRule = {
   evalType: 'completeness',
   weight: 1,
   evaluate(context: EvalContext): EvalRuleResult {
-    const minLen = (context.customConfig?.min_length as number) ?? 10;
+    const minLen = (context.customConfig?.min_output_length as number)
+      ?? (context.customConfig?.min_length as number)
+      ?? 50;
     const len = context.output.length;
     const passed = len >= minLen;
     return {
@@ -40,7 +42,7 @@ export const sentenceCount: EvalRule = {
   evalType: 'completeness',
   weight: 0.5,
   evaluate(context: EvalContext): EvalRuleResult {
-    const minSentences = (context.customConfig?.min_sentences as number) ?? 1;
+    const minSentences = (context.customConfig?.min_sentences as number) ?? 2;
     const sentences = context.output.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
     const passed = sentences >= minSentences;
     return {
@@ -59,7 +61,7 @@ export const expectedCoverage: EvalRule = {
   weight: 1.5,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.expected) {
-      return { ruleName: 'expected_coverage', passed: true, score: 1, message: 'No expected output provided — skipped' };
+      return { ruleName: 'expected_coverage', passed: false, score: 0, message: 'No expected output provided', skipped: true, skipReason: 'context.expected not provided' };
     }
     const expectedWords = new Set(
       context.expected.toLowerCase().split(/\W+/).filter((w) => w.length > 2),

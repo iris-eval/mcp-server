@@ -167,8 +167,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertEvalResult(result: EvalResult): Promise<void> {
     this.db.prepare(`
-      INSERT INTO eval_results (id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       result.id,
       result.trace_id ?? null,
@@ -179,6 +179,9 @@ export class SqliteAdapter implements IStorageAdapter {
       result.passed ? 1 : 0,
       JSON.stringify(result.rule_results),
       JSON.stringify(result.suggestions),
+      result.rules_evaluated ?? null,
+      result.rules_skipped ?? null,
+      result.insufficient_data ? 1 : 0,
     );
   }
 
@@ -408,8 +411,9 @@ export class SqliteAdapter implements IStorageAdapter {
     const ruleMap = new Map<string, { totalRun: number; failCount: number }>();
 
     for (const row of rows) {
-      const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(row.rule_results);
+      const rules: Array<{ ruleName: string; passed: boolean; skipped?: boolean }> = JSON.parse(row.rule_results);
       for (const r of rules) {
+        if (r.skipped) continue;
         const entry = ruleMap.get(r.ruleName) ?? { totalRun: 0, failCount: 0 };
         entry.totalRun++;
         if (!r.passed) entry.failCount++;
@@ -541,6 +545,9 @@ export class SqliteAdapter implements IStorageAdapter {
       rule_results: JSON.parse(row.rule_results as string),
       suggestions: JSON.parse(row.suggestions as string),
       created_at: row.created_at as string,
+      rules_evaluated: row.rules_evaluated as number | undefined,
+      rules_skipped: row.rules_skipped as number | undefined,
+      insufficient_data: row.insufficient_data != null ? (row.insufficient_data as number) === 1 : undefined,
     };
   }
 }

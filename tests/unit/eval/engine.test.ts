@@ -34,8 +34,9 @@ describe('EvalEngine', () => {
   it('should handle custom eval type with no rules', () => {
     const engine = new EvalEngine(0.7);
     const result = engine.evaluate('custom', passingContext);
-    expect(result.passed).toBe(true);
-    expect(result.score).toBe(1);
+    expect(result.passed).toBe(false);
+    expect(result.score).toBe(0);
+    expect(result.insufficient_data).toBe(true);
   });
 
   it('should handle custom rules', () => {

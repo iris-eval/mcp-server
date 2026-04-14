@@ -16,7 +16,7 @@ export function createIrisServer(config: IrisConfig, storage: IStorageAdapter): 
     version: config.server.version,
   });
 
-  const evalEngine = new EvalEngine(config.eval.defaultThreshold);
+  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds);
 
   registerAllTools(mcpServer, storage, evalEngine);
   registerAllResources(mcpServer, storage);

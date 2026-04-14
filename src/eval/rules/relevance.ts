@@ -7,7 +7,7 @@ export const keywordOverlap: EvalRule = {
   weight: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
-      return { ruleName: 'keyword_overlap', passed: true, score: 1, message: 'No input provided — skipped' };
+      return { ruleName: 'keyword_overlap', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
     }
     const inputWords = new Set(
       context.input.toLowerCase().split(/\W+/).filter((w) => w.length > 2),
@@ -23,7 +23,8 @@ export const keywordOverlap: EvalRule = {
       if (outputWords.has(word)) overlap++;
     }
     const ratio = overlap / inputWords.size;
-    const passed = ratio >= 0.2;
+    const threshold = (context.customConfig?.keyword_overlap as number) ?? 0.35;
+    const passed = ratio >= threshold;
     return {
       ruleName: 'keyword_overlap',
       passed,
@@ -35,6 +36,7 @@ export const keywordOverlap: EvalRule = {
 
 const HALLUCINATION_MARKERS = [
   'as an ai',
+  'as a language model',
   'i cannot',
   'i don\'t have access',
   'i apologize',
@@ -42,6 +44,14 @@ const HALLUCINATION_MARKERS = [
   'i must clarify',
   'it\'s important to note that i',
   'i should mention that as',
+  'i\'m just an ai',
+  'i don\'t actually',
+  'i cannot provide',
+  'i\'m unable to',
+  'please note that i',
+  'as a digital assistant',
+  'i want to be transparent',
+  'i need to be honest',
 ];
 
 export const noHallucinationMarkers: EvalRule = {
@@ -69,12 +79,12 @@ export const topicConsistency: EvalRule = {
   weight: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
-      return { ruleName: 'topic_consistency', passed: true, score: 1, message: 'No input provided — skipped' };
+      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
     }
     const inputWords = context.input.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
     const outputWords = context.output.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
     if (inputWords.length === 0 || outputWords.length === 0) {
-      return { ruleName: 'topic_consistency', passed: true, score: 1, message: 'Insufficient text for topic analysis' };
+      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipReason: 'input or output has no words > 3 chars' };
     }
     const inputSet = new Set(inputWords);
     let relevant = 0;
@@ -82,7 +92,8 @@ export const topicConsistency: EvalRule = {
       if (inputSet.has(word)) relevant++;
     }
     const ratio = relevant / outputWords.length;
-    const passed = ratio >= 0.05;
+    const threshold = (context.customConfig?.topic_consistency as number) ?? 0.10;
+    const passed = ratio >= threshold;
     return {
       ruleName: 'topic_consistency',
       passed,
