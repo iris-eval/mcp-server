@@ -44,6 +44,7 @@ export function EvalFilters({
         style={styles.select}
         value={values.eval_type}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, eval_type: e.target.value }); }}
+        aria-label="Filter by eval type"
       >
         <option value="">All Types</option>
         <option value="completeness">Completeness</option>
@@ -56,6 +57,7 @@ export function EvalFilters({
         style={styles.select}
         value={values.passed}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, passed: e.target.value }); }}
+        aria-label="Filter by result"
       >
         <option value="">All Results</option>
         <option value="true">Passed</option>
@@ -67,6 +69,7 @@ export function EvalFilters({
         value={values.since}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, since: e.target.value }); }}
         placeholder="Since"
+        aria-label="Filter from date"
       />
       <input
         style={styles.input}
@@ -74,6 +77,7 @@ export function EvalFilters({
         value={values.until}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, until: e.target.value }); }}
         placeholder="Until"
+        aria-label="Filter to date"
       />
     </div>
   );

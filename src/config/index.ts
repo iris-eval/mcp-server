@@ -25,11 +25,19 @@ function deepMerge(target: any, source: any): any {
 }
 
 function loadConfigFile(path: string): Partial<IrisConfig> {
+  let content: string;
   try {
-    const content = readFileSync(path, 'utf-8');
+    content = readFileSync(path, 'utf-8');
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {};
+    }
+    throw new Error(`Cannot read config file ${path}: ${(err as Error).message}`);
+  }
+  try {
     return JSON.parse(content) as Partial<IrisConfig>;
-  } catch {
-    return {};
+  } catch (err: unknown) {
+    throw new Error(`Invalid JSON in config file ${path}: ${(err as Error).message}`);
   }
 }
 

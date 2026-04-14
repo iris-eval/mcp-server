@@ -48,6 +48,7 @@ export function TraceFilters({
         style={styles.select}
         value={values.agent_name}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, agent_name: e.target.value }); }}
+        aria-label="Filter by agent"
       >
         <option value="">All Agents</option>
         {filters?.agent_names.map((name) => (
@@ -58,6 +59,7 @@ export function TraceFilters({
         style={styles.select}
         value={values.framework}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, framework: e.target.value }); }}
+        aria-label="Filter by framework"
       >
         <option value="">All Frameworks</option>
         {filters?.frameworks.map((fw) => (
@@ -70,6 +72,7 @@ export function TraceFilters({
         value={values.since}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, since: e.target.value }); }}
         placeholder="Since"
+        aria-label="Filter from date"
       />
       <input
         style={styles.input}
@@ -77,6 +80,7 @@ export function TraceFilters({
         value={values.until}
         onChange={(e) => { e.stopPropagation(); onChange({ ...values, until: e.target.value }); }}
         placeholder="Until"
+        aria-label="Filter to date"
       />
     </div>
   );

@@ -15,6 +15,11 @@ export function SpanRow({ span, depth = 0 }: { span: Span; depth?: number }) {
     <div>
       <div
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} span ${span.name}`}
         style={{
           display: 'flex',
           alignItems: 'center',

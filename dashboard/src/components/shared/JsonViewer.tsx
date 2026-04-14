@@ -33,7 +33,15 @@ export function JsonViewer({ data, label }: { data: unknown; label?: string }) {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header} onClick={() => setExpanded(!expanded)}>
+      <div
+        style={styles.header}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label ?? 'JSON'}`}
+      >
         {expanded ? '\u25BC' : '\u25B6'} {label ?? 'JSON'} ({typeof data === 'string' ? `${data.length} chars` : 'object'})
       </div>
       {expanded && <pre style={styles.content}>{text}</pre>}

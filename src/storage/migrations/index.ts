@@ -1,13 +1,14 @@
 import type Database from 'better-sqlite3';
 import * as migration001 from './001-initial-schema.js';
 import * as migration002 from './002-eval-skip-fields.js';
+import * as migration003 from './003-eval-passed-index.js';
 
 interface Migration {
   id: string;
   up(db: Database.Database): void;
 }
 
-const migrations: Migration[] = [migration001, migration002];
+const migrations: Migration[] = [migration001, migration002, migration003];
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`

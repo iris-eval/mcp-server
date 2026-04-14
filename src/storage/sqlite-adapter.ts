@@ -109,6 +109,14 @@ export class SqliteAdapter implements IStorageAdapter {
       conditions.push('timestamp <= ?');
       params.push(filter.until);
     }
+    if (filter?.min_score !== undefined) {
+      conditions.push('EXISTS (SELECT 1 FROM eval_results e WHERE e.trace_id = traces.trace_id AND e.score >= ?)');
+      params.push(filter.min_score);
+    }
+    if (filter?.max_score !== undefined) {
+      conditions.push('EXISTS (SELECT 1 FROM eval_results e WHERE e.trace_id = traces.trace_id AND e.score <= ?)');
+      params.push(filter.max_score);
+    }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sortBy = options.sort_by ?? 'timestamp';

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useEvals } from '../../api/hooks';
 import { EvalFilters } from './EvalFilters';
 import { EvalTable } from './EvalTable';
@@ -23,6 +23,15 @@ export function EvalListPage() {
   }, [filters, offset]);
 
   const { data, loading } = useEvals(params);
+
+  const closeModal = useCallback(() => setSelectedEval(null), []);
+
+  useEffect(() => {
+    if (!selectedEval) return;
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') closeModal(); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [selectedEval, closeModal]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -50,7 +59,7 @@ export function EvalListPage() {
       {/* Modal overlay for eval detail */}
       {selectedEval && (
         <div
-          onClick={() => setSelectedEval(null)}
+          onClick={closeModal}
           style={{
             position: 'fixed',
             inset: 0,
@@ -63,10 +72,14 @@ export function EvalListPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Evaluation detail"
             style={{ width: '500px', maxHeight: '80vh', overflow: 'auto', position: 'relative' }}
           >
             <button
-              onClick={() => setSelectedEval(null)}
+              onClick={closeModal}
+              aria-label="Close evaluation detail"
               style={{
                 position: 'absolute',
                 top: 8,

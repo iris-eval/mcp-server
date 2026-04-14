@@ -65,6 +65,14 @@ async function main(): Promise<void> {
   const { mcpServer } = createIrisServer(config, storage);
   const httpServers: Server[] = [];
 
+  // Run data retention cleanup on startup
+  if (config.retention.days > 0) {
+    const deleted = await storage.deleteTracesOlderThan(config.retention.days);
+    if (deleted > 0) {
+      logger.info(`Retention cleanup: deleted ${deleted} trace(s) older than ${config.retention.days} days`);
+    }
+  }
+
   if (config.transport.type === 'http') {
     const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger);
     httpServers.push(httpServer);

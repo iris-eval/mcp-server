@@ -71,6 +71,9 @@ export function DataTable<T>({
             key={i}
             style={{ ...styles.tr, cursor: onRowClick ? 'pointer' : 'default' }}
             onClick={() => onRowClick?.(item)}
+            onKeyDown={(e) => { if (onRowClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onRowClick(item); } }}
+            tabIndex={onRowClick ? 0 : undefined}
+            role={onRowClick ? 'button' : undefined}
             onMouseOver={(e) => {
               (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)';
             }}
