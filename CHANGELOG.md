@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-14
+
+### Breaking Changes
+- **Eval scores will be lower** — rules that previously auto-passed when context fields (expected, input, costUsd, tokenUsage) were missing now return `skipped` and are excluded from the weighted average instead of inflating the score to 1.0. This is the fix for the 100% pass rate problem.
+- **Threshold increases** — `min_output_length` 10→50 chars, `sentence_count` 1→2, `keyword_overlap` 20%→35%, `topic_consistency` 5%→10%. Configurable via `ruleThresholds` in config.
+- **"No rules configured" returns score 0** — was returning score 1.0 with `passed: true`, now returns `insufficient_data: true`.
+
+### Added
+- Eval rule skip system: rules that can't evaluate due to missing context return `skipped: true` with `skipReason`, excluded from weighted average
+- `rules_evaluated`, `rules_skipped`, `insufficient_data` fields in eval results (API response + database)
+- Configurable `ruleThresholds` in config system — override default thresholds per rule
+- DB migration 002: new columns for eval skip metadata
+- 9 new hallucination markers (17 total) covering GPT/Claude/Gemini/Llama hedging patterns
+- Content-Security-Policy header on website
+- Permissions-Policy header on website
+- HSTS `preload` directive on website
+
+### Security
+- SQL sort column/order whitelist in `queryTraces()` (defense-in-depth against injection)
+- Default HTTP host changed from `0.0.0.0` to `127.0.0.1` (don't expose unauthenticated server to network)
+- Waitlist admin key moved from query string to `Authorization: Bearer` header
+- Rate limit salt fallback removed — `RATE_LIMIT_SALT` env var now required
+- Waitlist count endpoint CORS restricted from wildcard to allowed origins
+- CSV field escaping in waitlist export
+
+### Fixed
+- Dashboard async route handlers wrapped in try/catch (traces, evaluations, summary)
+- Trace + span insertion wrapped in `db.transaction()` for atomicity
+- `contains_keywords` / `excludes_keywords` custom rules no longer crash on missing `config.keywords`
+- `cost_threshold` custom rule no longer produces `$undefined` message on missing `config.max_cost`
+- Dashboard stats exclude skipped rules from per-rule breakdowns
+- Release workflow adds `npm run clean` before build (prevents ~2.5 MB stale Vite bundles in npm package)
+- `package.json` author field populated
+- `.claude-plugin/plugin.json` version synced
+- `smithery.yaml` default port corrected to 3000
+- Plugin.json added to `sync-versions.mjs`
+- Removed dead code: `useLocalStorage.ts`, unused `POLLING_INTERVAL` constant
+- Removed redundant `.npmignore` (overridden by `"files"` whitelist)
+
 ## [0.1.9] - 2026-04-07
 
 ### Security
