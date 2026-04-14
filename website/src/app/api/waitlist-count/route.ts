@@ -1,10 +1,21 @@
 import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ALLOWED_ORIGINS = [
+    "https://iris-eval.com",
+    "https://www.iris-eval.com",
+  ];
+  if (process.env.VERCEL_ENV !== "production") {
+    ALLOWED_ORIGINS.push("http://localhost:8890", "http://localhost:3000");
+  }
+
+  const origin = request.headers.get("origin");
+  const corsOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : "https://iris-eval.com";
+
   const headers = {
     "X-Content-Type-Options": "nosniff",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": corsOrigin,
     "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
   };
 

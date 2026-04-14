@@ -29,7 +29,7 @@ startCommand:
       irisPort:
         type: number
         description: Port for the HTTP transport or dashboard.
-        default: 3410
+        default: 3000
   commandFunction:
     |-
     (config) => ({

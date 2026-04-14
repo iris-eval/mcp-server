@@ -64,11 +64,16 @@ export async function GET(request: Request) {
     const format = searchParams.get("format") || "json";
 
     if (format === "csv") {
+      const escapeCSV = (val: unknown): string => {
+        const str = String(val || "");
+        return str.includes(",") || str.includes('"') || str.includes("\n")
+          ? `"${str.replace(/"/g, '""')}"` : str;
+      };
       const header = "email,timestamp,source,consent\n";
       const rows = entries
         .map(
           (e: Record<string, unknown>) =>
-            `${e.email || ""},${e.timestamp || ""},${e.source || ""},${e.consent || ""}`
+            `${escapeCSV(e.email)},${escapeCSV(e.timestamp)},${escapeCSV(e.source)},${escapeCSV(e.consent)}`
         )
         .join("\n");
       return new NextResponse(header + rows, {

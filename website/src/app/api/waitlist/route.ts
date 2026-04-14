@@ -29,7 +29,10 @@ function corsHeaders(origin: string | null) {
 }
 
 function hashIP(ip: string): string {
-  const salt = process.env.RATE_LIMIT_SALT || "iris-eval-default-salt";
+  const salt = process.env.RATE_LIMIT_SALT;
+  if (!salt) {
+    throw new Error("RATE_LIMIT_SALT environment variable is required");
+  }
   return createHash("sha256").update(ip + salt).digest("hex").slice(0, 16);
 }
 

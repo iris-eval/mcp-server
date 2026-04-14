@@ -59,7 +59,10 @@ export function createCustomRule(definition: CustomRuleDefinition): EvalRule {
           return { ruleName: definition.name, passed, score: passed ? 1 : max / context.output.length, message: passed ? `Length (${context.output.length}) within maximum (${max})` : `Length (${context.output.length}) exceeds maximum (${max})` };
         }
         case 'contains_keywords': {
-          const keywords = definition.config.keywords as string[];
+          const keywords = definition.config.keywords as string[] | undefined;
+          if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+            return { ruleName: definition.name, passed: false, score: 0, message: 'contains_keywords rule requires config.keywords (non-empty string array)' };
+          }
           const lower = context.output.toLowerCase();
           const found = keywords.filter((k) => lower.includes(k.toLowerCase()));
           const ratio = found.length / keywords.length;
@@ -67,7 +70,10 @@ export function createCustomRule(definition: CustomRuleDefinition): EvalRule {
           return { ruleName: definition.name, passed, score: ratio, message: `Found ${found.length}/${keywords.length} required keywords` };
         }
         case 'excludes_keywords': {
-          const keywords = definition.config.keywords as string[];
+          const keywords = definition.config.keywords as string[] | undefined;
+          if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+            return { ruleName: definition.name, passed: false, score: 0, message: 'excludes_keywords rule requires config.keywords (non-empty string array)' };
+          }
           const lower = context.output.toLowerCase();
           const found = keywords.filter((k) => lower.includes(k.toLowerCase()));
           const passed = found.length === 0;
@@ -82,7 +88,10 @@ export function createCustomRule(definition: CustomRuleDefinition): EvalRule {
           }
         }
         case 'cost_threshold': {
-          const max = definition.config.max_cost as number;
+          const max = definition.config.max_cost as number | undefined;
+          if (max == null || max < 0) {
+            return { ruleName: definition.name, passed: false, score: 0, message: 'cost_threshold rule requires config.max_cost (non-negative number)' };
+          }
           const cost = context.costUsd ?? 0;
           const passed = cost <= max;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? `Cost ($${cost}) within threshold ($${max})` : `Cost ($${cost}) exceeds threshold ($${max})` };

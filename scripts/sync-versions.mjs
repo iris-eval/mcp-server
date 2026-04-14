@@ -32,8 +32,10 @@ const FILES = [
     path: "website/public/.well-known/mcp.json",
     description: "Agent auto-discovery endpoint",
   },
-  // Add more here:
-  // { path: "some/other/file.json", description: "What this file is for" },
+  {
+    path: ".claude-plugin/plugin.json",
+    description: "Claude Code plugin manifest",
+  },
 ];
 
 let updated = 0;
