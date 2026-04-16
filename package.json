@@ -47,7 +47,11 @@
     "output-quality",
     "quality-gate"
   ],
-  "author": "Ian Parent",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://github.com/iris-eval"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

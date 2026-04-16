@@ -1,14 +1,19 @@
 {
   "name": "@iris-eval/langchain",
   "version": "0.1.0",
-  "private": true,
   "description": "Iris eval integration for LangChain — evaluate agent output quality via MCP",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "iris",
@@ -22,7 +27,11 @@
     "ai-agent",
     "llm"
   ],
-  "author": "Ian Parent",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://github.com/iris-eval"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -35,6 +44,6 @@
     "@langchain/core": ">=0.3.0"
   },
   "dependencies": {
-    "@iris-eval/mcp-server": "^0.1.7"
+    "@iris-eval/mcp-server": "^0.2.0"
   }
 }
