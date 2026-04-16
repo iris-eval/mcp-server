@@ -91,7 +91,7 @@ const FEATURES = [
   { feature: "Dashboard", iris: "Real-time dark-mode UI", deepeval: "Confident AI cloud dashboard (separate product)", irisWin: true },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", deepeval: "Not MCP-aware", irisWin: true },
   { feature: "License", iris: "MIT", deepeval: "Apache 2.0", irisWin: false },
-  { feature: "Maturity", iris: "Early stage (v0.1.8)", deepeval: "Established (4K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
+  { feature: "Maturity", iris: "Early stage (v0.2.0)", deepeval: "Established (4K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [
