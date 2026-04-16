@@ -22,6 +22,13 @@ const VERSION = pkg.version;
 // ============================================================
 // Files that carry version numbers.
 // Add new entries here as the project grows.
+//
+// NOTE: dashboard/package.json and packages/*/package.json are
+// intentionally excluded. The dashboard pins 0.1.0 independently
+// (separate Vite SPA release cadence, not part of MCP server releases).
+// Companion packages (packages/langchain, etc.) version on their own
+// cadence as ecosystem adapters. Before adding any of these, coordinate
+// with the respective release process.
 // ============================================================
 const FILES = [
   {
