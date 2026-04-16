@@ -5,10 +5,11 @@ import { motion, useReducedMotion, useInView } from "framer-motion";
 
 const MILESTONES = [
   { v: "v0.1", status: "Released", title: "Core MCP Server", detail: "3 tools, 12 eval rules, SQLite storage, web dashboard, production security" },
-  { v: "v0.2", status: "Planned", title: "Cloud Tier", detail: "PostgreSQL, multi-tenancy, team dashboards, API key management" },
-  { v: "v0.3", status: "Planned", title: "Alerting & Retention", detail: "Alert rules, webhooks, email notifications, retention policies" },
+  { v: "v0.2", status: "Released", title: "Eval Sensitivity + Security Hardening", detail: "Smart rule exclusion, configurable thresholds, SQL whitelist, CSP headers, accessibility" },
+  { v: "v0.3", status: "Planned", title: "Cloud Tier", detail: "PostgreSQL, multi-tenancy, team dashboards, API key management" },
   { v: "v0.4", status: "Planned", title: "LLM-as-Judge", detail: "Semantic evaluation, OpenTelemetry export, drift detection, A/B testing" },
-  { v: "v0.5", status: "Planned", title: "Enterprise", detail: "SSO/SAML, RBAC, audit logs, SOC 2 compliance" },
+  { v: "v0.5", status: "Planned", title: "Alerting & Retention", detail: "Alert rules, webhooks, email notifications, retention policies" },
+  { v: "v0.6", status: "Planned", title: "Enterprise", detail: "SSO/SAML, RBAC, audit logs, SOC 2 compliance" },
 ];
 
 function Milestone({ m, index }: { m: typeof MILESTONES[0]; index: number }): React.ReactElement {
