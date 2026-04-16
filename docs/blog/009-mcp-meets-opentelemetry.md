@@ -4,6 +4,7 @@ description: "How Iris bridges agent observability and infrastructure monitoring
 date: 2026-03-17
 author: Ian Parent
 tags: [opentelemetry, observability, mcp, infrastructure, datadog, grafana, agents, tracing]
+relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, state-of-mcp-agent-observability-2026]
 ---
 
 # MCP Meets OpenTelemetry: Bridging Agent Observability and Infrastructure Monitoring

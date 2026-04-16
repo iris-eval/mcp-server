@@ -4,6 +4,7 @@ description: "A proposal for standardizing MCP observability with trace schemas,
 date: 2026-03-16
 author: Ian Parent
 tags: [mcp, observability, specification, protocol, eval, traces, interoperability]
+relatedPosts: [state-of-mcp-agent-observability-2026, mcp-observability-is-the-new-apm, mcp-meets-opentelemetry]
 ---
 
 # Toward an MCP Observability Specification

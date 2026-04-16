@@ -4,6 +4,7 @@ description: "A comprehensive analysis of the MCP agent observability landscape 
 date: 2026-03-14
 author: Ian Parent
 tags: [observability, mcp, agents, report, evaluation, cost-tracking]
+relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, closing-the-eval-gap]
 ---
 
 # The State of MCP Agent Observability (March 2026)

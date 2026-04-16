@@ -4,6 +4,7 @@ description: "How invisible token costs compound to $14,000 monthly bills when a
 date: 2026-03-15
 author: Ian Parent
 tags: [cost, observability, agents, mcp, evaluation, budgets]
+relatedPosts: [the-ai-eval-tax, why-your-ai-agents-need-observability, eval-coverage-the-metric-your-agents-are-missing]
 ---
 
 # The Cost of Invisible Agents: What $0.47 Per Query Looks Like at Scale

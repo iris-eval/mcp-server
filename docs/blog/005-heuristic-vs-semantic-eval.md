@@ -4,6 +4,7 @@ description: "When sub-millisecond heuristic eval rules outperform LLM-as-Judge 
 date: 2026-03-15
 author: Ian Parent
 tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
+relatedPosts: [how-to-evaluate-agent-output-without-llm, the-ai-eval-tax, eval-driven-development]
 ---
 
 # Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge

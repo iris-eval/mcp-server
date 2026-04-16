@@ -4,6 +4,7 @@ description: "A step-by-step tutorial for evaluating AI agent output using deter
 date: 2026-03-16
 author: Ian Parent
 tags: [eval, agents, mcp, tutorial, heuristics, observability]
+relatedPosts: [heuristic-vs-semantic-eval, eval-driven-development, output-quality-score]
 ---
 
 # How to Evaluate AI Agent Output Without Calling Another LLM

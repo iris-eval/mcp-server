@@ -4,7 +4,10 @@ description: "Learn why traditional APM fails for AI agents and how MCP-native o
 date: 2026-03-13
 author: Ian Parent
 tags: [observability, agents, mcp, evaluation]
+relatedPosts: [mcp-observability-is-the-new-apm, why-every-mcp-agent-needs-an-independent-observer, the-eval-gap]
 ---
+
+> **Editor's note (2026-04):** This post was written when Iris framed itself as observability-first. Iris has since repositioned as "the agent eval standard for MCP" — scoring outputs, not just watching them. See [Closing the Eval Gap](/blog/closing-the-eval-gap) for the current thesis.
 
 # Why Your AI Agents Need Observability
 
