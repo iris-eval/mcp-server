@@ -13,6 +13,11 @@ if (process.env.VERCEL_ENV !== "production") {
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW = 3600;
 
+const RATE_LIMIT_SALT = process.env.RATE_LIMIT_SALT;
+if (!RATE_LIMIT_SALT) {
+  throw new Error("RATE_LIMIT_SALT environment variable is required for /api/waitlist");
+}
+
 function getCorsOrigin(request: Request): string | null {
   const origin = request.headers.get("origin");
   return origin && ALLOWED_ORIGINS.includes(origin) ? origin : null;
@@ -29,11 +34,7 @@ function corsHeaders(origin: string | null) {
 }
 
 function hashIP(ip: string): string {
-  const salt = process.env.RATE_LIMIT_SALT;
-  if (!salt) {
-    throw new Error("RATE_LIMIT_SALT environment variable is required");
-  }
-  return createHash("sha256").update(ip + salt).digest("hex").slice(0, 16);
+  return createHash("sha256").update(ip + RATE_LIMIT_SALT).digest("hex").slice(0, 16);
 }
 
 function isValidEmail(email: unknown): email is string {
