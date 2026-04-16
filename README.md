@@ -204,7 +204,7 @@ Verify which version is running:
 
 ```bash
 npx @iris-eval/mcp-server --help
-# Shows "Iris MCP-Native Agent Eval & Observability Server vX.Y.Z"
+# Shows "Iris — MCP-Native Agent Eval Server vX.Y.Z"
 ```
 
 ### Updating
