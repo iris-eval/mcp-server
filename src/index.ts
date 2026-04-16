@@ -26,7 +26,7 @@ const { values } = parseArgs({
 
 if (values.help) {
   process.stderr.write(`
-Iris — MCP-Native Agent Eval & Observability Server
+Iris — MCP-Native Agent Eval Server
 
 Usage: iris-mcp [options]
 
