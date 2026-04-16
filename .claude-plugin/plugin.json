@@ -1,6 +1,6 @@
 {
   "name": "iris",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The agent eval standard for MCP. Score every agent output for quality, safety, and cost.",
   "author": {
     "name": "Iris",

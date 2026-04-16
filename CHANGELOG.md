@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-04-16
+
+Pre-YC alignment pass. No product behavior changes — narrative, SEO, and hygiene only.
+
+### Changed
+- CLI `--help` banner: dropped "& Observability" from title — now reads "Iris — MCP-Native Agent Eval Server"
+- Website `.well-known/mcp.json` description now uses canonical Agent Eval tagline (was "evaluation and observability server")
+- Roadmap renumbered: v0.2 now "Released — Eval Sensitivity + Security Hardening"; Cloud Tier pushed to v0.3; LLM-as-Judge remains v0.4 (preserving blog 005/009 version references); Alerting v0.5; Enterprise v0.6
+- Homepage JSON-LD `softwareVersion` bumped 0.1.8 → 0.2.0 (previously stale)
+- DeepEval compare page maturity row bumped to v0.2.0
+- Nav event banner badge bumped v0.1 → v0.2
+- `packages/langchain` unprivated (publishable): added `files` array, `prepublishOnly`, bumped `@iris-eval/mcp-server` peer dep from ^0.1.7 to ^0.2.0
+- Author field unified to org form (`Iris <hello@iris-eval.com>`) across `package.json` and `packages/langchain/package.json`
+
+### Added
+- `Compare` link in primary navigation (pages were only reachable via footer)
+- `/waitlist` redirect to `/#waitlist` homepage anchor (was 404)
+- `website/public/.well-known/security.txt` (RFC 9116 vulnerability disclosure endpoint)
+- `relatedPosts` frontmatter on 11 blog posts (001–010, 026) to strengthen internal link graph for GSC indexing
+
+### Fixed
+- Blog 026 date reconciled from 2026-04-22 (future) to 2026-03-29 (matches Dev.to publish date, restores canonical)
+- Blog 001 editor's note points readers to current thesis (preserves historical framing)
+
+### Archived
+- `packages/crewai` and `packages/autogen` moved to `archive/packages/` (scaffolded stubs, no implementation)
+
+### Docs
+- `scripts/sync-versions.mjs` header comment explains why dashboard and companion packages are excluded from version sync
+
 ## [0.2.0] - 2026-04-14
 
 ### Breaking Changes
