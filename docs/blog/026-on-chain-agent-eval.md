@@ -1,9 +1,10 @@
 ---
 title: "Why On-Chain Agent Actions Need Pre-Flight Eval"
 description: "On-chain actions are irreversible. With 250K daily AI agents on blockchain and $3.4B stolen in 2025, real-time pre-execution eval isn't optional — it's the missing safety layer between agent decision and permanent consequence."
-date: 2026-04-22
+date: 2026-03-29
 author: Ian Parent
 tags: [crypto, defi, blockchain, agent-eval, pre-flight-eval, mcp, safety]
+relatedPosts: [the-eval-gap, self-calibrating-eval, the-ai-eval-tax]
 devto_tags: [ai, blockchain, security, programming]
 ---
 

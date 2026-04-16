@@ -4,6 +4,7 @@ description: "Why Sentry and Bugsnag can't detect hallucinations, PII leaks, or 
 date: 2026-03-17
 author: Ian Parent
 tags: [observability, agents, error-tracking, eval, safety, pii]
+relatedPosts: [eval-drift-the-silent-quality-killer, the-cost-of-invisible-agents, output-quality-score]
 ---
 
 # Agent Errors vs Application Errors: Why Your Error Tracker Can't See AI Failures

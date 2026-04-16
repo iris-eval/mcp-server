@@ -4,6 +4,7 @@ description: "MCP observability is following the same adoption curve as APM — 
 date: 2026-03-16
 author: Ian Parent
 tags: [observability, apm, mcp, agents, category-creation, market]
+relatedPosts: [why-your-ai-agents-need-observability, mcp-observability-specification, mcp-meets-opentelemetry]
 ---
 
 # MCP Observability is the New APM
