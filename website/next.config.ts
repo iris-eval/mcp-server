@@ -37,6 +37,11 @@ const nextConfig: NextConfig = {
       destination: "https://iris-eval.com/:path*",
       permanent: true,
     },
+    {
+      source: "/waitlist",
+      destination: "/#waitlist",
+      permanent: false,
+    },
   ],
 };
 
