@@ -78,9 +78,7 @@ function filenameToSlug(filename: string): string {
 
 export function getAllPosts(): BlogPost[] {
   const files = readdirSync(BLOG_DIR)
-    .filter((f) => f.endsWith(".md") && !f.startsWith(".") && /^\d{3}-/.test(f))
-    .sort()
-    .reverse();
+    .filter((f) => f.endsWith(".md") && !f.startsWith(".") && /^\d{3}-/.test(f));
 
   const now = new Date();
 
@@ -103,11 +101,11 @@ export function getAllPosts(): BlogPost[] {
       };
     })
     .filter((post) => {
-      // Hide posts with published: false or future dates
       if (!post.published) return false;
       const postDate = new Date(post.date);
       return postDate <= now;
-    });
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
