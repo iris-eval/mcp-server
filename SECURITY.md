@@ -19,9 +19,12 @@ This security policy applies to:
 
 ## Supported Versions
 
+Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.2.x` line.
+
 | Version | Supported |
 |---------|-----------|
-| 0.1.x   | Yes       |
+| 0.2.x   | Yes       |
+| 0.1.x   | No        |
 
 ## What We Consider a Vulnerability
 
