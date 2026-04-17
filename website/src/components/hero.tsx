@@ -7,7 +7,7 @@ import { RotatingWords } from "./rotating-words";
 const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChain", "CrewAI", "MCP SDK", "AutoGen"];
 
 const BADGES = [
-  { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama AAA Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server" },
+  { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server" },
   { src: "https://img.shields.io/badge/Cursor_Directory-Listed-171717?style=flat-square", alt: "Cursor Directory", href: "https://cursor.directory/plugins/iris" },
   { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
   { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },

@@ -41,6 +41,14 @@ function loadConfigFile(path: string): Partial<IrisConfig> {
   }
 }
 
+function parsePortEnv(value: string, name: string): number {
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 1 || n > 65535) {
+    throw new Error(`${name}=${JSON.stringify(value)} is not a valid port (must be an integer 1-65535)`);
+  }
+  return n;
+}
+
 function loadEnvVars(): Partial<IrisConfig> {
   const config: Record<string, unknown> = {};
 
@@ -48,7 +56,7 @@ function loadEnvVars(): Partial<IrisConfig> {
     config.transport = { type: process.env.IRIS_TRANSPORT };
   }
   if (process.env.IRIS_PORT) {
-    config.transport = { ...(config.transport as object), port: parseInt(process.env.IRIS_PORT) };
+    config.transport = { ...(config.transport as object), port: parsePortEnv(process.env.IRIS_PORT, 'IRIS_PORT') };
   }
   if (process.env.IRIS_HOST) {
     config.transport = { ...(config.transport as object), host: process.env.IRIS_HOST };
@@ -65,7 +73,7 @@ function loadEnvVars(): Partial<IrisConfig> {
   if (process.env.IRIS_DASHBOARD_PORT) {
     config.dashboard = {
       ...(config.dashboard as object),
-      port: parseInt(process.env.IRIS_DASHBOARD_PORT),
+      port: parsePortEnv(process.env.IRIS_DASHBOARD_PORT, 'IRIS_DASHBOARD_PORT'),
     };
   }
   if (process.env.IRIS_API_KEY) {

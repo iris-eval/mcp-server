@@ -123,10 +123,10 @@ export class SqliteAdapter implements IStorageAdapter {
     const sortOrder = options.sort_order ?? 'desc';
 
     if (!ALLOWED_SORT_COLUMNS.has(sortBy)) {
-      throw new Error(`Invalid sort column: ${sortBy}`);
+      throw new Error(`Invalid sort column: ${sortBy} (allowed: ${[...ALLOWED_SORT_COLUMNS].join(', ')})`);
     }
     if (!ALLOWED_SORT_ORDERS.has(sortOrder)) {
-      throw new Error(`Invalid sort order: ${sortOrder}`);
+      throw new Error(`Invalid sort order: ${sortOrder} (allowed: ${[...ALLOWED_SORT_ORDERS].join(', ')})`);
     }
     const limit = options.limit ?? 50;
     const offset = options.offset ?? 0;
@@ -502,7 +502,7 @@ export class SqliteAdapter implements IStorageAdapter {
     };
     const query = queries[column];
     if (!query) {
-      throw new Error(`Column '${column}' is not queryable`);
+      throw new Error(`Column '${column}' is not queryable (allowed: ${Object.keys(queries).join(', ')})`);
     }
     const rows = this.db.prepare(query).all() as Array<Record<string, string>>;
     return rows.map((row) => row[column]);
