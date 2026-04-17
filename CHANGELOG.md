@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-04-16
+
+Pre-YC alignment checkpoint — UX fixes from Session 31 full-lattice audit. No product behavior changes beyond the dashboard-tip log and retention cleanup guard.
+
+### Added
+- stdio startup logs a Tip pointing at `--dashboard` flag when not enabled (directly addresses user feedback: "if I didn't know it had a dashboard I wouldn't have known")
+- `IRIS_HOST` and `IRIS_DASHBOARD_PORT` documented in README env var table
+- README notes CLI flags take precedence over env vars
+
+### Fixed
+- Data retention cleanup on startup now logs a warning and continues on error instead of silently crashing the server (affects corrupt DB or disk-full scenarios)
+
+### Changed
+- README: dashboard promoted to its own `### Turn on the dashboard` section with copy-paste MCP config that already includes `--dashboard`
+- README: LangChain and CrewAI examples labeled "(conceptual scaffold)" to match their actual state (they're skeleton code for users to extend, not runnable as-is)
+- Nav banner badge bumped v0.2 → v0.2.1 (coherence with v0.2.1 release)
+
 ## [0.2.1] - 2026-04-16
 
 Pre-YC alignment pass. No product behavior changes — narrative, SEO, and hygiene only.
