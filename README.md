@@ -54,11 +54,25 @@ Add Iris to your MCP config. Works with Claude Desktop, Cursor, Windsurf, and an
 
 That's it. Your agent discovers Iris and starts logging traces automatically.
 
-Want the dashboard?
+### Turn on the dashboard
+
+Iris ships with a real-time web dashboard showing traces, eval results, cost breakdowns, and rule pass-rates. It's off by default so the MCP server stays lightweight — flip it on with a flag.
+
+```json
+{
+  "mcpServers": {
+    "iris-eval": {
+      "command": "npx",
+      "args": ["@iris-eval/mcp-server", "--dashboard"]
+    }
+  }
+}
+```
+
+Then open **http://localhost:6920** after your agent runs a trace. The same dashboard is available via CLI:
 
 ```bash
 npx @iris-eval/mcp-server --dashboard
-# Open http://localhost:6920
 ```
 
 <details>
@@ -120,9 +134,10 @@ Self-hosted Iris runs on your machine with SQLite. As your team's eval needs gro
 ## Examples
 
 - [Claude Desktop setup](examples/claude-desktop/) — MCP config for stdio and HTTP modes
-- [TypeScript](examples/typescript/basic-usage.ts) — MCP SDK client usage
-- [LangChain](examples/langchain/observe-agent.py) — Agent instrumentation
-- [CrewAI](examples/crewai/observe-crew.py) — Crew observability
+- [TypeScript — MCP SDK client](examples/typescript/basic-usage.ts) — connect and invoke tools
+- [HTTP transport (TS + Python)](examples/http-transport/) — full client code for REST-style integration
+- [LangChain instrumentation (Python, conceptual)](examples/langchain/observe-agent.py) — scaffold showing the shape; needs your agent code to be runnable
+- [CrewAI instrumentation (Python, conceptual)](examples/crewai/observe-crew.py) — scaffold; same caveat
 
 ## Community
 
@@ -150,13 +165,17 @@ Self-hosted Iris runs on your machine with SQLite. As your team's eval needs gro
 
 | Variable | Description |
 |----------|-------------|
-| `IRIS_TRANSPORT` | Transport type |
-| `IRIS_PORT` | HTTP port |
-| `IRIS_DB_PATH` | Database path |
-| `IRIS_LOG_LEVEL` | Log level: debug, info, warn, error |
-| `IRIS_DASHBOARD` | Enable dashboard (true/false) |
+| `IRIS_TRANSPORT` | Transport type (`stdio` or `http`) |
+| `IRIS_PORT` | HTTP transport port |
+| `IRIS_HOST` | HTTP transport host (default `127.0.0.1`) |
+| `IRIS_DB_PATH` | SQLite database path |
+| `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
+| `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`) |
+| `IRIS_DASHBOARD_PORT` | Dashboard port (default `6920`) |
 | `IRIS_API_KEY` | API key for HTTP authentication |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
+
+CLI flags take precedence over environment variables when both are set.
 
 ### Security
 

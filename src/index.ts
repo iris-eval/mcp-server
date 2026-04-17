@@ -67,9 +67,13 @@ async function main(): Promise<void> {
 
   // Run data retention cleanup on startup
   if (config.retention.days > 0) {
-    const deleted = await storage.deleteTracesOlderThan(config.retention.days);
-    if (deleted > 0) {
-      logger.info(`Retention cleanup: deleted ${deleted} trace(s) older than ${config.retention.days} days`);
+    try {
+      const deleted = await storage.deleteTracesOlderThan(config.retention.days);
+      if (deleted > 0) {
+        logger.info(`Retention cleanup: deleted ${deleted} trace(s) older than ${config.retention.days} days`);
+      }
+    } catch (err) {
+      logger.warn(`Retention cleanup skipped: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -84,6 +88,9 @@ async function main(): Promise<void> {
     const transport = createStdioTransport();
     await mcpServer.connect(transport);
     logger.info('Stdio transport connected');
+    if (!config.dashboard.enabled) {
+      logger.info(`Tip: run with --dashboard to open the web dashboard on port ${config.dashboard.port}`);
+    }
   }
 
   if (config.dashboard.enabled || config.transport.type === 'http') {
