@@ -2,6 +2,7 @@
 
 import type { Server } from 'node:http';
 import { parseArgs } from 'node:util';
+import { z } from 'zod';
 import { loadConfig } from './config/index.js';
 import { createStorage } from './storage/index.js';
 import { createIrisServer } from './server.js';
@@ -10,19 +11,54 @@ import { createHttpTransport } from './transport/http.js';
 import { createDashboardServer } from './dashboard/server.js';
 import { createLogger } from './utils/logger.js';
 
-const { values } = parseArgs({
-  options: {
-    transport: { type: 'string', default: undefined },
-    port: { type: 'string', default: undefined },
-    config: { type: 'string', default: undefined },
-    'db-path': { type: 'string', default: undefined },
-    'api-key': { type: 'string', default: undefined },
-    dashboard: { type: 'boolean', default: false },
-    'dashboard-port': { type: 'string', default: undefined },
-    help: { type: 'boolean', short: 'h', default: false },
-  },
-  strict: false,
-});
+const PortSchema = z
+  .string()
+  .regex(/^\d+$/, 'must be a positive integer')
+  .transform((s) => parseInt(s, 10))
+  .refine((n) => Number.isFinite(n) && n >= 1 && n <= 65535, 'must be between 1 and 65535');
+
+const CliSchema = z
+  .object({
+    transport: z.enum(['stdio', 'http']).optional(),
+    port: PortSchema.optional(),
+    config: z.string().min(1).optional(),
+    'db-path': z.string().min(1).optional(),
+    'api-key': z.string().min(1).optional(),
+    dashboard: z.boolean().optional(),
+    'dashboard-port': PortSchema.optional(),
+    help: z.boolean().optional(),
+  })
+  .strict();
+
+let parsed;
+try {
+  parsed = parseArgs({
+    options: {
+      transport: { type: 'string' },
+      port: { type: 'string' },
+      config: { type: 'string' },
+      'db-path': { type: 'string' },
+      'api-key': { type: 'string' },
+      dashboard: { type: 'boolean', default: false },
+      'dashboard-port': { type: 'string' },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+    strict: true,
+  });
+} catch (err) {
+  process.stderr.write(`iris-mcp: ${(err as Error).message}\nRun \`iris-mcp --help\` for usage.\n`);
+  process.exit(2);
+}
+
+const validation = CliSchema.safeParse(parsed.values);
+if (!validation.success) {
+  const issues = validation.error.issues
+    .map((i) => `  --${i.path.join('.')}: ${i.message}`)
+    .join('\n');
+  process.stderr.write(`iris-mcp: invalid argument(s):\n${issues}\nRun \`iris-mcp --help\` for usage.\n`);
+  process.exit(2);
+}
+const values = validation.data;
 
 if (values.help) {
   process.stderr.write(`
@@ -32,25 +68,37 @@ Usage: iris-mcp [options]
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
-  --port <number>          HTTP transport port (default: 3000)
+  --port <number>          HTTP transport port 1-65535 (default: 3000)
   --config <path>          Config file path (default: ~/.iris/config.json)
   --db-path <path>         SQLite database path (default: ~/.iris/iris.db)
   --api-key <key>          API key for HTTP authentication
   --dashboard              Enable web dashboard
-  --dashboard-port <port>  Dashboard port (default: 6920)
+  --dashboard-port <port>  Dashboard port 1-65535 (default: 6920)
   -h, --help               Show this help message
+
+Environment variables (CLI flags take precedence):
+  IRIS_TRANSPORT           stdio | http
+  IRIS_HOST                Bind address for HTTP transport (default: 127.0.0.1)
+  IRIS_PORT                HTTP transport port (1-65535)
+  IRIS_DB_PATH             SQLite database path
+  IRIS_LOG_LEVEL           debug | info | warn | error
+  IRIS_DASHBOARD           true to enable web dashboard
+  IRIS_DASHBOARD_PORT      Dashboard port (1-65535, default: 6920)
+  IRIS_API_KEY             API key for HTTP authentication
+  IRIS_ALLOWED_ORIGINS     Comma-separated CORS origin allowlist
+  RATE_LIMIT_SALT          (waitlist API only — required when website is deployed)
 `);
   process.exit(0);
 }
 
 const config = loadConfig({
-  transport: values.transport as string | undefined,
-  port: values.port ? parseInt(values.port as string) : undefined,
-  config: values.config as string | undefined,
-  dbPath: values['db-path'] as string | undefined,
-  apiKey: values['api-key'] as string | undefined,
-  dashboard: values.dashboard as boolean | undefined,
-  dashboardPort: values['dashboard-port'] ? parseInt(values['dashboard-port'] as string) : undefined,
+  transport: values.transport,
+  port: values.port,
+  config: values.config,
+  dbPath: values['db-path'],
+  apiKey: values['api-key'],
+  dashboard: values.dashboard,
+  dashboardPort: values['dashboard-port'],
 });
 
 const logger = createLogger(config);

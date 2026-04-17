@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-04-17
+
+Mother Audit Wave 2 follow-through. CLI hardening cluster + repo hygiene + content + tooling.
+
+### Added
+- CLI: Zod-validated arguments. `--transport` accepts only `stdio` or `http`. `--port` and `--dashboard-port` must be integers 1–65535. Invalid args fail with a specific error and exit code 2 (was: silent garbage acceptance).
+- CLI: `--help` now lists every supported environment variable (`IRIS_TRANSPORT`, `IRIS_HOST`, `IRIS_PORT`, `IRIS_DB_PATH`, `IRIS_LOG_LEVEL`, `IRIS_DASHBOARD`, `IRIS_DASHBOARD_PORT`, `IRIS_API_KEY`, `IRIS_ALLOWED_ORIGINS`, `RATE_LIMIT_SALT`).
+- `scripts/sync-versions.mjs` now syncs `package-lock.json` (root + `packages[""]` version metadata only — no `npm install`, lockfile-trap-safe).
+- Blog `002-state-of-mcp-agent-observability-2026.md` carries an Editor's note acknowledging the observability→agent-eval framing pivot (matches Blog 001 pattern).
+
+### Changed
+- CLI: `parseArgs` now runs with `strict: true`. Unknown flags fail loudly. **Breaking change for any caller passing extra unrecognized flags.**
+- `IRIS_PORT` and `IRIS_DASHBOARD_PORT` env vars now validated via the same range check (1–65535) and fail with a specific message if invalid (was: silent `NaN`).
+- Storage error messages now include the allowed values: `Invalid sort column: X (allowed: timestamp, latency_ms, cost_usd)`, `Invalid sort order: X (allowed: asc, desc)`, `Column 'X' is not queryable (allowed: agent_name, framework)`, `Unsupported storage type: X (supported: sqlite)`.
+- Hero badge alt text "Glama AAA Score" → "Glama Score" (the badge image is dynamic; alt should not assert a specific grade).
+
+### Removed
+- `archive/packages/{crewai,autogen}/` — empty conceptual scaffolds. The `(conceptual scaffold)` README labels remain for `examples/{langchain,crewai}/*.py`; full implementation OR conversion to spec.md is a separate decision (Master Action List S02).
+
 ## [0.2.3] - 2026-04-16
 
 Mother Audit Wave 1 patch checkpoint. Five small surface-correctness fixes surfaced by an end-to-end audit (product + external surface + diligence lens). No product behavior changes.

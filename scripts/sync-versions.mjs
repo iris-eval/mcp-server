@@ -43,6 +43,10 @@ const FILES = [
     path: ".claude-plugin/plugin.json",
     description: "Claude Code plugin manifest",
   },
+  {
+    path: "package-lock.json",
+    description: "npm lockfile (root + packages[\"\"] version metadata only — never runs npm install; surgical write avoids the rolldown lockfile trap)",
+  },
 ];
 
 let updated = 0;
@@ -74,6 +78,13 @@ for (const file of FILES) {
         console.log(`  SYNC: ${file.path} packages[].version (${pkg.version} → ${VERSION})`);
         pkg.version = VERSION;
       }
+    }
+  } else if (content.packages && typeof content.packages === "object" && content.packages[""]) {
+    // package-lock.json shape: packages is an object with "" key for the root package
+    const root = content.packages[""];
+    if (root.version && root.version !== VERSION) {
+      console.log(`  SYNC: ${file.path} packages[""].version (${root.version} → ${VERSION})`);
+      root.version = VERSION;
     }
   }
 

@@ -7,6 +7,8 @@ tags: [observability, mcp, agents, report, evaluation, cost-tracking]
 relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, closing-the-eval-gap]
 ---
 
+> **Editor's note (2026-04):** This post was written when Iris framed itself as observability-first. Iris has since repositioned as "the agent eval standard for MCP" — scoring outputs, not just watching them. The market analysis below remains accurate; the framing of where Iris fits has sharpened. See [Closing the Eval Gap](/blog/closing-the-eval-gap) for the current thesis.
+
 # The State of MCP Agent Observability (March 2026)
 
 *The gap between deploying AI agents and understanding what they're doing.*

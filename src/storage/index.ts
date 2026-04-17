@@ -7,7 +7,7 @@ export function createStorage(config: IrisConfig): IStorageAdapter {
     case 'sqlite':
       return new SqliteAdapter(config.storage.path);
     default:
-      throw new Error(`Unsupported storage type: ${config.storage.type}`);
+      throw new Error(`Unsupported storage type: ${config.storage.type} (supported: sqlite)`);
   }
 }
 
