@@ -5,9 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-04-16
+
+Mother Audit Wave 1 patch checkpoint. Five small surface-correctness fixes surfaced by an end-to-end audit (product + external surface + diligence lens). No product behavior changes.
+
+### Fixed
+- Homepage stat counters now render their values on first paint instead of "0" until scrolled into view (`stats.tsx` flips MCP-tools / eval-rules / latency to `static: true`; AnimatedCounter unchanged for in-component playground reveals)
+- Sitemap now includes `/privacy` and `/terms` (the pages already existed; only the sitemap was missing them)
+
+### Changed
+- Nav banner badge bumped v0.2.1 → v0.2.3 (matches release tag)
+- `SECURITY.md` Supported Versions table updated: `0.2.x` Yes, `0.1.x` No (was showing `0.1.x` only)
+- `CHANGELOG.md` v0.2.2 entry: replaced "full-lattice audit" with "full-system audit" (carve-out hygiene; "Lattice" is reserved for parent-company IP terminology)
+
 ## [0.2.2] - 2026-04-16
 
-Pre-YC alignment checkpoint — UX fixes from Session 31 full-lattice audit. No product behavior changes beyond the dashboard-tip log and retention cleanup guard.
+Pre-YC alignment checkpoint — UX fixes from Session 31 full-system audit. No product behavior changes beyond the dashboard-tip log and retention cleanup guard.
 
 ### Added
 - stdio startup logs a Tip pointing at `--dashboard` flag when not enabled (directly addresses user feedback: "if I didn't know it had a dashboard I wouldn't have known")
