@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ActOne } from "./act-one";
 import { ActTwo } from "./act-two";
 import { ActThree } from "./act-three";
+import { CompletedActPill } from "./completed-act-pill";
 import { PlaygroundCta } from "./playground-cta";
 import { SocialProofBar } from "./social-proof-bar";
 import { ResultCard } from "./result-card";
@@ -166,14 +167,35 @@ export function PlaygroundShell() {
       {/* Social proof */}
       <SocialProofBar />
 
-      {/* Act 1 */}
-      <ActOne onComplete={() => unlockAct(2)} onGuess={onAct1Guess} track={track} />
+      {/* Act 1 — full when current, pill when past */}
+      {visibleActs === 1 ? (
+        <ActOne onComplete={() => unlockAct(2)} onGuess={onAct1Guess} track={track} />
+      ) : (
+        <CompletedActPill
+          actNumber={1}
+          title="Spot the Failure"
+          summary={`${session.act1CorrectCount}/${SCENARIOS.length} correct`}
+          accent={session.act1CorrectCount === SCENARIOS.length ? "pass" : session.act1CorrectCount >= SCENARIOS.length / 2 ? "warn" : "neutral"}
+        />
+      )}
 
-      {/* Act 2 */}
-      {visibleActs >= 2 && (
+      {/* Act 2 — full when current, pill when past */}
+      {visibleActs === 2 && (
         <div ref={actTwoRef}>
           <ActTwo onComplete={() => unlockAct(3)} onChoice={onAct2Choice} />
         </div>
+      )}
+      {visibleActs >= 3 && session.act2Choice !== null && (
+        <CompletedActPill
+          actNumber={2}
+          title="Which Agent Ships?"
+          summary={
+            session.act2Correct
+              ? `Picked Agent ${session.act2Choice} — correct`
+              : `Picked Agent ${session.act2Choice} — Agent ${COMPARISON.correctChoice} was safer`
+          }
+          accent={session.act2Correct ? "pass" : "warn"}
+        />
       )}
 
       {/* Act 3 + Result Card + CTA */}
