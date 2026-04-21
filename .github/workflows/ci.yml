@@ -22,7 +22,11 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
-      - run: cd dashboard && npm ci && npm run typecheck && npm test
+      # npm install (not ci) because lockfile is generated on Windows and
+      # rolldown/emnapi transitive optional deps for Linux aren't captured.
+      # Versions are constrained by ^carets in dashboard/package.json.
+      # See memory: reference_rolldown_lockfile_trap.md
+      - run: cd dashboard && npm install --no-audit --no-fund && npm run typecheck && npm test
 
   test:
     runs-on: ubuntu-latest
