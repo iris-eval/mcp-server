@@ -68,7 +68,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run build
-      - run: cd dashboard && npm ci && npm run build
+      - run: cd dashboard && npm install --no-audit --no-fund && npm run build
       - name: Verify package integrity
         run: |
           test -f dist/dashboard/server.js || (echo "FATAL: dist/dashboard/server.js missing after build" && exit 1)
