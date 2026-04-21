@@ -22,7 +22,7 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
-      - run: cd dashboard && npm ci && npm run typecheck
+      - run: cd dashboard && npm ci && npm run typecheck && npm test
 
   test:
     runs-on: ubuntu-latest
