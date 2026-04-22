@@ -1,0 +1,56 @@
+{
+  "name": "@iris-eval/init",
+  "version": "0.1.0",
+  "description": "Universal installer for Iris — detects your MCP client and writes the right config in one command.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "iris-init": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "iris",
+    "iris-eval",
+    "mcp",
+    "mcp-installer",
+    "claude-code",
+    "cursor",
+    "windsurf",
+    "continue"
+  ],
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://iris-eval.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iris-eval/mcp-server.git",
+    "directory": "packages/init"
+  },
+  "homepage": "https://iris-eval.com/docs/clients",
+  "bugs": {
+    "url": "https://github.com/iris-eval/mcp-server/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.1"
+  }
+}
