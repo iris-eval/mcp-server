@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-21
+
+Dashboard Phase-1 visual core + pricing page. First minor since Mother Audit. No breaking changes.
+
+### Added
+- Dashboard: dark/light theme toggle in the header. Persists via `localStorage`; falls back to `prefers-color-scheme`. Closes #10.
+- Dashboard: trace-ID copy-to-clipboard component (`<CopyableId />`). Adds an explicit "ID" column in `TraceTable` (last 8 chars + copy button) and replaces the inline `<code>` trace-ID display in `TraceDetailPage` with the copyable variant. Closes #11.
+- Dashboard: per-rule eval-score sparkline component (`<EvalSparkline />`) using Recharts. Optional `sparkline` prop on `<StatCard />` renders a 7-day rolling trend beneath the value. Closes #12.
+- Dashboard: `<ThemeProvider>` context wraps the app; theme is applied via `data-theme` attribute on `<html>`.
+- Website: `/pricing` page with three-tier card grid (Free / Pro / Enterprise), per-evaluation pricing primitive, FAQ. Linked from primary nav + sitemap.
+
+### Changed
+- Dashboard: design tokens (`tokens.css`) migrated from sRGB hex to OKLCH. Light-theme variant gated by `[data-theme="light"]`. Accent colors theme-stable for brand recognition.
+- Dashboard: typography tokens updated to Geist Variable (UI/display) + JetBrains Mono (data/code). Loaded via Google Fonts CDN with `display: swap`.
+- Website: nav `Pricing` link points to `/pricing` (was `/#pricing` anchor).
+
+### Removed
+- None.
+
 ## [0.2.4] - 2026-04-17
 
 Mother Audit Wave 2 follow-through. CLI hardening cluster + repo hygiene + content + tooling.
