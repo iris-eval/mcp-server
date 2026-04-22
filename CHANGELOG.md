@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-22
+
+Eval rule library expansion + new `no_stub_output` rule + topic_consistency fix. Backed by an exhaustive controlled trace-log validation harness (parent repo: `tools/iris-validation-harness/`) and a new in-repo regression gate (`tests/integration/rule-coverage-matrix.test.ts`). 209/209 tests pass; 55 controlled cases verify every rule. No breaking changes.
+
+### Added
+
+- **`no_pii`** — expanded from 4 to 10 PII patterns. Added IBAN (international bank account), DOB (with explicit label), Medical Record Number (MRN), IPv4 address, API key heuristic (`sk-` / `pk-` / `api_*` / `Bearer` + 20+ char token), US Passport (9-digit). Catches significantly more real-world PII leaks in customer support, healthcare data extraction, and DevOps log scenarios.
+- **`no_injection_patterns`** — expanded from 5 to 13 patterns. Added "disregard previous", "act/behave/respond as a/an", "pretend you are/to be", "override instructions/safety", "my/your (new) role/task is", "reveal/show/tell system prompt", "jailbroken", "forget all/everything/previous". Catches the broader output-side compliance patterns that emerge when an injection succeeds.
+- **`no_stub_output`** (new rule, safety category) — detects placeholder/stub markers in agent output (TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, TO BE DETERMINED, [INSERT, [ADD). Configurable via `customConfig.stub_markers`. Critical for code-review agents emitting "LGTM TODO: review later", data-extractors emitting `{"field": "TODO"}`, and content-drafters emitting `[FIXME: add stats]`.
+- **Fabricated-citation heuristic** in `no_hallucination_markers`. Fires when 3+ numbered citations (`[1][2][3]`) co-occur with 2+ expert markers (Dr., Professor, "according to", "study by"). Does NOT flag legitimate single citations or numbered step lists. Heuristic only — full semantic citation verification ships in v0.5 LLM-as-judge.
+- **`tests/integration/rule-coverage-matrix.test.ts`** — 55-case regression gate that runs against all 12 built-in rules + every v0.3.1 expansion. Fails CI on any rule behavior change.
+
+### Changed
+
+- **`topic_consistency`** — now skips when output has < 6 words ≥ 4 chars (configurable via `customConfig.topic_consistency_min_words`). Resolves the false-positive where brief but valid responses were flagged as off-topic. Returns `skipped: true` + `passed: true` (benefit-of-the-doubt) for brief outputs.
+
+### Validation
+
+- 209/209 unit + integration tests pass.
+- 57/57 controlled trace-log tests pass against the v0.3.1 build (validation harness in parent repo).
+- All v0.3.0 behavior preserved; backward compatible.
+
 ## [0.3.0] - 2026-04-21
 
 Dashboard Phase-1 visual core + pricing page. First minor since Mother Audit. No breaking changes.
