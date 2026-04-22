@@ -1,32 +1,44 @@
+/*
+ * Iris Dashboard — Design tokens (OKLCH palette)
+ *
+ * Migrated from sRGB hex to OKLCH 2026-04-21 per build-dashboard-overhaul.md Phase 1.
+ * Light-mode tokens added for issue #10 (theme toggle) — gated by [data-theme="light"]
+ * applied to <html>. Default = dark.
+ *
+ * OKLCH is perceptually uniform — equal numeric deltas produce equal perceived deltas
+ * across hue + lightness, which makes the palette designable rather than tweakable.
+ */
+
 :root {
-  /* Backgrounds */
-  --bg-primary: #0a0a0b;
-  --bg-secondary: #141416;
-  --bg-tertiary: #1c1c1f;
-  --bg-hover: #252528;
+  /* ---------- Backgrounds (dark default) ---------- */
+  --bg-primary: oklch(15% 0.015 240);    /* near-black with cool tint (was #0a0a0b) */
+  --bg-secondary: oklch(20% 0.012 240);  /* one-step lighter (was #141416) */
+  --bg-tertiary: oklch(24% 0.012 240);   /* two-steps (was #1c1c1f) */
+  --bg-hover: oklch(28% 0.012 240);      /* hover state (was #252528) */
 
-  /* Text */
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  /* ---------- Text (dark default) ---------- */
+  --text-primary: oklch(98% 0.005 240);  /* near-white (was #fafafa) */
+  --text-secondary: oklch(70% 0.012 240);/* muted (was #a1a1aa) */
+  --text-muted: oklch(55% 0.012 240);    /* most muted (was #71717a) */
 
-  /* Accents */
-  --accent-primary: #0d9488;
-  --accent-primary-hover: #14b8a6;
-  --accent-success: #22c55e;
-  --accent-error: #ef4444;
-  --accent-warning: #f59e0b;
-  --accent-tool: #3b82f6;
-  --accent-llm: #a855f7;
+  /* ---------- Accents (theme-stable; same in light + dark) ---------- */
+  --accent-primary: oklch(60% 0.10 195);       /* teal (was #0d9488) */
+  --accent-primary-hover: oklch(70% 0.12 195); /* teal hover (was #14b8a6) */
+  --accent-success: oklch(70% 0.16 145);       /* green (was #22c55e) */
+  --accent-error: oklch(65% 0.20 25);           /* red (was #ef4444) */
+  --accent-warning: oklch(78% 0.15 80);          /* amber (was #f59e0b) */
+  --accent-tool: oklch(65% 0.18 240);            /* blue (was #3b82f6) */
+  --accent-llm: oklch(65% 0.20 295);             /* purple (was #a855f7) */
 
-  /* Borders */
-  --border-color: #27272a;
+  /* ---------- Borders (dark default) ---------- */
+  --border-color: oklch(28% 0.012 240);  /* (was #27272a) */
   --border-radius: 8px;
   --border-radius-sm: 4px;
   --border-radius-lg: 12px;
 
-  /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* ---------- Typography ---------- */
+  /* Geist Variable + JetBrains Mono per Tier A Wave 2 — A13 lock 2026-04-21 */
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
@@ -36,23 +48,51 @@
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 2rem;
 
-  /* Spacing */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
+  /* ---------- Spacing (8pt grid) ---------- */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px — base unit */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px = 2× */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px = 3× */
+  --space-8: 2rem;     /* 32px = 4× */
+  --space-10: 2.5rem;  /* 40px = 5× */
+  --space-12: 3rem;    /* 48px = 6× */
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  /* ---------- Shadows (dark) ---------- */
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.30);
+  --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.40);
+  --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.50);
 
-  /* Transitions */
+  /* ---------- Transitions ---------- */
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
+}
+
+/* ---------- Light theme (issue #10) ---------- */
+/*
+ * Activated by setting <html data-theme="light"> via the ThemeProvider.
+ * Only background, text, border, and shadow tokens flip; accents stay stable
+ * to preserve brand recognition across themes.
+ */
+[data-theme="light"] {
+  --bg-primary: oklch(98% 0.005 240);    /* off-white */
+  --bg-secondary: oklch(96% 0.005 240);  /* one-step darker */
+  --bg-tertiary: oklch(94% 0.005 240);   /* two-steps */
+  --bg-hover: oklch(92% 0.008 240);      /* hover state */
+
+  --text-primary: oklch(20% 0.012 240);  /* near-black with cool tint */
+  --text-secondary: oklch(40% 0.012 240);/* muted */
+  --text-muted: oklch(55% 0.012 240);    /* most muted */
+
+  --border-color: oklch(88% 0.008 240);
+
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.06);
+  --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.08);
+  --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.10);
+}
+
+/* ---------- Theme transition (smooth swap) ---------- */
+html {
+  transition: background-color var(--transition-base), color var(--transition-base);
 }

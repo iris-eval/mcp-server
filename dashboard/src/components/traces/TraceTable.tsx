@@ -4,6 +4,7 @@ import { TimeAgo } from '../shared/TimeAgo';
 import { LatencyDisplay } from '../shared/LatencyDisplay';
 import { CostDisplay } from '../shared/CostDisplay';
 import { Badge } from '../shared/Badge';
+import { CopyableId } from '../shared/CopyableId';
 
 export function TraceTable({
   traces,
@@ -46,6 +47,18 @@ export function TraceTable({
       header: 'Time',
       render: (t) => <TimeAgo timestamp={t.timestamp} />,
       width: '120px',
+    },
+    {
+      key: 'trace_id',
+      header: 'ID',
+      render: (t) => (
+        <CopyableId
+          value={t.trace_id}
+          displayValue={t.trace_id.slice(-8)}
+          ariaLabel={`Copy trace ID ${t.trace_id}`}
+        />
+      ),
+      width: '160px',
     },
   ];
 

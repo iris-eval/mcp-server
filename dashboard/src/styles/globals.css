@@ -1,5 +1,12 @@
 @import './tokens.css';
 
+/*
+ * Geist Variable + JetBrains Mono — self-hosted via Vercel CDN
+ * (free, commercial-use licensed). Loaded with display: swap so the
+ * fallback system stack renders immediately and Geist takes over on load.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400..700&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

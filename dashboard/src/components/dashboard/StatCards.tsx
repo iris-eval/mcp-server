@@ -1,9 +1,15 @@
+import { EvalSparkline, type EvalSparklinePoint } from '../shared/EvalSparkline';
+
 interface StatCardProps {
   label: string;
   value: string;
   sub?: string;
   trend?: { value: string; positive: boolean };
   color?: string;
+  /** Optional sparkline data — when provided, renders a small trend line below the value (issue #12). */
+  sparkline?: EvalSparklinePoint[];
+  /** Optional sparkline color override. */
+  sparklineColor?: string;
 }
 
 const cardStyle = {
@@ -16,7 +22,7 @@ const cardStyle = {
   gap: 'var(--space-1)',
 } as const;
 
-export function StatCard({ label, value, sub, trend, color }: StatCardProps) {
+export function StatCard({ label, value, sub, trend, color, sparkline, sparklineColor }: StatCardProps) {
   return (
     <div style={cardStyle}>
       <span
@@ -57,6 +63,11 @@ export function StatCard({ label, value, sub, trend, color }: StatCardProps) {
         <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
           {sub}
         </span>
+      )}
+      {sparkline && sparkline.length > 0 && (
+        <div style={{ marginTop: 'var(--space-2)' }}>
+          <EvalSparkline data={sparkline} color={sparklineColor} ariaLabel={`${label} trend`} />
+        </div>
       )}
     </div>
   );
