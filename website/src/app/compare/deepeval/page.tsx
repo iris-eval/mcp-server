@@ -85,13 +85,13 @@ const FEATURES = [
   { feature: "When eval runs", iris: "Inline, every output in production", deepeval: "Offline, batch test suites in CI/CD", irisWin: true },
   { feature: "Language", iris: "TypeScript (any MCP agent)", deepeval: "Python only", irisWin: true },
   { feature: "Self-hosting", iris: "Single binary, one SQLite file", deepeval: "pip install, local execution", irisWin: false },
-  { feature: "Built-in metrics", iris: "12 rules (completeness, safety, cost, relevance)", deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", deepevalWin: true },
+  { feature: "Built-in metrics", iris: "13 rules (completeness, safety, cost, relevance) — 10 PII patterns, 13 injection patterns, stub-output, fabricated-citation heuristic", deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", irisNeutral: true },
   { feature: "Custom metrics", iris: "Zod schema custom rules", deepeval: "Python custom metrics class", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost, aggregate visibility", deepeval: "Not included", irisWin: true },
   { feature: "Dashboard", iris: "Real-time dark-mode UI", deepeval: "Confident AI cloud dashboard (separate product)", irisWin: true },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", deepeval: "Not MCP-aware", irisWin: true },
   { feature: "License", iris: "MIT", deepeval: "Apache 2.0", irisWin: false },
-  { feature: "Maturity", iris: "Early stage (v0.2.0)", deepeval: "Established (4K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
+  { feature: "Maturity", iris: "Early stage (v0.3.1)", deepeval: "Established (4K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [

@@ -166,7 +166,7 @@ If you can express the check as a pattern, a threshold, or a string comparison, 
 
 The question of how to standardize these evaluation interfaces across the ecosystem is one we explore in [Toward an MCP Observability Specification](/blog/toward-an-mcp-observability-specification).
 
-Iris is open-source and MIT licensed. The 12 built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
+Iris is open-source and MIT licensed. The 13 built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
 
 ```bash
 npx @iris-eval/mcp-server --dashboard

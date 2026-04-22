@@ -19,7 +19,7 @@ export function SocialProofBar() {
         <span className="h-3 w-px bg-border-subtle" />
         <span>Works with Claude, GPT, Gemini, LangChain</span>
         <span className="hidden h-3 w-px bg-border-subtle md:inline" />
-        <span className="hidden md:inline">12 eval rules</span>
+        <span className="hidden md:inline">13 eval rules</span>
         <span className="hidden h-3 w-px bg-border-subtle md:inline" />
         <span className="hidden md:inline">Open source · MIT licensed</span>
       </div>

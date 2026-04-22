@@ -37,7 +37,7 @@ GitHub: https://github.com/iris-eval/mcp-server
 npm: https://www.npmjs.com/package/@iris-eval/mcp-server
 
 I'd appreciate feedback on two things specifically:
-1. The eval rule system — are these the right 12 rules to ship with? What's missing?
+1. The eval rule system — are these the right 13 rules to ship with? What's missing?
 2. The MCP tool API — three tools feels minimal but sufficient. Should trace logging and evaluation be combined or kept separate?
 
 Check the roadmap for what's coming next: https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md

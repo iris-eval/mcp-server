@@ -641,7 +641,7 @@ Health check endpoint. Reports server status and storage connectivity.
 
 ## Evaluation Rules
 
-Iris ships with 12 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score.
+Iris ships with 13 built-in rules across 4 categories (as of v0.3.1). Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
 
 ### Completeness Rules
 

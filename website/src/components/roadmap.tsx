@@ -6,9 +6,10 @@ import { motion, useReducedMotion, useInView } from "framer-motion";
 const MILESTONES = [
   { v: "v0.1", status: "Released", title: "Core MCP Server", detail: "3 tools, 12 eval rules, SQLite storage, web dashboard, production security" },
   { v: "v0.2", status: "Released", title: "Eval Sensitivity + Security Hardening", detail: "Smart rule exclusion, configurable thresholds, SQL whitelist, CSP headers, accessibility" },
-  { v: "v0.3", status: "Planned", title: "Cloud Tier", detail: "PostgreSQL, multi-tenancy, team dashboards, API key management" },
-  { v: "v0.4", status: "Planned", title: "LLM-as-Judge", detail: "Semantic evaluation, OpenTelemetry export, drift detection, A/B testing" },
-  { v: "v0.5", status: "Planned", title: "Alerting & Retention", detail: "Alert rules, webhooks, email notifications, retention policies" },
+  { v: "v0.3", status: "Released", title: "Dashboard Phase-1 + Pricing", detail: "OKLCH palette, dark/light theme, trace-ID copy, eval sparkline, pricing page, MCP-native validation harness" },
+  { v: "v0.3.1", status: "Released", title: "Rule Library Expansion", detail: "13 eval rules (added no_stub_output), 10 PII patterns (IBAN, DOB, MRN, IP, API key, passport), 13 injection patterns, fabricated-citation heuristic, 55-case CI regression gate" },
+  { v: "v0.4", status: "Planned", title: "LLM-as-Judge + Cloud Tier", detail: "Semantic evaluation, PostgreSQL, multi-tenancy, OpenTelemetry export, team dashboards" },
+  { v: "v0.5", status: "Planned", title: "Alerting & Retention", detail: "Alert rules, webhooks, email notifications, retention policies, drift detection" },
   { v: "v0.6", status: "Planned", title: "Enterprise", detail: "SSO/SAML, RBAC, audit logs, SOC 2 compliance" },
 ];
 

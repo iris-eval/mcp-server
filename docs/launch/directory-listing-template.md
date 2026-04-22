@@ -11,7 +11,7 @@ MCP-native eval and observability for AI agents. Log traces, evaluate output qua
 
 ## Medium Description (2-3 lines)
 
-Iris is an MCP server that any agent discovers and uses automatically — no SDK, no code changes. Log every trace, evaluate output quality with 12 built-in rules, and track costs across all your agents. Open-source core. MIT licensed. 60 seconds to first trace.
+Iris is an MCP server that any agent discovers and uses automatically — no SDK, no code changes. Log every trace, evaluate output quality with 13 built-in rules, and track costs across all your agents. Open-source core. MIT licensed. 60 seconds to first trace.
 
 ## Long Description (paragraph)
 

@@ -161,7 +161,7 @@ LLM-as-Judge is a powerful technique. I am building it into Iris because there a
 
 If you can express the check as a pattern, a threshold, or a string comparison, use a heuristic rule. Save the LLM for the evaluations that actually need one.
 
-Iris is open-source and MIT licensed. The 12 built-in rules are ready to use today. Add it to your MCP config and start evaluating your agent output in <1ms.
+Iris is open-source and MIT licensed. The 13 built-in rules are ready to use today. Add it to your MCP config and start evaluating your agent output in <1ms.
 
 ```bash
 npx @iris-eval/mcp-server --dashboard

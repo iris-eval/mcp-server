@@ -1,10 +1,12 @@
 # Iris Roadmap
 
-Public roadmap for `@iris-eval/mcp-server`. Updated 2026-03-18.
+Public roadmap for `@iris-eval/mcp-server`. Updated 2026-04-22.
+
+The canonical public version lives at [iris-eval.com#roadmap](https://iris-eval.com/#roadmap). This file mirrors it with the per-version detail that doesn't fit on the marketing page.
 
 ---
 
-## v0.1.0 -- Core MCP Server
+## v0.1 -- Core MCP Server
 
 **Status: Released**
 
@@ -19,55 +21,80 @@ The foundation: an MCP server that evaluates agent output quality, logs traces, 
 
 ---
 
-## v0.2.0 -- Eval-First Cloud Tier
+## v0.2 -- Eval Sensitivity + Security Hardening
 
-**Status: Planned**
+**Status: Released**
 
-Take agent eval from local to team-scale. Shared eval results, managed infrastructure, usage-based pricing.
+Tighter evaluation signal and a deeper security posture for the self-hosted single-tenant deployment.
 
-- **PostgreSQL storage adapter**: drop-in replacement for SQLite, connection pooling, concurrent writes
-- **Multi-tenancy**: workspace isolation, per-workspace database schemas or row-level security
-- **Team eval dashboards**: shared eval results, team-level quality scores, agent-by-agent comparison
-- **Eval history**: track scores per rule over time per agent — detect quality regressions before users do
-- **API key management**: create, rotate, and revoke API keys per workspace via dashboard UI
-- **Data export**: CSV and JSON export of evaluations and traces
+- **Smart rule exclusion**: rules that need input for meaningful comparison (`keyword_overlap`, `topic_consistency`, `expected_output_coverage`) skip when context is missing instead of producing noisy false positives
+- **Configurable thresholds**: per-rule customization via `customConfig` payload (overlap ratios, brief-output skips, blocklist words, stub markers)
+- **SQL whitelist**: dashboard query layer hardened with parameterized statements + table/column allowlist for ad-hoc filters
+- **CSP headers + accessibility**: dashboard ships strict Content-Security-Policy; trace viewer is keyboard-navigable with ARIA labels on summary widgets
+- **Rolldown lockfile guardrails**: release pipeline + Dockerfile pinned away from Windows-pruning native module patterns
 
 ---
 
-## v0.3.0 -- Quality Alerting, Framework Packages, and Eval Rule Ecosystem
+## v0.3 -- Dashboard Phase-1 + Pricing
+
+**Status: Released**
+
+First pass of the production-grade dashboard, plus a public pricing surface.
+
+- **OKLCH palette + dark/light theme**: perceptually uniform color system across both themes, full CSS variable token set
+- **Trace-ID copy**: every trace exposes a one-click copy button for support flows and pasting into incident channels
+- **Eval sparkline**: per-rule pass/fail trend over the last N traces, surfaced inline in the rule detail view
+- **Pricing page**: free / team / enterprise tiers with usage-based add-ons, FAQ, and per-tier feature matrix
+- **MCP-native validation harness**: external test agent system that exercises Iris through the MCP protocol (no direct DB writes), used as the primary release-readiness gate
+
+---
+
+## v0.3.1 -- Rule Library Expansion
+
+**Status: Released**
+
+Closing the pattern-coverage gaps surfaced by the controlled-trace test campaign. The rule library went from 12 to 13 rules with substantially broader pattern coverage in the existing safety/relevance rules.
+
+- **`no_pii`** — expanded from 4 to 10 PII patterns. Added IBAN, US passport, date-of-birth (contextual), medical record number, IPv4 address, and API key heuristics on top of the original SSN/credit card/phone/email
+- **`no_injection_patterns`** — expanded from 5 to 13 patterns. Added "disregard previous", "act/behave/respond as a/an", "pretend you are/to be", "override instructions/safety", "my/your (new) role/task is", "reveal/show/tell system prompt", "jailbroken", and "forget all/everything/previous"
+- **`no_stub_output`** (new rule, safety category) — detects placeholder/stub markers in agent output (TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD). Configurable via `customConfig.stub_markers`
+- **Fabricated-citation heuristic** in `no_hallucination_markers` — fires when 3+ numbered citations co-occur with 2+ expert markers (Dr., Professor, "according to", "study by"). Heuristic only; semantic verification ships in v0.4
+- **`topic_consistency`** brief-output skip — skips when output has < 6 words ≥ 4 chars (configurable). Resolves false-positives on brief but valid responses
+- **`tests/integration/rule-coverage-matrix.test.ts`** — 55-case regression gate that runs against all 13 built-in rules. Fails CI on any rule behavior change
+
+---
+
+## v0.4 -- LLM-as-Judge + Cloud Tier
 
 **Status: Planned**
 
-Alert on quality regressions, bring non-MCP frameworks into the eval pipeline, and open the door for community-contributed eval rules.
+Semantic evaluation powered by LLMs, plus the first multi-tenant cloud tier.
 
-- **Quality alert rules**: configurable conditions (e.g., average eval score drops below 0.6 over 1 hour, safety rule failure rate exceeds 5%, cost per trace exceeds $0.50)
+- **LLM-as-judge evaluation**: use an LLM to score output quality on dimensions like accuracy, helpfulness, and safety (configurable model, prompt templates, cost controls)
+- **Semantic citation verification**: graduates the v0.3.1 fabricated-citation heuristic to actual source-checking
+- **PostgreSQL storage adapter**: drop-in replacement for SQLite, connection pooling, concurrent writes
+- **Multi-tenancy**: workspace isolation, per-workspace database schemas or row-level security
+- **OpenTelemetry trace export**: export Iris traces as OTel spans to Jaeger, Grafana Tempo, Datadog, Sentry
+- **Team eval dashboards**: shared eval results, team-level quality scores, agent-by-agent comparison
+
+---
+
+## v0.5 -- Alerting & Retention
+
+**Status: Planned**
+
+Alert on quality regressions and bound long-term storage.
+
+- **Quality alert rules**: configurable conditions (e.g., average eval score drops below 0.6 over 1 hour, safety failure rate exceeds 5%, cost per trace exceeds $0.50)
 - **Webhook notifications**: POST alert payloads to any URL (Slack, PagerDuty, custom endpoints)
 - **Email notifications**: SMTP integration for alert emails with summary and affected evaluations
 - **Retention policies**: automatic trace/eval deletion after configurable TTL (e.g., 30 days), storage usage tracking
 - **Dashboard alert panel**: view active alerts, alert history, and configure rules from the UI
-- **Framework integration packages**: SDK adapters that pipe framework events to Iris for eval — each install is a permanent adoption channel
-  - `@iris-eval/langchain` — LangChain callback handler → Iris eval pipeline (scaffolded)
-  - `@iris-eval/crewai` — CrewAI workflow eval integration (scaffolded)
-  - `@iris-eval/autogen` — AutoGen conversation eval integration (scaffolded)
-- **Community eval rule registry**: publish and discover community-contributed eval rules as npm packages (like ESLint plugins for agent output)
+- **Drift detection**: automated alerts when eval scores trend downward per agent or per rule
 
 ---
 
-## v0.4.0 -- LLM-as-Judge and Monitoring Interop
-
-**Status: Planned**
-
-Semantic evaluation powered by LLMs, plus export to your existing monitoring stack. Iris evaluates; your APM monitors. They work together.
-
-- **LLM-as-judge evaluation**: use an LLM to score output quality on dimensions like accuracy, helpfulness, and safety (configurable model, prompt templates, cost controls)
-- **OpenTelemetry trace export**: export Iris traces as OTel spans to Jaeger, Grafana Tempo, Datadog, Sentry, or any OTel-compatible backend — Iris handles eval, your APM handles infrastructure
-- **Annotation API**: human-in-the-loop feedback — annotate traces with ground truth, corrections, or quality labels via API and dashboard
-- **Comparison mode**: side-by-side trace comparison for A/B testing different prompts, models, or agent configurations
-- **Eval regression detection**: automated alerts when eval scores trend downward per agent or per rule
-
----
-
-## v0.5.0 -- Enterprise
+## v0.6 -- Enterprise
 
 **Status: Planned**
 

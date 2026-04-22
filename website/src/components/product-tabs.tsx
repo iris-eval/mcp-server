@@ -144,7 +144,7 @@ export function ProductTabs(): React.ReactElement {
             <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
               <div className="lg:py-4">
                 <h3 className="font-display text-2xl font-bold text-text-primary md:text-3xl">
-                  12 built-in rules across 4 categories.
+                  13 built-in rules across 4 categories.
                 </h3>
                 <p className="mt-4 text-[16px] leading-relaxed text-text-secondary">
                   <code className="rounded-md border border-border-default bg-bg-surface px-2 py-0.5 font-mono text-[13px] text-text-accent">evaluate_output</code>{" "}

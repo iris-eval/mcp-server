@@ -31,9 +31,9 @@ const USE_CASES = [
   {
     audience: "Companies preventing PII leaks",
     problem: "Your agent leaked a Social Security number in its output and nobody noticed for 3 months.",
-    solution: "Iris evaluates every output against 12 built-in rules including PII detection (SSN, credit card, phone, email), prompt injection, and hallucination markers. Real-time, every trace.",
-    metric: "12",
-    metricLabel: "built-in safety eval rules",
+    solution: "Iris evaluates every output against 13 built-in rules including PII detection across 10 patterns (SSN, credit card, phone, email, IBAN, DOB, medical record number, IP address, API key, passport), prompt injection (13 patterns), stub-output detection, and hallucination markers. Real-time, every trace.",
+    metric: "13",
+    metricLabel: "built-in eval rules",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />

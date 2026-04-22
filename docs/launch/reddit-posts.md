@@ -53,11 +53,11 @@ Iris is the first eval and observability tool built natively on the Model Contex
 
 **Evaluation framework:**
 
-The engine supports 4 rule categories with 12 built-in rules:
+The engine supports 4 rule categories with 13 built-in rules:
 
 - *Completeness:* min output length, non-empty check, sentence count, expected output coverage (keyword overlap ratio)
-- *Relevance:* input-output keyword overlap, hallucination marker detection (hedging phrases like "as an AI"), topic consistency scoring
-- *Safety:* PII pattern matching (SSN, credit card, phone, email via regex), prompt injection detection (5 injection patterns), configurable blocklist
+- *Relevance:* input-output keyword overlap, hallucination marker detection (hedging phrases like "as an AI", plus fabricated-citation heuristic), topic consistency scoring
+- *Safety:* PII pattern matching (10 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IPv4, API key, passport), prompt injection detection (13 output-side compliance patterns), stub/placeholder detection (TODO/FIXME/etc.), configurable blocklist
 - *Cost:* USD threshold check, output-to-input token ratio efficiency
 
 Each rule returns a score [0, 1] and a pass/fail. Rules have weights. The engine computes a weighted average and compares against a configurable threshold (default 0.7). Custom rules are supported via Zod-validated definitions at evaluation time.

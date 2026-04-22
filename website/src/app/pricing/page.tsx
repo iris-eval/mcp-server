@@ -107,7 +107,7 @@ const faq: FaqItem[] = [
   },
   {
     q: "Why price on evaluations instead of traces?",
-    a: "Evaluations are the value unit. A trace with no rules applied is a log entry; a trace scored by 12 rules is an instrument. The Pro tier's 100K evaluations translates to roughly 8K traces with the default rule set, or more if you run a leaner subset.",
+    a: "Evaluations are the value unit. A trace with no rules applied is a log entry; a trace scored by 13 rules is an instrument. The Pro tier's 100K evaluations translates to roughly 8K traces with the default rule set, or more if you run a leaner subset.",
   },
   {
     q: "Can I self-host?",

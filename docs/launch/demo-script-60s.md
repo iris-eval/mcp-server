@@ -55,7 +55,7 @@ Companion to the full 3-4 minute demo script (`demo-script.md`). This is a fast,
 
 **Screen:** Browser opens `http://localhost:6920`. Summary page loads: trace count, average score, pass rate, total cost cards at top. Timeline chart below.
 
-**Text overlay (bottom-right, 0:33):** `12 eval rules | <1ms | $0`
+**Text overlay (bottom-right, 0:33):** `13 eval rules | <1ms | $0`
 
 **Voiceover (0:37-0:43):** "PII detection caught an email pattern in the response. Hallucination markers flagged. Cost threshold — enforced."
 
@@ -116,7 +116,7 @@ Optimized for X, LinkedIn, and YouTube Shorts. Vertical (9:16) or square (1:1) c
 
 **Screen:** Dashboard summary page — quick cut to trace detail with span tree — quick cut to eval results showing a PII failure.
 
-**Text overlay (0:14):** `12 eval rules | <1ms | $0`
+**Text overlay (0:14):** `13 eval rules | <1ms | $0`
 
 ### 0:20-0:30 — CTA
 

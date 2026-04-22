@@ -46,7 +46,7 @@ The architectural fix is straightforward. Rules that lack the context they need 
 }
 ```
 
-The eval engine then computes the Output Quality Score only from rules that actually evaluated. If 3 of 12 rules ran and produced scores, OQS reflects those 3 — not a diluted average of 3 real scores and 9 phantom 1.0s.
+The eval engine then computes the Output Quality Score only from rules that actually evaluated. If 3 of 13 rules ran and produced scores, OQS reflects those 3 — not a diluted average of 3 real scores and 10 phantom 1.0s.
 
 When all rules are skipped, the result is honest:
 

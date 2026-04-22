@@ -10,9 +10,9 @@ devto_tags: [ai, agenteval, programming, testing]
 
 # Output Quality Score: The Single Number That Tells You If Your Agent Is Good Enough
 
-Your agent runs 12 eval rules. Eight pass. Two are borderline. Two fail. Is the output good enough to ship?
+Your agent runs 13 eval rules. Nine pass. Two are borderline. Two fail. Is the output good enough to ship?
 
-Nobody can answer that question by staring at 12 individual scores. Not at 2 AM during an incident. Not in a Slack thread about whether the latest prompt change helped or hurt. Not in an executive review where someone asks "how are our agents doing?" and the answer is a spreadsheet.
+Nobody can answer that question by staring at 13 individual scores. Not at 2 AM during an incident. Not in a Slack thread about whether the latest prompt change helped or hurt. Not in an executive review where someone asks "how are our agents doing?" and the answer is a spreadsheet.
 
 You need one number. A composite. A rollup that absorbs the complexity of individual rules and produces a single signal: this output is good enough, or it isn't.
 

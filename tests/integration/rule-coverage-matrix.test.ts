@@ -488,7 +488,7 @@ describe('rule-coverage-matrix (regression gate)', () => {
     });
   }
 
-  it(`runs ${TABLE.length} controlled cases across all 12 rules`, () => {
+  it(`runs ${TABLE.length} controlled cases across all 13 rules`, () => {
     expect(TABLE.length).toBeGreaterThanOrEqual(50);
   });
 });

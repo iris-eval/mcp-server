@@ -107,7 +107,7 @@ The rules don't have to be complex. "Output must not contain PII" is a rule. "Re
 
 ## How Iris Enables EDD
 
-Iris provides the evaluation framework that makes EDD operational. When you call `evaluate_output`, it scores against up to 12 built-in rules across four categories that map directly to the dimensions you need to define before writing a prompt:
+Iris provides the evaluation framework that makes EDD operational. When you call `evaluate_output`, it scores against up to 13 built-in rules across four categories that map directly to the dimensions you need to define before writing a prompt:
 
 - **Completeness:** What must the output contain?
 - **Relevance:** What must it relate to?

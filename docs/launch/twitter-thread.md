@@ -30,7 +30,7 @@ Iris is an MCP server, not an SDK. Any MCP-compatible agent discovers and uses i
 
 3 tools:
 - log_trace: full execution traces with spans, tool calls, token usage, cost
-- evaluate_output: score quality against 12 built-in rules
+- evaluate_output: score quality against 13 built-in rules
 - get_traces: query history with filters
 
 Works with Claude Desktop, Cursor, any MCP agent.
