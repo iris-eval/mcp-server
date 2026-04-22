@@ -10,6 +10,8 @@ import { createStdioTransport } from './transport/stdio.js';
 import { createHttpTransport } from './transport/http.js';
 import { createDashboardServer } from './dashboard/server.js';
 import { createLogger } from './utils/logger.js';
+import { loadOrInitPreferences, shouldAutoLaunchDashboard } from './preferences.js';
+import { openBrowser } from './utils/open-browser.js';
 
 const PortSchema = z
   .string()
@@ -86,7 +88,11 @@ Environment variables (CLI flags take precedence):
   IRIS_DASHBOARD_PORT      Dashboard port (1-65535, default: 6920)
   IRIS_API_KEY             API key for HTTP authentication
   IRIS_ALLOWED_ORIGINS     Comma-separated CORS origin allowlist
+  IRIS_NO_AUTO_LAUNCH      Set to 1 to disable first-run dashboard auto-launch
   RATE_LIMIT_SALT          (waitlist API only — required when website is deployed)
+
+Dashboard preferences (~/.iris/preferences.json):
+  Edit autoLaunch: false to permanently disable first-run dashboard auto-launch.
 `);
   process.exit(0);
 }
@@ -145,6 +151,26 @@ async function main(): Promise<void> {
     const dashboardServer = createDashboardServer(storage, config, logger);
     const server = dashboardServer.start();
     httpServers.push(server);
+
+    // First-run auto-launch (B7): on first dashboard launch, open the
+    // dashboard in the user's default browser. Skipped in CI, when the
+    // user has previously set autoLaunch=false in ~/.iris/preferences.json,
+    // or when IRIS_NO_AUTO_LAUNCH=1 is set.
+    if (config.dashboard.enabled) {
+      const prefState = loadOrInitPreferences();
+      if (prefState.isFirstRun && shouldAutoLaunchDashboard(prefState)) {
+        const url = `http://localhost:${config.dashboard.port}`;
+        logger.info(`First run detected — opening dashboard at ${url}`);
+        logger.info(
+          `(To disable auto-launch: set IRIS_NO_AUTO_LAUNCH=1 or edit ${prefState.path})`,
+        );
+        openBrowser(url);
+      } else if (prefState.isFirstRun) {
+        logger.info(
+          `First run detected — skipping auto-launch (CI/IRIS_NO_AUTO_LAUNCH set). Dashboard at http://localhost:${config.dashboard.port}`,
+        );
+      }
+    }
   }
 
   if (config.security.apiKey) {

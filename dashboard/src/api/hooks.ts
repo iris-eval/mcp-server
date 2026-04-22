@@ -11,6 +11,8 @@ import type {
   EvalTrendPoint,
   RuleBreakdown,
   EvalFailure,
+  MomentQueryResult,
+  DecisionMomentDetail,
 } from './types';
 
 function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number) {
@@ -82,4 +84,14 @@ export function useEvalRules() {
 export function useEvalFailures(limit?: number) {
   const fetcher = useCallback(() => api.getEvalFailures(limit), [limit]);
   return useApiData<EvalFailure[]>(fetcher, 5000);
+}
+
+export function useMoments(params?: Record<string, string>) {
+  const fetcher = useCallback(() => api.getMoments(params), [JSON.stringify(params)]);
+  return useApiData<MomentQueryResult>(fetcher, 5000);
+}
+
+export function useMomentDetail(id: string) {
+  const fetcher = useCallback(() => api.getMomentDetail(id), [id]);
+  return useApiData<DecisionMomentDetail>(fetcher);
 }

@@ -9,6 +9,8 @@ import type {
   EvalTrendPoint,
   RuleBreakdown,
   EvalFailure,
+  MomentQueryResult,
+  DecisionMomentDetail,
 } from './types';
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -62,5 +64,13 @@ export const api = {
 
   getEvalFailures(limit?: number): Promise<EvalFailure[]> {
     return fetchJson<EvalFailure[]>(`${API_BASE_URL}/eval-stats/failures`, limit ? { limit: String(limit) } : undefined);
+  },
+
+  getMoments(params?: Record<string, string>): Promise<MomentQueryResult> {
+    return fetchJson<MomentQueryResult>(`${API_BASE_URL}/moments`, params);
+  },
+
+  getMomentDetail(id: string): Promise<DecisionMomentDetail> {
+    return fetchJson<DecisionMomentDetail>(`${API_BASE_URL}/moments/${id}`);
   },
 };

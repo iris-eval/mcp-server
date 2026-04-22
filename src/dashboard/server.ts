@@ -17,6 +17,7 @@ import { registerEvaluationRoutes } from './routes/evaluations.js';
 import { registerFilterRoutes } from './routes/filters.js';
 import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerHealthRoutes } from './routes/health.js';
+import { registerMomentRoutes } from './routes/moments.js';
 
 export interface DashboardServer {
   app: express.Application;
@@ -60,6 +61,7 @@ export function createDashboardServer(
   registerEvalStatsRoutes(router, storage);
   registerFilterRoutes(router, storage);
   registerHealthRoutes(router, storage, config.server.version);
+  registerMomentRoutes(router, storage);
   app.use('/api/v1', router);
 
   // Serve static dashboard files if built (rate limited)

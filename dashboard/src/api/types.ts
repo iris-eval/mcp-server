@@ -128,3 +128,74 @@ export interface EvalFailure {
   output: string;
   timestamp: string;
 }
+
+/* ── Decision Moments (B1 — the new primary unit) ── */
+
+export type MomentVerdict = 'pass' | 'fail' | 'partial' | 'unevaluated';
+
+export type MomentSignificanceKind =
+  | 'safety-violation'
+  | 'cost-spike'
+  | 'first-failure'
+  | 'novel-pattern'
+  | 'rule-collision'
+  | 'normal-pass'
+  | 'normal-fail';
+
+export interface MomentSignificance {
+  kind: MomentSignificanceKind;
+  score: number;
+  label: string;
+  reason: string;
+}
+
+export interface MomentRuleSnapshot {
+  failed: string[];
+  skipped: string[];
+  passedCount: number;
+  totalCount: number;
+}
+
+export interface DecisionMoment {
+  id: string;
+  traceId: string;
+  agentName: string;
+  timestamp: string;
+  input?: string;
+  output?: string;
+  costUsd?: number;
+  latencyMs?: number;
+  verdict: MomentVerdict;
+  overallScore: number;
+  evalCount: number;
+  ruleSnapshot: MomentRuleSnapshot;
+  significance: MomentSignificance;
+}
+
+export interface DecisionMomentDetail extends DecisionMoment {
+  evals: Array<{
+    id: string;
+    evalType: string;
+    score: number;
+    passed: boolean;
+    ruleResults: Array<{
+      ruleName: string;
+      passed: boolean;
+      score: number;
+      message: string;
+      skipped?: boolean;
+      skipReason?: string;
+    }>;
+    suggestions: string[];
+    createdAt?: string;
+  }>;
+  toolCalls?: ToolCallRecord[];
+  spans?: Span[];
+}
+
+export interface MomentQueryResult {
+  moments: DecisionMoment[];
+  total: number;
+  limit: number;
+  offset: number;
+}
