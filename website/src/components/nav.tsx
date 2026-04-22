@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: "Playground", href: "/playground" },
   { label: "Learn", href: "/learn" },
   { label: "Compare", href: "/compare" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Blog", href: "/blog" },
   { label: "Open Source", href: "/#open-source" },
   { label: "Roadmap", href: "/#roadmap" },
