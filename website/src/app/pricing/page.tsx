@@ -103,7 +103,7 @@ interface FaqItem {
 const faq: FaqItem[] = [
   {
     q: "What's an evaluation?",
-    a: "An evaluation is a single rule-check against a single agent output. If you run 3 eval rules against 1 trace, that's 3 evaluations. Traces themselves are free — we only meter the evaluations.",
+    a: "An evaluation is a single rule-check against a single agent output. Run a handful of rules against one trace, and you get one evaluation per rule. Traces themselves are free — we only meter the evaluations.",
   },
   {
     q: "Why price on evaluations instead of traces?",

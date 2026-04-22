@@ -40,7 +40,11 @@ jobs:
       - run: npm ci
       - run: npm run clean
       - run: npm run build
-      - run: cd dashboard && npm ci && npm run build
+      # NOTE: dashboard uses `npm install` not `npm ci` because the Windows-
+      # generated lockfile prunes Linux-only @emnapi transitive deps that
+      # rolldown needs (per memory/reference_rolldown_lockfile_trap.md +
+      # the M08 fix in the regular CI workflow).
+      - run: cd dashboard && npm install && npm run build
       - name: Verify package integrity
         run: |
           test -f dist/dashboard/server.js || (echo "FATAL: dist/dashboard/server.js missing after build" && exit 1)

@@ -8,8 +8,11 @@ COPY src/ src/
 RUN npm run build
 
 # Build dashboard
+# NOTE: uses `npm install` not `npm ci` — the Windows-generated lockfile prunes
+# Linux-only @emnapi transitive deps that rolldown needs at build time
+# (per memory/reference_rolldown_lockfile_trap.md).
 COPY dashboard/ dashboard/
-RUN cd dashboard && npm ci && npm run build
+RUN cd dashboard && npm install && npm run build
 
 FROM node:20-alpine AS production
 
