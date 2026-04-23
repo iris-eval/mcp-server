@@ -53,7 +53,13 @@ export const defaultConfig: IrisConfig = {
     apiKey: undefined,
     allowedOrigins: ['http://localhost:*'],
     rateLimit: {
-      api: 100,
+      /* Dashboard polls ~6 endpoints every 5–10s (Health view alone hits
+       * stats + trend + audit + 2× moments + priorStats). At 100/min the
+       * dashboard exhausts its own quota and surfaces 429s on /rules etc.
+       * 600/min ≈ 10/s — still rejects abusive crawlers, but accommodates
+       * a polling-heavy first-party dashboard with headroom for navigation
+       * bursts. */
+      api: 600,
       mcp: 20,
     },
     requestSizeLimit: '1mb',
