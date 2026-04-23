@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — targeting v0.4.0 (2026-05-02)
+
+Enterprise-readiness pass — OSS Bar A foundation for the hosted Cloud tier. Closes items 1–13 of the enterprise-readiness audit (`strategy/proof/iris-enterprise-readiness-audit-2026-04-23.md`). 96/96 dashboard + 2/2 migration + 9/9 RateLimitError + 209 root tests pass; bundle 497 KB under 600 KB budget.
+
+### Added
+
+- **Tenant isolation (4-layer defense-in-depth)** — branded `TenantId` type (`src/types/tenant.ts`), `assertTenant()` runtime guard, migration 004 adds `tenant_id TEXT NOT NULL DEFAULT 'local'` to every data table with composite `(tenant_id, *)` indexes, every `IStorageAdapter` method takes `TenantId` as first parameter. OSS single-node deployments see only `'local'`; Cloud tier gets multi-tenant boundaries without a future data migration. Regression coverage in `tests/unit/storage/sqlite-adapter.test.ts` + `migration-tenant.test.ts`.
+- **Tenant resolver middleware** (`src/middleware/tenant.ts`) threads `req.tenantId` through every Express handler; MCP tool handlers and file-based stores (custom-rule, preferences, audit-log) also tenant-scoped. Audit log entries now carry `tenantId`.
+- **Dashboard bundle-size budget gate** (`scripts/check-bundle-size.mjs`) — JS 600 KB raw / 160 KB gzip, CSS 20 KB raw / 8 KB gzip. Raising budgets requires editing the script with justification.
+- **Chart a11y** — every SVG chart primitive has `<desc>` with concrete data values (WCAG 1.1.1). `PassRateAreaChart` and `StackedBarByDay` have visually-hidden `<ol>` drill-through lists so AT users reach every destination without fighting nested-interactive SVG. `tests/a11y/charts.test.tsx` axe-tests 15 chart states.
+- **Detail-page section semantics + v2.A tokens** — `MomentDetailPage` and `TraceDetailPage` now wrap every section in `<section aria-labelledby>` with proper h2/h3 hierarchy. Tokens migrated from legacy aliases (`--bg-secondary`, `--accent-primary`, `--font-size-*`) to canonical v2.A (`--bg-card`, `--iris-500`, `--text-body-sm`). `tests/a11y/detail-pages.test.tsx` covers 8 states.
+- **Playwright E2E suite** (`tests/e2e/`) — globalSetup seeds 20 traces + 20 evals + 1 audit entry across 7 days (deterministic). Three spec files: `smoke.spec.ts` (6 tests — view rendering + nav), `drill-through.spec.ts` (3 tests — verdict donut, top-failing-rules, biggest-movers navigation), `make-rule.spec.ts` (1 test — POST /rules/custom → verify in /rules + audit log with tenantId). CI job runs headless Chromium; Playwright report uploaded as artifact.
+- **SBOM + cosign + SLSA build-provenance attestations** in release workflow. Each tag produces `iris-npm-sbom.spdx.json` + `iris-docker-sbom.spdx.json` (attached to GitHub release), cosign keyless signature on the Docker image (`cosign verify ghcr.io/iris-eval/mcp-server:vX.Y.Z`), and GitHub-signed `attest-build-provenance` attestations on both artifacts. `id-token: write` + `attestations: write` permissions; `npm publish --provenance` retained.
+- **Customer-facing security page** at iris-eval.com/security — data-location explainer, tenant isolation 4-layer detail, supply-chain verification recipes, runtime defenses, STRIDE scope summary, vuln reporting SLA, compliance roadmap. Linked from footer + sitemap.
+- **Storybook 10 primitive catalog** (`dashboard/.storybook/`) — 7 stories shipped (PageHeader, PageEmptyState, Badge, LoadingSpinner, CopyableId, PassRateGauge, RateLimitBanner). CI runs `npm run build-storybook` as a smoke gate.
+- **Per-view polling cadence** (`FAST 3s` / `NORMAL 10s` / `SLOW 30s`) in `dashboard/src/api/hooks.ts`. Live tail stays fast, trends + audit + rules move to slow. Previously 5s for most hooks put 3 open views over the 100 req/min rate limit.
+- **Typed `RateLimitError`** with RFC 9110 / RateLimit-* header parsing. `useApiData` returns `rateLimitedUntil` and pauses polling until the server's reset time; auto-resumes on the next successful fetch. 9 unit tests.
+- **`RateLimitBanner`** — alert-role countdown banner with manual retry button, wired into `HealthView`. Shown only when hooks surface `rateLimitedUntil`.
+- **AccountMenu popover** (circle-I avatar in header) — theme switcher (Dark / Light), density toggle (Compact / Comfortable), links to /security, architecture docs, release notes. Escape + outside-click close. `menuitemradio` for theme + density with `aria-checked`.
+- **NotificationsPopover** (Bell icon in header) — 10 most recent audit entries with per-action icon + relative time, unread badge based on `preferences.notificationsLastSeen`, auto-marks on open, "View all →" link to /audit.
+- **DensitySync** — applies `preferences.density` to `<html data-density>`, mirrors ThemeProvider pattern.
+
+### Changed
+
+- **Audit log entry schema** — `tenantId` field now optional on read (backward-compatible for v0.3.x entries without it) and written on every deploy/delete/toggle/update by `custom-rule-store.ts`.
+- **Header chrome** — theme toggle moved from header into AccountMenu per R2.5. Notification + account buttons are now real popovers (were v2.B stubs).
+- **Release workflow** permissions — added `attestations: write` for `attest-build-provenance`.
+- **Architecture doc** (`docs/architecture.md`) — §5 schema + indexes updated for migration 004; §8 gains "Tenant isolation" and "Supply-chain integrity" subsections.
+
+### Infrastructure
+
+- **CI** — `dashboard/npm run build-storybook` smoke; new `e2e` job installs Chromium via `npx playwright install --with-deps chromium`, runs suite, uploads Playwright report artifact (30-day retention).
+- **v0.3 → v0.4 migration test** (`tests/unit/storage/migration-tenant.test.ts`) creates a v0.3 schema manually, opens with v0.4 adapter, verifies backfill to `LOCAL_TENANT` + cross-tenant isolation + migration idempotency.
+
+### Breaking
+
+- **Storage schema** — `tenant_id` is NOT NULL on traces/spans/eval_results. Migration 004 backfills existing rows with `'local'`; v0.3.x → v0.4.0 is a clean upgrade path (smoke-tested). Custom storage adapters implementing `IStorageAdapter` must update every method signature to take `tenantId: TenantId` as first parameter.
+
 ## [0.3.1] - 2026-04-22
 
 Eval rule library expansion + new `no_stub_output` rule + topic_consistency fix. Backed by an exhaustive controlled trace-log validation harness (parent repo: `tools/iris-validation-harness/`) and a new in-repo regression gate (`tests/integration/rule-coverage-matrix.test.ts`). 209/209 tests pass; 55 controlled cases verify every rule. No breaking changes.
