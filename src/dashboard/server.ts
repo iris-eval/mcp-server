@@ -20,6 +20,7 @@ import { registerHealthRoutes } from './routes/health.js';
 import { registerMomentRoutes } from './routes/moments.js';
 import { registerRuleRoutes } from './routes/rules.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
+import { registerAuditRoutes } from './routes/audit.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
@@ -83,6 +84,9 @@ export function createDashboardServer(
   if (options?.preferenceStore) {
     registerPreferencesRoutes(router, options.preferenceStore);
   }
+  // Audit always available — falls back to default ~/.iris/audit.log path
+  // when no custom rule store is provided (read-only access).
+  registerAuditRoutes(router, options?.customRuleStore);
   app.use('/api/v1', router);
 
   // Serve static dashboard files if built (rate limited)

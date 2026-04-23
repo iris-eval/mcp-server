@@ -7,3 +7,4 @@ export { registerHealthRoutes } from './health.js';
 export { registerMomentRoutes } from './moments.js';
 export { registerRuleRoutes } from './rules.js';
 export { registerPreferencesRoutes } from './preferences.js';
+export { registerAuditRoutes } from './audit.js';

@@ -289,3 +289,24 @@ export interface PreferencesEnvelope {
 }
 
 export type PreferencesPatch = Partial<Preferences>;
+
+/* ── Audit log (B8.4) ── */
+
+export type AuditAction = 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.update';
+
+export interface AuditLogEntry {
+  ts: string;
+  action: AuditAction;
+  user: string;
+  ruleId: string;
+  ruleName?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface AuditQueryResult {
+  entries: AuditLogEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+  path: string;
+}

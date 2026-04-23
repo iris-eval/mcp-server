@@ -11,6 +11,7 @@ import { EvalListPage } from './components/evals/EvalListPage';
 import { MomentsTimelinePage } from './components/moments/MomentsTimelinePage';
 import { MomentDetailPage } from './components/moments/MomentDetailPage';
 import { RulesPage } from './components/rules/RulesPage';
+import { AuditPage } from './components/audit/AuditPage';
 
 export function App() {
   return (
@@ -25,6 +26,7 @@ export function App() {
                   <Route path="/moments" element={<MomentsTimelinePage />} />
                   <Route path="/moments/:id" element={<MomentDetailPage />} />
                   <Route path="/rules" element={<RulesPage />} />
+                  <Route path="/audit" element={<AuditPage />} />
                   <Route path="/traces" element={<TraceListPage />} />
                   <Route path="/traces/:id" element={<TraceDetailPage />} />
                   <Route path="/evals" element={<EvalListPage />} />

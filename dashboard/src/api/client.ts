@@ -17,6 +17,7 @@ import type {
   RulePreviewResult,
   PreferencesEnvelope,
   PreferencesPatch,
+  AuditQueryResult,
 } from './types';
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -102,6 +103,10 @@ export const api = {
 
   patchPreferences(patch: PreferencesPatch): Promise<PreferencesEnvelope> {
     return patchJson<PreferencesEnvelope>(`${API_BASE_URL}/preferences`, patch);
+  },
+
+  getAuditLog(params?: Record<string, string>): Promise<AuditQueryResult> {
+    return fetchJson<AuditQueryResult>(`${API_BASE_URL}/audit`, params);
   },
 };
 

@@ -47,6 +47,7 @@ const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/moments', label: 'Decision Moments' },
   { to: '/rules', label: 'Custom Rules' },
+  { to: '/audit', label: 'Audit Log' },
   { to: '/traces', label: 'Traces' },
   { to: '/evals', label: 'Evaluations' },
 ];

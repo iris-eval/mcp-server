@@ -14,6 +14,7 @@ import type {
   MomentQueryResult,
   DecisionMomentDetail,
   DeployedCustomRule,
+  AuditQueryResult,
 } from './types';
 
 function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number) {
@@ -100,4 +101,9 @@ export function useMomentDetail(id: string) {
 export function useCustomRules() {
   const fetcher = useCallback(() => api.getCustomRules().then((r) => r.rules), []);
   return useApiData<DeployedCustomRule[]>(fetcher, 10000);
+}
+
+export function useAuditLog(params?: Record<string, string>) {
+  const fetcher = useCallback(() => api.getAuditLog(params), [JSON.stringify(params)]);
+  return useApiData<AuditQueryResult>(fetcher, 10000);
 }
