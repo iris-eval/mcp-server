@@ -102,13 +102,11 @@ export function PlaygroundCta({ session, track }: { session: PlaygroundSession; 
           {/* Action buttons */}
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="https://github.com/iris-eval/mcp-server"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track("cta_clicked", { target: "github" })}
+              href="/playground/live"
+              onClick={() => track("cta_clicked", { target: "live_playground" })}
               className="group inline-flex items-center rounded-xl bg-iris-600 px-8 py-4 text-[15px] font-semibold text-white shadow-lg shadow-iris-600/20 transition-all hover:bg-iris-500 hover:shadow-iris-500/30"
             >
-              Star on GitHub
+              Try the live playground
               <svg
                 className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5"
                 viewBox="0 0 16 16"
@@ -120,11 +118,20 @@ export function PlaygroundCta({ session, track }: { session: PlaygroundSession; 
               </svg>
             </a>
             <a
+              href="https://github.com/iris-eval/mcp-server"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("cta_clicked", { target: "github" })}
+              className="inline-flex items-center rounded-xl border border-border-default px-8 py-4 text-[15px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary"
+            >
+              Star on GitHub
+            </a>
+            <a
               href="/#pricing"
               onClick={() => track("cta_clicked", { target: "pricing" })}
               className="inline-flex items-center rounded-xl border border-border-default px-8 py-4 text-[15px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary"
             >
-              Want managed hosting?
+              Managed hosting?
             </a>
           </div>
 
