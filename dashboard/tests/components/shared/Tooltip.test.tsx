@@ -105,11 +105,20 @@ describe('Tooltip', () => {
         <button>Trigger</button>
       </Tooltip>,
     );
-    act(() => screen.getByRole('button').focus());
-    await waitFor(() => expect(screen.getByRole('tooltip')).toBeInTheDocument());
+    const btn = screen.getByRole('button');
+    act(() => btn.focus());
+    // The tooltip element is always in the DOM (hidden via style) — waiting
+    // for toBeInTheDocument is insufficient. We need to wait for the
+    // `open` state to propagate to aria-describedby, so the Escape key's
+    // window listener is registered before we fire the event. Without
+    // this, Escape may fire during the show() setTimeout gap and be
+    // ignored, leaving the tooltip permanently open.
+    await waitFor(() => {
+      expect(btn.getAttribute('aria-describedby')).toMatch(/^tt-/);
+    });
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => {
-      expect(screen.getByRole('button').getAttribute('aria-describedby')).toBeNull();
+      expect(btn.getAttribute('aria-describedby')).toBeNull();
     });
   });
 });
