@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import { useCustomRules } from '../../api/hooks';
 import { api } from '../../api/client';
 import type { DeployedCustomRule, RuleSeverity } from '../../api/types';
@@ -14,6 +15,8 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { Tooltip } from '../shared/Tooltip';
 import { TT } from '../shared/tooltipText';
 import { formatTimeAgo } from '../../utils/formatters';
+import { PageHeader } from '../layout/PageHeader';
+import { PageEmptyState } from '../layout/PageEmptyState';
 
 const SEVERITY_TOOLTIP: Record<RuleSeverity, string> = {
   low: TT.ruleSeverityLow,
@@ -159,29 +162,72 @@ export function RulesPage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Deployed rules</h1>
-        <p style={styles.subtitle}>
-          Custom rules deployed from Decision Moments. Each rule fires on every future
-          <code> evaluate_output</code> call of its category. To deploy a new rule, click
-          "Make this a rule" on any Decision Moment detail surface.
-        </p>
-      </div>
+      <PageHeader
+        subtitle={
+          <>
+            Custom rules deployed from Decision Moments. Each rule fires on every future{' '}
+            <code style={{ fontFamily: 'var(--font-mono)' }}>evaluate_output</code> call of its
+            category. To deploy a new rule, click "Make this a rule" on any Decision Moment.
+          </>
+        }
+        meta={
+          data && (
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-caption)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              {data.length} deployed
+            </span>
+          )
+        }
+      />
 
       {error && (
-        <div style={{ ...styles.empty, borderColor: 'var(--accent-error)', color: 'var(--accent-error)' }}>
-          Error loading rules: {error}
-        </div>
+        <PageEmptyState
+          icon={Sparkles}
+          title="Could not load rules"
+          body={error}
+        />
       )}
 
       {data && data.length === 0 && (
-        <div style={styles.empty}>
-          <h2 style={styles.emptyTitle}>No custom rules yet</h2>
-          <p>
-            Open a <Link to="/moments" style={styles.sourceLink}>Decision Moment</Link>,
-            click "Make this a rule," and the rule appears here.
-          </p>
-        </div>
+        <PageEmptyState
+          icon={Sparkles}
+          title="No custom rules deployed yet"
+          body={
+            <>
+              Workflow inversion: rules are born from observed Decision Moments, not authored
+              from scratch. Open any{' '}
+              <Link to="/moments" style={{ color: 'var(--text-accent)', textDecoration: 'underline' }}>
+                Decision Moment
+              </Link>
+              , click <strong style={{ color: 'var(--text-primary)' }}>Make this a rule</strong>,
+              and the composer pre-fills from the observed pattern.
+            </>
+          }
+          cta={
+            <Link
+              to="/moments"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                background: 'var(--iris-600)',
+                color: 'white',
+                padding: 'var(--space-2) var(--space-4)',
+                borderRadius: 'var(--radius-sm)',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: 'var(--text-body-sm)',
+              }}
+            >
+              Open Decision Moments →
+            </Link>
+          }
+        />
       )}
 
       {data && data.length > 0 && (

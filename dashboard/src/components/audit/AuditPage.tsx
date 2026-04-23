@@ -6,18 +6,23 @@
  * substring search. CSV export of the current filtered set.
  *
  * State coverage (per feedback_enterprise_state_completeness.md):
- *   - empty (no entries ever): hero CTA pointing at Make-This-A-Rule
+ *   - empty (no entries ever): PageEmptyState pointing at Make-This-A-Rule
  *   - empty after filter: clear-filter inline action
  *   - loading: skeleton
  *   - error: retry button
  */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { History, Download } from 'lucide-react';
 import { useAuditLog } from '../../api/hooks';
 import type { AuditAction, AuditLogEntry } from '../../api/types';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { Tooltip } from '../shared/Tooltip';
+import { Icon } from '../shared/Icon';
 import { formatTimeAgo, formatTimestamp } from '../../utils/formatters';
+import { PageHeader } from '../layout/PageHeader';
+import { PageToolbar } from '../layout/PageToolbar';
+import { PageEmptyState } from '../layout/PageEmptyState';
 
 const ACTION_OPTIONS: Array<{ value: AuditAction | ''; label: string }> = [
   { value: '', label: 'All actions' },
@@ -28,180 +33,172 @@ const ACTION_OPTIONS: Array<{ value: AuditAction | ''; label: string }> = [
 ];
 
 const ACTION_COLOR: Record<AuditAction, string> = {
-  'rule.deploy': 'var(--accent-success)',
-  'rule.delete': 'var(--accent-error)',
-  'rule.toggle': 'var(--accent-warning)',
+  'rule.deploy': 'var(--eval-pass)',
+  'rule.delete': 'var(--eval-fail)',
+  'rule.toggle': 'var(--eval-warn)',
   'rule.update': 'var(--accent-tool)',
+};
+
+const ACTION_BG: Record<AuditAction, string> = {
+  'rule.deploy': 'rgba(34, 197, 94, 0.15)',
+  'rule.delete': 'rgba(239, 68, 68, 0.15)',
+  'rule.toggle': 'rgba(245, 158, 11, 0.15)',
+  'rule.update': 'rgba(20, 184, 166, 0.15)',
 };
 
 const styles = {
   page: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-6)',
-  } as const,
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     gap: 'var(--space-4)',
-    flexWrap: 'wrap',
   } as const,
-  titleBlock: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-1)',
-  } as const,
-  title: {
-    fontSize: 'var(--font-size-2xl)',
-    fontWeight: 700,
-    margin: 0,
-    color: 'var(--text-primary)',
-  } as const,
-  subtitle: {
-    fontSize: 'var(--font-size-sm)',
-    color: 'var(--text-muted)',
-    margin: 0,
-    maxWidth: '640px',
-  } as const,
-  pathHint: {
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-mono)',
-  } as const,
-  filterRow: {
-    display: 'flex',
-    gap: 'var(--space-3)',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    background: 'var(--bg-secondary)',
-    padding: 'var(--space-3) var(--space-4)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius)',
-  } as const,
-  label: {
-    fontSize: 'var(--font-size-xs)',
+  filterLabel: {
+    fontSize: 'var(--text-caption-xs)',
     color: 'var(--text-muted)',
     fontFamily: 'var(--font-mono)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   } as const,
   select: {
-    background: 'var(--bg-tertiary)',
+    background: 'var(--bg-card)',
     color: 'var(--text-primary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius-sm)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-sm)',
     padding: 'var(--space-1) var(--space-2)',
-    fontSize: 'var(--font-size-sm)',
+    fontSize: 'var(--text-body-sm)',
     fontFamily: 'inherit',
   } as const,
   input: {
-    background: 'var(--bg-tertiary)',
+    background: 'var(--bg-card)',
     color: 'var(--text-primary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius-sm)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-sm)',
     padding: 'var(--space-1) var(--space-2)',
-    fontSize: 'var(--font-size-sm)',
+    fontSize: 'var(--text-body-sm)',
     fontFamily: 'inherit',
-    minWidth: '180px',
+    minWidth: '200px',
   } as const,
   exportBtn: {
     appearance: 'none',
-    background: 'var(--bg-tertiary)',
-    border: '1px solid var(--border-color)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-default)',
     color: 'var(--text-secondary)',
-    borderRadius: 'var(--border-radius-sm)',
+    borderRadius: 'var(--radius-sm)',
     padding: 'var(--space-1) var(--space-3)',
-    fontSize: 'var(--font-size-sm)',
+    fontSize: 'var(--text-body-sm)',
     fontFamily: 'inherit',
     cursor: 'pointer',
-    marginLeft: 'auto',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 'var(--space-1_5)',
+    transition: 'background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast)',
+  } as const,
+  pathHint: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-caption)',
+    color: 'var(--text-muted)',
+  } as const,
+  countBadge: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-caption)',
+    color: 'var(--text-muted)',
   } as const,
   tableWrap: {
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
   } as const,
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: 'var(--font-size-sm)',
+    fontSize: 'var(--text-body-sm)',
   } as const,
   th: {
     textAlign: 'left',
     padding: 'var(--space-2) var(--space-3)',
-    fontSize: 'var(--font-size-xs)',
+    fontSize: 'var(--text-caption-xs)',
     fontFamily: 'var(--font-mono)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     color: 'var(--text-muted)',
-    borderBottom: '1px solid var(--border-color)',
-    background: 'var(--bg-tertiary)',
+    borderBottom: '1px solid var(--border-subtle)',
+    background: 'var(--bg-surface)',
   } as const,
   td: {
     padding: 'var(--space-2) var(--space-3)',
-    borderBottom: '1px solid var(--border-color)',
+    borderBottom: '1px solid var(--border-subtle)',
     color: 'var(--text-primary)',
     verticalAlign: 'top',
   } as const,
   actionPill: {
     fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--font-size-xs)',
+    fontSize: 'var(--text-caption-xs)',
     padding: '2px var(--space-2)',
-    borderRadius: 'var(--border-radius-sm)',
+    borderRadius: 'var(--radius-pill)',
     fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   } as const,
   details: {
     fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--font-size-xs)',
+    fontSize: 'var(--text-caption)',
     color: 'var(--text-muted)',
     maxWidth: '420px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-  } as const,
-  empty: {
-    background: 'var(--bg-secondary)',
-    border: '1px dashed var(--border-color)',
-    borderRadius: 'var(--border-radius-lg)',
-    padding: 'var(--space-12)',
-    textAlign: 'center',
-    color: 'var(--text-muted)',
-  } as const,
-  emptyTitle: {
-    fontSize: 'var(--font-size-lg)',
-    fontWeight: 600,
-    color: 'var(--text-primary)',
-    margin: '0 0 var(--space-2)',
+    display: 'block',
   } as const,
   errorBox: {
-    background: 'oklch(28% 0.10 25 / 0.18)',
-    border: '1px solid var(--accent-error)',
-    borderRadius: 'var(--border-radius)',
+    background: 'rgba(239, 68, 68, 0.10)',
+    border: '1px solid var(--eval-fail)',
+    borderRadius: 'var(--radius)',
     padding: 'var(--space-4)',
-    color: 'var(--accent-error)',
+    color: 'var(--eval-fail)',
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-2)',
   } as const,
   link: {
-    color: 'var(--accent-primary)',
+    color: 'var(--text-accent)',
     textDecoration: 'underline',
     fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--font-size-xs)',
   } as const,
   retryBtn: {
     appearance: 'none',
     background: 'transparent',
-    border: '1px solid var(--accent-error)',
-    color: 'var(--accent-error)',
-    borderRadius: 'var(--border-radius-sm)',
+    border: '1px solid var(--eval-fail)',
+    color: 'var(--eval-fail)',
+    borderRadius: 'var(--radius-sm)',
     padding: 'var(--space-1) var(--space-3)',
     cursor: 'pointer',
-    fontSize: 'var(--font-size-sm)',
+    fontSize: 'var(--text-body-sm)',
     fontFamily: 'inherit',
     width: 'fit-content',
+  } as const,
+  clearBtn: {
+    appearance: 'none',
+    background: 'transparent',
+    border: '1px solid var(--iris-500)',
+    color: 'var(--iris-400)',
+    borderRadius: 'var(--radius-sm)',
+    padding: 'var(--space-2) var(--space-4)',
+    cursor: 'pointer',
+    fontSize: 'var(--text-body-sm)',
+    fontFamily: 'inherit',
+  } as const,
+  emptyCta: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 'var(--space-2)',
+    background: 'var(--iris-600)',
+    color: 'white',
+    padding: 'var(--space-2) var(--space-4)',
+    borderRadius: 'var(--radius-sm)',
+    textDecoration: 'none',
+    fontWeight: 600,
+    fontSize: 'var(--text-body-sm)',
   } as const,
 };
 
@@ -258,56 +255,65 @@ export function AuditPage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
-        <div style={styles.titleBlock}>
-          <h1 style={styles.title}>Audit log</h1>
-          <p style={styles.subtitle}>
+      <PageHeader
+        subtitle={
+          <>
             Immutable record of every custom rule deploy, delete, toggle, and update. Stored in{' '}
-            <code>~/.iris/audit.log</code> as append-only JSONL — the file is the source of
-            truth, this view is just a window onto it.
-          </p>
-          {data?.path && (
-            <span style={styles.pathHint}>file: {data.path}</span>
-          )}
-        </div>
-      </div>
+            <code style={{ fontFamily: 'var(--font-mono)' }}>~/.iris/audit.log</code> as
+            append-only JSONL — the file is the source of truth, this view is just a window onto it.
+          </>
+        }
+        meta={
+          <span style={styles.countBadge}>
+            {data ? `${data.entries.length} entries` : '—'}
+            {data?.path && <> · <span style={styles.pathHint}>{data.path}</span></>}
+          </span>
+        }
+      />
 
-      <div style={styles.filterRow}>
-        <span style={styles.label}>Filter</span>
-        <select
-          style={styles.select}
-          value={actionFilter}
-          onChange={(e) => setActionFilter(e.target.value as AuditAction | '')}
-          aria-label="Filter by action"
-        >
-          {ACTION_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <input
-          style={styles.input}
-          type="search"
-          placeholder="Search rule id or name…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search audit entries"
-        />
-        {hasActiveFilters && (
-          <button type="button" onClick={clear} style={{ ...styles.select, cursor: 'pointer' }}>
-            Clear
-          </button>
-        )}
-        {data && data.entries.length > 0 && (
-          <button
-            type="button"
-            onClick={() => downloadCsv(data.entries)}
-            style={styles.exportBtn}
-            aria-label="Export current view as CSV"
-          >
-            Export CSV ({data.entries.length})
-          </button>
-        )}
-      </div>
+      <PageToolbar
+        filters={
+          <>
+            <span style={styles.filterLabel}>Filter</span>
+            <select
+              style={styles.select}
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value as AuditAction | '')}
+              aria-label="Filter by action"
+            >
+              {ACTION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <input
+              style={styles.input}
+              type="search"
+              placeholder="Search rule id or name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search audit entries"
+            />
+            {hasActiveFilters && (
+              <button type="button" onClick={clear} style={{ ...styles.select, cursor: 'pointer' }}>
+                Clear
+              </button>
+            )}
+          </>
+        }
+        actions={
+          data && data.entries.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => downloadCsv(data.entries)}
+              style={styles.exportBtn}
+              aria-label="Export current view as CSV"
+            >
+              <Icon as={Download} size={14} />
+              Export CSV ({data.entries.length})
+            </button>
+          ) : null
+        }
+      />
 
       {error && (
         <div style={styles.errorBox} role="alert">
@@ -322,29 +328,36 @@ export function AuditPage() {
       {loading && !data && <LoadingSpinner />}
 
       {data && data.entries.length === 0 && (
-        <div style={styles.empty}>
-          {hasActiveFilters ? (
-            <>
-              <h2 style={styles.emptyTitle}>No entries match these filters</h2>
-              <button
-                type="button"
-                onClick={clear}
-                style={{ ...styles.retryBtn, color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
-              >
+        hasActiveFilters ? (
+          <PageEmptyState
+            icon={History}
+            title="No entries match these filters"
+            body="Try a different action or clear the search."
+            cta={
+              <button type="button" onClick={clear} style={styles.clearBtn}>
                 Clear filters
               </button>
-            </>
-          ) : (
-            <>
-              <h2 style={styles.emptyTitle}>No audit entries yet</h2>
-              <p>
-                Deploy your first custom rule via the{' '}
-                <Link to="/moments" style={styles.link}>Decision Moments timeline</Link>{' '}
-                — every deploy + delete will appear here.
-              </p>
-            </>
-          )}
-        </div>
+            }
+          />
+        ) : (
+          <PageEmptyState
+            icon={History}
+            title="No audit entries yet"
+            body={
+              <>
+                Every Make-This-A-Rule deploy, delete, toggle, or update leaves an immutable record here.
+                Open the{' '}
+                <Link to="/moments" style={styles.link}>Decision Moments</Link>{' '}
+                timeline and ship your first rule to see it logged.
+              </>
+            }
+            cta={
+              <Link to="/moments" style={styles.emptyCta}>
+                Open Decision Moments →
+              </Link>
+            }
+          />
+        )
       )}
 
       {data && data.entries.length > 0 && (
@@ -371,7 +384,7 @@ export function AuditPage() {
                     <span
                       style={{
                         ...styles.actionPill,
-                        background: `${ACTION_COLOR[entry.action]} / 0.15`,
+                        background: ACTION_BG[entry.action],
                         color: ACTION_COLOR[entry.action],
                       }}
                     >
@@ -384,7 +397,7 @@ export function AuditPage() {
                         {entry.ruleName ?? entry.ruleId}
                       </strong>
                       {entry.ruleName && (
-                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        <span style={{ fontSize: 'var(--text-caption-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                           {entry.ruleId}
                         </span>
                       )}

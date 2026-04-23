@@ -37,7 +37,6 @@ export function TraceDetailPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
         <Link to="/traces" style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>&larr; Back</Link>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Trace Detail</h1>
       </div>
 
       {/* Metadata */}

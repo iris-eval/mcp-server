@@ -30,7 +30,6 @@ export function TraceListPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Traces</h1>
       <TraceFilters values={filters} onChange={(v) => { setFilters(v); setOffset(0); }} />
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>
         {loading && !data ? (

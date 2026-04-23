@@ -21,6 +21,7 @@ import { useMoments, useFilters } from '../../api/hooks';
 import { usePreferences } from '../../hooks/usePreferences';
 import { api } from '../../api/client';
 import type { DecisionMoment, DecisionMomentDetail } from '../../api/types';
+import { Activity } from 'lucide-react';
 import { MomentCard } from './MomentCard';
 import { BulkActionsBar } from './BulkActionsBar';
 import { MakeRuleModal } from './MakeRuleModal';
@@ -30,6 +31,9 @@ import {
   getSignificanceVisual,
 } from './significance';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { PageHeader } from '../layout/PageHeader';
+import { PageToolbar } from '../layout/PageToolbar';
+import { PageEmptyState } from '../layout/PageEmptyState';
 
 const styles = {
   page: {
@@ -379,98 +383,104 @@ export function MomentsTimelinePage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
-        <div style={styles.titleBlock}>
-          <h1 style={styles.title}>Decision Moments</h1>
-          <p style={styles.subtitle}>
-            Every trace, classified by what makes it noteworthy. Safety violations and cost
-            spikes surface to the top; happy-path passes recede. Click a moment to see why
-            it was flagged and turn the observed pattern into a deployable rule.
-          </p>
-        </div>
-        {data && (
-          <span style={styles.countBadge}>
-            {data.moments.length} of {data.total} traces
-          </span>
-        )}
-      </div>
+      <PageHeader
+        subtitle="Every trace, classified by what makes it noteworthy. Safety violations and cost spikes surface to the top; happy-path passes recede. Click a moment to see why it was flagged and turn the observed pattern into a deployable rule."
+        meta={
+          data && (
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-caption)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              {data.moments.length} of {data.total}
+            </span>
+          )
+        }
+      />
 
-      <div style={styles.filterRow}>
-        <span style={styles.filterLabel}>Filter</span>
-        <select
-          style={styles.select}
-          value={searchParams.get('kind') ?? ''}
-          onChange={(e) => updateFilter('kind', e.target.value)}
-          aria-label="Filter by significance"
-        >
-          {SIGNIFICANCE_KIND_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <select
-          style={styles.select}
-          value={searchParams.get('verdict') ?? ''}
-          onChange={(e) => updateFilter('verdict', e.target.value)}
-          aria-label="Filter by verdict"
-        >
-          {VERDICT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <select
-          style={styles.select}
-          value={searchParams.get('agent') ?? ''}
-          onChange={(e) => updateFilter('agent', e.target.value)}
-          aria-label="Filter by agent"
-        >
-          <option value="">All agents</option>
-          {(filters?.agent_names ?? []).map((name) => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            style={{ ...styles.select, cursor: 'pointer' }}
-          >
-            Clear
-          </button>
-        )}
-        {(preferences?.archivedMoments?.length ?? 0) > 0 && (
-          <label
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 'var(--space-1)',
-              fontSize: 'var(--font-size-xs)',
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              style={{ accentColor: 'var(--accent-primary)' }}
-            />
-            Show archived ({preferences?.archivedMoments?.length ?? 0})
-          </label>
-        )}
-        <span style={{ marginLeft: 'auto' }} />
-        <div style={styles.legend} aria-label="Significance legend">
-          {LEGEND_KINDS.map((kind) => {
-            const v = getSignificanceVisual(kind);
-            return (
-              <span key={kind} style={styles.legendItem}>
-                <span style={{ ...styles.legendDot, background: v.color }}>{v.glyph}</span>
-                {v.name}
-              </span>
-            );
-          })}
-        </div>
-      </div>
+      <PageToolbar
+        filters={
+          <>
+            <span style={styles.filterLabel}>Filter</span>
+            <select
+              style={styles.select}
+              value={searchParams.get('kind') ?? ''}
+              onChange={(e) => updateFilter('kind', e.target.value)}
+              aria-label="Filter by significance"
+            >
+              {SIGNIFICANCE_KIND_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <select
+              style={styles.select}
+              value={searchParams.get('verdict') ?? ''}
+              onChange={(e) => updateFilter('verdict', e.target.value)}
+              aria-label="Filter by verdict"
+            >
+              {VERDICT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <select
+              style={styles.select}
+              value={searchParams.get('agent') ?? ''}
+              onChange={(e) => updateFilter('agent', e.target.value)}
+              aria-label="Filter by agent"
+            >
+              <option value="">All agents</option>
+              {(filters?.agent_names ?? []).map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{ ...styles.select, cursor: 'pointer' }}
+              >
+                Clear
+              </button>
+            )}
+            {(preferences?.archivedMoments?.length ?? 0) > 0 && (
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-1)',
+                  fontSize: 'var(--text-caption)',
+                  color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-mono)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  style={{ accentColor: 'var(--iris-500)' }}
+                />
+                Show archived ({preferences?.archivedMoments?.length ?? 0})
+              </label>
+            )}
+          </>
+        }
+        actions={
+          <div style={styles.legend} aria-label="Significance legend">
+            {LEGEND_KINDS.map((kind) => {
+              const v = getSignificanceVisual(kind);
+              return (
+                <span key={kind} style={styles.legendItem}>
+                  <span style={{ ...styles.legendDot, background: v.color }}>{v.glyph}</span>
+                  {v.name}
+                </span>
+              );
+            })}
+          </div>
+        }
+      />
 
       {error && (
         <div style={styles.errorBox} role="alert">
@@ -485,36 +495,47 @@ export function MomentsTimelinePage() {
       {loading && !data && <LoadingSpinner />}
 
       {data && data.moments.length === 0 && (
-        <div style={styles.empty}>
-          {hasActiveFilters ? (
-            <>
-              <h2 style={styles.emptyTitle}>No moments match these filters</h2>
-              <p>Try widening the time window or removing filters.</p>
+        hasActiveFilters ? (
+          <PageEmptyState
+            icon={Activity}
+            title="No moments match these filters"
+            body="Try widening the time window or removing filters."
+            cta={
               <button
                 type="button"
                 onClick={clearFilters}
-                style={{ ...styles.retryBtn, color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+                style={{
+                  appearance: 'none',
+                  background: 'transparent',
+                  border: '1px solid var(--iris-500)',
+                  color: 'var(--iris-400)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: 'var(--space-2) var(--space-4)',
+                  cursor: 'pointer',
+                  fontSize: 'var(--text-body-sm)',
+                  fontFamily: 'inherit',
+                }}
               >
                 Clear all filters
               </button>
-            </>
-          ) : (
-            <>
-              <h2 style={styles.emptyTitle}>No moments yet</h2>
-              <p>Run an agent through Iris and your first decision moment will appear here within seconds.</p>
-              <code style={styles.installCmd}>npx @iris-eval/mcp-server --dashboard</code>
-            </>
-          )}
-        </div>
+            }
+          />
+        ) : (
+          <PageEmptyState
+            icon={Activity}
+            title="No moments yet"
+            body="Run an agent through Iris and your first Decision Moment will appear here within seconds."
+            command="npx @iris-eval/mcp-server --dashboard"
+          />
+        )
       )}
 
       {data && visibleMoments.length === 0 && data.moments.length > 0 && !hasActiveFilters && (
-        <div style={styles.empty}>
-          <h2 style={styles.emptyTitle}>All moments archived</h2>
-          <p>
-            Toggle "Show archived" above to see them, or run new agents through Iris.
-          </p>
-        </div>
+        <PageEmptyState
+          icon={Activity}
+          title="All moments archived"
+          body='Toggle "Show archived" above to see them, or run new agents through Iris.'
+        />
       )}
 
       {data && visibleMoments.length > 0 && (
