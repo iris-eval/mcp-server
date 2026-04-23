@@ -15,6 +15,7 @@ import { openBrowser } from './utils/open-browser.js';
 import { createCustomRuleStore } from './custom-rule-store.js';
 import { createCustomRule } from './eval/rules/custom.js';
 import { LOCAL_TENANT } from './types/tenant.js';
+import { validatePortConfig } from './utils/validate-port-config.js';
 
 const PortSchema = z
   .string()
@@ -114,6 +115,9 @@ const logger = createLogger(config);
 
 async function main(): Promise<void> {
   logger.info(`Starting Iris MCP server v${config.server.version}`);
+
+  // F-006: fail fast on HTTP+dashboard port collision. See validatePortConfig.
+  validatePortConfig(config);
 
   const storage = createStorage(config);
   await storage.initialize();

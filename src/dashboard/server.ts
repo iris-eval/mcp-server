@@ -120,9 +120,29 @@ export function createDashboardServer(
   return {
     app,
     start() {
-      return app.listen(config.dashboard.port, () => {
+      const server = app.listen(config.dashboard.port, () => {
         logger.info(`Dashboard available at http://localhost:${config.dashboard.port}`);
       });
+      /*
+       * F-006: surface listen() errors instead of swallowing them.
+       * Without this handler, EADDRINUSE (port already bound, typically
+       * by the MCP HTTP transport) goes to the default Node 'error'
+       * handler which emits a warning but doesn't crash — so the process
+       * keeps running in a broken state. We log the specific cause then
+       * exit(1) so the user sees the actual problem.
+       */
+      server.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.error(
+            `Dashboard failed to start: port ${config.dashboard.port} is already in use. ` +
+              `If running HTTP transport on the same port, use --dashboard-port <other>.`,
+          );
+        } else {
+          logger.error(`Dashboard server error: ${err.message}`);
+        }
+        process.exit(1);
+      });
+      return server;
     },
   };
 }
