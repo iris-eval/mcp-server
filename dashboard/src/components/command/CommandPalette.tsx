@@ -158,9 +158,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onOpenShortcuts: () => void;
+  /** Optional — when provided, the "Onboarding tour" command re-opens the tour. */
+  onOpenTour?: () => void;
 }
 
-export function CommandPalette({ open, onClose, onOpenShortcuts }: Props) {
+export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: Props) {
   const navigate = useNavigate();
   const { setTheme, toggleTheme } = useTheme();
   const [query, setQuery] = useState('');
@@ -168,8 +170,8 @@ export function CommandPalette({ open, onClose, onOpenShortcuts }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const allCommands = useMemo(
-    () => buildCommands({ navigate, setTheme, toggleTheme, openShortcuts: onOpenShortcuts }),
-    [navigate, setTheme, toggleTheme, onOpenShortcuts],
+    () => buildCommands({ navigate, setTheme, toggleTheme, openShortcuts: onOpenShortcuts, openTour: onOpenTour }),
+    [navigate, setTheme, toggleTheme, onOpenShortcuts, onOpenTour],
   );
 
   const filtered = useMemo(() => {

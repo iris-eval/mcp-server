@@ -33,6 +33,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { CommandPalette } from './CommandPalette';
 import { KeyboardShortcutsOverlay } from './KeyboardShortcutsOverlay';
+import { useTour } from '../onboarding/TourProvider';
 
 interface CommandPaletteContextValue {
   open: () => void;
@@ -62,6 +63,7 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const navigate = useNavigate();
+  const { openTour } = useTour();
 
   // "g <letter>" sequence state
   const gPressedAt = useRef<number | null>(null);
@@ -122,6 +124,10 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
         open={paletteOpen}
         onClose={close}
         onOpenShortcuts={openShortcuts}
+        onOpenTour={() => {
+          close();
+          openTour();
+        }}
       />
       <KeyboardShortcutsOverlay open={shortcutsOpen} onClose={closeShortcuts} />
     </CommandPaletteContext.Provider>

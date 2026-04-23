@@ -32,6 +32,8 @@ export interface CommandContext {
   toggleTheme: () => void;
   /** Open the keyboard shortcuts overlay. */
   openShortcuts: () => void;
+  /** Re-open the onboarding tour. Optional so existing call sites without the tour still work. */
+  openTour?: () => void;
 }
 
 export function buildCommands(ctx: CommandContext): Command[] {
@@ -170,6 +172,14 @@ export function buildCommands(ctx: CommandContext): Command[] {
       shortcut: '?',
       section: 'Help',
       run: () => ctx.openShortcuts(),
+    },
+    {
+      id: 'help.tour',
+      title: 'Onboarding tour',
+      subtitle: 'Replay the welcome walkthrough',
+      keywords: ['tour', 'help', 'welcome', 'tutorial'],
+      section: 'Help',
+      run: () => ctx.openTour?.(),
     },
     {
       id: 'help.docs',

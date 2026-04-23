@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { WelcomeBanner } from './WelcomeBanner';
+import { WelcomeTour } from '../onboarding/WelcomeTour';
+import { useTour } from '../onboarding/TourProvider';
 
 const styles = {
   container: {
@@ -23,6 +25,7 @@ const styles = {
 };
 
 export function Shell({ children }: { children: ReactNode }) {
+  const { tourOpen, closeTour } = useTour();
   return (
     <div style={styles.container}>
       <Sidebar />
@@ -31,6 +34,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Header />
         <main style={styles.content}>{children}</main>
       </div>
+      <WelcomeTour open={tourOpen} onClose={closeTour} />
     </div>
   );
 }
