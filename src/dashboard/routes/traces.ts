@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
+import { requireTenant } from '../../middleware/tenant.js';
 import { traceQuerySchema } from '../validation.js';
 
 export function registerTraceRoutes(router: Router, storage: IStorageAdapter): void {
   router.get('/traces', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const query = traceQuerySchema.parse(req.query);
-      const result = await storage.queryTraces({
+      const result = await storage.queryTraces(tenantId, {
         filter: {
           agent_name: query.agent_name,
           framework: query.framework,
@@ -30,13 +32,14 @@ export function registerTraceRoutes(router: Router, storage: IStorageAdapter): v
 
   router.get('/traces/:id', async (req, res) => {
     try {
-      const trace = await storage.getTrace(req.params.id);
+      const tenantId = requireTenant(req);
+      const trace = await storage.getTrace(tenantId, req.params.id);
       if (!trace) {
         res.status(404).json({ error: 'Trace not found' });
         return;
       }
-      const spans = await storage.getSpansByTraceId(req.params.id);
-      const evals = await storage.getEvalsByTraceId(req.params.id);
+      const spans = await storage.getSpansByTraceId(tenantId, req.params.id);
+      const evals = await storage.getEvalsByTraceId(tenantId, req.params.id);
       res.json({ trace, spans, evals });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {

@@ -1,3 +1,24 @@
+/*
+ * SqliteAdapter — tenant-enforcing SQLite implementation of IStorageAdapter.
+ *
+ * Every public method takes a TenantId as its first parameter and uses
+ * it in the SQL layer to prevent cross-tenant data leaks. See the
+ * 2026-04-23 threat model §5 for the design principles.
+ *
+ * Discipline:
+ *   - Every method first validates tenantId is a non-empty string.
+ *     If validation fails, throws TenantContextRequiredError. This is
+ *     defense-in-depth — the TenantId type system already prevents
+ *     empty strings at compile time, but we verify at runtime too so
+ *     any dynamic bypass (e.g. a buggy cast) still fails safe.
+ *   - Every INSERT binds tenant_id from the parameter, never from the
+ *     payload data.
+ *   - Every SELECT includes `WHERE tenant_id = ?` as the first
+ *     condition; composite indexes put tenant_id first.
+ *   - Aggregate queries (stats, trends) scope to the tenant.
+ *   - DELETE operations scope to the tenant — a tenant can only delete
+ *     its own data.
+ */
 import Database from 'better-sqlite3';
 import type {
   IStorageAdapter,
@@ -12,10 +33,24 @@ import type {
 } from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult } from '../types/eval.js';
+import type { TenantId } from '../types/tenant.js';
+import { TenantContextRequiredError } from '../types/tenant.js';
 import { runMigrations } from './migrations/index.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 const ALLOWED_SORT_ORDERS = new Set(['asc', 'desc']);
+
+/**
+ * Defense-in-depth runtime check. The TypeScript brand prevents most
+ * misuse at compile time; this catches any dynamic cast bypass.
+ */
+function assertTenant(tenantId: TenantId): void {
+  if (typeof tenantId !== 'string' || tenantId.length === 0) {
+    throw new TenantContextRequiredError(
+      'SqliteAdapter method invoked without a valid TenantId; refusing to query',
+    );
+  }
+}
 
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
@@ -35,18 +70,20 @@ export class SqliteAdapter implements IStorageAdapter {
     this.db.close();
   }
 
-  async insertTrace(trace: Trace): Promise<void> {
+  async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
+    assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertSpanStmt = this.db.prepare(`
-      INSERT INTO spans (span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertAll = this.db.transaction((t: Trace) => {
       insertTraceStmt.run(
+        tenantId,
         t.trace_id,
         t.agent_name,
         t.framework ?? null,
@@ -63,6 +100,7 @@ export class SqliteAdapter implements IStorageAdapter {
       if (t.spans) {
         for (const span of t.spans) {
           insertSpanStmt.run(
+            tenantId,
             span.span_id,
             t.trace_id,
             span.parent_span_id ?? null,
@@ -82,15 +120,19 @@ export class SqliteAdapter implements IStorageAdapter {
     insertAll(trace);
   }
 
-  async getTrace(traceId: string): Promise<Trace | null> {
-    const row = this.db.prepare('SELECT * FROM traces WHERE trace_id = ?').get(traceId) as Record<string, unknown> | undefined;
+  async getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null> {
+    assertTenant(tenantId);
+    const row = this.db
+      .prepare('SELECT * FROM traces WHERE tenant_id = ? AND trace_id = ?')
+      .get(tenantId, traceId) as Record<string, unknown> | undefined;
     if (!row) return null;
     return this.rowToTrace(row);
   }
 
-  async queryTraces(options: TraceQueryOptions): Promise<TraceQueryResult> {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
+  async queryTraces(tenantId: TenantId, options: TraceQueryOptions): Promise<TraceQueryResult> {
+    assertTenant(tenantId);
+    const conditions: string[] = ['tenant_id = ?'];
+    const params: unknown[] = [tenantId];
     const filter = options.filter;
 
     if (filter?.agent_name) {
@@ -110,15 +152,19 @@ export class SqliteAdapter implements IStorageAdapter {
       params.push(filter.until);
     }
     if (filter?.min_score !== undefined) {
-      conditions.push('EXISTS (SELECT 1 FROM eval_results e WHERE e.trace_id = traces.trace_id AND e.score >= ?)');
+      conditions.push(
+        'EXISTS (SELECT 1 FROM eval_results e WHERE e.tenant_id = traces.tenant_id AND e.trace_id = traces.trace_id AND e.score >= ?)',
+      );
       params.push(filter.min_score);
     }
     if (filter?.max_score !== undefined) {
-      conditions.push('EXISTS (SELECT 1 FROM eval_results e WHERE e.trace_id = traces.trace_id AND e.score <= ?)');
+      conditions.push(
+        'EXISTS (SELECT 1 FROM eval_results e WHERE e.tenant_id = traces.tenant_id AND e.trace_id = traces.trace_id AND e.score <= ?)',
+      );
       params.push(filter.max_score);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
     const sortBy = options.sort_by ?? 'timestamp';
     const sortOrder = options.sort_order ?? 'desc';
 
@@ -147,11 +193,13 @@ export class SqliteAdapter implements IStorageAdapter {
     };
   }
 
-  async insertSpan(span: Span): Promise<void> {
+  async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
+    assertTenant(tenantId);
     this.db.prepare(`
-      INSERT INTO spans (span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
+      tenantId,
       span.span_id,
       span.trace_id,
       span.parent_span_id ?? null,
@@ -166,18 +214,21 @@ export class SqliteAdapter implements IStorageAdapter {
     );
   }
 
-  async getSpansByTraceId(traceId: string): Promise<Span[]> {
+  async getSpansByTraceId(tenantId: TenantId, traceId: string): Promise<Span[]> {
+    assertTenant(tenantId);
     const rows = this.db
-      .prepare('SELECT * FROM spans WHERE trace_id = ? ORDER BY start_time')
-      .all(traceId) as Array<Record<string, unknown>>;
+      .prepare('SELECT * FROM spans WHERE tenant_id = ? AND trace_id = ? ORDER BY start_time')
+      .all(tenantId, traceId) as Array<Record<string, unknown>>;
     return rows.map((row) => this.rowToSpan(row));
   }
 
-  async insertEvalResult(result: EvalResult): Promise<void> {
+  async insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void> {
+    assertTenant(tenantId);
     this.db.prepare(`
-      INSERT INTO eval_results (id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
+      tenantId,
       result.id,
       result.trace_id ?? null,
       result.eval_type,
@@ -193,23 +244,28 @@ export class SqliteAdapter implements IStorageAdapter {
     );
   }
 
-  async getEvalsByTraceId(traceId: string): Promise<EvalResult[]> {
+  async getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]> {
+    assertTenant(tenantId);
     const rows = this.db
-      .prepare('SELECT * FROM eval_results WHERE trace_id = ? ORDER BY created_at DESC')
-      .all(traceId) as Array<Record<string, unknown>>;
+      .prepare('SELECT * FROM eval_results WHERE tenant_id = ? AND trace_id = ? ORDER BY created_at DESC')
+      .all(tenantId, traceId) as Array<Record<string, unknown>>;
     return rows.map((row) => this.rowToEvalResult(row));
   }
 
-  async queryEvalResults(options: {
-    eval_type?: string;
-    passed?: boolean;
-    since?: string;
-    until?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<{ results: EvalResult[]; total: number }> {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
+  async queryEvalResults(
+    tenantId: TenantId,
+    options: {
+      eval_type?: string;
+      passed?: boolean;
+      since?: string;
+      until?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<{ results: EvalResult[]; total: number }> {
+    assertTenant(tenantId);
+    const conditions: string[] = ['tenant_id = ?'];
+    const params: unknown[] = [tenantId];
 
     if (options.eval_type) {
       conditions.push('eval_type = ?');
@@ -228,7 +284,7 @@ export class SqliteAdapter implements IStorageAdapter {
       params.push(options.until);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
     const limit = options.limit ?? 50;
     const offset = options.offset ?? 0;
 
@@ -246,7 +302,8 @@ export class SqliteAdapter implements IStorageAdapter {
     };
   }
 
-  async getDashboardSummary(sinceHours = 24): Promise<DashboardSummary> {
+  async getDashboardSummary(tenantId: TenantId, sinceHours = 24): Promise<DashboardSummary> {
+    assertTenant(tenantId);
     const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000).toISOString();
 
     const stats = this.db.prepare(`
@@ -254,34 +311,34 @@ export class SqliteAdapter implements IStorageAdapter {
         COUNT(*) as total_traces,
         COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
         COALESCE(SUM(cost_usd), 0) as total_cost_usd
-      FROM traces WHERE timestamp >= ?
-    `).get(since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number };
+      FROM traces WHERE tenant_id = ? AND timestamp >= ?
+    `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number };
 
     const errorCount = this.db.prepare(`
       SELECT COUNT(DISTINCT t.trace_id) as count
       FROM traces t
-      JOIN spans s ON s.trace_id = t.trace_id
-      WHERE t.timestamp >= ? AND s.status_code = 'ERROR'
-    `).get(since) as { count: number };
+      JOIN spans s ON s.tenant_id = t.tenant_id AND s.trace_id = t.trace_id
+      WHERE t.tenant_id = ? AND t.timestamp >= ? AND s.status_code = 'ERROR'
+    `).get(tenantId, since) as { count: number };
 
     const evalStats = this.db.prepare(`
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) as passed_count
-      FROM eval_results WHERE created_at >= ?
-    `).get(since) as { total: number; passed_count: number };
+      FROM eval_results WHERE tenant_id = ? AND created_at >= ?
+    `).get(tenantId, since) as { total: number; passed_count: number };
 
     const tracesPerHour = this.db.prepare(`
       SELECT strftime('%Y-%m-%dT%H:00:00', timestamp) as hour, COUNT(*) as count
-      FROM traces WHERE timestamp >= ?
+      FROM traces WHERE tenant_id = ? AND timestamp >= ?
       GROUP BY hour ORDER BY hour
-    `).all(since) as Array<{ hour: string; count: number }>;
+    `).all(tenantId, since) as Array<{ hour: string; count: number }>;
 
     const topAgents = this.db.prepare(`
       SELECT agent_name, COUNT(*) as count
-      FROM traces WHERE timestamp >= ?
+      FROM traces WHERE tenant_id = ? AND timestamp >= ?
       GROUP BY agent_name ORDER BY count DESC LIMIT 10
-    `).all(since) as Array<{ agent_name: string; count: number }>;
+    `).all(tenantId, since) as Array<{ agent_name: string; count: number }>;
 
     return {
       total_traces: stats.total_traces,
@@ -304,7 +361,8 @@ export class SqliteAdapter implements IStorageAdapter {
     return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   }
 
-  async getEvalStats(period: EvalStatsPeriod): Promise<EvalStats> {
+  async getEvalStats(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStats> {
+    assertTenant(tenantId);
     const since = this.periodToSince(period);
 
     const agg = this.db.prepare(`
@@ -313,30 +371,28 @@ export class SqliteAdapter implements IStorageAdapter {
         COALESCE(AVG(score), 0)                      AS avg_score,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
       FROM eval_results
-      WHERE created_at >= ? AND trace_id IS NOT NULL
-    `).get(since) as { total_evals: number; avg_score: number; passed_count: number };
+      WHERE tenant_id = ? AND created_at >= ? AND trace_id IS NOT NULL
+    `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
 
     const cost = this.db.prepare(`
       SELECT COALESCE(SUM(cost_usd), 0) AS total_cost
       FROM traces
-      WHERE timestamp >= ?
-    `).get(since) as { total_cost: number };
+      WHERE tenant_id = ? AND timestamp >= ?
+    `).get(tenantId, since) as { total_cost: number };
 
     const agents = this.db.prepare(`
       SELECT COUNT(DISTINCT agent_name) AS agent_count
       FROM traces
-      WHERE timestamp >= ?
-    `).get(since) as { agent_count: number };
+      WHERE tenant_id = ? AND timestamp >= ?
+    `).get(tenantId, since) as { agent_count: number };
 
-    // Safety violations — scan rule_results JSON for failing safety rules.
-    // rule_results is stored as a JSON array of EvalRuleResult objects.
     const safetyRows = this.db.prepare(`
       SELECT rule_results
       FROM eval_results
-      WHERE created_at >= ?
+      WHERE tenant_id = ? AND created_at >= ?
         AND eval_type = 'safety'
         AND passed = 0
-    `).all(since) as Array<{ rule_results: string }>;
+    `).all(tenantId, since) as Array<{ rule_results: string }>;
 
     const violations = { pii: 0, injection: 0, hallucination: 0 };
     for (const row of safetyRows) {
@@ -362,20 +418,17 @@ export class SqliteAdapter implements IStorageAdapter {
     };
   }
 
-  async getEvalStatsTrend(period: EvalStatsPeriod): Promise<EvalStatsTrendBucket[]> {
+  async getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsTrendBucket[]> {
+    assertTenant(tenantId);
     const since = this.periodToSince(period);
 
-    // Determine bucket format for strftime
     let bucketExpr: string;
     if (period === '24h') {
-      // hourly buckets
       bucketExpr = "strftime('%Y-%m-%dT%H:00:00Z', created_at)";
     } else if (period === '7d') {
-      // 6-hour buckets: floor hour to nearest 6
       bucketExpr =
         "strftime('%Y-%m-%dT', created_at) || printf('%02d', (CAST(strftime('%H', created_at) AS INTEGER) / 6) * 6) || ':00:00Z'";
     } else {
-      // daily buckets
       bucketExpr = "strftime('%Y-%m-%dT00:00:00Z', created_at)";
     }
 
@@ -388,10 +441,10 @@ export class SqliteAdapter implements IStorageAdapter {
           ELSE 0 END                                   AS pass_rate,
         COUNT(*)                                       AS eval_count
       FROM eval_results
-      WHERE created_at >= ?
+      WHERE tenant_id = ? AND created_at >= ?
       GROUP BY bucket
       ORDER BY bucket
-    `).all(since) as Array<{
+    `).all(tenantId, since) as Array<{
       bucket: string;
       avg_score: number;
       pass_rate: number;
@@ -406,16 +459,16 @@ export class SqliteAdapter implements IStorageAdapter {
     }));
   }
 
-  async getEvalStatsRules(period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]> {
+  async getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]> {
+    assertTenant(tenantId);
     const since = this.periodToSince(period);
 
     const rows = this.db.prepare(`
       SELECT rule_results
       FROM eval_results
-      WHERE created_at >= ?
-    `).all(since) as Array<{ rule_results: string }>;
+      WHERE tenant_id = ? AND created_at >= ?
+    `).all(tenantId, since) as Array<{ rule_results: string }>;
 
-    // Aggregate per-rule stats from the JSON arrays
     const ruleMap = new Map<string, { totalRun: number; failCount: number }>();
 
     for (const row of rows) {
@@ -441,13 +494,13 @@ export class SqliteAdapter implements IStorageAdapter {
       });
     }
 
-    // Sort by passRate ASC (worst rules first)
     result.sort((a, b) => a.passRate - b.passRate);
 
     return result;
   }
 
-  async getEvalStatsFailures(period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]> {
+  async getEvalStatsFailures(tenantId: TenantId, period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]> {
+    assertTenant(tenantId);
     const since = this.periodToSince(period);
 
     const rows = this.db.prepare(`
@@ -459,12 +512,12 @@ export class SqliteAdapter implements IStorageAdapter {
         e.output_text,
         e.created_at
       FROM eval_results e
-      LEFT JOIN traces t ON t.trace_id = e.trace_id
-      WHERE e.created_at >= ?
+      LEFT JOIN traces t ON t.tenant_id = e.tenant_id AND t.trace_id = e.trace_id
+      WHERE e.tenant_id = ? AND e.created_at >= ?
         AND e.passed = 0
       ORDER BY e.created_at DESC
       LIMIT ?
-    `).all(since, limit) as Array<{
+    `).all(tenantId, since, limit) as Array<{
       trace_id: string | null;
       agent_name: string;
       rule_results: string;
@@ -474,7 +527,6 @@ export class SqliteAdapter implements IStorageAdapter {
     }>;
 
     return rows.map((r) => {
-      // Find the first failing rule to surface as the primary rule
       const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(r.rule_results);
       const failingRule = rules.find((rule) => !rule.passed);
 
@@ -489,22 +541,28 @@ export class SqliteAdapter implements IStorageAdapter {
     });
   }
 
-  async deleteTracesOlderThan(days: number): Promise<number> {
+  async deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number> {
+    assertTenant(tenantId);
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    const result = this.db.prepare('DELETE FROM traces WHERE timestamp < ?').run(cutoff);
+    const result = this.db
+      .prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?')
+      .run(tenantId, cutoff);
     return result.changes;
   }
 
-  async getDistinctValues(column: string): Promise<string[]> {
+  async getDistinctValues(tenantId: TenantId, column: string): Promise<string[]> {
+    assertTenant(tenantId);
     const queries: Record<string, string> = {
-      agent_name: 'SELECT DISTINCT agent_name FROM traces WHERE agent_name IS NOT NULL ORDER BY agent_name',
-      framework: 'SELECT DISTINCT framework FROM traces WHERE framework IS NOT NULL ORDER BY framework',
+      agent_name:
+        'SELECT DISTINCT agent_name FROM traces WHERE tenant_id = ? AND agent_name IS NOT NULL ORDER BY agent_name',
+      framework:
+        'SELECT DISTINCT framework FROM traces WHERE tenant_id = ? AND framework IS NOT NULL ORDER BY framework',
     };
     const query = queries[column];
     if (!query) {
       throw new Error(`Column '${column}' is not queryable (allowed: ${Object.keys(queries).join(', ')})`);
     }
-    const rows = this.db.prepare(query).all() as Array<Record<string, string>>;
+    const rows = this.db.prepare(query).all(tenantId) as Array<Record<string, string>>;
     return rows.map((row) => row[column]);
   }
 

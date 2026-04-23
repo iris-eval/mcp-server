@@ -32,3 +32,6 @@ export type {
 } from './query.js';
 
 export type { IrisConfig } from './config.js';
+
+export type { TenantId } from './tenant.js';
+export { LOCAL_TENANT, asTenantId, TenantContextRequiredError } from './tenant.js';

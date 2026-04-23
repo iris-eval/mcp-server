@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalType, CustomRuleDefinition } from '../types/eval.js';
 import type { EvalEngine } from '../eval/engine.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 const CustomRuleSchema = z.object({
   name: z.string(),
@@ -60,7 +61,9 @@ export function registerEvaluateOutputTool(
         result.trace_id = args.trace_id;
       }
 
-      await storage.insertEvalResult(result);
+      // OSS single-tenant: MCP tool callers are the local user. Cloud
+      // will derive tenant from the authenticated MCP session.
+      await storage.insertEvalResult(LOCAL_TENANT, result);
 
       return {
         content: [

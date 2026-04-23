@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 const ToolCallSchema = z.object({
   tool_name: z.string(),
@@ -79,7 +80,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         })),
       };
 
-      await storage.insertTrace(trace);
+      await storage.insertTrace(LOCAL_TENANT, trace);
 
       return {
         content: [

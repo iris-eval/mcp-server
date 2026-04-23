@@ -11,6 +11,7 @@ import { createAuthMiddleware } from '../middleware/auth.js';
 import { createCorsMiddleware } from '../middleware/cors.js';
 import { createErrorHandler } from '../middleware/error-handler.js';
 import { createApiRateLimiter } from '../middleware/rate-limit.js';
+import { createTenantMiddleware } from '../middleware/tenant.js';
 import { registerTraceRoutes } from './routes/traces.js';
 import { registerSummaryRoutes } from './routes/summary.js';
 import { registerEvaluationRoutes } from './routes/evaluations.js';
@@ -72,6 +73,11 @@ export function createDashboardServer(
 
   // Authentication
   app.use(createAuthMiddleware(config));
+
+  // Tenant resolution — attaches req.tenantId to every request.
+  // OSS: always resolves to LOCAL_TENANT. Cloud: swaps for an auth-aware
+  // resolver that reads the authenticated session. See middleware/tenant.ts.
+  app.use(createTenantMiddleware());
 
   // API routes with rate limiting
   const router = express.Router();

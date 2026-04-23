@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
+import { requireTenant } from '../../middleware/tenant.js';
 import { evalStatsPeriodSchema, evalStatsFailuresSchema } from '../validation.js';
 
 export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter): void {
@@ -9,8 +10,9 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
    */
   router.get('/eval-stats', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const { period } = evalStatsPeriodSchema.parse(req.query);
-      const stats = await storage.getEvalStats(period);
+      const stats = await storage.getEvalStats(tenantId, period);
       res.json(stats);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
@@ -27,8 +29,9 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
    */
   router.get('/eval-stats/trend', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const { period } = evalStatsPeriodSchema.parse(req.query);
-      const trend = await storage.getEvalStatsTrend(period);
+      const trend = await storage.getEvalStatsTrend(tenantId, period);
       res.json(trend);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
@@ -46,8 +49,9 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
    */
   router.get('/eval-stats/rules', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const { period } = evalStatsPeriodSchema.parse(req.query);
-      const rules = await storage.getEvalStatsRules(period);
+      const rules = await storage.getEvalStatsRules(tenantId, period);
       res.json(rules);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
@@ -64,8 +68,9 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
    */
   router.get('/eval-stats/failures', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const query = evalStatsFailuresSchema.parse(req.query);
-      const failures = await storage.getEvalStatsFailures(query.period, query.limit);
+      const failures = await storage.getEvalStatsFailures(tenantId, query.period, query.limit);
       res.json(failures);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {

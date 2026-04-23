@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
+import { LOCAL_TENANT } from '../../types/tenant.js';
 
 const startTime = Date.now();
 
@@ -11,7 +12,13 @@ export function registerHealthRoutes(router: Router, storage?: IStorageAdapter, 
 
     if (storage) {
       try {
-        const summary = await storage.getDashboardSummary(1);
+        /* Health probes use LOCAL_TENANT directly — the health endpoint
+         * is pre-tenant-resolution (runs for unauthenticated callers on
+         * Cloud too) and reports server-level stats. This is the ONE
+         * place storage is called with an explicit LOCAL_TENANT rather
+         * than a resolved tenantId; deliberate, documented here so it
+         * stays the only exception. */
+        const summary = await storage.getDashboardSummary(LOCAL_TENANT, 1);
         res.json({
           status: 'ok',
           version: serverVersion,

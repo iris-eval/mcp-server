@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { registerLogTraceTool } from '../../../src/tools/log-trace.js';
+import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 
 describe('log_trace tool', () => {
   let server: McpServer;
@@ -24,23 +25,23 @@ describe('log_trace tool', () => {
   });
 
   it('should store a trace via direct storage call', async () => {
-    await storage.insertTrace({
+    await storage.insertTrace(LOCAL_TENANT, {
       trace_id: 'test-123',
       agent_name: 'test-agent',
       timestamp: new Date().toISOString(),
     });
-    const trace = await storage.getTrace('test-123');
+    const trace = await storage.getTrace(LOCAL_TENANT, 'test-123');
     expect(trace).not.toBeNull();
     expect(trace!.agent_name).toBe('test-agent');
   });
 
   it('should generate trace IDs', async () => {
-    await storage.insertTrace({
+    await storage.insertTrace(LOCAL_TENANT, {
       trace_id: 'generated-id',
       agent_name: 'test',
       timestamp: new Date().toISOString(),
     });
-    const trace = await storage.getTrace('generated-id');
+    const trace = await storage.getTrace(LOCAL_TENANT, 'generated-id');
     expect(trace).not.toBeNull();
   });
 });

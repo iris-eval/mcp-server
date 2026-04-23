@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 export function registerDashboardSummaryResource(server: McpServer, storage: IStorageAdapter): void {
   server.resource(
@@ -7,7 +8,8 @@ export function registerDashboardSummaryResource(server: McpServer, storage: ISt
     'iris://dashboard/summary',
     { description: 'Dashboard summary with key metrics and trends' },
     async () => {
-      const summary = await storage.getDashboardSummary();
+      // OSS single-tenant: summary scopes to the local user.
+      const summary = await storage.getDashboardSummary(LOCAL_TENANT);
       return {
         contents: [
           {

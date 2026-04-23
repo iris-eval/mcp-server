@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name'),
@@ -25,7 +26,8 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
       inputSchema,
     },
     async (args) => {
-      const result = await storage.queryTraces({
+      // OSS single-tenant: MCP caller is the local user.
+      const result = await storage.queryTraces(LOCAL_TENANT, {
         filter: {
           agent_name: args.agent_name,
           framework: args.framework,
@@ -48,7 +50,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
       };
 
       if (args.include_summary) {
-        response.summary = await storage.getDashboardSummary();
+        response.summary = await storage.getDashboardSummary(LOCAL_TENANT);
       }
 
       return {

@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { registerGetTracesTool } from '../../../src/tools/get-traces.js';
 import { allSampleTraces } from '../../fixtures/sample-traces.js';
+import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 
 describe('get_traces tool', () => {
   let server: McpServer;
@@ -15,7 +16,7 @@ describe('get_traces tool', () => {
     registerGetTracesTool(server, storage);
 
     for (const trace of allSampleTraces) {
-      await storage.insertTrace(trace);
+      await storage.insertTrace(LOCAL_TENANT, trace);
     }
   });
 
@@ -28,7 +29,7 @@ describe('get_traces tool', () => {
   });
 
   it('should query traces with filters', async () => {
-    const result = await storage.queryTraces({
+    const result = await storage.queryTraces(LOCAL_TENANT, {
       filter: { agent_name: 'test-agent' },
     });
     expect(result.total).toBe(1);
@@ -36,13 +37,13 @@ describe('get_traces tool', () => {
   });
 
   it('should support pagination', async () => {
-    const result = await storage.queryTraces({ limit: 2, offset: 0 });
+    const result = await storage.queryTraces(LOCAL_TENANT, { limit: 2, offset: 0 });
     expect(result.traces.length).toBe(2);
     expect(result.total).toBe(allSampleTraces.length);
   });
 
   it('should return summary stats', async () => {
-    const summary = await storage.getDashboardSummary(24 * 365 * 10);
+    const summary = await storage.getDashboardSummary(LOCAL_TENANT, 24 * 365 * 10);
     expect(summary.total_traces).toBe(allSampleTraces.length);
     expect(summary.top_agents.length).toBeGreaterThan(0);
   });

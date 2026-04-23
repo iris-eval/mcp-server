@@ -4,6 +4,8 @@ import type { IStorageAdapter } from '../../types/query.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
+import { requireTenant } from '../../middleware/tenant.js';
+import type { TenantId } from '../../types/tenant.js';
 import type {
   DeployedCustomRule,
   RulePreviewResult,
@@ -113,8 +115,9 @@ export function registerRuleRoutes(
 
   router.post('/rules/custom/preview', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const input = PreviewSchema.parse(req.body);
-      const result = await previewRule(input, storage);
+      const result = await previewRule(tenantId, input, storage);
       res.json(result);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -132,11 +135,12 @@ export function registerRuleRoutes(
 }
 
 async function previewRule(
+  tenantId: TenantId,
   input: z.infer<typeof PreviewSchema>,
   storage: IStorageAdapter,
 ): Promise<RulePreviewResult> {
   const since = new Date(Date.now() - input.windowDays * 24 * 60 * 60 * 1000).toISOString();
-  const traceResult = await storage.queryTraces({
+  const traceResult = await storage.queryTraces(tenantId, {
     filter: { since },
     limit: input.maxTraces,
     sort_by: 'timestamp',

@@ -14,6 +14,7 @@ import { loadOrInitPreferences, shouldAutoLaunchDashboard, createPreferenceStore
 import { openBrowser } from './utils/open-browser.js';
 import { createCustomRuleStore } from './custom-rule-store.js';
 import { createCustomRule } from './eval/rules/custom.js';
+import { LOCAL_TENANT } from './types/tenant.js';
 
 const PortSchema = z
   .string()
@@ -136,10 +137,16 @@ async function main(): Promise<void> {
 
   const httpServers: Server[] = [];
 
-  // Run data retention cleanup on startup
+  // Run data retention cleanup on startup.
+  //
+  // For OSS single-tenant installs we explicitly scope cleanup to
+  // LOCAL_TENANT. Cloud will enumerate all tenants (TenantRegistry) and
+  // call this per-tenant so retention applies uniformly; the adapter
+  // method already scopes DELETEs by tenant, so the behavior scales
+  // cleanly.
   if (config.retention.days > 0) {
     try {
-      const deleted = await storage.deleteTracesOlderThan(config.retention.days);
+      const deleted = await storage.deleteTracesOlderThan(LOCAL_TENANT, config.retention.days);
       if (deleted > 0) {
         logger.info(`Retention cleanup: deleted ${deleted} trace(s) older than ${config.retention.days} days`);
       }

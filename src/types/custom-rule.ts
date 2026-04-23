@@ -49,6 +49,15 @@ export interface CustomRulesFile {
 
 export interface AuditLogEntry {
   ts: string;
+  /**
+   * Which tenant the action belongs to. OSS installs always emit 'local'.
+   * Cloud installs emit the tenant resolved from the authenticated session.
+   *
+   * Optional for backward compatibility: entries written before v0.4.0
+   * don't have this field. Readers MUST treat missing `tenantId` as
+   * 'local' so old audit logs remain queryable on upgrade.
+   */
+  tenantId?: string;
   /** Action taken — currently rule.deploy / rule.delete / rule.toggle. */
   action: 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.update';
   /** Who initiated. v0.4 is single-user local — always "local". v0.5+ adds users. */

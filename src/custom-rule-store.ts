@@ -175,8 +175,13 @@ export function createCustomRuleStore(opts?: {
       const validated = DeployedRuleSchema.parse(rule);
       rules.push(validated);
       persist();
+      /* Tenant scoping: OSS single-tenant emits 'local'. Cloud replaces
+       * the entire custom-rule-store with a DB-backed service that reads
+       * the tenant from the authenticated session; that service will
+       * compute tenantId per-call. Hard-coded here for OSS. */
       appendAudit(auditPath, {
         ts: now,
+        tenantId: 'local',
         action: 'rule.deploy',
         user: input.user ?? 'local',
         ruleId: id,
@@ -195,6 +200,7 @@ export function createCustomRuleStore(opts?: {
       persist();
       appendAudit(auditPath, {
         ts: new Date().toISOString(),
+        tenantId: 'local',
         action: 'rule.delete',
         user,
         ruleId: id,
@@ -211,6 +217,7 @@ export function createCustomRuleStore(opts?: {
       persist();
       appendAudit(auditPath, {
         ts: rule.updatedAt,
+        tenantId: 'local',
         action: 'rule.toggle',
         user,
         ruleId: id,

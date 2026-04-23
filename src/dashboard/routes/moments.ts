@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { IStorageAdapter } from '../../types/query.js';
+import { requireTenant } from '../../middleware/tenant.js';
 import type {
   DecisionMoment,
   MomentQueryResult,
@@ -37,6 +38,7 @@ const momentQuerySchema = z.object({
 export function registerMomentRoutes(router: Router, storage: IStorageAdapter): void {
   router.get('/moments', async (req, res) => {
     try {
+      const tenantId = requireTenant(req);
       const query = momentQuerySchema.parse(req.query);
 
       // Pull the underlying traces. We over-fetch when post-filtering by
@@ -47,7 +49,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
         ? Math.min(query.limit * 4, 200)
         : query.limit;
 
-      const traceResult = await storage.queryTraces({
+      const traceResult = await storage.queryTraces(tenantId, {
         filter: {
           agent_name: query.agent_name,
           since: query.since,
@@ -63,7 +65,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
       // batching is a v0.4.1 optimization once we have moment-volume data.
       const moments: DecisionMoment[] = [];
       for (const trace of traceResult.traces) {
-        const evals = await storage.getEvalsByTraceId(trace.trace_id);
+        const evals = await storage.getEvalsByTraceId(tenantId, trace.trace_id);
         const moment = deriveMoment(trace, evals);
 
         if (query.verdict && moment.verdict !== query.verdict) continue;
@@ -107,14 +109,15 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
 
   router.get('/moments/:id', async (req, res) => {
     try {
-      const trace = await storage.getTrace(req.params.id);
+      const tenantId = requireTenant(req);
+      const trace = await storage.getTrace(tenantId, req.params.id);
       if (!trace) {
         res.status(404).json({ error: 'Decision moment not found' });
         return;
       }
       const [evals, spans] = await Promise.all([
-        storage.getEvalsByTraceId(req.params.id),
-        storage.getSpansByTraceId(req.params.id),
+        storage.getEvalsByTraceId(tenantId, req.params.id),
+        storage.getSpansByTraceId(tenantId, req.params.id),
       ]);
       const detail = deriveMomentDetail(trace, evals, spans);
       res.json(detail);
