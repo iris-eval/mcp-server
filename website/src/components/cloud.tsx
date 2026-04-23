@@ -15,7 +15,7 @@ const TIERS = [
     highlight: false,
     features: [
       "3 MCP tools (log_trace, evaluate_output, get_traces)",
-      "12 built-in eval rules + custom rules",
+      "13 built-in eval rules + custom rules",
       "Web dashboard with trace visualization",
       "SQLite storage — zero infrastructure",
       "Production security (auth, rate limiting)",

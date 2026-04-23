@@ -1,5 +1,5 @@
 /*
- * Vendored copy of the Iris v0.3.1 eval rules for the Live Playground.
+ * Vendored copy of the Iris rule library (captured from v0.3.1) for the Live Playground.
  *
  * Source: iris/src/eval/rules/{safety,relevance,completeness,cost}.ts
  * Synced: 2026-04-23 (v0.3.1)

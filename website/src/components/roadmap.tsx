@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { motion, useReducedMotion, useInView } from "framer-motion";
 
 const MILESTONES = [
-  { v: "v0.1", status: "Released", title: "Core MCP Server", detail: "3 tools, 12 eval rules, SQLite storage, web dashboard, production security" },
+  { v: "v0.1", status: "Released", title: "Core MCP Server", detail: "3 tools, initial 12-rule library, SQLite storage, web dashboard, production security" },
   { v: "v0.2", status: "Released", title: "Eval Sensitivity + Security Hardening", detail: "Smart rule exclusion, configurable thresholds, SQL whitelist, CSP headers, accessibility" },
   { v: "v0.3", status: "Released", title: "Dashboard Phase-1 + Pricing", detail: "OKLCH palette, dark/light theme, trace-ID copy, eval sparkline, pricing page, MCP-native validation harness" },
   { v: "v0.3.1", status: "Released", title: "Rule Library Expansion", detail: "13 eval rules (added no_stub_output), 10 PII patterns (IBAN, DOB, MRN, IP, API key, passport), 13 injection patterns, fabricated-citation heuristic, 55-case CI regression gate" },

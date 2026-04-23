@@ -626,7 +626,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <p>
                 Iris provides three MCP tools: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">log_trace</code> for
                 recording agent executions, <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">evaluate_output</code> for
-                scoring outputs against 12 built-in eval rules, and{" "}
+                scoring outputs against 13 built-in eval rules, and{" "}
                 <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">get_traces</code> for
                 querying historical data.
               </p>

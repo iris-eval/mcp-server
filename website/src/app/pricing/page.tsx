@@ -45,7 +45,7 @@ const tiers: Tier[] = [
     },
     features: [
       "10,000 evaluations / month",
-      "All 12 built-in eval rules",
+      "All 13 built-in eval rules",
       "Custom Zod rules (unlimited)",
       "Dashboard + playground",
       "stdio + HTTP transports",
