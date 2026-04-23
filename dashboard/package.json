@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "storybook": "storybook dev -p 6007 --no-open",
+    "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
     "@types/d3-array": "^3.2.2",
@@ -29,6 +31,8 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@storybook/addon-docs": "^10.3.5",
+    "@storybook/react-vite": "^10.3.5",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -38,6 +42,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "jest-axe": "^10.0.0",
     "jsdom": "^26.0.0",
+    "storybook": "^10.3.5",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
     "vitest": "^4.1.1"
