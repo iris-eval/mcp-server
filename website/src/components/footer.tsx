@@ -138,6 +138,7 @@ export function Footer(): React.ReactElement {
           <div className="flex items-center gap-4">
             <a href="/privacy" className="transition-colors hover:text-text-secondary">Privacy</a>
             <a href="/terms" className="transition-colors hover:text-text-secondary">Terms</a>
+            <a href="/security" className="transition-colors hover:text-text-secondary">Security</a>
             <a href="mailto:hello@iris-eval.com" className="transition-colors hover:text-text-secondary">hello@iris-eval.com</a>
             <span className="text-text-muted/60">·</span>
             <span className="text-text-muted/60">Blog content is researched with AI assistance and reviewed for accuracy.</span>

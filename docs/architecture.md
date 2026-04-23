@@ -295,10 +295,13 @@ Registered rules are appended to the built-in set for that eval type and include
 
 ### Schema
 
+Every data table carries a `tenant_id TEXT NOT NULL DEFAULT 'local'` column (added in migration 004, v0.4.0). OSS single-node deployments only ever see `'local'`; the column is the foundation for the hosted Cloud tier's multi-tenant isolation without requiring a future painful data migration. See §8 for the four-layer defense-in-depth enforcement.
+
 ```sql
 -- Traces: one row per agent execution
 CREATE TABLE traces (
     trace_id    TEXT PRIMARY KEY,          -- 32-char hex (16 random bytes)
+    tenant_id   TEXT NOT NULL DEFAULT 'local',  -- added migration 004
     agent_name  TEXT NOT NULL,
     framework   TEXT,
     input       TEXT,
@@ -315,6 +318,7 @@ CREATE TABLE traces (
 -- Spans: detailed execution breakdown within a trace
 CREATE TABLE spans (
     span_id         TEXT PRIMARY KEY,      -- 16-char hex (8 random bytes)
+    tenant_id       TEXT NOT NULL DEFAULT 'local',  -- added migration 004
     trace_id        TEXT NOT NULL REFERENCES traces(trace_id) ON DELETE CASCADE,
     parent_span_id  TEXT,                  -- NULL for root spans
     name            TEXT NOT NULL,
@@ -330,6 +334,7 @@ CREATE TABLE spans (
 -- Evaluation results: scored assessments of agent outputs
 CREATE TABLE eval_results (
     id             TEXT PRIMARY KEY,       -- UUIDv4
+    tenant_id      TEXT NOT NULL DEFAULT 'local',  -- added migration 004
     trace_id       TEXT REFERENCES traces(trace_id) ON DELETE SET NULL,
     eval_type      TEXT NOT NULL,          -- completeness|relevance|safety|cost|custom
     output_text    TEXT NOT NULL,
@@ -350,16 +355,18 @@ CREATE TABLE _iris_migrations (
 
 ### Indexes
 
+All hot-path indexes are composite with `tenant_id` as the leading column so every query is filterable by tenant without a full-table scan. This matters both for correctness (the composite index enforces that the planner chooses a tenant-scoped read path) and for Cloud-tier performance at scale.
+
 | Index | Table | Column(s) | Purpose |
 |-------|-------|-----------|---------|
-| `idx_traces_agent_name` | traces | agent_name | Filter by agent |
-| `idx_traces_timestamp` | traces | timestamp | Time-range queries, sorting |
-| `idx_traces_framework` | traces | framework | Filter by framework |
-| `idx_spans_trace_id` | spans | trace_id | Join spans to trace |
+| `idx_traces_tenant_timestamp` | traces | (tenant_id, timestamp) | Tenant-scoped time-range queries |
+| `idx_traces_tenant_agent` | traces | (tenant_id, agent_name) | Tenant-scoped agent filtering |
+| `idx_traces_tenant_framework` | traces | (tenant_id, framework) | Tenant-scoped framework filtering |
+| `idx_spans_tenant_trace` | spans | (tenant_id, trace_id) | Tenant-scoped span lookup |
 | `idx_spans_parent` | spans | parent_span_id | Span tree traversal |
-| `idx_eval_results_trace_id` | eval_results | trace_id | Join evals to trace |
-| `idx_eval_results_eval_type` | eval_results | eval_type | Filter by eval type |
-| `idx_eval_results_created_at` | eval_results | created_at | Time-range queries on evals |
+| `idx_eval_results_tenant_trace` | eval_results | (tenant_id, trace_id) | Tenant-scoped eval lookup |
+| `idx_eval_results_tenant_type` | eval_results | (tenant_id, eval_type) | Tenant-scoped eval type filter |
+| `idx_eval_results_tenant_created` | eval_results | (tenant_id, created_at) | Tenant-scoped trend queries |
 
 ### Retention
 
@@ -374,6 +381,15 @@ Migrations are tracked in the `_iris_migrations` table. Each migration has a str
 3. For each unapplied migration, runs `up()` and records the ID inside a transaction.
 
 New migrations are added as files in `src/storage/migrations/` and registered in the `migrations` array.
+
+Migration history (as of v0.4.0):
+
+| ID | Version | Purpose |
+|----|---------|---------|
+| `001-initial-schema` | v0.1.0 | Core tables + indexes |
+| `002-eval-skip-fields` | v0.2.0 | `rule_results.skipped` + `skipReason` |
+| `003-eval-passed-index` | v0.3.0 | Pass-rate query index |
+| `004-tenant-id` | v0.4.0 | `tenant_id` column + composite indexes on all data tables. Upgrading from v0.3.x backfills every existing row with `tenant_id = 'local'` — see `tests/unit/storage/migration-tenant.test.ts` for the smoke test that proves no data loss. |
 
 ---
 
@@ -552,6 +568,39 @@ The `createCorsMiddleware` function accepts an allowlist of origin patterns. Wil
 - **MCP tool inputs**: Validated by Zod schemas registered with `server.registerTool()`. Invalid inputs are rejected by the MCP SDK before the handler runs.
 - **Dashboard API query params**: Validated by Zod schemas in `src/dashboard/validation.ts`. Limits: pagination max 1000 rows, summary max 8760 hours (1 year).
 - **Custom eval rules**: Regex patterns are checked with `safe-regex2` for ReDoS safety, length-capped at 1000 chars, and compiled in a try/catch.
+
+### Tenant isolation (defense-in-depth)
+
+OSS single-node deployments run with a single implicit tenant (`LOCAL_TENANT = 'local'`). The same code path enforces tenant isolation end-to-end, so the hosted Cloud tier (v0.4+) gets multi-tenant boundaries for free. Four independent layers prevent cross-tenant data leakage:
+
+1. **Type system** — `TenantId` is a branded type in `src/types/tenant.ts`. The `IStorageAdapter` interface requires `tenantId: TenantId` as the **first** parameter of every read and write. A developer who forgets to pass tenant context gets a compile error, not a runtime bug.
+2. **Runtime guard** — every adapter method calls `assertTenant(tenantId)` which throws `TenantContextRequiredError` if the value is missing, empty, or not a valid `TenantId`. This protects against type erasure (JSON parses, `any` casts) at integration boundaries.
+3. **SQL scope** — every `SELECT`, `INSERT`, `UPDATE`, and `DELETE` carries an explicit `WHERE tenant_id = ?` clause (reads) or `VALUES (..., ?, ...)` bind (writes). There is no "get all traces" query path — only "get traces for tenant X."
+4. **Composite indexes** — every hot-path index is `(tenant_id, <other columns>)`. This ensures the query planner physically scans only within a tenant's rows, and makes cross-tenant scans both correct *and* fast in a multi-tenant deployment.
+
+Additional guards:
+
+- **Resolver middleware** (`src/middleware/tenant.ts`) attaches `req.tenantId` to every Express request after auth. Route handlers pull tenant context from the request — they cannot be called with `undefined`.
+- **Audit log** (`~/.iris/audit.log`) entries carry a `tenantId` field so rule deploys/deletes are attributable in a multi-tenant future.
+- **Never trust client-provided tenant IDs**: in Cloud mode the tenant is resolved server-side from the auth token's claims, never from a query parameter or header. OSS mode hardcodes `LOCAL_TENANT`.
+
+Regression coverage: `tests/unit/storage/sqlite-adapter.test.ts` includes explicit cross-tenant isolation assertions (tenant A writes are invisible to tenant B reads), and `tests/unit/storage/migration-tenant.test.ts` proves legacy v0.3 rows are backfilled to `LOCAL_TENANT` without leaking to other tenants.
+
+### Supply-chain integrity
+
+The release pipeline (`.github/workflows/release.yml`) produces and publishes:
+
+- **npm provenance**: `npm publish --provenance` attaches a GitHub-signed attestation linking the tarball to the source commit and workflow run. Verified via `npm audit signatures`.
+- **SPDX SBOMs**: Per-tag SBOMs for both the npm package and the Docker image, attached as GitHub release assets (`iris-npm-sbom.spdx.json` and `iris-docker-sbom.spdx.json`).
+- **Cosign keyless signatures**: The Docker image is signed with Sigstore cosign using the workflow's GitHub OIDC identity. No long-lived signing key is managed. Verify with:
+
+  ```bash
+  cosign verify ghcr.io/iris-eval/mcp-server:vX.Y.Z \
+    --certificate-identity-regexp='https://github.com/iris-eval/mcp-server' \
+    --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
+  ```
+
+- **Build-provenance attestations**: Both artifacts carry GitHub-signed `attest-build-provenance` attestations (SLSA v1 provenance). Inspect with `gh attestation verify` or `cosign verify-attestation`.
 
 ---
 
