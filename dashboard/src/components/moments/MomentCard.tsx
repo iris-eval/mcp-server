@@ -2,6 +2,27 @@ import { Link } from 'react-router-dom';
 import type { DecisionMoment } from '../../api/types';
 import { formatCost, formatLatency, formatTimeAgo } from '../../utils/formatters';
 import { getSignificanceVisual, getVerdictVisual } from './significance';
+import { Tooltip } from '../shared/Tooltip';
+import { TT } from '../shared/tooltipText';
+
+/* Map verdict → tooltip text. Keeps the card lean. */
+const VERDICT_TOOLTIP: Record<string, string> = {
+  PASS: TT.verdictPass,
+  FAIL: TT.verdictFail,
+  PARTIAL: TT.verdictPartial,
+  UNEVALUATED: TT.verdictUnevaluated,
+};
+
+/* Map significance kind → tooltip text. */
+const SIG_TOOLTIP: Record<string, string> = {
+  'safety-violation': TT.sigSafetyViolation,
+  'cost-spike': TT.sigCostSpike,
+  'rule-collision': TT.sigRuleCollision,
+  'normal-fail': TT.sigNormalFail,
+  'normal-pass': TT.sigNormalPass,
+  'first-failure': TT.sigFirstFailure,
+  'novel-pattern': TT.sigNovelPattern,
+};
 
 const styles = {
   card: {
@@ -111,18 +132,25 @@ export function MomentCard({ moment }: { moment: DecisionMoment }) {
       title={moment.significance.reason}
     >
       <div style={styles.rail}>
-        <span
-          style={{ ...styles.glyph, background: sig.color }}
-          aria-label={sig.name}
-        >
-          {sig.glyph}
-        </span>
+        <Tooltip content={SIG_TOOLTIP[moment.significance.kind] ?? sig.name}>
+          <span
+            style={{ ...styles.glyph, background: sig.color }}
+            aria-label={sig.name}
+            tabIndex={0}
+          >
+            {sig.glyph}
+          </span>
+        </Tooltip>
       </div>
 
       <div style={styles.body}>
         <div style={styles.headerRow}>
           <span style={styles.agent}>{moment.agentName}</span>
-          <span style={{ ...styles.verdict, color: verdict.color }}>{verdict.label}</span>
+          <Tooltip content={VERDICT_TOOLTIP[verdict.label] ?? ''}>
+            <span style={{ ...styles.verdict, color: verdict.color }} tabIndex={0}>
+              {verdict.label}
+            </span>
+          </Tooltip>
           <span style={styles.significanceLabel}>· {moment.significance.label}</span>
         </div>
         {moment.ruleSnapshot.failed.length > 0 && (
@@ -145,13 +173,22 @@ export function MomentCard({ moment }: { moment: DecisionMoment }) {
 
       <div style={styles.meta}>
         <span>{formatTimeAgo(moment.timestamp)}</span>
-        {moment.costUsd !== undefined && <span>{formatCost(moment.costUsd)}</span>}
-        {moment.latencyMs !== undefined && <span>{formatLatency(moment.latencyMs)}</span>}
-        <span>
-          {moment.ruleSnapshot.passedCount}/{
-            moment.ruleSnapshot.totalCount - moment.ruleSnapshot.skipped.length
-          } pass
-        </span>
+        {moment.costUsd !== undefined && (
+          <Tooltip content={TT.costPerTrace}>
+            <span tabIndex={0}>{formatCost(moment.costUsd)}</span>
+          </Tooltip>
+        )}
+        {moment.latencyMs !== undefined && (
+          <Tooltip content={TT.latencyMs}>
+            <span tabIndex={0}>{formatLatency(moment.latencyMs)}</span>
+          </Tooltip>
+        )}
+        <Tooltip content={`${moment.ruleSnapshot.passedCount} of ${moment.ruleSnapshot.totalCount - moment.ruleSnapshot.skipped.length} fired rules passed.${moment.ruleSnapshot.skipped.length > 0 ? ` ${moment.ruleSnapshot.skipped.length} skipped.` : ''}`}>
+          <span tabIndex={0}>
+            {moment.ruleSnapshot.passedCount}/
+            {moment.ruleSnapshot.totalCount - moment.ruleSnapshot.skipped.length} pass
+          </span>
+        </Tooltip>
       </div>
     </Link>
   );

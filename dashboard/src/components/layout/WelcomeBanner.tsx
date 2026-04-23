@@ -102,10 +102,11 @@ export function WelcomeBanner() {
         <span>
           Welcome to Iris. Start with{' '}
           <Link to="/moments" style={styles.link}>Decision Moments</Link> — every trace
-          classified by what makes it noteworthy.
+          classified by what makes it noteworthy. Press <code>⌘K</code> (or <code>Ctrl K</code>)
+          for the command palette, or <code>?</code> for shortcuts.
         </span>
         <span style={styles.hint}>
-          (To disable auto-launch on future runs: set <code>IRIS_NO_AUTO_LAUNCH=1</code>{' '}
+          (To disable auto-launch: set <code>IRIS_NO_AUTO_LAUNCH=1</code>{' '}
           or edit <code>~/.iris/preferences.json</code>)
         </span>
       </div>

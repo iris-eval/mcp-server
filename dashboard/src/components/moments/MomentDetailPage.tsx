@@ -16,6 +16,16 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { formatCost, formatLatency, formatTimestamp } from '../../utils/formatters';
 import { getSignificanceVisual, getVerdictVisual } from './significance';
 import { MakeRuleModal } from './MakeRuleModal';
+import { Tooltip } from '../shared/Tooltip';
+import { TT } from '../shared/tooltipText';
+
+const SIG_TOOLTIP_DETAIL: Record<string, string> = {
+  'safety-violation': TT.sigSafetyViolation,
+  'cost-spike': TT.sigCostSpike,
+  'rule-collision': TT.sigRuleCollision,
+  'normal-fail': TT.sigNormalFail,
+  'normal-pass': TT.sigNormalPass,
+};
 
 const styles = {
   page: {
@@ -254,9 +264,11 @@ export function MomentDetailPage() {
       <Link to="/moments" style={styles.back}>← Back to moments</Link>
 
       <div style={{ ...styles.hero, borderLeftColor: sig.color }}>
-        <span style={{ ...styles.glyph, background: sig.color }} aria-label={sig.name}>
-          {sig.glyph}
-        </span>
+        <Tooltip content={SIG_TOOLTIP_DETAIL[data.significance.kind] ?? sig.name}>
+          <span style={{ ...styles.glyph, background: sig.color }} aria-label={sig.name} tabIndex={0}>
+            {sig.glyph}
+          </span>
+        </Tooltip>
         <div style={styles.heroBody}>
           <span style={styles.significanceName}>{sig.name}</span>
           <h2 style={styles.significanceLabel}>{data.significance.label}</h2>
@@ -265,8 +277,16 @@ export function MomentDetailPage() {
             <span style={{ color: verdict.color, fontWeight: 700 }}>{verdict.label}</span>
             <span>{data.agentName}</span>
             <span>{formatTimestamp(data.timestamp)}</span>
-            {data.costUsd !== undefined && <span>{formatCost(data.costUsd)}</span>}
-            {data.latencyMs !== undefined && <span>{formatLatency(data.latencyMs)}</span>}
+            {data.costUsd !== undefined && (
+              <Tooltip content={TT.costPerTrace}>
+                <span tabIndex={0}>{formatCost(data.costUsd)}</span>
+              </Tooltip>
+            )}
+            {data.latencyMs !== undefined && (
+              <Tooltip content={TT.latencyMs}>
+                <span tabIndex={0}>{formatLatency(data.latencyMs)}</span>
+              </Tooltip>
+            )}
             <CopyableId value={data.id} displayValue={data.id.slice(0, 12) + '…'} ariaLabel="Copy moment ID" />
           </div>
         </div>

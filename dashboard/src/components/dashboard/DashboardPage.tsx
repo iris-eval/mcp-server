@@ -8,6 +8,8 @@ import { RuleBreakdownChart } from './RuleBreakdownChart';
 import { RecentFailuresTable } from './RecentFailuresTable';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { EmptyState } from '../shared/EmptyState';
+import { Tooltip } from '../shared/Tooltip';
+import { TT } from '../shared/tooltipText';
 import { formatNumber } from '../../utils/formatters';
 
 type Period = '24h' | '7d' | '30d' | 'all';
@@ -62,18 +64,26 @@ export function DashboardPage() {
 
         {/* Pass Rate + Volume cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <StatCard
-            label="Pass Rate"
-            value={`${Math.round(stats.passRate * 100)}%`}
-            sub={`${stats.totalEvals} evaluations scored`}
-            color={passRateColor}
-          />
-          <StatCard
-            label="Agents Monitored"
-            value={formatNumber(stats.agentCount)}
-            sub={`${formatNumber(stats.totalEvals)} evals this period`}
-            color="var(--text-primary)"
-          />
+          <Tooltip content={TT.passRate} placement="top">
+            <span style={{ display: 'block' }} tabIndex={0}>
+              <StatCard
+                label="Pass Rate"
+                value={`${Math.round(stats.passRate * 100)}%`}
+                sub={`${stats.totalEvals} evaluations scored`}
+                color={passRateColor}
+              />
+            </span>
+          </Tooltip>
+          <Tooltip content={TT.agentsMonitored} placement="top">
+            <span style={{ display: 'block' }} tabIndex={0}>
+              <StatCard
+                label="Agents Monitored"
+                value={formatNumber(stats.agentCount)}
+                sub={`${formatNumber(stats.totalEvals)} evals this period`}
+                color="var(--text-primary)"
+              />
+            </span>
+          </Tooltip>
         </div>
 
         {/* Safety + Cost */}

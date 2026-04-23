@@ -1,4 +1,5 @@
 import { ThemeToggle } from './ThemeToggle';
+import { CommandPaletteTrigger } from '../command/CommandPaletteTrigger';
 
 const styles = {
   header: {
@@ -37,6 +38,7 @@ export function Header() {
         Auto-refreshing
       </div>
       <div style={styles.spacer} />
+      <CommandPaletteTrigger />
       <ThemeToggle />
     </header>
   );

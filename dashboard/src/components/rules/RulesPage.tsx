@@ -9,9 +9,18 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCustomRules } from '../../api/hooks';
 import { api } from '../../api/client';
-import type { DeployedCustomRule } from '../../api/types';
+import type { DeployedCustomRule, RuleSeverity } from '../../api/types';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { Tooltip } from '../shared/Tooltip';
+import { TT } from '../shared/tooltipText';
 import { formatTimeAgo } from '../../utils/formatters';
+
+const SEVERITY_TOOLTIP: Record<RuleSeverity, string> = {
+  low: TT.ruleSeverityLow,
+  medium: TT.ruleSeverityMedium,
+  high: TT.ruleSeverityHigh,
+  critical: TT.ruleSeverityCritical,
+};
 
 const styles = {
   page: {
@@ -182,24 +191,36 @@ export function RulesPage() {
               <div style={styles.cardBody}>
                 <div style={styles.nameRow}>
                   <span style={styles.name}>{rule.name}</span>
-                  <span style={{ ...styles.badge, ...styles.severityBadge[rule.severity] }}>
-                    {rule.severity}
-                  </span>
-                  <span style={styles.badge}>{rule.evalType}</span>
-                  <span style={styles.badge}>{rule.definition.type}</span>
+                  <Tooltip content={SEVERITY_TOOLTIP[rule.severity]}>
+                    <span style={{ ...styles.badge, ...styles.severityBadge[rule.severity] }} tabIndex={0}>
+                      {rule.severity}
+                    </span>
+                  </Tooltip>
+                  <Tooltip content={`Fires on every evaluate_output call with eval_type='${rule.evalType}'.`}>
+                    <span style={styles.badge} tabIndex={0}>{rule.evalType}</span>
+                  </Tooltip>
+                  <Tooltip content={`Underlying check: ${rule.definition.type.replace(/_/g, ' ')}.`}>
+                    <span style={styles.badge} tabIndex={0}>{rule.definition.type}</span>
+                  </Tooltip>
                   {!rule.enabled && (
-                    <span style={{ ...styles.badge, color: 'var(--accent-warning)' }}>disabled</span>
+                    <Tooltip content={TT.ruleEnabled}>
+                      <span style={{ ...styles.badge, color: 'var(--accent-warning)' }} tabIndex={0}>disabled</span>
+                    </Tooltip>
                   )}
                 </div>
                 {rule.description && <p style={styles.description}>{rule.description}</p>}
                 <div style={styles.metaRow}>
                   <span>id {rule.id}</span>
-                  <span>v{rule.version}</span>
+                  <Tooltip content={TT.ruleVersion}>
+                    <span tabIndex={0}>v{rule.version}</span>
+                  </Tooltip>
                   <span>created {formatTimeAgo(rule.createdAt)}</span>
                   {rule.sourceMomentId && (
-                    <Link to={`/moments/${rule.sourceMomentId}`} style={styles.sourceLink}>
-                      from moment {rule.sourceMomentId.slice(0, 12)}…
-                    </Link>
+                    <Tooltip content={TT.sourceMoment}>
+                      <Link to={`/moments/${rule.sourceMomentId}`} style={styles.sourceLink}>
+                        from moment {rule.sourceMomentId.slice(0, 12)}…
+                      </Link>
+                    </Tooltip>
                   )}
                 </div>
               </div>
