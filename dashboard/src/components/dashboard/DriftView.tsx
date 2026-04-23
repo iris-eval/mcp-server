@@ -1,14 +1,22 @@
 /*
  * DriftView — what's changing this week and why (?view=drift).
  *
- * Comparison-shaped composition. Tactical reader; week-over-week mindset.
+ * Wireframed redesign:
  *
- *   ROW 1 — StackedBarByDay (verdict mix per day for the period — anchor)
- *   ROW 2 — HorizontalBarChart cost-by-agent + HorizontalBarChart
- *           failures-by-significance-kind (1:1 split)
- *   ROW 3 — RuleListByCategory (the 13 built-ins with per-rule meters)
+ *   §1 WHAT CHANGED        ChangeBanner — one-line narrative summary of
+ *                          the 3 most important deltas vs prior period.
  *
- * Period selector is shown (default 7d).
+ *   §2 PATTERN OVER TIME   StackedBarByDay — verdict mix per day, the
+ *                          anchor visualization for the comparison story.
+ *
+ *   §3 SLICED TWO WAYS     Cost-by-agent + Failures-by-category bars.
+ *                          Same data, different cuts.
+ *
+ *   §4 PER-RULE PERFORMANCE PerRuleMeterGrid — meter + sparkline + drift
+ *                          arrow per built-in rule, grouped by category.
+ *
+ * Every section asks one question. Every section drills through to a
+ * pre-filtered Decision Moments view.
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -19,9 +27,11 @@ import {
   PeriodSelector,
 } from './PeriodSelector';
 import { drillToMoments, isoDaysAgo } from '../../utils/drillThrough';
+import { SectionHeader } from './SectionHeader';
+import { ChangeBanner } from './charts/ChangeBanner';
 import { StackedBarByDay } from './charts/StackedBarByDay';
 import { HorizontalBarChart } from './charts/HorizontalBarChart';
-import { RuleListByCategory } from './RuleListByCategory';
+import { PerRuleMeterGrid } from './charts/PerRuleMeterGrid';
 import { formatCost } from '../../utils/formatters';
 import { getSignificanceVisual } from '../moments/significance';
 import type { MomentSignificanceKind } from '../../api/types';
@@ -30,9 +40,9 @@ const styles = {
   view: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-4)',
+    gap: 'var(--space-3)',
   } as const,
-  rowSplit: {
+  rowSplit2: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: 'var(--space-3)',
@@ -53,13 +63,18 @@ export function DriftView() {
   const period = resolvePeriod(searchParams, '7d');
   const days = periodToDays(period);
   const periodStartIso = isoDaysAgo(days);
+  const priorPeriodStartIso = isoDaysAgo(days * 2);
 
   const { data: currentMoments } = useMoments({
     limit: '200',
     since: periodStartIso,
   });
+  const { data: priorMoments } = useMoments({
+    limit: '200',
+    since: priorPeriodStartIso,
+    until: periodStartIso,
+  });
 
-  // Cost-by-agent — sum trace cost per agent
   const costBars = useMemo(() => {
     const sums = new Map<string, number>();
     for (const m of currentMoments?.moments ?? []) {
@@ -73,7 +88,6 @@ export function DriftView() {
     }));
   }, [currentMoments, periodStartIso]);
 
-  // Failures-by-significance-kind — counts per significance category
   const failureBars = useMemo(() => {
     const counts: Partial<Record<MomentSignificanceKind, number>> = {};
     for (const m of currentMoments?.moments ?? []) {
@@ -94,13 +108,35 @@ export function DriftView() {
 
   return (
     <div style={styles.view} role="tabpanel" id="view-panel-drift" aria-labelledby="drift-tab">
+      {/* §1 WHAT CHANGED — narrative summary */}
+      <SectionHeader
+        title="What changed"
+        question="The headline delta vs the prior equivalent window."
+        trailing={`vs prior ${period}`}
+      />
+      <ChangeBanner
+        currentMoments={currentMoments?.moments}
+        priorMoments={priorMoments?.moments}
+        periodLabel={period}
+      />
+
+      {/* §2 PATTERN OVER TIME */}
+      <SectionHeader
+        title="Pattern over time"
+        question="Which days carried the load and which days carried the failures?"
+      />
       <StackedBarByDay
         moments={currentMoments?.moments}
         days={days}
         periodLabel={period}
       />
 
-      <div style={styles.rowSplit}>
+      {/* §3 SLICED TWO WAYS */}
+      <SectionHeader
+        title="Sliced two ways"
+        question="Where did the spend land, and which failure categories grew?"
+      />
+      <div style={styles.rowSplit2}>
         <HorizontalBarChart
           title="Cost by agent"
           hint={`top spenders · ${period}`}
@@ -112,11 +148,21 @@ export function DriftView() {
           title="Failures by category"
           hint={`break down · ${period}`}
           bars={failureBars}
-          emptyMessage="No failures in this window — everything's passing 🎉"
+          emptyMessage="No failures in this window — everything's passing."
         />
       </div>
 
-      <RuleListByCategory />
+      {/* §4 PER-RULE PERFORMANCE */}
+      <SectionHeader
+        title="Per-rule performance"
+        question="How is each of the 13 built-in rules performing, and which moved?"
+      />
+      <PerRuleMeterGrid
+        currentMoments={currentMoments?.moments}
+        priorMoments={priorMoments?.moments}
+        periodStartIso={periodStartIso}
+        periodLabel={period}
+      />
     </div>
   );
 }

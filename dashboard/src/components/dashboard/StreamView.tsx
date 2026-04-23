@@ -1,61 +1,58 @@
 /*
- * StreamView — the live operations view (?view=stream).
+ * StreamView — live operations view (?view=stream).
  *
- * Dense, real-time, row-shaped. The 4-row composition we shipped in
- * DC.1 lives here verbatim — this is the daily-user view, the on-call
- * view, the "what's happening RIGHT NOW" view.
+ * Wireframed redesign — three sections, all live (5s polling cadence
+ * via the underlying hooks):
  *
- *   ROW 1 — HEALTH AT A GLANCE: 4 stat tiles + inline 24h trend
- *   ROW 2 — NEEDS ATTENTION: top significant Decision Moments
- *   ROW 3 — RULES IN PLAY (left) + AGENTS (right)
- *   ROW 4 — RECENT AUDIT
+ *   §1 LIVE NOW          A tighter live-strip of pulse KPIs (pass rate,
+ *                        active agents, total moments) — the on-call
+ *                        view's heartbeat.
  *
- * Note: this view ignores the period selector — it's always live (last
- * 24h of activity, polling every 5s via the underlying hooks). The
- * period selector hides itself when this view is active (DashboardPage
- * conditionally renders the toolbar).
+ *   §2 DECISION MOMENTS  The spine of Stream. Significant moments
+ *                        sorted by recency, with full drill-through.
+ *
+ *   §3 RECENT AUDIT      Last 3 rule deploys/deletes — minimal, since
+ *                        the full audit log lives at /audit.
+ *
+ * Drops from prior pass:
+ *   - "Rules in play" full categorized list (it's reference data, not
+ *     a live signal — lives at /rules)
+ *   - Standalone "Agents" panel (per-agent breakdown is a Drift/Health
+ *     concern, not a real-time concern)
+ *
+ * No period selector — Stream is always live. Cadence is implicit (5s
+ * polling), surfaced via the chrome's status pill.
  */
-import { useEvalStats, useEvalTrend, useMoments } from '../../api/hooks';
-import { CheckCircle2, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
+import { useEvalStats, useMoments } from '../../api/hooks';
+import { CheckCircle2, AlertTriangle, Users } from 'lucide-react';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { EmptyState } from '../shared/EmptyState';
-import { TT } from '../shared/tooltipText';
-import { formatCost } from '../../utils/formatters';
 import { StatTile } from './StatTile';
-import { Sparkline } from './Sparkline';
+import { SectionHeader } from './SectionHeader';
 import { RecentMomentsRow } from './RecentMomentsRow';
-import { RuleListByCategory } from './RuleListByCategory';
-import { AgentList } from './AgentList';
 import { RecentAuditRow } from './RecentAuditRow';
 
 const styles = {
   view: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-4)',
-  } as const,
-  rowHealth: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: 'var(--space-3)',
   } as const,
-  rowSplit: {
+  rowKpis3: {
     display: 'grid',
-    gridTemplateColumns: '1.1fr 0.9fr',
+    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: 'var(--space-3)',
-    alignItems: 'start',
   } as const,
 };
 
-const PERIOD_DEFAULT = '7d';
+const PERIOD_LIVE = '24h';
 
 export function StreamView() {
-  const { data: stats, loading: statsLoading, error: statsError } = useEvalStats(PERIOD_DEFAULT);
-  const { data: trend } = useEvalTrend(PERIOD_DEFAULT);
+  const { data: stats, loading: statsLoading, error: statsError } = useEvalStats(PERIOD_LIVE);
   const { data: significantMoments } = useMoments({ limit: '50', min_significance: '0.4' });
 
   if (statsLoading && !stats) return <LoadingSpinner />;
-  if (statsError) return <EmptyState message={`Could not load dashboard stats: ${statsError}`} />;
+  if (statsError) return <EmptyState message={`Could not load live stats: ${statsError}`} />;
   if (!stats) return <EmptyState />;
 
   const passAccent: 'pass' | 'warn' | 'fail' =
@@ -70,11 +67,15 @@ export function StreamView() {
   const sigAccent: 'pass' | 'warn' | 'fail' =
     significantCount === 0 ? 'pass' : safetyCount > 0 ? 'fail' : 'warn';
 
-  const trendValues = (trend ?? []).map((p) => p.passRate);
-
   return (
     <div style={styles.view} role="tabpanel" id="view-panel-stream" aria-labelledby="stream-tab">
-      <div style={styles.rowHealth}>
+      {/* §1 LIVE NOW — heartbeat */}
+      <SectionHeader
+        title="Live now"
+        question="The fleet's pulse over the last 24 hours."
+        trailing="auto-refresh 5s"
+      />
+      <div style={styles.rowKpis3}>
         <StatTile
           label="Pass rate"
           icon={CheckCircle2}
@@ -88,42 +89,32 @@ export function StreamView() {
           value={significantCount}
           sub={
             significantCount === 0
-              ? 'No significant Decision Moments'
+              ? 'No significant moments'
               : `${safetyCount} safety · ${significantCount - safetyCount} other`
           }
           accent={sigAccent}
         />
         <StatTile
-          label="Total cost"
-          icon={DollarSign}
-          value={formatCost(stats.totalCost)}
-          sub={TT.totalCost}
+          label="Active agents"
+          icon={Users}
+          value={stats.agentCount.toLocaleString()}
+          sub={`unique in ${PERIOD_LIVE}`}
           accent="iris"
         />
-        <StatTile
-          label="Pass-rate trend"
-          icon={TrendingUp}
-          value={
-            trendValues.length >= 2 ? (
-              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '2px', width: '100%', color: 'var(--text-accent)' }}>
-                <Sparkline values={trendValues} height={28} label="Pass-rate over period" />
-              </span>
-            ) : (
-              '—'
-            )
-          }
-          sub={`${PERIOD_DEFAULT} window`}
-          accent="neutral"
-        />
       </div>
 
+      {/* §2 DECISION MOMENTS — the spine */}
+      <SectionHeader
+        title="Significant Decision Moments"
+        question="The traces that need attention right now."
+      />
       <RecentMomentsRow />
 
-      <div style={styles.rowSplit}>
-        <RuleListByCategory />
-        <AgentList />
-      </div>
-
+      {/* §3 RECENT AUDIT — minimal */}
+      <SectionHeader
+        title="Recent rule changes"
+        question="What was deployed, deleted, or toggled lately?"
+      />
       <RecentAuditRow />
     </div>
   );
