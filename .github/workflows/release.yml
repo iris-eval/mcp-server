@@ -5,10 +5,16 @@ on:
     tags:
       - 'v*'
 
+# OIDC migration (audit item #9): `id-token: write` grants the workflow a
+# GitHub-signed identity token. npm uses it to attest provenance on publish
+# (--provenance), and cosign uses it for keyless container signing. We
+# retain NPM_TOKEN for the actual publish auth — npm's OIDC-only "trusted
+# publisher" flow requires org-side configuration separately.
 permissions:
   contents: write
   packages: write
   id-token: write
+  attestations: write
 
 jobs:
   validate:
@@ -29,6 +35,8 @@ jobs:
   publish-npm:
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      sbom-path: ${{ steps.sbom.outputs.fileName }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -52,13 +60,44 @@ jobs:
           test -f dist/index.js || (echo "FATAL: dist/index.js missing after build" && exit 1)
           node dist/index.js --help > /dev/null 2>&1
           echo "Package integrity check passed"
+
+      # SBOM (audit item #8): SPDX JSON covers every direct + transitive
+      # dependency in the shipped tarball. Attached to the GitHub release
+      # so acquirers + enterprise procurement can verify supply chain.
+      - name: Generate npm package SBOM
+        id: sbom
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: iris-npm-${{ github.ref_name }}.spdx.json
+          upload-artifact: true
+          output-file: iris-npm-sbom.spdx.json
+
       - run: npm publish --provenance --access public || echo "Version already published, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      # Attestation (SLSA provenance): separate from `npm publish
+      # --provenance` attestation — this one covers the checked-out source
+      # tree and any extra artifacts we publish (SBOM).
+      - name: Attest npm SBOM
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: iris-npm-sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-sbom
+          path: iris-npm-sbom.spdx.json
+          retention-days: 90
+
   publish-docker:
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@v6
       - uses: docker/setup-qemu-action@v4
@@ -68,7 +107,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v7
+
+      - name: Build + push multi-arch image
+        id: build
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -77,12 +119,87 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
+          # Attach provenance + SBOM attestations to the manifest so
+          # `docker buildx imagetools inspect` shows them. Redundant with
+          # the cosign signature below but gives two independent trust
+          # paths (docker-native + sigstore).
+          provenance: mode=max
+          sbom: true
+
+      # Cosign keyless signing (audit item #8). Uses the workflow's GitHub
+      # OIDC identity — no long-lived signing key to manage. Verified via
+      # `cosign verify ghcr.io/iris-eval/mcp-server:vX.Y.Z
+      #    --certificate-identity-regexp=https://github.com/iris-eval/mcp-server
+      #    --certificate-oidc-issuer=https://token.actions.githubusercontent.com`.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign Docker image by digest
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          cosign sign --yes \
+            ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+
+      # Per-image SBOM. We already inlined `sbom: true` on the buildx
+      # action above (image-attached SBOM), but a standalone SPDX file
+      # is what enterprise procurement usually asks for.
+      - name: Generate Docker image SBOM
+        id: sbom-docker
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          format: spdx-json
+          output-file: iris-docker-sbom.spdx.json
+          upload-artifact: true
+          artifact-name: iris-docker-${{ github.ref_name }}.spdx.json
+
+      - name: Attest Docker SBOM
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Upload Docker SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-sbom
+          path: iris-docker-sbom.spdx.json
+          retention-days: 90
 
   github-release:
     needs: [publish-npm, publish-docker]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      # Pull SBOMs from the publish jobs so the release page exposes them
+      # as downloadable assets for security / procurement diligence.
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-sbom
+          path: ./release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: docker-sbom
+          path: ./release-assets
+
       - uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
+          files: |
+            ./release-assets/iris-npm-sbom.spdx.json
+            ./release-assets/iris-docker-sbom.spdx.json
+          body: |
+            ## Supply-chain transparency
+
+            - **SBOMs**: `iris-npm-sbom.spdx.json` + `iris-docker-sbom.spdx.json` (attached below). Both are SPDX 2.3 JSON, cover direct + transitive dependencies.
+            - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page).
+            - **Docker signature**: image signed with cosign keyless (Sigstore). Verify with:
+              ```
+              cosign verify ghcr.io/${{ github.repository }}:${{ github.ref_name }} \
+                --certificate-identity-regexp='https://github.com/${{ github.repository }}' \
+                --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
+              ```
+            - **Build attestation**: both the npm SBOM and Docker image manifest carry GitHub-signed build-provenance attestations. Inspect with `gh attestation verify` or `cosign verify-attestation`.
