@@ -54,6 +54,12 @@ export const PreferencesSchema = z
     dismissedTours: z.array(z.string().max(80)).default([]),
     /** Decision Moments hidden from the timeline by user action. v0.4. */
     archivedMoments: z.array(z.string().max(200)).default([]),
+    /** Density mode for chrome (Design System v2.A). 'compact' default per R2.3. */
+    density: z.enum(['compact', 'comfortable']).default('compact'),
+    /** Sidebar collapsed (icon-only at 64px) vs expanded (256px). Default expanded per R2.4. */
+    sidebarCollapsed: z.boolean().default(false),
+    /** ISO timestamp of last notifications-popover opened — drives unread badge. */
+    notificationsLastSeen: z.string().datetime({ offset: true }).optional(),
   })
   .passthrough();
 

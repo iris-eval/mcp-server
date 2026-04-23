@@ -281,6 +281,9 @@ export interface Preferences {
   momentFilters: MomentFiltersPref;
   dismissedTours: string[];
   archivedMoments: string[];
+  density: 'compact' | 'comfortable';
+  sidebarCollapsed: boolean;
+  notificationsLastSeen?: string;
 }
 
 export interface PreferencesEnvelope {

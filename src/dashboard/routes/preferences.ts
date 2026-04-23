@@ -30,6 +30,9 @@ const PatchSchema = z
     momentFilters: MomentFiltersPatchSchema.optional(),
     dismissedTours: z.array(z.string().max(80)).optional(),
     archivedMoments: z.array(z.string().max(200)).optional(),
+    density: z.enum(['compact', 'comfortable']).optional(),
+    sidebarCollapsed: z.boolean().optional(),
+    notificationsLastSeen: z.string().datetime({ offset: true }).optional(),
   })
   .strict();
 

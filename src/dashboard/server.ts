@@ -50,7 +50,15 @@ export function createDashboardServer(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        // 'self' covers our bundled CSS. fonts.googleapis.com hosts the
+        // brand fonts (Space Grotesk + Manrope + JetBrains Mono) loaded
+        // via @import in tokens.css. Without this, the @import gets
+        // blocked and the entire stylesheet is dropped by the browser.
+        // v0.4.1 will self-host these fonts and let us tighten this back
+        // to 'self' only.
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        // The fontFaces in those stylesheets resolve to fonts.gstatic.com.
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         connectSrc: ["'self'"],
       },
     },
