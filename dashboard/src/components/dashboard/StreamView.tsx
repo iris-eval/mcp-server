@@ -31,6 +31,7 @@ import { StatTile } from './StatTile';
 import { SectionHeader } from './SectionHeader';
 import { RecentMomentsRow } from './RecentMomentsRow';
 import { RecentAuditRow } from './RecentAuditRow';
+import { LiveTraceTail } from './charts/LiveTraceTail';
 
 const styles = {
   view: {
@@ -103,14 +104,23 @@ export function StreamView() {
         />
       </div>
 
-      {/* §2 DECISION MOMENTS — the spine */}
+      {/* §2 LIVE TRACE TAIL — the genuine "live" surface, Stream's
+       * differentiator from Health/Drift. Tail-f-style stream of recent
+       * traces, refreshes 5s. The on-call view. */}
+      <SectionHeader
+        title="Live trace tail"
+        question="What just got logged into Iris — last 12 traces, refreshes every 5 seconds."
+      />
+      <LiveTraceTail />
+
+      {/* §3 DECISION MOMENTS — the spine */}
       <SectionHeader
         title="Significant Decision Moments"
         question="The traces that need attention right now."
       />
       <RecentMomentsRow />
 
-      {/* §3 RECENT AUDIT — minimal */}
+      {/* §4 RECENT AUDIT — minimal */}
       <SectionHeader
         title="Recent rule changes"
         question="What was deployed, deleted, or toggled lately?"

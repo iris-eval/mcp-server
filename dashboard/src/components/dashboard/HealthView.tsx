@@ -46,6 +46,7 @@ import { Donut } from './charts/Donut';
 import type { DonutSlice } from './charts/Donut';
 import { TopFailingRulesBars } from './charts/TopFailingRulesBars';
 import { BiggestMoversTable } from './charts/BiggestMoversTable';
+import { RecentMomentsRow } from './RecentMomentsRow';
 import {
   getVerdictVisual,
   getSignificanceVisual,
@@ -255,7 +256,17 @@ export function HealthView() {
         />
       </div>
 
-      {/* §3 FAILURE BREAKDOWN — verdict mix (overall) + significance mix (failure pile) */}
+      {/* §3 WHAT STOOD OUT — Decision Moments, the category-defining
+       * artifact. Without this section the dashboard reads as generic
+       * BI; surfacing significance-classified moments here makes the
+       * Iris differentiator visible from the executive view. */}
+      <SectionHeader
+        title="What stood out"
+        question="The traces classified as significant — safety violations, cost spikes, novel patterns."
+      />
+      <RecentMomentsRow />
+
+      {/* §4 FAILURE BREAKDOWN — verdict mix (overall) + significance mix (failure pile) */}
       <SectionHeader title="Failure breakdown" question="How are evals distributed and what categories are failing?" />
       <div style={styles.rowSplit2}>
         <Donut
@@ -272,7 +283,7 @@ export function HealthView() {
         />
       </div>
 
-      {/* §4 ACTIONABLE — what's broken + who's moving */}
+      {/* §5 ACTIONABLE — what's broken + who's moving */}
       <SectionHeader title="Where to act" question="Which rules failed most and which agents shifted most?" />
       <div style={styles.rowSplit2}>
         <TopFailingRulesBars

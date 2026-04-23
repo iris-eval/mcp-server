@@ -522,10 +522,20 @@ export function PassRateAreaChart({
           const m = plotMarkers.find((p) => p.id === hoverMarkerId);
           if (!m) return null;
           const left = ((scaleX!(m.ts) / W) * 100).toFixed(2) + '%';
+          /* Surface the Iris-specific provenance: when the audit entry's
+           * details carry a sourceMomentId, the deploy came via
+           * Make-This-A-Rule — closes the loop "observed moment →
+           * deployed rule → impact on pass rate" visually in the tooltip.
+           * (Server stores it in details payload, see custom-rule-store.) */
+          const single = m.entries[0];
+          const sourceMomentId = single.details?.sourceMomentId as string | undefined;
+          const fromMoment = m.entries.length === 1 && sourceMomentId
+            ? ` · via Make-This-A-Rule`
+            : '';
           return (
             <div style={{ ...styles.tooltipBox, left, top: padT + 'px' }}>
               {m.entries.length === 1
-                ? `${m.entries[0].action.replace('rule.', '')} ${m.entries[0].ruleName ?? m.entries[0].ruleId} · ${formatDayShort(m.ts)}`
+                ? `${single.action.replace('rule.', '')} ${single.ruleName ?? single.ruleId} · ${formatDayShort(m.ts)}${fromMoment}`
                 : `${m.entries.length} events · ${formatDayShort(m.ts)} (click to inspect)`}
               <Icon as={History} size={14} />
             </div>
