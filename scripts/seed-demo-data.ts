@@ -19,6 +19,7 @@ import { SqliteAdapter } from '../src/storage/sqlite-adapter.js';
 import { generateTraceId, generateSpanId, generateEvalId } from '../src/utils/ids.js';
 import type { Trace, Span } from '../src/types/trace.js';
 import type { EvalResult, EvalRuleResult, EvalType } from '../src/types/eval.js';
+import { LOCAL_TENANT } from '../src/types/tenant.js';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -1017,14 +1018,15 @@ async function seed() {
   // ---------------------------------------------------------------------------
   process.stderr.write(`\nInserting ${traces.length} traces...\n`);
 
+  // Demo data is seeded under the OSS single-tenant bucket.
   for (const trace of traces) {
-    await adapter.insertTrace(trace);
+    await adapter.insertTrace(LOCAL_TENANT, trace);
   }
   for (const span of spans) {
-    await adapter.insertSpan(span);
+    await adapter.insertSpan(LOCAL_TENANT, span);
   }
   for (const evalResult of evals) {
-    await adapter.insertEvalResult(evalResult);
+    await adapter.insertEvalResult(LOCAL_TENANT, evalResult);
   }
 
   await adapter.close();

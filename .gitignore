@@ -17,3 +17,7 @@ demo-video/
 skills-lock.json
 # Next.js build cache (website is in /website, but a stray `next build` from root leaves traces here)
 .next/
+# Playwright E2E artifacts
+playwright-report/
+test-results/
+.playwright/

@@ -21,6 +21,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration/",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "version:check": "bash scripts/check-version.sh",
     "version:sync": "node scripts/sync-versions.mjs",
     "clean": "rm -rf dist coverage",
@@ -81,6 +83,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^5.0.0",
     "@types/node": "^25.5.2",

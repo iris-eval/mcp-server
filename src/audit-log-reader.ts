@@ -20,6 +20,13 @@ const AUDIT_ACTIONS = ['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update
 
 const EntrySchema = z.object({
   ts: z.string(),
+  /*
+   * tenantId added in v0.4.0. Optional for backward compatibility:
+   * entries written by v0.3.x don't have it; readers MUST treat them
+   * as 'local' (single-tenant OSS assumption). See threat model §4.3
+   * finding TM-4 for the Cloud-side enforcement plan.
+   */
+  tenantId: z.string().optional(),
   action: z.enum(AUDIT_ACTIONS),
   user: z.string(),
   ruleId: z.string(),
