@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Shell } from './components/layout/Shell';
 import { ThemeProvider } from './components/layout/ThemeProvider';
+import { DensitySync } from './components/layout/DensitySync';
 import { CommandPaletteProvider } from './components/command/CommandPaletteProvider';
 import { PreferencesProvider } from './hooks/usePreferences';
 import { TourProvider } from './components/onboarding/TourProvider';
@@ -16,6 +17,7 @@ import { AuditPage } from './components/audit/AuditPage';
 export function App() {
   return (
     <PreferencesProvider>
+      <DensitySync />
       <ThemeProvider>
         <BrowserRouter>
           <TourProvider>

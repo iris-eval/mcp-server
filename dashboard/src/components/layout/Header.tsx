@@ -6,18 +6,15 @@
  *
  * Page title resolves from the current route via routeTitles.ts.
  * Status dot moves the "Auto-refreshing" indicator into a compact pill.
- * Notifications + Account are STUBS in v2.B (clickable but no dropdown
- * yet) — full popovers ship in v2.C.
  *
- * Theme toggle is REMOVED from the header (was in v1) per R2.5 — moves
- * to the account menu dropdown in v2.C.
+ * v2.C (2026-04-23): Notifications + Account are now real popovers.
+ * Theme toggle moved from header into AccountMenu per R2.5 spec.
  */
 import { useLocation } from 'react-router-dom';
-import { Bell } from 'lucide-react';
-import { Icon } from '../shared/Icon';
 import { Tooltip } from '../shared/Tooltip';
 import { CommandPaletteTrigger } from '../command/CommandPaletteTrigger';
-import { ThemeToggle } from './ThemeToggle';
+import { NotificationsPopover } from './NotificationsPopover';
+import { AccountMenu } from './AccountMenu';
 import { resolveRouteMeta } from './routeTitles';
 
 const styles = {
@@ -84,38 +81,6 @@ const styles = {
     alignItems: 'center',
     gap: 'var(--space-2)',
   } as const,
-  iconButton: {
-    appearance: 'none',
-    width: '32px',
-    height: '32px',
-    border: '1px solid var(--border-default)',
-    background: 'var(--bg-card)',
-    color: 'var(--text-secondary)',
-    borderRadius: 'var(--radius-sm)',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast)',
-    position: 'relative',
-  } as const,
-  accountTrigger: {
-    appearance: 'none',
-    width: '32px',
-    height: '32px',
-    border: '1px solid var(--border-default)',
-    background: 'var(--iris-950)',
-    color: 'var(--iris-300)',
-    borderRadius: '50%',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: 'var(--font-display)',
-    fontSize: 'var(--text-caption)',
-    fontWeight: 700,
-    transition: 'background-color var(--transition-fast), border-color var(--transition-fast)',
-  } as const,
 };
 
 export function Header() {
@@ -127,7 +92,7 @@ export function Header() {
       <div style={styles.titleBlock}>
         <div style={styles.titleRow}>
           <h1 style={styles.title}>{meta?.title ?? 'Iris'}</h1>
-          <Tooltip content="Auto-refreshing every 5 seconds. Pause via account menu (coming v0.4.1).">
+          <Tooltip content="Auto-refreshing. Cadence varies per view (live tail ~3s, trends ~30s).">
             <span style={styles.statusPill} aria-label="Auto-refreshing" tabIndex={0}>
               <span style={styles.statusDot} aria-hidden="true" />
               live
@@ -139,35 +104,8 @@ export function Header() {
 
       <div style={styles.rightCluster}>
         <CommandPaletteTrigger />
-
-        {/* Theme toggle temporarily in header for v2.B; moves into Account
-         * menu dropdown in v2.C per R2.5 spec. Don't remove until the
-         * account menu ships — users would lose theme control. */}
-        <ThemeToggle />
-
-        <Tooltip content="Notifications (full popover ships v2.C)">
-          <button
-            type="button"
-            style={styles.iconButton}
-            aria-label="Notifications"
-            disabled
-            title="Coming in v2.C"
-          >
-            <Icon as={Bell} size={16} />
-          </button>
-        </Tooltip>
-
-        <Tooltip content="Account menu (full dropdown ships v2.C)">
-          <button
-            type="button"
-            style={styles.accountTrigger}
-            aria-label="Account menu"
-            disabled
-            title="Coming in v2.C"
-          >
-            I
-          </button>
-        </Tooltip>
+        <NotificationsPopover />
+        <AccountMenu />
       </div>
     </header>
   );
