@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { WelcomeBanner } from './WelcomeBanner';
+import { MobileBanner } from './MobileBanner';
 import { WelcomeTour } from '../onboarding/WelcomeTour';
 import { useTour } from '../onboarding/TourProvider';
 
@@ -35,6 +36,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <main style={styles.content}>{children}</main>
       </div>
       <WelcomeTour open={tourOpen} onClose={closeTour} />
+      <MobileBanner />
     </div>
   );
 }

@@ -76,3 +76,97 @@ select:focus-visible,
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/*
+ * Reduced-motion accessibility (B8.6). When the user has set their OS
+ * preference to reduce motion, kill all animations + transitions globally.
+ * Tooltip respects this prop directly (skips the fade), but other surfaces
+ * may use CSS transitions through the tokens — disable those here.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Mobile baseline (B8.6). Below 768px, the dashboard is not designed for
+ * comfortable use — long DataTable rows would clip, the sidebar would
+ * eat the screen. The MobileBanner component renders an unobtrusive
+ * notice; we keep the dashboard usable (not broken) so a desktop user
+ * who briefly resizes their window doesn't lose their session.
+ *
+ * The banner sits at the bottom + is dismissable via localStorage.
+ */
+@media (max-width: 767px) {
+  /* Sidebar gets narrower so content has room. Below 480px we hide it
+   * behind a CSS-only menu — but for v0.4 we just compress, since
+   * mobile is explicitly out-of-scope per the banner. */
+  aside[aria-label="Main navigation"] {
+    width: 160px;
+  }
+  /* Allow horizontal overflow gracefully rather than clipping content. */
+  main {
+    overflow-x: auto;
+  }
+}
+
+/*
+ * Print-friendly layout (B8.7). Strip dashboard chrome so a printed
+ * Decision Moment, audit log, or rules list reads like a report.
+ * Uses class-free attribute selectors so we don't need to add
+ * data-print-* hooks throughout the component tree.
+ */
+@media print {
+  /* Black-on-white for ink economy. Forced colors override the OKLCH
+   * palette so dark-mode prints don't flood the page. */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  /* Hide non-content chrome: nav, sidebar, header, banners, modals,
+   * floating bars, command palette trigger, theme toggle. */
+  aside[aria-label="Main navigation"],
+  header,
+  [role="region"][aria-label="Welcome"],
+  [role="region"][aria-label="Bulk actions"],
+  [role="status"],
+  [role="dialog"] {
+    display: none !important;
+  }
+  /* Single-column content; no fixed-height container clipping print pages. */
+  body, #root, main {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  /* Ensure tables and code blocks don't break across pages mid-row. */
+  tr, pre, code {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  /* Keep significance badges legible — convert glyph circles to filled
+   * blocks since color-only differentiation may not survive grayscale. */
+  [aria-label*="violation"], [aria-label*="spike"], [aria-label*="collision"],
+  [aria-label*="Pass"], [aria-label*="Fail"] {
+    border: 1px solid black !important;
+  }
+  /* Underline links so they print as actionable references. */
+  a {
+    text-decoration: underline !important;
+    color: black !important;
+  }
+  /* Print the URL after each link so paper readers can follow. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 80%;
+    color: #555;
+  }
+}
