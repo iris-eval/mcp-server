@@ -239,12 +239,12 @@ export function PerRuleMeterGrid({
 
   return (
     <div style={styles.card} role="region" aria-label="Per-rule performance">
-      <header style={styles.header}>
+      <div style={styles.header}>
         <h3 style={styles.title}>Per-rule performance</h3>
         <span style={styles.hint}>
           {totalEvalsAcrossRules.toLocaleString()} rule firings · {periodLabel}
         </span>
-      </header>
+      </div>
 
       {totalEvalsAcrossRules === 0 ? (
         <div style={styles.empty}>

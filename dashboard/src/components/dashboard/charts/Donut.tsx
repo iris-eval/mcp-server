@@ -182,10 +182,10 @@ export function Donut({ title, slices, centerLabel = 'total', emptyMessage }: Do
     const skeletonSlices = slices.slice(0, 4);
     return (
       <div style={styles.card} role="region" aria-label={title}>
-        <header style={styles.header}>
+        <div style={styles.header}>
           <h3 style={styles.title}>{title}</h3>
           <span style={styles.total}>0 {centerLabel}</span>
-        </header>
+        </div>
         <div style={styles.body}>
           <svg viewBox="-80 -80 160 160" style={styles.svg} aria-hidden="true">
             <circle cx="0" cy="0" r="59" fill="none" stroke="var(--bg-surface)" strokeWidth="26" />
@@ -196,11 +196,11 @@ export function Donut({ title, slices, centerLabel = 'total', emptyMessage }: Do
               {centerLabel}
             </text>
           </svg>
-          <ul style={styles.legend} role="list" aria-hidden="true">
+          <ul style={styles.legend} aria-hidden="true">
             {skeletonSlices.map((s) => (
               <li
                 key={s.id}
-                style={{ ...styles.legendRow, ...styles.legendRowStatic, opacity: 0.32 }}
+                style={{ ...styles.legendRow, ...styles.legendRowStatic, opacity: 0.32, listStyle: 'none' }}
               >
                 <span style={{ ...styles.swatch, background: s.color }} />
                 <span style={styles.legendLabel}>{s.label}</span>
@@ -224,10 +224,10 @@ export function Donut({ title, slices, centerLabel = 'total', emptyMessage }: Do
 
   return (
     <div style={styles.card} role="region" aria-label={title}>
-      <header style={styles.header}>
+      <div style={styles.header}>
         <h3 style={styles.title}>{title}</h3>
         <span style={styles.total}>{total.toLocaleString()} {centerLabel}</span>
-      </header>
+      </div>
       <div style={styles.body}>
         <svg viewBox="-80 -80 160 160" style={styles.svg} role="img" aria-label={`${title} donut chart`}>
           {arcs.map(({ slice, d }) => {
@@ -249,36 +249,49 @@ export function Donut({ title, slices, centerLabel = 'total', emptyMessage }: Do
             {centerLabel}
           </text>
         </svg>
-        <ul style={styles.legend} role="list">
+        <ul style={styles.legend}>
           {slices
             .filter((s) => s.value > 0)
             .map((slice) => {
               const pct = Math.round((slice.value / total) * 100);
               const interactive = Boolean(slice.href);
-              const Row: React.ElementType = interactive ? Link : 'div';
-              const rowProps = interactive
-                ? { to: slice.href!, role: 'listitem', 'aria-label': `${slice.label}: ${slice.value} (${pct}%) — drill into moments` }
-                : { role: 'listitem' };
               return (
-                <Row
-                  key={slice.id}
-                  {...rowProps}
-                  style={{
-                    ...styles.legendRow,
-                    ...(interactive ? {} : styles.legendRowStatic),
-                    background: hoverId === slice.id ? 'var(--bg-surface)' : 'transparent',
-                  }}
-                  onMouseEnter={() => setHoverId(slice.id)}
-                  onMouseLeave={() => setHoverId(null)}
-                  onFocus={() => setHoverId(slice.id)}
-                  onBlur={() => setHoverId(null)}
-                >
-                  <span style={{ ...styles.swatch, background: slice.color }} aria-hidden="true" />
-                  <span style={styles.legendLabel}>{slice.label}</span>
-                  <span style={styles.legendValue}>
-                    {slice.value.toLocaleString()} · {pct}%
-                  </span>
-                </Row>
+                <li key={slice.id} style={{ listStyle: 'none' }}>
+                  {interactive ? (
+                    <Link
+                      to={slice.href!}
+                      aria-label={`${slice.label}: ${slice.value} (${pct}%) — drill into moments`}
+                      style={{
+                        ...styles.legendRow,
+                        background: hoverId === slice.id ? 'var(--bg-surface)' : 'transparent',
+                      }}
+                      onMouseEnter={() => setHoverId(slice.id)}
+                      onMouseLeave={() => setHoverId(null)}
+                      onFocus={() => setHoverId(slice.id)}
+                      onBlur={() => setHoverId(null)}
+                    >
+                      <span style={{ ...styles.swatch, background: slice.color }} aria-hidden="true" />
+                      <span style={styles.legendLabel}>{slice.label}</span>
+                      <span style={styles.legendValue}>
+                        {slice.value.toLocaleString()} · {pct}%
+                      </span>
+                    </Link>
+                  ) : (
+                    <div
+                      style={{
+                        ...styles.legendRow,
+                        ...styles.legendRowStatic,
+                        background: hoverId === slice.id ? 'var(--bg-surface)' : 'transparent',
+                      }}
+                    >
+                      <span style={{ ...styles.swatch, background: slice.color }} aria-hidden="true" />
+                      <span style={styles.legendLabel}>{slice.label}</span>
+                      <span style={styles.legendValue}>
+                        {slice.value.toLocaleString()} · {pct}%
+                      </span>
+                    </div>
+                  )}
+                </li>
               );
             })}
         </ul>

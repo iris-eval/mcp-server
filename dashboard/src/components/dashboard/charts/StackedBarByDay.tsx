@@ -137,9 +137,9 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
   if (totalAcrossPeriod === 0) {
     return (
       <div style={styles.card} role="region" aria-label="Verdicts per day">
-        <header style={styles.header}>
+        <div style={styles.header}>
           <h3 style={styles.title}>Verdicts per day · {periodLabel}</h3>
-        </header>
+        </div>
         <div style={styles.empty}>
           No Decision Moments yet in this window. Once agents run, daily verdict mix appears here.
         </div>
@@ -149,7 +149,7 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
 
   return (
     <div style={styles.card} role="region" aria-label="Verdicts per day">
-      <header style={styles.header}>
+      <div style={styles.header}>
         <h3 style={styles.title}>Verdicts per day · {periodLabel}</h3>
         <div style={styles.legend}>
           {VERDICT_ORDER.map((v) => (
@@ -159,7 +159,7 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
             </span>
           ))}
         </div>
-      </header>
+      </div>
 
       <svg
         viewBox={`0 0 ${W} ${H}`}

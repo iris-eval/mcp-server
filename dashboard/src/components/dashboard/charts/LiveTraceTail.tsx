@@ -142,7 +142,7 @@ export function LiveTraceTail() {
 
   return (
     <div style={styles.card} role="region" aria-label="Live trace tail">
-      <header style={styles.header}>
+      <div style={styles.header}>
         <span style={styles.titleRow}>
           <Icon as={Activity} size={14} />
           Live trace tail
@@ -156,7 +156,7 @@ export function LiveTraceTail() {
         <Link to="/traces" style={styles.link}>
           All traces <Icon as={ChevronRight} size={14} />
         </Link>
-      </header>
+      </div>
 
       {loading && traces.length === 0 && (
         <div style={styles.emptyMsg}>Loading…</div>

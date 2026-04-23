@@ -216,13 +216,13 @@ export function BiggestMoversTable({
 
   return (
     <div style={styles.card} role="region" aria-label="Biggest movers">
-      <header style={styles.header}>
+      <div style={styles.header}>
         <h3 style={styles.title}>
           <Icon as={Users} size={14} />
           Biggest movers
         </h3>
         <span style={styles.hint}>vs prior {periodLabel}</span>
-      </header>
+      </div>
       <div style={styles.list}>
         {movers.length === 0 && (
           <>

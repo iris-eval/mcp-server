@@ -154,10 +154,10 @@ export function HorizontalBarChart({
 
   return (
     <div style={styles.card} role="region" aria-label={title}>
-      <header style={styles.header}>
+      <div style={styles.header}>
         <h3 style={styles.title}>{title}</h3>
         {hint && <span style={styles.hint}>{hint}</span>}
-      </header>
+      </div>
 
       {sorted.length === 0 && (
         <>

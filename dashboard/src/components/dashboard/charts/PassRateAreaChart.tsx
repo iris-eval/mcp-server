@@ -294,7 +294,7 @@ export function PassRateAreaChart({
       'M 36 60 C 100 70, 160 50, 230 56 C 300 62, 360 38, 430 44 C 500 50, 560 70, 630 60 C 680 54, 700 56, 704 58';
     return (
       <div style={styles.card} role="region" aria-label={title}>
-        <header style={styles.header}>
+        <div style={styles.header}>
           <h3 style={styles.title}>{title} · {periodLabel}</h3>
           <div style={styles.legend}>
             <span style={styles.legendItem}>
@@ -302,7 +302,7 @@ export function PassRateAreaChart({
               awaiting trend data
             </span>
           </div>
-        </header>
+        </div>
         <div style={{ position: 'relative', width: '100%' }}>
           <svg
             viewBox={`0 0 ${W} ${H}`}
@@ -362,7 +362,7 @@ export function PassRateAreaChart({
 
   return (
     <div style={styles.card} role="region" aria-label={title}>
-      <header style={styles.header}>
+      <div style={styles.header}>
         <h3 style={styles.title}>{title} · {periodLabel}</h3>
         <div style={styles.legend}>
           <span style={styles.legendItem}>
@@ -385,7 +385,7 @@ export function PassRateAreaChart({
           </span>
           <span style={styles.legendItem}>{totalEvalsAcrossPeriod.toLocaleString()} evals</span>
         </div>
-      </header>
+      </div>
 
       <div style={{ position: 'relative', width: '100%' }}>
         <svg
