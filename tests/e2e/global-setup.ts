@@ -121,24 +121,32 @@ export default async function globalSetup(): Promise<void> {
     await adapter.close();
   }
 
-  // 5. Reset preferences so the Welcome Tour doesn't auto-open during
-  //    tests (it's a modal that blocks clicks on the rest of the UI).
-  //    The prefs file lives at ~/.iris/preferences.json by default; we
-  //    pre-mark the tour as dismissed so AuthProvider's first-visit
-  //    check skips it.
-  const prefsFile = join(homedir(), '.iris', 'preferences.json');
-  const prefsDir = dirname(prefsFile);
-  if (!existsSync(prefsDir)) mkdirSync(prefsDir, { recursive: true });
-  writeFileSync(
-    prefsFile,
-    JSON.stringify({
+  // 5. Reset preferences via the live API so the Welcome Tour doesn't
+  //    auto-open during tests (it's an aria-modal dialog that blocks
+  //    pointer events on every element behind it).
+  //
+  //    IMPORTANT: a raw writeFileSync to ~/.iris/preferences.json does
+  //    NOT work. The iris-mcp server loads preferences into memory once
+  //    on boot (src/preferences.ts createPreferenceStore), and only
+  //    PATCH /api/v1/preferences updates both the memory cache and the
+  //    disk file. A file write after server boot is invisible to GET
+  //    requests from the dashboard — the tour then shows and blocks all
+  //    click-based tests.
+  const patchRes = await fetch(`${E2E_BASE_URL}/api/v1/preferences`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       autoLaunch: false,
-      firstSeen: new Date().toISOString(),
       dismissedTours: ['tour-welcome'],
       archivedMoments: [],
       momentFilters: {},
     }),
-  );
+  });
+  if (!patchRes.ok) {
+    throw new Error(
+      `globalSetup preferences PATCH failed: ${patchRes.status} ${patchRes.statusText}`,
+    );
+  }
 
   // 6. Seed one audit entry so PassRateAreaChart renders an annotation.
   //    The audit log writer uses the real ~/.iris/audit.log path (we
