@@ -15,11 +15,15 @@
  *   - loading: skeleton cards
  *   - error: retry button
  */
-import { useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMoments, useFilters } from '../../api/hooks';
 import { usePreferences } from '../../hooks/usePreferences';
+import { api } from '../../api/client';
+import type { DecisionMoment, DecisionMomentDetail } from '../../api/types';
 import { MomentCard } from './MomentCard';
+import { BulkActionsBar } from './BulkActionsBar';
+import { MakeRuleModal } from './MakeRuleModal';
 import {
   SIGNIFICANCE_KIND_OPTIONS,
   VERDICT_OPTIONS,
@@ -275,6 +279,99 @@ export function MomentsTimelinePage() {
     patch({ momentFilters: {} }).catch(() => undefined);
   };
 
+  // ── B8.5: bulk selection + archive + rule-from-selection ────────────
+  const navigate = useNavigate();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
+  const [composerForBulk, setComposerForBulk] = useState<DecisionMomentDetail | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const archivedSet = useMemo(
+    () => new Set(preferences?.archivedMoments ?? []),
+    [preferences],
+  );
+
+  const visibleMoments = useMemo<DecisionMoment[]>(() => {
+    const all = data?.moments ?? [];
+    return showArchived ? all : all.filter((m) => !archivedSet.has(m.id));
+  }, [data, archivedSet, showArchived]);
+
+  const selectedMoments = useMemo(
+    () => visibleMoments.filter((m) => selectedIds.has(m.id)),
+    [visibleMoments, selectedIds],
+  );
+
+  const allSelectedAreArchived = useMemo(
+    () => selectedMoments.length > 0 && selectedMoments.every((m) => archivedSet.has(m.id)),
+    [selectedMoments, archivedSet],
+  );
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const onArchiveSelected = async () => {
+    if (!preferences) return;
+    const next = Array.from(new Set([...preferences.archivedMoments, ...selectedIds]));
+    try {
+      await patch({ archivedMoments: next });
+      clearSelection();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[Iris] archive failed', err);
+    }
+  };
+
+  const onUnarchiveSelected = async () => {
+    if (!preferences) return;
+    const next = preferences.archivedMoments.filter((id) => !selectedIds.has(id));
+    try {
+      await patch({ archivedMoments: next });
+      clearSelection();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[Iris] unarchive failed', err);
+    }
+  };
+
+  const onMakeRuleFromSelection = async () => {
+    if (selectedMoments.length === 0) return;
+    setBulkLoading(true);
+    try {
+      // Fetch the first selected moment's full detail (composer needs eval results).
+      // Compose a multi-moment description noting how many other moments share the
+      // pattern. Full multi-moment composer (deduping rule chips, intersect failed
+      // sets) is queued for v0.4.1.
+      const first = selectedMoments[0];
+      const detail = await api.getMomentDetail(first.id);
+      const annotated: DecisionMomentDetail = {
+        ...detail,
+        significance: {
+          ...detail.significance,
+          reason:
+            selectedMoments.length === 1
+              ? detail.significance.reason
+              : `${detail.significance.reason} (Pattern observed across ${selectedMoments.length} selected moments — failed-rule snapshots: ${selectedMoments
+                  .map((m) => m.ruleSnapshot.failed.join(',') || '∅')
+                  .join(' · ')})`,
+        },
+      };
+      setComposerForBulk(annotated);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[Iris] could not load moment for bulk-compose', err);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const hasActiveFilters =
     Boolean(searchParams.get('agent')) ||
     Boolean(searchParams.get('verdict')) ||
@@ -340,6 +437,27 @@ export function MomentsTimelinePage() {
             Clear
           </button>
         )}
+        {(preferences?.archivedMoments?.length ?? 0) > 0 && (
+          <label
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--space-1)',
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)' }}
+            />
+            Show archived ({preferences?.archivedMoments?.length ?? 0})
+          </label>
+        )}
         <span style={{ marginLeft: 'auto' }} />
         <div style={styles.legend} aria-label="Significance legend">
           {LEGEND_KINDS.map((kind) => {
@@ -390,12 +508,50 @@ export function MomentsTimelinePage() {
         </div>
       )}
 
-      {data && data.moments.length > 0 && (
+      {data && visibleMoments.length === 0 && data.moments.length > 0 && !hasActiveFilters && (
+        <div style={styles.empty}>
+          <h2 style={styles.emptyTitle}>All moments archived</h2>
+          <p>
+            Toggle "Show archived" above to see them, or run new agents through Iris.
+          </p>
+        </div>
+      )}
+
+      {data && visibleMoments.length > 0 && (
         <div style={styles.list}>
-          {data.moments.map((m) => (
-            <MomentCard key={m.id} moment={m} />
+          {visibleMoments.map((m) => (
+            <MomentCard
+              key={m.id}
+              moment={m}
+              archived={archivedSet.has(m.id)}
+              selected={selectedIds.has(m.id)}
+              onToggleSelected={toggleSelected}
+            />
           ))}
         </div>
+      )}
+
+      <BulkActionsBar
+        selectedMoments={selectedMoments}
+        allArchived={allSelectedAreArchived}
+        onArchive={onArchiveSelected}
+        onUnarchive={onUnarchiveSelected}
+        onMakeRule={() => {
+          if (!bulkLoading) onMakeRuleFromSelection();
+        }}
+        onClear={clearSelection}
+      />
+
+      {composerForBulk && (
+        <MakeRuleModal
+          moment={composerForBulk}
+          onClose={() => setComposerForBulk(null)}
+          onDeployed={() => {
+            clearSelection();
+            // Navigate to /rules so user sees the deployed rule
+            navigate('/rules');
+          }}
+        />
       )}
     </div>
   );

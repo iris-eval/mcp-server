@@ -27,16 +27,35 @@ const SIG_TOOLTIP: Record<string, string> = {
 const styles = {
   card: {
     display: 'grid',
-    gridTemplateColumns: '48px 1fr auto',
-    gap: 'var(--space-4)',
+    gridTemplateColumns: '24px 48px 1fr auto',
+    gap: 'var(--space-3)',
     background: 'var(--bg-secondary)',
     border: '1px solid var(--border-color)',
     borderLeft: '3px solid transparent',
     borderRadius: 'var(--border-radius-lg)',
     padding: 'var(--space-4)',
-    textDecoration: 'none',
     color: 'var(--text-primary)',
     transition: 'var(--transition-fast)',
+    alignItems: 'start',
+  } as const,
+  cardArchived: {
+    opacity: 0.5,
+  } as const,
+  cardSelected: {
+    background: 'var(--bg-hover)',
+    borderColor: 'var(--accent-primary)',
+  } as const,
+  checkboxWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: '4px',
+  } as const,
+  checkbox: {
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    accentColor: 'var(--accent-primary)',
   } as const,
   rail: {
     display: 'flex',
@@ -62,6 +81,14 @@ const styles = {
     gap: 'var(--space-2)',
     minWidth: 0,
   } as const,
+  bodyLink: {
+    textDecoration: 'none',
+    color: 'inherit',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-2)',
+    minWidth: 0,
+  } as const,
   headerRow: {
     display: 'flex',
     alignItems: 'center',
@@ -81,6 +108,15 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  } as const,
+  archivedTag: {
+    fontSize: 'var(--font-size-xs)',
+    fontFamily: 'var(--font-mono)',
+    color: 'var(--text-muted)',
+    background: 'var(--bg-tertiary)',
+    border: '1px solid var(--border-color)',
+    padding: '0 var(--space-2)',
+    borderRadius: 'var(--border-radius-sm)',
   } as const,
   outputPreview: {
     fontSize: 'var(--font-size-xs)',
@@ -120,17 +156,42 @@ const styles = {
   } as const,
 };
 
-export function MomentCard({ moment }: { moment: DecisionMoment }) {
+interface Props {
+  moment: DecisionMoment;
+  /** True when the moment is in preferences.archivedMoments. Renders dimmed + tagged. */
+  archived?: boolean;
+  /** Selection state (B8.5). Undefined = not selectable; boolean = selectable. */
+  selected?: boolean;
+  onToggleSelected?: (id: string) => void;
+}
+
+export function MomentCard({ moment, archived = false, selected, onToggleSelected }: Props) {
   const sig = getSignificanceVisual(moment.significance.kind);
   const verdict = getVerdictVisual(moment.verdict);
   const outputPreview = moment.output?.slice(0, 140) ?? '';
+  const selectable = onToggleSelected !== undefined;
+
+  const cardStyle = {
+    ...styles.card,
+    borderLeftColor: sig.color,
+    ...(archived ? styles.cardArchived : {}),
+    ...(selected ? styles.cardSelected : {}),
+  };
 
   return (
-    <Link
-      to={`/moments/${moment.id}`}
-      style={{ ...styles.card, borderLeftColor: sig.color }}
-      title={moment.significance.reason}
-    >
+    <div style={cardStyle} title={moment.significance.reason}>
+      <div style={styles.checkboxWrap}>
+        {selectable && (
+          <input
+            type="checkbox"
+            style={styles.checkbox}
+            checked={Boolean(selected)}
+            onChange={() => onToggleSelected!(moment.id)}
+            aria-label={`Select moment ${moment.id.slice(0, 12)}`}
+          />
+        )}
+      </div>
+
       <div style={styles.rail}>
         <Tooltip content={SIG_TOOLTIP[moment.significance.kind] ?? sig.name}>
           <span
@@ -143,7 +204,7 @@ export function MomentCard({ moment }: { moment: DecisionMoment }) {
         </Tooltip>
       </div>
 
-      <div style={styles.body}>
+      <Link to={`/moments/${moment.id}`} style={styles.bodyLink}>
         <div style={styles.headerRow}>
           <span style={styles.agent}>{moment.agentName}</span>
           <Tooltip content={VERDICT_TOOLTIP[verdict.label] ?? ''}>
@@ -152,6 +213,7 @@ export function MomentCard({ moment }: { moment: DecisionMoment }) {
             </span>
           </Tooltip>
           <span style={styles.significanceLabel}>· {moment.significance.label}</span>
+          {archived && <span style={styles.archivedTag}>archived</span>}
         </div>
         {moment.ruleSnapshot.failed.length > 0 && (
           <div style={styles.ruleChips}>
@@ -169,7 +231,7 @@ export function MomentCard({ moment }: { moment: DecisionMoment }) {
             {moment.output && moment.output.length > 140 ? '…' : ''}
           </div>
         )}
-      </div>
+      </Link>
 
       <div style={styles.meta}>
         <span>{formatTimeAgo(moment.timestamp)}</span>
@@ -190,6 +252,6 @@ export function MomentCard({ moment }: { moment: DecisionMoment }) {
           </span>
         </Tooltip>
       </div>
-    </Link>
+    </div>
   );
 }
