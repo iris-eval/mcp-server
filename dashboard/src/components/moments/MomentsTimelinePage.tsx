@@ -205,13 +205,28 @@ export function MomentsTimelinePage() {
       return;
     }
     const persisted = preferences.momentFilters;
+    /* Don't silently restore the lowest-signal kinds — `normal-pass` and
+     * `normal-fail` together account for ~95% of activity in a healthy
+     * fleet, which means restoring either one as a kind filter would hide
+     * almost everything significant. We saw this in deep-walk: a stale
+     * `kind=normal-pass` from an exploratory click persisted and made
+     * /moments look mostly empty on every subsequent visit.
+     *
+     * Other persisted filters (verdict, agent, and the high-signal
+     * significance kinds — safety-violation/cost-spike/rule-collision/
+     * first-failure/novel-pattern) are almost always intentional and
+     * still restore. */
+    const lowSignalKinds = new Set(['normal-pass', 'normal-fail']);
+    const safeKind = persisted.significanceKind && !lowSignalKinds.has(persisted.significanceKind)
+      ? persisted.significanceKind
+      : undefined;
     const hasPersisted =
-      Boolean(persisted.agentName) || Boolean(persisted.verdict) || Boolean(persisted.significanceKind);
+      Boolean(persisted.agentName) || Boolean(persisted.verdict) || Boolean(safeKind);
     if (hasPersisted) {
       const next = new URLSearchParams();
       if (persisted.agentName) next.set('agent', persisted.agentName);
       if (persisted.verdict) next.set('verdict', persisted.verdict);
-      if (persisted.significanceKind) next.set('kind', persisted.significanceKind);
+      if (safeKind) next.set('kind', safeKind);
       setSearchParams(next, { replace: true });
     }
     hydratedFromPrefs.current = true;
