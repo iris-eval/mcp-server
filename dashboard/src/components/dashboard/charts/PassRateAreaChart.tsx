@@ -135,6 +135,31 @@ const styles = {
     gap: '6px',
     flexShrink: 0,
   } as const,
+  /*
+   * Visually-hidden text alternatives surface the SVG's information
+   * to screen-reader + keyboard users WITHOUT affecting the sighted
+   * visual. Standard "sr-only" technique: zero-size offscreen absolutely
+   * positioned element that is still reachable by AT.
+   *
+   * This is the a11y fallback path — the SVG markers stay decorative
+   * for sighted users, the hidden list carries the Links for AT users.
+   * That resolves the #4a nested-interactive waiver cleanly: no
+   * interactive elements live inside the SVG anymore.
+   */
+  srOnly: {
+    position: 'absolute' as const,
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap' as const,
+    border: 0,
+  },
+  srOnlyListItem: {
+    listStyle: 'none' as const,
+  },
 };
 
 interface MergedMarker {
@@ -197,7 +222,7 @@ export function PassRateAreaChart({
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
-  const { areaPath, linePath, scaleX, ticksX, ticksY, plotMarkers, totalEvalsAcrossPeriod, targetLineY, yFloor } = useMemo(() => {
+  const { areaPath, linePath, scaleX, ticksX, ticksY, plotMarkers, totalEvalsAcrossPeriod, targetLineY, yFloor, chartSummary } = useMemo(() => {
     if (!hasData) {
       return {
         areaPath: '',
@@ -209,6 +234,7 @@ export function PassRateAreaChart({
         totalEvalsAcrossPeriod: 0,
         targetLineY: null as number | null,
         yFloor: 0,
+        chartSummary: '',
       };
     }
     const points = trend!.map((p) => ({
@@ -264,6 +290,22 @@ export function PassRateAreaChart({
     /* 90% reference line — on-canvas only when the floor is below 0.9. */
     const targetLine = yFloorComputed < 0.9 ? y(0.9) : null;
 
+    /*
+     * chartSummary feeds the SVG <desc> element — screen readers read
+     * this when the user focuses/explores the chart. Concrete data
+     * values ("pass rate moved from X% to Y%") beat a generic label
+     * like "pass rate chart" for WCAG SC 1.1.1 (non-text content).
+     */
+    const firstPct = Math.round(points[0].passRate * 100);
+    const lastPct = Math.round(points[points.length - 1].passRate * 100);
+    const minPct = Math.round(Math.min(...points.map((p) => p.passRate)) * 100);
+    const maxPct = Math.round(Math.max(...points.map((p) => p.passRate)) * 100);
+    const totalEvals = points.reduce((acc, p) => acc + p.total, 0);
+    const summary =
+      `Pass rate over ${periodLabel}: started at ${firstPct}%, ended at ${lastPct}%, ` +
+      `ranged ${minPct}%–${maxPct}% across ${points.length} buckets (${totalEvals} evals). ` +
+      `${clusters.length} audit annotation${clusters.length === 1 ? '' : 's'} in this window.`;
+
     return {
       areaPath: areaGen(points) ?? '',
       linePath: lineGen(points) ?? '',
@@ -271,11 +313,12 @@ export function PassRateAreaChart({
       ticksX: xTicks,
       ticksY: yTicks,
       plotMarkers: clusters,
-      totalEvalsAcrossPeriod: points.reduce((acc, p) => acc + p.total, 0),
+      totalEvalsAcrossPeriod: totalEvals,
       targetLineY: targetLine,
       yFloor: yFloorComputed,
+      chartSummary: summary,
     };
-  }, [trend, auditEntries, hasData, innerW, innerH]);
+  }, [trend, auditEntries, hasData, innerW, innerH, periodLabel]);
 
   if (!hasData) {
     /* Skeleton empty state: render the chart shape at low opacity so the
@@ -394,6 +437,11 @@ export function PassRateAreaChart({
           role="img"
           aria-label={`${title} ${periodLabel} area chart`}
         >
+          {/* desc provides the text equivalent per WCAG SC 1.1.1 so
+           * screen-reader users get the actual data values, not just
+           * "area chart — image". Paired with the hidden ol of audit
+           * markers below the SVG for drill-through access. */}
+          <desc>{chartSummary}</desc>
           <defs>
             <linearGradient id="paArea" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--iris-500)" stopOpacity="0.45" />
@@ -462,7 +510,18 @@ export function PassRateAreaChart({
           <path d={areaPath} fill="url(#paArea)" />
           <path d={linePath} fill="none" stroke="var(--iris-400)" strokeWidth={1.75} />
 
-          {/* Audit annotations — vertical ticks + glyphs */}
+          {/*
+           * Audit annotations — vertical ticks + glyphs. DECORATIVE: the
+           * SVG elements are aria-hidden; the keyboard/screen-reader path
+           * is the sr-only <ol> rendered after the SVG below. Sighted
+           * mouse users still see and hover the markers; the clickable
+           * area is the per-marker <Link> in the hidden list (which mouse
+           * users reach via the list if they ever tab into it, but
+           * typically via the existing tooltip hover).
+           *
+           * This arrangement retires the #4a nested-interactive waiver:
+           * no interactive elements live inside the SVG.
+           */}
           {plotMarkers.map((marker) => {
             const x = scaleX!(marker.ts);
             const isCluster = marker.entries.length > 1;
@@ -472,23 +531,12 @@ export function PassRateAreaChart({
             const color = dominantAction === 'rule.delete' ? 'var(--eval-fail)' : 'var(--eval-warn)';
             const isUp = dominantAction === 'rule.deploy';
             const glyph = isUp ? 'M -5 4 L 5 4 L 0 -5 Z' : 'M -5 -5 L 5 -5 L 0 4 Z';
-            const focusEntry = marker.entries[0];
-            const href = drillToAudit({
-              focus: `${focusEntry.ts}:${focusEntry.ruleId}`,
-            });
-            const ariaLabel = isCluster
-              ? `${marker.entries.length} audit events around ${formatDayShort(marker.ts)}`
-              : `${focusEntry.action.replace('rule.', '')} ${focusEntry.ruleName ?? focusEntry.ruleId} at ${formatDayShort(marker.ts)}`;
             return (
-              <Link
+              <g
                 key={marker.id}
-                to={href}
-                aria-label={ariaLabel}
-                style={styles.markerLink}
+                aria-hidden="true"
                 onMouseEnter={() => setHoverMarkerId(marker.id)}
                 onMouseLeave={() => setHoverMarkerId(null)}
-                onFocus={() => setHoverMarkerId(marker.id)}
-                onBlur={() => setHoverMarkerId(null)}
               >
                 <line
                   x1={x}
@@ -512,10 +560,36 @@ export function PassRateAreaChart({
                     </text>
                   )}
                 </g>
-              </Link>
+              </g>
             );
           })}
         </svg>
+
+        {/*
+         * Screen-reader / keyboard access path: a visually-hidden list
+         * of every annotation in the chart window, as semantic Links.
+         * Populated state only — the empty-state affordance tip below
+         * covers the "no audit events yet" narrative for both paths.
+         */}
+        {plotMarkers.length > 0 && (
+          <ol style={styles.srOnly as React.CSSProperties} aria-label="Audit events in view">
+            {plotMarkers.map((marker) => {
+              const isCluster = marker.entries.length > 1;
+              const focusEntry = marker.entries[0];
+              const href = drillToAudit({
+                focus: `${focusEntry.ts}:${focusEntry.ruleId}`,
+              });
+              const label = isCluster
+                ? `${marker.entries.length} audit events around ${formatDayShort(marker.ts)}`
+                : `${focusEntry.action.replace('rule.', '')} ${focusEntry.ruleName ?? focusEntry.ruleId} at ${formatDayShort(marker.ts)}`;
+              return (
+                <li key={marker.id} style={styles.srOnlyListItem}>
+                  <Link to={href}>{label}</Link>
+                </li>
+              );
+            })}
+          </ol>
+        )}
 
         {/* Hover tooltip — DOM overlay so it can carry rich text */}
         {hoverMarkerId && (() => {

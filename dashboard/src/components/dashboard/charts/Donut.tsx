@@ -230,6 +230,17 @@ export function Donut({ title, slices, centerLabel = 'total', emptyMessage }: Do
       </div>
       <div style={styles.body}>
         <svg viewBox="-80 -80 160 160" style={styles.svg} role="img" aria-label={`${title} donut chart`}>
+          {/* desc gives the text equivalent for screen-reader users;
+           * the visible legend ul provides keyboard drill-through Links
+           * per slice. */}
+          <desc>
+            {title}: {total.toLocaleString()} {centerLabel}.{' '}
+            {slices
+              .filter((s) => s.value > 0)
+              .map((s) => `${s.label} ${Math.round((s.value / total) * 100)}% (${s.value.toLocaleString()})`)
+              .join(', ')}
+            .
+          </desc>
           {arcs.map(({ slice, d }) => {
             const isHover = hoverId === slice.id;
             return (

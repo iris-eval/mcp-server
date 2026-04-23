@@ -216,6 +216,14 @@ export function PassRateGauge({
         role="img"
         aria-label={`Pass rate ${pct} percent, threshold ${accent.label}`}
       >
+        <desc>
+          Pass rate gauge for {periodLabel}: {pct}% ({accent.label} threshold)
+          {totalEvals !== undefined ? `, from ${totalEvals.toLocaleString()} evals` : ''}
+          {agentCount !== undefined ? ` across ${agentCount} agents` : ''}
+          {delta !== undefined && !Number.isNaN(delta)
+            ? `. Change vs prior ${periodLabel}: ${delta >= 0 ? '+' : ''}${Math.round(delta * 100)} points.`
+            : '.'}
+        </desc>
         <path
           d={trackPath}
           fill="none"

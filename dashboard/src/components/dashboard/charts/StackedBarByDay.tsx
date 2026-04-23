@@ -10,7 +10,7 @@
  * Click a segment → also filters by verdict.
  */
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { utcDay } from 'd3-time';
 import { utcFormat } from 'd3-time-format';
 import { drillToMoments } from '../../../utils/drillThrough';
@@ -82,6 +82,20 @@ const styles = {
     textAlign: 'center',
     padding: 'var(--space-6)',
   } as const,
+  /* Visually-hidden list used as the keyboard/screen-reader access
+   * path for per-day drill-through. Same "sr-only" technique used in
+   * PassRateAreaChart. Mouse users continue to click the SVG bars. */
+  srOnly: {
+    position: 'absolute' as const,
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap' as const,
+    border: 0,
+  },
 };
 
 const VERDICT_ORDER: MomentVerdict[] = ['pass', 'partial', 'fail', 'unevaluated'];
@@ -134,6 +148,18 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
 
   const totalAcrossPeriod = buckets.reduce((acc, b) => acc + b.total, 0);
 
+  /*
+   * Data summary for the SVG <desc>. Screen readers announce this when
+   * the user explores the chart. Concrete numbers beat a generic label.
+   */
+  const totals = buckets.reduce(
+    (acc, b) => ({ pass: acc.pass + b.pass, partial: acc.partial + b.partial, fail: acc.fail + b.fail, unevaluated: acc.unevaluated + b.unevaluated }),
+    { pass: 0, partial: 0, fail: 0, unevaluated: 0 },
+  );
+  const chartSummary =
+    `Verdicts per day across ${days} days (${totalAcrossPeriod} moments total): ` +
+    `${totals.pass} pass, ${totals.partial} partial, ${totals.fail} fail, ${totals.unevaluated} unevaluated.`;
+
   if (totalAcrossPeriod === 0) {
     return (
       <div style={styles.card} role="region" aria-label="Verdicts per day">
@@ -167,6 +193,11 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
         role="img"
         aria-label={`Verdicts per day for ${periodLabel}`}
       >
+        {/* desc provides the text equivalent per WCAG SC 1.1.1. The
+         * keyboard/screen-reader drill-through path is the visually-
+         * hidden <ol> of per-day Links below the SVG. */}
+        <desc>{chartSummary}</desc>
+
         {/* Y gridlines + labels — 0, half, max */}
         {[0, 0.5, 1].map((frac) => {
           const y = padT + innerH - frac * innerH;
@@ -205,24 +236,14 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
           return (
             <g
               key={b.day.getTime()}
+              aria-hidden="true"
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx(null)}
               style={{ cursor: 'pointer' }}
-              role="button"
-              tabIndex={0}
-              aria-label={`${formatDayShort(b.day)}: ${b.total} moments — pass ${b.pass}, partial ${b.partial}, fail ${b.fail}, unevaluated ${b.unevaluated}`}
               onClick={() => {
                 const dayStart = b.day.toISOString();
                 const dayEnd = utcDay.offset(b.day, 1).toISOString();
                 navigate(drillToMoments({ since: dayStart, until: dayEnd }));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  const dayStart = b.day.toISOString();
-                  const dayEnd = utcDay.offset(b.day, 1).toISOString();
-                  navigate(drillToMoments({ since: dayStart, until: dayEnd }));
-                }
               }}
             >
               {/* Slot background highlight on hover */}
@@ -259,6 +280,22 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
           );
         })}
       </svg>
+
+      {/* Keyboard/screen-reader path — Links for each day carrying the
+       * same drill-through destinations the SVG bars navigate to. */}
+      <ol style={styles.srOnly as React.CSSProperties} aria-label="Per-day drill-through">
+        {buckets.map((b) => {
+          const dayStart = b.day.toISOString();
+          const dayEnd = utcDay.offset(b.day, 1).toISOString();
+          return (
+            <li key={b.day.getTime()} style={{ listStyle: 'none' }}>
+              <Link to={drillToMoments({ since: dayStart, until: dayEnd })}>
+                {formatDayShort(b.day)}: {b.total} moments — pass {b.pass}, partial {b.partial}, fail {b.fail}, unevaluated {b.unevaluated}
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

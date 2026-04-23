@@ -40,27 +40,20 @@ import type { DecisionMoment, EvalTrendPoint, AuditLogEntry } from '../../src/ap
  * produces a vitest diff listing every WCAG violation axe found —
  * which is exactly the signal we want when the gate fires.
  *
- * Known exceptions (rule-disabled tests below):
- *   - `nested-interactive` on charts with per-datum interactive markers
- *     (PassRateAreaChart audit markers, StackedBarByDay per-day bars).
- *     The visual SVG interactivity is a progressive enhancement —
- *     full keyboard/screen-reader a11y of these drill-throughs lands
- *     in audit item #4b (chart text alternatives: hidden <desc> + table
- *     fallback). When #4b ships we remove the disableRules overrides
- *     here and the gate fires on regressions.
+ * Every chart below asserts strict axe compliance — the nested-interactive
+ * waivers from the #4a scaffolding have been retired. Per #4b, SVG
+ * charts with per-datum interactivity (PassRateAreaChart audit markers,
+ * StackedBarByDay per-day bars) now carry:
+ *   - SVG <desc> with a plain-language data summary
+ *   - A visually-hidden <ol> of <Link>s covering the same drill-through
+ *     destinations the SVG bars/markers navigate to
+ * Result: the SVG itself has no interactive descendants (aria-hidden
+ * decorations only), and AT users reach every destination via the
+ * hidden list.
  */
 async function runAxe(container: HTMLElement, options?: Parameters<typeof axe>[1]) {
   return axe(container, options);
 }
-
-/** Options for SVG charts that use per-datum interactive markers.
- *  See "Known exceptions" in runAxe above. */
-const SVG_INTERACTIVE_CHART_OPTS = {
-  rules: {
-    // Covered by #4b hidden-table fallback, not by marker-level semantics.
-    'nested-interactive': { enabled: false },
-  },
-};
 
 /** Minimal fixture factories so tests stay focused on a11y, not data. */
 const sampleTrend: EvalTrendPoint[] = [
@@ -143,12 +136,33 @@ describe('a11y · chart primitives', () => {
   });
 
   describe('PassRateAreaChart', () => {
-    it('populated state has no violations (nested-interactive waived; see #4b)', async () => {
+    it('populated state has no violations', async () => {
       const container = renderWithRouter(
         <PassRateAreaChart trend={sampleTrend} auditEntries={sampleAudit} periodLabel="7d" />,
       );
-      const results = await runAxe(container, SVG_INTERACTIVE_CHART_OPTS);
+      const results = await runAxe(container);
       expect(results.violations).toEqual([]);
+    });
+
+    it('populated state exposes data summary in <desc>', () => {
+      const container = renderWithRouter(
+        <PassRateAreaChart trend={sampleTrend} auditEntries={sampleAudit} periodLabel="7d" />,
+      );
+      const desc = container.querySelector('desc');
+      expect(desc).not.toBeNull();
+      // Summary must include concrete values, not just a generic label.
+      expect(desc!.textContent).toMatch(/\d+%.*\d+%/); // at least two percent values
+      expect(desc!.textContent).toMatch(/evals/);
+    });
+
+    it('populated state exposes hidden drill-through list with audit links', () => {
+      const container = renderWithRouter(
+        <PassRateAreaChart trend={sampleTrend} auditEntries={sampleAudit} periodLabel="7d" />,
+      );
+      const hiddenList = container.querySelector('ol[aria-label="Audit events in view"]');
+      expect(hiddenList).not.toBeNull();
+      const links = hiddenList!.querySelectorAll('a[href*="/audit"]');
+      expect(links.length).toBeGreaterThanOrEqual(1);
     });
 
     it('skeleton empty state has no violations', async () => {
@@ -185,12 +199,32 @@ describe('a11y · chart primitives', () => {
   });
 
   describe('StackedBarByDay', () => {
-    it('populated state has no violations (nested-interactive waived; see #4b)', async () => {
+    it('populated state has no violations', async () => {
       const container = renderWithRouter(
         <StackedBarByDay moments={[sampleMoment, sampleMoment, sampleMoment]} days={7} periodLabel="7d" />,
       );
-      const results = await runAxe(container, SVG_INTERACTIVE_CHART_OPTS);
+      const results = await runAxe(container);
       expect(results.violations).toEqual([]);
+    });
+
+    it('populated state exposes data summary in <desc>', () => {
+      const container = renderWithRouter(
+        <StackedBarByDay moments={[sampleMoment, sampleMoment, sampleMoment]} days={7} periodLabel="7d" />,
+      );
+      const desc = container.querySelector('desc');
+      expect(desc).not.toBeNull();
+      expect(desc!.textContent).toMatch(/Verdicts per day/);
+      expect(desc!.textContent).toMatch(/pass|partial|fail/);
+    });
+
+    it('populated state exposes hidden drill-through list with day links', () => {
+      const container = renderWithRouter(
+        <StackedBarByDay moments={[sampleMoment, sampleMoment, sampleMoment]} days={7} periodLabel="7d" />,
+      );
+      const hiddenList = container.querySelector('ol[aria-label="Per-day drill-through"]');
+      expect(hiddenList).not.toBeNull();
+      const links = hiddenList!.querySelectorAll('a[href*="/moments"]');
+      expect(links.length).toBe(7); // one per day in the window
     });
 
     it('empty state has no violations', async () => {
