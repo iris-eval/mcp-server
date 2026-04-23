@@ -1,98 +1,283 @@
 /*
- * Iris Dashboard — Design tokens (OKLCH palette)
+ * Iris Dashboard — Design tokens v2 (R1+R2 brand-locked, 2026-04-23)
  *
- * Migrated from sRGB hex to OKLCH 2026-04-21 per build-dashboard-overhaul.md Phase 1.
- * Light-mode tokens added for issue #10 (theme toggle) — gated by [data-theme="light"]
- * applied to <html>. Default = dark.
+ * Anchored on iris/website/src/app/globals.css as the source of truth.
+ * Every color, font, and shadow value matches the marketing site so the
+ * dashboard reads as a continuation of the brand surface, not a parallel
+ * design system.
  *
- * OKLCH is perceptually uniform — equal numeric deltas produce equal perceived deltas
- * across hue + lightness, which makes the palette designable rather than tweakable.
+ * Source-of-truth references:
+ *   - iris/website/src/app/globals.css (color system + glow tokens)
+ *   - iris/website/src/app/layout.tsx (font loading)
+ *   - strategy/brand/brand-guide.md (canonical Iris teal scale)
+ *   - strategy/proof/iris-design-system-v2-proposal-2026-04-23.md (full spec)
+ *
+ * v2 changes from v1:
+ *   - Surface scale: 4 → 5 levels (added bg-card distinct from bg-surface)
+ *     and shifted to website's true near-black palette
+ *   - Iris teal: full 11-step scale (50-950) instead of 2 accent variants
+ *   - Borders: alpha-based (matches website's depth-via-translucency pattern)
+ *   - Eval-semantic: pass/warn/fail named per brand guide; not color-named
+ *   - Text-accent: dedicated token mapping to iris-400 (dark) / iris-700 (light)
+ *   - Glow tokens: glow-primary + glow-strong for accent surfaces
+ *   - Typography: Space Grotesk (display) + Manrope (body) + JetBrains Mono
+ *     replacing Geist (Tier A Wave 2 lock from 2026-04-21 that bypassed
+ *     brand guide and is now reverted)
+ *   - Typography roles: caption / body / heading / display tiers with
+ *     locked sizes + weights (no ad-hoc 14.5px or font-weight-450 anywhere)
+ *   - Density: --density-row + --density-padding + --density-body for
+ *     compact (default) and comfortable (account-menu opt-in)
+ *   - Sidebar dimensions: 256px expanded / 64px collapsed
+ *
+ * Legacy alias section at bottom: keeps old token names working during
+ * the per-component migration. Aliases are deprecated; new components
+ * must use the canonical names.
  */
+
+/* ── External fonts ─────────────────────────────────────────────────
+ * Self-hosted via Google Fonts CDN (free, commercial-use). Same load
+ * pattern as the website. display: swap means the system stack renders
+ * immediately and brand fonts take over on load.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500..700&family=Manrope:wght@400..700&family=JetBrains+Mono:wght@400..700&display=swap');
 
 :root {
-  /* ---------- Backgrounds (dark default) ---------- */
-  --bg-primary: oklch(15% 0.015 240);    /* near-black with cool tint (was #0a0a0b) */
-  --bg-secondary: oklch(20% 0.012 240);  /* one-step lighter (was #141416) */
-  --bg-tertiary: oklch(24% 0.012 240);   /* two-steps (was #1c1c1f) */
-  --bg-hover: oklch(28% 0.012 240);      /* hover state (was #252528) */
+  color-scheme: light dark;
 
-  /* ---------- Text (dark default) ---------- */
-  --text-primary: oklch(98% 0.005 240);  /* near-white (was #fafafa) */
-  --text-secondary: oklch(70% 0.012 240);/* muted (was #a1a1aa) */
-  --text-muted: oklch(55% 0.012 240);    /* most muted (was #71717a) */
+  /* ════════════════════════════════════════════════════════════════
+   * IRIS TEAL SCALE — 11 steps, exact hex from website globals.css
+   * Brand: iris-500 outer ring, iris-600 inner fill, iris-400 accent text.
+   * ════════════════════════════════════════════════════════════════ */
+  --iris-50: #f0fdfa;
+  --iris-100: #ccfbf1;
+  --iris-200: #99f6e4;
+  --iris-300: #5eead4;
+  --iris-400: #2dd4bf;
+  --iris-500: #14b8a6;
+  --iris-600: #0d9488;
+  --iris-700: #0f766e;
+  --iris-800: #115e59;
+  --iris-900: #134e4a;
+  --iris-950: #042f2e;
 
-  /* ---------- Accents (theme-stable; same in light + dark) ---------- */
-  --accent-primary: oklch(60% 0.10 195);       /* teal (was #0d9488) */
-  --accent-primary-hover: oklch(70% 0.12 195); /* teal hover (was #14b8a6) */
-  --accent-success: oklch(70% 0.16 145);       /* green (was #22c55e) */
-  --accent-error: oklch(65% 0.20 25);           /* red (was #ef4444) */
-  --accent-warning: oklch(78% 0.15 80);          /* amber (was #f59e0b) */
-  --accent-tool: oklch(65% 0.18 240);            /* blue (was #3b82f6) */
-  --accent-llm: oklch(65% 0.20 295);             /* purple (was #a855f7) */
+  /* ════════════════════════════════════════════════════════════════
+   * EVAL-SEMANTIC COLORS — per brand guide
+   * Reserved for verdict states (pass/warn/fail). Never use for chrome.
+   * ════════════════════════════════════════════════════════════════ */
+  --eval-pass: #22c55e;
+  --eval-warn: #eab308;
+  --eval-fail: #ef4444;
 
-  /* ---------- Borders (dark default) ---------- */
-  --border-color: oklch(28% 0.012 240);  /* (was #27272a) */
-  --border-radius: 8px;
-  --border-radius-sm: 4px;
-  --border-radius-lg: 12px;
+  /* Additional eval-domain semantic colors — for span kinds in trace
+   * tree. These were `--accent-tool` and `--accent-llm` in v1. Renamed
+   * to make their domain explicit. */
+  --eval-tool: #3b82f6;   /* blue — tool calls */
+  --eval-llm: #a855f7;    /* purple — LLM spans */
+  --eval-skipped: #71717a; /* neutral — skipped rules */
+}
 
-  /* ---------- Typography ---------- */
-  /* Geist Variable + JetBrains Mono per Tier A Wave 2 — A13 lock 2026-04-21 */
-  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 2rem;
+/* ════════════════════════════════════════════════════════════════════
+ * DARK THEME (default) — matches website's dark palette
+ * ════════════════════════════════════════════════════════════════════ */
+:root,
+[data-theme="dark"] {
+  /* Surfaces — 5 layers from deepest to most-elevated */
+  --bg-base: #050508;          /* App background */
+  --bg-raised: #08080e;        /* Subtle background — panels behind cards */
+  --bg-surface: #0d0d15;       /* Default surface — toolbars, table headers */
+  --bg-card: #101018;          /* Cards, list rows */
+  --bg-card-hover: #16161f;    /* Card hover state */
 
-  /* ---------- Spacing (8pt grid) ---------- */
-  --space-1: 0.25rem;  /* 4px */
-  --space-2: 0.5rem;   /* 8px — base unit */
-  --space-3: 0.75rem;  /* 12px */
-  --space-4: 1rem;     /* 16px = 2× */
-  --space-5: 1.25rem;  /* 20px */
-  --space-6: 1.5rem;   /* 24px = 3× */
-  --space-8: 2rem;     /* 32px = 4× */
-  --space-10: 2.5rem;  /* 40px = 5× */
-  --space-12: 3rem;    /* 48px = 6× */
+  /* Borders — alpha-based for depth */
+  --border-subtle: rgba(255, 255, 255, 0.05);   /* row separators */
+  --border-default: rgba(255, 255, 255, 0.08);  /* card borders, inputs */
+  --border-strong: rgba(255, 255, 255, 0.14);   /* hover borders, focused inputs */
+  --border-glow: rgba(20, 184, 166, 0.5);       /* active accent borders */
 
-  /* ---------- Shadows (dark) ---------- */
-  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.30);
-  --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.40);
-  --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.50);
+  /* Text — 4 levels with explicit accent token */
+  --text-primary: #f0f0f5;
+  --text-secondary: #9494a8;
+  --text-muted: #5e5e72;
+  --text-accent: var(--iris-400);
 
-  /* ---------- Transitions ---------- */
+  /* Glow — for accent surfaces + hover halos */
+  --glow-primary: rgba(20, 184, 166, 0.12);
+  --glow-strong: rgba(20, 184, 166, 0.25);
+
+  /* Shadows — depth via dark drop */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.50);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * LIGHT THEME — full mirror of website's light palette (not just
+ * a flip of bg + text, the whole system inverts)
+ * ════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  --bg-base: #fafcfc;
+  --bg-raised: #f1f5f5;
+  --bg-surface: #e8eded;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f4f8f8;
+
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --border-glow: rgba(13, 148, 136, 0.35);
+
+  --text-primary: #0a0f0e;
+  --text-secondary: #3d5250;
+  --text-muted: #7a908e;
+  --text-accent: var(--iris-700);
+
+  --glow-primary: rgba(13, 148, 136, 0.06);
+  --glow-strong: rgba(13, 148, 136, 0.12);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * TYPOGRAPHY — Space Grotesk + Manrope + JetBrains Mono
+ * ════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Font families — match website layout.tsx + brand guide */
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --font-sans: var(--font-body); /* alias — most "sans" requests want body */
+
+  /* Size scale — 9 sizes with role names. No ad-hoc sizes elsewhere. */
+  --text-caption-xs: 11px;   /* mono IDs, timestamps, version chips */
+  --text-caption: 12px;      /* labels, table headers, filter pills */
+  --text-body-sm: 13px;      /* compact body, table cells */
+  --text-body: 14px;         /* default body, navigation labels */
+  --text-body-lg: 15px;      /* emphasized body, paragraph hero */
+  --text-heading-sm: 16px;   /* section headings, panel titles */
+  --text-heading: 20px;      /* page titles */
+  --text-display-sm: 28px;   /* stat values */
+  --text-display: 40px;      /* hero metrics, empty-state titles */
+
+  /* Legacy size aliases — old code uses these, will migrate on touch.
+   * DEPRECATED: use the role names above on all new code. */
+  --font-size-xs: var(--text-caption);
+  --font-size-sm: var(--text-body-sm);
+  --font-size-base: var(--text-body);
+  --font-size-lg: var(--text-body-lg);
+  --font-size-xl: var(--text-heading-sm);
+  --font-size-2xl: var(--text-heading);
+  --font-size-3xl: var(--text-display-sm);
+
+  /* Line heights — role-locked */
+  --leading-body: 1.5;
+  --leading-heading: 1.2;
+  --leading-display: 1.1;
+  --leading-mono: 1.4;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * SPACING — 4pt base; supports density + half-step rhythm
+ * ════════════════════════════════════════════════════════════════════ */
+:root {
+  --space-0_5: 2px;
+  --space-1: 4px;
+  --space-1_5: 6px;
+  --space-2: 8px;
+  --space-2_5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * DENSITY — compact default per R2.3 lock
+ * Each density mode resets row height + cell padding + body text size.
+ * Switch via [data-density="comfortable"] on <html> from account menu.
+ * ════════════════════════════════════════════════════════════════════ */
+:root,
+[data-density="compact"] {
+  --density-row: 32px;
+  --density-padding: var(--space-3);    /* 12px */
+  --density-body: var(--text-body-sm);  /* 13px */
+}
+
+[data-density="comfortable"] {
+  --density-row: 44px;
+  --density-padding: var(--space-4);    /* 16px */
+  --density-body: var(--text-body);     /* 14px */
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * CHROME DIMENSIONS — sidebar + header per design system spec
+ * ════════════════════════════════════════════════════════════════════ */
+:root {
+  --sidebar-width-expanded: 256px;
+  --sidebar-width-collapsed: 64px;
+  --header-height: 56px;
+  --page-toolbar-height: 40px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * RADIUS, MOTION
+ * ════════════════════════════════════════════════════════════════════ */
+:root {
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Legacy radius aliases */
+  --border-radius: var(--radius);
+  --border-radius-sm: var(--radius-xs);
+  --border-radius-lg: var(--radius-lg);
+
+  --transition-instant: 100ms ease;
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+  --ease-iris: cubic-bezier(0.25, 0.4, 0.25, 1); /* matches website easing */
 }
 
-/* ---------- Light theme (issue #10) ---------- */
-/*
- * Activated by setting <html data-theme="light"> via the ThemeProvider.
- * Only background, text, border, and shadow tokens flip; accents stay stable
- * to preserve brand recognition across themes.
- */
-[data-theme="light"] {
-  --bg-primary: oklch(98% 0.005 240);    /* off-white */
-  --bg-secondary: oklch(96% 0.005 240);  /* one-step darker */
-  --bg-tertiary: oklch(94% 0.005 240);   /* two-steps */
-  --bg-hover: oklch(92% 0.008 240);      /* hover state */
+/* ════════════════════════════════════════════════════════════════════
+ * LEGACY ALIASES — keep old code working during incremental migration
+ * Each one maps an old token to the closest new equivalent. Replace
+ * usages at touch-point; do not add new code that depends on these.
+ * Deprecation tracked in iris-design-system-v2-proposal-2026-04-23.md
+ * ════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --bg-primary: var(--bg-base);
+  --bg-secondary: var(--bg-raised);
+  --bg-tertiary: var(--bg-surface);
+  --bg-hover: var(--bg-card-hover);
 
-  --text-primary: oklch(20% 0.012 240);  /* near-black with cool tint */
-  --text-secondary: oklch(40% 0.012 240);/* muted */
-  --text-muted: oklch(55% 0.012 240);    /* most muted */
+  /* Border */
+  --border-color: var(--border-default);
 
-  --border-color: oklch(88% 0.008 240);
-
-  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.06);
-  --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.08);
-  --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.10);
+  /* Accents — old code uses these; new code uses iris-NNN or eval-* */
+  --accent-primary: var(--iris-500);
+  --accent-primary-hover: var(--iris-400);
+  --accent-success: var(--eval-pass);
+  --accent-error: var(--eval-fail);
+  --accent-warning: var(--eval-warn);
+  --accent-tool: var(--eval-tool);
+  --accent-llm: var(--eval-llm);
 }
 
-/* ---------- Theme transition (smooth swap) ---------- */
+/* ════════════════════════════════════════════════════════════════════
+ * THEME TRANSITION — smooth swap on toggle
+ * ════════════════════════════════════════════════════════════════════ */
 html {
   transition: background-color var(--transition-base), color var(--transition-base);
 }

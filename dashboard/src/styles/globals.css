@@ -1,11 +1,10 @@
 @import './tokens.css';
 
 /*
- * Geist Variable + JetBrains Mono — self-hosted via Vercel CDN
- * (free, commercial-use licensed). Loaded with display: swap so the
- * fallback system stack renders immediately and Geist takes over on load.
+ * Fonts now loaded from tokens.css via @import url(...) for Space Grotesk
+ * + Manrope + JetBrains Mono — matches website + brand guide. The previous
+ * Geist load at this layer is removed because it duplicated the import.
  */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400..700&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -19,21 +18,29 @@ html, body, #root {
 }
 
 body {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-base);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
   color: var(--text-primary);
-  background-color: var(--bg-primary);
-  line-height: 1.5;
+  background-color: var(--bg-base);
+  line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv11', 'ss01'; /* Manrope tabular figure tweaks */
+}
+
+/* Display tier — Space Grotesk for headings, hero metrics, page titles */
+h1, h2, h3, h4, .display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 a {
-  color: var(--accent-primary);
+  color: var(--text-accent);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--accent-primary-hover);
+  color: var(--iris-300);
 }
 
 button {
@@ -55,9 +62,12 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [role="button"]:focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--iris-500);
   outline-offset: 2px;
+  border-radius: var(--radius-xs);
 }
+
+::selection { background: var(--iris-600); color: white; }
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -65,16 +75,36 @@ select:focus-visible,
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--bg-base);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
+  background: var(--border-strong);
+  border-radius: var(--radius-xs);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+html {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* === PULSE DOT — for "live" status indicators (matches website) === */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.pulse-dot { position: relative; }
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--iris-500);
+  animation: pulse-ring 2s ease-out infinite;
 }
 
 /*
