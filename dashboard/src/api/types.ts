@@ -199,3 +199,68 @@ export interface MomentQueryResult {
   limit: number;
   offset: number;
 }
+
+/* ── Custom Rules (B3 — Make-This-A-Rule) ── */
+
+export type RuleSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export type CustomRuleType =
+  | 'regex_match'
+  | 'regex_no_match'
+  | 'min_length'
+  | 'max_length'
+  | 'contains_keywords'
+  | 'excludes_keywords'
+  | 'json_schema'
+  | 'cost_threshold';
+
+export interface CustomRuleDefinition {
+  name: string;
+  type: CustomRuleType;
+  config: Record<string, unknown>;
+  weight?: number;
+}
+
+export interface DeployedCustomRule {
+  id: string;
+  name: string;
+  description: string;
+  evalType: 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
+  severity: RuleSeverity;
+  definition: CustomRuleDefinition;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sourceMomentId?: string;
+  version: number;
+}
+
+export interface DeployRuleRequest {
+  name: string;
+  description?: string;
+  evalType: DeployedCustomRule['evalType'];
+  severity?: RuleSeverity;
+  definition: CustomRuleDefinition;
+  sourceMomentId?: string;
+}
+
+export interface RulePreviewRequest {
+  definition: CustomRuleDefinition;
+  evalType?: DeployedCustomRule['evalType'];
+  windowDays?: number;
+  maxTraces?: number;
+}
+
+export interface RulePreviewResult {
+  tracesEvaluated: number;
+  wouldFail: number;
+  wouldPass: number;
+  wouldSkip: number;
+  examples: Array<{
+    traceId: string;
+    agentName: string;
+    timestamp: string;
+    outputPreview: string;
+  }>;
+  windowSinceIso: string;
+}

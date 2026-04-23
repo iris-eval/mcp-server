@@ -13,6 +13,7 @@ import type {
   EvalFailure,
   MomentQueryResult,
   DecisionMomentDetail,
+  DeployedCustomRule,
 } from './types';
 
 function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number) {
@@ -94,4 +95,9 @@ export function useMoments(params?: Record<string, string>) {
 export function useMomentDetail(id: string) {
   const fetcher = useCallback(() => api.getMomentDetail(id), [id]);
   return useApiData<DecisionMomentDetail>(fetcher);
+}
+
+export function useCustomRules() {
+  const fetcher = useCallback(() => api.getCustomRules().then((r) => r.rules), []);
+  return useApiData<DeployedCustomRule[]>(fetcher, 10000);
 }

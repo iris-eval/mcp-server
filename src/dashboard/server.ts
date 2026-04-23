@@ -18,16 +18,25 @@ import { registerFilterRoutes } from './routes/filters.js';
 import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerMomentRoutes } from './routes/moments.js';
+import { registerRuleRoutes } from './routes/rules.js';
+import type { CustomRuleStore } from '../custom-rule-store.js';
+import type { EvalEngine } from '../eval/engine.js';
 
 export interface DashboardServer {
   app: express.Application;
   start(): Server;
 }
 
+export interface DashboardServerOptions {
+  customRuleStore?: CustomRuleStore;
+  evalEngine?: EvalEngine;
+}
+
 export function createDashboardServer(
   storage: IStorageAdapter,
   config: IrisConfig,
   logger: Logger,
+  options?: DashboardServerOptions,
 ): DashboardServer {
   const app = express();
 
@@ -62,6 +71,12 @@ export function createDashboardServer(
   registerFilterRoutes(router, storage);
   registerHealthRoutes(router, storage, config.server.version);
   registerMomentRoutes(router, storage);
+  if (options?.customRuleStore && options?.evalEngine) {
+    registerRuleRoutes(router, storage, {
+      customRuleStore: options.customRuleStore,
+      evalEngine: options.evalEngine,
+    });
+  }
   app.use('/api/v1', router);
 
   // Serve static dashboard files if built (rate limited)

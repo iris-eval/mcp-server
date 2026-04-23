@@ -12,6 +12,8 @@ import { createDashboardServer } from './dashboard/server.js';
 import { createLogger } from './utils/logger.js';
 import { loadOrInitPreferences, shouldAutoLaunchDashboard } from './preferences.js';
 import { openBrowser } from './utils/open-browser.js';
+import { createCustomRuleStore } from './custom-rule-store.js';
+import { createCustomRule } from './eval/rules/custom.js';
 
 const PortSchema = z
   .string()
@@ -116,7 +118,22 @@ async function main(): Promise<void> {
   await storage.initialize();
   logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path})`);
 
-  const { mcpServer } = createIrisServer(config, storage);
+  const { mcpServer, evalEngine } = createIrisServer(config, storage);
+
+  // Load deployed custom rules from ~/.iris/custom-rules.json (B3 — workflow inversion).
+  // Each enabled rule is registered with the engine under its evalType so it fires on
+  // every evaluate_output call of that category. Persistence via custom-rule-store.
+  const customRuleStore = createCustomRuleStore();
+  const enabled = customRuleStore.enabledRules();
+  for (const rule of enabled) {
+    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition));
+  }
+  if (enabled.length > 0) {
+    logger.info(
+      `Loaded ${enabled.length} deployed custom rule(s) from ${customRuleStore.filePath}`,
+    );
+  }
+
   const httpServers: Server[] = [];
 
   // Run data retention cleanup on startup
@@ -148,7 +165,10 @@ async function main(): Promise<void> {
   }
 
   if (config.dashboard.enabled || config.transport.type === 'http') {
-    const dashboardServer = createDashboardServer(storage, config, logger);
+    const dashboardServer = createDashboardServer(storage, config, logger, {
+      customRuleStore,
+      evalEngine,
+    });
     const server = dashboardServer.start();
     httpServers.push(server);
 

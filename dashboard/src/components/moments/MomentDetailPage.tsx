@@ -15,6 +15,7 @@ import { CopyableId } from '../shared/CopyableId';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { formatCost, formatLatency, formatTimestamp } from '../../utils/formatters';
 import { getSignificanceVisual, getVerdictVisual } from './significance';
+import { MakeRuleModal } from './MakeRuleModal';
 
 const styles = {
   page: {
@@ -223,6 +224,8 @@ export function MomentDetailPage() {
   const { data, loading, error, refetch } = useMomentDetail(id ?? '');
   const [showRaw, setShowRaw] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [deployedToast, setDeployedToast] = useState<string | null>(null);
 
   if (loading && !data) return <LoadingSpinner />;
   if (error) {
@@ -270,15 +273,24 @@ export function MomentDetailPage() {
         <div style={styles.ctaCol}>
           <button
             type="button"
-            style={{ ...styles.cta, ...styles.ctaDisabled }}
-            disabled
-            title="Available in v0.4.1 — workflow inversion composer (B3)"
+            style={styles.cta}
+            onClick={() => setComposerOpen(true)}
           >
             Make this a rule
           </button>
-          <span style={styles.ctaHint}>composer ships v0.4.1</span>
+          <span style={styles.ctaHint}>workflow inversion · v0.4</span>
         </div>
       </div>
+
+      {deployedToast && (
+        <div style={{ ...styles.panel, borderColor: 'var(--accent-success)' }}>
+          <strong style={{ color: 'var(--accent-success)' }}>✓ {deployedToast} deployed</strong>
+          <span style={{ ...styles.ctaHint, color: 'var(--text-secondary)' }}>
+            The rule is live and will fire on every future evaluation of its category. Audit
+            entry written to <code>~/.iris/audit.log</code>.
+          </span>
+        </div>
+      )}
 
       <div style={styles.twoCol}>
         <div style={styles.panel}>
@@ -388,6 +400,14 @@ export function MomentDetailPage() {
           )}
         </div>
       </div>
+
+      {composerOpen && (
+        <MakeRuleModal
+          moment={data}
+          onClose={() => setComposerOpen(false)}
+          onDeployed={() => setDeployedToast(`Rule for ${data.agentName}`)}
+        />
+      )}
     </div>
   );
 }

@@ -8,7 +8,20 @@ function safeRegexResult(definition: CustomRuleDefinition, message: string): Eva
 }
 
 function compileRegex(definition: CustomRuleDefinition): RegExp | EvalRuleResult {
-  const patternStr = definition.config.pattern as string;
+  let patternStr = definition.config.pattern as string;
+  let flags = (definition.config.flags as string) ?? '';
+
+  // Defensive UX: convert leading inline flag like `(?i)` or `(?im)` to a
+  // real flags arg. Node's RegExp engine does not support inline flag
+  // groups in older versions, and a user pasting `(?i)foo` from a regex
+  // tutorial would otherwise hit "Invalid group" with no clear recovery.
+  const inlineFlagMatch = patternStr.match(/^\(\?([imsugy]+)\)/);
+  if (inlineFlagMatch) {
+    const inlineFlags = inlineFlagMatch[1];
+    flags = [...new Set((flags + inlineFlags).split(''))].join('');
+    patternStr = patternStr.slice(inlineFlagMatch[0].length);
+  }
+
   if (patternStr.length > MAX_PATTERN_LENGTH) {
     return safeRegexResult(definition, `Regex pattern too long (${patternStr.length} > ${MAX_PATTERN_LENGTH})`);
   }
@@ -16,7 +29,7 @@ function compileRegex(definition: CustomRuleDefinition): RegExp | EvalRuleResult
     return safeRegexResult(definition, 'Regex pattern rejected: potentially unsafe (catastrophic backtracking)');
   }
   try {
-    return new RegExp(patternStr, (definition.config.flags as string) ?? '');
+    return new RegExp(patternStr, flags);
   } catch (e) {
     return safeRegexResult(definition, `Invalid regex syntax: ${e instanceof Error ? e.message : 'unknown error'}`);
   }

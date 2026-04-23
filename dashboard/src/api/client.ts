@@ -11,6 +11,10 @@ import type {
   EvalFailure,
   MomentQueryResult,
   DecisionMomentDetail,
+  DeployedCustomRule,
+  DeployRuleRequest,
+  RulePreviewRequest,
+  RulePreviewResult,
 } from './types';
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -73,4 +77,42 @@ export const api = {
   getMomentDetail(id: string): Promise<DecisionMomentDetail> {
     return fetchJson<DecisionMomentDetail>(`${API_BASE_URL}/moments/${id}`);
   },
+
+  getCustomRules(): Promise<{ rules: DeployedCustomRule[] }> {
+    return fetchJson<{ rules: DeployedCustomRule[] }>(`${API_BASE_URL}/rules/custom`);
+  },
+
+  deployCustomRule(req: DeployRuleRequest): Promise<{ rule: DeployedCustomRule }> {
+    return postJson<{ rule: DeployedCustomRule }>(`${API_BASE_URL}/rules/custom`, req);
+  },
+
+  deleteCustomRule(id: string): Promise<void> {
+    return deleteRequest(`${API_BASE_URL}/rules/custom/${id}`);
+  },
+
+  previewCustomRule(req: RulePreviewRequest): Promise<RulePreviewResult> {
+    return postJson<RulePreviewResult>(`${API_BASE_URL}/rules/custom/preview`, req);
+  },
 };
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const url = new URL(path, window.location.origin);
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`API error: ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function deleteRequest(path: string): Promise<void> {
+  const url = new URL(path, window.location.origin);
+  const res = await fetch(url.toString(), { method: 'DELETE' });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+}
