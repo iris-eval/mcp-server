@@ -69,6 +69,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cd dashboard && npm install --no-audit --no-fund && npm run build
+      - name: Bundle size budget gate
+        # Fails if dashboard JS/CSS exceeds the declared budget. Raising
+        # budgets requires an explicit commit editing
+        # scripts/check-bundle-size.mjs with justification.
+        run: node scripts/check-bundle-size.mjs
       - name: Verify package integrity
         run: |
           test -f dist/dashboard/server.js || (echo "FATAL: dist/dashboard/server.js missing after build" && exit 1)
