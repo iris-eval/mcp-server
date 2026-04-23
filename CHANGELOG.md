@@ -34,6 +34,10 @@ Enterprise-readiness pass — OSS Bar A foundation for the hosted Cloud tier. Cl
 - **Release workflow** permissions — added `attestations: write` for `attest-build-provenance`.
 - **Architecture doc** (`docs/architecture.md`) — §5 schema + indexes updated for migration 004; §8 gains "Tenant isolation" and "Supply-chain integrity" subsections.
 
+### Fixed
+
+- **F-006 port collision** — running `iris-mcp --transport http --port N --dashboard --dashboard-port N` previously bound MCP on port N and silently failed to start the dashboard (EADDRINUSE swallowed); every dashboard route returned "Cannot GET /" from the MCP handler. New pre-flight check in `validatePortConfig` throws a clear error at startup; dashboard's `app.listen()` now also attaches an `'error'` handler as defense-in-depth. Covered by 5 unit tests in `tests/unit/validate-port-config.test.ts`.
+
 ### Infrastructure
 
 - **CI** — `dashboard/npm run build-storybook` smoke; new `e2e` job installs Chromium via `npx playwright install --with-deps chromium`, runs suite, uploads Playwright report artifact (30-day retention).
