@@ -20,6 +20,48 @@ import type {
   AuditQueryResult,
 } from './types';
 
+/**
+ * Thrown when the server returns 429. Carries the reset time so pollers
+ * can back off intelligently instead of hammering the endpoint.
+ *
+ * Source: RFC 9110 + draft-ietf-httpapi-ratelimit-headers. The Iris
+ * dashboard API emits `RateLimit-Reset` (seconds until reset) and
+ * `Retry-After` (seconds) — we prefer RateLimit-Reset when present.
+ */
+export class RateLimitError extends Error {
+  readonly kind = 'rate-limit' as const;
+  /** Milliseconds until the client should retry. Minimum 1 second. */
+  readonly retryAfterMs: number;
+  /** Policy label from `RateLimit-Policy`, e.g. "100;w=60". Optional. */
+  readonly policy?: string;
+
+  constructor(retryAfterMs: number, policy?: string) {
+    super(`Rate limited — retry in ${Math.round(retryAfterMs / 1000)}s`);
+    this.name = 'RateLimitError';
+    this.retryAfterMs = Math.max(retryAfterMs, 1000);
+    this.policy = policy;
+  }
+}
+
+/** Parse RateLimit-Reset (preferred) or Retry-After into ms. */
+function parseRetryAfter(res: Response): number {
+  // RateLimit-Reset: seconds until reset (RFC draft)
+  const reset = res.headers.get('ratelimit-reset');
+  if (reset) {
+    const n = Number.parseInt(reset, 10);
+    if (Number.isFinite(n) && n >= 0) return n * 1000;
+  }
+  // Retry-After: seconds OR HTTP-date (RFC 9110 §10.2.3)
+  const retryAfter = res.headers.get('retry-after');
+  if (retryAfter) {
+    const n = Number.parseInt(retryAfter, 10);
+    if (Number.isFinite(n) && n >= 0) return n * 1000;
+    const date = Date.parse(retryAfter);
+    if (Number.isFinite(date)) return Math.max(date - Date.now(), 0);
+  }
+  return 30_000; // conservative 30s fallback
+}
+
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(path, window.location.origin);
   if (params) {
@@ -30,6 +72,12 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
     }
   }
   const res = await fetch(url.toString());
+  if (res.status === 429) {
+    throw new RateLimitError(
+      parseRetryAfter(res),
+      res.headers.get('ratelimit-policy') ?? undefined,
+    );
+  }
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }

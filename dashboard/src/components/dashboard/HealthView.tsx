@@ -47,6 +47,7 @@ import type { DonutSlice } from './charts/Donut';
 import { TopFailingRulesBars } from './charts/TopFailingRulesBars';
 import { BiggestMoversTable } from './charts/BiggestMoversTable';
 import { RecentMomentsRow } from './RecentMomentsRow';
+import { RateLimitBanner } from '../shared/RateLimitBanner';
 import {
   getVerdictVisual,
   getSignificanceVisual,
@@ -104,23 +105,53 @@ export function HealthView() {
   const periodStartIso = isoDaysAgo(days);
   const priorPeriodStartIso = isoDaysAgo(days * 2);
 
-  const { data: stats } = useEvalStats(period);
-  const { data: trend } = useEvalTrend(period);
-  const { data: audit } = useAuditLog({
+  const statsRes = useEvalStats(period);
+  const trendRes = useEvalTrend(period);
+  const auditRes = useAuditLog({
     limit: '500',
     since: periodStartIso,
   });
-  const { data: currentMoments } = useMoments({
+  const currentMomentsRes = useMoments({
     limit: '200',
     since: periodStartIso,
   });
-  const { data: priorMoments } = useMoments({
+  const priorMomentsRes = useMoments({
     limit: '200',
     since: priorPeriodStartIso,
     until: periodStartIso,
   });
   const priorPeriodKey = `${days * 2}d`;
-  const { data: priorStats } = useEvalStats(priorPeriodKey);
+  const priorStatsRes = useEvalStats(priorPeriodKey);
+
+  const { data: stats } = statsRes;
+  const { data: trend } = trendRes;
+  const { data: audit } = auditRes;
+  const { data: currentMoments } = currentMomentsRes;
+  const { data: priorMoments } = priorMomentsRes;
+  const { data: priorStats } = priorStatsRes;
+
+  // Earliest active rate-limit window across the page's hooks. If multiple
+  // hooks are limited, one banner covers them all — the server told each
+  // one roughly the same reset time. Retry on the banner triggers every
+  // hook that's still limited.
+  const rateLimitedUntil = [
+    statsRes.rateLimitedUntil,
+    trendRes.rateLimitedUntil,
+    auditRes.rateLimitedUntil,
+    currentMomentsRes.rateLimitedUntil,
+    priorMomentsRes.rateLimitedUntil,
+    priorStatsRes.rateLimitedUntil,
+  ]
+    .filter((v): v is number => typeof v === 'number')
+    .reduce<number | null>((min, v) => (min === null || v < min ? v : min), null);
+  const retryAll = () => {
+    statsRes.refetch();
+    trendRes.refetch();
+    auditRes.refetch();
+    currentMomentsRes.refetch();
+    priorMomentsRes.refetch();
+    priorStatsRes.refetch();
+  };
 
   const kpis = useMemo(() => {
     if (!stats) return null;
@@ -206,6 +237,10 @@ export function HealthView() {
 
   return (
     <div style={styles.view} role="tabpanel" id="view-panel-health" aria-labelledby="health-tab">
+      {rateLimitedUntil && (
+        <RateLimitBanner until={rateLimitedUntil} onRetry={retryAll} />
+      )}
+
       {/* §1 HEADLINE — scannable KPI strip */}
       <SectionHeader title="Headline" trailing={`window: ${period}`} />
       <div style={styles.rowKpis4}>
