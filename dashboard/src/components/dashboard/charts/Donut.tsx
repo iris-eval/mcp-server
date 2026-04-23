@@ -176,17 +176,48 @@ export function Donut({ title, slices, centerLabel = 'total', emptyMessage }: Do
   }, [slices, total]);
 
   if (total === 0) {
+    /* Skeleton: muted ring + placeholder legend rows that show the
+     * layout the populated state will use. Slice colors come from the
+     * caller so even the empty state previews the brand palette. */
+    const skeletonSlices = slices.slice(0, 4);
     return (
       <div style={styles.card} role="region" aria-label={title}>
         <header style={styles.header}>
           <h3 style={styles.title}>{title}</h3>
+          <span style={styles.total}>0 {centerLabel}</span>
         </header>
-        <div style={styles.empty}>
-          <svg viewBox="0 0 160 160" style={styles.svg} aria-hidden="true">
-            <circle cx="80" cy="80" r="59" fill="none" stroke="var(--bg-surface)" strokeWidth="26" />
+        <div style={styles.body}>
+          <svg viewBox="-80 -80 160 160" style={styles.svg} aria-hidden="true">
+            <circle cx="0" cy="0" r="59" fill="none" stroke="var(--bg-surface)" strokeWidth="26" />
+            <text x={0} y={-2} textAnchor="middle" style={styles.centerValue} opacity={0.4}>
+              0
+            </text>
+            <text x={0} y={14} textAnchor="middle" style={styles.centerLabel} opacity={0.4}>
+              {centerLabel}
+            </text>
           </svg>
-          <span>{emptyMessage ?? 'No data in this period'}</span>
+          <ul style={styles.legend} role="list" aria-hidden="true">
+            {skeletonSlices.map((s) => (
+              <li
+                key={s.id}
+                style={{ ...styles.legendRow, ...styles.legendRowStatic, opacity: 0.32 }}
+              >
+                <span style={{ ...styles.swatch, background: s.color }} />
+                <span style={styles.legendLabel}>{s.label}</span>
+                <span style={styles.legendValue}>—</span>
+              </li>
+            ))}
+          </ul>
         </div>
+        <p style={{
+          margin: 0,
+          fontSize: 'var(--text-caption)',
+          color: 'var(--text-muted)',
+          textAlign: 'center',
+          padding: '0 var(--space-3) var(--space-2)',
+        }}>
+          {emptyMessage ?? 'No data in this period'}
+        </p>
       </div>
     );
   }

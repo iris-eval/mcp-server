@@ -116,6 +116,25 @@ const styles = {
     transform: 'translate(-50%, calc(-100% - 8px))',
     zIndex: 10,
   },
+  annotationTip: {
+    margin: 'var(--space-2) 0 0',
+    padding: 'var(--space-2) var(--space-3)',
+    background: 'var(--bg-surface)',
+    border: '1px dashed var(--border-default)',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 'var(--text-caption)',
+    color: 'var(--text-muted)',
+    fontFamily: 'var(--font-mono)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-2)',
+  } as const,
+  annotationGlyphRow: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexShrink: 0,
+  } as const,
 };
 
 interface MergedMarker {
@@ -178,7 +197,7 @@ export function PassRateAreaChart({
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
-  const { areaPath, linePath, scaleX, ticksX, ticksY, plotMarkers, totalEvalsAcrossPeriod } = useMemo(() => {
+  const { areaPath, linePath, scaleX, ticksX, ticksY, plotMarkers, totalEvalsAcrossPeriod, targetLineY, yFloor } = useMemo(() => {
     if (!hasData) {
       return {
         areaPath: '',
@@ -188,6 +207,8 @@ export function PassRateAreaChart({
         ticksY: [] as Array<{ y: number; label: string }>,
         plotMarkers: [] as MergedMarker[],
         totalEvalsAcrossPeriod: 0,
+        targetLineY: null as number | null,
+        yFloor: 0,
       };
     }
     const points = trend!.map((p) => ({
@@ -197,7 +218,21 @@ export function PassRateAreaChart({
     }));
     const xExtent = extent(points, (p) => p.ts) as [Date, Date];
     const x = scaleTime().domain(xExtent).range([padL, padL + innerW]);
-    const y = scaleLinear().domain([0, 1]).range([padT + innerH, padT]);
+
+    /* Y-axis auto-scale.
+     *
+     * Default [0, 1] makes high-pass-rate fleets (the common case) hug the
+     * top of the canvas with all the visual story compressed into the top
+     * 10%. Auto-scale to a sensible floor so the line uses the canvas.
+     *
+     * Floor strategy: round down to the nearest 10% from (min - 5pp), but
+     * never above 0.7 (we always want the 70% threshold visible) and never
+     * below 0. The 90% target line should remain on-canvas.
+     */
+    const minPass = Math.min(...points.map((p) => p.passRate));
+    const computedFloor = Math.floor((minPass - 0.05) * 10) / 10;
+    const yFloorComputed = Math.max(0, Math.min(0.7, computedFloor));
+    const y = scaleLinear().domain([yFloorComputed, 1]).range([padT + innerH, padT]);
 
     const areaGen = d3area<{ ts: Date; passRate: number }>()
       .x((p) => x(p.ts))
@@ -209,16 +244,25 @@ export function PassRateAreaChart({
       .y((p) => y(p.passRate))
       .curve(curveMonotoneX);
 
-    // Time ticks: 5 evenly spaced markers along the x axis.
     const tickXValues = x.ticks(5);
     const xTicks = tickXValues.map((d) => ({ x: x(d), label: formatDayShort(d) }));
-    const yTicks = [0, 0.5, 1].map((v) => ({ y: y(v), label: `${Math.round(v * 100)}%` }));
+
+    /* Y ticks: 4 evenly spaced including floor and 1.0, rounded to 5%. */
+    const yTickCount = 4;
+    const yTickStep = (1 - yFloorComputed) / (yTickCount - 1);
+    const yTicks = Array.from({ length: yTickCount }, (_, i) => {
+      const v = yFloorComputed + i * yTickStep;
+      return { y: y(v), label: `${Math.round(v * 100)}%` };
+    });
 
     const filteredAudit = (auditEntries ?? []).filter((e) => {
       const t = new Date(e.ts);
       return t >= xExtent[0] && t <= xExtent[1] && (e.action === 'rule.deploy' || e.action === 'rule.delete');
     });
     const clusters = clusterMarkers(filteredAudit, x, innerW);
+
+    /* 90% reference line — on-canvas only when the floor is below 0.9. */
+    const targetLine = yFloorComputed < 0.9 ? y(0.9) : null;
 
     return {
       areaPath: areaGen(points) ?? '',
@@ -228,19 +272,90 @@ export function PassRateAreaChart({
       ticksY: yTicks,
       plotMarkers: clusters,
       totalEvalsAcrossPeriod: points.reduce((acc, p) => acc + p.total, 0),
+      targetLineY: targetLine,
+      yFloor: yFloorComputed,
     };
   }, [trend, auditEntries, hasData, innerW, innerH]);
 
   if (!hasData) {
+    /* Skeleton empty state: render the chart shape at low opacity so the
+     * card communicates "this is where the trend will go" instead of
+     * "broken / blank." A canned smooth wave + the standard 90% target
+     * line preview the populated layout. The annotation tip below ALSO
+     * surfaces the killer feature for fresh installs that haven't yet
+     * deployed any rules — they see the affordance before they need it.
+     *
+     * Hardcoded skeleton path: a gentle wave centered around 88-94% to
+     * preview "the kind of variation you'll see on a healthy fleet."
+     */
+    const skelArea =
+      'M 36 60 C 100 70, 160 50, 230 56 C 300 62, 360 38, 430 44 C 500 50, 560 70, 630 60 C 680 54, 700 56, 704 58 L 704 192 L 36 192 Z';
+    const skelLine =
+      'M 36 60 C 100 70, 160 50, 230 56 C 300 62, 360 38, 430 44 C 500 50, 560 70, 630 60 C 680 54, 700 56, 704 58';
     return (
       <div style={styles.card} role="region" aria-label={title}>
         <header style={styles.header}>
           <h3 style={styles.title}>{title} · {periodLabel}</h3>
+          <div style={styles.legend}>
+            <span style={styles.legendItem}>
+              <Icon as={TrendingDown} size={14} />
+              awaiting trend data
+            </span>
+          </div>
         </header>
-        <div style={styles.empty}>
-          <Icon as={TrendingDown} size={24} />
-          <span>Not enough data yet — need at least two buckets in {periodLabel} to chart a trend.</span>
+        <div style={{ position: 'relative', width: '100%' }}>
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.32 }}
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="paAreaSkel" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--text-muted)" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="var(--text-muted)" stopOpacity="0.04" />
+              </linearGradient>
+            </defs>
+            <line
+              x1={padL}
+              y1={padT + innerH * 0.25}
+              x2={padL + innerW}
+              y2={padT + innerH * 0.25}
+              stroke="var(--eval-pass)"
+              strokeWidth={1}
+              strokeDasharray="4 5"
+              opacity={0.55}
+            />
+            <text
+              x={padL + innerW - 4}
+              y={padT + innerH * 0.25 - 4}
+              textAnchor="end"
+              style={{ ...styles.axisLabel, fill: 'var(--eval-pass)' }}
+            >
+              target 90%
+            </text>
+            <path d={skelArea} fill="url(#paAreaSkel)" />
+            <path d={skelLine} fill="none" stroke="var(--text-muted)" strokeWidth={1.25} />
+          </svg>
         </div>
+        <p style={{
+          margin: 'var(--space-2) 0 0',
+          fontSize: 'var(--text-caption)',
+          color: 'var(--text-muted)',
+          textAlign: 'center',
+        }}>
+          Need at least two buckets in {periodLabel} to chart a real trend. Run a few more agents and the line lights up.
+        </p>
+        <p style={styles.annotationTip}>
+          <span style={styles.annotationGlyphRow} aria-hidden="true">
+            <svg width="10" height="10">
+              <polygon points="5,1 9,9 1,9" fill="var(--eval-warn)" />
+            </svg>
+            <svg width="10" height="10">
+              <polygon points="1,1 9,1 5,9" fill="var(--eval-fail)" />
+            </svg>
+          </span>
+          When you deploy or delete a rule, it&rsquo;ll annotate this chart so you can spot the impact on pass rate.
+        </p>
       </div>
     );
   }
@@ -317,6 +432,32 @@ export function PassRateAreaChart({
             </text>
           ))}
 
+          {/* 90% target reference — drawn beneath the data so the area
+           * sits over it. Only renders when the auto-scaled floor is
+           * below 0.9 (otherwise the line would sit at canvas top). */}
+          {targetLineY !== null && (
+            <g aria-hidden="true">
+              <line
+                x1={padL}
+                y1={targetLineY}
+                x2={padL + innerW}
+                y2={targetLineY}
+                stroke="var(--eval-pass)"
+                strokeWidth={1}
+                strokeDasharray="4 5"
+                opacity={0.55}
+              />
+              <text
+                x={padL + innerW - 4}
+                y={targetLineY - 4}
+                textAnchor="end"
+                style={{ ...styles.axisLabel, fill: 'var(--eval-pass)', opacity: 0.75 }}
+              >
+                target 90%
+              </text>
+            </g>
+          )}
+
           {/* Area + line */}
           <path d={areaPath} fill="url(#paArea)" />
           <path d={linePath} fill="none" stroke="var(--iris-400)" strokeWidth={1.75} />
@@ -391,6 +532,24 @@ export function PassRateAreaChart({
           );
         })()}
       </div>
+
+      {/* Annotation affordance — when no audit events fall in the chart
+       * window, surface a one-line tip explaining the killer feature.
+       * Without this, a fresh-install dashboard hides the
+       * Make-This-A-Rule feedback loop entirely. */}
+      {plotMarkers.length === 0 && (
+        <p style={styles.annotationTip}>
+          <span style={styles.annotationGlyphRow} aria-hidden="true">
+            <svg width="10" height="10">
+              <polygon points="5,1 9,9 1,9" fill="var(--eval-warn)" />
+            </svg>
+            <svg width="10" height="10">
+              <polygon points="1,1 9,1 5,9" fill="var(--eval-fail)" />
+            </svg>
+          </span>
+          When you deploy or delete a rule, it&rsquo;ll annotate this chart so you can spot the impact on pass rate.
+        </p>
+      )}
     </div>
   );
 }

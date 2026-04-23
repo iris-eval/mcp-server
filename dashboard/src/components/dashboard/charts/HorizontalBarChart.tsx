@@ -106,7 +106,28 @@ const styles = {
     color: 'var(--text-muted)',
     fontSize: 'var(--text-body-sm)',
     textAlign: 'center',
-    padding: 'var(--space-6)',
+    padding: 'var(--space-3) var(--space-3) var(--space-1)',
+  } as const,
+  /* Skeleton placeholders use ~30% opacity so they read as "the shape of
+   * what's coming" rather than "fake data." Three rows is enough to
+   * communicate the bar layout without crowding. */
+  skeletonRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '4px',
+    padding: '6px 8px',
+    opacity: 0.32,
+  } as const,
+  skeletonLabelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: 'var(--space-2)',
+  } as const,
+  skeletonLabel: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-body-sm)',
+    color: 'var(--text-muted)',
   } as const,
 };
 
@@ -139,7 +160,22 @@ export function HorizontalBarChart({
       </header>
 
       {sorted.length === 0 && (
-        <div style={styles.empty}>{emptyMessage ?? 'No data in this window.'}</div>
+        <>
+          <div style={styles.list} aria-hidden="true">
+            {[68, 44, 28].map((pct, i) => (
+              <div key={i} style={styles.skeletonRow}>
+                <div style={styles.skeletonLabelRow}>
+                  <span style={styles.skeletonLabel}>—</span>
+                  <span style={styles.skeletonLabel}>—</span>
+                </div>
+                <div style={styles.track}>
+                  <div style={{ ...styles.fill, width: `${pct}%`, background: 'var(--text-muted)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={styles.empty}>{emptyMessage ?? 'No data in this window.'}</div>
+        </>
       )}
 
       <div style={styles.list}>

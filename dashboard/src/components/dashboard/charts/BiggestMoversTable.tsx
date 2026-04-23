@@ -94,14 +94,40 @@ const styles = {
     justifySelf: 'end',
   } as const,
   empty: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 'var(--space-6)',
     color: 'var(--text-muted)',
     fontSize: 'var(--text-body-sm)',
     textAlign: 'center',
+    padding: 'var(--space-3) var(--space-4)',
+  } as const,
+  /* Three muted ghost rows that show the eventual layout (agent name +
+   * sparkline column + delta column) so the empty state reads as a
+   * skeleton, not a void. */
+  skeletonRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 80px 86px',
+    alignItems: 'center',
+    padding: 'var(--space-2) var(--space-4)',
+    gap: 'var(--space-3)',
+    borderBottom: '1px solid var(--border-subtle)',
+    minHeight: '40px',
+    opacity: 0.32,
+  } as const,
+  skeletonText: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-body-sm)',
+    color: 'var(--text-muted)',
+  } as const,
+  skeletonLine: {
+    height: '4px',
+    background: 'var(--text-muted)',
+    borderRadius: 'var(--radius-pill)',
+    opacity: 0.6,
+  } as const,
+  skeletonDelta: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-caption)',
+    color: 'var(--text-muted)',
+    justifySelf: 'end',
   } as const,
 };
 
@@ -199,9 +225,20 @@ export function BiggestMoversTable({
       </header>
       <div style={styles.list}>
         {movers.length === 0 && (
-          <div style={styles.empty}>
-            Need at least 3 evals per agent in both windows to compute movement. Check back after more activity.
-          </div>
+          <>
+            <div aria-hidden="true">
+              {[78, 52, 36].map((linePct, i) => (
+                <div key={i} style={styles.skeletonRow}>
+                  <span style={styles.skeletonText}>—</span>
+                  <span><div style={{ ...styles.skeletonLine, width: `${linePct}%` }} /></span>
+                  <span style={styles.skeletonDelta}>—</span>
+                </div>
+              ))}
+            </div>
+            <div style={styles.empty}>
+              Need at least 3 evals per agent in both windows to compute movement. Agents will appear here as activity accumulates.
+            </div>
+          </>
         )}
         {movers.map((m) => {
           const positive = m.delta > 0.005;
