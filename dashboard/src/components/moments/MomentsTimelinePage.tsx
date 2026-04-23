@@ -222,9 +222,13 @@ export function MomentsTimelinePage() {
     const agent = searchParams.get('agent');
     const verdict = searchParams.get('verdict');
     const kind = searchParams.get('kind');
+    const since = searchParams.get('since');
+    const until = searchParams.get('until');
     if (agent) params.agent_name = agent;
     if (verdict) params.verdict = verdict;
     if (kind) params.significance_kind = kind;
+    if (since) params.since = since;
+    if (until) params.until = until;
     return params;
   }, [searchParams]);
 
@@ -379,7 +383,9 @@ export function MomentsTimelinePage() {
   const hasActiveFilters =
     Boolean(searchParams.get('agent')) ||
     Boolean(searchParams.get('verdict')) ||
-    Boolean(searchParams.get('kind'));
+    Boolean(searchParams.get('kind')) ||
+    Boolean(searchParams.get('since')) ||
+    Boolean(searchParams.get('until'));
 
   return (
     <div style={styles.page}>
