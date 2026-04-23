@@ -11,7 +11,7 @@
  * exploring. If it passes, the category-defining workflow works
  * end-to-end. If it fails, the core Iris pitch is broken.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('Make-This-A-Rule', () => {
   test('deploy a rule from a moment → appears in /rules + audit log', async ({ page, request }) => {

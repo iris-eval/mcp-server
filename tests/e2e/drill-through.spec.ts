@@ -9,7 +9,7 @@
  * proves the hidden drill-through lists are present in the DOM when
  * data is populated). Here we verify the wire-up holds end-to-end.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('drill-through from dashboard', () => {
   test('clicking a verdict donut legend row drills to /moments?verdict=', async ({ page }) => {

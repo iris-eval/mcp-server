@@ -8,7 +8,8 @@
  * These tests are the lowest-cost highest-value coverage: a regression
  * here means the dashboard is broken-broken (not just ugly).
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from './fixtures';
+import type { Page } from '@playwright/test';
 
 /**
  * Listen for console errors on every test. Playwright's default is
