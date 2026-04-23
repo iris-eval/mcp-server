@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Shell } from './components/layout/Shell';
 import { ThemeProvider } from './components/layout/ThemeProvider';
 import { CommandPaletteProvider } from './components/command/CommandPaletteProvider';
+import { PreferencesProvider } from './hooks/usePreferences';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { TraceListPage } from './components/traces/TraceListPage';
 import { TraceDetailPage } from './components/traces/TraceDetailPage';
@@ -12,9 +13,10 @@ import { RulesPage } from './components/rules/RulesPage';
 
 export function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <CommandPaletteProvider>
+    <PreferencesProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <CommandPaletteProvider>
           <Shell>
             <Routes>
               <Route path="/" element={<DashboardPage />} />
@@ -26,8 +28,9 @@ export function App() {
               <Route path="/evals" element={<EvalListPage />} />
             </Routes>
           </Shell>
-        </CommandPaletteProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+          </CommandPaletteProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </PreferencesProvider>
   );
 }

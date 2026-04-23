@@ -15,6 +15,8 @@ import type {
   DeployRuleRequest,
   RulePreviewRequest,
   RulePreviewResult,
+  PreferencesEnvelope,
+  PreferencesPatch,
 } from './types';
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -93,7 +95,29 @@ export const api = {
   previewCustomRule(req: RulePreviewRequest): Promise<RulePreviewResult> {
     return postJson<RulePreviewResult>(`${API_BASE_URL}/rules/custom/preview`, req);
   },
+
+  getPreferences(): Promise<PreferencesEnvelope> {
+    return fetchJson<PreferencesEnvelope>(`${API_BASE_URL}/preferences`);
+  },
+
+  patchPreferences(patch: PreferencesPatch): Promise<PreferencesEnvelope> {
+    return patchJson<PreferencesEnvelope>(`${API_BASE_URL}/preferences`, patch);
+  },
 };
+
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const url = new URL(path, window.location.origin);
+  const res = await fetch(url.toString(), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`API error: ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const url = new URL(path, window.location.origin);

@@ -19,8 +19,10 @@ import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerMomentRoutes } from './routes/moments.js';
 import { registerRuleRoutes } from './routes/rules.js';
+import { registerPreferencesRoutes } from './routes/preferences.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
+import type { PreferenceStore } from '../preferences.js';
 
 export interface DashboardServer {
   app: express.Application;
@@ -30,6 +32,7 @@ export interface DashboardServer {
 export interface DashboardServerOptions {
   customRuleStore?: CustomRuleStore;
   evalEngine?: EvalEngine;
+  preferenceStore?: PreferenceStore;
 }
 
 export function createDashboardServer(
@@ -76,6 +79,9 @@ export function createDashboardServer(
       customRuleStore: options.customRuleStore,
       evalEngine: options.evalEngine,
     });
+  }
+  if (options?.preferenceStore) {
+    registerPreferencesRoutes(router, options.preferenceStore);
   }
   app.use('/api/v1', router);
 

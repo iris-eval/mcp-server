@@ -264,3 +264,28 @@ export interface RulePreviewResult {
   }>;
   windowSinceIso: string;
 }
+
+/* ── Preferences (B8.2 — server-mediated user preferences) ── */
+
+export interface MomentFiltersPref {
+  agentName?: string;
+  verdict?: 'pass' | 'fail' | 'partial' | 'unevaluated';
+  significanceKind?: MomentSignificanceKind;
+}
+
+export interface Preferences {
+  autoLaunch: boolean;
+  firstSeen?: string;
+  dismissedBanners: string[];
+  theme: 'dark' | 'light' | 'system';
+  momentFilters: MomentFiltersPref;
+  dismissedTours: string[];
+  archivedMoments: string[];
+}
+
+export interface PreferencesEnvelope {
+  preferences: Preferences;
+  path: string;
+}
+
+export type PreferencesPatch = Partial<Preferences>;

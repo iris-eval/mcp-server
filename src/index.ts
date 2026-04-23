@@ -10,7 +10,7 @@ import { createStdioTransport } from './transport/stdio.js';
 import { createHttpTransport } from './transport/http.js';
 import { createDashboardServer } from './dashboard/server.js';
 import { createLogger } from './utils/logger.js';
-import { loadOrInitPreferences, shouldAutoLaunchDashboard } from './preferences.js';
+import { loadOrInitPreferences, shouldAutoLaunchDashboard, createPreferenceStore } from './preferences.js';
 import { openBrowser } from './utils/open-browser.js';
 import { createCustomRuleStore } from './custom-rule-store.js';
 import { createCustomRule } from './eval/rules/custom.js';
@@ -165,9 +165,11 @@ async function main(): Promise<void> {
   }
 
   if (config.dashboard.enabled || config.transport.type === 'http') {
+    const preferenceStore = createPreferenceStore();
     const dashboardServer = createDashboardServer(storage, config, logger, {
       customRuleStore,
       evalEngine,
+      preferenceStore,
     });
     const server = dashboardServer.start();
     httpServers.push(server);

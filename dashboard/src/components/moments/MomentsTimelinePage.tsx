@@ -15,9 +15,10 @@
  *   - loading: skeleton cards
  *   - error: retry button
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMoments, useFilters } from '../../api/hooks';
+import { usePreferences } from '../../hooks/usePreferences';
 import { MomentCard } from './MomentCard';
 import {
   SIGNIFICANCE_KIND_OPTIONS,
@@ -176,6 +177,37 @@ const LEGEND_KINDS = [
 export function MomentsTimelinePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: filters } = useFilters();
+  const { preferences, patch } = usePreferences();
+  // Track whether we've already applied persisted filters once on this mount,
+  // so refreshes within the same visit don't keep re-applying them on top of
+  // the user's manual clears.
+  const hydratedFromPrefs = useRef(false);
+
+  // ── Permalink + persistence resolution ────────────────────────────
+  // 1. URL params present → permalink wins. Don't override.
+  // 2. URL params empty + persisted filters in preferences → hydrate URL.
+  // 3. URL params empty + no persisted filters → no-op.
+  useEffect(() => {
+    if (hydratedFromPrefs.current) return;
+    if (!preferences) return;
+    const hasUrlFilters =
+      searchParams.has('agent') || searchParams.has('verdict') || searchParams.has('kind');
+    if (hasUrlFilters) {
+      hydratedFromPrefs.current = true;
+      return;
+    }
+    const persisted = preferences.momentFilters;
+    const hasPersisted =
+      Boolean(persisted.agentName) || Boolean(persisted.verdict) || Boolean(persisted.significanceKind);
+    if (hasPersisted) {
+      const next = new URLSearchParams();
+      if (persisted.agentName) next.set('agent', persisted.agentName);
+      if (persisted.verdict) next.set('verdict', persisted.verdict);
+      if (persisted.significanceKind) next.set('kind', persisted.significanceKind);
+      setSearchParams(next, { replace: true });
+    }
+    hydratedFromPrefs.current = true;
+  }, [preferences, searchParams, setSearchParams]);
 
   const queryParams = useMemo<Record<string, string>>(() => {
     const params: Record<string, string> = { limit: '50' };
@@ -190,6 +222,47 @@ export function MomentsTimelinePage() {
 
   const { data, loading, error, refetch } = useMoments(queryParams);
 
+  // Persist filter changes back to preferences (best-effort; failures are
+  // surfaced as a console warning but don't block the UI). We only persist
+  // *after* the first hydration so initial mounts don't redundantly write
+  // back what we just read.
+  useEffect(() => {
+    if (!hydratedFromPrefs.current || !preferences) return;
+    const next = {
+      agentName: searchParams.get('agent') ?? undefined,
+      verdict: (searchParams.get('verdict') as
+        | 'pass'
+        | 'fail'
+        | 'partial'
+        | 'unevaluated'
+        | null) ?? undefined,
+      significanceKind: (searchParams.get('kind') as
+        | 'safety-violation'
+        | 'cost-spike'
+        | 'first-failure'
+        | 'novel-pattern'
+        | 'rule-collision'
+        | 'normal-pass'
+        | 'normal-fail'
+        | null) ?? undefined,
+    };
+    const current = preferences.momentFilters;
+    const equal =
+      next.agentName === current.agentName &&
+      next.verdict === current.verdict &&
+      next.significanceKind === current.significanceKind;
+    if (equal) return;
+    // Strip undefined fields so we PATCH a clean object — server schema is strict
+    const cleaned: Record<string, string> = {};
+    if (next.agentName) cleaned.agentName = next.agentName;
+    if (next.verdict) cleaned.verdict = next.verdict;
+    if (next.significanceKind) cleaned.significanceKind = next.significanceKind;
+    patch({ momentFilters: cleaned as never }).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn('[Iris] could not persist filter preference', err);
+    });
+  }, [searchParams, preferences, patch]);
+
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
@@ -197,7 +270,10 @@ export function MomentsTimelinePage() {
     setSearchParams(next);
   };
 
-  const clearFilters = () => setSearchParams(new URLSearchParams());
+  const clearFilters = () => {
+    setSearchParams(new URLSearchParams());
+    patch({ momentFilters: {} }).catch(() => undefined);
+  };
 
   const hasActiveFilters =
     Boolean(searchParams.get('agent')) ||

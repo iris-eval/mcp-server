@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   loadOrInitPreferences,
   shouldAutoLaunchDashboard,
+  createPreferenceStore,
 } from '../../src/preferences.js';
 
 let tmpDir: string;
@@ -60,6 +61,87 @@ describe('loadOrInitPreferences', () => {
     expect(state.preferences.autoLaunch).toBe(true);
     // File untouched — user can still fix manually
     expect(readFileSync(prefPath, 'utf-8')).toBe('{"autoLaunch": "not-a-bool",}');
+  });
+});
+
+describe('loadOrInitPreferences — v0.4 fields', () => {
+  it('initializes new fields with sensible defaults', () => {
+    const state = loadOrInitPreferences(prefPath);
+    expect(state.preferences.theme).toBe('system');
+    expect(state.preferences.momentFilters).toEqual({});
+    expect(state.preferences.dismissedTours).toEqual([]);
+    expect(state.preferences.archivedMoments).toEqual([]);
+  });
+
+  it('preserves existing fields + back-fills new ones from older files', () => {
+    writeFileSync(
+      prefPath,
+      JSON.stringify({
+        autoLaunch: true,
+        firstSeen: '2026-04-01T00:00:00.000Z',
+        dismissedBanners: ['welcome'],
+      }),
+    );
+    const state = loadOrInitPreferences(prefPath);
+    expect(state.preferences.autoLaunch).toBe(true);
+    expect(state.preferences.dismissedBanners).toEqual(['welcome']);
+    // New fields default in
+    expect(state.preferences.theme).toBe('system');
+    expect(state.preferences.momentFilters).toEqual({});
+  });
+});
+
+describe('createPreferenceStore', () => {
+  it('reads + patches in-memory + persists to disk atomically', () => {
+    const store = createPreferenceStore(prefPath);
+    expect(store.read().autoLaunch).toBe(true);
+
+    const updated = store.patch({ theme: 'dark' });
+    expect(updated.theme).toBe('dark');
+    expect(store.read().theme).toBe('dark');
+
+    // On-disk reflects the patch
+    const onDisk = JSON.parse(readFileSync(prefPath, 'utf-8'));
+    expect(onDisk.theme).toBe('dark');
+  });
+
+  it('rejects invalid patch values via Zod', () => {
+    const store = createPreferenceStore(prefPath);
+    // Theme must be 'dark' | 'light' | 'system'
+    expect(() => store.patch({ theme: 'plaid' as never })).toThrow();
+    // Theme stays at default
+    expect(store.read().theme).toBe('system');
+  });
+
+  it('preserves unknown forward-compat keys via passthrough', () => {
+    writeFileSync(
+      prefPath,
+      JSON.stringify({
+        autoLaunch: true,
+        firstSeen: '2026-04-01T00:00:00.000Z',
+        dismissedBanners: [],
+        futureFeature: { someKey: 'someValue' },
+      }),
+    );
+    const store = createPreferenceStore(prefPath);
+    store.patch({ theme: 'light' });
+    const onDisk = JSON.parse(readFileSync(prefPath, 'utf-8'));
+    expect(onDisk.futureFeature).toEqual({ someKey: 'someValue' });
+    expect(onDisk.theme).toBe('light');
+  });
+
+  it('patches momentFilters as a single object replacement', () => {
+    const store = createPreferenceStore(prefPath);
+    store.patch({ momentFilters: { agentName: 'support-agent', verdict: 'fail' } });
+    expect(store.read().momentFilters).toEqual({
+      agentName: 'support-agent',
+      verdict: 'fail',
+    });
+    // Subsequent patch with a smaller filter set replaces, not merges
+    store.patch({ momentFilters: { significanceKind: 'safety-violation' } });
+    expect(store.read().momentFilters).toEqual({
+      significanceKind: 'safety-violation',
+    });
   });
 });
 
