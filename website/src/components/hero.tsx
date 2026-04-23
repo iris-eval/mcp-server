@@ -60,9 +60,9 @@ export function Hero(): React.ReactElement {
           </div>
 
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-text-secondary md:text-[20px]">
-            The agent eval standard for MCP. Score output quality, catch safety
-            failures, enforce cost budgets — across every agent, every execution.
-            One command to start.
+            The agent eval standard for MCP. Install once. Every agent
+            auto-discovers it. Zero SDK. Decision Moments classify what matters,
+            so safety violations and cost spikes surface before happy-path passes.
           </p>
 
           {/* CTAs */}
@@ -80,6 +80,26 @@ export function Hero(): React.ReactElement {
           <div className="mx-auto mt-8 max-w-md rounded-xl border border-border-default bg-bg-surface/60 px-5 py-3.5 font-mono text-[14px] backdrop-blur-sm">
             <span className="select-none text-text-muted">$ </span>
             <span className="text-text-primary">npx @iris-eval/mcp-server</span>
+          </div>
+
+          {/* Validated-by proof row (B7) — surfaces the real evidence behind
+              the headline so visitors who hover over "agent eval standard"
+              see what's actually shipped. */}
+          <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-text-muted">
+            <span className="font-mono">
+              <span className="text-text-secondary font-semibold">13 rules</span>
+              <span> · regression-protected CI</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="font-mono">
+              <span className="text-text-secondary font-semibold">5 real-domain case studies</span>
+              <span> · executed end-to-end through MCP</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="font-mono">
+              <span className="text-text-secondary font-semibold">249 tests</span>
+              <span> · all green</span>
+            </span>
           </div>
         </motion.div>
 
