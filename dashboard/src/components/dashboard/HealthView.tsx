@@ -1,34 +1,31 @@
 /*
  * HealthView — default Dashboard view (?view=health).
  *
- * Wireframed redesign — the page tells a 4-act story:
+ * Restored composition (founder feedback: prior pass stripped out the
+ * gauge + verdict donut + KPI strip — the visuals that actually worked).
  *
- *   §1 HEADLINE          One headline stat fused with the trend that
- *                        produced it. Big number, delta, annotated chart.
- *                        Eye lock; the user's first read.
+ * The page now reads as a sectioned story BUT keeps the dense BI layout
+ * the founder wanted:
  *
- *   §2 WHAT'S WRONG      Significance breakdown donut + Top failing
- *                        rules bars — two angles on the failure pile.
- *                        The donut answers "what category", the bars
- *                        answer "what specifically."
+ *   §1 HEADLINE          4 scannable KPI tiles (pass rate, evals, cost,
+ *                        agents) — at-a-glance summary with deltas.
  *
- *   §3 WHO'S MOVING      BiggestMovers table — per-agent drift sorted
- *                        by absolute change vs prior period.
+ *   §2 TRAJECTORY        PassRateGauge (semicircle meter, ~280px left) +
+ *                        PassRateAreaChart with audit annotations
+ *                        (fills remainder, right). Two complementary
+ *                        lenses on the same number — gauge shows
+ *                        threshold position, chart shows trend.
  *
- *   §4 SECONDARY METRICS Cost + activity + spend efficiency, smaller
- *                        and beneath the fold. These don't deserve top
- *                        real estate; they're context, not headline.
+ *   §3 FAILURE BREAKDOWN Verdict donut + Significance donut, side by
+ *                        side. Verdict = "did it pass?" Significance =
+ *                        "if it failed, what category?" Both are useful.
  *
- * Wireframe principles:
- *   - The page reads top-to-bottom AS A NARRATIVE.
- *   - Each section ALSO stands alone for non-linear scanning.
- *   - Pass rate appears EXACTLY ONCE as the headline (no duplication
- *     across KPI tiles + gauge + chart axis labels).
- *   - SectionHeader gives real h2 hierarchy — eye knows where to land.
- *   - Verdict donut is GONE (verdict mix is implicit in significance
- *     mix; two donuts on the same dimension competed for the eye).
- *   - Standalone PassRateGauge is GONE from this view (it duplicated the
- *     headline number; the gauge primitive stays in the codebase).
+ *   §4 ACTIONABLE        Top failing rules + Biggest movers, side by
+ *                        side. The two "where do I act?" surfaces.
+ *
+ * Multiple visualizations of the same metric (KPI tile + gauge + chart)
+ * are intentional — each is a different lens. Density is a feature
+ * for BI dashboards, not a bug.
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -43,14 +40,23 @@ import { drillToMoments, isoDaysAgo } from '../../utils/drillThrough';
 import { resolvePeriod, periodToDays, PeriodSelector } from './PeriodSelector';
 import { SectionHeader } from './SectionHeader';
 import { StatTile } from './StatTile';
-import { HeadlineHero } from './charts/HeadlineHero';
+import { PassRateGauge } from './charts/PassRateGauge';
+import { PassRateAreaChart } from './charts/PassRateAreaChart';
 import { Donut } from './charts/Donut';
 import type { DonutSlice } from './charts/Donut';
 import { TopFailingRulesBars } from './charts/TopFailingRulesBars';
 import { BiggestMoversTable } from './charts/BiggestMoversTable';
-import { getSignificanceVisual } from '../moments/significance';
-import { DollarSign, Users, Activity } from 'lucide-react';
-import type { MomentSignificanceKind } from '../../api/types';
+import {
+  getVerdictVisual,
+  getSignificanceVisual,
+} from '../moments/significance';
+import {
+  CheckCircle2,
+  AlertTriangle,
+  DollarSign,
+  Users,
+} from 'lucide-react';
+import type { MomentVerdict, MomentSignificanceKind } from '../../api/types';
 
 const styles = {
   view: {
@@ -58,22 +64,29 @@ const styles = {
     flexDirection: 'column',
     gap: 'var(--space-3)',
   } as const,
+  rowKpis4: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 'var(--space-3)',
+  } as const,
+  rowGaugePlusChart: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(280px, 1fr) minmax(0, 1.8fr)',
+    gap: 'var(--space-3)',
+    alignItems: 'stretch',
+  } as const,
   rowSplit2: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: 'var(--space-3)',
   } as const,
-  rowKpis3: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 'var(--space-3)',
-  } as const,
 };
 
+const VERDICTS_FOR_DONUT: MomentVerdict[] = ['pass', 'partial', 'fail', 'unevaluated'];
+
 /* Failure-only significance kinds — drops normal-pass so the donut
- * shows the FAILURE PILE composition (the question this section asks).
- * normal-pass would dominate visually (90% pass = giant slice) and
- * crowd out the actionable categories. */
+ * shows the FAILURE PILE composition. normal-pass would dominate
+ * visually (90% pass = giant slice) and crowd out actionable categories. */
 const FAILURE_KINDS: MomentSignificanceKind[] = [
   'safety-violation',
   'cost-spike',
@@ -108,17 +121,64 @@ export function HealthView() {
   const priorPeriodKey = `${days * 2}d`;
   const { data: priorStats } = useEvalStats(priorPeriodKey);
 
-  const passRateDelta = useMemo(() => {
-    if (!stats || !priorStats) return undefined;
-    if (priorStats.totalEvals <= stats.totalEvals) return undefined;
-    const priorOnlyEvals = priorStats.totalEvals - stats.totalEvals;
-    const priorOnlyPass =
-      priorStats.passRate * priorStats.totalEvals - stats.passRate * stats.totalEvals;
-    return stats.passRate - priorOnlyPass / Math.max(1, priorOnlyEvals);
+  const kpis = useMemo(() => {
+    if (!stats) return null;
+    const prCurrent = stats.passRate;
+    const prPrior =
+      priorStats && priorStats.totalEvals > stats.totalEvals
+        ? (priorStats.passRate * priorStats.totalEvals - stats.passRate * stats.totalEvals) /
+          Math.max(1, priorStats.totalEvals - stats.totalEvals)
+        : undefined;
+    const passRateDelta = prPrior === undefined ? undefined : prCurrent - prPrior;
+
+    const evalsCurrent = stats.totalEvals;
+    const evalsPrior =
+      priorStats && priorStats.totalEvals > stats.totalEvals
+        ? priorStats.totalEvals - stats.totalEvals
+        : undefined;
+    const evalsDelta =
+      evalsPrior !== undefined && evalsPrior > 0
+        ? (evalsCurrent - evalsPrior) / evalsPrior
+        : undefined;
+
+    const costCurrent = stats.totalCost;
+    const costPrior =
+      priorStats && priorStats.totalCost > stats.totalCost
+        ? priorStats.totalCost - stats.totalCost
+        : undefined;
+    const costDelta =
+      costPrior !== undefined && costPrior > 0
+        ? (costCurrent - costPrior) / costPrior
+        : undefined;
+
+    return {
+      passRate: prCurrent,
+      passRateDelta,
+      totalEvals: evalsCurrent,
+      evalsDelta,
+      totalCost: costCurrent,
+      costDelta,
+      agentCount: stats.agentCount,
+    };
   }, [stats, priorStats]);
 
-  // Significance donut — only failure categories (drops normal-pass to
-  // keep the donut readable; passes dominate by count and would crush it).
+  const verdictSlices: DonutSlice[] = useMemo(() => {
+    const counts: Record<MomentVerdict, number> = {
+      pass: 0,
+      partial: 0,
+      fail: 0,
+      unevaluated: 0,
+    };
+    for (const m of currentMoments?.moments ?? []) counts[m.verdict] += 1;
+    return VERDICTS_FOR_DONUT.map((v) => ({
+      id: v,
+      label: getVerdictVisual(v).label,
+      value: counts[v],
+      color: getVerdictVisual(v).color,
+      href: counts[v] > 0 ? drillToMoments({ verdict: v, since: periodStartIso }) : undefined,
+    }));
+  }, [currentMoments, periodStartIso]);
+
   const significanceSlices: DonutSlice[] = useMemo(() => {
     const counts: Partial<Record<MomentSignificanceKind, number>> = {};
     for (const m of currentMoments?.moments ?? []) {
@@ -137,84 +197,94 @@ export function HealthView() {
     });
   }, [currentMoments, periodStartIso]);
 
-  // Cost-per-eval — secondary metric; tells the spend efficiency story.
-  const costPerEval = stats && stats.totalEvals > 0 ? stats.totalCost / stats.totalEvals : 0;
+  const fmtDelta = (d?: number): string => {
+    if (d === undefined || Number.isNaN(d)) return '—';
+    const pct = Math.round(d * 100);
+    return `${pct >= 0 ? '+' : ''}${pct}%`;
+  };
 
   return (
     <div style={styles.view} role="tabpanel" id="view-panel-health" aria-labelledby="health-tab">
-      {/* §1 HEADLINE — the answer to "is the fleet healthy?" */}
-      <SectionHeader
-        title="Headline"
-        question="How is the fleet performing right now?"
-        trailing={`window: ${period}`}
-      />
-      <HeadlineHero
-        passRate={stats?.passRate}
-        delta={passRateDelta}
-        totalEvals={stats?.totalEvals}
-        agentCount={stats?.agentCount}
-        trend={trend ?? undefined}
-        auditEntries={audit?.entries}
-        periodLabel={period}
-      />
+      {/* §1 HEADLINE — scannable KPI strip */}
+      <SectionHeader title="Headline" trailing={`window: ${period}`} />
+      <div style={styles.rowKpis4}>
+        <StatTile
+          label="Pass rate"
+          icon={CheckCircle2}
+          value={kpis ? `${Math.round(kpis.passRate * 100)}%` : '—'}
+          sub={`${fmtDelta(kpis?.passRateDelta)} vs prior ${period}`}
+          accent={kpis && kpis.passRate >= 0.9 ? 'pass' : kpis && kpis.passRate >= 0.7 ? 'warn' : 'fail'}
+        />
+        <StatTile
+          label="Total evals"
+          icon={AlertTriangle}
+          value={kpis ? kpis.totalEvals.toLocaleString() : '—'}
+          sub={`${fmtDelta(kpis?.evalsDelta)} vs prior ${period}`}
+          accent="iris"
+        />
+        <StatTile
+          label="Total cost"
+          icon={DollarSign}
+          value={kpis ? formatCost(kpis.totalCost) : '—'}
+          sub={`${fmtDelta(kpis?.costDelta)} vs prior ${period}`}
+          accent="iris"
+        />
+        <StatTile
+          label="Active agents"
+          icon={Users}
+          value={kpis ? kpis.agentCount.toLocaleString() : '—'}
+          sub={`unique in ${period}`}
+          accent="neutral"
+        />
+      </div>
 
-      {/* §2 WHAT'S WRONG — the failure pile, two angles */}
-      <SectionHeader
-        title="What's wrong"
-        question="If something failed, what category was it and which rules fired?"
-      />
+      {/* §2 TRAJECTORY — gauge (threshold lens) + annotated trend (time lens) */}
+      <SectionHeader title="Trajectory" question="Where is pass rate now and how did it get there?" />
+      <div style={styles.rowGaugePlusChart}>
+        <PassRateGauge
+          value={kpis?.passRate}
+          delta={kpis?.passRateDelta}
+          totalEvals={kpis?.totalEvals}
+          agentCount={kpis?.agentCount}
+          periodLabel={period}
+        />
+        <PassRateAreaChart
+          trend={trend ?? undefined}
+          auditEntries={audit?.entries}
+          periodLabel={period}
+        />
+      </div>
+
+      {/* §3 FAILURE BREAKDOWN — verdict mix (overall) + significance mix (failure pile) */}
+      <SectionHeader title="Failure breakdown" question="How are evals distributed and what categories are failing?" />
       <div style={styles.rowSplit2}>
         <Donut
-          title="Failure category mix"
+          title="Verdict mix"
+          slices={verdictSlices}
+          centerLabel="evals"
+          emptyMessage="No evals in this window — your fleet is idle."
+        />
+        <Donut
+          title="Significance mix"
           slices={significanceSlices}
           centerLabel="failures"
           emptyMessage="No significant failures in this window — clean run."
         />
+      </div>
+
+      {/* §4 ACTIONABLE — what's broken + who's moving */}
+      <SectionHeader title="Where to act" question="Which rules failed most and which agents shifted most?" />
+      <div style={styles.rowSplit2}>
         <TopFailingRulesBars
           moments={currentMoments?.moments}
           periodStartIso={periodStartIso}
           periodLabel={period}
         />
-      </div>
-
-      {/* §3 WHO'S MOVING — per-agent drift */}
-      <SectionHeader
-        title="Who's moving"
-        question="Which agents shifted the most this period?"
-      />
-      <BiggestMoversTable
-        currentMoments={currentMoments?.moments}
-        priorMoments={priorMoments?.moments}
-        periodDays={days}
-        periodLabel={period}
-      />
-
-      {/* §4 SECONDARY METRICS — cost + activity (de-emphasized) */}
-      <SectionHeader
-        title="Cost & activity"
-        question="What did this period cost and how busy was the fleet?"
-      />
-      <div style={styles.rowKpis3}>
-        <StatTile
-          label="Total cost"
-          icon={DollarSign}
-          value={stats ? formatCost(stats.totalCost) : '—'}
-          sub={`across ${period}`}
-          accent="iris"
-        />
-        <StatTile
-          label="Cost / eval"
-          icon={Activity}
-          value={stats ? formatCost(costPerEval) : '—'}
-          sub="spend efficiency"
-          accent="neutral"
-        />
-        <StatTile
-          label="Active agents"
-          icon={Users}
-          value={stats ? stats.agentCount.toLocaleString() : '—'}
-          sub={`unique in ${period}`}
-          accent="neutral"
+        <BiggestMoversTable
+          currentMoments={currentMoments?.moments}
+          priorMoments={priorMoments?.moments}
+          periodDays={days}
+          periodLabel={period}
         />
       </div>
     </div>

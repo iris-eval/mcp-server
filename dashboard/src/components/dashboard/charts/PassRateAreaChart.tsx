@@ -41,8 +41,6 @@ export interface PassRateAreaChartProps {
   title?: string;
   /** SVG height in pixels. */
   height?: number;
-  /** When true, render without outer card chrome (for embedding inside another card). */
-  naked?: boolean;
 }
 
 const styles = {
@@ -165,7 +163,6 @@ export function PassRateAreaChart({
   periodLabel,
   title = 'Pass rate trend',
   height = 220,
-  naked = false,
 }: PassRateAreaChartProps) {
   const [hoverMarkerId, setHoverMarkerId] = useState<string | null>(null);
 
@@ -235,8 +232,8 @@ export function PassRateAreaChart({
   }, [trend, auditEntries, hasData, innerW, innerH]);
 
   if (!hasData) {
-    const emptyBody = (
-      <>
+    return (
+      <div style={styles.card} role="region" aria-label={title}>
         <header style={styles.header}>
           <h3 style={styles.title}>{title} · {periodLabel}</h3>
         </header>
@@ -244,23 +241,12 @@ export function PassRateAreaChart({
           <Icon as={TrendingDown} size={24} />
           <span>Not enough data yet — need at least two buckets in {periodLabel} to chart a trend.</span>
         </div>
-      </>
-    );
-    if (naked) return <div role="region" aria-label={title}>{emptyBody}</div>;
-    return (
-      <div style={styles.card} role="region" aria-label={title}>
-        {emptyBody}
       </div>
     );
   }
 
-  const Wrapper: React.ElementType = naked ? 'div' : 'div';
-  const wrapperStyle = naked
-    ? { display: 'flex', flexDirection: 'column' as const, gap: 'var(--space-3)', width: '100%' }
-    : styles.card;
-
   return (
-    <Wrapper style={wrapperStyle} role="region" aria-label={title}>
+    <div style={styles.card} role="region" aria-label={title}>
       <header style={styles.header}>
         <h3 style={styles.title}>{title} · {periodLabel}</h3>
         <div style={styles.legend}>
@@ -405,6 +391,6 @@ export function PassRateAreaChart({
           );
         })()}
       </div>
-    </Wrapper>
+    </div>
   );
 }

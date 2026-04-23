@@ -44,10 +44,9 @@ const styles = {
     color: 'var(--text-muted)',
   } as const,
   question: {
-    fontSize: 'var(--text-body-sm)',
-    color: 'var(--text-secondary)',
+    fontSize: 'var(--text-caption)',
+    color: 'var(--text-muted)',
     margin: 0,
-    fontStyle: 'italic',
   } as const,
 };
 
