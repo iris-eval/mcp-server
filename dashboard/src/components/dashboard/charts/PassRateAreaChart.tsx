@@ -222,7 +222,7 @@ export function PassRateAreaChart({
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
-  const { areaPath, linePath, scaleX, ticksX, ticksY, plotMarkers, totalEvalsAcrossPeriod, targetLineY, yFloor, chartSummary } = useMemo(() => {
+  const { areaPath, linePath, scaleX, ticksX, ticksY, plotMarkers, totalEvalsAcrossPeriod, targetLineY, chartSummary } = useMemo(() => {
     if (!hasData) {
       return {
         areaPath: '',
@@ -233,7 +233,6 @@ export function PassRateAreaChart({
         plotMarkers: [] as MergedMarker[],
         totalEvalsAcrossPeriod: 0,
         targetLineY: null as number | null,
-        yFloor: 0,
         chartSummary: '',
       };
     }
@@ -315,7 +314,6 @@ export function PassRateAreaChart({
       plotMarkers: clusters,
       totalEvalsAcrossPeriod: totalEvals,
       targetLineY: targetLine,
-      yFloor: yFloorComputed,
       chartSummary: summary,
     };
   }, [trend, auditEntries, hasData, innerW, innerH, periodLabel]);

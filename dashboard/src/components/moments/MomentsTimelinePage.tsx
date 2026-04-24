@@ -285,7 +285,7 @@ export function MomentsTimelinePage() {
     if (next.verdict) cleaned.verdict = next.verdict;
     if (next.significanceKind) cleaned.significanceKind = next.significanceKind;
     patch({ momentFilters: cleaned as never }).catch((err) => {
-      // eslint-disable-next-line no-console
+       
       console.warn('[Iris] could not persist filter preference', err);
     });
   }, [searchParams, preferences, patch]);
@@ -347,7 +347,7 @@ export function MomentsTimelinePage() {
       await patch({ archivedMoments: next });
       clearSelection();
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[Iris] archive failed', err);
     }
   };
@@ -359,7 +359,7 @@ export function MomentsTimelinePage() {
       await patch({ archivedMoments: next });
       clearSelection();
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[Iris] unarchive failed', err);
     }
   };
@@ -388,7 +388,7 @@ export function MomentsTimelinePage() {
       };
       setComposerForBulk(annotated);
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[Iris] could not load moment for bulk-compose', err);
     } finally {
       setBulkLoading(false);

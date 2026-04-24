@@ -6,10 +6,7 @@ import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import type { TenantId } from '../../types/tenant.js';
-import type {
-  DeployedCustomRule,
-  RulePreviewResult,
-} from '../../types/custom-rule.js';
+import type { RulePreviewResult } from '../../types/custom-rule.js';
 import type { CustomRuleDefinition } from '../../types/eval.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);

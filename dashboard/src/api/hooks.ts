@@ -117,7 +117,15 @@ function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number): UseApi
 }
 
 export function useTraces(params?: Record<string, string>) {
-  const fetcher = useCallback(() => api.getTraces(params), [JSON.stringify(params)]);
+  // Key by JSON-stringified params (semantic value) so callers can pass fresh
+  // object literals without unnecessary refetches. params is captured in the
+  // closure; paramsKey controls when the closure is recreated.
+  const paramsKey = JSON.stringify(params);
+  const fetcher = useCallback(
+    () => api.getTraces(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
   return useApiData<TraceQueryResult>(fetcher, CADENCE.NORMAL);
 }
 
@@ -137,7 +145,12 @@ export function useFilters() {
 }
 
 export function useEvals(params?: Record<string, string>) {
-  const fetcher = useCallback(() => api.getEvaluations(params), [JSON.stringify(params)]);
+  const paramsKey = JSON.stringify(params);
+  const fetcher = useCallback(
+    () => api.getEvaluations(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
   return useApiData<EvalQueryResult>(fetcher, CADENCE.NORMAL);
 }
 
@@ -163,8 +176,13 @@ export function useEvalFailures(limit?: number) {
 }
 
 export function useMoments(params?: Record<string, string>) {
-  const fetcher = useCallback(() => api.getMoments(params), [JSON.stringify(params)]);
+  const paramsKey = JSON.stringify(params);
   // Moments are the Stream view's live tail — keep this fast.
+  const fetcher = useCallback(
+    () => api.getMoments(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
   return useApiData<MomentQueryResult>(fetcher, CADENCE.FAST);
 }
 
@@ -179,6 +197,11 @@ export function useCustomRules() {
 }
 
 export function useAuditLog(params?: Record<string, string>) {
-  const fetcher = useCallback(() => api.getAuditLog(params), [JSON.stringify(params)]);
+  const paramsKey = JSON.stringify(params);
+  const fetcher = useCallback(
+    () => api.getAuditLog(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
   return useApiData<AuditQueryResult>(fetcher, CADENCE.SLOW);
 }

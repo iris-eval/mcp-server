@@ -26,7 +26,7 @@ jobs:
       # rolldown/emnapi transitive optional deps for Linux aren't captured.
       # Versions are constrained by ^carets in dashboard/package.json.
       # See memory: reference_rolldown_lockfile_trap.md
-      - run: cd dashboard && npm install --no-audit --no-fund && npm run typecheck && npm test
+      - run: cd dashboard && npm install --no-audit --no-fund && npm run typecheck && npm run lint && npm test
       # Storybook smoke (audit item #11): build catalog to catch broken
       # stories before they ship. No pixel regression yet — Chromatic/
       # lost-pixel vendor choice is a separate founder decision.

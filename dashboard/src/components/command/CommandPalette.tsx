@@ -21,7 +21,7 @@
  *   - Each item has role="option" with stable id
  *   - Focus restored to trigger on close
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../layout/ThemeProvider';
 import {
@@ -226,6 +226,20 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
     }
   }, [flatList, activeIndex]);
 
+  /*
+   * runCommand is referenced from the global keyboard handler (Enter key).
+   * Defined with useCallback BEFORE the useEffect that depends on it so the
+   * dep array can include it without violating rules-of-hooks ordering.
+   */
+  const runCommand = useCallback(
+    (cmd: Command) => {
+      pushRecentCommand(cmd.id);
+      cmd.run();
+      onClose();
+    },
+    [onClose],
+  );
+
   // Global keyboard handlers (only while open)
   useEffect(() => {
     if (!open) return;
@@ -249,15 +263,9 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [open, flatList, activeIndex, onClose]);
+  }, [open, flatList, activeIndex, onClose, runCommand]);
 
   if (!open) return null;
-
-  const runCommand = (cmd: Command) => {
-    pushRecentCommand(cmd.id);
-    cmd.run();
-    onClose();
-  };
 
   return (
     <div
