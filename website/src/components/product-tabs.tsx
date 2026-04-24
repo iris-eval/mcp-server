@@ -43,7 +43,7 @@ export function ProductTabs(): React.ReactElement {
             Product
           </p>
           <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
-            Three tools.{" "}
+            Seven tools.{" "}
             <span className="text-gradient">One quality standard.</span>
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">

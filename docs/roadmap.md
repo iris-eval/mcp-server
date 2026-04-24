@@ -64,12 +64,14 @@ Closing the pattern-coverage gaps surfaced by the controlled-trace test campaign
 
 ---
 
-## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + Enterprise-Readiness Foundation
+## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + 7-Tool MCP Surface
 
 **Status: Planned**
 
-Semantic evaluation powered by LLMs, export to industry-standard observability, plus the enterprise-readiness foundation that makes Iris production-ready.
+Semantic evaluation powered by LLMs, export to industry-standard observability, expanded MCP tool surface covering the full rule + trace lifecycle, plus the enterprise-readiness foundation that makes Iris production-ready.
 
+- **7 MCP tools (full rule + trace lifecycle)**: adds `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace` alongside the original `log_trace` / `evaluate_output` / `get_traces`. Agents can discover a failure pattern, deploy a rule programmatically, audit via `list_rules`, and tear down when the rule is obsolete — all via MCP. `delete_trace` is tenant-scoped
+- **Tool Definition Quality** (5/5 Glama score target): every tool carries MCP annotations (`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`) and a 5-section description (Behavior / Output shape / Use when / Don't use when / Error modes)
 - **LLM-as-judge evaluation**: use an LLM (OpenAI or Anthropic) to score output quality on dimensions like accuracy, helpfulness, and safety — configurable model, prompt templates, cost caps, token + pricing tracking
 - **Semantic citation verification**: graduates the v0.3.1 fabricated-citation heuristic to actual source-checking via LLM-as-judge
 - **OpenTelemetry trace export**: export Iris traces as OTel spans to Jaeger, Grafana Tempo, Datadog, Sentry via OTLP gRPC/HTTP

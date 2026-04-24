@@ -123,12 +123,17 @@ async function main(): Promise<void> {
   await storage.initialize();
   logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path})`);
 
-  const { mcpServer, evalEngine } = createIrisServer(config, storage);
+  // Load the custom rule store first so it can be shared between the
+  // MCP server (for deploy_rule / delete_rule / list_rules tools) and
+  // the HTTP dashboard (Make-This-A-Rule composer). A rule deployed
+  // via either surface is immediately visible from the other.
+  const customRuleStore = createCustomRuleStore();
+
+  const { mcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore);
 
   // Load deployed custom rules from ~/.iris/custom-rules.json (B3 — workflow inversion).
   // Each enabled rule is registered with the engine under its evalType so it fires on
   // every evaluate_output call of that category. Persistence via custom-rule-store.
-  const customRuleStore = createCustomRuleStore();
   const enabled = customRuleStore.enabledRules();
   for (const rule of enabled) {
     evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition));

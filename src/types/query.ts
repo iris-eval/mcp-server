@@ -116,6 +116,15 @@ export interface IStorageAdapter {
   ): Promise<{ results: EvalResult[]; total: number }>;
   getDashboardSummary(tenantId: TenantId, sinceHours?: number): Promise<DashboardSummary>;
   deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number>;
+  /**
+   * Delete a single trace by id. Cascades to spans via FK ON DELETE
+   * CASCADE; eval_results get their trace_id set to NULL (so score
+   * history survives even after the trace is deleted).
+   *
+   * Returns true if a row was deleted, false if the id didn't exist
+   * (or belonged to a different tenant).
+   */
+  deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean>;
   getDistinctValues(tenantId: TenantId, column: string): Promise<string[]>;
   getEvalStats(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStats>;
   getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsTrendBucket[]>;

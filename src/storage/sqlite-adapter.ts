@@ -550,6 +550,17 @@ export class SqliteAdapter implements IStorageAdapter {
     return result.changes;
   }
 
+  async deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean> {
+    assertTenant(tenantId);
+    // Tenant-scoped: a trace id owned by a different tenant is
+    // untouchable from this call. Cross-tenant deletions are not just
+    // denied — they're invisible (no indication the id even exists).
+    const result = this.db
+      .prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?')
+      .run(tenantId, traceId);
+    return result.changes > 0;
+  }
+
   async getDistinctValues(tenantId: TenantId, column: string): Promise<string[]> {
     assertTenant(tenantId);
     const queries: Record<string, string> = {

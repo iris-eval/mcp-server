@@ -30,9 +30,18 @@ describe('MCP Protocol Integration', () => {
   it('should list available tools', async () => {
     const result = await client.listTools();
     const toolNames = result.tools.map((t) => t.name);
+    // Original 3 (v0.1)
     expect(toolNames).toContain('log_trace');
     expect(toolNames).toContain('evaluate_output');
     expect(toolNames).toContain('get_traces');
+    // Added v0.4 — lifecycle management per Glama Tool Count dimension
+    expect(toolNames).toContain('list_rules');
+    expect(toolNames).toContain('deploy_rule');
+    expect(toolNames).toContain('delete_rule');
+    expect(toolNames).toContain('delete_trace');
+    // Snapshot — if this changes, Glama Server Coherence dimension
+    // may reshuffle. Update check-product-claims.sh alongside.
+    expect(result.tools.length).toBe(7);
   });
 
   it('every tool exposes behavioral annotations for agent discovery', async () => {
@@ -40,7 +49,7 @@ describe('MCP Protocol Integration', () => {
     // readOnlyHint / destructiveHint / idempotentHint / openWorldHint. The
     // dashboard scanner reads them from tools/list. Missing annotations
     // drop the score from 5/5 → 2/5 on the Behavior dimension. This test
-    // makes sure the annotations survive the round-trip.
+    // makes sure the annotations survive the round-trip for every tool.
     const result = await client.listTools();
     const expectations: Record<
       string,
@@ -69,6 +78,30 @@ describe('MCP Protocol Integration', () => {
         idempotentHint: true,
         openWorldHint: false,
       },
+      list_rules: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      deploy_rule: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+      delete_rule: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+      delete_trace: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
     };
     for (const [name, hints] of Object.entries(expectations)) {
       const tool = result.tools.find((t) => t.name === name);
@@ -91,7 +124,16 @@ describe('MCP Protocol Integration', () => {
     // Check that each section keyword appears per tool.
     const result = await client.listTools();
     const required = ['Behavior', 'Output shape', 'Use when', "Don't use", 'Error modes'];
-    for (const toolName of ['log_trace', 'evaluate_output', 'get_traces']) {
+    const allToolNames = [
+      'log_trace',
+      'evaluate_output',
+      'get_traces',
+      'list_rules',
+      'deploy_rule',
+      'delete_rule',
+      'delete_trace',
+    ];
+    for (const toolName of allToolNames) {
       const tool = result.tools.find((t) => t.name === toolName);
       expect(tool, `tool ${toolName} must be registered`).toBeDefined();
       const desc = tool!.description ?? '';
@@ -102,6 +144,100 @@ describe('MCP Protocol Integration', () => {
         ).toContain(section);
       }
     }
+  });
+
+  it('deploy_rule → list_rules → delete_rule round-trip via MCP', async () => {
+    // Verify the rule-management lifecycle works end-to-end through
+    // the MCP surface (not just the HTTP dashboard API). An agent that
+    // discovers a failure pattern can deploy a rule, list to confirm,
+    // then later delete when the rule is obsolete.
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: `mcp-test-${Date.now()}`,
+        description: 'Asserts output has at least 20 characters',
+        evalType: 'completeness',
+        severity: 'medium',
+        definition: {
+          name: 'min-length-20',
+          type: 'min_length',
+          config: { min: 20 },
+        },
+      },
+    });
+    const deployContent = deployed.content as Array<{ type: string; text: string }>;
+    const deployParsed = JSON.parse(deployContent[0].text);
+    expect(deployParsed.rule.id).toMatch(/^rule-[a-f0-9]+$/);
+    const ruleId: string = deployParsed.rule.id;
+
+    // list_rules should include the new rule
+    const listed = await client.callTool({ name: 'list_rules', arguments: {} });
+    const listContent = listed.content as Array<{ type: string; text: string }>;
+    const listParsed = JSON.parse(listContent[0].text);
+    const found = listParsed.rules.find((r: { id: string }) => r.id === ruleId);
+    expect(found).toBeDefined();
+
+    // delete_rule removes it + returns deleted=true
+    const deleted = await client.callTool({
+      name: 'delete_rule',
+      arguments: { rule_id: ruleId },
+    });
+    const delContent = deleted.content as Array<{ type: string; text: string }>;
+    const delParsed = JSON.parse(delContent[0].text);
+    expect(delParsed.deleted).toBe(true);
+
+    // Re-deleting is idempotent-ish: returns deleted=false (not an error)
+    const reDeleted = await client.callTool({
+      name: 'delete_rule',
+      arguments: { rule_id: ruleId },
+    });
+    const reDelContent = reDeleted.content as Array<{ type: string; text: string }>;
+    const reDelParsed = JSON.parse(reDelContent[0].text);
+    expect(reDelParsed.deleted).toBe(false);
+  });
+
+  it('log_trace → delete_trace round-trip via MCP', async () => {
+    // Verify single-trace deletion through MCP. log a trace, confirm
+    // via get_traces, then delete and confirm it's gone.
+    const logged = await client.callTool({
+      name: 'log_trace',
+      arguments: { agent_name: 'delete-roundtrip-test' },
+    });
+    const logContent = logged.content as Array<{ type: string; text: string }>;
+    const logParsed = JSON.parse(logContent[0].text);
+    const traceId: string = logParsed.trace_id;
+    expect(traceId).toMatch(/^[a-f0-9]{32}$/);
+
+    // Confirm present
+    const before = await client.callTool({
+      name: 'get_traces',
+      arguments: { agent_name: 'delete-roundtrip-test' },
+    });
+    const beforeContent = before.content as Array<{ type: string; text: string }>;
+    const beforeParsed = JSON.parse(beforeContent[0].text);
+    expect(
+      beforeParsed.traces.find((t: { trace_id: string }) => t.trace_id === traceId),
+    ).toBeDefined();
+
+    // Delete
+    const deleted = await client.callTool({
+      name: 'delete_trace',
+      arguments: { trace_id: traceId },
+    });
+    const delContent = deleted.content as Array<{ type: string; text: string }>;
+    const delParsed = JSON.parse(delContent[0].text);
+    expect(delParsed.deleted).toBe(true);
+
+    // Confirm gone
+    const after = await client.callTool({
+      name: 'get_traces',
+      arguments: { agent_name: 'delete-roundtrip-test' },
+    });
+    const afterContent = after.content as Array<{ type: string; text: string }>;
+    const afterParsed = JSON.parse(afterContent[0].text);
+    expect(
+      afterParsed.traces.find((t: { trace_id: string }) => t.trace_id === traceId),
+    ).toBeUndefined();
   });
 
   it('should log a trace via MCP', async () => {

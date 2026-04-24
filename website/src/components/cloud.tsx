@@ -14,7 +14,7 @@ const TIERS = [
     cta: { label: "Get Started", href: "#open-source" },
     highlight: false,
     features: [
-      "3 MCP tools (log_trace, evaluate_output, get_traces)",
+      "7 MCP tools — full lifecycle (log, evaluate, query, deploy/delete rules, delete traces)",
       "13 built-in eval rules + custom rules",
       "Web dashboard with trace visualization",
       "SQLite storage — zero infrastructure",
