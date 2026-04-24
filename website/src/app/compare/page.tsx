@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Compare Iris — Agent Eval Alternatives",
@@ -113,6 +115,7 @@ export default function CompareIndex() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd }}
       />
+      <Nav />
       <main className="mx-auto max-w-4xl px-6 py-16">
         <nav className="mb-8 text-sm text-text-secondary">
           <Link href="/" className="hover:text-iris-400">
@@ -175,6 +178,7 @@ export default function CompareIndex() {
           </ul>
         </div>
       </main>
+      <Footer />
     </>
   );
 }

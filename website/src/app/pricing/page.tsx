@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Pricing — Iris",
@@ -129,7 +131,9 @@ const faq: FaqItem[] = [
 
 export default function PricingPage(): React.ReactElement {
   return (
-    <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-24">
+    <>
+      <Nav />
+      <main className="mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-24">
       {/* Hero */}
       <section className="mx-auto max-w-3xl text-center">
         <p className="text-sm font-medium uppercase tracking-wider text-text-accent">Pricing</p>
@@ -228,5 +232,7 @@ export default function PricingPage(): React.ReactElement {
         </a>
       </section>
     </main>
+    <Footer />
+    </>
   );
 }

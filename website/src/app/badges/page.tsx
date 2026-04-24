@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Badges — Iris",
@@ -62,8 +64,10 @@ const BADGES = [
 
 export default function BadgesPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-20">
-      <h1 className="mb-2 text-2xl font-bold text-text-primary">Badges</h1>
+    <>
+      <Nav />
+      <main className="mx-auto max-w-3xl px-6 py-20">
+        <h1 className="mb-2 text-2xl font-bold text-text-primary">Badges</h1>
       <p className="mb-10 text-text-secondary">
         Embeddable trust signals for Iris. Copy the markdown to use in articles,
         READMEs, or directory listings.
@@ -84,5 +88,7 @@ export default function BadgesPage() {
         ))}
       </div>
     </main>
+    <Footer />
+    </>
   );
 }
