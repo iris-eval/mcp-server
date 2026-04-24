@@ -21,7 +21,7 @@ import { Icon } from '../shared/Icon';
 import { useTheme } from './ThemeProvider';
 import { usePreferences } from '../../hooks/usePreferences';
 
-const VERSION = '0.4.0-dev';
+const VERSION = '0.4.0';
 
 const styles = {
   triggerWrap: {
