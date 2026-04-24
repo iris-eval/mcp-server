@@ -35,6 +35,75 @@ describe('MCP Protocol Integration', () => {
     expect(toolNames).toContain('get_traces');
   });
 
+  it('every tool exposes behavioral annotations for agent discovery', async () => {
+    // Glama's Tool Definition Quality Score requires MCP annotations:
+    // readOnlyHint / destructiveHint / idempotentHint / openWorldHint. The
+    // dashboard scanner reads them from tools/list. Missing annotations
+    // drop the score from 5/5 → 2/5 on the Behavior dimension. This test
+    // makes sure the annotations survive the round-trip.
+    const result = await client.listTools();
+    const expectations: Record<
+      string,
+      {
+        readOnlyHint: boolean;
+        destructiveHint: boolean;
+        idempotentHint: boolean;
+        openWorldHint: boolean;
+      }
+    > = {
+      log_trace: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+      evaluate_output: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      get_traces: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    };
+    for (const [name, hints] of Object.entries(expectations)) {
+      const tool = result.tools.find((t) => t.name === name);
+      expect(tool, `tool ${name} must be registered`).toBeDefined();
+      expect(tool!.annotations, `tool ${name} must carry annotations`).toBeDefined();
+      expect(tool!.annotations!.readOnlyHint).toBe(hints.readOnlyHint);
+      expect(tool!.annotations!.destructiveHint).toBe(hints.destructiveHint);
+      expect(tool!.annotations!.idempotentHint).toBe(hints.idempotentHint);
+      expect(tool!.annotations!.openWorldHint).toBe(hints.openWorldHint);
+    }
+  });
+
+  it('every tool description covers behavior, output, usage, and errors', async () => {
+    // Glama's TDQS scores Completeness + Usage Guidelines + Behavior.
+    // The 5/5 template requires each description to include:
+    //   - A Behavior paragraph (side effects, auth, rate limits)
+    //   - Output shape
+    //   - Use when / Don't use when
+    //   - Error modes
+    // Check that each section keyword appears per tool.
+    const result = await client.listTools();
+    const required = ['Behavior', 'Output shape', 'Use when', "Don't use", 'Error modes'];
+    for (const toolName of ['log_trace', 'evaluate_output', 'get_traces']) {
+      const tool = result.tools.find((t) => t.name === toolName);
+      expect(tool, `tool ${toolName} must be registered`).toBeDefined();
+      const desc = tool!.description ?? '';
+      for (const section of required) {
+        expect(
+          desc,
+          `tool ${toolName} description must cover "${section}" section`,
+        ).toContain(section);
+      }
+    }
+  });
+
   it('should log a trace via MCP', async () => {
     const result = await client.callTool({
       name: 'log_trace',

@@ -39,8 +39,26 @@ export function registerEvaluateOutputTool(
     'evaluate_output',
     {
       title: 'Evaluate Output',
-      description: 'Evaluate agent output quality using configurable rules',
+      description: [
+        'Score agent output against configurable eval rules and return a 0..1 score + per-rule breakdown.',
+        '',
+        'Behavior. Deterministic, in-process scoring — same inputs always produce the same result. Writes one eval_result row to Iris storage (linked to trace_id if provided; unlinked otherwise). No external network calls in heuristic mode (v0.4 adds an llm_as_judge eval_type that DOES call LLM APIs; see the separate evaluate_with_llm_judge tool for that). Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Runs in ~5-50ms for rule-based evaluation.',
+        '',
+        'Output shape. Returns JSON: `{ "id": "<uuid>", "score": 0..1, "passed": boolean, "rule_results": [{ "ruleName", "passed", "score", "message", "skipped?" }], "suggestions": string[], "rules_evaluated": number, "rules_skipped": number, "insufficient_data": boolean }`. `insufficient_data=true` means no applicable rules fired (e.g., safety eval with only cost data).',
+        '',
+        'Use when you want a quality score on a specific output — typically after log_trace records the execution. Pass `eval_type` to route to the right rule bundle: `completeness` (length, sentence count, relevance to input), `relevance` (keyword overlap, topic consistency), `safety` (PII leak, prompt injection, hallucination markers, stub-output detection), `cost` (budget threshold), or `custom` (bring your own rules via `custom_rules`).',
+        '',
+        'Don\'t use when the output is empty or has no applicable rules — the eval_type decides which rules apply, and invalid combinations return score=0 + insufficient_data=true (not an error, but not actionable). Don\'t use to VALIDATE JSON schemas directly (use your language\'s JSON Schema validator — Iris\'s `json_schema` custom rule type is for output-shape assertions, not arbitrary validation).',
+        '',
+        'Error modes. Throws on malformed custom_rules (Zod rejects). Returns 400 on regex patterns that fail safe-regex2 ReDoS check or exceed 1000-char limit. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions.',
+      ].join('\n'),
       inputSchema,
+      annotations: {
+        readOnlyHint: false,     // Writes an eval_result row
+        destructiveHint: false,  // Creates new data; doesn't overwrite or delete
+        idempotentHint: true,    // Deterministic: same inputs → same score (each call writes a distinct result row, but the SCORE is stable)
+        openWorldHint: false,    // No external network in heuristic mode; LLM-as-judge has its own tool with openWorldHint:true
+      },
     },
     async (args) => {
       const evalType = args.eval_type as EvalType;

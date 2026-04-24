@@ -54,8 +54,26 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
     'log_trace',
     {
       title: 'Log Trace',
-      description: 'Log an agent execution trace with spans, tool calls, and metrics',
+      description: [
+        'Persist a single agent execution trace (input, output, spans, tool calls, cost, latency, token usage).',
+        '',
+        'Behavior. Writes one row to Iris storage (SQLite by default; Postgres in Cloud tier). Never reads from the agent, never calls external services. No authentication in stdio mode; HTTP mode requires Bearer token. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Not idempotent: each call mints a fresh trace_id, so resubmitting the same payload creates a duplicate trace.',
+        '',
+        'Output shape. Returns a JSON string: `{ "trace_id": "<32-hex>", "status": "stored" }`. The trace_id is the key you pass to evaluate_output or get_traces afterwards.',
+        '',
+        'Use when you want to record an agent execution for later evaluation, analysis, or audit. Call it AFTER the agent has produced output; call evaluate_output afterwards to score it; call get_traces to query historical traces. Store rich context: spans (span tree), tool_calls (which tools were invoked with latency/errors), token_usage, cost_usd, metadata (arbitrary key-value). All optional except agent_name.',
+        '',
+        'Don\'t use when you only need a transient log (use console logging). Don\'t use to update an existing trace — there is no update path in v0.4 (traces are immutable once stored).',
+        '',
+        'Error modes. Throws on missing agent_name. Throws on malformed span or tool_call objects (Zod rejects). Returns 500 on storage failure (disk full, DB locked). Never blocks on the agent — returns within ~50ms for typical payloads.',
+      ].join('\n'),
       inputSchema,
+      annotations: {
+        readOnlyHint: false,     // Writes a row to storage
+        destructiveHint: false,  // Creates new data; doesn't overwrite or delete
+        idempotentHint: false,   // Each call mints a fresh trace_id; duplicate payloads produce distinct traces
+        openWorldHint: false,    // Local storage only; no external network
+      },
     },
     async (args) => {
       const traceId = generateTraceId();
