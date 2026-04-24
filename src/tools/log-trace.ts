@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { bestEffortExport } from '../otel/lazy.js';
 
 const ToolCallSchema = z.object({
   tool_name: z.string(),
@@ -57,7 +58,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       description: [
         'Persist a single agent execution trace (input, output, spans, tool calls, cost, latency, token usage).',
         '',
-        'Behavior. Writes one row to Iris storage (SQLite by default; Postgres in Cloud tier). Never reads from the agent, never calls external services. No authentication in stdio mode; HTTP mode requires Bearer token. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Not idempotent: each call mints a fresh trace_id, so resubmitting the same payload creates a duplicate trace.',
+        'Behavior. Writes one row to Iris storage (SQLite by default; Postgres in Cloud tier). When IRIS_OTEL_ENDPOINT is set, ALSO fires a best-effort async export to the configured OTLP/HTTP collector (Jaeger, Tempo, Datadog OTLP, OTEL Collector). The OTel export is fire-and-forget — its success does not affect the tool response; failures are logged but the trace is still stored locally. No authentication in stdio mode; HTTP mode requires Bearer token. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Not idempotent: each call mints a fresh trace_id, so resubmitting the same payload creates a duplicate trace.',
         '',
         'Output shape. Returns a JSON string: `{ "trace_id": "<32-hex>", "status": "stored" }`. The trace_id is the key you pass to evaluate_output or get_traces afterwards.',
         '',
@@ -72,7 +73,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         readOnlyHint: false,     // Writes a row to storage
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete
         idempotentHint: false,   // Each call mints a fresh trace_id; duplicate payloads produce distinct traces
-        openWorldHint: false,    // Local storage only; no external network
+        openWorldHint: false,    // Local storage first. When IRIS_OTEL_ENDPOINT is set a best-effort async OTel export runs but is non-blocking (tool succeeds even if export fails).
       },
     },
     async (args) => {
@@ -99,6 +100,15 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       };
 
       await storage.insertTrace(LOCAL_TENANT, trace);
+
+      // Best-effort async OTel export (fire-and-forget). No-op when
+      // IRIS_OTEL_ENDPOINT isn't configured. Errors are logged via the
+      // server logger but never affect the tool response — if the OTel
+      // collector is down we still want to store traces locally.
+      bestEffortExport(trace, (err) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[iris.otel] ${err.message}`);
+      });
 
       return {
         content: [

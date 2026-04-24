@@ -98,6 +98,10 @@ Environment variables (CLI flags take precedence):
   IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25)
   IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default)
   IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match)
+  IRIS_OTEL_ENDPOINT                   Enable best-effort OTLP/HTTP JSON trace export to this collector URL
+  IRIS_OTEL_SERVICE_NAME               service.name resource attribute for OTel export (default: iris-mcp)
+  IRIS_OTEL_HEADERS                    Comma-separated k=v headers for OTel export (e.g. "authorization=Bearer abc")
+  IRIS_OTEL_TIMEOUT_MS                 Per-export timeout (default: 15000)
   RATE_LIMIT_SALT                      (waitlist API only — required when website is deployed)
 
 Dashboard preferences (~/.iris/preferences.json):
