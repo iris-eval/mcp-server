@@ -1,0 +1,35 @@
+{
+  "$comment": "Lighthouse CI config — budgets + URLs. Floors declared here fail the build. Raise them only with justification (bundle-size style commit) — the point is to catch regressions, not document aspirations.",
+  "ci": {
+    "collect": {
+      "url": [
+        "http://localhost:6922/",
+        "http://localhost:6922/moments",
+        "http://localhost:6922/rules",
+        "http://localhost:6922/audit"
+      ],
+      "numberOfRuns": 1,
+      "settings": {
+        "preset": "desktop",
+        "$comment-preset": "desktop matches the audience: this is a devtool dashboard, not a public-consumer page",
+        "onlyCategories": ["performance", "accessibility", "best-practices", "seo"],
+        "skipAudits": ["uses-http2", "canonical"],
+        "$comment-skip": "uses-http2 + canonical don't apply to a self-hosted localhost dashboard"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "$comment-floors": "Category-level floors. A regression below any of these fails CI. Thresholds are deliberately realistic for a dashboard SPA with live polling, not aspirational marketing numbers.",
+        "categories:performance": ["error", { "minScore": 0.7 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["error", { "minScore": 0.9 }],
+        "categories:seo": ["error", { "minScore": 0.9 }],
+        "$comment-a11y-strict": "a11y floor is 0.9 because we explicitly test axe in vitest + Playwright; a Lighthouse a11y miss here means there's a route-level issue the component-level tests didn't catch",
+        "$comment-perf-realistic": "perf floor of 0.7 accounts for the live-polling overhead (useApiData fires fetches for every hook on mount). If we later move to a single SSE endpoint the floor should raise to 0.85"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

@@ -74,7 +74,22 @@ jobs:
           upload-artifact: true
           output-file: iris-npm-sbom.spdx.json
 
-      - run: npm publish --provenance --access public || echo "Version already published, skipping"
+      # Determine the npm dist-tag based on the git tag.
+      # - vX.Y.Z        → latest  (production release)
+      # - vX.Y.Z-rc.N   → next    (release candidate; NOT the default install)
+      # - anything else → next    (fail-safe; never overwrite latest accidentally)
+      - name: Determine npm dist-tag
+        id: npm-tag
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+            echo "Publishing as 'latest' (production release)"
+          else
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+            echo "Publishing as 'next' (pre-release: ${GITHUB_REF_NAME})"
+          fi
+
+      - run: npm publish --provenance --access public --tag ${{ steps.npm-tag.outputs.tag }} || echo "Version already published, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -108,6 +123,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Determine Docker tag strategy: pre-releases don't get :latest
+      # so `docker pull ghcr.io/...:latest` keeps returning the previous
+      # production release, not an RC. Exactly mirrors the npm dist-tag
+      # decision above.
+      - name: Determine Docker tags
+        id: docker-tags
+        run: |
+          TAGS="ghcr.io/${{ github.repository }}:${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            TAGS="${TAGS}
+          ghcr.io/${{ github.repository }}:latest"
+            echo "Tagging as :${GITHUB_REF_NAME} + :latest (production)"
+          else
+            echo "Tagging as :${GITHUB_REF_NAME} only (pre-release — :latest untouched)"
+          fi
+          {
+            echo "tags<<EOF"
+            echo "$TAGS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build + push multi-arch image
         id: build
         uses: docker/build-push-action@v7
@@ -116,9 +152,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}:latest
+          tags: ${{ steps.docker-tags.outputs.tags }}
           # Attach provenance + SBOM attestations to the manifest so
           # `docker buildx imagetools inspect` shows them. Redundant with
           # the cosign signature below but gives two independent trust
@@ -185,9 +219,24 @@ jobs:
           name: docker-sbom
           path: ./release-assets
 
+      # Pre-release detection: any tag NOT matching strict vX.Y.Z (e.g.
+      # vX.Y.Z-rc.N) is published as a GitHub pre-release so it doesn't
+      # appear on the "latest release" sort + so users browsing the
+      # repo see the production v0.4.0 not the v0.4.0-rc.1.
+      - name: Determine release type
+        id: release-type
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
+          prerelease: ${{ steps.release-type.outputs.prerelease == 'true' }}
+          make_latest: ${{ steps.release-type.outputs.prerelease == 'false' && 'true' || 'false' }}
           files: |
             ./release-assets/iris-npm-sbom.spdx.json
             ./release-assets/iris-docker-sbom.spdx.json

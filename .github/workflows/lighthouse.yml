@@ -1,0 +1,72 @@
+name: Lighthouse
+
+# Perf + a11y + best-practices + SEO budgets on the dashboard SPA.
+# Runs on PR + main push. Fails the build if any category score drops
+# below the floor declared in lighthouserc.json.
+#
+# Why separate from ci.yml: Lighthouse runs Chromium headless against
+# a live server, needs a 60-90s warmup, and benefits from running
+# in parallel with the main test matrix. Keeping it in its own
+# workflow means a flake here doesn't block a merge of unrelated
+# dashboard work (but a real perf regression still alerts loudly).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+      - run: cd dashboard && npm install --no-audit --no-fund && npm run build
+
+      # Start iris-mcp with the built dashboard on a known port in the
+      # background. IRIS_NO_AUTO_LAUNCH keeps the server from opening a
+      # browser window (Lighthouse drives its own Chromium).
+      - name: Seed demo data
+        run: node dist/index.js --help > /dev/null 2>&1 && npm run seed:demo || true
+      - name: Start iris-mcp + dashboard
+        run: |
+          IRIS_NO_AUTO_LAUNCH=1 node dist/index.js --dashboard --dashboard-port 6922 &
+          echo $! > /tmp/iris.pid
+          # Poll health until ready
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:6922/api/v1/health > /dev/null; then
+              echo "iris-mcp ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@^0.15
+          lhci autorun
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
+
+      - name: Stop iris-mcp
+        if: always()
+        run: |
+          if [ -f /tmp/iris.pid ]; then
+            kill $(cat /tmp/iris.pid) || true
+          fi
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 30
