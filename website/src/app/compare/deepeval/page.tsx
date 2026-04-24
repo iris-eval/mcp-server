@@ -60,7 +60,7 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: sanitizeText(
-              "Iris is an MCP-native eval server that scores every agent output inline in production using deterministic heuristic rules. DeepEval is a Python testing framework that runs offline eval suites using LLM-as-Judge metrics via pytest. Iris requires zero code changes and runs in real-time. DeepEval requires Python test files and runs as a batch testing step."
+              "Iris is an MCP-native eval server that scores every agent output inline in production. It ships both tracks: deterministic heuristic rules (millisecond, free) and LLM-as-Judge + semantic citation verification (semantic, cost-capped) as of v0.4. DeepEval is a Python testing framework that runs offline eval suites via pytest. Iris requires zero code changes and runs in real-time. DeepEval requires Python test files and runs as a batch testing step."
             ),
           },
         },
@@ -70,7 +70,7 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: sanitizeText(
-              "Use Iris if you want inline production evaluation with zero setup — add one line to your MCP config and every agent output gets scored automatically. Use DeepEval if you need LLM-as-Judge evaluation with nuanced semantic scoring, are building in Python, and want to run eval suites in CI/CD pipelines."
+              "Use Iris if you want inline production evaluation with zero setup — add one line to your MCP config and every agent output gets scored automatically, with both deterministic heuristics and LLM-as-Judge + citation verification available in the same tool surface. Use DeepEval if you're building in Python and want pytest-native eval workflows running offline in CI/CD."
             ),
           },
         },
@@ -80,18 +80,21 @@ const jsonLd = {
 };
 
 const FEATURES = [
-  { feature: "Eval approach", iris: "Deterministic heuristic rules (<1ms)", deepeval: "LLM-as-Judge metrics (semantic, slower)", irisWin: false },
+  { feature: "Eval approach", iris: "Dual: deterministic rules (<1ms, free) + LLM-as-Judge (v0.4, 5 templates, cost-capped)", deepeval: "LLM-as-Judge metrics (semantic, slower)", irisWin: true },
   { feature: "Integration method", iris: "MCP config (zero code)", deepeval: "Python pytest decorators", irisWin: true },
   { feature: "When eval runs", iris: "Inline, every output in production", deepeval: "Offline, batch test suites in CI/CD", irisWin: true },
   { feature: "Language", iris: "TypeScript (any MCP agent)", deepeval: "Python only", irisWin: true },
   { feature: "Self-hosting", iris: "Single binary, one SQLite file", deepeval: "pip install, local execution", irisWin: false },
-  { feature: "Built-in metrics", iris: "13 rules (completeness, safety, cost, relevance) — 10 PII patterns, 13 injection patterns, stub-output, fabricated-citation heuristic", deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", irisNeutral: true },
-  { feature: "Custom metrics", iris: "Zod schema custom rules", deepeval: "Python custom metrics class", irisWin: false },
-  { feature: "Cost tracking", iris: "Per-trace USD cost, aggregate visibility", deepeval: "Not included", irisWin: true },
-  { feature: "Dashboard", iris: "Real-time dark-mode UI", deepeval: "Confident AI cloud dashboard (separate product)", irisWin: true },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", deepeval: "Not MCP-aware", irisWin: true },
+  { feature: "Built-in metrics", iris: "13 deterministic rules + 5 LLM-judge templates (accuracy, helpfulness, safety, correctness, faithfulness) + semantic citation verification", deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", irisWin: true },
+  { feature: "Citation verification", iris: "SSRF-guarded source fetch + per-claim LLM verdict (v0.4)", deepeval: "Not included", irisWin: true },
+  { feature: "Custom metrics", iris: "Zod schema custom rules + programmatic MCP deploy_rule", deepeval: "Python custom metrics class", irisNeutral: true },
+  { feature: "Cost tracking", iris: "Per-trace USD cost + per-LLM-judge-eval cost + aggregate visibility", deepeval: "Not included", irisWin: true },
+  { feature: "Dashboard", iris: "Real-time dark-mode UI with Decision Moments + drift detection", deepeval: "Confident AI cloud dashboard (separate product)", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server; 9 tools)", deepeval: "Not MCP-aware", irisWin: true },
+  { feature: "OpenTelemetry export", iris: "OTLP/HTTP JSON to Jaeger/Tempo/Datadog (v0.4)", deepeval: "Not included", irisWin: true },
+  { feature: "Supply-chain integrity", iris: "SBOM + cosign + SLSA build-provenance (v0.4)", deepeval: "Standard pip", irisWin: true },
   { feature: "License", iris: "MIT", deepeval: "Apache 2.0", irisWin: false },
-  { feature: "Maturity", iris: "Early stage (v0.3.1)", deepeval: "Established (4K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
+  { feature: "Maturity", iris: "Early stage (v0.4.0)", deepeval: "Established (14K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [
@@ -99,11 +102,12 @@ const IRIS_REASONS = [
   "You're building with MCP-compatible agents and want zero-code integration",
   "You need cost tracking and aggregate spend visibility across agents",
   "You want a single self-hosted binary with no Python dependency",
-  "You want deterministic, fast, predictable scoring without LLM API costs",
+  "You want both deterministic (fast, free) and LLM-as-Judge (semantic, cost-capped) in the same tool surface",
+  "You need semantic citation verification — checking whether cited sources actually support the claim",
+  "You want OpenTelemetry export to your existing Jaeger / Tempo / Datadog stack",
 ];
 
 const DEEPEVAL_REASONS = [
-  "You need semantic evaluation with LLM-as-Judge (faithfulness, hallucination, bias)",
   "You're building in Python and want pytest-native eval workflows",
   "You want to run eval suites in CI/CD pipelines before deployment",
   "You need a mature ecosystem with extensive documentation and community",
