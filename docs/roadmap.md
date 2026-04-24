@@ -64,26 +64,45 @@ Closing the pattern-coverage gaps surfaced by the controlled-trace test campaign
 
 ---
 
-## v0.4 -- LLM-as-Judge + Cloud Tier
+## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + Enterprise-Readiness Foundation
 
 **Status: Planned**
 
-Semantic evaluation powered by LLMs, plus the first multi-tenant cloud tier.
+Semantic evaluation powered by LLMs, export to industry-standard observability, plus the enterprise-readiness foundation that makes Iris production-ready.
 
-- **LLM-as-judge evaluation**: use an LLM to score output quality on dimensions like accuracy, helpfulness, and safety (configurable model, prompt templates, cost controls)
-- **Semantic citation verification**: graduates the v0.3.1 fabricated-citation heuristic to actual source-checking
-- **PostgreSQL storage adapter**: drop-in replacement for SQLite, connection pooling, concurrent writes
-- **Multi-tenancy**: workspace isolation, per-workspace database schemas or row-level security
-- **OpenTelemetry trace export**: export Iris traces as OTel spans to Jaeger, Grafana Tempo, Datadog, Sentry
-- **Team eval dashboards**: shared eval results, team-level quality scores, agent-by-agent comparison
+- **LLM-as-judge evaluation**: use an LLM (OpenAI or Anthropic) to score output quality on dimensions like accuracy, helpfulness, and safety — configurable model, prompt templates, cost caps, token + pricing tracking
+- **Semantic citation verification**: graduates the v0.3.1 fabricated-citation heuristic to actual source-checking via LLM-as-judge
+- **OpenTelemetry trace export**: export Iris traces as OTel spans to Jaeger, Grafana Tempo, Datadog, Sentry via OTLP gRPC/HTTP
+- **Tenant-id storage scaffolding**: `tenant_id` column on every data table, 4-layer defense-in-depth (type system + runtime guard + SQL scope + composite indexes). OSS sees only 'local'; v0.5 Cloud Tier builds on this
+- **Supply-chain integrity**: SBOM + cosign keyless signing + SLSA build-provenance attestations on every release artifact
+- **Playwright E2E in CI**: Chromium + Firefox; smoke + drill-through + Make-This-A-Rule flow
+- **Storybook primitive catalog** + Lighthouse CI + bundle-size budgets + axe chart/detail/chrome coverage
+- **v2.C chrome polish**: AccountMenu + NotificationsPopover + DensitySync
+- **Customer-facing `/security` page** + architecture doc with tenant model + supply chain
 
 ---
 
-## v0.5 -- Alerting & Retention
+## v0.5 -- Cloud Tier
 
-**Status: Planned**
+**Status: Planned** — post-YC (summer 2026 target).
 
-Alert on quality regressions and bound long-term storage.
+Managed Iris. Hosted, multi-tenant, team-collaboration-ready.
+
+Includes three original v0.4 items that moved here because they only make sense alongside the hosted offering (see `strategy/product/v0.4-scope-decision-2026-04-23.md` for the decision record).
+
+- **PostgreSQL storage adapter**: production-grade concurrent writes, connection pooling; directly couples to Cloud backend. *(Moved from v0.4.)*
+- **Full multi-tenancy**: workspace isolation + user accounts + authentication + row-level-security enforcement (v0.4's tenant_id scaffolding is the foundation). *(Moved from v0.4.)*
+- **Team eval dashboards**: shared eval results, team-level quality scores, agent-by-agent comparison. *(Moved from v0.4.)*
+- **Managed hosting**: sign-up flow, onboarding, usage-based billing
+- **Workspace switcher + member invites**
+
+---
+
+## v0.6 -- Alerting & Retention
+
+**Status: Planned** — after Cloud Tier GA.
+
+Alert on quality regressions and bound long-term storage. *(Cascaded from original v0.5.)*
 
 - **Quality alert rules**: configurable conditions (e.g., average eval score drops below 0.6 over 1 hour, safety failure rate exceeds 5%, cost per trace exceeds $0.50)
 - **Webhook notifications**: POST alert payloads to any URL (Slack, PagerDuty, custom endpoints)
@@ -94,9 +113,9 @@ Alert on quality regressions and bound long-term storage.
 
 ---
 
-## v0.6 -- Enterprise
+## v0.7 -- Enterprise
 
-**Status: Planned**
+**Status: Planned** — regulated + large-organization tier. *(Cascaded from original v0.6.)*
 
 Features for regulated environments and large organizations.
 
