@@ -49,7 +49,7 @@ Happy to answer questions about the architecture, the eval rule system, or the M
 
 Releasing Iris, an open-source MCP server for evaluating and monitoring AI agent outputs. The core problem: as agents move from demos to production, there is no standard way to automatically evaluate output quality across runs, track cost, or detect safety issues like PII leakage and prompt injection.
 
-Iris is the first eval and observability tool built natively on the Model Context Protocol. It exposes three MCP tools that any compatible agent discovers and calls automatically — no SDK integration required.
+Iris is the first eval and observability tool built natively on the Model Context Protocol. It exposes nine MCP tools that any compatible agent discovers and calls automatically — no SDK integration required. Three core tools (log_trace / evaluate_output / get_traces), four lifecycle tools (list_rules / deploy_rule / delete_rule / delete_trace), and two semantic-eval tools (evaluate_with_llm_judge with 5 templates, verify_citations with SSRF-guarded source resolution).
 
 **Evaluation framework:**
 
@@ -70,7 +70,7 @@ Every trace records `token_usage` (prompt, completion, total) and `cost_usd`. Th
 
 Iris captures hierarchical execution spans with OpenTelemetry-compatible span kinds. The dashboard renders these as a span tree, letting you trace exactly where in an agent's execution chain something failed or slowed down. Per-tool-call latency is tracked individually.
 
-**Limitations:** The current eval rules are heuristic-based (regex, keyword overlap, token ratios). They are fast and deterministic but do not capture semantic quality. LLM-as-judge evaluation is on the roadmap.
+**Two eval tracks:** The 13 built-in rules are heuristic-based (regex, keyword overlap, token ratios) — fast (<1ms), deterministic, free. The new `evaluate_with_llm_judge` tool (v0.4) adds semantic scoring via Anthropic or OpenAI across five templates (accuracy / helpfulness / safety / correctness / faithfulness) with pessimistic per-eval cost cap. Pick the right tool for the question — heuristics for fast PII / injection / cost guardrails; LLM-judge for "did the output actually answer the user."
 
 Stack: TypeScript, better-sqlite3, Express 5, @modelcontextprotocol/sdk. Self-hosted, SQLite storage, MIT licensed.
 
