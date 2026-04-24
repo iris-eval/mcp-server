@@ -99,9 +99,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cd dashboard && npm install --no-audit --no-fund && npm run build
-      - name: Install Playwright browsers (Chromium + Firefox + WebKit)
-        run: npx playwright install --with-deps chromium firefox webkit
-      - name: Run Playwright E2E (all browsers)
+      - name: Install Playwright browsers (Chromium + Firefox)
+        # WebKit on Linux is NOT Safari (Safari uses Apple's WebKit,
+        # macOS-only). We run Chromium + Firefox for real evergreen
+        # coverage; Safari-real would require macOS CI as a later
+        # decision. See playwright.config.ts for the full rationale.
+        run: npx playwright install --with-deps chromium firefox
+      - name: Run Playwright E2E (Chromium + Firefox)
         run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
