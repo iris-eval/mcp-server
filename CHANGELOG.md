@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — targeting v0.4.0 (2026-05-02)
+## [0.4.0] - 2026-04-24
 
-Enterprise-readiness pass — OSS Bar A foundation for the hosted Cloud tier. Closes items 1–13 of the enterprise-readiness audit (`strategy/proof/iris-enterprise-readiness-audit-2026-04-23.md`). 96/96 dashboard + 2/2 migration + 9/9 RateLimitError + 209 root tests pass; bundle 497 KB under 600 KB budget.
+The semantic-eval release. v0.4.0 ships LLM-as-Judge (5 templates, cost-capped) + semantic citation verification (SSRF-guarded fetch + per-claim LLM verdict) + OpenTelemetry export (OTLP/HTTP JSON) + 6 new MCP tools (3→9 total: `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge`, `verify_citations`) — all on top of the enterprise-readiness foundation (tenant isolation 4-layer, SBOM + cosign + SLSA build-provenance, Playwright E2E × 2 browsers, Storybook 10, Lighthouse CI, axe a11y, per-view polling + RateLimitBanner, v2.C chrome). 372/372 tests pass; bundle 497 KB under 600 KB budget.
 
 ### Added
 

@@ -31,8 +31,8 @@ export function Nav(): React.ReactElement {
       {/* Event banner */}
       <div className="relative z-50 border-b border-border-subtle bg-iris-600/8 px-4 py-2.5 text-center">
         <a href="https://github.com/iris-eval/mcp-server" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <span className="rounded-full bg-iris-600 px-2 py-0.5 text-[11px] font-semibold text-white">v0.3.1</span>
-          <span>Iris — The agent eval standard for MCP. 13 eval rules, open source</span>
+          <span className="rounded-full bg-iris-600 px-2 py-0.5 text-[11px] font-semibold text-white">v0.4.0</span>
+          <span>Iris v0.4 — LLM-as-Judge + citation verify + OTel + 9 MCP tools</span>
           <span className="text-text-accent">&rarr;</span>
         </a>
       </div>
