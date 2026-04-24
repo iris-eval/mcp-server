@@ -117,7 +117,7 @@ docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 
 ## MCP Tools
 
-Iris registers eight tools that any MCP-compatible agent can invoke — full rule + trace lifecycle + LLM-as-judge:
+Iris registers nine tools that any MCP-compatible agent can invoke — full rule + trace lifecycle + LLM-as-judge + semantic citation verification:
 
 - **`log_trace`** — Log an agent execution with spans, tool calls, token usage, and cost
 - **`evaluate_output`** — Score output quality against completeness, relevance, safety, and cost rules (heuristic, deterministic, free)
@@ -127,6 +127,7 @@ Iris registers eight tools that any MCP-compatible agent can invoke — full rul
 - **`delete_rule`** — Remove a deployed custom rule (destructive, idempotent)
 - **`delete_trace`** — Remove a single stored trace by ID (destructive, tenant-scoped)
 - **`evaluate_with_llm_judge`** — Semantic eval via LLM (Anthropic or OpenAI). Five templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, per-eval pricing disclosed.
+- **`verify_citations`** — Extract citations from output (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded + domain-allowlisted resolver, and use an LLM judge to check whether each source actually supports the cited claim. Opt-in outbound HTTP.
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 

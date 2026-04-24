@@ -93,9 +93,11 @@ Environment variables (CLI flags take precedence):
   IRIS_API_KEY                         API key for HTTP authentication
   IRIS_ALLOWED_ORIGINS                 Comma-separated CORS origin allowlist
   IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
-  IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge when provider=anthropic
-  IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge when provider=openai
+  IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
+  IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)
   IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25)
+  IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default)
+  IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match)
   RATE_LIMIT_SALT                      (waitlist API only — required when website is deployed)
 
 Dashboard preferences (~/.iris/preferences.json):

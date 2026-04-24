@@ -10,6 +10,7 @@ import { registerDeployRuleTool } from './deploy-rule.js';
 import { registerDeleteRuleTool } from './delete-rule.js';
 import { registerDeleteTraceTool } from './delete-trace.js';
 import { registerEvaluateWithLLMJudgeTool } from './evaluate-with-llm-judge.js';
+import { registerVerifyCitationsTool } from './verify-citations.js';
 
 export function registerAllTools(
   server: McpServer,
@@ -25,4 +26,5 @@ export function registerAllTools(
   registerDeleteRuleTool(server, customRuleStore);
   registerDeleteTraceTool(server, storage);
   registerEvaluateWithLLMJudgeTool(server, storage);
+  registerVerifyCitationsTool(server, storage);
 }

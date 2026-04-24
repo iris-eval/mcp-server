@@ -64,13 +64,13 @@ Closing the pattern-coverage gaps surfaced by the controlled-trace test campaign
 
 ---
 
-## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + 8-Tool MCP Surface
+## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + 9-Tool MCP Surface
 
 **Status: Planned**
 
-Semantic evaluation powered by LLMs, export to industry-standard observability, expanded MCP tool surface covering the full rule + trace lifecycle plus LLM-as-judge, plus the enterprise-readiness foundation that makes Iris production-ready.
+Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export to industry-standard observability, expanded MCP tool surface covering the full rule + trace lifecycle plus LLM-as-judge + semantic citation verification, plus the enterprise-readiness foundation that makes Iris production-ready.
 
-- **8 MCP tools (full rule + trace lifecycle + LLM-as-judge)**: adds `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge` alongside the original `log_trace` / `evaluate_output` / `get_traces`. Agents can discover a failure pattern, deploy a rule programmatically, audit via `list_rules`, tear down when the rule is obsolete, AND score an output semantically via LLM — all via MCP. `delete_trace` is tenant-scoped. `evaluate_with_llm_judge` is cost-capped and supports Anthropic + OpenAI
+- **9 MCP tools (full rule + trace lifecycle + LLM-as-judge + citation verification)**: adds `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge`, `verify_citations` alongside the original `log_trace` / `evaluate_output` / `get_traces`. Agents can discover a failure pattern, deploy a rule programmatically, audit via `list_rules`, tear down when the rule is obsolete, score an output semantically via LLM, AND verify cited sources against the claims — all via MCP. `delete_trace` is tenant-scoped. `evaluate_with_llm_judge` is cost-capped and supports Anthropic + OpenAI. `verify_citations` extracts 4 citation kinds (numbered / author-year / URL / DOI), fetches sources via an SSRF-guarded resolver (scheme allowlist + private-IP block + optional domain allowlist + redirect re-check + 5MB cap + timeout), and runs a per-claim LLM judge
 - **Tool Definition Quality** (5/5 Glama score target): every tool carries MCP annotations (`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`) and a 5-section description (Behavior / Output shape / Use when / Don't use when / Error modes)
 - **LLM-as-judge evaluation**: use an LLM (OpenAI or Anthropic) to score output quality on dimensions like accuracy, helpfulness, and safety — configurable model, prompt templates, cost caps, token + pricing tracking
 - **Semantic citation verification**: graduates the v0.3.1 fabricated-citation heuristic to actual source-checking via LLM-as-judge
