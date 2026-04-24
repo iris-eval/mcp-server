@@ -89,6 +89,70 @@ describe('loadOrInitPreferences — v0.4 fields', () => {
     expect(state.preferences.theme).toBe('system');
     expect(state.preferences.momentFilters).toEqual({});
   });
+
+  it('back-fills v0.4.0 fields from a v0.3.x preferences.json', () => {
+    // Represents a user who upgraded from v0.3.x → v0.4.0. The on-disk
+    // file has the v0.3.x schema (no density / sidebarCollapsed /
+    // notificationsLastSeen). Must not crash + must populate sensible
+    // defaults so v2.C chrome renders without throwing.
+    writeFileSync(
+      prefPath,
+      JSON.stringify({
+        autoLaunch: true,
+        firstSeen: '2026-04-01T00:00:00.000Z',
+        dismissedBanners: ['welcome'],
+        theme: 'dark',
+        momentFilters: { verdict: 'fail' },
+        dismissedTours: ['tour-welcome'],
+        archivedMoments: ['moment-abc'],
+        // density + sidebarCollapsed + notificationsLastSeen absent —
+        // user's v0.3.x file wouldn't have them
+      }),
+    );
+    const state = loadOrInitPreferences(prefPath);
+    // Existing v0.3 fields preserved verbatim
+    expect(state.preferences.autoLaunch).toBe(true);
+    expect(state.preferences.theme).toBe('dark');
+    expect(state.preferences.momentFilters).toEqual({ verdict: 'fail' });
+    expect(state.preferences.dismissedTours).toEqual(['tour-welcome']);
+    expect(state.preferences.archivedMoments).toEqual(['moment-abc']);
+    // v0.4 fields back-fill with defaults (R2.3: compact default,
+    // sidebar expanded by default, no unread-cursor set)
+    expect(state.preferences.density).toBe('compact');
+    expect(state.preferences.sidebarCollapsed).toBe(false);
+    expect(state.preferences.notificationsLastSeen).toBeUndefined();
+  });
+
+  it('round-trips new v0.4.0 fields through createPreferenceStore.patch', () => {
+    const store = createPreferenceStore(prefPath);
+    const updated = store.patch({
+      density: 'comfortable',
+      sidebarCollapsed: true,
+      notificationsLastSeen: '2026-04-23T20:00:00.000Z',
+    });
+    expect(updated.density).toBe('comfortable');
+    expect(updated.sidebarCollapsed).toBe(true);
+    expect(updated.notificationsLastSeen).toBe('2026-04-23T20:00:00.000Z');
+    // Persist to disk + re-read
+    const state = loadOrInitPreferences(prefPath);
+    expect(state.preferences.density).toBe('comfortable');
+    expect(state.preferences.sidebarCollapsed).toBe(true);
+    expect(state.preferences.notificationsLastSeen).toBe('2026-04-23T20:00:00.000Z');
+  });
+
+  it('rejects invalid density values via Zod', () => {
+    const store = createPreferenceStore(prefPath);
+    expect(() => store.patch({ density: 'dense' as never })).toThrow();
+    expect(store.read().density).toBe('compact');
+  });
+
+  it('rejects non-ISO notificationsLastSeen via Zod', () => {
+    const store = createPreferenceStore(prefPath);
+    expect(() =>
+      store.patch({ notificationsLastSeen: 'yesterday' as never }),
+    ).toThrow();
+    expect(store.read().notificationsLastSeen).toBeUndefined();
+  });
 });
 
 describe('createPreferenceStore', () => {

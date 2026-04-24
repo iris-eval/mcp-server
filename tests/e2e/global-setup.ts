@@ -140,6 +140,13 @@ export default async function globalSetup(): Promise<void> {
       dismissedTours: ['tour-welcome'],
       archivedMoments: [],
       momentFilters: {},
+      density: 'compact',
+      sidebarCollapsed: false,
+      // Reset the notifications cursor to the epoch so the seeded audit
+      // entry (4 hours ago) always registers as unread at test start.
+      // Without this, prior test runs leave a more-recent lastSeen and
+      // the unread-badge test falsely passes/fails depending on order.
+      notificationsLastSeen: '1970-01-01T00:00:00.000Z',
     }),
   });
   if (!patchRes.ok) {
