@@ -14,7 +14,7 @@ const TIERS = [
     cta: { label: "Get Started", href: "#open-source" },
     highlight: false,
     features: [
-      "7 MCP tools — full lifecycle (log, evaluate, query, deploy/delete rules, delete traces)",
+      "8 MCP tools — full lifecycle + LLM-as-judge (log, evaluate, query, deploy/delete rules, delete traces, LLM judge)",
       "13 built-in eval rules + custom rules",
       "Web dashboard with trace visualization",
       "SQLite storage — zero infrastructure",

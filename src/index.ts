@@ -83,17 +83,20 @@ Options:
   -h, --help               Show this help message
 
 Environment variables (CLI flags take precedence):
-  IRIS_TRANSPORT           stdio | http
-  IRIS_HOST                Bind address for HTTP transport (default: 127.0.0.1)
-  IRIS_PORT                HTTP transport port (1-65535)
-  IRIS_DB_PATH             SQLite database path
-  IRIS_LOG_LEVEL           debug | info | warn | error
-  IRIS_DASHBOARD           true to enable web dashboard
-  IRIS_DASHBOARD_PORT      Dashboard port (1-65535, default: 6920)
-  IRIS_API_KEY             API key for HTTP authentication
-  IRIS_ALLOWED_ORIGINS     Comma-separated CORS origin allowlist
-  IRIS_NO_AUTO_LAUNCH      Set to 1 to disable first-run dashboard auto-launch
-  RATE_LIMIT_SALT          (waitlist API only — required when website is deployed)
+  IRIS_TRANSPORT                       stdio | http
+  IRIS_HOST                            Bind address for HTTP transport (default: 127.0.0.1)
+  IRIS_PORT                            HTTP transport port (1-65535)
+  IRIS_DB_PATH                         SQLite database path
+  IRIS_LOG_LEVEL                       debug | info | warn | error
+  IRIS_DASHBOARD                       true to enable web dashboard
+  IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
+  IRIS_API_KEY                         API key for HTTP authentication
+  IRIS_ALLOWED_ORIGINS                 Comma-separated CORS origin allowlist
+  IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
+  IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge when provider=anthropic
+  IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge when provider=openai
+  IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25)
+  RATE_LIMIT_SALT                      (waitlist API only — required when website is deployed)
 
 Dashboard preferences (~/.iris/preferences.json):
   Edit autoLaunch: false to permanently disable first-run dashboard auto-launch.

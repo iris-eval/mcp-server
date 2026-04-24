@@ -39,9 +39,11 @@ describe('MCP Protocol Integration', () => {
     expect(toolNames).toContain('deploy_rule');
     expect(toolNames).toContain('delete_rule');
     expect(toolNames).toContain('delete_trace');
+    // Added v0.4 — LLM-as-Judge (8th tool, semantic eval path)
+    expect(toolNames).toContain('evaluate_with_llm_judge');
     // Snapshot — if this changes, Glama Server Coherence dimension
     // may reshuffle. Update check-product-claims.sh alongside.
-    expect(result.tools.length).toBe(7);
+    expect(result.tools.length).toBe(8);
   });
 
   it('every tool exposes behavioral annotations for agent discovery', async () => {
@@ -102,6 +104,12 @@ describe('MCP Protocol Integration', () => {
         idempotentHint: false,
         openWorldHint: false,
       },
+      evaluate_with_llm_judge: {
+        readOnlyHint: false,      // Writes eval_result + spends money
+        destructiveHint: false,   // Creates data; doesn't overwrite/delete
+        idempotentHint: false,    // Provider non-determinism; cost varies
+        openWorldHint: true,      // External API call to Anthropic/OpenAI
+      },
     };
     for (const [name, hints] of Object.entries(expectations)) {
       const tool = result.tools.find((t) => t.name === name);
@@ -132,6 +140,7 @@ describe('MCP Protocol Integration', () => {
       'deploy_rule',
       'delete_rule',
       'delete_trace',
+      'evaluate_with_llm_judge',
     ];
     for (const toolName of allToolNames) {
       const tool = result.tools.find((t) => t.name === toolName);

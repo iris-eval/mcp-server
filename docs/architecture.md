@@ -8,7 +8,7 @@ This document describes the internal architecture of Iris, the MCP-native agent 
 
 Iris is an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that provides observability and evaluation capabilities for AI agents. It runs as a standalone process that any MCP-compatible client (Claude Desktop, an IDE plugin, a custom agent framework) can connect to over **stdio** or **HTTP**.
 
-Iris exposes seven MCP tools — full rule + trace lifecycle: `log_trace`, `evaluate_output`, `get_traces`, `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`. It also exposes MCP resources (`dashboard-summary`, `trace-detail`) and an optional REST API that powers a web dashboard.
+Iris exposes eight MCP tools — full rule + trace lifecycle + LLM-as-judge: `log_trace`, `evaluate_output`, `get_traces`, `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge`. It also exposes MCP resources (`dashboard-summary`, `trace-detail`) and an optional REST API that powers a web dashboard.
 
 ```
 +-------------------+        MCP (stdio or HTTP)        +-------------------+
