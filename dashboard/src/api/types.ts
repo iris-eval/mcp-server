@@ -299,6 +299,15 @@ export type AuditAction = 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.
 
 export interface AuditLogEntry {
   ts: string;
+  /**
+   * Which tenant the action belongs to. OSS installs always emit 'local'.
+   * Cloud installs emit the tenant resolved from the authenticated session.
+   *
+   * Optional for backward compatibility: entries written before v0.4.0
+   * don't have this field. Readers MUST treat missing tenantId as 'local'
+   * so old audit logs remain queryable on upgrade.
+   */
+  tenantId?: string;
   action: AuditAction;
   user: string;
   ruleId: string;

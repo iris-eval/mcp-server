@@ -99,9 +99,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cd dashboard && npm install --no-audit --no-fund && npm run build
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Run Playwright E2E
+      - name: Install Playwright browsers (Chromium + Firefox + WebKit)
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run Playwright E2E (all browsers)
         run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

@@ -49,10 +49,28 @@ export default defineConfig({
       IRIS_NO_AUTO_LAUNCH: '1',
     },
   },
+  /*
+   * Browser matrix per "no glossing" directive: evergreen browsers are
+   * our stated support target, so we actually test all three. Chromium
+   * covers 65%+ real-world share; Firefox surfaces Gecko-specific
+   * regressions (focus-management, layout-shift interaction); webkit
+   * covers Safari-equivalent rendering (gradients, transforms, grid).
+   *
+   * All three run in CI. Locally, set PLAYWRIGHT_PROJECTS=chromium to
+   * fast-iterate on a single browser; the full matrix runs on PR.
+   */
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
     },
   ],
 });
