@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
     {
       source: "/waitlist",
       destination: "/#waitlist",
-      permanent: false,
+      permanent: true,
     },
   ],
 };
