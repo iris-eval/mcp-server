@@ -12,6 +12,13 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [log_trace](#log_trace)
   - [evaluate_output](#evaluate_output)
   - [get_traces](#get_traces)
+  - [list_rules](#list_rules)
+  - [deploy_rule](#deploy_rule)
+  - [delete_rule](#delete_rule)
+  - [delete_trace](#delete_trace)
+  - [evaluate_with_llm_judge](#evaluate_with_llm_judge)
+  - [verify_citations](#verify_citations)
+- [OpenTelemetry Export](#opentelemetry-export)
 - [MCP Resources](#mcp-resources)
   - [iris://dashboard/summary](#irisdashboardsummary)
   - [iris://traces/{trace_id}](#iristraces-trace_id)
@@ -342,6 +349,207 @@ Query stored traces with filters, pagination, and optional summary stats.
   }
 }
 ```
+
+---
+
+### list_rules
+
+Enumerate deployed custom eval rules. Read-only; returns the full rule catalog with filters for enabled-only or specific eval type.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `eval_type` | `enum` | No | Filter to one of: `completeness` / `relevance` / `safety` / `cost` / `custom` |
+| `enabled_only` | `boolean` | No | Only return rules with `enabled=true` (default: false — returns all) |
+
+#### Response
+
+```json
+{
+  "rules": [
+    {
+      "id": "rule-abc123",
+      "name": "min-length-40",
+      "description": "Asserts output has at least 40 characters",
+      "evalType": "completeness",
+      "severity": "medium",
+      "enabled": true,
+      "createdAt": "2026-04-22T14:00:00Z",
+      "definition": { "name": "min-length-40", "type": "min_length", "config": { "min": 40 } }
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### deploy_rule
+
+Register a new custom eval rule so it fires automatically on every `evaluate_output` call of its `evalType`. Writes to the shared custom-rule store; rule is immediately visible in the dashboard Make-This-A-Rule composer.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `string` | Yes | Human-readable rule name |
+| `description` | `string` | Yes | What the rule checks + why |
+| `evalType` | `enum` | Yes | Category: `completeness` / `relevance` / `safety` / `cost` / `custom` |
+| `severity` | `enum` | No | `low` / `medium` / `high` (default `medium`) |
+| `definition` | `CustomRuleDefinition` | Yes | Shape: `{ name, type, config, weight? }` — see [Custom Rules](#custom-rules) |
+
+#### Response
+
+```json
+{
+  "rule": { "id": "rule-abc123", "name": "...", "enabled": true, ... },
+  "status": "deployed"
+}
+```
+
+---
+
+### delete_rule
+
+Remove a deployed custom rule by ID. Idempotent-ish: re-deleting a removed rule returns `deleted: false` instead of throwing, so agents can safely retry.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `rule_id` | `string` | Yes | ID returned by `deploy_rule` |
+
+#### Response
+
+```json
+{ "rule_id": "rule-abc123", "deleted": true }
+```
+
+---
+
+### delete_trace
+
+Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `trace_id` | `string` | Yes | Trace identifier |
+
+#### Response
+
+```json
+{ "trace_id": "trc_1a2b", "deleted": true }
+```
+
+---
+
+### evaluate_with_llm_judge
+
+Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Cost-capped.
+
+**See the full guide:** [docs/llm-as-judge.md](./llm-as-judge.md).
+
+#### Parameters (summary)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `output` | `string` | Yes | Text to evaluate |
+| `template` | `enum` | Yes | `accuracy` / `helpfulness` / `safety` / `correctness` / `faithfulness` |
+| `model` | `string` | Yes | Supported: `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`, `gpt-4o`, `gpt-4o-mini`, `o1-mini` |
+| `provider` | `enum` | No | `anthropic` / `openai` — auto-inferred from model if omitted |
+| `input` | `string` | No | Original user question (improves helpfulness/safety templates) |
+| `expected` | `string` | Required for `correctness` template | Reference answer |
+| `source_material` | `string` | Required for `faithfulness` template | RAG sources |
+| `max_cost_usd` | `number` | No | Cost cap; default `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` or $0.25 |
+| `trace_id` | `string` | No | Link to a trace |
+
+#### Response (summary)
+
+```json
+{
+  "id": "eval-abc",
+  "score": 0.85,
+  "passed": true,
+  "rationale": "...",
+  "dimensions": { "factual_claims": 0.9, ... },
+  "model": "claude-haiku-4-5-20251001",
+  "provider": "anthropic",
+  "template": "accuracy",
+  "input_tokens": 127,
+  "output_tokens": 48,
+  "cost_usd": 0.000367,
+  "latency_ms": 1240
+}
+```
+
+**Auth:** Requires `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` env var at call time.
+
+---
+
+### verify_citations
+
+Extract citations from output, fetch sources behind an SSRF-guarded resolver, run per-claim LLM verification. Returns an overall support ratio + per-citation verdicts.
+
+**See the full guide:** [docs/semantic-citation-verify.md](./semantic-citation-verify.md).
+
+#### Parameters (summary)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `output` | `string` | Yes | Agent output containing citations |
+| `model` | `string` | Yes | Judge model for verification |
+| `provider` | `enum` | No | Auto-inferred from model |
+| `allow_fetch` | `boolean` | No | Opt-in outbound HTTP. Defaults to `IRIS_CITATION_ALLOW_FETCH=1` or false |
+| `domain_allowlist` | `string[]` | No | Restrict fetches to these hostnames (suffix match). Merged with `IRIS_CITATION_DOMAINS` |
+| `max_cost_usd_total` | `number` | No | Total cost cap across all citations (default $1.00) |
+| `max_citations` | `number` | No | Cap extraction count (default 20, max 50) |
+| `per_source_timeout_ms` | `number` | No | Per-URL timeout (default 10000) |
+| `per_source_max_bytes` | `number` | No | Per-URL body cap (default 5MB) |
+| `trace_id` | `string` | No | Link to a trace |
+
+#### Response (summary)
+
+```json
+{
+  "id": "eval-xyz",
+  "overall_score": 0.75,
+  "passed": true,
+  "total_citations_found": 4,
+  "total_resolved": 3,
+  "total_supported": 3,
+  "total_cost_usd": 0.002145,
+  "citations": [
+    { "citation": {"raw": "[1]", "kind": "numbered", "identifier": "1", ...}, "resolve_status": "skipped", "resolve_error": {"kind": "unresolvable_kind", ...} },
+    { "citation": {...}, "resolve_status": "ok", "source": {...}, "judge": {"supported": true, "confidence": 0.95, "rationale": "..."} }
+  ]
+}
+```
+
+**SSRF defense + auth:** Eight layers documented in [semantic-citation-verify.md](./semantic-citation-verify.md). Requires an LLM judge API key (same as `evaluate_with_llm_judge`).
+
+---
+
+## OpenTelemetry Export
+
+Iris can mirror every `log_trace` call out to any OpenTelemetry collector speaking OTLP/HTTP JSON at `/v1/traces`. Enable by setting `IRIS_OTEL_ENDPOINT`. The export is best-effort fire-and-forget — it runs after the trace is stored locally and never blocks the tool response.
+
+**See the full guide:** [docs/otel-integration.md](./otel-integration.md).
+
+### Environment configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `IRIS_OTEL_ENDPOINT` | To enable | Collector base URL. `/v1/traces` auto-appended if omitted |
+| `IRIS_OTEL_SERVICE_NAME` | No | Maps to `service.name` resource attribute (default `iris-mcp`) |
+| `IRIS_OTEL_HEADERS` | No | Comma-separated `k=v` pairs for auth (e.g. `authorization=Bearer xyz`) |
+| `IRIS_OTEL_TIMEOUT_MS` | No | Per-export timeout (default `15000`) |
+
+### Wire format
+
+One `ResourceSpans` entry per trace with `service.name`, `telemetry.sdk.name=iris-mcp`, scope `iris.trace.v1`. Span IDs are hex-normalized; non-hex Iris IDs are deterministically hashed to valid OTLP identifiers. Iris-specific span kinds (`LLM`, `TOOL`) map to OTel `INTERNAL` with the original kind surfaced as an `iris.span_kind` attribute. Traces without a span tree get a synthesized root span built from `agent_name`, `framework`, `cost_usd`, token usage, and (truncated) input/output.
 
 ---
 
