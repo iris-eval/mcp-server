@@ -3,7 +3,7 @@
 import { AnimatedCounter } from "./animated-counter";
 
 const STATS = [
-  { value: 9, suffix: "", label: "MCP tools", detail: "Log, evaluate, query, deploy/delete rules, delete traces, LLM judge, citation verify", static: true },
+  { value: 9, suffix: "", label: "MCP tools", detail: "Log, evaluate, query, deploy/delete rules, delete traces, LLM judge (BYOK), citation verify (BYOK)", static: true },
   { value: 13, suffix: "", label: "Built-in eval rules", detail: "Completeness, relevance, safety, cost", static: true },
   { prefix: "<", value: 1, suffix: "ms", label: "Eval latency", detail: "Heuristic rules. Fast and deterministic.", static: true },
   { value: 0, suffix: "", label: "Lines of code to integrate", detail: "Add to MCP config. You're done.", static: true },

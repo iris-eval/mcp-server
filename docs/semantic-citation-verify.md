@@ -12,6 +12,8 @@ Iris ships a dedicated MCP tool (`verify_citations`) that runs the full pipeline
 
 It returns a per-citation verdict + an overall support ratio.
 
+> **Bring your own key.** Same as `evaluate_with_llm_judge` — Iris uses your `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` to call the LLM directly. No proxy, no hosted-judge tier, no bundled credits. Outbound HTTP for source-fetching is **also opt-in** via `allow_fetch=true` or `IRIS_CITATION_ALLOW_FETCH=1`.
+
 ---
 
 ## TL;DR

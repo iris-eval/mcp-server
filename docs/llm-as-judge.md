@@ -7,6 +7,8 @@ sources we gave the agent?" For those, Iris supports **LLM-as-Judge**: a single 
 (`evaluate_with_llm_judge`) that calls an LLM to score the output and returns a calibrated 0..1
 score with rationale, per-dimension breakdown, and exact cost.
 
+> **Bring your own key.** Iris doesn't proxy LLM calls, doesn't bundle credits, and doesn't have a hosted-judge tier. To use LLM-as-judge you set `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` in your environment, and Iris calls the provider directly with your key. No third party in the loop. The deterministic eval rules (`evaluate_output`) need no key and stay free forever.
+
 This guide is the operational reference. Design rationale is at the end.
 
 ---

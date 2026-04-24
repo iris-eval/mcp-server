@@ -15,6 +15,7 @@ const TIERS = [
     highlight: false,
     features: [
       "9 MCP tools — full lifecycle + LLM judge + semantic citation verify (SSRF-guarded)",
+      "LLM-as-judge + citation verify use your own Anthropic/OpenAI API key (BYOK, no proxy)",
       "13 built-in eval rules + custom rules",
       "Web dashboard with trace visualization",
       "SQLite storage — zero infrastructure",
