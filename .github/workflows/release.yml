@@ -97,12 +97,12 @@ jobs:
       # --provenance` attestation — this one covers the checked-out source
       # tree and any extra artifacts we publish (SBOM).
       - name: Attest npm SBOM
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: iris-npm-sbom.spdx.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-sbom
           path: iris-npm-sbom.spdx.json
@@ -189,14 +189,14 @@ jobs:
           artifact-name: iris-docker-${{ github.ref_name }}.spdx.json
 
       - name: Attest Docker SBOM
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
       - name: Upload Docker SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-sbom
           path: iris-docker-sbom.spdx.json
@@ -210,11 +210,11 @@ jobs:
 
       # Pull SBOMs from the publish jobs so the release page exposes them
       # as downloadable assets for security / procurement diligence.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: npm-sbom
           path: ./release-assets
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: docker-sbom
           path: ./release-assets
