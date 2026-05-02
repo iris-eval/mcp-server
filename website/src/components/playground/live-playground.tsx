@@ -3,7 +3,7 @@
 /*
  * LivePlayground (B5) — paste output, pick category, see real rule results.
  *
- * Calls POST /api/playground/eval which runs the vendored Iris v0.3.1
+ * Calls POST /api/playground/eval which runs the vendored Iris
  * rule library server-side. Every result includes a one-line message
  * explaining why the rule passed or failed.
  */
@@ -135,7 +135,7 @@ export function LivePlayground(): React.ReactElement {
           Paste any output. <span className="text-gradient">See the real rules score it.</span>
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-text-secondary">
-          Runs the same Iris v0.3.1 rule library that ships in the npm package — server-side,
+          Runs the same Iris rule library that ships in the npm package — server-side,
           no install, instant. 13 rules across safety, relevance, completeness, and cost.
         </p>
       </div>

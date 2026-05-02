@@ -1,8 +1,10 @@
 /*
- * Vendored copy of the Iris rule library (captured from v0.3.1) for the Live Playground.
+ * Vendored copy of the Iris rule library for the Live Playground.
  *
  * Source: iris/src/eval/rules/{safety,relevance,completeness,cost}.ts
- * Synced: 2026-04-23 (v0.3.1)
+ * Synced: 2026-05-02 — verified against v0.4.0 source. The rule library
+ * (13 rules across 4 categories) is unchanged from v0.3.1; v0.4.0 added
+ * tools (LLM-judge, citation-verify, lifecycle) without modifying rules.
  *
  * Why vendored: the website is a separate Next.js project that doesn't
  * share an npm workspace with iris/. Cross-project source imports would

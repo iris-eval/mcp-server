@@ -248,7 +248,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       ...summary,
-      vendoredFromVersion: 'v0.3.1',
+      vendoredFromVersion: 'v0.4.0',
     },
     { status: 200, headers },
   );
