@@ -24,10 +24,22 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 /*
  * Express request type augmentation. Every request that has been
  * through the tenant middleware has a non-optional tenantId.
+ *
+ * Pattern note: we augment the global `Express.Request` namespace
+ * rather than `'express-serve-static-core'`. Both work under npm's
+ * flat-hoisted node_modules, but pnpm's strict isolated layout (used
+ * by Glama's build sandbox + many enterprise installs) doesn't expose
+ * `express-serve-static-core` as a directly-resolvable module — it
+ * lives nested under express's own node_modules. The Express global
+ * namespace pattern resolves through `@types/express` (a direct dep)
+ * without depending on the transitive package being hoisted.
  */
-declare module 'express-serve-static-core' {
-  interface Request {
-    tenantId?: TenantId;
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      tenantId?: TenantId;
+    }
   }
 }
 
