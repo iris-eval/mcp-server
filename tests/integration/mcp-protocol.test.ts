@@ -131,16 +131,28 @@ describe('MCP Protocol Integration', () => {
     }
   });
 
-  it('every tool description covers behavior, output, usage, and errors', async () => {
-    // Glama's TDQS scores Completeness + Usage Guidelines + Behavior.
-    // The 5/5 template requires each description to include:
+  it('every tool description covers behavior, output, usage, parameters, and errors', async () => {
+    // Glama's TDQS scores Completeness + Usage Guidelines + Behavior +
+    // Parameter Semantics. The 5/5 template requires each description to
+    // include:
     //   - A Behavior paragraph (side effects, auth, rate limits)
-    //   - Output shape
-    //   - Use when / Don't use when
-    //   - Error modes
-    // Check that each section keyword appears per tool.
+    //   - Output shape (concrete JSON example)
+    //   - Use when / Don't use when (sibling-aware usage guidance)
+    //   - Parameters (cross-parameter semantics: required-when, override
+    //     behavior, default rationale, range constraints — Glama Parameter
+    //     Semantics 5/5 wants intent beyond what Zod schemas already say)
+    //   - Error modes (failure conditions + status codes)
+    // Check that each section keyword appears per tool. Drift here drops
+    // the per-tool grade and (via 60% mean + 40% min) the server TDQS.
     const result = await client.listTools();
-    const required = ['Behavior', 'Output shape', 'Use when', "Don't use", 'Error modes'];
+    const required = [
+      'Behavior',
+      'Output shape',
+      'Use when',
+      "Don't use",
+      'Parameters',
+      'Error modes',
+    ];
     const allToolNames = [
       'log_trace',
       'evaluate_output',
@@ -161,6 +173,60 @@ describe('MCP Protocol Integration', () => {
           desc,
           `tool ${toolName} description must cover "${section}" section`,
         ).toContain(section);
+      }
+    }
+  });
+
+  it('every tool description names >= 2 sibling tools (Glama Purpose 5/5)', async () => {
+    // Glama's Purpose Clarity dimension scores down (4/5) when a
+    // description "doesn't differentiate from sibling tools." Every tool
+    // here must explicitly reference at least 2 of its 8 siblings by name.
+    // This is the second-sentence "Sibling tools — ..." pattern. Drift
+    // (e.g., a new tool that doesn't list siblings) drops this gate.
+    const result = await client.listTools();
+    const allToolNames = [
+      'log_trace',
+      'evaluate_output',
+      'get_traces',
+      'list_rules',
+      'deploy_rule',
+      'delete_rule',
+      'delete_trace',
+      'evaluate_with_llm_judge',
+      'verify_citations',
+    ];
+    for (const toolName of allToolNames) {
+      const tool = result.tools.find((t) => t.name === toolName);
+      expect(tool, `tool ${toolName} must be registered`).toBeDefined();
+      const desc = tool!.description ?? '';
+      const siblings = allToolNames.filter((n) => n !== toolName);
+      const mentioned = siblings.filter((n) => desc.includes(n));
+      expect(
+        mentioned.length,
+        `tool ${toolName} must name >=2 sibling tools (named: ${mentioned.join(', ') || 'none'})`,
+      ).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('every Zod parameter has a substantive .describe() (>=20 chars)', async () => {
+    // Glama's Parameter Semantics 3/5 baseline came from "schema does the
+    // heavy lifting; description adds nothing beyond." The fix is twofold:
+    // a Parameters section in the description (covered above) AND
+    // substantive per-parameter Zod descriptions. A 5-char .describe() like
+    // "Type" passes Zod's truthy check but flunks Glama's substance bar.
+    const result = await client.listTools();
+    const skipNames = new Set<string>(); // keep configurable for future allow-list
+    for (const tool of result.tools) {
+      if (skipNames.has(tool.name)) continue;
+      const props = (tool.inputSchema as { properties?: Record<string, { description?: string }> })
+        .properties;
+      if (!props) continue;
+      for (const [paramName, prop] of Object.entries(props)) {
+        const desc = prop.description ?? '';
+        expect(
+          desc.length,
+          `tool ${tool.name} parameter "${paramName}" needs .describe() of >=20 chars (got ${desc.length}: "${desc}")`,
+        ).toBeGreaterThanOrEqual(20);
       }
     }
   });
