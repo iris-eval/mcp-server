@@ -31,6 +31,8 @@ export function registerDeleteRuleTool(
       description: [
         'Remove a deployed custom evaluation rule. The rule stops firing on future evaluate_output calls; past eval_results that referenced it are preserved.',
         '',
+        'Sibling tools — deploy_rule adds custom rules, list_rules enumerates them, evaluate_output runs them. delete_trace handles trace deletion (separate concern); log_trace / get_traces handle trace I/O. delete_rule is the DESTRUCTIVE remove path for the custom-rule store; it does NOT touch traces, eval_results, or built-in (non-custom) rules.',
+        '',
         'Behavior. DESTRUCTIVE — rewrites ~/.iris/custom-rules.json without the deleted row and appends a `rule.delete` entry to the audit log (~/.iris/audit.log). Not idempotent: deleting an already-deleted rule returns `deleted: false` rather than re-emitting the audit row. The rule stops firing immediately on the live process. Historical eval_results that reference this rule_id stay in the database — drift analytics + audit trail remain valid. Tenant-scoped in Cloud tier; OSS operates on LOCAL_TENANT. Rate-limited to 20 req/min on HTTP MCP.',
         '',
         'Output shape. Returns JSON: `{ "deleted": boolean, "rule_id": string }`. `deleted=true` if a row was removed; `deleted=false` if no rule with that id existed.',
@@ -38,6 +40,8 @@ export function registerDeleteRuleTool(
         "Use when a custom rule is obsolete (behavior changed, false positives unacceptable, replaced by a better rule). Typical flow: list_rules → identify the stale one → delete_rule(id). Combine with deploy_rule to replace: delete_rule(oldId) + deploy_rule(newDefinition). To temporarily disable a rule WITHOUT deletion, use the dashboard's toggle affordance instead — delete is permanent in intent (rule is gone; re-adding requires a new id).",
         '',
         "Don't use to pause a rule (toggle in the dashboard preserves history better). Don't use on built-in (non-custom) rules — the rule_id format checks for `rule-<hex>` custom ids; built-ins aren't in the store. Don't use to delete a trace or eval result (use delete_trace for traces; eval_results deletion is not exposed in v0.4 — they fall under data retention).",
+        '',
+        'Parameters. rule_id is the only parameter; must match `rule-<lowercase-hex>` format (Zod regex). Format mismatch fails Zod with 400 BEFORE the store is touched. Cross-tenant rule_ids return `deleted: false` silently — they\'re invisible to the caller\'s tenant rather than producing a not-found error (prevents enumeration attacks). The rule_id you pass is exactly what list_rules returned in `id` or what deploy_rule returned in `rule.id`.',
         '',
         "Error modes. Throws 400 on malformed rule_id (wrong prefix). Returns `{deleted: false}` if rule_id doesn't match any deployed rule (not an error — idempotent-ish). Returns 429 on HTTP rate limit. File-write failures propagate as 500.",
       ].join('\n'),

@@ -697,3 +697,120 @@ defaults.ts -> ~/.iris/config.json -> IRIS_* env vars -> CLI args
 ```
 
 This allows base configuration in a file, environment-specific overrides in env vars, and per-invocation overrides on the command line.
+
+---
+
+## 10. Tool Description Template (Glama TDQS 5/5 contract)
+
+Every MCP tool registered by Iris must follow this 7-section description template plus all 4 MCP annotations. The structure is enforced by `tests/integration/mcp-protocol.test.ts` (round-trip assertions on every tool). Drift fails CI.
+
+### Why this exists
+
+Glama indexes MCP servers and scores tool definitions on six dimensions (Tool Definition Quality Score — TDQS). The server-level TDQS is computed as **60% mean + 40% min** across per-tool scores, so a single weak tool drags the entire grade. The dimensions and weights:
+
+| Dimension | Weight | What scores 5/5 |
+|---|---|---|
+| Purpose Clarity | 25% | Verb + resource clear; explicitly differentiated from sibling tools |
+| Usage Guidelines | 20% | "Use when…" + "Don't use when…" with sibling-aware alternatives |
+| Behavioral Transparency | 20% | All 4 MCP annotations + Behavior paragraph (side effects, auth, rate limits, timing) |
+| Parameter Semantics | 15% | Schema covers structure; description adds cross-parameter intent (required-when, override behavior, defaults with rationale) |
+| Conciseness & Structure | 10% | Single front-loaded opener; no wasted words |
+| Contextual Completeness | 10% | Output shape (concrete JSON example) + Error modes (failure conditions) |
+
+Tier cutoffs: A ≥3.5, B ≥3.0, C ≥2.0. **Iris targets pure 5/5 on every dimension on every tool.** Anything below 5/5 is a regression.
+
+### The 7-section template
+
+```typescript
+server.registerTool(
+  'tool_name',
+  {
+    title: 'Tool Title',
+    description: [
+      // 1. PURPOSE OPENER — single concise sentence, front-loaded with verb + resource.
+      //    No wasted words. Conciseness 5/5 lives here.
+      'Verb the resource and produce concrete result type.',
+      '',
+      // 2. SIBLING CONTRAST — explicit reference to ≥2 sibling tools and the
+      //    contrast that picks this one. Purpose Clarity 5/5.
+      'Sibling tools — toolA does X, toolB does Y. This tool is the Z PATH for ...',
+      '',
+      // 3. BEHAVIOR — side effects (read-only / writes / destructive in plain prose),
+      //    auth requirements, rate limits, tenant scope, timing expectations.
+      //    Behavioral Transparency 5/5 (alongside the 4 MCP annotations below).
+      'Behavior. Writes/Reads/Calls X. Auth: Y. Rate-limited to Z. Runs in Wms.',
+      '',
+      // 4. OUTPUT SHAPE — concrete JSON schema example with field names + types.
+      //    Contextual Completeness 5/5.
+      'Output shape. Returns JSON: `{ "field": type, ... }`.',
+      '',
+      // 5. USE WHEN — specific positive conditions; mention prerequisites + which
+      //    sibling to use otherwise. Usage Guidelines 5/5.
+      'Use when ... [specific positive conditions, naming siblings].',
+      '',
+      // 6. DON'T USE WHEN — specific anti-conditions; mention better-fit sibling.
+      "Don't use when ... [specific anti-conditions, naming better fit].",
+      '',
+      // 7. PARAMETERS — cross-parameter semantics: required-when, override behavior,
+      //    default rationale, range constraints. Goes BEYOND what Zod schemas say.
+      //    Parameter Semantics 5/5.
+      'Parameters. paramA is REQUIRED when paramB="x" (else ignored). paramC overrides paramD. Defaults: paramE=N (rationale).',
+      '',
+      // 8. ERROR MODES — specific error conditions, status codes, recovery hints.
+      //    Reinforces Contextual Completeness.
+      'Error modes. Throws on X (Zod). Returns 400 on Y. Returns 429 on rate-limit. Storage failures propagate as 500.',
+    ].join('\n'),
+    inputSchema,
+    annotations: {
+      // All 4 must be set explicitly. Behavioral Transparency 5/5 anchor.
+      readOnlyHint: false,      // true if no writes / no mutations
+      destructiveHint: false,   // true if removes data
+      idempotentHint: false,    // true if same inputs → same outputs always
+      openWorldHint: false,     // true if calls external services / spends money
+    },
+  },
+  handler,
+);
+```
+
+### Per-parameter Zod descriptions
+
+Every parameter in `inputSchema` must have `.describe()` of substance — minimum **20 characters** (enforced by CI). The text should explain INTENT beyond what the type signature already says:
+
+```typescript
+// ❌ Insufficient — just restates the field name
+limit: z.number().default(50).describe('Results per page'),
+
+// ✅ Adds intent the schema can't express
+limit: z.number().default(50).describe('Results per page (default 50, max 1000 — values >1000 return 400)'),
+```
+
+### CI enforcement
+
+`tests/integration/mcp-protocol.test.ts` enforces:
+
+1. **Tool registration** — exact list of tool names + count assertion. Adding/removing tools requires updating the test (intentional).
+2. **MCP annotations** — every tool must carry all 4 annotations with explicit values. Each tool's expected annotations are pinned in the test (no `any`, no missing).
+3. **Description sections** — every tool description must contain: `Behavior`, `Output shape`, `Use when`, `Don't use`, `Parameters`, `Error modes`. Section names are checked verbatim.
+4. **Sibling contrast** — every tool description must reference ≥2 sibling tool names. Catches the "purpose statement doesn't differentiate from siblings" failure mode.
+5. **Zod description substance** — every parameter's `.describe()` must be ≥20 chars. Catches the "schema does the heavy lifting; description adds nothing" failure mode.
+
+Run: `npm run test:integration` from the repo root.
+
+### When adding a new tool
+
+1. Copy the 7-section template above.
+2. Wire it into `src/tools/index.ts` (`registerAllTools`).
+3. Add the tool's expected annotations to the `expectations` map in `mcp-protocol.test.ts`.
+4. Add the tool's name to the `allToolNames` arrays in the description-coverage and sibling-contrast tests.
+5. Update `iris://dashboard/summary` resource if relevant.
+6. Run `npm run test:integration` — CI gates are strict.
+7. Update `docs/api-reference.md` with the new tool's reference page.
+
+### When updating an existing tool
+
+Never weaken a description. The template sections are non-negotiable; tightening within a section (e.g., shorter Behavior paragraph) is fine if the content stays comprehensive. Removing a section will fail CI.
+
+### Glama re-scoring after changes
+
+Glama re-pulls tool descriptions only when **Build & Release** is triggered in their admin (`glama.ai/mcp/servers/iris-eval/mcp-server/admin/dockerfile`). Daily `Sync Server` refresh handles GitHub metadata (license, commits, releases) but NOT tool descriptions. After any tool description change, trigger a fresh Build & Release to refresh the Glama TDQS scores.

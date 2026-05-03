@@ -37,17 +37,17 @@ const TokenUsageSchema = z.object({
 });
 
 const inputSchema = {
-  agent_name: z.string().describe('Name of the agent'),
-  framework: z.string().optional().describe('Agent framework name'),
-  input: z.string().optional().describe('Agent input text'),
-  output: z.string().optional().describe('Agent output text'),
-  tool_calls: z.array(ToolCallSchema).optional().describe('Tool calls made during execution'),
-  latency_ms: z.number().optional().describe('Total execution time in milliseconds'),
-  token_usage: TokenUsageSchema.optional().describe('Token usage breakdown'),
-  cost_usd: z.number().optional().describe('Total cost in USD'),
-  metadata: z.record(z.unknown()).optional().describe('Arbitrary metadata'),
-  spans: z.array(SpanSchema).optional().describe('Detailed execution spans'),
-  timestamp: z.string().optional().describe('Trace timestamp (ISO 8601)'),
+  agent_name: z.string().describe('Agent name — used for filtering in get_traces (e.g., "customer-support-bot")'),
+  framework: z.string().optional().describe('Agent framework identifier (e.g., langchain, autogen, custom)'),
+  input: z.string().optional().describe('Agent input text — the user prompt or upstream input that produced this output'),
+  output: z.string().optional().describe('Agent output text — what the agent produced (pass to evaluate_output for scoring)'),
+  tool_calls: z.array(ToolCallSchema).optional().describe('Tool calls made during execution (per-call latency, errors, input/output)'),
+  latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
+  token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
+  cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
+  metadata: z.record(z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
+  spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events)'),
+  timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
 };
 
 export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter): void {
@@ -58,6 +58,8 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       description: [
         'Persist a single agent execution trace (input, output, spans, tool calls, cost, latency, token usage).',
         '',
+        'Sibling tools — evaluate_output runs heuristic scoring on the trace; evaluate_with_llm_judge runs semantic LLM-based scoring; verify_citations checks citation grounding; get_traces queries stored traces; delete_trace removes a single trace; list_rules / deploy_rule / delete_rule manage custom evaluation rules. log_trace is the WRITE path that records executions; everything else reads, scores, or manages around it.',
+        '',
         'Behavior. Writes one row to Iris storage (SQLite by default; Postgres in Cloud tier). When IRIS_OTEL_ENDPOINT is set, ALSO fires a best-effort async export to the configured OTLP/HTTP collector (Jaeger, Tempo, Datadog OTLP, OTEL Collector). The OTel export is fire-and-forget — its success does not affect the tool response; failures are logged but the trace is still stored locally. No authentication in stdio mode; HTTP mode requires Bearer token. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Not idempotent: each call mints a fresh trace_id, so resubmitting the same payload creates a duplicate trace.',
         '',
         'Output shape. Returns a JSON string: `{ "trace_id": "<32-hex>", "status": "stored" }`. The trace_id is the key you pass to evaluate_output or get_traces afterwards.',
@@ -65,6 +67,8 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         'Use when you want to record an agent execution for later evaluation, analysis, or audit. Call it AFTER the agent has produced output; call evaluate_output afterwards to score it; call get_traces to query historical traces. Store rich context: spans (span tree), tool_calls (which tools were invoked with latency/errors), token_usage, cost_usd, metadata (arbitrary key-value). All optional except agent_name.',
         '',
         'Don\'t use when you only need a transient log (use console logging). Don\'t use to update an existing trace — there is no update path in v0.4 (traces are immutable once stored).',
+        '',
+        'Parameters. agent_name is required; everything else is optional. token_usage and cost_usd are summary fields — if you ALSO pass spans with per-tool-call costs, the summary fields are treated as authoritative (no auto-aggregation). spans without an explicit start_time fall back to the trace timestamp; spans with an end_time get a duration_ms derived. metadata is opaque key-value (queryable in the dashboard, not via get_traces filters). tool_calls record per-tool latency + errors; missing latency_ms means "not reported," not "zero." Defaults: span.kind="INTERNAL", span.status_code="UNSET", timestamp=now() if omitted.',
         '',
         'Error modes. Throws on missing agent_name. Throws on malformed span or tool_call objects (Zod rejects). Returns 500 on storage failure (disk full, DB locked). Never blocks on the agent — returns within ~50ms for typical payloads.',
       ].join('\n'),
