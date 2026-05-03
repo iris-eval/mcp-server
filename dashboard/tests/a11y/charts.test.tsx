@@ -66,17 +66,29 @@ const sampleAudit: AuditLogEntry[] = [
   { ts: '2026-04-17T12:00:00Z', action: 'rule.deploy', user: 'local', ruleId: 'r1', ruleName: 'no-pii-strict' },
 ];
 
-const sampleMoment: DecisionMoment = {
-  id: 'm1',
-  traceId: 't1',
-  agentName: 'agent-alpha',
-  timestamp: '2026-04-18T10:00:00Z',
-  verdict: 'pass',
-  overallScore: 0.9,
-  evalCount: 3,
-  ruleSnapshot: { failed: [], skipped: [], passedCount: 3, totalCount: 3 },
-  significance: { kind: 'normal-pass', score: 0.1, label: 'Pass', reason: 'all rules passed' },
-};
+/*
+ * Factory — returns a moment dated N days ago at noon UTC. Tests against
+ * components with rolling windows (StackedBarByDay's 7-day bucketing)
+ * must use relative dates; a hardcoded fixture date silently falls out
+ * of the window as time passes and the component renders its empty state
+ * — a time-flake we hit when CI ran 15 days after the fixture date.
+ */
+function makeSampleMoment(daysAgo: number = 1): DecisionMoment {
+  const ts = new Date();
+  ts.setUTCHours(12, 0, 0, 0);
+  ts.setUTCDate(ts.getUTCDate() - daysAgo);
+  return {
+    id: `m-${daysAgo}`,
+    traceId: `t-${daysAgo}`,
+    agentName: 'agent-alpha',
+    timestamp: ts.toISOString(),
+    verdict: 'pass',
+    overallScore: 0.9,
+    evalCount: 3,
+    ruleSnapshot: { failed: [], skipped: [], passedCount: 3, totalCount: 3 },
+    significance: { kind: 'normal-pass', score: 0.1, label: 'Pass', reason: 'all rules passed' },
+  };
+}
 
 function renderWithRouter(ui: React.ReactElement): HTMLElement {
   const { container } = render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -201,7 +213,7 @@ describe('a11y · chart primitives', () => {
   describe('StackedBarByDay', () => {
     it('populated state has no violations', async () => {
       const container = renderWithRouter(
-        <StackedBarByDay moments={[sampleMoment, sampleMoment, sampleMoment]} days={7} periodLabel="7d" />,
+        <StackedBarByDay moments={[makeSampleMoment(1), makeSampleMoment(2), makeSampleMoment(3)]} days={7} periodLabel="7d" />,
       );
       const results = await runAxe(container);
       expect(results.violations).toEqual([]);
@@ -209,7 +221,7 @@ describe('a11y · chart primitives', () => {
 
     it('populated state exposes data summary in <desc>', () => {
       const container = renderWithRouter(
-        <StackedBarByDay moments={[sampleMoment, sampleMoment, sampleMoment]} days={7} periodLabel="7d" />,
+        <StackedBarByDay moments={[makeSampleMoment(1), makeSampleMoment(2), makeSampleMoment(3)]} days={7} periodLabel="7d" />,
       );
       const desc = container.querySelector('desc');
       expect(desc).not.toBeNull();
@@ -219,7 +231,7 @@ describe('a11y · chart primitives', () => {
 
     it('populated state exposes hidden drill-through list with day links', () => {
       const container = renderWithRouter(
-        <StackedBarByDay moments={[sampleMoment, sampleMoment, sampleMoment]} days={7} periodLabel="7d" />,
+        <StackedBarByDay moments={[makeSampleMoment(1), makeSampleMoment(2), makeSampleMoment(3)]} days={7} periodLabel="7d" />,
       );
       const hiddenList = container.querySelector('ol[aria-label="Per-day drill-through"]');
       expect(hiddenList).not.toBeNull();
