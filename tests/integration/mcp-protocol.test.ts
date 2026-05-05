@@ -1,9 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createIrisServer } from '../../src/server.js';
 import { defaultConfig } from '../../src/config/defaults.js';
+import {
+  __clearCitationCacheForTests,
+  __setDnsLookupForTests,
+} from '../../src/eval/citation-verify/resolve.js';
 
 describe('MCP Protocol Integration', () => {
   let client: Client;
@@ -279,6 +283,136 @@ describe('MCP Protocol Integration', () => {
     const reDelContent = reDeleted.content as Array<{ type: string; text: string }>;
     const reDelParsed = JSON.parse(reDelContent[0].text);
     expect(reDelParsed.deleted).toBe(false);
+  });
+
+  it('evaluate_with_llm_judge round-trip via MCP (mocked Anthropic)', async () => {
+    // Verifies the LLM judge flow round-trips through MCP. Mocks
+    // global.fetch so the Anthropic API call returns a canned response;
+    // sets IRIS_ANTHROPIC_API_KEY in-process. The unit tests at
+    // tests/unit/eval/llm-judge/evaluator.test.ts cover the parsing
+    // edge cases — this test exercises the MCP wiring on top.
+    const originalFetch = global.fetch;
+    const originalKey = process.env.IRIS_ANTHROPIC_API_KEY;
+    process.env.IRIS_ANTHROPIC_API_KEY = 'integration-test-key';
+    global.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'msg_int_judge',
+            content: [
+              {
+                type: 'text',
+                text: '{"score":0.85,"passed":true,"rationale":"Output is accurate and well-supported","dimensions":{"factual_claims":0.9,"citations":1.0,"internal_consistency":0.8}}',
+              },
+            ],
+            stop_reason: 'end_turn',
+            usage: { input_tokens: 100, output_tokens: 30 },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+    ) as typeof fetch;
+
+    try {
+      const result = await client.callTool({
+        name: 'evaluate_with_llm_judge',
+        arguments: {
+          output: 'The sky appears blue due to Rayleigh scattering.',
+          template: 'accuracy',
+          model: 'claude-haiku-4-5',
+        },
+      });
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.id).toBeDefined();
+      expect(parsed.score).toBe(0.85);
+      expect(parsed.passed).toBe(true);
+      expect(parsed.rationale).toContain('accurate');
+      expect(parsed.dimensions.factual_claims).toBe(0.9);
+      expect(parsed.model).toBe('claude-haiku-4-5');
+      expect(parsed.provider).toBe('anthropic');
+      expect(parsed.template).toBe('accuracy');
+      expect(parsed.input_tokens).toBe(100);
+      expect(parsed.output_tokens).toBe(30);
+      expect(parsed.cost_usd).toBeGreaterThan(0);
+      expect(parsed.latency_ms).toBeGreaterThanOrEqual(0);
+    } finally {
+      global.fetch = originalFetch;
+      if (originalKey === undefined) delete process.env.IRIS_ANTHROPIC_API_KEY;
+      else process.env.IRIS_ANTHROPIC_API_KEY = originalKey;
+    }
+  });
+
+  it('verify_citations round-trip via MCP (mocked source fetch + judge)', async () => {
+    // Verifies the citation-verify flow round-trips through MCP. The
+    // mock fetch dispatches by URL: api.anthropic.com → judge JSON,
+    // anything else → the citation source page. DNS lookup is stubbed
+    // so resolve.ts's pre-resolve guard doesn't hit real DNS for the
+    // example.com fixture host.
+    const originalFetch = global.fetch;
+    const originalKey = process.env.IRIS_ANTHROPIC_API_KEY;
+    process.env.IRIS_ANTHROPIC_API_KEY = 'integration-test-key';
+    __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('api.anthropic.com')) {
+        return new Response(
+          JSON.stringify({
+            id: 'msg_int_citation_judge',
+            content: [
+              {
+                type: 'text',
+                text: '{"supported":true,"confidence":0.9,"rationale":"the source explicitly contains the assertion"}',
+              },
+            ],
+            stop_reason: 'end_turn',
+            usage: { input_tokens: 200, output_tokens: 40 },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response(
+        'The sky appears blue due to Rayleigh scattering of sunlight in the atmosphere.',
+        { status: 200, headers: { 'content-type': 'text/plain; charset=utf-8' } },
+      );
+    }) as typeof fetch;
+
+    try {
+      const result = await client.callTool({
+        name: 'verify_citations',
+        arguments: {
+          output:
+            'The sky appears blue due to Rayleigh scattering. See https://example.com/sky-article for details.',
+          model: 'claude-haiku-4-5',
+          allow_fetch: true,
+        },
+      });
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.id).toBeDefined();
+      expect(parsed.total_citations_found).toBeGreaterThanOrEqual(1);
+      expect(parsed.citations.length).toBeGreaterThanOrEqual(1);
+      const urlCitation = parsed.citations.find(
+        (c: { citation: { kind: string } }) => c.citation.kind === 'url',
+      );
+      expect(urlCitation).toBeDefined();
+      expect(urlCitation.resolve_status).toBe('ok');
+      expect(urlCitation.judge).toBeDefined();
+      expect(urlCitation.judge.supported).toBe(true);
+      expect(urlCitation.judge.confidence).toBe(0.9);
+      expect(parsed.total_resolved).toBeGreaterThanOrEqual(1);
+      expect(parsed.total_supported).toBeGreaterThanOrEqual(1);
+      expect(parsed.overall_score).toBeGreaterThan(0);
+      expect(parsed.passed).toBe(true);
+      expect(parsed.total_cost_usd).toBeGreaterThan(0);
+    } finally {
+      global.fetch = originalFetch;
+      if (originalKey === undefined) delete process.env.IRIS_ANTHROPIC_API_KEY;
+      else process.env.IRIS_ANTHROPIC_API_KEY = originalKey;
+      __clearCitationCacheForTests();
+      __setDnsLookupForTests(null);
+    }
   });
 
   it('log_trace → delete_trace round-trip via MCP', async () => {
