@@ -355,7 +355,8 @@ describe('MCP Protocol Integration', () => {
     __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
-      if (url.includes('api.anthropic.com')) {
+      const hostname = new URL(url).hostname;
+      if (hostname === 'api.anthropic.com') {
         return new Response(
           JSON.stringify({
             id: 'msg_int_citation_judge',
