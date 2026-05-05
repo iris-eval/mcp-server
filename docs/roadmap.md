@@ -66,7 +66,7 @@ Closing the pattern-coverage gaps surfaced by the controlled-trace test campaign
 
 ## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + 9-Tool MCP Surface
 
-**Status: Planned**
+**Status: Released (2026-04-24).** See [CHANGELOG](../CHANGELOG.md#040---2026-04-24) for the shipped feature list and verification recipes.
 
 Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export to industry-standard observability, expanded MCP tool surface covering the full rule + trace lifecycle plus LLM-as-judge + semantic citation verification, plus the enterprise-readiness foundation that makes Iris production-ready.
 

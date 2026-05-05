@@ -151,7 +151,7 @@ export function ProductTabs(): React.ReactElement {
                   scores quality across completeness, relevance, safety, and cost with actionable suggestions.
                 </p>
                 <ul className="mt-8 space-y-4">
-                  {["PII detection: SSN, credit card, phone, email patterns", "Prompt injection detection: 5 attack patterns", "Hallucination markers and topic consistency", "Custom rules with regex, keywords, JSON validation"].map((t) => (
+                  {["PII detection: 10 patterns (SSN, credit card, phone, email, IBAN, DOB, medical record number, IP address, API key, passport)", "Prompt injection detection: 13 attack patterns", "Hallucination markers (17) + topic consistency + stub-output detection", "Custom rules with regex, keywords, JSON validation, min length"].map((t) => (
                     <li key={t} className="flex items-start gap-3 text-[15px] text-text-secondary">
                       <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-iris-500 shadow-[0_0_6px_var(--iris-500)]" />
                       {t}

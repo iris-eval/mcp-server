@@ -84,7 +84,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", helicone: "Proxy-based (change base URL + add header)", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", helicone: "Docker container + ClickHouse + PostgreSQL", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", helicone: "1–5 ms proxy latency (Rust gateway)", irisWin: true },
-  { feature: "Eval rules", iris: "12 built-in + 8 custom types, heuristic (<1ms)", helicone: "Evaluators via dashboard, LLM-based scoring", irisWin: false },
+  { feature: "Eval rules", iris: "13 built-in heuristic rules + 4 custom-rule types (<1ms)", helicone: "Evaluators via dashboard, LLM-based scoring", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", helicone: "Multi-dimension cost analytics (user, model, session, geography)", heliconeWin: true },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", helicone: "MCP server for data access only", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", helicone: "Apache 2.0 (permissive)", irisWin: false },

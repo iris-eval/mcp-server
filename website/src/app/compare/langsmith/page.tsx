@@ -84,7 +84,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", langsmith: "SDK imports + @traceable decorators", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", langsmith: "Enterprise-only, license key required", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", langsmith: "Async tracing via SDK in your process", irisWin: true },
-  { feature: "Eval rules", iris: "12 built-in + 8 custom types, heuristic (<1ms)", langsmith: "LLM-as-Judge + human review workflows", irisWin: false },
+  { feature: "Eval rules", iris: "13 built-in heuristic rules + 4 custom-rule types (<1ms)", langsmith: "LLM-as-Judge + human review workflows", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", langsmith: "Token + latency per trace and tool call", irisWin: false },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langsmith: "A2A & MCP protocol support for deployment", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", langsmith: "Proprietary platform (SDK is MIT)", irisWin: true },
