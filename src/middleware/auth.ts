@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import type { RequestHandler } from 'express';
 import type { IrisConfig } from '../types/config.js';
 
@@ -9,18 +9,8 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
     return (_req, _res, next) => next();
   }
 
-  // Random per-process HMAC key. Never persisted; exists only so that
-  // every incoming token is reduced to a 32-byte digest of the same
-  // shape as the configured-key digest, letting timingSafeEqual compare
-  // them on a fixed-width buffer. This eliminates the length-leak
-  // side-channel of the original length-conditional short-circuit
-  // without falling into "store a hashed credential" territory — the
-  // ephemeral key + HMAC construction means an attacker who later
-  // exfiltrates `keyDigest` cannot reuse it across processes or
-  // brute-force apiKey offline (HMAC key is unknown).
-  const hmacKey = randomBytes(32);
-  const digest = (s: string): Buffer => createHmac('sha256', hmacKey).update(s).digest();
-  const keyDigest = digest(apiKey);
+  const keyBuffer = Buffer.from(apiKey);
+  const keyLen = keyBuffer.length;
 
   return (req, res, next) => {
     if (req.path === '/health' || req.path === '/api/v1/health') {
@@ -33,8 +23,18 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
       return;
     }
 
-    const tokenDigest = digest(authHeader.slice(7));
-    if (!timingSafeEqual(tokenDigest, keyDigest)) {
+    // Pad the incoming token to the configured-key length and run
+    // timingSafeEqual on same-size buffers. The byte-compare and the
+    // length-equality check are computed independently before being
+    // combined, so the request takes the same compare path regardless
+    // of whether the token's length matches — eliminating the precise
+    // length-equality fast-path the original code had.
+    const tokenBuffer = Buffer.from(authHeader.slice(7));
+    const candidate = Buffer.alloc(keyLen);
+    tokenBuffer.copy(candidate, 0, 0, keyLen);
+    const cmpEq = timingSafeEqual(candidate, keyBuffer);
+    const lenEq = tokenBuffer.length === keyLen;
+    if (!(cmpEq && lenEq)) {
       res.status(403).json({ error: 'Invalid API key' });
       return;
     }
