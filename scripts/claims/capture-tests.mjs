@@ -2,15 +2,15 @@
 // Captures test counts into .claims-cache/tests.json so the truthbase
 // generator can read them without re-running the test suite each invocation.
 //
+// Strategy: runs `vitest run --reporter=json --outputFile=<path>` so the JSON
+// reporter output goes directly to a file (avoids stdout parsing edge cases
+// across runners + log noise).
+//
 // Run by:
 //   - CI in the test workflow after vitest passes
 //   - Local opt-in: `npm run claims:capture-tests`
-//
-// Strategy: reads the latest vitest output if available; else parses the
-// vitest JSON reporter output passed via stdin. Conservative — emits
-// schema-shaped output even on partial data.
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -18,53 +18,94 @@ import { spawn } from 'node:child_process';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
 
-async function runVitestAndParse(scope) {
-  // scope is either '' (root) or a workspace path like 'dashboard'
-  const cwd = scope ? resolve(root, scope) : root;
+async function readJsonOrNull(path) {
+  try {
+    return JSON.parse(await readFile(path, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+async function runVitestToFile(cwd, outFile) {
+  await rm(outFile, { force: true });
   return new Promise((resolveP) => {
-    const child = spawn('npx', ['vitest', 'run', '--reporter=json'], {
+    // npx will resolve the workspace's vitest. Pass --outputFile + reporter via
+    // explicit args so vitest writes JSON to disk regardless of stdout chatter.
+    const child = spawn('npx', ['vitest', 'run', '--reporter=json', `--outputFile=${outFile}`], {
       cwd,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    let out = '';
-    child.stdout.on('data', d => { out += d.toString(); });
-    child.on('close', () => {
-      try {
-        // vitest may emit non-JSON warnings before the JSON object; isolate the JSON.
-        const start = out.indexOf('{');
-        const json = JSON.parse(out.slice(start));
-        resolveP({
-          total: json.numTotalTests ?? null,
-          passed: json.numPassedTests ?? null,
-          failed: json.numFailedTests ?? null,
-        });
-      } catch {
-        resolveP({ total: null, passed: null, failed: null });
-      }
+    let stderrTail = '';
+    child.stderr.on('data', d => {
+      const s = d.toString();
+      stderrTail = (stderrTail + s).slice(-2000);
+    });
+    child.on('close', code => {
+      resolveP({ exitCode: code, stderrTail });
     });
   });
 }
 
-async function main() {
-  const rootCounts = await runVitestAndParse('');
-  // Dashboard has its own vitest config.
-  const dashboardCounts = await runVitestAndParse('dashboard').catch(() => ({
-    total: null,
-    passed: null,
-    failed: null,
-  }));
+function summarizeFromReport(report) {
+  if (!report || typeof report !== 'object') {
+    return { total: null, passed: null, failed: null };
+  }
+  return {
+    total: typeof report.numTotalTests === 'number' ? report.numTotalTests : null,
+    passed: typeof report.numPassedTests === 'number' ? report.numPassedTests : null,
+    failed: typeof report.numFailedTests === 'number' ? report.numFailedTests : null,
+  };
+}
 
-  // Integration counts — heuristic: tests under tests/integration/.
-  // We don't currently have a separate integration runner; use the cached
-  // value from the existing claims.json if present, else null.
-  let integration = { total: null, passed: null, failed: null };
-  let playwrightE2E = { total: null, passed: null, failed: null, browsers: [] };
+async function captureScope(scope) {
+  const cwd = scope ? resolve(root, scope) : root;
+  const outFile = resolve(root, `.claims-cache/vitest-report-${scope || 'root'}.json`);
+  const { exitCode, stderrTail } = await runVitestToFile(cwd, outFile);
+  const report = await readJsonOrNull(outFile);
+  const summary = summarizeFromReport(report);
+  if (summary.total === null) {
+    console.warn(`[claims:capture-tests] WARN — could not parse vitest report for scope "${scope || 'root'}" (exit ${exitCode}). stderr tail:`);
+    console.warn(stderrTail);
+  }
+  return summary;
+}
+
+async function captureScopeWithFallback(scope, fallback) {
   try {
-    const existing = JSON.parse(await readFile(resolve(root, '.claims.json'), 'utf-8'));
-    if (existing?.tests?.integration) integration = existing.tests.integration;
-    if (existing?.tests?.playwrightE2E) playwrightE2E = existing.tests.playwrightE2E;
-  } catch { /* fine */ }
+    const summary = await captureScope(scope);
+    if (summary.total !== null) return summary;
+    if (fallback?.total != null) {
+      console.warn(`[claims:capture-tests] preserving committed value for "${scope || 'root'}": total=${fallback.total}`);
+      return fallback;
+    }
+    return summary;
+  } catch (err) {
+    console.warn(`[claims:capture-tests] WARN — capture failed for "${scope || 'root'}":`, err.message);
+    if (fallback?.total != null) return fallback;
+    return { total: null, passed: null, failed: null };
+  }
+}
+
+async function main() {
+  await mkdir(resolve(root, '.claims-cache'), { recursive: true });
+
+  // Read the existing committed claims.json so we can preserve any scope's
+  // count when its runner is unavailable in the current environment (e.g.,
+  // CI without the dashboard workspace deps installed).
+  const existing = await readJsonOrNull(resolve(root, '.claims.json'));
+  const existingTests = existing?.tests ?? {};
+
+  // Each scope runs independently. If a scope fails to produce real counts,
+  // we fall back to the committed value rather than overwrite with null —
+  // null would force an unrelated regen drift. Local environments with the
+  // dashboard workspace installed get fresh counts; CI without dashboard
+  // deps preserves the last committed dashboard counts.
+  const rootCounts = await captureScopeWithFallback('', existingTests.vitestRoot);
+  const dashboardCounts = await captureScopeWithFallback('dashboard', existingTests.vitestDashboard);
+
+  const integration = existingTests.integration ?? { total: null, passed: null, failed: null };
+  const playwrightE2E = existingTests.playwrightE2E ?? { total: null, passed: null, failed: null, browsers: [] };
 
   const totalCombined =
     (rootCounts.total ?? 0) +
@@ -80,7 +121,6 @@ async function main() {
     totalCombined: totalCombined > 0 ? totalCombined : null,
   };
 
-  await mkdir(resolve(root, '.claims-cache'), { recursive: true });
   await writeFile(
     resolve(root, '.claims-cache/tests.json'),
     JSON.stringify(result, null, 2) + '\n',
