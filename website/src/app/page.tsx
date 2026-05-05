@@ -30,7 +30,7 @@ export default function Home(): React.ReactElement {
             applicationCategory: "DeveloperApplication",
             operatingSystem: "Any",
             downloadUrl: "https://www.npmjs.com/package/@iris-eval/mcp-server",
-            softwareVersion: "0.2.0",
+            softwareVersion: "0.4.0",
             applicationSubCategory: "AI Agent Evaluation",
             url: "https://iris-eval.com",
             description:

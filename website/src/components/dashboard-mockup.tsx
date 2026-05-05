@@ -30,6 +30,7 @@ export function DashboardMockup(): React.ReactElement {
           Iris Dashboard — localhost:3838
         </span>
         <div className="ml-auto flex items-center gap-4 text-[11px] text-text-muted">
+          <span className="italic text-text-muted/80">Example data</span>
           <span>Agents: <span className="font-semibold text-text-secondary">5</span></span>
           <span>Traces: <span className="font-semibold text-text-secondary">1,247</span></span>
           <span>Cost (7d): <span className="font-semibold text-eval-warn">$127.43</span></span>

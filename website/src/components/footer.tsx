@@ -120,12 +120,16 @@ export function Footer(): React.ReactElement {
               <ul className="mt-4 space-y-3 text-[13px]">
                 {[
                   { label: "GitHub", href: "https://github.com/iris-eval/mcp-server", ext: true },
-                  { label: "Discord (coming soon)", href: "#", ext: false },
+                  { label: "Discord (coming soon)", href: null, ext: false },
                   { label: "npm", href: "https://www.npmjs.com/package/@iris-eval/mcp-server", ext: true },
                   { label: "@iris_eval", href: "https://x.com/iris_eval", ext: true },
                 ].map((l) => (
                   <li key={l.label}>
-                    <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
+                    {l.href ? (
+                      <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
+                    ) : (
+                      <span aria-label="Discord (coming soon)" className="cursor-default text-text-muted">{l.label}</span>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -84,7 +84,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", braintrust: "SDK imports (Python, TS, Go, Ruby, C#)", irisWin: true },
   { feature: "Self-hosting", iris: "Single SQLite file", braintrust: "Enterprise plan only (cloud-first)", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", braintrust: "Async logging, minimal overhead", irisWin: true },
-  { feature: "Eval approach", iris: "12 built-in + 8 custom heuristic rules (<1ms)", braintrust: "LLM, code, and human scoring + datasets + experiments", braintrustWin: true },
+  { feature: "Eval approach", iris: "13 built-in heuristic rules + 4 custom-rule types (<1ms)", braintrust: "LLM, code, and human scoring + datasets + experiments", braintrustWin: true },
   { feature: "Prompt playground", iris: "Not included", braintrust: "Full playground with side-by-side comparison", braintrustWin: true, irisNeutral: true },
   { feature: "Datasets & experiments", iris: "Not included", braintrust: "Production traces to datasets, experiment tracking, CI integration", braintrustWin: true, irisNeutral: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost", braintrust: "Per-trace cost, per-user/feature/model breakdowns", braintrustWin: true },

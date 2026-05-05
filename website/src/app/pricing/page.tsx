@@ -113,7 +113,7 @@ const faq: FaqItem[] = [
   },
   {
     q: "Can I self-host?",
-    a: "Yes. The OSS MCP server (@iris-eval/mcp-server) runs locally today on npm + Docker; the dashboard + playground run in-process. The Cloud Starter tier (launching v0.4) adds hosted storage, scaling, and alerting on top of the same core. Enterprise VPC deployment combines the two.",
+    a: "Yes. The OSS MCP server (@iris-eval/mcp-server) runs locally today on npm + Docker; the dashboard + playground run in-process. The Cloud Starter tier (launching v0.5) adds hosted storage, scaling, and alerting on top of the same core. Enterprise VPC deployment combines the two.",
   },
   {
     q: "What's the Self-Calibrating Eval beta?",

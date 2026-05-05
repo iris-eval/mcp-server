@@ -19,7 +19,7 @@
 import { Redis } from '@upstash/redis';
 import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
-import { evaluateOutput, type EvalCategory } from '../../../../lib/eval/rules';
+import { evaluateOutput, VENDORED_FROM_VERSION, type EvalCategory } from '../../../../lib/eval/rules';
 
 const ALLOWED_ORIGINS = [
   'https://iris-eval.com',
@@ -248,7 +248,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       ...summary,
-      vendoredFromVersion: 'v0.4.0',
+      vendoredFromVersion: VENDORED_FROM_VERSION,
     },
     { status: 200, headers },
   );

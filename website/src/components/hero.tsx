@@ -97,7 +97,7 @@ export function Hero(): React.ReactElement {
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono">
-              <span className="text-text-secondary font-semibold">249 tests</span>
+              <span className="text-text-secondary font-semibold">374 tests</span>
               <span> · all green</span>
             </span>
           </div>

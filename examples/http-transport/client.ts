@@ -207,7 +207,7 @@ async function main(): Promise<void> {
       custom_rules: [
         { name: 'min_response_length', type: 'min_length', config: { length: 50 }, weight: 1 },
         { name: 'mentions_file', type: 'contains_keywords', config: { keywords: ['auth.ts', 'SQL injection'] }, weight: 2 },
-        { name: 'no_apology', type: 'regex_no_match', config: { pattern: 'I apologize|I\\'m sorry', flags: 'i' }, weight: 1 },
+        { name: 'no_apology', type: 'regex_no_match', config: { pattern: "I apologize|I'm sorry", flags: 'i' }, weight: 1 },
       ],
     }, 3)) as { score: number; passed: boolean; rule_results: Array<{ ruleName: string; score: number; message: string }> };
 
