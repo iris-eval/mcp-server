@@ -8,7 +8,7 @@ If you discover a security vulnerability in Iris, please report it responsibly.
 
 Instead, please email: **security@iris-eval.com**
 
-You will receive an acknowledgment within 48 hours and a detailed response within 5 business days.
+We aim to acknowledge receipt within 48 hours and provide a detailed response within 5 business days. These are best-effort targets — Iris is currently maintained by a solo founder, so a brief delay during travel or focused-work periods is possible. Critical vulnerabilities (active exploitation, RCE, data exposure) get top priority regardless.
 
 ## Scope
 
@@ -19,12 +19,12 @@ This security policy applies to:
 
 ## Supported Versions
 
-Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.2.x` line.
+Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.4.x` line.
 
-| Version | Supported |
-|---------|-----------|
-| 0.2.x   | Yes       |
-| 0.1.x   | No        |
+| Version          | Supported |
+|------------------|-----------|
+| 0.4.x            | Yes       |
+| 0.3.x and lower  | No        |
 
 ## What We Consider a Vulnerability
 
