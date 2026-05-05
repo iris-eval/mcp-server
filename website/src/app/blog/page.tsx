@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 import { getAllPosts } from "@/lib/blog";
 
@@ -18,14 +19,14 @@ export const metadata: Metadata = {
     description:
       "Research and insights on MCP agent observability and evaluation.",
     url: "https://iris-eval.com/blog",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Blog — Iris",
     description:
       "Research and insights on MCP agent observability and evaluation.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };

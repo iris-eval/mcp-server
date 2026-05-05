@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
   title: "Self-Calibrating Eval: The End of Manual Threshold Tuning — Iris",
   description: "What is self-calibrating eval? Eval rules that monitor their own scoring distribution and recommend threshold adjustments — always human-approved.",
   alternates: { canonical: "https://iris-eval.com/learn/self-calibrating-eval" },
-  openGraph: { title: "Self-Calibrating Eval: The End of Manual Threshold Tuning", description: "Eval rules that adapt thresholds based on observed distributions.", url: "https://iris-eval.com/learn/self-calibrating-eval", type: "article", images: ["/og-social-preview.png?v=3"] },
-  twitter: { card: "summary_large_image", title: "Self-Calibrating Eval", description: "Eval rules that adapt thresholds based on observed distributions.", images: ["/og-social-preview.png?v=3"], site: "@iris_eval" },
+  openGraph: { title: "Self-Calibrating Eval: The End of Manual Threshold Tuning", description: "Eval rules that adapt thresholds based on observed distributions.", url: "https://iris-eval.com/learn/self-calibrating-eval", type: "article", images: [OG_IMAGE_URL] },
+  twitter: { card: "summary_large_image", title: "Self-Calibrating Eval", description: "Eval rules that adapt thresholds based on observed distributions.", images: [OG_IMAGE_URL], site: "@iris_eval" },
 };
 
 function s(value: unknown): string { return String(value ?? "").replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").slice(0, 500); }

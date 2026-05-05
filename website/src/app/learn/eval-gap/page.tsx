@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -16,9 +17,9 @@ export const metadata: Metadata = {
     description: "The distance between demo performance and production reality.",
     url: "https://iris-eval.com/learn/eval-gap",
     type: "article",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
-  twitter: { card: "summary_large_image", title: "The Eval Gap", description: "Why your AI demo works and production doesn't.", images: ["/og-social-preview.png?v=3"], site: "@iris_eval" },
+  twitter: { card: "summary_large_image", title: "The Eval Gap", description: "Why your AI demo works and production doesn't.", images: [OG_IMAGE_URL], site: "@iris_eval" },
 };
 
 function s(value: unknown): string {

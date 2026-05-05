@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
   title: "The Eval Loop: Evals as the Loss Function for Agent Quality — Iris",
   description: "What is the eval loop? The continuous cycle of score, diagnose, calibrate, re-score that drives agent quality improvement over time.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-loop" },
-  openGraph: { title: "The Eval Loop: Evals as the Loss Function for Agent Quality", description: "The continuous cycle that drives agent quality improvement.", url: "https://iris-eval.com/learn/eval-loop", type: "article", images: ["/og-social-preview.png?v=3"] },
-  twitter: { card: "summary_large_image", title: "The Eval Loop", description: "The continuous cycle that drives agent quality improvement.", images: ["/og-social-preview.png?v=3"], site: "@iris_eval" },
+  openGraph: { title: "The Eval Loop: Evals as the Loss Function for Agent Quality", description: "The continuous cycle that drives agent quality improvement.", url: "https://iris-eval.com/learn/eval-loop", type: "article", images: [OG_IMAGE_URL] },
+  twitter: { card: "summary_large_image", title: "The Eval Loop", description: "The continuous cycle that drives agent quality improvement.", images: [OG_IMAGE_URL], site: "@iris_eval" },
 };
 
 function s(value: unknown): string { return String(value ?? "").replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").slice(0, 500); }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
@@ -22,14 +23,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and Patronus AI. Open-source heuristic eval vs enterprise safety platform.",
     url: "https://iris-eval.com/compare/patronus-ai",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs Patronus AI — Open-Source Eval vs Enterprise Safety Platform",
     description:
       "Detailed comparison of Iris and Patronus AI. Open-source eval vs enterprise safety platform.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };

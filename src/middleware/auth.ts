@@ -10,6 +10,7 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
   }
 
   const keyBuffer = Buffer.from(apiKey);
+  const keyLen = keyBuffer.length;
 
   return (req, res, next) => {
     if (req.path === '/health' || req.path === '/api/v1/health') {
@@ -22,8 +23,18 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
       return;
     }
 
+    // Pad the incoming token to the configured-key length and run
+    // timingSafeEqual on same-size buffers. The byte-compare and the
+    // length-equality check are computed independently before being
+    // combined, so the request takes the same compare path regardless
+    // of whether the token's length matches — eliminating the precise
+    // length-equality fast-path the original code had.
     const tokenBuffer = Buffer.from(authHeader.slice(7));
-    if (tokenBuffer.length !== keyBuffer.length || !timingSafeEqual(tokenBuffer, keyBuffer)) {
+    const candidate = Buffer.alloc(keyLen);
+    tokenBuffer.copy(candidate, 0, 0, keyLen);
+    const cmpEq = timingSafeEqual(candidate, keyBuffer);
+    const lenEq = tokenBuffer.length === keyLen;
+    if (!(cmpEq && lenEq)) {
       res.status(403).json({ error: 'Invalid API key' });
       return;
     }

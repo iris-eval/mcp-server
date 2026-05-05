@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
   title: "Output Quality Score (OQS): The Single Number for Agent Quality — Iris",
   description: "What is the Output Quality Score? A composite metric that rolls completeness, relevance, safety, and cost into one number for every agent output.",
   alternates: { canonical: "https://iris-eval.com/learn/output-quality-score" },
-  openGraph: { title: "Output Quality Score (OQS): The Single Number for Agent Quality", description: "A composite metric for every agent output.", url: "https://iris-eval.com/learn/output-quality-score", type: "article", images: ["/og-social-preview.png?v=3"] },
-  twitter: { card: "summary_large_image", title: "Output Quality Score (OQS)", description: "A composite metric for every agent output.", images: ["/og-social-preview.png?v=3"], site: "@iris_eval" },
+  openGraph: { title: "Output Quality Score (OQS): The Single Number for Agent Quality", description: "A composite metric for every agent output.", url: "https://iris-eval.com/learn/output-quality-score", type: "article", images: [OG_IMAGE_URL] },
+  twitter: { card: "summary_large_image", title: "Output Quality Score (OQS)", description: "A composite metric for every agent output.", images: [OG_IMAGE_URL], site: "@iris_eval" },
 };
 
 function s(value: unknown): string { return String(value ?? "").replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").slice(0, 500); }

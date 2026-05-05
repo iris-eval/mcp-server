@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { OG_IMAGE_URL } from "@/lib/og";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -43,13 +44,13 @@ export async function generateMetadata({
       type: "article",
       publishedTime: String(post.date),
       authors: [post.author],
-      images: ["/og-social-preview.png?v=3"],
+      images: [OG_IMAGE_URL],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: ["/og-social-preview.png?v=3"],
+      images: [OG_IMAGE_URL],
       site: "@iris_eval",
     },
   };

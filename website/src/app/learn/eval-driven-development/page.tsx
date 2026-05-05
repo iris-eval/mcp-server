@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
   title: "Eval-Driven Development: Write the Rules Before the Prompt — Iris",
   description: "What is Eval-Driven Development (EDD)? The practice of defining evaluation rules before writing agent prompts — TDD for AI agents.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-driven-development" },
-  openGraph: { title: "Eval-Driven Development: Write the Rules Before the Prompt", description: "TDD for AI agents — define eval rules before prompts.", url: "https://iris-eval.com/learn/eval-driven-development", type: "article", images: ["/og-social-preview.png?v=3"] },
-  twitter: { card: "summary_large_image", title: "Eval-Driven Development (EDD)", description: "TDD for AI agents — define eval rules before prompts.", images: ["/og-social-preview.png?v=3"], site: "@iris_eval" },
+  openGraph: { title: "Eval-Driven Development: Write the Rules Before the Prompt", description: "TDD for AI agents — define eval rules before prompts.", url: "https://iris-eval.com/learn/eval-driven-development", type: "article", images: [OG_IMAGE_URL] },
+  twitter: { card: "summary_large_image", title: "Eval-Driven Development (EDD)", description: "TDD for AI agents — define eval rules before prompts.", images: [OG_IMAGE_URL], site: "@iris_eval" },
 };
 
 function s(value: unknown): string { return String(value ?? "").replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").slice(0, 500); }
