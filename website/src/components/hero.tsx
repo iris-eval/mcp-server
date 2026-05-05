@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { DashboardMockup } from "./dashboard-mockup";
 import { RotatingWords } from "./rotating-words";
+import { TEST_COUNT_VITEST_ROOT } from "../lib/claims";
 
 const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChain", "CrewAI", "MCP SDK", "AutoGen"];
 
@@ -97,7 +98,7 @@ export function Hero(): React.ReactElement {
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono">
-              <span className="text-text-secondary font-semibold">374 tests</span>
+              <span className="text-text-secondary font-semibold">{TEST_COUNT_VITEST_ROOT} tests</span>
               <span> · all green</span>
             </span>
           </div>

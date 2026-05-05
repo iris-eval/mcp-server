@@ -1,0 +1,77 @@
+{
+  "$comment": "Explicit exemptions for the hardcoded-claims scanner. Each entry justifies why a literal stays uncovered. As surfaces migrate to ~/lib/claims reader imports, entries here are removed.",
+  "entries": [
+    {
+      "file": "CHANGELOG.md",
+      "pattern": "test-count",
+      "line": "*",
+      "reason": "CHANGELOG entries are historical past-tense — counts are correct as-of-release-date."
+    },
+    {
+      "file": "CHANGELOG.md",
+      "pattern": "mcp-tool-count",
+      "line": "*",
+      "reason": "CHANGELOG entries are historical past-tense — counts are correct as-of-release-date."
+    },
+    {
+      "file": "src/eval/llm-judge/templates/index.ts",
+      "pattern": "test-count",
+      "line": "*",
+      "reason": "Numeric literals in source comments / JSON contracts are unrelated to test counts."
+    },
+    {
+      "file": "scripts/claims/generators/eval-rules.mjs",
+      "pattern": "test-count",
+      "line": "*",
+      "reason": "Generator regex source — not a real test-count claim."
+    },
+    {
+      "file": "docs/launch/directory-listing-template.md",
+      "pattern": "mcp-tool-count",
+      "line": 35,
+      "reason": "Historical launch copy describing the v0.1 surface (3 tools); template kept for reference."
+    },
+    {
+      "file": "docs/launch/show-hn-draft.md",
+      "pattern": "mcp-tool-count",
+      "line": 15,
+      "reason": "Historical Show HN draft from v0.1 era (3 tools); kept for reference, not for re-publication."
+    },
+    {
+      "file": "docs/roadmap.md",
+      "pattern": "mcp-tool-count",
+      "line": 15,
+      "reason": "Historical v0.1 milestone description (3 tools); roadmap deliberately preserves per-version state."
+    },
+    {
+      "file": "docs/roadmap.md",
+      "pattern": "mcp-tool-count",
+      "line": 73,
+      "reason": "Per-version v0.4 description matches the released surface; roadmap entries are versioned snapshots, not derived counts. Migration candidate when roadmap renders from generator."
+    },
+    {
+      "file": "docs/v0.4.1-candidates.md",
+      "pattern": "test-count",
+      "line": 60,
+      "reason": "Hypothetical scenario reference (372 tests was current at write-time). Migration candidate when v0.4.1 ships."
+    },
+    {
+      "file": "website/src/components/cloud.tsx",
+      "pattern": "mcp-tool-count",
+      "line": 17,
+      "reason": "Migration candidate — currently accurate (9 tools); reader migration deferred to follow-on PR alongside other website component sweeps."
+    },
+    {
+      "file": "website/src/components/nav.tsx",
+      "pattern": "mcp-tool-count",
+      "line": 35,
+      "reason": "Migration candidate — currently accurate (9 tools); reader migration deferred to follow-on PR."
+    },
+    {
+      "file": "website/src/components/roadmap.tsx",
+      "pattern": "mcp-tool-count",
+      "line": 11,
+      "reason": "Migration candidate — currently accurate (9 tools); roadmap component will absorb the migration when render-from-generator lands."
+    }
+  ]
+}

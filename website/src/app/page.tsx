@@ -16,6 +16,7 @@ import { FounderQuote } from "@/components/founder-quote";
 import { Research } from "@/components/research";
 import { Roadmap } from "@/components/roadmap";
 import { Footer } from "@/components/footer";
+import { VERSION_MCP_SERVER } from "@/lib/claims";
 
 export default function Home(): React.ReactElement {
   return (
@@ -30,7 +31,7 @@ export default function Home(): React.ReactElement {
             applicationCategory: "DeveloperApplication",
             operatingSystem: "Any",
             downloadUrl: "https://www.npmjs.com/package/@iris-eval/mcp-server",
-            softwareVersion: "0.4.0",
+            softwareVersion: VERSION_MCP_SERVER,
             applicationSubCategory: "AI Agent Evaluation",
             url: "https://iris-eval.com",
             description:

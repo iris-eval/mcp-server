@@ -1,0 +1,37 @@
+name: claims-alignment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check-no-hardcoded:
+    name: Hardcoded-claim scanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Run hardcoded-claim scanner
+        run: node scripts/claims/check-no-hardcoded.mjs
+
+  check-truthbase-regen:
+    name: Truthbase regen vs committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install root deps
+        run: npm ci
+      - name: Capture test counts
+        run: node scripts/claims/capture-tests.mjs
+      - name: Regenerate truthbase and compare
+        run: node scripts/claims/generate.mjs --check
