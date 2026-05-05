@@ -1,16 +1,26 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   resolveSource,
+  resolveAndCheckHost,
   isSafeHost,
   CitationResolveError,
   __clearCitationCacheForTests,
+  __setDnsLookupForTests,
 } from '../../../../src/eval/citation-verify/resolve.js';
 
 const originalFetch = global.fetch;
 
+// Default permissive DNS mock so the resolveSource tests below don't hit
+// real DNS for `example.com` / `doi.org` / etc. via the new pre-resolve
+// guard. Tests that need DNS-rebinding behavior override per-case.
+beforeEach(() => {
+  __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
+});
+
 afterEach(() => {
   global.fetch = originalFetch;
   __clearCitationCacheForTests();
+  __setDnsLookupForTests(null);
 });
 
 function textResponse(body: string, init: ResponseInit = {}): Response {
@@ -66,6 +76,76 @@ describe('isSafeHost (SSRF guard)', () => {
   });
 });
 
+describe('resolveAndCheckHost (DNS rebinding guard)', () => {
+  it('passes when DNS returns only public IPs', async () => {
+    __setDnsLookupForTests(async () => [
+      { address: '8.8.8.8', family: 4 },
+      { address: '2606:4700::1111', family: 6 },
+    ]);
+    await expect(resolveAndCheckHost('example.com')).resolves.toBeUndefined();
+  });
+
+  it('rejects when DNS resolves to loopback (classic rebinding via *.localtest.me)', async () => {
+    __setDnsLookupForTests(async () => [{ address: '127.0.0.1', family: 4 }]);
+    await expect(resolveAndCheckHost('attacker.localtest.me')).rejects.toMatchObject({
+      kind: 'ssrf',
+    });
+  });
+
+  it('rejects when ANY of multiple resolved IPs is private (mixed-record bypass)', async () => {
+    __setDnsLookupForTests(async () => [
+      { address: '8.8.8.8', family: 4 },
+      { address: '10.0.0.5', family: 4 },
+    ]);
+    await expect(resolveAndCheckHost('attacker.example.com')).rejects.toMatchObject({
+      kind: 'ssrf',
+    });
+  });
+
+  it('rejects when DNS returns no addresses', async () => {
+    __setDnsLookupForTests(async () => []);
+    await expect(resolveAndCheckHost('void.example.com')).rejects.toMatchObject({
+      kind: 'ssrf',
+    });
+  });
+
+  it('rejects when DNS lookup throws (resolution failure)', async () => {
+    __setDnsLookupForTests(async () => {
+      throw new Error('ENOTFOUND');
+    });
+    await expect(resolveAndCheckHost('nxdomain.example.com')).rejects.toMatchObject({
+      kind: 'ssrf',
+    });
+  });
+
+  it('rejects loopback IPv6 from DNS', async () => {
+    __setDnsLookupForTests(async () => [{ address: '::1', family: 6 }]);
+    await expect(resolveAndCheckHost('attacker.example.com')).rejects.toMatchObject({
+      kind: 'ssrf',
+    });
+  });
+
+  it('skips DNS for IP literals already validated by isSafeHost', async () => {
+    let lookups = 0;
+    __setDnsLookupForTests(async () => {
+      lookups++;
+      return [{ address: '127.0.0.1', family: 4 }];
+    });
+    await expect(resolveAndCheckHost('8.8.8.8')).resolves.toBeUndefined();
+    expect(lookups).toBe(0);
+  });
+
+  it('rejects bad hostname before DNS call', async () => {
+    let lookups = 0;
+    __setDnsLookupForTests(async () => {
+      lookups++;
+      return [{ address: '8.8.8.8', family: 4 }];
+    });
+    await expect(resolveAndCheckHost('localhost')).rejects.toMatchObject({ kind: 'ssrf' });
+    expect(lookups).toBe(0);
+  });
+});
+
 describe('resolveSource', () => {
   it('refuses to fetch when allowFetch=false', async () => {
     global.fetch = vi.fn(async () => new Response()) as typeof fetch;
@@ -94,6 +174,24 @@ describe('resolveSource', () => {
     await expect(
       resolveSource('http://169.254.169.254/latest/meta-data', { allowFetch: true }),
     ).rejects.toMatchObject({ kind: 'ssrf' });
+  });
+
+  it('refuses fetch when public hostname DNS-rebinds to a private IP', async () => {
+    // Simulates the *.localtest.me / DNS-rebinding pattern where a
+    // public hostname resolves to 127.0.0.1. Without the DNS pre-resolve,
+    // isSafeHost(hostname) would pass (the name isn't in the substring
+    // blocklist) and fetch would happily connect to localhost.
+    let fetchCalls = 0;
+    global.fetch = vi.fn(async () => {
+      fetchCalls++;
+      return textResponse('would-be-leaked-secret');
+    }) as typeof fetch;
+    __setDnsLookupForTests(async () => [{ address: '127.0.0.1', family: 4 }]);
+
+    await expect(
+      resolveSource('https://attacker.example.com/probe', { allowFetch: true }),
+    ).rejects.toMatchObject({ kind: 'ssrf' });
+    expect(fetchCalls).toBe(0);
   });
 
   it('refuses domain outside allowlist', async () => {

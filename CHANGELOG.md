@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **CORS allowlist now matches a single hostname/port label per `*` wildcard.** Previously `pattern.replace(/\*/g, '.*')` substituted `.*` (matches dots/colons/slashes), so an entry like `http://localhost:*` would also match a malicious origin like `http://localhost:8080.evil.com`. Substitution is now `[^.:/]+`. Any allowlist entry that previously matched origins crossing a label boundary will now be rejected — review your `security.allowedOrigins` config if you rely on multi-label subdomain matching (use multiple explicit entries instead). `src/middleware/cors.ts`.
+- **DNS pre-resolve guard against citation-verify SSRF via DNS rebinding.** `resolve.ts` now resolves every public hostname via `dns.lookup({all:true})` and re-checks every returned address against the IP blocklist before fetching, defeating the bypass where a public hostname (e.g. `*.localtest.me`) resolves to `127.0.0.1`. A residual TOCTOU window between the pre-resolve and the socket connect remains; closing it requires controlling the socket via a custom undici dispatcher and is queued for follow-up. `src/eval/citation-verify/resolve.ts`.
+
 ## [0.4.0] - 2026-04-24
 
 The semantic-eval release. v0.4.0 ships LLM-as-Judge (5 templates, cost-capped) + semantic citation verification (SSRF-guarded fetch + per-claim LLM verdict) + OpenTelemetry export (OTLP/HTTP JSON) + 6 new MCP tools (3→9 total: `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge`, `verify_citations`) — all on top of the enterprise-readiness foundation (tenant isolation 4-layer, SBOM + cosign + SLSA build-provenance, Playwright E2E × 2 browsers, Storybook 10, Lighthouse CI, axe a11y, per-view polling + RateLimitBanner, v2.C chrome). 372/372 tests pass; bundle 497 KB under 600 KB budget.

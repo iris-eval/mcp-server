@@ -44,4 +44,33 @@ describe('CORS middleware', () => {
     const result = await testCors(['*'], 'http://anything.com');
     expect(result.corsOrigin).toBe('http://anything.com');
   });
+
+  // Single-label wildcard semantics — `*` matches one label only, no
+  // dots/colons/slashes. Closes the previous bypass where `localhost:*`
+  // matched `localhost:8080.evil.com` because `.*` greedily consumed
+  // the dotted suffix.
+  it('rejects label-crossing host bypass on port wildcard', async () => {
+    const result = await testCors(['http://localhost:*'], 'http://localhost:8080.evil.com');
+    expect(result.corsOrigin).toBeNull();
+  });
+
+  it('rejects multi-label subdomain spoof on host wildcard', async () => {
+    // `*.example.com` should match a single subdomain label, not arbitrary depth.
+    const result = await testCors(['https://*.example.com'], 'https://foo.bar.example.com');
+    expect(result.corsOrigin).toBeNull();
+  });
+
+  it('still matches single-label subdomain on host wildcard', async () => {
+    const result = await testCors(['https://*.example.com'], 'https://foo.example.com');
+    expect(result.corsOrigin).toBe('https://foo.example.com');
+  });
+
+  it('rejects scheme/host swap that contains the allowed pattern as a substring', async () => {
+    // Origin `http://localhost:8080@evil.com` is parsed by some clients as
+    // host=evil.com with userinfo=localhost:8080. Browsers don't send origins
+    // with userinfo, but a custom client could. Make sure the regex anchor
+    // rejects this.
+    const result = await testCors(['http://localhost:*'], 'http://localhost:8080@evil.com');
+    expect(result.corsOrigin).toBeNull();
+  });
 });

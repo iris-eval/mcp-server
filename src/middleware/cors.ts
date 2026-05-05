@@ -1,10 +1,16 @@
 import type { RequestHandler } from 'express';
 
+// Wildcard `*` in an origin pattern matches a SINGLE label only — no dots,
+// colons, or slashes. Previously substituted `.*`, which let
+// `http://localhost:*` match `http://localhost:8080.evil.com` (the `.*`
+// happily consumed `8080.evil.com`). Single-label match prevents the
+// label-crossing bypass while still supporting `*.example.com` for
+// per-subdomain allowlists and `localhost:*` for ephemeral dev ports.
 function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
   for (const pattern of allowedOrigins) {
     if (pattern === '*') return true;
     if (pattern === origin) return true;
-    const regex = new RegExp('^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+    const regex = new RegExp('^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^.:/]+') + '$');
     if (regex.test(origin)) return true;
   }
   return false;
