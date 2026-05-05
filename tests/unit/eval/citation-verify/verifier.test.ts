@@ -1,12 +1,22 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
-import { __clearCitationCacheForTests } from '../../../../src/eval/citation-verify/resolve.js';
+import {
+  __clearCitationCacheForTests,
+  __setDnsLookupForTests,
+} from '../../../../src/eval/citation-verify/resolve.js';
 
 const originalFetch = global.fetch;
+
+// Default permissive DNS mock so resolve.ts's pre-resolve guard doesn't
+// hit real DNS for test fixture hosts like a.com / b.com.
+beforeEach(() => {
+  __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
+});
 
 afterEach(() => {
   global.fetch = originalFetch;
   __clearCitationCacheForTests();
+  __setDnsLookupForTests(null);
 });
 
 function makeMockedFetch(

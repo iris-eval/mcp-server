@@ -7,15 +7,29 @@
 //   1. Scheme allowlist — http/https only; refuse file:/javascript:/etc.
 //   2. SSRF host check — refuse localhost, link-local, private ranges,
 //      and cloud metadata (AWS/GCP/Azure/DigitalOcean) IP literals.
-//   3. Optional domain allowlist — IRIS_CITATION_DOMAINS=doi.org,arxiv.org
+//   3. DNS pre-resolve — every public hostname is resolved via
+//      dns.lookup({all:true}) and EVERY returned IP is re-checked against
+//      the IP blocklist. Defeats DNS-rebinding via public records pointing
+//      at private space (e.g. `*.localtest.me` resolving to 127.0.0.1).
+//      Residual TOCTOU window between this lookup and the socket connect
+//      is acknowledged — closing it requires a custom undici dispatcher;
+//      queued for follow-up if exploitation is observed.
+//   4. Optional domain allowlist — IRIS_CITATION_DOMAINS=doi.org,arxiv.org
 //      restricts to a curated set; empty/unset = open web (still SSRF-guarded).
-//   4. Timeout + size cap — 10s default, 5MB cap on response body.
-//   5. Redirect chase cap — follow max 3 redirects, each re-checked.
-//   6. Cache — in-process LRU (100 entries) so retries don't re-fetch.
+//   5. Timeout + size cap — 10s default, 5MB cap on response body.
+//   6. Redirect chase cap — follow max 3 redirects, each re-checked.
+//   7. Cache — in-process LRU (100 entries) so retries don't re-fetch.
 //
 // This is opt-in: calls require passing {allowFetch: true} so an agent
 // can't trick Iris into fetching random URLs without operator consent
 // (consent granted via tool param or env IRIS_CITATION_ALLOW_FETCH=1).
+import { lookup as dnsLookupCb } from 'node:dns';
+import { promisify } from 'node:util';
+
+const dnsLookupAll = promisify(dnsLookupCb) as (
+  hostname: string,
+  options: { all: true },
+) => Promise<Array<{ address: string; family: 4 | 6 }>>;
 
 export interface ResolveOptions {
   allowFetch: boolean;
@@ -110,6 +124,50 @@ export function isSafeHost(host: string): boolean {
   return true;
 }
 
+// Resolve `host` via DNS and verify EVERY returned address against the
+// IP blocklists. Refuses on any private/link-local/loopback resolution,
+// closing the DNS-rebinding bypass where a public hostname (e.g.
+// `*.localtest.me`) resolves to 127.0.0.1.
+//
+// Override hook for tests: `__setDnsLookupForTests` swaps the resolver.
+type DnsLookupAll = (host: string) => Promise<Array<{ address: string; family: 4 | 6 }>>;
+let dnsLookupImpl: DnsLookupAll = (host) => dnsLookupAll(host, { all: true });
+
+export function __setDnsLookupForTests(impl: DnsLookupAll | null): void {
+  dnsLookupImpl = impl ?? ((host) => dnsLookupAll(host, { all: true }));
+}
+
+export async function resolveAndCheckHost(host: string): Promise<void> {
+  if (!isSafeHost(host)) {
+    throw new CitationResolveError(`Refusing SSRF-blocked host: ${host}`, 'ssrf', host);
+  }
+  // IP literals already passed isSafeHost — skip DNS (would just re-resolve to self).
+  if (isIpv4(host) || isIpv6(host)) return;
+
+  let addresses: Array<{ address: string; family: 4 | 6 }>;
+  try {
+    addresses = await dnsLookupImpl(host);
+  } catch (err) {
+    throw new CitationResolveError(
+      `DNS resolution failed for ${host}: ${err instanceof Error ? err.message : String(err)}`,
+      'ssrf',
+      host,
+    );
+  }
+  if (addresses.length === 0) {
+    throw new CitationResolveError(`DNS returned no addresses for ${host}`, 'ssrf', host);
+  }
+  for (const { address } of addresses) {
+    if (!isSafeHost(address)) {
+      throw new CitationResolveError(
+        `Refusing SSRF-blocked address ${address} (resolved from ${host})`,
+        'ssrf',
+        host,
+      );
+    }
+  }
+}
+
 function matchesAllowlist(host: string, allowlist: readonly string[] | undefined): boolean {
   if (!allowlist || allowlist.length === 0) return true;
   const hostLower = host.toLowerCase();
@@ -166,9 +224,7 @@ async function doFetch(url: string, opts: ResolveOptions, redirectsLeft: number)
       parsed.protocol,
     );
   }
-  if (!isSafeHost(parsed.hostname)) {
-    throw new CitationResolveError(`Refusing SSRF-blocked host: ${parsed.hostname}`, 'ssrf', parsed.hostname);
-  }
+  await resolveAndCheckHost(parsed.hostname);
   if (!matchesAllowlist(parsed.hostname, opts.domainAllowlist)) {
     throw new CitationResolveError(
       `Host ${parsed.hostname} not in IRIS_CITATION_DOMAINS allowlist`,
