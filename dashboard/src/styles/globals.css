@@ -67,6 +67,51 @@ select:focus-visible,
   border-radius: var(--radius-xs);
 }
 
+/*
+ * Visually-hidden container that reveals on :focus-within. Used by the
+ * decorative-SVG charts (PassRateAreaChart, StackedBarByDay) where the
+ * SVG markers are aria-hidden and the canonical keyboard / screen-reader
+ * path is a hidden <ol> of <Link>s. Default state: 1px clip-rect (still
+ * tab-reachable, AT-readable). On focus-within the container expands
+ * into a visible card so sighted keyboard users see the focus indicator
+ * and the surrounding choices, instead of focus appearing to vanish.
+ *
+ * Why a class and not inline style: pseudo-classes can't be expressed
+ * via inline style. The clip-rect default + focus-within reveal must
+ * live in CSS.
+ */
+.iris-sr-reveal {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.iris-sr-reveal:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: var(--space-3) 0 0 0;
+  padding: var(--space-3) var(--space-4);
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--iris-500);
+  border-radius: var(--radius-sm);
+}
+
+.iris-sr-reveal:focus-within > li {
+  list-style: none;
+  padding: var(--space-1) 0;
+}
+
 ::selection { background: var(--iris-600); color: white; }
 
 ::-webkit-scrollbar {
