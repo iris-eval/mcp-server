@@ -21,6 +21,7 @@ import type {
   DeployRuleRequest,
 } from '../../api/types';
 import { api } from '../../api/client';
+import { useFocusTrap } from '../shared/useFocusTrap';
 
 const RULE_TYPE_OPTIONS: Array<{
   value: CustomRuleType;
@@ -344,8 +345,11 @@ export function MakeRuleModal({ moment, onClose, onDeployed }: Props) {
     }
   };
 
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
+
   return (
     <div
+      ref={trapRef}
       style={styles.backdrop}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

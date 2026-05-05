@@ -145,6 +145,11 @@ export function HealthView() {
     .filter((v): v is number => typeof v === 'number')
     .reduce<number | null>((min, v) => (min === null || v < min ? v : min), null);
   const retryAll = () => {
+    // Skip if any source is still in its rate-limit window. Without this
+    // guard, clicking "Retry now" while rate-limited just immediately
+    // re-throws RateLimitError on every fetcher; the user sees a stuck
+    // banner with no spinner. Wait for the soonest reset to pass.
+    if (rateLimitedUntil !== null && Date.now() < rateLimitedUntil) return;
     statsRes.refetch();
     trendRes.refetch();
     auditRes.refetch();

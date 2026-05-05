@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Accessibility
+
+- **Focus trap on dashboard modals.** New `useFocusTrap` hook (`dashboard/src/components/shared/useFocusTrap.ts`) applied to `MakeRuleModal`, `WelcomeTour`, and the `EvalListPage` evaluation-detail dialog. Tab cycles inside the modal panel; focus is restored to the trigger element on close. Closes the keyboard / screen-reader gap where users could Tab into background page content while a modal was open. Tests: `dashboard/tests/components/shared/useFocusTrap.test.tsx`.
+
 ### Changed
 
+- **Dashboard rapid-navigation race fix.** `useApiData` (`dashboard/src/api/hooks.ts`) now tags each fetch with a monotonic request id and discards stale resolutions. Previously, a slow earlier fetch could resolve AFTER a newer fetch and overwrite the user-visible data with the previous page's results. Closes the race where filter/route changes during in-flight requests showed wrong data. Also discards stale errors so a failed older request can't flip error state after a newer success. `HealthView`'s "Retry now" button now skips the call while still inside an active rate-limit window (was triggering an immediate fail-loop with no spinner). Tests: `dashboard/tests/components/shared/useApiData-race.test.tsx`.
 - **`CustomRuleStore` API now accepts `TenantId` as the first argument on every public method (`list` / `get` / `deploy` / `delete` / `setEnabled` / `enabledRules`).** OSS deployments are unaffected — the tenant middleware always resolves to `LOCAL_TENANT`, and the default file path for `LOCAL_TENANT` remains `~/.iris/custom-rules.json` (zero migration). Cloud tenants get per-tenant file partition (`~/.iris/custom-rules-<sanitized-tenantId>.json`) so one tenant's data can never poison another's. The constructor now accepts `pathFor: (tenantId) => string` instead of `rulesPath: string` so Cloud orchestrators can inject their own routing. Audit log entries now carry the resolved `tenantId` instead of a hardcoded `'local'`. `src/custom-rule-store.ts`. Internal API change — no public package consumer affected.
 
 ### Security

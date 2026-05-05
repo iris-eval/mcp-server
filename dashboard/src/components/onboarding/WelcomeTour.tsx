@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useCommandPalette } from '../command/CommandPaletteProvider';
+import { useFocusTrap } from '../shared/useFocusTrap';
 
 const TOUR_ID = 'tour-welcome';
 
@@ -296,6 +297,8 @@ export function WelcomeTour({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
+
   if (!open) return null;
 
   const step = steps[stepIndex];
@@ -330,6 +333,7 @@ export function WelcomeTour({
 
   return (
     <div
+      ref={trapRef}
       style={styles.backdrop}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleSkip();

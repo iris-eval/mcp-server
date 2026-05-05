@@ -5,6 +5,7 @@ import { EvalTable } from './EvalTable';
 import { EvalDetailCard } from './EvalDetailCard';
 import { Pagination } from '../shared/Pagination';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { useFocusTrap } from '../shared/useFocusTrap';
 import type { EvalResult } from '../../api/types';
 
 export function EvalListPage() {
@@ -25,6 +26,7 @@ export function EvalListPage() {
   const { data, loading } = useEvals(params);
 
   const closeModal = useCallback(() => setSelectedEval(null), []);
+  const trapRef = useFocusTrap<HTMLDivElement>(selectedEval !== null);
 
   useEffect(() => {
     if (!selectedEval) return;
@@ -70,6 +72,7 @@ export function EvalListPage() {
           }}
         >
           <div
+            ref={trapRef}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
