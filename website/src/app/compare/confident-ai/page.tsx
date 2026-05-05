@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
@@ -22,14 +23,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and Confident AI. Self-hosted MCP-native eval vs managed cloud testing platform.",
     url: "https://iris-eval.com/compare/confident-ai",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs Confident AI — Self-Hosted Eval vs Managed LLM Testing Platform",
     description:
       "Detailed comparison of Iris and Confident AI. Self-hosted eval vs managed cloud testing.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };

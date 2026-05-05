@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -22,14 +23,14 @@ export const metadata: Metadata = {
       "The complete reference for evaluating AI agent outputs. Methodologies, implementation patterns, and code examples.",
     url: "https://iris-eval.com/learn/agent-eval",
     type: "article",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Agent Eval: The Definitive Guide to AI Agent Evaluation",
     description:
       "The complete reference for evaluating AI agent outputs. Methodologies, implementation, code examples.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };

@@ -73,4 +73,21 @@ describe('auth middleware', () => {
     const { status } = await testRequest(app, '/api/v1/health');
     expect(status).toBe(200);
   });
+
+  // Length-leak guard: short, same-length, and long mismatched tokens must
+  // all flow through the same hash-compare path (no length-conditional
+  // short-circuit). The unit test cannot observe timing, but it exercises
+  // the additional code paths and documents the contract.
+  it('rejects mismatched tokens regardless of length (no length leak)', async () => {
+    const app = express();
+    app.use(createAuthMiddleware(makeConfig('secret123')));
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+    // Note: an empty value after `Bearer ` is normalized away by fetch/undici
+    // (trailing whitespace stripped), so it lands in the 401 branch, not 403.
+    // The cases below exercise short, same-length-1-off, and long mismatches.
+    for (const wrong of ['x', 'wrong1234', 'farTooLongForTheKey']) {
+      const { status } = await testRequest(app, '/test', { Authorization: `Bearer ${wrong}` });
+      expect(status).toBe(403);
+    }
+  });
 });

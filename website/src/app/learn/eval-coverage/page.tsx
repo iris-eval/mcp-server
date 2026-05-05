@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
   title: "Eval Coverage: The Metric Your AI Agents Are Missing — Iris",
   description: "What is eval coverage? The percentage of agent executions that receive evaluation. Most teams are at 0%. Here's why 100% is the only target.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-coverage" },
-  openGraph: { title: "Eval Coverage: The Metric Your AI Agents Are Missing", description: "The percentage of agent executions that receive evaluation.", url: "https://iris-eval.com/learn/eval-coverage", type: "article", images: ["/og-social-preview.png?v=3"] },
-  twitter: { card: "summary_large_image", title: "Eval Coverage", description: "The percentage of agent executions that receive evaluation.", images: ["/og-social-preview.png?v=3"], site: "@iris_eval" },
+  openGraph: { title: "Eval Coverage: The Metric Your AI Agents Are Missing", description: "The percentage of agent executions that receive evaluation.", url: "https://iris-eval.com/learn/eval-coverage", type: "article", images: [OG_IMAGE_URL] },
+  twitter: { card: "summary_large_image", title: "Eval Coverage", description: "The percentage of agent executions that receive evaluation.", images: [OG_IMAGE_URL], site: "@iris_eval" },
 };
 
 function s(value: unknown): string { return String(value ?? "").replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").slice(0, 500); }

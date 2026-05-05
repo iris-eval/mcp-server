@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 
@@ -14,14 +15,14 @@ export const metadata: Metadata = {
       "See how Iris compares to other agent evaluation and observability platforms.",
     url: "https://iris-eval.com/compare",
     type: "website",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Compare Iris — Agent Eval Alternatives",
     description:
       "See how Iris compares to other agent evaluation and observability platforms.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };

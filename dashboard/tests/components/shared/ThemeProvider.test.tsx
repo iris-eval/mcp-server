@@ -2,11 +2,20 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider, useTheme } from '../../../src/components/layout/ThemeProvider';
-import { ThemeToggle } from '../../../src/components/layout/ThemeToggle';
 
 function ProbeTheme() {
   const { theme } = useTheme();
   return <span data-testid="probe">{theme}</span>;
+}
+
+function ToggleProbe() {
+  const { theme, toggleTheme } = useTheme();
+  const nextLabel = theme === 'dark' ? 'light' : 'dark';
+  return (
+    <button type="button" onClick={toggleTheme} aria-label={`Switch to ${nextLabel} theme`}>
+      toggle
+    </button>
+  );
 }
 
 describe('ThemeProvider', () => {
@@ -36,11 +45,11 @@ describe('ThemeProvider', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 
-  it('toggles theme via the ThemeToggle button and persists', async () => {
+  it('toggles theme via toggleTheme and persists', async () => {
     const user = userEvent.setup();
     render(
       <ThemeProvider>
-        <ThemeToggle />
+        <ToggleProbe />
         <ProbeTheme />
       </ThemeProvider>,
     );

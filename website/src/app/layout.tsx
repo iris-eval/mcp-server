@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Manrope, JetBrains_Mono } from "next/font/google";
+import { OG_IMAGE_URL } from "@/lib/og";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -40,14 +41,14 @@ export const metadata: Metadata = {
     url: "https://iris-eval.com",
     siteName: "Iris",
     type: "website",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris — The Agent Eval Standard for MCP",
     description:
       "Score your agents. Catch PII leaks, hallucinations, and cost overruns before users do. Open-source MCP server.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };

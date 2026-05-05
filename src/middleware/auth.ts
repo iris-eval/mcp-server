@@ -1,6 +1,10 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { RequestHandler } from 'express';
 import type { IrisConfig } from '../types/config.js';
+
+function hashToken(value: string): Buffer {
+  return createHash('sha256').update(value).digest();
+}
 
 export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): RequestHandler {
   const apiKey = config.security.apiKey;
@@ -9,7 +13,10 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
     return (_req, _res, next) => next();
   }
 
-  const keyBuffer = Buffer.from(apiKey);
+  // Pre-hash so the per-request compare is fixed-width. The length-conditional
+  // short-circuit this replaces leaked the configured key's length to a probing
+  // attacker via timing.
+  const keyHash = hashToken(apiKey);
 
   return (req, res, next) => {
     if (req.path === '/health' || req.path === '/api/v1/health') {
@@ -22,8 +29,8 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
       return;
     }
 
-    const tokenBuffer = Buffer.from(authHeader.slice(7));
-    if (tokenBuffer.length !== keyBuffer.length || !timingSafeEqual(tokenBuffer, keyBuffer)) {
+    const tokenHash = hashToken(authHeader.slice(7));
+    if (!timingSafeEqual(tokenHash, keyHash)) {
       res.status(403).json({ error: 'Invalid API key' });
       return;
     }

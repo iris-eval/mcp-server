@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
+import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
@@ -13,13 +14,13 @@ export const metadata: Metadata = {
       "Pay for evaluations, not traces. Free tier covers 10K evaluations / month.",
     url: "https://iris-eval.com/pricing",
     type: "website",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
   },
   twitter: {
     card: "summary_large_image",
     title: "Pricing — Iris",
     description: "Pay for evaluations, not traces.",
-    images: ["/og-social-preview.png?v=3"],
+    images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
 };
