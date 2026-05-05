@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 const inputSchema = {
   eval_type: z
@@ -59,7 +60,10 @@ export function registerListRulesTool(
       },
     },
     async (args) => {
-      let rules = customRuleStore.list();
+      // OSS: MCP tools operate under LOCAL_TENANT. Cloud multi-tenant
+      // exposure is a v0.5 architectural item (MCP SDK doesn't pass
+      // session/tenant context to tool handlers).
+      let rules = customRuleStore.list(LOCAL_TENANT);
       if (args.eval_type) {
         rules = rules.filter((r) => r.evalType === args.eval_type);
       }

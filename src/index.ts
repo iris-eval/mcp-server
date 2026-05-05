@@ -143,13 +143,16 @@ async function main(): Promise<void> {
   // Load deployed custom rules from ~/.iris/custom-rules.json (B3 — workflow inversion).
   // Each enabled rule is registered with the engine under its evalType so it fires on
   // every evaluate_output call of that category. Persistence via custom-rule-store.
-  const enabled = customRuleStore.enabledRules();
+  // OSS single-tenant: register rules under LOCAL_TENANT only. Cloud multi-tenant
+  // engine wiring is a v0.5 architectural item (the engine is a process singleton
+  // and would need per-tenant rule registration).
+  const enabled = customRuleStore.enabledRules(LOCAL_TENANT);
   for (const rule of enabled) {
     evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition));
   }
   if (enabled.length > 0) {
     logger.info(
-      `Loaded ${enabled.length} deployed custom rule(s) from ${customRuleStore.filePath}`,
+      `Loaded ${enabled.length} deployed custom rule(s) from ${customRuleStore.pathFor(LOCAL_TENANT)}`,
     );
   }
 

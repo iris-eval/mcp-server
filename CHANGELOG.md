@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`CustomRuleStore` API now accepts `TenantId` as the first argument on every public method (`list` / `get` / `deploy` / `delete` / `setEnabled` / `enabledRules`).** OSS deployments are unaffected — the tenant middleware always resolves to `LOCAL_TENANT`, and the default file path for `LOCAL_TENANT` remains `~/.iris/custom-rules.json` (zero migration). Cloud tenants get per-tenant file partition (`~/.iris/custom-rules-<sanitized-tenantId>.json`) so one tenant's data can never poison another's. The constructor now accepts `pathFor: (tenantId) => string` instead of `rulesPath: string` so Cloud orchestrators can inject their own routing. Audit log entries now carry the resolved `tenantId` instead of a hardcoded `'local'`. `src/custom-rule-store.ts`. Internal API change — no public package consumer affected.
+
 ### Security
 
 - **CORS allowlist now matches a single hostname/port label per `*` wildcard.** Previously `pattern.replace(/\*/g, '.*')` substituted `.*` (matches dots/colons/slashes), so an entry like `http://localhost:*` would also match a malicious origin like `http://localhost:8080.evil.com`. Substitution is now `[^.:/]+`. Any allowlist entry that previously matched origins crossing a label boundary will now be rejected — review your `security.allowedOrigins` config if you rely on multi-label subdomain matching (use multiple explicit entries instead). `src/middleware/cors.ts`.

@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 const inputSchema = {
   rule_id: z
@@ -54,7 +55,8 @@ export function registerDeleteRuleTool(
       },
     },
     async (args) => {
-      const deleted = customRuleStore.delete(args.rule_id, 'mcp');
+      // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
+      const deleted = customRuleStore.delete(LOCAL_TENANT, args.rule_id, 'mcp');
       return {
         content: [
           {
