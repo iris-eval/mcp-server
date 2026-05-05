@@ -21,5 +21,7 @@ Use Iris over HTTP for multi-client access, REST integrations, and frontend dash
 
 ## Python
 
-- [`langchain/observe-agent.py`](langchain/observe-agent.py) — Instrument a LangChain agent with Iris trace logging
-- [`crewai/observe-crew.py`](crewai/observe-crew.py) — Instrument a CrewAI crew with Iris observability
+> **Conceptual scaffolds.** The langchain and crewai examples below illustrate the integration shape; they are NOT shipped as published packages and are not yet a maintained product surface. The first-party LangChain integration ships as [`@iris-eval/langchain`](../packages/langchain/) (TypeScript). For full LangChain usage, see that package's README.
+
+- [`langchain/observe-agent.py`](langchain/observe-agent.py) — Instrument a LangChain agent with Iris trace logging *(conceptual scaffold)*
+- [`crewai/observe-crew.py`](crewai/observe-crew.py) — Instrument a CrewAI crew with Iris observability *(conceptual scaffold)*

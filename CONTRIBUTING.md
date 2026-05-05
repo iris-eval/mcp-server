@@ -51,7 +51,14 @@ The dev server proxies API requests to `http://localhost:6920`.
 2. Make your changes
 3. Ensure all tests pass: `npm test && npm run test:integration`
 4. Ensure code is formatted: `npm run format:check`
-5. Submit a PR with a clear description of changes
+5. Submit a PR against `main` with a clear description of changes
+
+### What to expect after you open a PR
+
+- **CI must pass.** Required checks: `lint-and-typecheck`, `test (Node 20)`, `test (Node 22)`, `integration`, `build`, `e2e`, `lighthouse`, `analyze (CodeQL)`, `Vercel`. Branch protection blocks merge until every check is green.
+- **One CODEOWNER approval** is required (see [.github/CODEOWNERS](.github/CODEOWNERS)). Direct pushes to `main` are forbidden — every change goes through the PR cycle, no exceptions, including hotfixes.
+- **Squash-merge** is the default. Your branch is deleted automatically on merge; the squash commit message is what lands in `main` history, so write the PR title carefully.
+- **Conventional Commits** for the PR title: `fix(scope):`, `feat(scope):`, `chore(scope):`, `docs(scope):`, `test(scope):`. Scope examples: `claims`, `security`, `website`, `dashboard`, `cors`, `tests`.
 
 ## Coding Standards
 

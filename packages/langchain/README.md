@@ -14,7 +14,7 @@ npm install @iris-eval/langchain
 import { IrisCallbackHandler } from '@iris-eval/langchain';
 
 const iris = new IrisCallbackHandler({
-  serverUrl: 'http://localhost:3838', // or use MCP stdio
+  serverUrl: 'http://localhost:3000', // default Iris HTTP transport port; or use MCP stdio
 });
 
 // Add to any LangChain chain or agent

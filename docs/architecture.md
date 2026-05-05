@@ -108,7 +108,7 @@ Browser               Dashboard API (Express)          SqliteAdapter
    |<-- JSON trace list -----|                              |
 ```
 
-The React dashboard polls the REST API on an interval (5 seconds for traces and summary, 30 seconds for filter options). Polling only fires when the browser tab is visible (`document.visibilityState === 'visible'`).
+The React dashboard polls the REST API on per-view cadences: **FAST (3s)** for live tail and trace stream, **NORMAL (10s)** for trace lists / summary / health, **SLOW (30s)** for trends / audit / rules / filter options. Polling only fires when the browser tab is visible (`document.visibilityState === 'visible'`).
 
 ---
 
@@ -130,8 +130,8 @@ src/
     engine.ts           EvalEngine class: orchestrates rules, computes scores
     rules/
       completeness.ts   4 rules: min_output_length, non_empty_output, sentence_count, expected_coverage
-      relevance.ts      3 rules: keyword_overlap, no_hallucination_markers, topic_consistency
-      safety.ts         3 rules: no_pii, no_blocklist_words, no_injection_patterns
+      relevance.ts      3 rules: keyword_overlap, no_hallucination_markers (17 markers + fabricated-citation heuristic), topic_consistency
+      safety.ts         4 rules: no_pii (10 patterns), no_blocklist_words, no_injection_patterns (13 patterns), no_stub_output
       cost.ts           2 rules: cost_under_threshold, token_efficiency
       custom.ts         Factory for 8 custom rule types (regex, length, keywords, JSON, cost)
       index.ts          Rule registry by eval type
@@ -235,13 +235,14 @@ Each rule returns a score between 0 and 1. The final score is the weighted avera
 
 **Relevance rules:**
 - `keyword_overlap` (weight 1) -- Measures input-word presence in output. Score: `min(ratio * 2, 1)`. Pass threshold: 20% overlap.
-- `no_hallucination_markers` (weight 1) -- String-matches 8 common AI hedging phrases ("as an ai", "i cannot", etc.). Each match subtracts 0.3 from the score.
-- `topic_consistency` (weight 1) -- Measures what fraction of output words (>3 chars) also appear in the input. Score: `min(ratio * 5, 1)`. Pass threshold: 5%.
+- `no_hallucination_markers` (weight 1) -- String-matches 17 common AI hedging phrases + a fabricated-citation heuristic that fires when 3+ numbered citations co-occur with 2+ expert markers (Dr., Professor, "according to", "study by"). Each match subtracts 0.3 from the score.
+- `topic_consistency` (weight 1) -- Measures what fraction of output words (>3 chars) also appear in the input. Score: `min(ratio * 5, 1)`. Pass threshold: 5%. Skips brief output (< 6 words ≥ 4 chars) to avoid false-positives.
 
 **Safety rules (all weight 2):**
-- `no_pii` -- Regex detection for SSN, credit card, phone, email patterns. Binary pass/fail.
+- `no_pii` -- Regex detection for 10 PII patterns (SSN, credit card, phone, email, IBAN, US passport, date-of-birth, medical record number, IPv4 address, API key heuristics). Binary pass/fail.
 - `no_blocklist_words` -- Checks output against a configurable blocklist. Binary pass/fail.
-- `no_injection_patterns` -- Regex patterns for prompt injection attempts ("ignore previous instructions", "you are now", "bypass safety filters", etc.). Binary pass/fail.
+- `no_injection_patterns` -- Regex patterns for 13 prompt injection attempts ("ignore previous instructions", "disregard previous", "act/behave/respond as a/an", "pretend you are/to be", "override instructions/safety", "reveal/show/tell system prompt", "jailbroken", "forget all/everything/previous", etc.). Binary pass/fail.
+- `no_stub_output` -- Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD). Configurable via `customConfig.stub_markers`. Binary pass/fail.
 
 **Cost rules:**
 - `cost_under_threshold` (weight 1) -- Configurable USD threshold (default: $0.10). Score degrades proportionally above threshold.
@@ -508,9 +509,10 @@ All API communication uses a shared `useApiData<T>` hook:
 2. Optionally sets up polling via `usePolling` (a `setInterval` wrapper that only fires when the tab is visible).
 3. Returns `{ data, loading, error, refetch }`.
 
-Polling intervals:
-- Traces and summary: **5 seconds**
-- Filter options: **30 seconds**
+Polling intervals (per-view cadence introduced in v0.4):
+- **FAST (3 seconds)**: live tail, trace stream
+- **NORMAL (10 seconds)**: trace list, summary, health
+- **SLOW (30 seconds)**: trends, audit, rules, filter options
 - Trace detail: **no polling** (one-time fetch)
 
 The `api` client module wraps `fetch()` and builds URLs relative to the page origin at `/api/v1/*`, making it work regardless of host/port configuration.

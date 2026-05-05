@@ -32,7 +32,7 @@ interface SpanData {
  * ```typescript
  * import { IrisCallbackHandler } from '@iris-eval/langchain';
  *
- * const iris = new IrisCallbackHandler({ serverUrl: 'http://localhost:3838' });
+ * const iris = new IrisCallbackHandler({ serverUrl: 'http://localhost:3000' });
  * const result = await chain.invoke({ input: "..." }, { callbacks: [iris] });
  * ```
  */
@@ -46,7 +46,7 @@ export class IrisCallbackHandler {
 
   constructor(config: IrisLangChainConfig = {}) {
     this.config = {
-      serverUrl: config.serverUrl || 'http://localhost:3838',
+      serverUrl: config.serverUrl || 'http://localhost:3000',
       agentName: config.agentName || 'langchain-agent',
       captureContent: config.captureContent ?? true,
       autoEval: config.autoEval ?? false,
