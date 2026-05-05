@@ -101,3 +101,10 @@ updates:
       - "docker"
     commit-message:
       prefix: "docker"
+    ignore:
+      # Node major bumps need manual review — Dependabot doesn't distinguish
+      # LTS (even majors) from Current (odd majors). Iris production runtime
+      # stays on the latest Active LTS. Patch + minor bumps within an LTS
+      # major still flow through Dependabot.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
