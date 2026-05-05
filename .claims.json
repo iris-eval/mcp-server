@@ -1,0 +1,142 @@
+{
+  "$schema": "https://iris-eval.com/claims-schema-v1.json",
+  "brand": {
+    "categoryName": "Agent Eval",
+    "coinedTerms": [
+      "Eval Tax",
+      "Eval Drift",
+      "Eval Gap",
+      "Eval Coverage",
+      "Eval-Driven Development",
+      "Eval Loop"
+    ],
+    "npmPackage": "@iris-eval/mcp-server",
+    "publicRepoUrl": "https://github.com/iris-eval/mcp-server",
+    "securityEmail": "security@iris-eval.com",
+    "supportEmail": "hello@iris-eval.com",
+    "tagline": "The agent eval standard for MCP",
+    "websiteUrl": "https://iris-eval.com"
+  },
+  "evalRules": {
+    "builtInCount": 13,
+    "categories": [
+      "completeness",
+      "relevance",
+      "safety",
+      "cost"
+    ],
+    "categoryCount": 4,
+    "hallucinationMarkers": 18,
+    "injectionPatterns": 14,
+    "names": [
+      "costUnderThreshold",
+      "expectedCoverage",
+      "keywordOverlap",
+      "minOutputLength",
+      "noBlocklistWords",
+      "noHallucinationMarkers",
+      "noInjectionPatterns",
+      "noPii",
+      "noStubOutput",
+      "nonEmptyOutput",
+      "sentenceCount",
+      "tokenEfficiency",
+      "topicConsistency"
+    ],
+    "piiPatterns": 12,
+    "stubMarkers": [
+      "TODO",
+      "FIXME",
+      "PLACEHOLDER",
+      "XXX",
+      "TBD",
+      "HACK",
+      "NOT YET IMPLEMENTED",
+      "TO BE DETERMINED",
+      "[INSERT",
+      "[ADD "
+    ]
+  },
+  "generatedAt": "2026-05-05T16:59:04.119Z",
+  "generatedFromCommit": "5863661",
+  "generatorVersion": "1.0.0",
+  "llmJudgeTemplates": {
+    "count": 5,
+    "names": [
+      "accuracy",
+      "helpfulness",
+      "safety",
+      "correctness",
+      "faithfulness"
+    ],
+    "supportedModels": [
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5-20251001",
+      "gpt-4o",
+      "gpt-4o-mini",
+      "o1-mini"
+    ],
+    "supportedProviders": [
+      "anthropic",
+      "openai"
+    ]
+  },
+  "mcpTools": {
+    "annotations": {
+      "destructiveHintCount": 2,
+      "openWorldHintCount": 3,
+      "readOnlyHintCount": 2
+    },
+    "count": 9,
+    "names": [
+      "delete_rule",
+      "delete_trace",
+      "deploy_rule",
+      "evaluate_output",
+      "evaluate_with_llm_judge",
+      "get_traces",
+      "list_rules",
+      "log_trace",
+      "verify_citations"
+    ]
+  },
+  "release": {
+    "currentReleaseDate": "2026-04-24",
+    "currentReleaseVersion": "0.4.0",
+    "nextPlannedScope": "Cloud SKU foundation",
+    "nextPlannedVersion": "0.5.0"
+  },
+  "schemaVersion": 1,
+  "tests": {
+    "integration": {
+      "failed": null,
+      "passed": null,
+      "total": null
+    },
+    "playwrightE2E": {
+      "browsers": [],
+      "failed": null,
+      "passed": null,
+      "total": null
+    },
+    "totalCombined": 526,
+    "vitestDashboard": {
+      "failed": 0,
+      "passed": 111,
+      "total": 111
+    },
+    "vitestRoot": {
+      "failed": 0,
+      "passed": 415,
+      "total": 415
+    }
+  },
+  "version": {
+    "dashboardPackage": "0.1.0",
+    "initPackage": "0.1.0",
+    "langchainPackage": "0.1.0",
+    "mcpServer": "0.4.0",
+    "websitePackage": "0.1.0"
+  }
+}
