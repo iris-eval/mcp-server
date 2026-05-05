@@ -82,21 +82,13 @@ const styles = {
     textAlign: 'center',
     padding: 'var(--space-6)',
   } as const,
-  /* Visually-hidden list used as the keyboard/screen-reader access
-   * path for per-day drill-through. Same "sr-only" technique used in
-   * PassRateAreaChart. Mouse users continue to click the SVG bars. */
-  srOnly: {
-    position: 'absolute' as const,
-    width: '1px',
-    height: '1px',
-    padding: 0,
-    margin: '-1px',
-    overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
-    whiteSpace: 'nowrap' as const,
-    border: 0,
-  },
 };
+
+/* The visually-hidden per-day drill-through list uses the
+ * .iris-sr-reveal utility (globals.css) — clip-rect by default,
+ * expands into a visible card on :focus-within so sighted keyboard
+ * users see where focus landed. Mouse users continue to click the
+ * SVG bars. */
 
 const VERDICT_ORDER: MomentVerdict[] = ['pass', 'partial', 'fail', 'unevaluated'];
 const formatDayShort = utcFormat('%a %d');
@@ -283,12 +275,12 @@ export function StackedBarByDay({ moments, days, periodLabel }: StackedBarByDayP
 
       {/* Keyboard/screen-reader path — Links for each day carrying the
        * same drill-through destinations the SVG bars navigate to. */}
-      <ol style={styles.srOnly as React.CSSProperties} aria-label="Per-day drill-through">
+      <ol className="iris-sr-reveal" aria-label="Per-day drill-through">
         {buckets.map((b) => {
           const dayStart = b.day.toISOString();
           const dayEnd = utcDay.offset(b.day, 1).toISOString();
           return (
-            <li key={b.day.getTime()} style={{ listStyle: 'none' }}>
+            <li key={b.day.getTime()}>
               <Link to={drillToMoments({ since: dayStart, until: dayEnd })}>
                 {formatDayShort(b.day)}: {b.total} moments — pass {b.pass}, partial {b.partial}, fail {b.fail}, unevaluated {b.unevaluated}
               </Link>

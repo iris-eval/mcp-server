@@ -135,32 +135,18 @@ const styles = {
     gap: '6px',
     flexShrink: 0,
   } as const,
-  /*
-   * Visually-hidden text alternatives surface the SVG's information
-   * to screen-reader + keyboard users WITHOUT affecting the sighted
-   * visual. Standard "sr-only" technique: zero-size offscreen absolutely
-   * positioned element that is still reachable by AT.
-   *
-   * This is the a11y fallback path — the SVG markers stay decorative
-   * for sighted users, the hidden list carries the Links for AT users.
-   * That resolves the #4a nested-interactive waiver cleanly: no
-   * interactive elements live inside the SVG anymore.
-   */
-  srOnly: {
-    position: 'absolute' as const,
-    width: '1px',
-    height: '1px',
-    padding: 0,
-    margin: '-1px',
-    overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
-    whiteSpace: 'nowrap' as const,
-    border: 0,
-  },
-  srOnlyListItem: {
-    listStyle: 'none' as const,
-  },
 };
+
+/*
+ * The visually-hidden chart drill-through list uses the .iris-sr-reveal
+ * utility (globals.css). Default state: zero-size clip-rect, AT-readable
+ * and tab-reachable. On :focus-within the container expands into a
+ * visible card so sighted keyboard users see the focus indicator and
+ * surrounding choices instead of focus appearing to vanish. The SVG
+ * markers stay decorative (aria-hidden) for sighted users — no
+ * interactive elements live inside the SVG, retiring the #4a
+ * nested-interactive waiver.
+ */
 
 interface MergedMarker {
   /** Stable key. */
@@ -570,7 +556,7 @@ export function PassRateAreaChart({
          * covers the "no audit events yet" narrative for both paths.
          */}
         {plotMarkers.length > 0 && (
-          <ol style={styles.srOnly as React.CSSProperties} aria-label="Audit events in view">
+          <ol className="iris-sr-reveal" aria-label="Audit events in view">
             {plotMarkers.map((marker) => {
               const isCluster = marker.entries.length > 1;
               const focusEntry = marker.entries[0];
@@ -581,7 +567,7 @@ export function PassRateAreaChart({
                 ? `${marker.entries.length} audit events around ${formatDayShort(marker.ts)}`
                 : `${focusEntry.action.replace('rule.', '')} ${focusEntry.ruleName ?? focusEntry.ruleId} at ${formatDayShort(marker.ts)}`;
               return (
-                <li key={marker.id} style={styles.srOnlyListItem}>
+                <li key={marker.id}>
                   <Link to={href}>{label}</Link>
                 </li>
               );

@@ -177,6 +177,18 @@ describe('a11y · chart primitives', () => {
       expect(links.length).toBeGreaterThanOrEqual(1);
     });
 
+    it('drill-through list uses the focus-within reveal class', () => {
+      // The .iris-sr-reveal utility (globals.css) is clip-rect by default
+      // and expands on :focus-within so sighted keyboard users see the
+      // focus indicator when tabbing through the otherwise-hidden links.
+      const container = renderWithRouter(
+        <PassRateAreaChart trend={sampleTrend} auditEntries={sampleAudit} periodLabel="7d" />,
+      );
+      const hiddenList = container.querySelector('ol[aria-label="Audit events in view"]');
+      expect(hiddenList).not.toBeNull();
+      expect(hiddenList!.classList.contains('iris-sr-reveal')).toBe(true);
+    });
+
     it('skeleton empty state has no violations', async () => {
       const container = renderWithRouter(
         <PassRateAreaChart trend={[]} auditEntries={[]} periodLabel="7d" />,
@@ -237,6 +249,15 @@ describe('a11y · chart primitives', () => {
       expect(hiddenList).not.toBeNull();
       const links = hiddenList!.querySelectorAll('a[href*="/moments"]');
       expect(links.length).toBe(7); // one per day in the window
+    });
+
+    it('drill-through list uses the focus-within reveal class', () => {
+      const container = renderWithRouter(
+        <StackedBarByDay moments={[makeSampleMoment(1), makeSampleMoment(2), makeSampleMoment(3)]} days={7} periodLabel="7d" />,
+      );
+      const hiddenList = container.querySelector('ol[aria-label="Per-day drill-through"]');
+      expect(hiddenList).not.toBeNull();
+      expect(hiddenList!.classList.contains('iris-sr-reveal')).toBe(true);
     });
 
     it('empty state has no violations', async () => {
