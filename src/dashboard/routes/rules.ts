@@ -58,25 +58,23 @@ export function registerRuleRoutes(
   opts: RoutesOptions,
 ): void {
   /*
-   * Tenant gate. Every /rules/custom route asserts a tenant has been
-   * resolved by the middleware before acting. In OSS this always passes
-   * (tenant middleware sets LOCAL_TENANT for every request); in Cloud
-   * the gate refuses to run on unauthenticated requests that bypass
-   * the auth+tenant middleware. The resolved id is currently NOT
-   * threaded into customRuleStore — that lands in PR 3b. Today the
-   * store hardcodes 'local'; the gate is the route-level prerequisite
-   * for the store-level fix.
+   * Every /rules/custom route resolves the tenant via requireTenant(req)
+   * and threads it through to the store. In OSS the tenant middleware
+   * always sets LOCAL_TENANT, so all rules continue to live at
+   * ~/.iris/custom-rules.json (the v0.4 path — zero migration). In Cloud,
+   * each tenant's rules will live in their own file (per-tenant partition)
+   * and writes will only ever touch the resolved tenant's data.
    */
 
   router.get('/rules/custom', (req, res) => {
-    requireTenant(req);
-    const rules = opts.customRuleStore.list();
+    const tenantId = requireTenant(req);
+    const rules = opts.customRuleStore.list(tenantId);
     res.json({ rules });
   });
 
   router.post('/rules/custom', async (req, res) => {
     try {
-      requireTenant(req);
+      const tenantId = requireTenant(req);
       const input = DeploySchema.parse(req.body);
 
       // Server overrides the inner definition's `name` so it always matches the
@@ -87,7 +85,7 @@ export function registerRuleRoutes(
         name: input.name,
       };
 
-      const rule = opts.customRuleStore.deploy({
+      const rule = opts.customRuleStore.deploy(tenantId, {
         name: input.name,
         description: input.description,
         evalType: input.evalType,
@@ -97,7 +95,9 @@ export function registerRuleRoutes(
       });
 
       // Register the new rule with the live engine so it fires on subsequent
-      // evaluate_output calls without requiring a server restart.
+      // evaluate_output calls without requiring a server restart. The engine
+      // is process-global in v0.4 — Cloud multi-tenant engine wiring is a
+      // v0.5 architectural item.
       opts.evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition));
 
       res.status(201).json({ rule });
@@ -111,8 +111,8 @@ export function registerRuleRoutes(
   });
 
   router.delete('/rules/custom/:id', (req, res) => {
-    requireTenant(req);
-    const removed = opts.customRuleStore.delete(req.params.id);
+    const tenantId = requireTenant(req);
+    const removed = opts.customRuleStore.delete(tenantId, req.params.id);
     if (!removed) {
       res.status(404).json({ error: 'Rule not found' });
       return;

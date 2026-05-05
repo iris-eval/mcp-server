@@ -14,6 +14,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { CustomRuleDefinition } from '../types/eval.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 const CustomRuleDefinitionSchema = z.object({
   name: z.string(),
@@ -86,7 +87,8 @@ export function registerDeployRuleTool(
       },
     },
     async (args) => {
-      const rule = customRuleStore.deploy({
+      // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
+      const rule = customRuleStore.deploy(LOCAL_TENANT, {
         name: args.name,
         description: args.description,
         evalType: args.evalType,

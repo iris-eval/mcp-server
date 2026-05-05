@@ -1,14 +1,27 @@
 /*
  * custom-rule-store — file-based persistence for deployed custom rules.
  *
- * Lives at ~/.iris/custom-rules.json with the schema in
- * src/types/custom-rule.ts. Audit log lives at ~/.iris/audit.log
- * (append-only JSONL). Both files are created on first write.
+ * Per-tenant file partition: each tenant's rules live in their own
+ * file. OSS single-tenant installs continue to use
+ * ~/.iris/custom-rules.json (the LOCAL_TENANT path) — zero migration
+ * for existing users. Cloud tenants get
+ * ~/.iris/custom-rules-<tenantId>.json (or whatever path the
+ * `pathFor` factory returns).
+ *
+ * Why per-file rather than top-level keys in one file or a tenant
+ * column on each rule:
+ *   - Zero migration: LOCAL_TENANT keeps the v0.4 file path/schema.
+ *   - Smallest blast radius for a corrupt write: one tenant's data
+ *     can't poison another's.
+ *   - Mirrors the existing audit-log per-file convention.
+ *
+ * Audit log stays SHARED across tenants: every entry already carries
+ * `tenantId` so readers can scope at query time.
  *
  * The v0.4 cut is single-user local. Concurrent writes from multiple
- * iris-mcp instances are not protected — that's a v0.5 concern when
- * multi-tenancy lands. For now we use atomic write-via-rename so a
- * crashed write doesn't leave a half-file.
+ * iris-mcp instances against the same tenant file are not protected.
+ * For now we use atomic write-via-rename so a crashed write doesn't
+ * leave a half-file.
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -22,6 +35,7 @@ import type {
   RuleSeverity,
 } from './types/custom-rule.js';
 import type { CustomRuleDefinition, EvalType } from './types/eval.js';
+import { LOCAL_TENANT, type TenantId } from './types/tenant.js';
 
 const SEVERITY_VALUES: RuleSeverity[] = ['low', 'medium', 'high', 'critical'];
 const EVAL_TYPE_VALUES: EvalType[] = ['completeness', 'relevance', 'safety', 'cost', 'custom'];
@@ -62,8 +76,19 @@ const FileSchema = z.object({
   rules: z.array(DeployedRuleSchema),
 });
 
-function defaultRulesPath(): string {
-  return join(homedir(), '.iris', 'custom-rules.json');
+/**
+ * Default file path for a tenant. LOCAL_TENANT keeps the v0.4 path
+ * (zero migration); others get a per-tenant suffix.
+ */
+function defaultPathFor(tenantId: TenantId): string {
+  if (tenantId === LOCAL_TENANT) {
+    return join(homedir(), '.iris', 'custom-rules.json');
+  }
+  // Sanitize tenant id for filesystem safety. TenantId is branded but
+  // could in principle contain odd chars on Cloud — limit to a known-safe
+  // alphabet so we never write outside the .iris directory.
+  const safe = String(tenantId).replace(/[^a-zA-Z0-9._-]/g, '_');
+  return join(homedir(), '.iris', `custom-rules-${safe}.json`);
 }
 
 function defaultAuditPath(): string {
@@ -71,15 +96,20 @@ function defaultAuditPath(): string {
 }
 
 export interface CustomRuleStore {
-  list(): DeployedCustomRule[];
-  get(id: string): DeployedCustomRule | undefined;
-  deploy(input: DeployRuleInput): DeployedCustomRule;
-  delete(id: string, user?: string): boolean;
-  setEnabled(id: string, enabled: boolean, user?: string): DeployedCustomRule | undefined;
-  /** All ENABLED rules in deploy order — what the engine should register. */
-  enabledRules(): DeployedCustomRule[];
-  /** Path on disk for diagnostics. */
-  filePath: string;
+  list(tenantId: TenantId): DeployedCustomRule[];
+  get(tenantId: TenantId, id: string): DeployedCustomRule | undefined;
+  deploy(tenantId: TenantId, input: DeployRuleInput): DeployedCustomRule;
+  delete(tenantId: TenantId, id: string, user?: string): boolean;
+  setEnabled(
+    tenantId: TenantId,
+    id: string,
+    enabled: boolean,
+    user?: string,
+  ): DeployedCustomRule | undefined;
+  /** All ENABLED rules for a tenant in deploy order — what the engine should register. */
+  enabledRules(tenantId: TenantId): DeployedCustomRule[];
+  /** Path on disk for diagnostics. Different per tenant. */
+  pathFor(tenantId: TenantId): string;
   auditPath: string;
 }
 
@@ -114,48 +144,66 @@ function writeAtomic(targetPath: string, contents: string): void {
   renameSync(tmp, targetPath);
 }
 
+function loadRulesFromDisk(rulesPath: string): DeployedCustomRule[] {
+  if (!existsSync(rulesPath)) return [];
+  try {
+    const raw = readFileSync(rulesPath, 'utf-8');
+    const parsed = FileSchema.safeParse(JSON.parse(raw));
+    if (parsed.success) return parsed.data.rules;
+    // Malformed: leave rules empty; do NOT overwrite the file.
+    return [];
+  } catch {
+    // Unreadable: leave rules empty.
+    return [];
+  }
+}
+
 export function createCustomRuleStore(opts?: {
-  rulesPath?: string;
+  /**
+   * Returns the file path for a tenant's rules. Defaults to
+   * `~/.iris/custom-rules.json` for LOCAL_TENANT (zero migration for OSS)
+   * and `~/.iris/custom-rules-<sanitized-tenantId>.json` for others.
+   * Cloud orchestrators can inject their own factory to e.g. write into
+   * a per-tenant data dir.
+   */
+  pathFor?: (tenantId: TenantId) => string;
   auditPath?: string;
 }): CustomRuleStore {
-  const rulesPath = opts?.rulesPath ?? defaultRulesPath();
+  const pathFor = opts?.pathFor ?? defaultPathFor;
   const auditPath = opts?.auditPath ?? defaultAuditPath();
 
-  // In-memory copy that mirrors the file. Writes update both.
-  let rules: DeployedCustomRule[] = [];
+  // In-memory cache keyed by tenant. Lazy-loaded on first access per
+  // tenant; subsequent calls hit the cache.
+  const tenantRules = new Map<TenantId, DeployedCustomRule[]>();
 
-  // Initial load
-  if (existsSync(rulesPath)) {
-    try {
-      const raw = readFileSync(rulesPath, 'utf-8');
-      const parsed = FileSchema.safeParse(JSON.parse(raw));
-      if (parsed.success) {
-        rules = parsed.data.rules;
-      }
-      // Malformed: leave rules empty; do NOT overwrite the file.
-    } catch {
-      // Unreadable: leave rules empty.
+  function load(tenantId: TenantId): DeployedCustomRule[] {
+    let rules = tenantRules.get(tenantId);
+    if (rules === undefined) {
+      rules = loadRulesFromDisk(pathFor(tenantId));
+      tenantRules.set(tenantId, rules);
     }
+    return rules;
   }
 
-  function persist(): void {
+  function persist(tenantId: TenantId): void {
+    const rules = tenantRules.get(tenantId) ?? [];
     const file: CustomRulesFile = { version: 1, rules };
-    writeAtomic(rulesPath, JSON.stringify(file, null, 2));
+    writeAtomic(pathFor(tenantId), JSON.stringify(file, null, 2));
   }
 
   return {
-    filePath: rulesPath,
     auditPath,
-    list(): DeployedCustomRule[] {
-      return [...rules];
+    pathFor,
+    list(tenantId: TenantId): DeployedCustomRule[] {
+      return [...load(tenantId)];
     },
-    get(id: string): DeployedCustomRule | undefined {
-      return rules.find((r) => r.id === id);
+    get(tenantId: TenantId, id: string): DeployedCustomRule | undefined {
+      return load(tenantId).find((r) => r.id === id);
     },
-    enabledRules(): DeployedCustomRule[] {
-      return rules.filter((r) => r.enabled);
+    enabledRules(tenantId: TenantId): DeployedCustomRule[] {
+      return load(tenantId).filter((r) => r.enabled);
     },
-    deploy(input: DeployRuleInput): DeployedCustomRule {
+    deploy(tenantId: TenantId, input: DeployRuleInput): DeployedCustomRule {
       const now = new Date().toISOString();
       const id = generateRuleId();
       const rule: DeployedCustomRule = {
@@ -173,15 +221,12 @@ export function createCustomRuleStore(opts?: {
       };
       // Validate before persisting.
       const validated = DeployedRuleSchema.parse(rule);
+      const rules = load(tenantId);
       rules.push(validated);
-      persist();
-      /* Tenant scoping: OSS single-tenant emits 'local'. Cloud replaces
-       * the entire custom-rule-store with a DB-backed service that reads
-       * the tenant from the authenticated session; that service will
-       * compute tenantId per-call. Hard-coded here for OSS. */
+      persist(tenantId);
       appendAudit(auditPath, {
         ts: now,
-        tenantId: 'local',
+        tenantId,
         action: 'rule.deploy',
         user: input.user ?? 'local',
         ruleId: id,
@@ -192,15 +237,16 @@ export function createCustomRuleStore(opts?: {
       });
       return validated;
     },
-    delete(id: string, user = 'local'): boolean {
+    delete(tenantId: TenantId, id: string, user = 'local'): boolean {
+      const rules = load(tenantId);
       const idx = rules.findIndex((r) => r.id === id);
       if (idx === -1) return false;
       const removed = rules[idx];
       rules.splice(idx, 1);
-      persist();
+      persist(tenantId);
       appendAudit(auditPath, {
         ts: new Date().toISOString(),
-        tenantId: 'local',
+        tenantId,
         action: 'rule.delete',
         user,
         ruleId: id,
@@ -208,16 +254,22 @@ export function createCustomRuleStore(opts?: {
       });
       return true;
     },
-    setEnabled(id: string, enabled: boolean, user = 'local'): DeployedCustomRule | undefined {
+    setEnabled(
+      tenantId: TenantId,
+      id: string,
+      enabled: boolean,
+      user = 'local',
+    ): DeployedCustomRule | undefined {
+      const rules = load(tenantId);
       const rule = rules.find((r) => r.id === id);
       if (!rule) return undefined;
       if (rule.enabled === enabled) return rule;
       rule.enabled = enabled;
       rule.updatedAt = new Date().toISOString();
-      persist();
+      persist(tenantId);
       appendAudit(auditPath, {
         ts: rule.updatedAt,
-        tenantId: 'local',
+        tenantId,
         action: 'rule.toggle',
         user,
         ruleId: id,

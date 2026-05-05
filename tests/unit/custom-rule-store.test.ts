@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCustomRuleStore } from '../../src/custom-rule-store.js';
+import { LOCAL_TENANT } from '../../src/types/tenant.js';
 
 let tmpDir: string;
 let rulesPath: string;
@@ -18,16 +19,16 @@ afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
-describe('createCustomRuleStore', () => {
+describe('createCustomRuleStore (single-tenant / OSS)', () => {
   it('starts with no rules when file does not exist', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    expect(store.list()).toEqual([]);
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(store.list(LOCAL_TENANT)).toEqual([]);
     expect(existsSync(rulesPath)).toBe(false);
   });
 
   it('deploy persists a rule + writes audit entry', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    const rule = store.deploy({
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    const rule = store.deploy(LOCAL_TENANT, {
       name: 'no_pricing',
       description: 'Sales agent must not quote prices',
       evalType: 'safety',
@@ -57,77 +58,78 @@ describe('createCustomRuleStore', () => {
     expect(audit).toContain('"action":"rule.deploy"');
     expect(audit).toContain('"ruleId":"' + rule.id + '"');
     expect(audit).toContain('"sourceMomentId":"trace-abc"');
+    expect(audit).toContain('"tenantId":"local"');
   });
 
   it('list returns all deployed rules in deploy order', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    store.deploy({
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    store.deploy(LOCAL_TENANT, {
       name: 'rule_a',
       evalType: 'safety',
       definition: { name: 'rule_a', type: 'regex_no_match', config: { pattern: 'foo' } },
     });
-    store.deploy({
+    store.deploy(LOCAL_TENANT, {
       name: 'rule_b',
       evalType: 'completeness',
       definition: { name: 'rule_b', type: 'min_length', config: { min_length: 100 } },
     });
-    expect(store.list()).toHaveLength(2);
-    expect(store.list().map((r) => r.name)).toEqual(['rule_a', 'rule_b']);
+    expect(store.list(LOCAL_TENANT)).toHaveLength(2);
+    expect(store.list(LOCAL_TENANT).map((r) => r.name)).toEqual(['rule_a', 'rule_b']);
   });
 
   it('rules persist across store re-creation', () => {
-    const first = createCustomRuleStore({ rulesPath, auditPath });
-    first.deploy({
+    const first = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    first.deploy(LOCAL_TENANT, {
       name: 'persistent',
       evalType: 'safety',
       definition: { name: 'persistent', type: 'regex_no_match', config: { pattern: 'x' } },
     });
 
-    const second = createCustomRuleStore({ rulesPath, auditPath });
-    expect(second.list()).toHaveLength(1);
-    expect(second.list()[0].name).toBe('persistent');
+    const second = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(second.list(LOCAL_TENANT)).toHaveLength(1);
+    expect(second.list(LOCAL_TENANT)[0].name).toBe('persistent');
   });
 
   it('delete removes the rule + writes audit entry', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    const rule = store.deploy({
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    const rule = store.deploy(LOCAL_TENANT, {
       name: 'doomed',
       evalType: 'safety',
       definition: { name: 'doomed', type: 'regex_no_match', config: { pattern: 'x' } },
     });
-    expect(store.delete(rule.id)).toBe(true);
-    expect(store.list()).toEqual([]);
-    expect(store.delete(rule.id)).toBe(false); // already gone
+    expect(store.delete(LOCAL_TENANT, rule.id)).toBe(true);
+    expect(store.list(LOCAL_TENANT)).toEqual([]);
+    expect(store.delete(LOCAL_TENANT, rule.id)).toBe(false); // already gone
     expect(readFileSync(auditPath, 'utf-8')).toContain('"action":"rule.delete"');
   });
 
   it('setEnabled toggles enabled state and audits', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    const rule = store.deploy({
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    const rule = store.deploy(LOCAL_TENANT, {
       name: 'toggle_me',
       evalType: 'safety',
       definition: { name: 'toggle_me', type: 'regex_no_match', config: { pattern: 'x' } },
     });
-    const updated = store.setEnabled(rule.id, false);
+    const updated = store.setEnabled(LOCAL_TENANT, rule.id, false);
     expect(updated?.enabled).toBe(false);
-    expect(store.enabledRules()).toEqual([]);
+    expect(store.enabledRules(LOCAL_TENANT)).toEqual([]);
     expect(readFileSync(auditPath, 'utf-8')).toContain('"action":"rule.toggle"');
   });
 
   it('enabledRules returns only enabled rules', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    const a = store.deploy({
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    const a = store.deploy(LOCAL_TENANT, {
       name: 'a',
       evalType: 'safety',
       definition: { name: 'a', type: 'regex_no_match', config: { pattern: 'x' } },
     });
-    store.deploy({
+    store.deploy(LOCAL_TENANT, {
       name: 'b',
       evalType: 'safety',
       definition: { name: 'b', type: 'regex_no_match', config: { pattern: 'y' } },
     });
-    store.setEnabled(a.id, false);
-    const enabled = store.enabledRules();
+    store.setEnabled(LOCAL_TENANT, a.id, false);
+    const enabled = store.enabledRules(LOCAL_TENANT);
     expect(enabled).toHaveLength(1);
     expect(enabled[0].name).toBe('b');
   });
@@ -136,19 +138,19 @@ describe('createCustomRuleStore', () => {
     const fs = require('node:fs') as typeof import('node:fs');
     fs.mkdirSync(tmpDir, { recursive: true });
     fs.writeFileSync(rulesPath, 'not valid json{{{');
-    const store = createCustomRuleStore({ rulesPath, auditPath });
-    expect(store.list()).toEqual([]);
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(store.list(LOCAL_TENANT)).toEqual([]);
     // File untouched — operator can fix manually
     expect(readFileSync(rulesPath, 'utf-8')).toBe('not valid json{{{');
   });
 
   it('rejects rule with invalid name characters', () => {
-    const store = createCustomRuleStore({ rulesPath, auditPath });
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
     // The store itself doesn't validate name characters — that's the API
     // route's job. The store accepts any string up to its zod max length.
     // This test documents that boundary — see rules.ts route for the
     // user-input validation layer.
-    const rule = store.deploy({
+    const rule = store.deploy(LOCAL_TENANT, {
       name: 'short',
       evalType: 'safety',
       definition: { name: 'short', type: 'regex_no_match', config: { pattern: 'x' } },
