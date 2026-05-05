@@ -57,13 +57,26 @@ export function registerRuleRoutes(
   storage: IStorageAdapter,
   opts: RoutesOptions,
 ): void {
-  router.get('/rules/custom', (_req, res) => {
+  /*
+   * Tenant gate. Every /rules/custom route asserts a tenant has been
+   * resolved by the middleware before acting. In OSS this always passes
+   * (tenant middleware sets LOCAL_TENANT for every request); in Cloud
+   * the gate refuses to run on unauthenticated requests that bypass
+   * the auth+tenant middleware. The resolved id is currently NOT
+   * threaded into customRuleStore — that lands in PR 3b. Today the
+   * store hardcodes 'local'; the gate is the route-level prerequisite
+   * for the store-level fix.
+   */
+
+  router.get('/rules/custom', (req, res) => {
+    requireTenant(req);
     const rules = opts.customRuleStore.list();
     res.json({ rules });
   });
 
   router.post('/rules/custom', async (req, res) => {
     try {
+      requireTenant(req);
       const input = DeploySchema.parse(req.body);
 
       // Server overrides the inner definition's `name` so it always matches the
@@ -98,6 +111,7 @@ export function registerRuleRoutes(
   });
 
   router.delete('/rules/custom/:id', (req, res) => {
+    requireTenant(req);
     const removed = opts.customRuleStore.delete(req.params.id);
     if (!removed) {
       res.status(404).json({ error: 'Rule not found' });
