@@ -62,20 +62,34 @@ export interface UseApiDataResult<T> {
   refetch: () => Promise<void>;
 }
 
-function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number): UseApiDataResult<T> {
+// Exported only for tests — every production caller goes through a
+// purpose-named wrapper (useTraces / useSummary / etc.) that pre-applies
+// the right cadence + fetcher. The bare hook is exposed so the
+// stale-data race regression test can drive it directly without
+// mocking the entire api client surface.
+export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number): UseApiDataResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const resumeTimer = useRef<number | null>(null);
+  // Monotonic request id. Each fetchData() call captures its own id; if a
+  // newer call has started by the time the response resolves, the older
+  // call discards its result. Closes the stale-data race where a slow
+  // earlier fetch could overwrite the newer fetch's data after a rapid
+  // filter/route change.
+  const requestIdRef = useRef(0);
 
   const fetchData = useCallback(async () => {
+    const myId = ++requestIdRef.current;
     try {
       const result = await fetcher();
+      if (myId !== requestIdRef.current) return; // stale — newer call superseded us
       setData(result);
       setError(null);
       setRateLimitedUntil(null);
     } catch (err) {
+      if (myId !== requestIdRef.current) return; // stale — drop the error too
       if (err instanceof RateLimitError) {
         const until = Date.now() + err.retryAfterMs;
         setRateLimitedUntil(until);
@@ -93,7 +107,12 @@ function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number): UseApi
         setError(err instanceof Error ? err.message : 'Unknown error');
       }
     } finally {
-      setLoading(false);
+      // Only the latest call clears the loading flag — prevents a stale
+      // resolution from flipping loading to false while a newer request
+      // is still in flight.
+      if (myId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [fetcher]);
 
