@@ -1,13 +1,13 @@
-// Truthbase reader — website mirror of src/lib/claims.ts.
-//
-// Next.js's workspace boundary doesn't let us import from the mcp-server's
-// src/lib cleanly, so this file mirrors the reader surface. CI test
-// (claims-readers-equal.test.ts) asserts the duplicates stay aligned
-// field-by-field.
+// Truthbase reader for the website surface.
 //
 // Source of truth: iris/.claims.json (regenerated from canonical artifacts
 // via `npm run claims:generate`). Always import from here on the website
 // side; never hardcode the values inline.
+//
+// When server- or dashboard-side surfaces need their own reader, add the
+// reader file in the same PR as the consumer and mirror this surface
+// field-for-field (including the necessary build-context updates — see
+// scripts/claims/README.md).
 
 import claimsRaw from '../../../.claims.json' with { type: 'json' };
 
