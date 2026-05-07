@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-06
+
+Hygiene release. Truthbase + claims-alignment CI guard close the bug class behind the hero `374→413` recurrence. Dashboard a11y + race-condition hardening. Three security fixes (CORS allowlist, DNS pre-resolve SSRF guard, tenant gate on /rules/custom). Cloud-tier groundwork (CustomRuleStore tenant API). Five dependency bumps. No breaking changes for OSS deployments.
+
 ### Added
 
 - **Truthbase — single source of truth for facts about Iris.** `iris/.claims.json` is regenerated from canonical artifacts (`package.json`, `vitest --reporter=json`, MCP tool registry, eval rule registry, LLM-judge templates, CHANGELOG headers) via `npm run claims:generate`. Reader modules at `src/lib/claims.ts`, `website/src/lib/claims.ts`, `dashboard/src/lib/claims.ts` expose typed constants (`VERSION_MCP_SERVER`, `TEST_COUNT_VITEST_ROOT`, `MCP_TOOL_COUNT`, `RULE_COUNT_BUILT_IN`, `LLM_JUDGE_TEMPLATE_COUNT`, `TAGLINE`, etc.) for surfaces to import instead of hardcoding. Hardcoded-claim scanner (`scripts/claims/check-no-hardcoded.mjs`) catches new drift; `.github/workflows/claims-alignment.yml` runs the scanner + verifies the regenerator output matches the committed `.claims.json` on every PR + push to main. Surface migrations in this PR: `website/src/components/hero.tsx` (test count claim) + `website/src/app/page.tsx` (JSON-LD `softwareVersion`). Allow-list (`scripts/claims/allow-list.json`) carries explicit exemptions for historical CHANGELOG entries, version-snapshot roadmap rows, and the seven website-component / docs sites flagged as migration candidates for follow-on PRs. Closes the bug class that produced the hero `374→413 tests` recurrence after the linear-elephant remediation. The `374` literal no longer exists; the surface reads `{TEST_COUNT_VITEST_ROOT}` from the regenerated truthbase. New scripts: `claims:capture-tests` (CI wrapper around `vitest --reporter=json`), `claims:generate`, `claims:check`, `claims:check-hardcoded`. Documented at `scripts/claims/README.md`.
@@ -25,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CORS allowlist now matches a single hostname/port label per `*` wildcard.** Previously `pattern.replace(/\*/g, '.*')` substituted `.*` (matches dots/colons/slashes), so an entry like `http://localhost:*` would also match a malicious origin like `http://localhost:8080.evil.com`. Substitution is now `[^.:/]+`. Any allowlist entry that previously matched origins crossing a label boundary will now be rejected — review your `security.allowedOrigins` config if you rely on multi-label subdomain matching (use multiple explicit entries instead). `src/middleware/cors.ts`.
 - **DNS pre-resolve guard against citation-verify SSRF via DNS rebinding.** `resolve.ts` now resolves every public hostname via `dns.lookup({all:true})` and re-checks every returned address against the IP blocklist before fetching, defeating the bypass where a public hostname (e.g. `*.localtest.me`) resolves to `127.0.0.1`. A residual TOCTOU window between the pre-resolve and the socket connect remains; closing it requires controlling the socket via a custom undici dispatcher and is queued for follow-up. `src/eval/citation-verify/resolve.ts`.
 - **Tenant gate on `/rules/custom` (GET, POST, DELETE).** All three handlers now call `requireTenant(req)` before acting. In OSS the tenant middleware always resolves to `LOCAL_TENANT`, so behavior is unchanged for self-hosted deployments. In Cloud (v0.5+), unauthenticated requests bypassing the auth+tenant middleware will now fail-closed at the route layer instead of operating on un-tenanted state. The actual storage threading (`CustomRuleStore` accepting a `TenantId`) lands in PR 3b. Regression test: `tests/unit/dashboard/routes/rules-tenant-gate.test.ts`. `src/dashboard/routes/rules.ts`.
+
+### Dependencies
+
+- `safe-regex2` 5.1.0 → 5.1.1 (#101).
+- `express-rate-limit` 8.3.2 → 8.5.0 (#126).
+- `anchore/sbom-action` 0.9.0 → 0.24.0 (CI; #127).
+- Testing group bump (#110).
+- Linting group bump (#107).
 
 ## [0.4.0] - 2026-04-24
 
