@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.1] - 2026-05-06
+## [0.4.2] - 2026-05-06
+
+Recovery release for v0.4.1's Docker-publish failure. v0.4.1 npm package was published but the Docker image, GitHub Release, cosign signature, and SLSA Docker attestation never materialised — the v0.4.1 tarball was unpublished from npm; v0.4.2 is the first complete distribution after the truthbase landing.
+
+### Removed
+
+- **`src/lib/claims.ts` (server-side truthbase reader)** — added speculatively in PR #139 with no `src/` consumer, so it shipped as dead code in v0.4.1's npm tarball. The dead-code import (`import claimsRaw from '../../.claims.json' with { type: 'json' }`) caused the v0.4.1 Docker build to fail at typecheck because `.claims.json` was not in the Docker build context (and not in the npm `files` allowlist either). When a server-side consumer of the truthbase is actually needed, the reader should be re-introduced **in the same PR as the consumer**, including the Dockerfile `COPY .claims.json ./` and the `package.json` `files` allowlist update. Per CLAUDE.md: no half-finished implementations; don't design for hypothetical future requirements.
+- **`dashboard/src/lib/claims.ts` (dashboard-side truthbase reader)** — same logic. No dashboard consumer, vite tree-shook it out of the build, dead code. Re-introduce alongside its first dashboard consumer.
+
+### Changed
+
+- **PR CI now runs a `docker-build` smoke job on every PR.** Single-arch (`linux/amd64`), no push, gha cache backend so warm runs stay under ~2 min. Catches Docker-only build regressions before they reach a release tag (the gap that allowed the v0.4.1 incident — host typecheck passed, Docker tsc failed inside the build). `.github/workflows/ci.yml` (job: `docker-build`, depends on `lint-and-typecheck`).
+
+## [0.4.1] - 2026-05-06 [WITHDRAWN]
+
+> **Note:** v0.4.1 was published to npm but the Docker, GitHub Release, cosign, and SLSA-Docker artifacts never landed because the Docker build failed (see v0.4.2 entry above). The npm tarball was unpublished within npm's 72-hour window; this version is no longer installable. All substance of v0.4.1 ships in v0.4.2.
 
 Hygiene release. Truthbase + claims-alignment CI guard close the bug class behind the hero `374→413` recurrence. Dashboard a11y + race-condition hardening. Three security fixes (CORS allowlist, DNS pre-resolve SSRF guard, tenant gate on /rules/custom). Cloud-tier groundwork (CustomRuleStore tenant API). Five dependency bumps. No breaking changes for OSS deployments.
 

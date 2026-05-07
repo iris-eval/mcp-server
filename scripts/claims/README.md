@@ -12,9 +12,8 @@ The truthbase exists because hand-edited claim values drift between artifact and
 - **`scripts/claims/capture-tests.mjs`** — runs vitest with `--reporter=json` and writes `.claims-cache/tests.json` for the test generator to read. CI runs this before `generate.mjs`.
 - **`scripts/claims/check-no-hardcoded.mjs`** — regex scanner. Fails if any source file outside the allow-list contains a hardcoded claim that should come from the truthbase.
 - **`scripts/claims/allow-list.json`** — explicit exemptions. Each entry justifies why a literal stays uncovered (historical CHANGELOG entries, generator regex sources, etc.). Entries are removed as surfaces migrate to the reader.
-- **`src/lib/claims.ts`** — reader for the mcp-server.
-- **`website/src/lib/claims.ts`** — reader for the website.
-- **`dashboard/src/lib/claims.ts`** — reader for the dashboard.
+- **`website/src/lib/claims.ts`** — reader for the website (the only currently-wired consumer surface).
+- *(Server and dashboard readers are not currently present.)* When a server-side or dashboard-side surface needs to import a truthbase value, add the reader **in the same PR as the consumer**, and include the build-context updates the reader requires: `COPY .claims.json ./` in `Dockerfile` (server reader) and `.claims.json` in `package.json`'s `files` allowlist (npm tarball). Pre-creating an unused reader leaves a broken import in dead code that survives PR CI but breaks the Docker / tagged-release build (see CHANGELOG `[0.4.1] [WITHDRAWN]`).
 - **`.github/workflows/claims-alignment.yml`** — CI workflow that runs the scanner + verifies the truthbase regenerator output matches the committed `.claims.json`.
 
 ## Commands
@@ -31,7 +30,7 @@ npm run claims:check-hardcoded  # fails if any unguarded hardcoded claim is foun
 1. Add a generator function under `scripts/claims/generators/<name>.mjs` (or extend an existing one).
 2. Wire it into `generate.mjs`'s generators array.
 3. Run `npm run claims:generate` and commit the updated `.claims.json`.
-4. Add the field to the reader (`src/lib/claims.ts`) and the two mirrors (`website/src/lib/claims.ts`, `dashboard/src/lib/claims.ts`).
+4. Add the field to every reader that exists at the time. Today that's `website/src/lib/claims.ts` only; if a server-side or dashboard-side reader has been added, mirror the field there and assert alignment in the consumer test.
 5. Update surfaces to import the new const from the reader instead of hardcoding.
 
 ## Adding a hardcoded-claim pattern
