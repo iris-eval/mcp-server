@@ -17,6 +17,10 @@ This security policy applies to:
 - The Iris web dashboard
 - The Iris website (`iris-eval.com`)
 
+## Open Advisory Posture
+
+For every open Dependabot advisory on this repo, [`SECURITY-EXPOSURE.md`](./SECURITY-EXPOSURE.md) records the per-surface threat-model assessment: load-graph reachability, code-path reachability, untrusted-input reachability, downstream guards, and the resulting decision (override / dismiss-as-not-used / dismiss-as-tolerable-risk / track / patch). CI fails any PR that surfaces a new ≥medium advisory without a corresponding row in that file. This is the substance behind any "open alerts" count you see on the GitHub Security tab.
+
 ## Supported Versions
 
 Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.4.x` line.
