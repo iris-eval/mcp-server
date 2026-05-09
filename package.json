@@ -76,6 +76,9 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "overrides": {
+    "fast-uri": "^3.1.2"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.8.0",

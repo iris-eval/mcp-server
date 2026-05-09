@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Per-advisory threat-model record (`SECURITY-EXPOSURE.md`).** New repo-root file documents the load-graph reachability, code-path reachability, untrusted-input reachability, and downstream-guard analysis for every open Dependabot advisory. Each entry carries an explicit decision: override (force a fixed transitive via `package.json` `overrides`), dismiss-as-not-used (vulnerable code not loaded into iris's process), dismiss-as-tolerable-risk (code loaded but vulnerable function never called), track (waiting on upstream), or patch (iris-side mitigation required). Closes the substance/signal gap where the GitHub Security tab counts advisories without distinguishing reachable from dead-code alerts. Linked from `SECURITY.md`.
+- **`fast-uri ^3.1.2` override.** `package.json` `overrides` field forces the patched fast-uri across the dependency tree, covering [GHSA-v39h-62p7-jpjc](https://github.com/advisories/GHSA-v39h-62p7-jpjc) (host confusion via percent-encoded authority delimiters, HIGH) and [GHSA-q3j6-qgpj-74h6](https://github.com/advisories/GHSA-q3j6-qgpj-74h6) (path traversal via percent-encoded dot segments, HIGH). Reachability analysis indicated iris's citation-verify SSRF guards (scheme allowlist, private-IP block, DNS pre-resolve) do not depend on fast-uri's correctness, but defense-in-depth against the URI-validation bypass is cheap.
+- **CI gate: `security-exposure` job in `.github/workflows/ci.yml`.** Runs `scripts/security/check-exposure-coverage.mjs` on every PR. Fails the build if any open Dependabot alert at severity ≥ medium does not have a corresponding GHSA row in `SECURITY-EXPOSURE.md`. Forces every new advisory to be triaged with a documented decision instead of accumulating silently. Pairs with `docker-build` (also added recently) as the second structural gate that catches a class of drift the PR-only test suite couldn't.
+
 ## [0.4.2] - 2026-05-06
 
 Recovery release for v0.4.1's Docker-publish failure. v0.4.1 npm package was published but the Docker image, GitHub Release, cosign signature, and SLSA Docker attestation never materialised — the v0.4.1 tarball was unpublished from npm; v0.4.2 is the first complete distribution after the truthbase landing.
