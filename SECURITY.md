@@ -6,7 +6,7 @@ If you discover a security vulnerability in Iris, please report it responsibly.
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email: **security@iris-eval.com**
+Instead, please email **security@iris-eval.com** or submit through GitHub's **Private Vulnerability Reporting** at https://github.com/iris-eval/mcp-server/security/advisories/new — this delivers the report privately to maintainers, supports attachments, and avoids email entirely. A PGP public key for the email channel is available on request to the same address.
 
 We aim to acknowledge receipt within 48 hours and provide a detailed response within 5 business days. These are best-effort targets — Iris is currently maintained by a solo founder, so a brief delay during travel or focused-work periods is possible. Critical vulnerabilities (active exploitation, RCE, data exposure) get top priority regardless.
 

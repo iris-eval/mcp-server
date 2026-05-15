@@ -31,8 +31,7 @@
     "claims:check-hardcoded": "node scripts/claims/check-no-hardcoded.mjs",
     "clean": "rm -rf dist coverage",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
-    "demo": "tsx scripts/demo.ts",
-    "postinstall": "echo \"\\n  ✅ Iris installed — the agent eval standard for MCP\\n  📖 Docs: https://iris-eval.com\\n  🎯 Try the playground: https://iris-eval.com/playground\\n  ⭐ Star us: https://github.com/iris-eval/mcp-server\\n\""
+    "demo": "tsx scripts/demo.ts"
   },
   "keywords": [
     "mcp",
