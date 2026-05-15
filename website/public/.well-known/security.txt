@@ -1,5 +1,6 @@
 Contact: mailto:security@iris-eval.com
-Expires: 2027-04-16T00:00:00.000Z
+Contact: https://github.com/iris-eval/mcp-server/security/advisories/new
+Expires: 2027-05-15T00:00:00.000Z
 Preferred-Languages: en
 Canonical: https://iris-eval.com/.well-known/security.txt
 Policy: https://github.com/iris-eval/mcp-server/blob/main/SECURITY.md
