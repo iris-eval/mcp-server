@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Top-level least-privilege default. Individual jobs override when they
+# need more (e.g., security-exposure declares contents:read; no job in
+# this workflow needs write). Closes Scorecard Token-Permissions.
+permissions:
+  contents: read
+
 jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
