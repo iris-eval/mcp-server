@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-05-07T01:30:53.512Z",
-  "generatedFromCommit": "1e5859a",
+  "generatedAt": "2026-05-16T02:01:14.983Z",
+  "generatedFromCommit": "6e9828f",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -136,7 +136,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.4.2",
+    "mcpServer": "0.4.3-rc.0",
     "websitePackage": "0.1.0"
   }
 }
