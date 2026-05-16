@@ -10,11 +10,12 @@ on:
 # (--provenance), and cosign uses it for keyless container signing. We
 # retain NPM_TOKEN for the actual publish auth — npm's OIDC-only "trusted
 # publisher" flow requires org-side configuration separately.
+#
+# Least-privilege: top-level is contents:read (default for all jobs).
+# Each publishing / release job declares its specific writes at job level.
+# Closes Scorecard Token-Permissions (workflow-level minimal default).
 permissions:
-  contents: write
-  packages: write
-  id-token: write
-  attestations: write
+  contents: read
 
 jobs:
   validate:
@@ -35,6 +36,10 @@ jobs:
   publish-npm:
     needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read         # checkout
+      id-token: write        # npm --provenance + attest-build-provenance
+      attestations: write    # attest-build-provenance writes attestation
     outputs:
       sbom-path: ${{ steps.sbom.outputs.fileName }}
     steps:
@@ -111,6 +116,11 @@ jobs:
   publish-docker:
     needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read         # checkout
+      packages: write        # GHCR push
+      id-token: write        # cosign keyless + attest-build-provenance
+      attestations: write    # push attestation to registry
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -205,6 +215,9 @@ jobs:
   github-release:
     needs: [publish-npm, publish-docker]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # softprops/action-gh-release creates the release
+      id-token: write        # cosign sign-blob keyless OIDC for SBOM sigs
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
