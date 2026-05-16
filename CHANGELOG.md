@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Security
+(Unreleased content rolls forward to the next non-RC release.)
+
+## [0.4.3-rc.0] - 2026-05-16
+
+Release-candidate to validate the **Signed-Releases** workflow shipped in PR #158 — verifies that `cosign sign-blob` produces `.sig` (signature) and `.pem` (Sigstore-issued cert) files for both SBOMs (npm + Docker) and that they attach to the GitHub Release page alongside the SBOMs themselves. After verifying, v0.4.3 (production) ships the same artifacts on `latest`.
+
+Published as npm dist-tag `next` (NOT `latest`); Docker tag `v0.4.3-rc.0` only (NOT `:latest`). `npm install @iris-eval/mcp-server` continues to resolve 0.4.2 until the production v0.4.3 ships.
+
+### Security posture (rolled forward from Unreleased)
 
 - **Per-advisory threat-model record (`SECURITY-EXPOSURE.md`).** New repo-root file documents the load-graph reachability, code-path reachability, untrusted-input reachability, and downstream-guard analysis for every open Dependabot advisory. Each entry carries an explicit decision: override (force a fixed transitive via `package.json` `overrides`), dismiss-as-not-used (vulnerable code not loaded into iris's process), dismiss-as-tolerable-risk (code loaded but vulnerable function never called), track (waiting on upstream), or patch (iris-side mitigation required). Closes the substance/signal gap where the GitHub Security tab counts advisories without distinguishing reachable from dead-code alerts. Linked from `SECURITY.md`.
 - **`fast-uri ^3.1.2` override.** `package.json` `overrides` field forces the patched fast-uri across the dependency tree, covering [GHSA-v39h-62p7-jpjc](https://github.com/advisories/GHSA-v39h-62p7-jpjc) (host confusion via percent-encoded authority delimiters, HIGH) and [GHSA-q3j6-qgpj-74h6](https://github.com/advisories/GHSA-q3j6-qgpj-74h6) (path traversal via percent-encoded dot segments, HIGH). Reachability analysis indicated iris's citation-verify SSRF guards (scheme allowlist, private-IP block, DNS pre-resolve) do not depend on fast-uri's correctness, but defense-in-depth against the URI-validation bypass is cheap.
