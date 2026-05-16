@@ -16,6 +16,11 @@ on:
   pull_request:
     branches: [main]
 
+# Top-level least-privilege. Lighthouse only needs to read the repo.
+# Closes Scorecard Token-Permissions for this workflow.
+permissions:
+  contents: read
+
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
@@ -51,7 +56,9 @@ jobs:
 
       - name: Lighthouse CI
         run: |
-          npm install -g @lhci/cli@^0.15
+          # scorecard: pinned to exact version for Pinned-Dependencies check.
+          # Bump in lockstep with a deliberate version bump PR, not via caret.
+          npm install -g @lhci/cli@0.15.0
           lhci autorun
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}

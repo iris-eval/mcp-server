@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
 
+# Top-level least-privilege; analyze job upgrades to security-events:write
+# for SARIF upload. Closes Scorecard Token-Permissions.
+permissions:
+  contents: read
+
 jobs:
   analyze:
     runs-on: ubuntu-latest

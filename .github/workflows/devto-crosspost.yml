@@ -20,6 +20,12 @@ on:
         default: 'false'
         type: boolean
 
+# Top-level least-privilege. Cross-posting only reads the repo;
+# DEVTO_API_KEY is the outbound credential, not a GitHub permission.
+# Closes Scorecard Token-Permissions for this workflow.
+permissions:
+  contents: read
+
 jobs:
   crosspost:
     runs-on: ubuntu-latest

@@ -7,7 +7,11 @@ on:
   push:
     branches: [main]
 
-permissions: read-all
+# Top-level least-privilege; analysis job upgrades to the writes it
+# needs. Explicit replaces the previous `read-all` (Scorecard's own
+# Token-Permissions check prefers explicit minimal over read-all).
+permissions:
+  contents: read
 
 jobs:
   analysis:
@@ -30,6 +34,14 @@ jobs:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
+          # Required for Scorecard's Branch-Protection check. The default
+          # GITHUB_TOKEN cannot read classic branch protection rules; without
+          # a PAT the check returns -1 (internal error). SCORECARD_PAT is a
+          # fine-grained PAT with Public Repositories > Administration: Read,
+          # scoped only to this repo. If the secret is unset the action falls
+          # back to GITHUB_TOKEN and the check stays at -1 (other checks
+          # unaffected — fail-open).
+          repo_token: ${{ secrets.SCORECARD_PAT }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
