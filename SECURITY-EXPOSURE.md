@@ -102,6 +102,19 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Decision:** **Dismiss as `tolerable_risk`** with rationale linking here.
 - **Assessed:** 2026-05-08 against iris commit `47a3de2`.
 
+### [GHSA-jxxr-4gwj-5jf2](https://github.com/advisories/GHSA-jxxr-4gwj-5jf2) — brace-expansion DoS via large numeric range defeats documented `max` protection
+
+- **Severity:** moderate (CVSS 6.5, CWE-400)
+- **Package:** `brace-expansion`
+- **Vulnerable:** `5.0.0 ≤ x < 5.0.6` — **first patched:** 5.0.6
+- **Load path:** Transitive through `minimatch` / `glob`, pulled in by dev tooling (vitest file resolution, eslint glob handling, npm internal patterns). No runtime production code-path includes `brace-expansion`.
+- **Load-graph reachable:** Yes — installed in `node_modules/` to support dev tooling.
+- **Code-path reachable:** Vulnerable function (`expand`'s numeric-range branch with attacker-controlled patterns like `{1..1000000}`) is **not** invoked by iris's runtime. iris does not accept user-supplied glob or brace patterns through any MCP tool, HTTP handler, or rule input. The only callers are: vitest's test-file resolution (patterns are checked-in test paths from `vitest.config.ts`), eslint's `lintFilePatterns` (checked-in source globs), and npm's own internal package matching (config-controlled).
+- **Untrusted input reachable:** **No.** The attacker model that could trigger the resource-exhaustion path requires write access to either `package.json`, `vitest.config.ts`, or a CI workflow file — all of which require commit access through the PR review gate. An attacker at that privilege level has more direct attack vectors than triggering a DoS via brace expansion.
+- **Downstream guards:** PR review gate on CODEOWNERS-protected `main`. CI workflows time out at 10–20 minutes per job; a pathological brace expansion would manifest as a hung-job timeout, not a service degradation visible to iris users.
+- **Decision:** **Dismiss as `tolerable_risk`** — the vulnerable code path is dev-tooling-only and gated behind commit-level access. GitHub Dependabot already auto-dismissed the surfaced alerts (Dependabot alerts #58, #59, #60 on 2026-05-18) on the same reasoning. This row makes the analysis explicit so the CI gate can re-verify the documented decision.
+- **Assessed:** 2026-05-21 against iris commit `77f30cd` (PR #173).
+
 ---
 
 ## Operational notes
