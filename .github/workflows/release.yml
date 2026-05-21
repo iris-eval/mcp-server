@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual dispatch lets us re-run a release for an existing tag after
+  # recovering from a failed earlier run (e.g., rotated credentials).
+  # Trigger with: `gh workflow run release.yml --ref vX.Y.Z`. The dispatched
+  # workflow's github.ref/ref_name resolve to the tag, so the rest of the
+  # workflow logic (npm-tag, Docker tags, SBOM names, prerelease detection)
+  # works identically to the push-trigger path.
+  workflow_dispatch: {}
 
 # OIDC migration (audit item #9): `id-token: write` grants the workflow a
 # GitHub-signed identity token. npm uses it to attest provenance on publish
@@ -94,9 +101,30 @@ jobs:
             echo "Publishing as 'next' (pre-release: ${GITHUB_REF_NAME})"
           fi
 
-      - run: npm publish --provenance --access public --tag ${{ steps.npm-tag.outputs.tag }} || echo "Version already published, skipping"
+      # Idempotent re-runs (e.g., workflow_dispatch on a tag whose earlier run
+      # failed) must succeed on EPUBLISHCONFLICT (version already exists) but
+      # must FAIL LOUDLY on auth errors, network errors, or anything else.
+      # The previous `npm publish ... || echo "skipping"` swallowed an
+      # NPM_TOKEN auth 404 silently, producing a "successful" workflow run
+      # that did not publish v0.4.3 — see PR #176 incident notes.
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -o pipefail
+          publish_log=$(mktemp)
+          if npm publish --provenance --access public --tag ${{ steps.npm-tag.outputs.tag }} 2>&1 | tee "$publish_log"; then
+            echo "✓ npm publish succeeded"
+          else
+            exit_code=$?
+            if grep -qE "EPUBLISHCONFLICT|cannot publish over the previously published" "$publish_log"; then
+              echo "✓ Version already published on npm — idempotent re-run, continuing"
+            else
+              echo "✗ npm publish failed with non-conflict error (exit ${exit_code})"
+              echo "  Common causes: NPM_TOKEN expired/revoked, token lacks @iris-eval scope publish, registry-side outage."
+              exit "${exit_code}"
+            fi
+          fi
 
       # Attestation (SLSA provenance): separate from `npm publish
       # --provenance` attestation — this one covers the checked-out source
