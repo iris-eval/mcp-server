@@ -115,6 +115,57 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Decision:** **Dismiss as `tolerable_risk`** — the vulnerable code path is dev-tooling-only and gated behind commit-level access. GitHub Dependabot already auto-dismissed the surfaced alerts (Dependabot alerts #58, #59, #60 on 2026-05-18) on the same reasoning. This row makes the analysis explicit so the CI gate can re-verify the documented decision.
 - **Assessed:** 2026-05-21 against iris commit `77f30cd` (PR #173).
 
+### [GHSA-xrhx-7g5j-rcj5](https://github.com/advisories/GHSA-xrhx-7g5j-rcj5) — Hono IP Restriction bypasses static deny rules for non-canonical IPv6
+
+- **Severity:** medium
+- **Package:** `hono`
+- **Vulnerable:** 4.12.18 installed — fixed in the 4.12.x line picked up by Dependabot #188 (→ 4.12.23)
+- **Load path:** `hono` ← `@modelcontextprotocol/sdk@1.29.0` (declared runtime dep)
+- **Load-graph reachable:** **No.** Same evidence as GHSA-9vqf-7f2p-gf9v above, re-verified 2026-06-09: `grep -rln "from ['\"]hono" node_modules/@modelcontextprotocol/sdk/dist/esm/` matches only `examples/server/honoWebStandardStreamableHttp.js` — an SDK example never imported by iris's entry points. iris's HTTP transport is Express.
+- **Code-path reachable:** N/A — package not loaded. Additionally, iris's source contains zero uses of Hono's `ipRestriction` middleware (grep of `src/`); iris's network restriction is host binding (`127.0.0.1` default) + bearer-token auth, not Hono IP rules.
+- **Decision:** **Patch** — Dependabot #188 (hono 4.12.23) queued in the 2026-06-09 drain. Reachability analysis shows not-loaded regardless; the alert would qualify for `not_used` dismissal if the patch lagged.
+- **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
+
+### [GHSA-3hrh-pfw6-9m5x](https://github.com/advisories/GHSA-3hrh-pfw6-9m5x) — Hono cookie helper does not sanitize sameSite / priority, allowing Set-Cookie injection
+
+- **Severity:** medium
+- **Package:** `hono`
+- **Vulnerable:** 4.12.18 installed — fixed via Dependabot #188 (→ 4.12.23)
+- **Load-graph reachable:** **No** (same evidence as GHSA-xrhx-7g5j-rcj5). iris's source has zero uses of Hono's cookie helpers (`setCookie`/`getCookie`/`deleteCookie`); dashboard auth is a bearer token in the `Authorization` header, no cookies are set anywhere in iris's server code.
+- **Decision:** **Patch** — Dependabot #188; `not_used` analysis on record as above.
+- **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
+
+### [GHSA-f577-qrjj-4474](https://github.com/advisories/GHSA-f577-qrjj-4474) — Hono JWT middleware accepts any Authorization scheme, not only Bearer
+
+- **Severity:** medium
+- **Package:** `hono`
+- **Vulnerable:** 4.12.18 installed — fixed via Dependabot #188 (→ 4.12.23)
+- **Load-graph reachable:** **No** (same evidence). iris does not use Hono's JWT middleware anywhere; authentication is iris's own `src/middleware/auth.ts` (padded `timingSafeEqual` compare), which validates the scheme explicitly.
+- **Decision:** **Patch** — Dependabot #188; `not_used` analysis on record as above.
+- **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
+
+### [GHSA-2gcr-mfcq-wcc3](https://github.com/advisories/GHSA-2gcr-mfcq-wcc3) — Hono app.mount() strips mount prefix using undecoded path
+
+- **Severity:** medium
+- **Package:** `hono`
+- **Vulnerable:** 4.12.18 installed — fixed via Dependabot #188 (→ 4.12.23)
+- **Load-graph reachable:** **No** (same evidence). iris's source contains zero `.mount(` call sites; routing is Express routers.
+- **Decision:** **Patch** — Dependabot #188; `not_used` analysis on record as above.
+- **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
+
+### [GHSA-q8mj-m7cp-5q26](https://github.com/advisories/GHSA-q8mj-m7cp-5q26) — qs.stringify remotely triggerable DoS (TypeError on null/undefined entries in comma-format arrays with encodeValuesOnly)
+
+- **Severity:** moderate
+- **Package:** `qs`
+- **Vulnerable:** `qs@6.15.0` installed — **first patched:** 6.15.2 (Dependabot #177)
+- **Load path:** `qs` ← `body-parser@2.2.2` ← `express@5.2.1` (iris's actual HTTP transport)
+- **Load-graph reachable:** **Yes** — `express/lib/utils.js` and `body-parser/lib/types/urlencoded.js` both require `qs`.
+- **Code-path reachable:** **No.** The vulnerable function is `qs.stringify` with the non-default option combination `arrayFormat: 'comma'` + `encodeValuesOnly: true`. Express and body-parser call only `qs.parse` (query-string and urlencoded-body parsing); verified 2026-06-09 — zero `.stringify(` call sites in either package's lib. iris's own code never imports qs directly.
+- **Untrusted input reachable:** N/A — vulnerable function not invoked. Attacker-controlled query strings and bodies flow into `qs.parse`, which this advisory does not cover.
+- **Downstream guards:** Express body-size limits + iris rate limiting bound parse-side resource use independently.
+- **Decision:** **Patch** — Dependabot #177 (qs 6.15.2) queued in the 2026-06-09 drain; `tolerable_risk` analysis on record had the patch lagged.
+- **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
+
 ---
 
 ## Operational notes
