@@ -13,10 +13,14 @@ on:
   workflow_dispatch: {}
 
 # OIDC migration (audit item #9): `id-token: write` grants the workflow a
-# GitHub-signed identity token. npm uses it to attest provenance on publish
-# (--provenance), and cosign uses it for keyless container signing. We
-# retain NPM_TOKEN for the actual publish auth — npm's OIDC-only "trusted
-# publisher" flow requires org-side configuration separately.
+# GitHub-signed identity token. npm uses it for BOTH provenance attestation
+# (--provenance) AND publish authentication via npm Trusted Publishing — the
+# package is configured on npmjs.com with this repo + release.yml as a trusted
+# publisher (org-side, set 2026-06-12), so no NPM_TOKEN secret is needed. The
+# long-lived NPM_TOKEN was removed after it silently expired and a swallowed
+# 404 caused v0.4.3 to never reach npm (see PR #176 + the 2026-06-12 incident).
+# Trusted Publishing requires npm >= 11.5.1 (upgraded in the publish-npm job;
+# Node 22 ships npm 10.x). cosign also uses this OIDC token for keyless signing.
 #
 # Least-privilege: top-level is contents:read (default for all jobs).
 # Each publishing / release job declares its specific writes at job level.
@@ -57,6 +61,13 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: package-lock.json
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.x.
+      # Without this upgrade `npm publish` cannot perform the OIDC token exchange
+      # and — with NPM_TOKEN now gone — would fail auth outright.
+      - name: Upgrade npm for Trusted Publishing (OIDC, >= 11.5.1)
+        run: |
+          npm install -g npm@latest
+          npm --version
       - run: npm ci
       - run: npm run clean
       - run: npm run build
@@ -107,9 +118,12 @@ jobs:
       # The previous `npm publish ... || echo "skipping"` swallowed an
       # NPM_TOKEN auth 404 silently, producing a "successful" workflow run
       # that did not publish v0.4.3 — see PR #176 incident notes.
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Auth is via npm Trusted Publishing (OIDC) — no NODE_AUTH_TOKEN. npm
+      # exchanges the GitHub id-token for a short-lived publish credential
+      # because this repo + release.yml is a configured trusted publisher on
+      # npmjs.com. `--provenance` is auto-enabled under Trusted Publishing but
+      # kept explicit for clarity.
+      - name: Publish to npm (Trusted Publishing / OIDC)
         run: |
           set -o pipefail
           publish_log=$(mktemp)
@@ -121,7 +135,7 @@ jobs:
               echo "✓ Version already published on npm — idempotent re-run, continuing"
             else
               echo "✗ npm publish failed with non-conflict error (exit ${exit_code})"
-              echo "  Common causes: NPM_TOKEN expired/revoked, token lacks @iris-eval scope publish, registry-side outage."
+              echo "  Check: Trusted Publisher config on npmjs.com (repo + workflow filename must match), npm >= 11.5.1, id-token: write permission, registry-side outage."
               exit "${exit_code}"
             fi
           fi
