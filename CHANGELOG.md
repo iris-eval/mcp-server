@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (Unreleased content rolls forward to the next non-RC release.)
 
+## [0.4.4] - 2026-06-12
+
+Recovery release completing v0.4.3's distribution. v0.4.3 published to Docker (GHCR) and the GitHub Release, but its **npm publish silently failed** — the `NPM_TOKEN` secret had expired, npm returned `E404` on the publish PUT, and the pre-#176 `npm publish ... || echo "skipping"` step swallowed the failure into a green run. npm `@latest` (and therefore the MCP Registry + downstream mirrors) stalled at 0.4.2, so the v0.4.3 LLM-judge prompt-injection hardening never reached npm installs. v0.4.4 carries all v0.4.3 runtime content forward and is the first complete distribution since 0.4.2. **No runtime code changes versus 0.4.3.**
+
+### Changed
+
+- **npm publishing migrated to Trusted Publishing (OIDC).** `release.yml` no longer uses a long-lived `NPM_TOKEN` secret — the publish job authenticates via the workflow's GitHub OIDC identity, configured as a trusted publisher on npmjs.com (`iris-eval/mcp-server` + `release.yml`). This eliminates the credential-expiry failure mode that broke the v0.4.3 npm publish. Requires npm ≥ 11.5.1, upgraded in-job (Node 22 ships npm 10.x). The fail-loud publish step from #176 is retained as defense-in-depth. PRs #194 + #195.
+
+### Security
+
+- **esbuild 0.28.0 → 0.28.1** ([GHSA-g7r4-m6w7-qqqr](https://github.com/advisories/GHSA-g7r4-m6w7-qqqr), [GHSA-gv7w-rqvm-qjhr](https://github.com/advisories/GHSA-gv7w-rqvm-qjhr), HIGH). Transitive dev/build dependency (via `tsx` + `vite`/`vitest`) — not present in the shipped npm tarball or the Docker runtime, so no runtime exposure; both CVEs are dev-only (dev-server arbitrary file read on Windows; Deno-module integrity). Lockfile-only bump; both consumers already accept the patched range. PR #195.
+
 ## [0.4.3] - 2026-05-21
 
 Security + supply-chain release. Hardens LLM-as-Judge against the arxiv 2504.18333 prompt-injection class across all five eval templates, validates the Signed-Releases workflow (npm + Docker SBOMs now ship with `cosign sign-blob` `.sig` / `.pem` companions), per-advisory threat-model record, fast-uri override, and a `security-exposure` CI gate that fails any PR introducing an undocumented ≥medium advisory.
