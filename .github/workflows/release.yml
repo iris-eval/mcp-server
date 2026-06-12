@@ -274,25 +274,29 @@ jobs:
           name: docker-sbom
           path: ./release-assets
 
-      # Cosign sign-blob both SBOMs and attach the .sig/.pem files to
+      # Cosign sign-blob both SBOMs and attach a .cosign.bundle per SBOM to
       # the GitHub Release. Closes Scorecard Signed-Releases — auditors
       # (and `cosign verify-blob`) can verify the SBOMs are the bytes we
       # shipped, not a mutated copy attacker-served from the release page.
       # Uses the same keyless OIDC flow as the Docker image signing in
       # publish-docker (no long-lived signing key).
+      #
+      # cosign v3+ deprecated --output-signature/--output-certificate and
+      # ignores them under the default new bundle format (writing to an empty
+      # --bundle path → "create bundle file: open : no such file or directory",
+      # which silently broke SBOM signing from the v4.1.2 installer bump until
+      # v0.4.4 surfaced it). The single .cosign.bundle carries signature +
+      # cert + Rekor entry; verify with `cosign verify-blob --bundle`.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
 
       - name: Sign SBOMs with cosign (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: 1
         run: |
           cd release-assets
           for sbom in *.spdx.json; do
             echo "Signing ${sbom}..."
             cosign sign-blob --yes "$sbom" \
-              --output-signature "${sbom}.sig" \
-              --output-certificate "${sbom}.pem"
+              --bundle "${sbom}.cosign.bundle"
           done
           ls -la
 
@@ -316,20 +320,17 @@ jobs:
           make_latest: ${{ steps.release-type.outputs.prerelease == 'false' && 'true' || 'false' }}
           files: |
             ./release-assets/iris-npm-sbom.spdx.json
-            ./release-assets/iris-npm-sbom.spdx.json.sig
-            ./release-assets/iris-npm-sbom.spdx.json.pem
+            ./release-assets/iris-npm-sbom.spdx.json.cosign.bundle
             ./release-assets/iris-docker-sbom.spdx.json
-            ./release-assets/iris-docker-sbom.spdx.json.sig
-            ./release-assets/iris-docker-sbom.spdx.json.pem
+            ./release-assets/iris-docker-sbom.spdx.json.cosign.bundle
           body: |
             ## Supply-chain transparency
 
             - **SBOMs**: `iris-npm-sbom.spdx.json` + `iris-docker-sbom.spdx.json` (attached below). Both are SPDX 2.3 JSON, cover direct + transitive dependencies.
-            - **SBOM signatures**: each SBOM has a companion `.sig` (cosign signature) and `.pem` (Sigstore-issued cert) attached to this release. Verify with:
+            - **SBOM signatures**: each SBOM has a companion `.cosign.bundle` (Sigstore bundle — signature + cert + Rekor entry) attached to this release. Verify with:
               ```
               cosign verify-blob \
-                --certificate iris-npm-sbom.spdx.json.pem \
-                --signature iris-npm-sbom.spdx.json.sig \
+                --bundle iris-npm-sbom.spdx.json.cosign.bundle \
                 --certificate-identity-regexp='https://github.com/${{ github.repository }}' \
                 --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
                 iris-npm-sbom.spdx.json
