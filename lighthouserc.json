@@ -12,7 +12,8 @@
         "http://localhost:6922/rules",
         "http://localhost:6922/audit"
       ],
-      "numberOfRuns": 1,
+      "$comment-runs": "median-of-3 — single-run Lighthouse on shared CI runners has high variance and false-failed ~50% near the perf floor (issue #193). LHCI asserts against the median of N runs, which moves us off the variance boundary without lowering the floor.",
+      "numberOfRuns": 3,
       "settings": {
         "$comment-preset": "desktop matches the audience: this is a devtool dashboard, not a public-consumer page",
         "preset": "desktop",
