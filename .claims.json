@@ -120,7 +120,7 @@
       "passed": null,
       "total": null
     },
-    "totalCombined": 534,
+    "totalCombined": 535,
     "vitestDashboard": {
       "failed": 0,
       "passed": 111,
@@ -128,8 +128,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 423,
-      "total": 423
+      "passed": 424,
+      "total": 424
     }
   },
   "version": {
