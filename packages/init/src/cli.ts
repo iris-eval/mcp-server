@@ -9,11 +9,12 @@
  *   npx @iris-eval/init --list                # show detected clients
  *   npx @iris-eval/init --help                # this message
  *
- * Supported <client> values: claude-code, cursor, windsurf, continue.
+ * Supported <client> values: claude-code, claude-desktop, cursor, windsurf,
+ * continue, vscode, cline, zed, codex, gemini.
  *
- * Phase 1 (this release) handles the four first-class clients per
- * grow-plug-and-play.md §5. Phase 2 adds raycast, zed, cline, plus
- * MCP-spec-driven auto-detection for unrecognized clients.
+ * Phase 2 (this release) covers all nine first-class clients from the README
+ * client matrix. Phase 3 adds MCP-spec-driven auto-detection for
+ * unrecognized clients.
  */
 import { parseArgs } from 'node:util';
 import {
@@ -24,7 +25,18 @@ import {
 } from './detect.js';
 import { installIris, uninstallIris } from './config-writer.js';
 
-const SUPPORTED: SupportedClient[] = ['claude-code', 'cursor', 'windsurf', 'continue'];
+const SUPPORTED: SupportedClient[] = [
+  'claude-code',
+  'claude-desktop',
+  'cursor',
+  'windsurf',
+  'continue',
+  'vscode',
+  'cline',
+  'zed',
+  'codex',
+  'gemini',
+];
 
 function printHelp(): void {
   process.stdout.write(`iris-init — universal installer for Iris
