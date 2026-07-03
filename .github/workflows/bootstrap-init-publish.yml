@@ -1,0 +1,52 @@
+# ONE-SHOT bootstrap publish for @iris-eval/init.
+#
+# Why this exists: npm Trusted Publishing cannot be configured for a package
+# that does not exist yet — the FIRST publish of a new package name must use
+# traditional auth (npm platform constraint, verified 2026-07-02 against
+# docs.npmjs.com/trusted-publishers). This workflow performs that single
+# bootstrap publish using a short-lived granular token stored as the
+# NPM_BOOTSTRAP_TOKEN repo secret (1-day expiry, founder-created).
+#
+# Lifecycle: run once via manual dispatch → verify package on npm → founder
+# deletes the token + configures Trusted Publishing for @iris-eval/init →
+# THIS FILE IS DELETED in the same PR that confirms the trusted-publisher
+# setup. All future init releases go through release-init.yml (OIDC, no
+# tokens) — see PR #176 incident notes for why tokens don't live here.
+name: Bootstrap init publish (one-shot)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-publish:
+    name: First publish of @iris-eval/init
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/init
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Refuse to run if package already exists (bootstrap is once-ever)
+        run: |
+          if npm view @iris-eval/init version >/dev/null 2>&1; then
+            echo "FATAL: @iris-eval/init already exists on npm — bootstrap already done. Use release-init.yml." && exit 1
+          fi
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      # Hard-fail on auth problems — never swallow (PR #176 lesson).
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
+      - name: Verify publish landed
+        run: |
+          sleep 10
+          PUBLISHED="$(npm view @iris-eval/init version)"
+          echo "Published: @iris-eval/init@$PUBLISHED"
