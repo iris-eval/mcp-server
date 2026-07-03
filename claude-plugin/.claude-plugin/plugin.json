@@ -1,0 +1,20 @@
+{
+  "name": "iris-eval",
+  "description": "Agent eval for any MCP workflow — score output quality, catch PII and prompt injection, verify citations, and enforce cost budgets. Adds the Iris MCP server (9 tools) plus an agent-eval skill that guides eval-driven development.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://iris-eval.com"
+  },
+  "keywords": [
+    "eval",
+    "agent-eval",
+    "evaluation",
+    "quality",
+    "safety",
+    "pii-detection",
+    "cost-tracking",
+    "mcp"
+  ]
+}

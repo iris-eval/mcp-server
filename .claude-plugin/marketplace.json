@@ -1,0 +1,15 @@
+{
+  "name": "iris-eval",
+  "owner": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://iris-eval.com"
+  },
+  "plugins": [
+    {
+      "name": "iris-eval",
+      "source": "./claude-plugin",
+      "description": "Agent eval for any MCP workflow — score output quality, catch PII and prompt injection, verify citations, and enforce cost budgets. 9 MCP tools + an agent-eval skill."
+    }
+  ]
+}
