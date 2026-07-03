@@ -27,7 +27,12 @@ Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemi
       }
     }
 
-Claude Code:
+Claude Code (plugin — includes an agent-eval skill that guides eval workflows):
+
+    /plugin marketplace add iris-eval/mcp-server
+    /plugin install iris-eval@iris-eval
+
+Claude Code (plain MCP server, no plugin):
 
     claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
 

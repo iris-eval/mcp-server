@@ -7,6 +7,7 @@ Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semanti
 ## Getting Started
 
 - [GitHub repository](https://github.com/iris-eval/mcp-server): source, README with per-client setup for every major MCP client, full tool schemas
+- Claude Code plugin: `/plugin marketplace add iris-eval/mcp-server` then `/plugin install iris-eval@iris-eval` — MCP server + agent-eval skill in two commands
 - [npm package](https://www.npmjs.com/package/@iris-eval/mcp-server): `@iris-eval/mcp-server` — install via `npx @iris-eval/mcp-server`
 - [Playground](https://iris-eval.com/playground): try agent eval in the browser, no install
 - [Security](https://iris-eval.com/security): security posture, signed releases, disclosure policy
