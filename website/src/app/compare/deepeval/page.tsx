@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
-import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
@@ -24,14 +23,14 @@ export const metadata: Metadata = {
     description:
       "Detailed comparison of Iris and DeepEval for AI agent evaluation. Inline scoring vs pytest-based test suites.",
     url: "https://iris-eval.com/compare/deepeval",
-    images: [OG_IMAGE_URL],
+    images: ["/og-compare-deepeval.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Iris vs DeepEval — MCP-Native Inline Eval vs Python Testing Framework",
     description:
       "Detailed comparison of Iris and DeepEval. Inline scoring vs pytest-based test suites.",
-    images: [OG_IMAGE_URL],
+    images: ["/og-compare-deepeval.png"],
     site: "@iris_eval",
   },
 };

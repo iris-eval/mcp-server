@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-07-07T07:55:51.084Z",
-  "generatedFromCommit": "f95c033",
+  "generatedAt": "2026-07-07T08:25:59.754Z",
+  "generatedFromCommit": "dded6a8",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -115,12 +115,15 @@
       "total": null
     },
     "playwrightE2E": {
-      "browsers": [],
+      "browsers": [
+        "chromium",
+        "firefox"
+      ],
       "failed": null,
       "passed": null,
-      "total": null
+      "total": 13
     },
-    "totalCombined": 545,
+    "totalCombined": 558,
     "vitestDashboard": {
       "failed": 0,
       "passed": 111,
