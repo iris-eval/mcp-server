@@ -4,6 +4,7 @@ import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
+import { VERSION_MCP_SERVER } from "@/lib/claims";
 
 function sanitizeText(value: unknown): string {
   return String(value ?? "")
@@ -95,7 +96,7 @@ const FEATURES = [
   { feature: "OpenTelemetry export", iris: "OTLP/HTTP JSON to Jaeger/Tempo/Datadog (v0.4)", deepeval: "Not included", irisWin: true },
   { feature: "Supply-chain integrity", iris: "SBOM + cosign + SLSA build-provenance (v0.4)", deepeval: "Standard pip", irisWin: true },
   { feature: "License", iris: "MIT", deepeval: "Apache 2.0", irisWin: false },
-  { feature: "Maturity", iris: "Early stage (v0.4.0)", deepeval: "Established (14K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
+  { feature: "Maturity", iris: `Early stage (v${VERSION_MCP_SERVER})`, deepeval: "Established (14K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [
