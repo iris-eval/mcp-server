@@ -41,7 +41,7 @@ Iris evaluates all of it.
 
 ## Quickstart
 
-Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent.
+Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent.
 
 ```json
 {

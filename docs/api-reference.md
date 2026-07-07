@@ -827,7 +827,7 @@ Health check endpoint. Reports server status and storage connectivity.
 ```json
 {
   "status": "ok",
-  "version": "0.4.0",
+  "version": "0.4.4",
   "uptime_seconds": 3600,
   "trace_count": 142,
   "storage": "connected"
@@ -841,7 +841,7 @@ The `version` field is sourced dynamically from `package.json` at runtime (see `
 ```json
 {
   "status": "degraded",
-  "version": "0.4.0",
+  "version": "0.4.4",
   "uptime_seconds": 3600,
   "storage": "disconnected"
 }

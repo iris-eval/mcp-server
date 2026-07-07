@@ -14,6 +14,10 @@ try {
   // Fallback if package.json isn't resolvable at runtime
 }
 
+// The single runtime source for the server's own version — import this
+// instead of hardcoding a literal (OTel resource attrs, health, banners).
+export const PKG_VERSION = pkgVersion;
+
 export const defaultConfig: IrisConfig = {
   storage: {
     type: 'sqlite',

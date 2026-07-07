@@ -1,5 +1,7 @@
 # Reddit Post Drafts
 
+> **📁 Historical launch drafts (mixed eras).** The r/LocalLLaMA draft is v0.1-era (3 tools, 12 rules, 5 injection patterns); the r/MachineLearning draft was refreshed later (9 tools, 13 rules). Do not post either without a full refresh against `.claims.json`.
+
 ---
 
 ## r/LocalLLaMA

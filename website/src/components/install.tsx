@@ -59,7 +59,7 @@ export function Install(): React.ReactElement {
                 <code>
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npm install -g @iris-eval/mcp-server</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">iris-mcp --dashboard</span>{"\n"}
-                  <span className="text-eval-pass">✓ Dashboard running at http://localhost:3838</span>
+                  <span className="text-eval-pass">✓ Dashboard running at http://localhost:6920</span>
                 </code>
               </pre>
             </div>

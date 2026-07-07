@@ -216,6 +216,6 @@ What I am asking for:
 
 If you are building MCP tools, agent frameworks, or observability infrastructure, I want to hear what you have run into. What schema decisions have you made? What interoperability problems have you hit? What would a standard need to include for you to adopt it?
 
-Without standardization, the fragmented ecosystem will make it harder to achieve the [eval coverage](/blog/eval-coverage-the-metric-your-agents-are-missing) that production agents need. The conversation is happening on [GitHub Discussions](https://github.com/iris-eval/iris/discussions) and in the [MCP Discord](https://discord.gg/mcp). Open an issue, start a thread, or reach out directly. The spec will be better if it reflects the experience of everyone building in this space, not just one team's perspective.
+Without standardization, the fragmented ecosystem will make it harder to achieve the [eval coverage](/blog/eval-coverage-the-metric-your-agents-are-missing) that production agents need. The conversation is happening on [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) and in the [MCP Discord](https://discord.gg/mcp). Open an issue, start a thread, or reach out directly. The spec will be better if it reflects the experience of everyone building in this space, not just one team's perspective.
 
 Observability that is protocol-native starts with a protocol that takes observability seriously. This is a proposal that it should.

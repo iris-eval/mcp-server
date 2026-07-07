@@ -1,5 +1,7 @@
 # Show HN Draft
 
+> **📁 Historical template (v0.1 era, March 2026).** Counts and the "first MCP-native" framing reflect that release. The real Show HN (Branch-B primary narrative moment, date TBD by founder) must be composed fresh against `.claims.json` and current positioning — this file is reference only.
+
 ## Title
 
 Show HN: Iris — first MCP-native eval and observability tool for AI agents

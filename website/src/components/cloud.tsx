@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, useReducedMotion, useInView } from "framer-motion";
+import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { useRef } from "react";
 
 const TIERS = [
@@ -14,9 +15,9 @@ const TIERS = [
     cta: { label: "Get Started", href: "#open-source" },
     highlight: false,
     features: [
-      "9 MCP tools — full lifecycle + LLM judge + semantic citation verify (SSRF-guarded)",
+      `${MCP_TOOL_COUNT} MCP tools — full lifecycle + LLM judge + semantic citation verify (SSRF-guarded)`,
       "LLM-as-judge + citation verify use your own Anthropic/OpenAI API key (BYOK, no proxy)",
-      "13 built-in eval rules + custom rules",
+      `${RULE_COUNT_BUILT_IN} built-in eval rules + custom rules`,
       "Web dashboard with trace visualization",
       "SQLite storage — zero infrastructure",
       "Production security (auth, rate limiting)",
@@ -47,16 +48,16 @@ const TIERS = [
   {
     name: "Cloud Pro",
     badge: "Most Popular",
-    price: "$49",
-    period: "/month",
+    price: "$25",
+    period: "/month base + usage",
     description: "For teams that need shared eval results, alerting on quality regressions, and room to scale.",
     cta: { label: "Join Waitlist", href: "#waitlist" },
     highlight: true,
     coming: true,
     features: [
       "Everything in Starter, plus:",
-      "25,000 evaluations included",
-      "$0.005 per additional evaluation",
+      "100,000 evaluations included",
+      "$0.0005 per additional evaluation",
       "90-day eval history",
       "Unlimited team members",
       "Team dashboards with shared views",

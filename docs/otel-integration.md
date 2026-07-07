@@ -52,7 +52,7 @@ configured to accept HTTP and forward to gRPC. This keeps Iris's dependency surf
 
 Each Iris trace becomes one OTLP `ResourceSpans` entry with:
 
-- **Resource attributes**: `service.name`, `telemetry.sdk.name=iris-mcp`, `telemetry.sdk.language=nodejs`, `telemetry.sdk.version=0.4.0`
+- **Resource attributes**: `service.name`, `telemetry.sdk.name=iris-mcp`, `telemetry.sdk.language=nodejs`, `telemetry.sdk.version=<running release>` (sourced from `package.json` at runtime)
 - **Scope**: `iris.trace.v1`
 - **Spans**: either the `spans[]` tree you sent (hierarchical), or a synthesized root span built from trace-level fields when no span tree is present
 

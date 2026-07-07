@@ -11,6 +11,7 @@
 // serializes these plain objects, and the payload shape is the OTLP spec.
 
 import type { Span, Trace, SpanKind } from '../types/trace.js';
+import { PKG_VERSION } from '../config/defaults.js';
 
 // OTel SpanKind enum values (from opentelemetry-proto/trace/v1/trace.proto).
 const KIND_MAP: Record<SpanKind, number> = {
@@ -165,7 +166,7 @@ export function buildExportPayload(traces: readonly Trace[], serviceName: string
       { key: 'service.name', value: { stringValue: serviceName } },
       { key: 'telemetry.sdk.name', value: { stringValue: 'iris-mcp' } },
       { key: 'telemetry.sdk.language', value: { stringValue: 'nodejs' } },
-      { key: 'telemetry.sdk.version', value: { stringValue: '0.4.0' } },
+      { key: 'telemetry.sdk.version', value: { stringValue: PKG_VERSION } },
     ],
   };
 

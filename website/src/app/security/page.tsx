@@ -43,9 +43,9 @@ export default function Security(): React.ReactElement {
               home. There is no telemetry.
             </p>
             <p className="mt-3">
-              <strong className="text-text-primary">Cloud tier (v0.4+):</strong>{" "}
-              data is stored in a per-tenant logical partition in our managed
-              backend, which runs on hardened US-region infrastructure.
+              <strong className="text-text-primary">Cloud tier (planned, v0.5):</strong>{" "}
+              data will be stored in a per-tenant logical partition in a managed
+              backend running on hardened US-region infrastructure.
               Encryption at rest (AES-256) + encryption in transit (TLS 1.3)
               are table stakes. Cross-tenant isolation is enforced at four
               independent layers — see the architecture guide for the

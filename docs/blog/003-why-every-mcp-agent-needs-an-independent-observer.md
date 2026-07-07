@@ -74,7 +74,7 @@ This is the distributed systems pattern applied to agents. The observer is indep
 
 I built Iris as an MCP server specifically because of this architectural principle. Add it to your MCP config, and every MCP-compatible agent — Claude Desktop, Cursor, Claude Code, custom agents built with the MCP SDK — discovers it on startup.
 
-The agent gains three tools without any code changes:
+The agent gains nine tools without any code changes. The three core ones:
 
 **`log_trace`** records the full execution path:
 

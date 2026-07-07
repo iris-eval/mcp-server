@@ -1,5 +1,7 @@
 # Iris Demo Recording Script
 
+> **📁 Historical launch artifact (v0.1 era, March 2026).** Tool/rule counts and script beats reflect that release (3 MCP tools, 12 rules). Kept for record — a re-recording must be rebuilt against the current `.claims.json` surface (9 tools, 13 rules).
+
 Target length: 3-4 minutes. Screen recording with narration. Terminal on the left, browser on the right (split screen for dashboard sections).
 
 ---
