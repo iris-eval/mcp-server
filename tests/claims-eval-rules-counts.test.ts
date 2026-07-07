@@ -82,6 +82,15 @@ describe('claims counts match runtime truth', () => {
   });
 });
 
+describe('public llms-full.txt quotes the real pattern counts', () => {
+  it('safety-depth line matches the runtime arrays (once shipped 12/14/18)', () => {
+    const txt = readFileSync(resolve(__dirname, '..', 'website', 'public', 'llms-full.txt'), 'utf-8');
+    expect(txt).toContain(`${PII_PATTERNS.length} PII patterns`);
+    expect(txt).toContain(`${INJECTION_PATTERNS.length} prompt-injection patterns`);
+    expect(txt).toContain(`${HALLUCINATION_MARKERS.length} hallucination markers`);
+  });
+});
+
 describe('public .well-known/mcp.json matches the truthbase', () => {
   const claims = JSON.parse(readFileSync(resolve(__dirname, '..', '.claims.json'), 'utf-8')) as {
     mcpTools: { names: string[] };
