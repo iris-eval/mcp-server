@@ -11,6 +11,9 @@ RUN npm run build
 # NOTE: uses `npm install` not `npm ci` — the Windows-generated lockfile prunes
 # Linux-only @emnapi transitive deps that rolldown needs at build time
 # (per memory/reference_rolldown_lockfile_trap.md).
+# .claims.json feeds the dashboard's build-time defines (vite.config.ts reads
+# ../.claims.json for __IRIS_RULE_COUNT__) — must be in the build context.
+COPY .claims.json ./
 COPY dashboard/ dashboard/
 RUN cd dashboard && npm install && npm run build
 
