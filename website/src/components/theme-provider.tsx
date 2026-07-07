@@ -28,6 +28,11 @@ export function ThemeProvider({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Mount-time sync from localStorage/matchMedia. SSR must render the
+    // default theme and swap after hydration — a lazy initializer reading
+    // localStorage would mismatch the server HTML. The sync setState here
+    // is deliberate; the rule's cascading-render cost is one swap on mount.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const stored = localStorage.getItem("iris-theme") as Theme | null;
     if (stored) {
       setTheme(stored);
@@ -35,6 +40,7 @@ export function ThemeProvider({
       setTheme("light");
     }
     setMounted(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
