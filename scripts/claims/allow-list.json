@@ -62,12 +62,6 @@
       "reason": "Migration candidate — currently accurate (9 tools); reader migration deferred to follow-on PR alongside other website component sweeps."
     },
     {
-      "file": "website/src/components/nav.tsx",
-      "pattern": "mcp-tool-count",
-      "line": 35,
-      "reason": "Migration candidate — currently accurate (9 tools); reader migration deferred to follow-on PR."
-    },
-    {
       "file": "website/src/components/roadmap.tsx",
       "pattern": "mcp-tool-count",
       "line": 11,
