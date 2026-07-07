@@ -51,7 +51,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm test
+      # Coverage gate: enforces the ratchet floors in vitest.config.ts
+      # (a plain `npm test` run would leave the thresholds unenforced).
+      - run: npm run test:coverage
 
   integration:
     runs-on: ubuntu-latest
