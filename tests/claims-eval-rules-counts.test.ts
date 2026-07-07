@@ -81,3 +81,23 @@ describe('claims counts match runtime truth', () => {
     if (quoted) expect(Number(quoted[1])).toBe(HALLUCINATION_MARKERS.length);
   });
 });
+
+describe('public .well-known/mcp.json matches the truthbase', () => {
+  const claims = JSON.parse(readFileSync(resolve(__dirname, '..', '.claims.json'), 'utf-8')) as {
+    mcpTools: { names: string[] };
+    version: { mcpServer: string };
+  };
+  const manifest = JSON.parse(
+    readFileSync(resolve(__dirname, '..', 'website', 'public', '.well-known', 'mcp.json'), 'utf-8'),
+  ) as { version: string; tools: Array<{ name: string }>; install: { claude_desktop: { mcpServers: Record<string, unknown> } } };
+
+  it('lists every shipped tool, no more, no fewer (once listed only 3 of 9)', () => {
+    const manifestNames = manifest.tools.map(t => t.name).sort();
+    expect(manifestNames).toEqual([...claims.mcpTools.names].sort());
+  });
+
+  it('advertises the shipped version and the canonical server key', () => {
+    expect(manifest.version).toBe(claims.version.mcpServer);
+    expect(Object.keys(manifest.install.claude_desktop.mcpServers)).toEqual(['iris-eval']);
+  });
+});
