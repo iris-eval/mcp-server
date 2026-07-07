@@ -34,7 +34,9 @@ export const keywordOverlap: EvalRule = {
   },
 };
 
-const HALLUCINATION_MARKERS = [
+// Exported so the claims drift test can assert .claims.json counts against
+// the runtime truth (tests/claims-eval-rules-counts.test.ts).
+export const HALLUCINATION_MARKERS = [
   'as an ai',
   'as a language model',
   'i cannot',
