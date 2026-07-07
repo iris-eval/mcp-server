@@ -7,7 +7,7 @@ tags: [observability, mcp, agents, report, evaluation, cost-tracking]
 relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, closing-the-eval-gap]
 ---
 
-> **Editor's note (2026-04):** This post was written when Iris framed itself as observability-first. Iris has since repositioned as "the agent eval standard for MCP" — scoring outputs, not just watching them. The market analysis below remains accurate; the framing of where Iris fits has sharpened. See [Closing the Eval Gap](/blog/closing-the-eval-gap) for the current thesis.
+> **Editor's note (2026-04):** This post was written when Iris framed itself as observability-first. Iris has since repositioned as "the agent eval standard for MCP" — scoring outputs, not just watching them. The market analysis below remains accurate; the framing of where Iris fits has sharpened. See [Closing the Eval Gap](/blog/closing-the-eval-gap) for the current thesis. *(2026-07: ecosystem adoption figures are now marked as reported rather than independently verified, and the original "first MCP-native" line was retired in favor of the standard positioning.)*
 
 # The State of MCP Agent Observability (March 2026)
 
@@ -34,7 +34,7 @@ The market is responding. The observability market is projected to reach $3.35B 
 The Model Context Protocol has moved from specification to industry standard faster than most developer protocols in recent memory. The milestone that cemented this: **in December 2025, Anthropic donated MCP to the Agentic AI Foundation (AAIF) under the Linux Foundation**, co-founded by Anthropic, Block, and OpenAI, with backing from Google, Microsoft, AWS, Cloudflare, and Bloomberg. MCP is no longer one company's protocol. It's governed by an open foundation with the major players at the table.
 
 The adoption numbers reflect this:
-- **97M+ monthly SDK downloads** across the MCP ecosystem
+- **97M+ monthly SDK downloads** reported across the MCP ecosystem (ecosystem-reported figure)
 - **20,470+ GitHub stars** on Langfuse alone (one observability platform in the space)
 - **Remote MCP servers up 4x** since May 2025
 - Gartner predicts **40% of enterprise applications will include AI agents** by end of 2026
@@ -54,7 +54,7 @@ Adoption is not universal, and intellectual honesty requires acknowledging the p
 
 Perplexity CTO Denis Yarats publicly moved away from MCP toward direct APIs and CLIs (March 11, 2026), citing context window consumption and auth friction as practical blockers. His argument: MCP's abstraction layer adds overhead that doesn't justify itself for every use case, particularly when context windows are a finite resource and authentication across tool providers remains inconsistent.
 
-This is a legitimate critique. MCP adds a layer. That layer has a cost — in tokens, in latency, in complexity. For single-tool integrations where the agent always calls the same API, a direct integration may be simpler. But for agents that discover and compose tools dynamically — the multi-tool, multi-provider pattern that's becoming standard in production — the protocol abstraction pays for itself. The AAIF governance and the 97M+ monthly downloads suggest the industry agrees, but the tradeoff is real and teams should evaluate it for their specific architecture.
+This is a legitimate critique. MCP adds a layer. That layer has a cost — in tokens, in latency, in complexity. For single-tool integrations where the agent always calls the same API, a direct integration may be simpler. But for agents that discover and compose tools dynamically — the multi-tool, multi-provider pattern that's becoming standard in production — the protocol abstraction pays for itself. The AAIF governance and the reported 97M+ monthly downloads suggest the industry agrees, but the tradeoff is real and teams should evaluate it for their specific architecture.
 
 ## 3. Security: The Adoption Bottleneck
 
@@ -176,7 +176,7 @@ This doesn't mean every agent needs enterprise compliance tooling today. But it 
 
 ## What Iris Does About This
 
-Iris is the first MCP-native eval and observability tool for AI agents. Open-source core, MIT licensed. Any MCP-compatible agent discovers Iris automatically — no SDK, no code changes. Log traces, evaluate output quality, detect PII and prompt injection, track costs per execution.
+Iris is the agent eval standard for MCP — an eval and observability tool built MCP-native from day one. Open-source core, MIT licensed. Any MCP-compatible agent discovers Iris automatically — no SDK, no code changes. Log traces, evaluate output quality, detect PII and prompt injection, track costs per execution.
 
 If you're building agents and want to see what they're actually doing:
 

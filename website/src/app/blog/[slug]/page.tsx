@@ -103,7 +103,7 @@ export default async function BlogPost({
     "the-eval-gap": [
       {
         question: "What is the eval gap?",
-        answer: "The eval gap is the distance between having observability (knowing your agent ran) and having inline evaluation (knowing the output was correct). Industry data shows 89% of teams have observability but only 37% have inline eval, creating a 52-point gap where agents appear healthy on dashboards while silently delivering poor-quality outputs to users."
+        answer: "The eval gap is the distance between having observability (knowing your agent ran) and having inline evaluation (knowing the output was correct). A late-2025 LangChain survey of 1,340 practitioners found 89% of teams have observability but only 37% run evals on production traffic — a 52-point gap where agents appear healthy on dashboards while silently delivering poor-quality outputs to users."
       },
     ],
     "the-eval-loop": [

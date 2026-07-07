@@ -155,7 +155,7 @@ export function DriftView() {
       {/* §4 PER-RULE PERFORMANCE */}
       <SectionHeader
         title="Per-rule performance"
-        question="How is each of the 13 built-in rules performing, and which moved?"
+        question={`How is each of the ${__IRIS_RULE_COUNT__} built-in rules performing, and which moved?`}
       />
       <PerRuleMeterGrid
         currentMoments={currentMoments?.moments}

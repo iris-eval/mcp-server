@@ -7,9 +7,13 @@
 //
 // Run via: npm run claims:check
 //
-// Scope: src/, website/src/, dashboard/src/, docs/, README.md, server.json,
-//        CHANGELOG.md (CHANGELOG entries are historical past-tense and are
-//        always allow-listed via the per-pattern :history: tag).
+// Two enforcement modes per match (2026-07-07 upgrade — the 12/14/18 pattern
+// counts survived for months in surfaces this scanner never walked):
+//   - CODE files (.ts/.tsx/.js/.jsx/.mjs): a match ALWAYS flags — code must
+//     import the truthbase reader, not restate numbers.
+//   - PROSE files (.md/.mdx/.txt/.json/.html): a match flags only when the
+//     number disagrees with .claims.json — prose may state the truth, and
+//     the moment the truth changes, every stale restatement lights up.
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve, dirname, relative, sep } from 'node:path';
@@ -18,7 +22,17 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
 
-const SCAN_DIRS = ['src', 'website/src', 'dashboard/src', 'docs', 'packages/langchain/src'];
+const SCAN_DIRS = [
+  'src',
+  'website/src',
+  'website/public',
+  'dashboard/src',
+  'docs',
+  'packages/langchain/src',
+  'packages/init',
+  'claude-plugin',
+  'skills',
+];
 const SCAN_FILES = ['README.md', 'server.json'];
 const SKIP_DIR_NAMES = new Set([
   'node_modules',
@@ -33,21 +47,51 @@ const SKIP_DIR_NAMES = new Set([
 ]);
 
 // Patterns to flag. Each has a name + regex + suggested fix message.
-//
-// Patterns are intentionally conservative for v1 — we want low false-positive
-// rate on the first ship. As the truthbase reader gets adopted across
-// surfaces, we add stricter patterns and remove the corresponding allow-list
-// entries.
+// `expected(claims)` returns the set of truthful values for the captured
+// number — prose matches inside that set pass; everything else flags.
+// Patterns without `expected` flag every match (value-free patterns).
 const PATTERNS = [
   {
     name: 'test-count',
     re: /\b(\d{2,5})\s+tests?\b/g,
+    expected: c => [
+      c.tests?.vitestRoot?.total,
+      c.tests?.vitestDashboard?.total,
+      c.tests?.integration?.total,
+      c.tests?.playwrightE2E?.total,
+      c.tests?.totalCombined,
+    ],
     fix: 'Import TEST_COUNT_VITEST_ROOT (or _DASHBOARD / _INTEGRATION / _TOTAL) from ~/lib/claims',
   },
   {
     name: 'mcp-tool-count',
     re: /\b(\d{1,2})\s+MCP\s+tools?\b/gi,
+    expected: c => [c.mcpTools?.count],
     fix: 'Import MCP_TOOL_COUNT from ~/lib/claims',
+  },
+  {
+    name: 'builtin-rule-count',
+    re: /\b(\d{1,2})\s+(?:built-?in|heuristic)\s+(?:eval\s+|deterministic\s+)?rules\b/gi,
+    expected: c => [c.evalRules?.builtInCount],
+    fix: 'Import BUILT_IN_RULE_COUNT from ~/lib/claims (or state the current count from .claims.json)',
+  },
+  {
+    name: 'pii-pattern-count',
+    re: /\b(\d{1,2})\s+PII\s+patterns\b/gi,
+    expected: c => [c.evalRules?.piiPatterns],
+    fix: 'Import PII_PATTERN_COUNT from ~/lib/claims (or state the current count from .claims.json)',
+  },
+  {
+    name: 'injection-pattern-count',
+    re: /\b(\d{1,2})\s+(?:prompt[- ])?injection\s+patterns\b/gi,
+    expected: c => [c.evalRules?.injectionPatterns],
+    fix: 'Import INJECTION_PATTERN_COUNT from ~/lib/claims (or state the current count from .claims.json)',
+  },
+  {
+    name: 'hallucination-marker-count',
+    re: /\b(\d{1,2})\s+hallucination\s+markers\b/gi,
+    expected: c => [c.evalRules?.hallucinationMarkers],
+    fix: 'Import HALLUCINATION_MARKER_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
   {
     name: 'iris-version-literal',
@@ -55,6 +99,8 @@ const PATTERNS = [
     fix: 'Use VERSION_MCP_SERVER from ~/lib/claims (do not hardcode JSON-LD softwareVersion)',
   },
 ];
+
+const CODE_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
 const ALLOW_LIST_PATH = resolve(root, 'scripts/claims/allow-list.json');
 
@@ -90,7 +136,18 @@ const SCAN_EXTS = new Set([
   '.md', '.mdx',
   '.json',
   '.html',
+  '.txt',
 ]);
+
+// CODE files must import the truthbase reader — any match flags. PROSE files
+// may restate the truth — a match flags only when the number is wrong.
+function matchFlags(pattern, m, relPath, claims) {
+  const ext = relPath.slice(relPath.lastIndexOf('.'));
+  if (CODE_EXTS.has(ext) || !pattern.expected || !claims) return true;
+  const captured = Number(m[1]);
+  const truthful = pattern.expected(claims).filter(v => typeof v === 'number');
+  return truthful.length === 0 || !truthful.includes(captured);
+}
 
 function fileShouldScan(path) {
   const ext = path.slice(path.lastIndexOf('.'));
@@ -107,6 +164,12 @@ function lineNumber(text, index) {
 
 async function main() {
   const allowList = await loadAllowList();
+  let claims = null;
+  try {
+    claims = JSON.parse(await readFile(resolve(root, '.claims.json'), 'utf-8'));
+  } catch {
+    console.warn('[claims:check-no-hardcoded] WARN — .claims.json unreadable; prose value-checks degrade to strict mode');
+  }
   const findings = [];
 
   // Walk scan dirs
@@ -125,6 +188,7 @@ async function main() {
         pattern.re.lastIndex = 0;
         let m;
         while ((m = pattern.re.exec(text)) !== null) {
+          if (!matchFlags(pattern, m, rel, claims)) continue;
           const line = lineNumber(text, m.index);
           const lineText = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index)).trim();
           const allowed = allowList.entries.some(
@@ -147,6 +211,7 @@ async function main() {
         pattern.re.lastIndex = 0;
         let m;
         while ((m = pattern.re.exec(text)) !== null) {
+          if (!matchFlags(pattern, m, f, claims)) continue;
           const line = lineNumber(text, m.index);
           const lineText = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index)).trim();
           const allowed = allowList.entries.some(

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
+import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 
@@ -48,7 +49,7 @@ const tiers: Tier[] = [
     },
     features: [
       "10,000 evaluations / month",
-      "All 13 built-in eval rules",
+      `All ${RULE_COUNT_BUILT_IN} built-in eval rules`,
       "Custom Zod rules (unlimited)",
       "Dashboard + playground",
       "stdio + HTTP transports",

@@ -15,7 +15,7 @@ import { Settings, HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Icon } from '../shared/Icon';
 import { Tooltip } from '../shared/Tooltip';
 
-const VERSION = '0.4.0';
+const VERSION = __IRIS_VERSION__;
 
 const styles = {
   footer: {

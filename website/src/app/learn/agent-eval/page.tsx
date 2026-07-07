@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
@@ -625,7 +626,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               </pre>
 
               <p>
-                Iris provides nine MCP tools — full lifecycle plus semantic eval. Core: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">log_trace</code> for recording agent executions, <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">evaluate_output</code> for scoring outputs against 13 built-in eval rules, and <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">get_traces</code> for querying historical data. Lifecycle: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">list_rules</code> / <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">deploy_rule</code> / <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">delete_rule</code> / <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">delete_trace</code>. Semantic: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">evaluate_with_llm_judge</code> (5 templates, cost-capped) and <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">verify_citations</code> (SSRF-guarded source fetch + per-claim verdict).
+                Iris provides nine MCP tools — full lifecycle plus semantic eval. Core: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">log_trace</code> for recording agent executions, <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">evaluate_output</code> for scoring outputs against {RULE_COUNT_BUILT_IN} built-in eval rules, and <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">get_traces</code> for querying historical data. Lifecycle: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">list_rules</code> / <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">deploy_rule</code> / <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">delete_rule</code> / <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">delete_trace</code>. Semantic: <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">evaluate_with_llm_judge</code> (5 templates, cost-capped) and <code className="rounded bg-bg-card px-1.5 py-0.5 font-mono text-[13px] text-iris-400">verify_citations</code> (SSRF-guarded source fetch + per-claim verdict).
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">

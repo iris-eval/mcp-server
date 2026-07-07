@@ -654,7 +654,7 @@ import { registerHipaaRules } from './rules/hipaa.js';
 const engine = new EvalEngine(0.8);
 registerHipaaRules(engine);
 
-// Safety evals now include the 3 built-in safety rules + 2 HIPAA rules
+// Safety evals now include the 4 built-in safety rules + 2 HIPAA rules
 ```
 
 ### Pattern: Rule Package as a Config Array

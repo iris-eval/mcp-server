@@ -212,7 +212,7 @@ dashboard/              React SPA (separate Vite build)
 |-----------------|--------------------------------------------------------------|-----------------|
 | `completeness`  | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage` | 1, 2, 0.5, 1.5 |
 | `relevance`     | `keyword_overlap`, `no_hallucination_markers`, `topic_consistency` | 1, 1, 1 |
-| `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`      | 2, 2, 2 |
+| `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output` | 2, 2, 2, 2 |
 | `cost`          | `cost_under_threshold`, `token_efficiency`                   | 1, 0.5 |
 | `custom`        | Dynamically built from `CustomRuleDefinition` array          | User-defined |
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import * as Tabs from "@radix-ui/react-tabs";
 
 const EVAL_ROWS = [
@@ -144,7 +145,7 @@ export function ProductTabs(): React.ReactElement {
             <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
               <div className="lg:py-4">
                 <h3 className="font-display text-2xl font-bold text-text-primary md:text-3xl">
-                  13 built-in rules across 4 categories.
+                  {RULE_COUNT_BUILT_IN} built-in rules across 4 categories.
                 </h3>
                 <p className="mt-4 text-[16px] leading-relaxed text-text-secondary">
                   <code className="rounded-md border border-border-default bg-bg-surface px-2 py-0.5 font-mono text-[13px] text-text-accent">evaluate_output</code>{" "}
