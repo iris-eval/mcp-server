@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Nav } from "@/components/nav";
 import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
@@ -152,12 +153,12 @@ export default function PricingPage(): React.ReactElement {
           >
             Start with the Free tier &rarr;
           </a>
-          <a
+          <Link
             href="/#waitlist"
             className="rounded-lg border border-border-subtle bg-bg-base px-6 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-border-subtle"
           >
             Join Cloud Starter waitlist &rarr;
-          </a>
+          </Link>
         </div>
       </section>
 

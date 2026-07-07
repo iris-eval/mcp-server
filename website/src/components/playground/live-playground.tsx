@@ -231,7 +231,7 @@ export function LivePlayground(): React.ReactElement {
           </p>
           {!result && !error && !loading && (
             <div className="rounded-lg border border-dashed border-border-default bg-bg-surface/50 p-8 text-center text-text-muted">
-              Paste output + click "Run evaluation" to see rule results here.
+              Paste output + click &ldquo;Run evaluation&rdquo; to see rule results here.
             </div>
           )}
           {error && (

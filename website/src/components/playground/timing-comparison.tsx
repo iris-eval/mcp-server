@@ -14,14 +14,10 @@ export function TimingComparison({ humanSeconds }: TimingComparisonProps) {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
+    // Reduced-motion renders the final numbers directly (derived below) —
+    // the rAF count-up only runs for the animated path.
+    if (startedRef.current || reduce) return;
     startedRef.current = true;
-
-    if (reduce) {
-      setHumanDisplay(humanSeconds);
-      setHumanDone(true);
-      return;
-    }
 
     let start: number | null = null;
     const duration = 1500; // 1.5s to count up
@@ -40,6 +36,8 @@ export function TimingComparison({ humanSeconds }: TimingComparisonProps) {
     requestAnimationFrame(step);
   }, [humanSeconds, reduce]);
 
+  const shownHuman = reduce ? humanSeconds : humanDisplay;
+  const done = reduce || humanDone;
   const speedMultiplier = Math.round(humanSeconds / 0.003);
 
   return (
@@ -51,7 +49,7 @@ export function TimingComparison({ humanSeconds }: TimingComparisonProps) {
             Human Reviewer
           </div>
           <div className="mt-2 font-mono text-3xl font-bold tabular-nums text-text-primary">
-            {humanDisplay}
+            {shownHuman}
             <span className="text-lg text-text-muted">s</span>
           </div>
           <div className="mt-1 text-[12px] text-text-muted">Manual review</div>
@@ -70,9 +68,9 @@ export function TimingComparison({ humanSeconds }: TimingComparisonProps) {
           <motion.div
             className="mt-2 font-mono text-3xl font-bold tabular-nums text-text-accent"
             initial={reduce ? {} : { opacity: 0, scale: 0.5 }}
-            animate={humanDone ? { opacity: 1, scale: 1 } : {}}
+            animate={done ? { opacity: 1, scale: 1 } : {}}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            style={!humanDone && !reduce ? { opacity: 0 } : undefined}
+            style={!done ? { opacity: 0 } : undefined}
           >
             0.003
             <span className="text-lg text-text-muted">s</span>
