@@ -210,4 +210,16 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 - **When iris's call graph changes:** re-verify the reachability claims for any open advisory whose package is on the changed code path. The `Assessed against iris commit X` line records the snapshot.
 - **When upstream releases a fix that removes a dep:** the affected section can be retired.
 
+### The no-self-deadlock rule for dependency gates
+
+**A blocking gate must always be satisfiable by a change made inside the pull request it blocks.** If clearing it requires some *other* pull request to merge first, the gate can deadlock the repository against itself.
+
+This is not hypothetical. `lint-and-typecheck` used to run `npm audit --audit-level=high`, which fails on the *whole set* of open advisories. Once four independent HIGHs were outstanding (`brace-expansion`, `fast-uri`, `ip-address`, `postcss`), every PR went red — including each Dependabot PR that fixed one of them, because the other three remained. No single PR could turn the gate green, so nothing merged, so the advisories never drained: 4 advisories froze all 40 open PRs. Removed 2026-08-06.
+
+`check-exposure-coverage.mjs` is the authoritative dependency-security gate because it satisfies the rule: both of its exits — add a triage row here, or bump the dependency — are edits within the PR being gated. It is also *stricter* than the check it replaced (≥moderate rather than ≥high, and it demands documented analysis rather than just a version number).
+
+Remediation pressure is preserved without blocking: the gate prints a **REMEDIATION AVAILABLE** report for advisories npm can already fix. That is informational on purpose — making it fatal would recreate the deadlock, since the fix usually lives in a separate Dependabot PR.
+
+When adding any future dependency gate, ask: *if this fires, can the PR author clear it without merging something else first?* If no, it belongs in a scheduled/reporting job, not a PR-blocking one.
+
 This file is a working operational record, not a marketing document. It exists so any auditor or contributor can read the actual exposure analysis instead of guessing from a count of red dots.
