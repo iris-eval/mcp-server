@@ -166,6 +166,62 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Decision:** **Patch** — Dependabot #177 (qs 6.15.2) queued in the 2026-06-09 drain; `tolerable_risk` analysis on record had the patch lagged.
 - **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
 
+### 2026-08-06 advisory refresh — 16 new ≥moderate advisories triaged
+
+Batch triage of the advisories `npm audit` surfaced at root since the 2026-06-09 pass. Assessed against iris commit `62ed307` (branch `fix/ssrf-ipv6-literal-bypass`).
+
+**Load-graph correction (supersedes the "hono is never loaded" claim in the rows above).** `@modelcontextprotocol/sdk@1.29.0` rearchitected `StreamableHTTPServerTransport` into a thin wrapper over a Web-Standard transport. `dist/esm/server/streamableHttp.js:9` now **statically imports** `getRequestListener` from `@hono/node-server`, and iris's HTTP transport (`src/transport/http.ts:4`) imports that module — so on the **HTTP transport**, `@hono/node-server` IS loaded into iris's process. (On the default **stdio** transport it is not imported at all.) What iris uses from it is exactly one function, `getRequestListener`, a Node↔Web request/response bridge. The vulnerable code in the hono family — `@hono/node-server`'s `serveStatic`, and hono core's `jsx` / `cors()` middleware / lambda + api-gateway adapters — is reached only via `serve-static.mjs` / `vercel.mjs` / hono submodules that iris never imports. Verified 2026-08-06: `getRequestListener`'s code path pulls no `hono` core module; `serveStatic` has zero call sites in `src/`.
+
+#### [GHSA-frvp-7c67-39w9](https://github.com/advisories/GHSA-frvp-7c67-39w9) — @hono/node-server serveStatic path traversal on Windows via encoded backslash (`%5C`)
+
+- **Severity:** moderate — **Package:** `@hono/node-server` (1.19.13 installed) — **Load path:** `@hono/node-server` ← `@modelcontextprotocol/sdk@1.29.0`
+- **Load-graph reachable:** **Yes on HTTP transport** (see load-graph correction above); no on stdio.
+- **Code-path reachable:** **No.** The vulnerability is in `serveStatic` (static file serving). iris uses only `getRequestListener`; `serveStatic` has zero call sites in `src/`. iris serves no static files through `@hono/node-server` (dashboard static assets are served by Express `express.static`).
+- **Untrusted input reachable:** N/A — vulnerable function not invoked.
+- **Decision:** **Dismiss as `tolerable_risk`** — loaded but the vulnerable static-file handler is off iris's call graph. Patch tracks upstream via the SDK/`@hono/node-server` bump (Dependabot).
+- **Assessed:** 2026-08-06 against `62ed307`.
+
+#### [GHSA-8j4g-w8fx-2239](https://github.com/advisories/GHSA-8j4g-w8fx-2239), [GHSA-hvrm-45r6-mjfj](https://github.com/advisories/GHSA-hvrm-45r6-mjfj), [GHSA-w62v-xxxg-mg59](https://github.com/advisories/GHSA-w62v-xxxg-mg59), [GHSA-xgm2-5f3f-mvvc](https://github.com/advisories/GHSA-xgm2-5f3f-mvvc) — hono core (CORS-middleware ReDoS, hono/jsx cross-request context leak, cx() JSX XSS, API-Gateway v1 adapter header de-dup)
+
+- **Severity:** moderate (all four) — **Package:** `hono` (transitive, ≤ @hono/node-server)
+- **Load-graph reachable:** hono **core** is imported only by `@hono/node-server`'s `serve-static` and `vercel` adapters, neither of which iris loads; `getRequestListener` (iris's only entry) does not pull hono core.
+- **Code-path reachable:** **No.** Every affected surface is a hono submodule iris never invokes: CORS middleware (iris uses its own `src/middleware/cors.ts` on Express), `hono/jsx` SSR (iris renders no hono JSX), the `cx()` utility, and the AWS API-Gateway adapter.
+- **Decision:** **Dismiss as `not_used`** — vulnerable submodules unreachable. Auto-clears when the `hono` bump lands (Dependabot #267).
+- **Assessed:** 2026-08-06 against `62ed307`.
+
+#### [GHSA-4c8g-83qw-93j6](https://github.com/advisories/GHSA-4c8g-83qw-93j6), [GHSA-7p8r-x3mc-p8w7](https://github.com/advisories/GHSA-7p8r-x3mc-p8w7), [GHSA-v2hh-gcrm-f6hx](https://github.com/advisories/GHSA-v2hh-gcrm-f6hx) — fast-uri host confusion (backslash authority delimiter/introducer, failed IDN canonicalization)
+
+- **Severity:** high (all three) — **Package:** `fast-uri` (3.1.2 installed) — **Load path:** `fast-uri` ← `ajv` ← `@modelcontextprotocol/sdk@1.29.0`. **First patched:** 3.1.5.
+- **Load-graph reachable:** Yes — ajv uses fast-uri for `format: "uri"` schema validation. Same path as the documented GHSA-v39h / GHSA-q3j6 rows above.
+- **Code-path / untrusted-input reachable:** As previously assessed, fast-uri's URI-parse correctness is **not** on iris's security-critical URL acceptance path — the citation-verify resolver (`src/eval/citation-verify/resolve.ts`) does its own scheme allowlist, private/link-local/metadata IP blocking (IPv6-literal handling hardened in this same PR), and DNS pre-resolve. A fast-uri host-confusion bypass cannot smuggle a request past those independent checks.
+- **Decision:** **Override** — the existing `overrides.fast-uri = "^3.1.2"` already permits the 3.1.5 fix; Dependabot #268 (fast-uri 3.1.2 → 3.1.5) updates the lockfile to land it. Defense in depth regardless.
+- **Assessed:** 2026-08-06 against `62ed307`.
+
+#### [GHSA-mwp4-54f8-5fhr](https://github.com/advisories/GHSA-mwp4-54f8-5fhr) (high), [GHSA-4xrf-jv44-h6hh](https://github.com/advisories/GHSA-4xrf-jv44-h6hh), [GHSA-22jq-vg5j-6vgg](https://github.com/advisories/GHSA-22jq-vg5j-6vgg) — ip-address SSRF / trust-boundary bypasses (leading-zero-octal decode, CIDR-suffix special-use suppression, IPv4-mapped/NAT64 misclassification)
+
+- **Severity:** high + moderate + moderate — **Package:** `ip-address` (10.2.0 installed) — **Load path:** `ip-address` ← `express-rate-limit@8.5.2`.
+- **Load-graph reachable:** Yes — express-rate-limit parses client IPs with ip-address.
+- **Code-path / untrusted-input reachable:** **iris does not import `ip-address` anywhere** (verified: `grep -rn "ip-address" src/` is empty). It reaches iris only through express-rate-limit, which uses the parsed address **solely as a rate-limit bucket key** — never as an SSRF or trust-boundary decision. iris's SSRF authority is its own resolver, which does not use this package. So the class of bug these advisories describe (SSRF classification bypass) is not on any iris trust boundary.
+- **Downstream guards:** The rate-limiter stores the address as a key only. Worst case of a misclassified key is a slightly wrong rate-limit bucket, not a security-boundary crossing.
+- **Decision:** **Dismiss as `tolerable_risk`.** Patch tracks Dependabot #265 (ip-address 10.2.0 → 10.4.0).
+- **Assessed:** 2026-08-06 against `62ed307`.
+
+#### [GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp), [GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg), [GHSA-rgw5-rvv9-x895](https://github.com/advisories/GHSA-rgw5-rvv9-x895) — brace-expansion DoS (exponential non-expanding `{}` groups, unbounded expansion OOM, unbounded intermediate arrays)
+
+- **Severity:** high (all three) — **Package:** `brace-expansion` (5.0.5 installed) — **First patched:** 5.0.7.
+- **Load-graph reachable:** Yes — dev-tooling transitive (vitest/vite file resolution, eslint glob handling). Same class as the documented GHSA-jxxr row above.
+- **Untrusted-input reachable:** **No.** iris accepts no user-supplied glob/brace pattern through any MCP tool, HTTP handler, or rule input. The only callers are dev tooling operating on checked-in patterns behind the PR review gate; a pathological expansion manifests as a CI job timeout, not a user-facing degradation.
+- **Decision:** **Dismiss as `tolerable_risk`** (matches the existing brace-expansion decision). Patch tracks Dependabot #254 / #255 (→ 5.0.7).
+- **Assessed:** 2026-08-06 against `62ed307`.
+
+#### [GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849) (high), [GHSA-fxqj-rqcc-2cmp](https://github.com/advisories/GHSA-fxqj-rqcc-2cmp) — postcss path traversal via attacker-controlled `sourceMappingURL` (arbitrary `.map` disclosure)
+
+- **Severity:** high + moderate — **Package:** `postcss` (8.5.15 installed) — **Load path:** `postcss` ← `vite` ← `vitest`. **First patched:** 8.5.26 line (Dependabot bumps to 8.5.25+).
+- **Load-graph reachable:** Yes — dev/test tooling only (Vite's CSS pipeline under Vitest). Not present in any iris runtime production path (the MCP server ships no PostCSS; the website/dashboard build their CSS at build time, not from untrusted input).
+- **Untrusted-input reachable:** **No.** The exploit requires processing attacker-controlled CSS containing a crafted `sourceMappingURL`. iris processes no user-supplied CSS at runtime; the only CSS PostCSS touches is first-party source at build/test time.
+- **Decision:** **Dismiss as `tolerable_risk`** — dev-tooling only, no untrusted CSS. Patch tracks Dependabot #261 / #263 (→ 8.5.25).
+- **Assessed:** 2026-08-06 against `62ed307`.
+
 ---
 
 ## Operational notes
