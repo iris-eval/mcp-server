@@ -201,6 +201,17 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 - **Decision:** **Dismiss as `not_used`** — vulnerable submodules unreachable.
 - **Assessed:** 2026-08-06.
 
+### [GHSA-qwww-vcr4-c8h2](https://github.com/advisories/GHSA-qwww-vcr4-c8h2) — React Router RSC-mode CSRF bypass (action executes before the 400)
+
+- **Severity:** high (GitHub label) — **CVSS: 0** — **Package:** `react-router` — **Manifest:** `dashboard/package-lock.json`
+- **Installed:** 7.18.2 (via `react-router-dom@^7.18.2`) — **first patched:** `react-router` **8.3.0**
+- **Load-graph reachable:** Yes — the dashboard UI is built on React Router.
+- **Code-path reachable:** **No.** The advisory states its scope explicitly: *"This only affects your application if you are using the unstable RSC APIs."* It is a follow-up to CVE-2026-22030 covering React Server Component request flows. The dashboard is a purely client-side SPA: `dashboard/src/App.tsx` mounts `BrowserRouter` and the app uses only `Routes`, `Route`, `Link`, `NavLink`, `useNavigate`, `useParams`, `useSearchParams`, `useLocation`. Verified 2026-08-07 — grep across `dashboard/src`, `dashboard/package.json` and the Vite config for `unstable_`, `RSC`, `routeRSCServerRequest`, `createCallServer`, `matchRSCServerRequest`, `@vitejs/plugin-rsc` and `react-server` returns **zero** matches. There is no server-rendered route, and therefore no RSC action to execute early.
+- **Untrusted-input reachable:** N/A — the vulnerable code path does not exist in this build.
+- **Why not simply patched:** **`react-router-dom` has no 8.x release** (latest is 7.18.2). React Router merged its packages in v7+, so reaching `react-router@8.3.0` means dropping `react-router-dom` and rewriting every import across ~20 dashboard files onto `react-router` v8 — a breaking framework migration. Taking that risk to close a CVSS-0 advisory whose own text says it does not apply would be a bad trade: the migration could break dashboard routing, while the advisory cannot affect it.
+- **Decision:** **Dismiss as `not_used`.** Re-open if the dashboard ever adopts RSC routing, or fold the upgrade into a deliberate React Router v8 migration on its own schedule (with its own testing), not into a security drain.
+- **Assessed:** 2026-08-07 against iris commit `514297b`.
+
 ---
 
 ## Operational notes
