@@ -43,6 +43,9 @@ export function PlaygroundShell() {
   useEffect(() => {
     track("playground_loaded");
     const prev = localStorage.getItem("iris-playground-best");
+    // Mount-time sync from localStorage — SSR renders without a best score
+    // and hydrates it in; a lazy initializer would mismatch server HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (prev) setPreviousBest(parseInt(prev));
   }, [track]);
 

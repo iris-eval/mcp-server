@@ -6,7 +6,10 @@
 // Defense layers (in order):
 //   1. Scheme allowlist — http/https only; refuse file:/javascript:/etc.
 //   2. SSRF host check — refuse localhost, link-local, private ranges,
-//      and cloud metadata (AWS/GCP/Azure/DigitalOcean) IP literals.
+//      and cloud metadata (AWS/GCP/Azure/DigitalOcean) IP literals. IPv6
+//      literals are de-bracketed and canonicalized (incl. IPv4-mapped
+//      forms) before classification so `[::1]`, `[fd00::1]`, and
+//      `[::ffff:169.254.169.254]` cannot slip past the ^-anchored checks.
 //   3. DNS pre-resolve — every public hostname is resolved via
 //      dns.lookup({all:true}) and EVERY returned IP is re-checked against
 //      the IP blocklist. Defeats DNS-rebinding via public records pointing
@@ -89,13 +92,6 @@ const BLOCKED_IPV4 = [
   /^0\./,
 ];
 
-const BLOCKED_IPV6 = [
-  /^::1$/, // localhost
-  /^fc|^fd/i, // unique local
-  /^fe80/i, // link-local
-  /^::ffff:127\./i, // IPv4-mapped localhost
-];
-
 const BLOCKED_HOST_SUBSTRINGS = ['localhost', 'internal', '.local', 'metadata.google', 'metadata.azure'];
 
 function isIpv4(host: string): boolean {
@@ -106,20 +102,101 @@ function isIpv6(host: string): boolean {
   return host.includes(':');
 }
 
+// WHATWG URL parsing leaves IPv6 literals bracketed:
+// `new URL('http://[::1]/').hostname === '[::1]'`. Every historical
+// BLOCKED_IPV6 entry was `^`-anchored (`/^::1$/`, `/^fe80/`, …), so the
+// leading `[` made ALL of them silently fail to match — the entire IPv6
+// SSRF guard was inert for direct address literals (loopback, link-local,
+// unique-local, and IPv4-mapped metadata all passed as "safe"). Strip the
+// brackets before any IPv6 classification.
+function stripIpv6Brackets(host: string): string {
+  return host.length > 1 && host.startsWith('[') && host.endsWith(']')
+    ? host.slice(1, -1)
+    : host;
+}
+
+// Expand a compressed / embedded-IPv4 IPv6 literal to exactly 8 zero-padded
+// hextets. Returns null when `addr` is not a syntactically valid IPv6 literal.
+// Canonicalizing to full form makes prefix classification reliable regardless
+// of how the address was serialized (`::1`, `0:0:...:1`, `::ffff:a9fe:a9fe`).
+function expandIpv6(addr: string): string[] | null {
+  let a = addr.toLowerCase();
+  const zone = a.indexOf('%');
+  if (zone !== -1) a = a.slice(0, zone); // drop scope/zone id
+  // Fold a trailing embedded IPv4 (`::ffff:1.2.3.4`, `::1.2.3.4`) into two hextets.
+  const v4 = a.match(/^(.*:)(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const octets = [v4[2], v4[3], v4[4], v4[5]].map(Number);
+    if (octets.some((n) => n > 255)) return null;
+    const hi = octets[0] * 256 + octets[1];
+    const lo = octets[2] * 256 + octets[3];
+    a = `${v4[1]}${hi.toString(16)}:${lo.toString(16)}`;
+  }
+  const halves = a.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  let groups: string[];
+  if (halves.length === 2) {
+    const missing = 8 - head.length - tail.length;
+    if (missing < 0) return null;
+    groups = [...head, ...Array<string>(missing).fill('0'), ...tail];
+  } else {
+    groups = head;
+  }
+  if (groups.length !== 8) return null;
+  const out: string[] = [];
+  for (const g of groups) {
+    if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
+    out.push(g.padStart(4, '0'));
+  }
+  return out;
+}
+
+function ipv4FromHextets(h6: string, h7: string): string {
+  const hi = parseInt(h6, 16);
+  const lo = parseInt(h7, 16);
+  return `${Math.floor(hi / 256)}.${hi % 256}.${Math.floor(lo / 256)}.${lo % 256}`;
+}
+
+// True when an IPv6 literal resolves to a range we refuse: unspecified,
+// loopback, link-local, unique-local, or an embedded IPv4 that itself hits
+// the IPv4 blocklist (IPv4-mapped `::ffff:a.b.c.d` reaches the v4 endpoint on
+// dual-stack hosts — e.g. `::ffff:169.254.169.254` == AWS IMDS). Fails closed
+// on any colon-bearing host that does not parse as valid IPv6.
+function isBlockedIpv6(addr: string): boolean {
+  const g = expandIpv6(addr);
+  if (!g) return true; // unparseable but IPv6-shaped (has a colon) — refuse
+  if (g.every((h) => h === '0000')) return true; // ::   unspecified
+  if (g.slice(0, 7).every((h) => h === '0000') && g[7] === '0001') return true; // ::1 loopback
+  const first = g[0];
+  // fe80::/10 link-local (fe80–febf)
+  if (first === 'fe80' || /^fe[89ab]/.test(first)) return true;
+  // fc00::/7 unique-local (fc.. / fd..)
+  if (first.startsWith('fc') || first.startsWith('fd')) return true;
+  // IPv4-mapped ::ffff:a.b.c.d  and  IPv4-compatible ::a.b.c.d (deprecated)
+  const mapped = g.slice(0, 5).every((h) => h === '0000') && g[5] === 'ffff';
+  const compat = g.slice(0, 6).every((h) => h === '0000') && !(g[6] === '0000' && g[7] === '0000');
+  if (mapped || compat) {
+    const embedded = ipv4FromHextets(g[6], g[7]);
+    return BLOCKED_IPV4.some((re) => re.test(embedded));
+  }
+  return false;
+}
+
 export function isSafeHost(host: string): boolean {
-  const hostLower = host.toLowerCase();
+  const bare = stripIpv6Brackets(host);
+  const hostLower = bare.toLowerCase();
   for (const sub of BLOCKED_HOST_SUBSTRINGS) {
     if (hostLower === sub || hostLower.endsWith(sub)) return false;
   }
-  if (isIpv4(host)) {
+  if (isIpv4(bare)) {
     for (const re of BLOCKED_IPV4) {
-      if (re.test(host)) return false;
+      if (re.test(bare)) return false;
     }
   }
-  if (isIpv6(host)) {
-    for (const re of BLOCKED_IPV6) {
-      if (re.test(host)) return false;
-    }
+  if (isIpv6(bare)) {
+    if (isBlockedIpv6(bare)) return false;
   }
   return true;
 }

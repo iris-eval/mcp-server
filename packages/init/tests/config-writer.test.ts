@@ -119,3 +119,132 @@ describe('uninstallIris', () => {
     expect(result.action).toBe('not-present');
   });
 });
+
+describe('vscode-servers strategy', () => {
+  function vscodeProfile(): ClientProfile {
+    return {
+      id: 'vscode',
+      displayName: 'VS Code',
+      configPath: join(tmpDir, 'mcp.json'),
+      configMode: 'vscode-servers',
+    };
+  }
+
+  it('writes under "servers", not "mcpServers"', () => {
+    const result = installIris(vscodeProfile());
+    expect(result.action).toBe('created');
+    const written = JSON.parse(readFileSync(result.configPath, 'utf-8'));
+    expect(written.servers.iris.command).toBe('npx');
+    expect(written.mcpServers).toBeUndefined();
+  });
+
+  it('is idempotent and uninstalls only the iris entry', () => {
+    const profile = vscodeProfile();
+    installIris(profile);
+    expect(installIris(profile).action).toBe('no-change');
+    writeFileSync(
+      profile.configPath,
+      JSON.stringify({
+        servers: {
+          iris: { command: 'npx', args: ['-y', '@iris-eval/mcp-server'] },
+          other: { command: 'echo', args: [] },
+        },
+      }),
+      'utf-8',
+    );
+    const removed = uninstallIris(profile);
+    expect(removed.action).toBe('removed');
+    const written = JSON.parse(readFileSync(profile.configPath, 'utf-8'));
+    expect(written.servers.iris).toBeUndefined();
+    expect(written.servers.other).toBeDefined();
+  });
+});
+
+describe('zed-context-servers strategy', () => {
+  function zedProfile(): ClientProfile {
+    return {
+      id: 'zed',
+      displayName: 'Zed',
+      configPath: join(tmpDir, 'settings.json'),
+      configMode: 'zed-context-servers',
+    };
+  }
+
+  it('writes a nested command object under context_servers', () => {
+    const result = installIris(zedProfile());
+    expect(result.action).toBe('created');
+    const written = JSON.parse(readFileSync(result.configPath, 'utf-8'));
+    expect(written.context_servers.iris.command.path).toBe('npx');
+    expect(written.context_servers.iris.command.args).toEqual([
+      '-y',
+      '@iris-eval/mcp-server',
+    ]);
+  });
+
+  it('preserves unrelated Zed settings and is idempotent', () => {
+    const profile = zedProfile();
+    writeFileSync(
+      profile.configPath,
+      JSON.stringify({ theme: 'One Dark', vim_mode: true }),
+      'utf-8',
+    );
+    installIris(profile);
+    expect(installIris(profile).action).toBe('no-change');
+    const written = JSON.parse(readFileSync(profile.configPath, 'utf-8'));
+    expect(written.theme).toBe('One Dark');
+    expect(written.vim_mode).toBe(true);
+    expect(uninstallIris(profile).action).toBe('removed');
+    const after = JSON.parse(readFileSync(profile.configPath, 'utf-8'));
+    expect(after.theme).toBe('One Dark');
+    expect(after.context_servers.iris).toBeUndefined();
+  });
+
+  it('refuses to rewrite a Zed settings file with comments (invalid strict JSON)', () => {
+    const profile = zedProfile();
+    writeFileSync(profile.configPath, '{\n  // my settings\n  "theme": "x"\n}', 'utf-8');
+    expect(() => installIris(profile)).toThrow(/manually/);
+  });
+});
+
+describe('codex-toml strategy', () => {
+  function codexProfile(): ClientProfile {
+    return {
+      id: 'codex',
+      displayName: 'OpenAI Codex CLI',
+      configPath: join(tmpDir, 'config.toml'),
+      configMode: 'codex-toml',
+    };
+  }
+
+  it('creates config.toml with an [mcp_servers.iris] section', () => {
+    const result = installIris(codexProfile());
+    expect(result.action).toBe('created');
+    const raw = readFileSync(result.configPath, 'utf-8');
+    expect(raw).toContain('[mcp_servers.iris]');
+    expect(raw).toContain('command = "npx"');
+    expect(raw).toContain('args = ["-y", "@iris-eval/mcp-server"]');
+  });
+
+  it('appends without disturbing existing sections and is idempotent', () => {
+    const profile = codexProfile();
+    writeFileSync(profile.configPath, 'model = "o4"\n\n[mcp_servers.other]\ncommand = "echo"\n', 'utf-8');
+    const result = installIris(profile);
+    expect(result.action).toBe('updated');
+    expect(installIris(profile).action).toBe('no-change');
+    const raw = readFileSync(profile.configPath, 'utf-8');
+    expect(raw).toContain('model = "o4"');
+    expect(raw).toContain('[mcp_servers.other]');
+    expect(raw).toContain('[mcp_servers.iris]');
+  });
+
+  it('uninstall removes only the iris section', () => {
+    const profile = codexProfile();
+    writeFileSync(profile.configPath, 'model = "o4"\n', 'utf-8');
+    installIris(profile);
+    const removed = uninstallIris(profile);
+    expect(removed.action).toBe('removed');
+    const raw = readFileSync(profile.configPath, 'utf-8');
+    expect(raw).toContain('model = "o4"');
+    expect(raw).not.toContain('[mcp_servers.iris]');
+  });
+});

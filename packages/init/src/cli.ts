@@ -3,16 +3,17 @@
  * iris-init CLI — universal installer for Iris.
  *
  * Usage:
- *   npx @iris-eval/init                       # interactive: pick a client
+ *   npx @iris-eval/init                       # no args: show detected clients + usage
  *   npx @iris-eval/init <client>              # install for the named client
  *   npx @iris-eval/init <client> --uninstall  # remove the iris entry
  *   npx @iris-eval/init --list                # show detected clients
  *   npx @iris-eval/init --help                # this message
  *
- * Supported <client> values: claude-code, cursor, windsurf, continue.
+ * Supported <client> values: claude-code, claude-desktop, cursor, windsurf,
+ * continue, vscode, cline, zed, codex, gemini.
  *
- * Phase 1 (this release) handles the four first-class clients per
- * grow-plug-and-play.md §5. Phase 2 adds raycast, zed, cline, plus
+ * Covers every first-class client from the README client matrix (the
+ * SUPPORTED array below is the source of truth). A future release adds
  * MCP-spec-driven auto-detection for unrecognized clients.
  */
 import { parseArgs } from 'node:util';
@@ -24,13 +25,24 @@ import {
 } from './detect.js';
 import { installIris, uninstallIris } from './config-writer.js';
 
-const SUPPORTED: SupportedClient[] = ['claude-code', 'cursor', 'windsurf', 'continue'];
+const SUPPORTED: SupportedClient[] = [
+  'claude-code',
+  'claude-desktop',
+  'cursor',
+  'windsurf',
+  'continue',
+  'vscode',
+  'cline',
+  'zed',
+  'codex',
+  'gemini',
+];
 
 function printHelp(): void {
   process.stdout.write(`iris-init — universal installer for Iris
 
 Usage:
-  npx @iris-eval/init                       # interactive: pick a client
+  npx @iris-eval/init                       # no args: show detected clients + usage
   npx @iris-eval/init <client>              # install for the named client
   npx @iris-eval/init <client> --uninstall  # remove the iris entry
   npx @iris-eval/init --list                # show detected clients
@@ -121,7 +133,7 @@ export async function run(argv: string[] = process.argv.slice(2)): Promise<numbe
   }
 
   if (!args.client) {
-    // Interactive flow not implemented in Phase 1; print help + detected list.
+    // No interactive flow — print usage + detected clients and exit non-zero.
     process.stdout.write(
       'No client specified. Pass one explicitly:\n  npx @iris-eval/init <client>\n\n',
     );
@@ -159,7 +171,7 @@ export async function run(argv: string[] = process.argv.slice(2)): Promise<numbe
   process.stdout.write(
     `Restart ${profile.displayName} to pick up the new MCP server.\n` +
       `Then any agent call will be scored by Iris.\n` +
-      `Dashboard: npx @iris-eval/mcp-server dashboard\n`,
+      `Dashboard: npx @iris-eval/mcp-server --dashboard\n`,
   );
   return 0;
 }

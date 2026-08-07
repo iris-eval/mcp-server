@@ -22,7 +22,7 @@ The industry has a strange relationship with agent evaluation. Teams will spend 
 The numbers show what this costs:
 
 - An estimated **$67.4 billion** in global financial losses tied to AI hallucinations in 2024 alone ([AllAboutAI](https://allaboutai.com/resources/ai-statistics/ai-hallucinations/))
-- Industry estimates put hallucination-related verification costs at **$14,200 per employee per year** — knowledge workers spending hours every week fact-checking AI outputs instead of doing their jobs
+- Knowledge workers now spend **hours every week fact-checking AI outputs** instead of doing their jobs — hallucination verification has become a standing line item of its own
 - A hallucinated answer in Google's Bard demo erased **$100 billion in Alphabet's market cap** in a single day ([Time, Feb 2023](https://time.com/6254226/alphabet-google-bard-100-billion-ai-error/))
 - AI safety incidents surged **56.4% year-over-year** — from 149 to 233 documented incidents ([Stanford AI Index 2025](https://hai.stanford.edu/ai-index/2025-ai-index-report))
 
@@ -75,7 +75,7 @@ The adoption curve for testing culture took about 15 years:
 
 A joint IBM and Microsoft study confirmed: TDD reduces post-release defects by [40-90% depending on team](https://www.microsoft.com/en-us/research/wp-content/uploads/2009/10/Realizing-Quality-Improvement-Through-Test-Driven-Development-Results-and-Experiences-of-Four-Industrial-Teams-nagappan_tdd.pdf).
 
-Where are we with agent eval? The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) tells us exactly: **89% of teams have observability** (is the agent running?), but **only 37% have inline eval** (is the answer right?). That 52-point gap is the eval tax manifesting as a metric. Most teams can tell you whether their agent returned a response. They cannot tell you whether the response was any good.
+Where are we with agent eval? The [LangChain State of Agent Engineering survey](https://www.langchain.com/state-of-agent-engineering) (1,340 respondents, late 2025) tells us exactly: **89% of teams have observability** (is the agent running?), but **only 37% run evals on production traffic** (is the answer right?). That 52-point gap is the eval tax manifesting as a metric. Most teams can tell you whether their agent returned a response. They cannot tell you whether the response was any good.
 
 This 52-point gap is what we call [the eval gap](/blog/the-eval-gap) — the distance between "agent works in demo" and "agent works in production." We're in 2003. The tools exist. The culture hasn't caught up.
 

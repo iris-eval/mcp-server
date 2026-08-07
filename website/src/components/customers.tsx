@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
 
 const USE_CASES = [
   {
@@ -31,8 +32,8 @@ const USE_CASES = [
   {
     audience: "Companies preventing PII leaks",
     problem: "Your agent leaked a Social Security number in its output and nobody noticed for 3 months.",
-    solution: "Iris evaluates every output against 13 built-in rules including PII detection across 10 patterns (SSN, credit card, phone, email, IBAN, DOB, medical record number, IP address, API key, passport), prompt injection (13 patterns), stub-output detection, and hallucination markers. Real-time, every trace.",
-    metric: "13",
+    solution: `Iris evaluates every output against ${RULE_COUNT_BUILT_IN} built-in rules including PII detection across 10 patterns (SSN, credit card, phone, email, IBAN, DOB, medical record number, IP address, API key, passport), prompt injection (13 patterns), stub-output detection, and hallucination markers. Real-time, every trace.`,
+    metric: String(RULE_COUNT_BUILT_IN),
     metricLabel: "built-in eval rules",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

@@ -2,6 +2,7 @@
 
 Use these when submitting Iris to any MCP directory, awesome list, or marketplace.
 Copy-paste the appropriate version and customize if needed.
+**Refreshed 2026-07-07 against `.claims.json` (v0.4.4).** Before any submission, re-check the Key Stats against the current claims file.
 
 ---
 
@@ -15,14 +16,14 @@ Iris is an MCP server that any agent discovers and uses automatically — no SDK
 
 ## Long Description (paragraph)
 
-Iris is the first MCP-native eval and observability tool for AI agents. It registers as an MCP server that your agents discover automatically through the protocol — no SDK imports, no decorators, no code changes. Add one line to your MCP config and every agent starts logging hierarchical traces, evaluating output quality (PII detection, prompt injection, hallucination markers, cost thresholds), and tracking per-trace costs in USD. Self-hosted with a single SQLite file. Real-time dark-mode dashboard. Works with Claude Desktop, Cursor, Windsurf, or any MCP-compatible agent. Open-source core, MIT licensed.
+Iris is the agent eval standard for MCP — an MCP-native eval and observability tool for AI agents. It registers as an MCP server that your agents discover automatically through the protocol — no SDK imports, no decorators, no code changes. Add one line to your MCP config and every agent starts logging hierarchical traces, evaluating output quality (10 PII patterns, 13 prompt-injection patterns, 17 hallucination markers, cost thresholds), verifying citations, and tracking per-trace costs in USD. LLM-as-judge included (BYOK, five templates). Self-hosted with a single SQLite file. Real-time dashboard. OpenTelemetry export. Works with Claude Desktop, Claude Code, Cursor, Windsurf, or any MCP-compatible agent. Open-source core, MIT licensed.
 
 ## Config Snippet (include in every listing)
 
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["-y", "@iris-eval/mcp-server"]
     }
@@ -32,11 +33,12 @@ Iris is the first MCP-native eval and observability tool for AI agents. It regis
 
 ## Key Stats (for listings that show features)
 
-- 3 MCP tools: log_trace, evaluate_output, get_traces
-- 12 built-in eval rules across 4 categories
-- <1ms eval latency (heuristic, not LLM-as-Judge)
+- 9 MCP tools: log_trace, evaluate_output, get_traces, list_rules, deploy_rule, delete_rule, delete_trace, evaluate_with_llm_judge, verify_citations
+- 13 built-in eval rules across 4 categories
+- <1ms eval latency (heuristic layer; LLM-as-judge optional, BYOK)
 - 0 lines of code to integrate
 - SQLite storage — zero infrastructure
+- OpenTelemetry OTLP export
 - MIT licensed
 
 ## Links

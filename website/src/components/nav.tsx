@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useTheme } from "./theme-provider";
 import { IrisLogo } from "./iris-logo";
+import { MCP_TOOL_COUNT, VERSION_MCP_SERVER } from "@/lib/claims";
 
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
@@ -31,18 +33,18 @@ export function Nav(): React.ReactElement {
       {/* Event banner */}
       <div className="relative z-50 border-b border-border-subtle bg-iris-600/8 px-4 py-2.5 text-center">
         <a href="https://github.com/iris-eval/mcp-server" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <span className="rounded-full bg-iris-600 px-2 py-0.5 text-[11px] font-semibold text-white">v0.4.0</span>
-          <span>Iris v0.4 — LLM-as-Judge + citation verify + OTel + 9 MCP tools</span>
+          <span className="rounded-full bg-iris-600 px-2 py-0.5 text-[11px] font-semibold text-white">v{VERSION_MCP_SERVER}</span>
+          <span>Iris v0.4 — LLM-as-Judge + citation verify + OTel + {MCP_TOOL_COUNT} MCP tools</span>
           <span className="text-text-accent">&rarr;</span>
         </a>
       </div>
 
       <header className={`sticky top-0 z-40 transition-all duration-300 ${scrolled ? "border-b border-border-subtle bg-bg-base/80 backdrop-blur-xl" : "bg-transparent"}`}>
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8" aria-label="Primary">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <IrisLogo size={30} />
             <span className="font-display text-[22px] font-bold tracking-tight text-text-primary">Iris</span>
-          </a>
+          </Link>
 
           <div className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((l) => (
@@ -59,7 +61,7 @@ export function Nav(): React.ReactElement {
               )}
             </button>
             <a href="https://github.com/iris-eval/mcp-server" target="_blank" rel="noopener noreferrer" className="rounded-lg px-4 py-2 text-[14px] font-medium text-text-secondary transition-colors hover:bg-border-subtle hover:text-text-primary">GitHub</a>
-            <a href="/#open-source" className="rounded-lg bg-iris-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-iris-600/20 transition-all hover:bg-iris-500">Get Started</a>
+            <Link href="/#open-source" className="rounded-lg bg-iris-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-iris-600/20 transition-all hover:bg-iris-500">Get Started</Link>
           </div>
 
           <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-text-secondary md:hidden" aria-label="Toggle menu" aria-expanded={mobileOpen}>
@@ -79,7 +81,7 @@ export function Nav(): React.ReactElement {
                 <button onClick={toggle} className="rounded-lg px-4 py-3 text-left text-[15px] text-text-secondary hover:bg-border-subtle">
                   {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                 </button>
-                <a href="/#open-source" onClick={() => setMobileOpen(false)} className="rounded-lg bg-iris-600 px-5 py-3 text-center text-[15px] font-semibold text-white">Get Started</a>
+                <Link href="/#open-source" onClick={() => setMobileOpen(false)} className="rounded-lg bg-iris-600 px-5 py-3 text-center text-[15px] font-semibold text-white">Get Started</Link>
               </div>
             </div>
           </div>

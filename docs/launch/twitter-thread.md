@@ -1,5 +1,7 @@
 # Twitter/X Launch Thread
 
+> **📁 Historical launch artifact (v0.1 era, March 2026).** Counts and the "first MCP-native" framing reflect the original launch. Kept for record — do not repost without a full refresh against `.claims.json` and current positioning.
+
 > **Note:** X posts have a 280-character limit (free tier) or 25,000 (Premium). Drafts below were trimmed to fit before publishing. Keep future drafts within limits.
 
 ---

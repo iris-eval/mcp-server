@@ -1,0 +1,44 @@
+# Iris — The Agent Eval Standard for MCP
+
+> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx @iris-eval/mcp-server`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
+
+Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 13 built-in eval rules across completeness, relevance, safety, and cost. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
+
+## Getting Started
+
+- [GitHub repository](https://github.com/iris-eval/mcp-server): source, README with per-client setup for every major MCP client, full tool schemas
+- Claude Code plugin: `/plugin marketplace add iris-eval/mcp-server` then `/plugin install iris-eval@iris-eval` — MCP server + agent-eval skill in two commands
+- [npm package](https://www.npmjs.com/package/@iris-eval/mcp-server): `@iris-eval/mcp-server` — install via `npx @iris-eval/mcp-server`
+- [Playground](https://iris-eval.com/playground): try agent eval in the browser, no install
+- [Security](https://iris-eval.com/security): security posture, signed releases, disclosure policy
+
+## Learn — Agent Eval Concepts
+
+- [What is Agent Eval](https://iris-eval.com/learn/agent-eval): the category definition
+- [Eval Gap](https://iris-eval.com/learn/eval-gap): the distance between what you test and what your agents do
+- [Eval Tax](https://iris-eval.com/learn/eval-tax): the cost of not evaluating
+- [Eval Drift](https://iris-eval.com/learn/eval-drift): silent quality decay over time
+- [Eval Coverage](https://iris-eval.com/learn/eval-coverage): how much of agent behavior your rules observe
+- [Eval Loop](https://iris-eval.com/learn/eval-loop): the improvement cycle
+- [Eval-Driven Development](https://iris-eval.com/learn/eval-driven-development): evals as the spec
+- [Output Quality Score](https://iris-eval.com/learn/output-quality-score): how scoring works
+- [Self-Calibrating Eval](https://iris-eval.com/learn/self-calibrating-eval): rules that adapt
+
+## Compare
+
+- [Iris vs Langfuse](https://iris-eval.com/compare/langfuse)
+- [Iris vs LangSmith](https://iris-eval.com/compare/langsmith)
+- [Iris vs Helicone](https://iris-eval.com/compare/helicone)
+- [Iris vs Braintrust](https://iris-eval.com/compare/braintrust)
+- [Iris vs Arize](https://iris-eval.com/compare/arize)
+- [Iris vs DeepEval](https://iris-eval.com/compare/deepeval)
+- [Iris vs Confident AI](https://iris-eval.com/compare/confident-ai)
+- [Iris vs Patronus AI](https://iris-eval.com/compare/patronus-ai)
+
+## Optional
+
+- [Blog](https://iris-eval.com/blog): release notes, tutorials, agent eval essays
+- [Pricing](https://iris-eval.com/pricing)
+- [MCP Registry entry](https://registry.modelcontextprotocol.io): `io.github.iris-eval/mcp-server`
+- [Docker image](https://github.com/iris-eval/mcp-server/pkgs/container/mcp-server): `ghcr.io/iris-eval/mcp-server`
+- [llms-full.txt](https://iris-eval.com/llms-full.txt): expanded version of this file with tool reference and setup snippets

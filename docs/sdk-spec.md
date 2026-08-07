@@ -1,6 +1,6 @@
 # `@iris-eval/client` — SDK Specification
 
-> **Status:** spec for v0.4 — D4 lock per `plans/master-plan/think-risk-decision-register.md` Tier A Wave 2 — A7. Implementation ships in v0.4.0 (target 2026-06-09).
+> **Status:** spec final; **implementation not yet shipped** (deferred out of v0.4.0 at release scope-cut — see the roadmap). The MCP-native path below remains the supported install today.
 >
 > **Why this exists:** Iris's primary install path is MCP-native — the MCP server runs as a subprocess and any MCP-aware client (Claude Code, Cursor, Windsurf, Continue, Cline, Zed, custom MCP clients) discovers it. That's the right fit for hosted agents. Teams building **custom agents** in TypeScript, however, hit MCP's process-boundary cost on every call. UAT evidence (`memory/iris_first_live_testing.md`: a 249-line ad-hoc bridge a customer wrote because the MCP path was too slow for their high-volume real-time loop) makes the case directly: an in-process SDK is the right shape for that use case.
 
@@ -24,7 +24,7 @@ import { Iris } from '@iris-eval/client';
 
 const iris = new Iris({
   database: './iris.db',                 // or: shared SQLite path with the MCP server's deployment
-  rules: ['completeness', 'safety-pii', 'cost-budget'], // subset; default = all 12
+  rules: ['completeness', 'safety-pii', 'cost-budget'], // subset; default = all 13
   customRules: [],                       // optional: Zod-validated custom rules
 });
 
@@ -73,7 +73,7 @@ interface IrisOpts {
   /** Path to the SQLite database. Created if missing. Shared with the MCP server's install when set to the same path. */
   database: string;
 
-  /** Subset of built-in rules to enable. Default: all 12. */
+  /** Subset of built-in rules to enable. Default: all 13. */
   rules?: BuiltInRuleId[];
 
   /** Custom Zod-validated rule definitions. */

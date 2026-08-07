@@ -41,7 +41,7 @@ Iris evaluates all of it.
 
 ## Quickstart
 
-Add Iris to your MCP config. Works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible agent.
+Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent.
 
 ```json
 {
@@ -101,6 +101,60 @@ Then restart the session (`/clear` or relaunch) for tools to load.
 #### Cursor / Windsurf
 
 Add to your workspace `.cursor/mcp.json` or global MCP settings using the JSON config above.
+
+#### VS Code (native MCP)
+
+Add to `.vscode/mcp.json` in your workspace (note: VS Code uses `servers`, not `mcpServers`):
+
+```json
+{
+  "servers": {
+    "iris-eval": {
+      "command": "npx",
+      "args": ["@iris-eval/mcp-server"]
+    }
+  }
+}
+```
+
+#### Cline
+
+Open Cline's MCP Servers panel → Configure MCP Servers, and add the `mcpServers` JSON config above to `cline_mcp_settings.json`.
+
+#### Zed
+
+Add to Zed `settings.json`:
+
+```json
+{
+  "context_servers": {
+    "iris-eval": {
+      "command": {
+        "path": "npx",
+        "args": ["@iris-eval/mcp-server"]
+      }
+    }
+  }
+}
+```
+
+#### OpenAI Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.iris-eval]
+command = "npx"
+args = ["@iris-eval/mcp-server"]
+```
+
+#### Gemini CLI
+
+Add the `mcpServers` JSON config above to `~/.gemini/settings.json`.
+
+#### Anything else that speaks MCP
+
+Iris is a standard stdio MCP server — one `npx @iris-eval/mcp-server` command, no SDK, no code changes. If your client supports MCP, it supports Iris. Client config formats change; when in doubt, check your client's MCP docs and point it at that command.
 
 </details>
 

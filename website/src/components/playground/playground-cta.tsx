@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { SCENARIOS } from "./playground-data";
 
@@ -126,13 +127,13 @@ export function PlaygroundCta({ session, track }: { session: PlaygroundSession; 
             >
               Star on GitHub
             </a>
-            <a
+            <Link
               href="/#pricing"
               onClick={() => track("cta_clicked", { target: "pricing" })}
               className="inline-flex items-center rounded-xl border border-border-default px-8 py-4 text-[15px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary"
             >
               Managed hosting?
-            </a>
+            </Link>
           </div>
 
           {/* Social proof */}

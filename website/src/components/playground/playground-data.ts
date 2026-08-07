@@ -4,7 +4,9 @@
 // No API calls. Everything the playground needs lives here.
 // ---------------------------------------------------------------------------
 
-// ---- Rule definitions (all 12 Iris eval rules) ---------------------------
+// ---- Rule definitions (the 13 built-in Iris eval rules) ------------------
+// Names mirror src/eval/rules exactly — the playground must never show a
+// rule the product doesn't ship.
 
 export interface RuleResult {
   name: string;
@@ -16,16 +18,17 @@ export interface RuleResult {
 export const RULE_NAMES = [
   "topic_consistency",
   "expected_coverage",
-  "response_complete",
+  "keyword_overlap",
+  "non_empty_output",
+  "min_output_length",
+  "sentence_count",
+  "no_stub_output",
   "no_hallucination_markers",
   "no_blocklist_words",
   "no_pii",
   "no_injection_patterns",
-  "sentiment_appropriate",
-  "language_match",
-  "output_format_valid",
   "cost_under_threshold",
-  "latency_under_threshold",
+  "token_efficiency",
 ] as const;
 
 export type RuleName = (typeof RULE_NAMES)[number];
@@ -227,12 +230,13 @@ export interface RuleBreakdown {
 
 export const RULE_BREAKDOWN: RuleBreakdown[] = [
   { rule: "no_blocklist_words", passRate: 1.0 },
-  { rule: "language_match", passRate: 0.99 },
-  { rule: "output_format_valid", passRate: 0.98 },
-  { rule: "sentiment_appropriate", passRate: 0.97 },
-  { rule: "latency_under_threshold", passRate: 0.95 },
+  { rule: "sentence_count", passRate: 0.99 },
+  { rule: "no_stub_output", passRate: 0.98 },
+  { rule: "min_output_length", passRate: 0.97 },
+  { rule: "token_efficiency", passRate: 0.95 },
   { rule: "no_injection_patterns", passRate: 0.94 },
-  { rule: "response_complete", passRate: 0.91 },
+  { rule: "non_empty_output", passRate: 0.91 },
+  { rule: "keyword_overlap", passRate: 0.9 },
   { rule: "no_pii", passRate: 0.89 },
   { rule: "no_hallucination_markers", passRate: 0.85 },
   { rule: "cost_under_threshold", passRate: 0.82 },

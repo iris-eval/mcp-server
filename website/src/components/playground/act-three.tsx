@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { EvalScoreGauge } from "./eval-score-gauge";
 import { TrendChartSvg } from "./trend-chart-svg";
@@ -293,12 +294,12 @@ export function ActThree({ track }: { track: (event: string, data?: Record<strin
               >
                 <p className="text-[12px] text-text-muted">
                   Want to share eval results with your team?{" "}
-                  <a
+                  <Link
                     href="/#pricing"
                     className="text-text-accent transition-colors hover:text-iris-300"
                   >
                     Cloud team dashboards coming soon →
-                  </a>
+                  </Link>
                 </p>
               </motion.div>
             </div>

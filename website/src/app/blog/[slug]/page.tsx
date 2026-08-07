@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OG_IMAGE_URL } from "@/lib/og";
 import ReactMarkdown from "react-markdown";
@@ -103,7 +104,7 @@ export default async function BlogPost({
     "the-eval-gap": [
       {
         question: "What is the eval gap?",
-        answer: "The eval gap is the distance between having observability (knowing your agent ran) and having inline evaluation (knowing the output was correct). Industry data shows 89% of teams have observability but only 37% have inline eval, creating a 52-point gap where agents appear healthy on dashboards while silently delivering poor-quality outputs to users."
+        answer: "The eval gap is the distance between having observability (knowing your agent ran) and having inline evaluation (knowing the output was correct). A late-2025 LangChain survey of 1,340 practitioners found 89% of teams have observability but only 37% run evals on production traffic — a 52-point gap where agents appear healthy on dashboards while silently delivering poor-quality outputs to users."
       },
     ],
     "the-eval-loop": [
@@ -161,13 +162,13 @@ export default async function BlogPost({
       <article className="mx-auto max-w-3xl px-6 pb-16 pt-32 lg:pt-40">
         {/* Header */}
         <div className="mb-10">
-          <a
+          <Link
             href="/blog"
             className="inline-flex items-center gap-1.5 text-[13px] text-text-muted transition-colors hover:text-text-accent"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             All posts
-          </a>
+          </Link>
           <h1 className="mt-6 font-display text-3xl font-extrabold tracking-tight text-text-primary md:text-4xl lg:text-5xl">
             {post.title}
           </h1>
@@ -227,12 +228,12 @@ export default async function BlogPost({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
               Get Started
             </a>
-            <a
+            <Link
               href="/#waitlist"
               className="inline-flex items-center rounded-xl border border-border-default px-6 py-3 text-[14px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary"
             >
               Join Cloud Waitlist
-            </a>
+            </Link>
           </div>
         </div>
       </article>

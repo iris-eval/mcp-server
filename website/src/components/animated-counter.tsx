@@ -22,11 +22,9 @@ export function AnimatedCounter({
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    if (!inView) return;
-    if (reduce) {
-      setDisplay(value);
-      return;
-    }
+    // Reduced-motion renders the final value directly (derived below) — the
+    // rAF loop only runs for animated counting.
+    if (!inView || reduce) return;
 
     let start: number | null = null;
     const step = (ts: number): void => {
@@ -39,9 +37,10 @@ export function AnimatedCounter({
     requestAnimationFrame(step);
   }, [inView, value, duration, reduce]);
 
+  const shown = reduce ? value : display;
   const formatted = decimals !== undefined
-    ? display.toFixed(decimals)
-    : Math.round(display).toLocaleString();
+    ? shown.toFixed(decimals)
+    : Math.round(shown).toLocaleString();
 
   return (
     <span ref={ref}>

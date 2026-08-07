@@ -13,15 +13,39 @@
   "tools": [
     {
       "name": "log_trace",
-      "description": "Log an agent execution trace with spans, tool calls, and metrics"
-    },
-    {
-      "name": "evaluate_output",
-      "description": "Evaluate agent output quality using configurable rules"
+      "description": "Persist a single agent execution trace (input, output, spans, tool calls, cost, latency, token usage)"
     },
     {
       "name": "get_traces",
-      "description": "Query stored traces with filters, pagination, and summary stats"
+      "description": "Query stored agent-execution traces with filters, pagination, and optional dashboard summary"
+    },
+    {
+      "name": "delete_trace",
+      "description": "Remove a single trace by id; cascades to spans, eval results keep the score history"
+    },
+    {
+      "name": "evaluate_output",
+      "description": "Score agent output against configurable eval rules and return a 0..1 score + per-rule breakdown"
+    },
+    {
+      "name": "evaluate_with_llm_judge",
+      "description": "Score agent output using an LLM as the judge (Anthropic or OpenAI) with a calibrated 0..1 score and rationale"
+    },
+    {
+      "name": "verify_citations",
+      "description": "Extract citations from agent output, fetch the cited sources, and use an LLM judge to check whether each source supports the claim"
+    },
+    {
+      "name": "deploy_rule",
+      "description": "Deploy a new custom evaluation rule that fires on every future evaluate_output call of its eval category"
+    },
+    {
+      "name": "list_rules",
+      "description": "Enumerate deployed custom evaluation rules from the local rule store"
+    },
+    {
+      "name": "delete_rule",
+      "description": "Remove a deployed custom evaluation rule; past eval results are preserved"
     }
   ],
   "resources": [
@@ -33,7 +57,7 @@
   "install": {
     "claude_desktop": {
       "mcpServers": {
-        "iris": {
+        "iris-eval": {
           "command": "npx",
           "args": [
             "-y",
