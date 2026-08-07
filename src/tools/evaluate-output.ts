@@ -11,7 +11,7 @@ const CustomRuleSchema = z.object({
     'regex_match', 'regex_no_match', 'min_length', 'max_length',
     'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold',
   ]),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   weight: z.number().optional(),
 });
 

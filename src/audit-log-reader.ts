@@ -31,7 +31,7 @@ const EntrySchema = z.object({
   user: z.string(),
   ruleId: z.string(),
   ruleName: z.string().optional(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 export interface AuditQueryFilter {

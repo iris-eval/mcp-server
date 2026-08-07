@@ -25,7 +25,7 @@ const RuleTypeSchema = z.enum([
 const DefinitionSchema = z.object({
   name: z.string().min(1).max(80),
   type: RuleTypeSchema,
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   weight: z.number().positive().optional(),
 });
 
