@@ -7,6 +7,8 @@ tags: [opentelemetry, observability, mcp, infrastructure, datadog, grafana, agen
 relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, state-of-mcp-agent-observability-2026]
 ---
 
+> **Editor's note (2026-07):** Written before v0.4 shipped. The OpenTelemetry export described below as roadmap **shipped in v0.4** (2026-04-24) — set `IRIS_OTEL_ENDPOINT` and traces flow to any OTLP collector today. Wording updated from future to present tense where it described the export.
+
 # MCP Meets OpenTelemetry: Bridging Agent Observability and Infrastructure Monitoring
 
 There are two worlds in production observability right now, and they do not talk to each other.
@@ -116,7 +118,7 @@ This structural compatibility is why we proposed standard trace schemas in [Towa
 
 ## The Export Path
 
-The Iris v0.4 roadmap includes OpenTelemetry trace export. Here is what this means in practice.
+Iris v0.4 shipped OpenTelemetry trace export. Here is what it means in practice.
 
 Iris continues to store traces locally in SQLite. That does not change. But it also exports spans to an OTel collector endpoint using the OTLP protocol. From the collector, traces flow into whatever backend you already run -- Datadog, Grafana Tempo, Jaeger, Honeycomb.
 
@@ -150,11 +152,11 @@ The future I am building toward is simple to describe: agent traces flow alongsi
 
 This means you open Grafana and see a trace that starts at the API gateway, passes through your orchestration service, enters the agent, fans out to LLM calls and tool invocations, and returns through the same path. Every span has timing, status, and attributes. The agent spans also carry eval scores, cost data, and quality signals. All in one view.
 
-We are not there yet. Iris today stores traces locally and serves them through its own dashboard. The OTel export in v0.4 is the bridge. Once Iris traces are in your OTel pipeline, the integration with existing dashboards, alerts, and runbooks follows naturally.
+Iris still stores traces locally and serves them through its own dashboard — the v0.4 OTel export is the bridge. Once Iris traces are in your OTel pipeline, the integration with existing dashboards, alerts, and runbooks follows naturally.
 
 If you are running agents in production and you already have a Datadog or Grafana deployment, this is the path to unified observability. Not replacing your monitoring stack. Extending it to cover the agent layer.
 
-Iris is open-source, MIT licensed. The code is at [github.com/iris-eval/mcp-server](https://github.com/iris-eval/mcp-server). Add it to your MCP config today, and when v0.4 ships, your agent traces will flow directly into the monitoring stack you already trust.
+Iris is open-source, MIT licensed. The code is at [github.com/iris-eval/mcp-server](https://github.com/iris-eval/mcp-server). Add it to your MCP config today, set `IRIS_OTEL_ENDPOINT`, and your agent traces flow directly into the monitoring stack you already trust.
 
 ```bash
 npx @iris-eval/mcp-server --dashboard

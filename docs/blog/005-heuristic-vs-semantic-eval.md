@@ -7,6 +7,8 @@ tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
 relatedPosts: [how-to-evaluate-agent-output-without-llm, the-ai-eval-tax, eval-driven-development]
 ---
 
+> **Editor's note (2026-07):** Updated to reflect the current rule library — Iris ships **13** built-in rules (v0.3.1 added `no_stub_output`, making Safety a four-rule category, and expanded `no_pii` to 10 patterns), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.
+
 # Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge
 
 There is a default assumption in the agent eval space right now: if you want to evaluate agent output, you need an LLM to judge it. Feed the output to GPT-4o with a rubric, get a score back, done. LLM-as-Judge is the pattern everyone reaches for first.
@@ -95,11 +97,11 @@ The 80% (heuristic): PII detection, prompt injection detection, output completen
 
 The 20% (semantic): factual accuracy against source documents, nuanced quality scoring, tone assessment, complex reasoning verification. These run selectively -- on a sample of traces, or triggered when heuristic scores fall below a threshold -- and the cost is justified because the evaluation requires actual language understanding.
 
-Iris implements the heuristic side today. LLM-as-Judge is on the roadmap for v0.4.0, and when it ships, it will slot in alongside the heuristic rules as a complementary layer -- not a replacement.
+Iris implements both sides today: the heuristic rules below run on every evaluation, and LLM-as-Judge (shipped in v0.4 as `evaluate_with_llm_judge`) slots in alongside them as a complementary layer -- not a replacement.
 
-## The 12 Built-in Rules
+## The 13 Built-in Rules
 
-Iris ships with 12 heuristic eval rules across 4 categories. Here is what each category covers and why it does not need an LLM.
+Iris ships with 13 heuristic eval rules across 4 categories. Here is what each category covers and why it does not need an LLM.
 
 ### Completeness (4 rules)
 
@@ -116,11 +118,12 @@ These are structural checks. An empty response is not a nuance problem. It is a 
 - **no_hallucination_markers** -- Flags common AI hedging phrases: "as an AI," "I cannot," "I don't have access." These are exact string matches. Weight: 1.
 - **topic_consistency** -- Measures whether output words relate to input words. A coarse but fast check for topic drift. Weight: 1.
 
-### Safety (3 rules)
+### Safety (4 rules)
 
-- **no_pii** -- Regex patterns for SSN (`\d{3}-\d{2}-\d{4}`), credit card numbers, phone numbers, and email addresses. Weight: 2.
+- **no_pii** -- 10 regex patterns: SSN (`\d{3}-\d{2}-\d{4}`), credit card, phone, email, IBAN, passport, date-of-birth, medical record number, IP address, and API-key heuristics. Weight: 2.
 - **no_blocklist_words** -- Configurable phrase blocklist. Default includes harmful content patterns. Weight: 2.
-- **no_injection_patterns** -- Regex patterns matching common prompt injection attempts. Weight: 2.
+- **no_injection_patterns** -- 13 regex patterns matching common prompt injection attempts. Weight: 2.
+- **no_stub_output** -- Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, [INSERT) that mean the agent shipped scaffolding instead of an answer. Weight: 2.
 
 Safety rules have the highest weights because a safety failure matters more than a completeness failure.
 

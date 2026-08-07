@@ -1,5 +1,5 @@
 {
-  "$comment": "Explicit exemptions for the hardcoded-claims scanner. Each entry justifies why a literal stays uncovered. As surfaces migrate to ~/lib/claims reader imports, entries here are removed.",
+  "$comment": "Explicit exemptions for the hardcoded-claims scanner. Each entry justifies why a match stays uncovered. Prefer line: '*' scoped to a pattern for FROZEN historical files (line pins shift and break — see PR #245/#246); use line pins only for active files where the exemption must stay surgical. As surfaces migrate to ~/lib/claims reader imports (code) or get refreshed to current truth (prose), entries here are removed.",
   "entries": [
     {
       "file": "CHANGELOG.md",
@@ -26,28 +26,16 @@
       "reason": "Generator regex source — not a real test-count claim."
     },
     {
-      "file": "docs/launch/directory-listing-template.md",
+      "file": "docs/roadmap.md",
       "pattern": "mcp-tool-count",
-      "line": 35,
-      "reason": "Historical launch copy describing the v0.1 surface (3 tools); template kept for reference."
-    },
-    {
-      "file": "docs/launch/show-hn-draft.md",
-      "pattern": "mcp-tool-count",
-      "line": 15,
-      "reason": "Historical Show HN draft from v0.1 era (3 tools); kept for reference, not for re-publication."
+      "line": "*",
+      "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 3 tools). Current-state claims are truthbase-driven elsewhere."
     },
     {
       "file": "docs/roadmap.md",
-      "pattern": "mcp-tool-count",
-      "line": 15,
-      "reason": "Historical v0.1 milestone description (3 tools); roadmap deliberately preserves per-version state."
-    },
-    {
-      "file": "docs/roadmap.md",
-      "pattern": "mcp-tool-count",
-      "line": 73,
-      "reason": "Per-version v0.4 description matches the released surface; roadmap entries are versioned snapshots, not derived counts. Migration candidate when roadmap renders from generator."
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 12 rules; v0.3.1 documents the 12→13 expansion)."
     },
     {
       "file": "docs/v0.4.1-candidates.md",
@@ -56,22 +44,82 @@
       "reason": "Hypothetical scenario reference (372 tests was current at write-time). Migration candidate when v0.4.1 ships."
     },
     {
-      "file": "website/src/components/cloud.tsx",
+      "file": "website/src/components/roadmap.tsx",
       "pattern": "mcp-tool-count",
-      "line": 17,
-      "reason": "Migration candidate — currently accurate (9 tools); reader migration deferred to follow-on PR alongside other website component sweeps."
-    },
-    {
-      "file": "website/src/components/nav.tsx",
-      "pattern": "mcp-tool-count",
-      "line": 35,
-      "reason": "Migration candidate — currently accurate (9 tools); reader migration deferred to follow-on PR."
+      "line": "*",
+      "reason": "Every row is a per-version historical snapshot (v0.1 = 3 tools, v0.4 = 9); wiring live counts into history would rewrite it."
     },
     {
       "file": "website/src/components/roadmap.tsx",
+      "pattern": "pii-pattern-count",
+      "line": "*",
+      "reason": "v0.3.1 row documents the pattern expansion as shipped then (10 PII) — historical row, correct as-of-version."
+    },
+    {
+      "file": "website/src/components/roadmap.tsx",
+      "pattern": "injection-pattern-count",
+      "line": "*",
+      "reason": "v0.3.1 row documents the pattern expansion as shipped then (13 injection) — historical row, correct as-of-version."
+    },
+    {
+      "file": "docs/launch/demo-script.md",
       "pattern": "mcp-tool-count",
-      "line": 11,
-      "reason": "Migration candidate — currently accurate (9 tools); roadmap component will absorb the migration when render-from-generator lands."
+      "line": "*",
+      "reason": "Frozen v0.1-era launch artifact with an in-file historical banner; not for reuse without full refresh."
+    },
+    {
+      "file": "docs/launch/demo-script.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Frozen v0.1-era launch artifact with an in-file historical banner; not for reuse without full refresh."
+    },
+    {
+      "file": "docs/launch/mcp-community-post.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Frozen v0.1-era launch artifact with an in-file historical banner; not for reuse without full refresh."
+    },
+    {
+      "file": "docs/launch/show-hn-draft.md",
+      "pattern": "mcp-tool-count",
+      "line": "*",
+      "reason": "Frozen v0.1-era template with an in-file historical banner; the real Show HN gets composed fresh."
+    },
+    {
+      "file": "docs/launch/show-hn-draft.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Frozen v0.1-era template with an in-file historical banner; the real Show HN gets composed fresh."
+    },
+    {
+      "file": "docs/launch/reddit-posts.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Frozen mixed-era launch drafts with an in-file historical banner; not for posting without full refresh."
+    },
+    {
+      "file": "docs/launch/reddit-posts.md",
+      "pattern": "injection-pattern-count",
+      "line": "*",
+      "reason": "Frozen mixed-era launch drafts with an in-file historical banner (v0.1 shipped 5 injection patterns)."
+    },
+    {
+      "file": "docs/launch/twitter-thread.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Frozen v0.1-era launch artifact with an in-file historical banner; not for reposting without full refresh."
+    },
+    {
+      "file": "docs/blog/devto/007-evaluate-without-llm.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dev.to syndication snapshot — records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
+    },
+    {
+      "file": "docs/blog/devto/heuristic-vs-semantic-eval.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dev.to syndication snapshot — records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
     }
   ]
 }

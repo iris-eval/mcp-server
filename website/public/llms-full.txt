@@ -27,7 +27,12 @@ Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemi
       }
     }
 
-Claude Code:
+Claude Code (plugin — includes an agent-eval skill that guides eval workflows):
+
+    /plugin marketplace add iris-eval/mcp-server
+    /plugin install iris-eval@iris-eval
+
+Claude Code (plain MCP server, no plugin):
 
     claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
 
@@ -69,7 +74,7 @@ Categories: completeness, relevance, safety, cost.
 
 Rules: nonEmptyOutput, minOutputLength, noStubOutput, sentenceCount, expectedCoverage, keywordOverlap, topicConsistency, noPii, noInjectionPatterns, noHallucinationMarkers, noBlocklistWords, costUnderThreshold, tokenEfficiency.
 
-Safety depth: 12 PII patterns (SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, and more), 14 prompt-injection patterns, 18 hallucination markers, stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
+Safety depth: 10 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key), 13 prompt-injection patterns, 17 hallucination markers, stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Trust signals
 

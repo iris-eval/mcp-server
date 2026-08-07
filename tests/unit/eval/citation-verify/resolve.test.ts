@@ -74,6 +74,40 @@ describe('isSafeHost (SSRF guard)', () => {
     expect(isSafeHost('172.15.0.1')).toBe(true);
     expect(isSafeHost('172.32.0.1')).toBe(true);
   });
+
+  // Regression: WHATWG URL parsing yields IPv6 literals WITH brackets
+  // (`new URL('http://[::1]/').hostname === '[::1]'`), which the resolver
+  // passes straight to isSafeHost. The previous ^-anchored regexes never
+  // matched the bracketed form, so every IPv6 private/loopback/metadata
+  // target passed as "safe" and (being an IP literal) also skipped the DNS
+  // re-check. These assert the guard works on the ACTUAL runtime input.
+  it('blocks bracketed IPv6 literals as passed by URL.hostname', () => {
+    expect(isSafeHost('[::1]')).toBe(false); // loopback
+    expect(isSafeHost('[fe80::1]')).toBe(false); // link-local
+    expect(isSafeHost('[fd00::1]')).toBe(false); // unique-local
+    expect(isSafeHost('[fc00::abcd]')).toBe(false); // unique-local
+    expect(isSafeHost('[::]')).toBe(false); // unspecified
+  });
+
+  it('blocks IPv4-mapped IPv6 reaching private / metadata endpoints', () => {
+    // Both bare and bracketed; both dotted and WHATWG-hex serializations.
+    expect(isSafeHost('::ffff:127.0.0.1')).toBe(false);
+    expect(isSafeHost('[::ffff:169.254.169.254]')).toBe(false); // AWS IMDS
+    expect(isSafeHost('[::ffff:a9fe:a9fe]')).toBe(false); // same, hex form
+    expect(isSafeHost('[::ffff:10.0.0.1]')).toBe(false);
+    expect(isSafeHost('[::ffff:192.168.1.1]')).toBe(false);
+  });
+
+  it('still allows public IPv6 (bracketed or bare)', () => {
+    expect(isSafeHost('[2606:4700::1111]')).toBe(true);
+    expect(isSafeHost('2606:4700::1111')).toBe(true);
+    expect(isSafeHost('[::ffff:8.8.8.8]')).toBe(true); // public IPv4-mapped
+  });
+
+  it('fails closed on malformed IPv6-shaped hosts', () => {
+    expect(isSafeHost('[:::1]')).toBe(false);
+    expect(isSafeHost('[gggg::1]')).toBe(false);
+  });
 });
 
 describe('resolveAndCheckHost (DNS rebinding guard)', () => {
@@ -174,6 +208,21 @@ describe('resolveSource', () => {
     await expect(
       resolveSource('http://169.254.169.254/latest/meta-data', { allowFetch: true }),
     ).rejects.toMatchObject({ kind: 'ssrf' });
+  });
+
+  it('refuses IPv6 literal SSRF targets before fetching', async () => {
+    const fetchSpy = vi.fn(async () => textResponse('secret')) as typeof fetch;
+    global.fetch = fetchSpy;
+    for (const url of [
+      'http://[::1]/secret', // IPv6 loopback
+      'http://[fd00::1]/secret', // IPv6 unique-local
+      'http://[::ffff:169.254.169.254]/latest/meta-data', // IPv4-mapped IMDS
+    ]) {
+      await expect(resolveSource(url, { allowFetch: true })).rejects.toMatchObject({
+        kind: 'ssrf',
+      });
+    }
+    expect((fetchSpy as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
   });
 
   it('refuses fetch when public hostname DNS-rebinds to a private IP', async () => {

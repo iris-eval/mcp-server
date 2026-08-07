@@ -7,6 +7,8 @@ tags: [eval, agents, mcp, tutorial, heuristics, observability]
 relatedPosts: [heuristic-vs-semantic-eval, eval-driven-development, output-quality-score]
 ---
 
+> **Editor's note (2026-07):** Updated for the current release — Iris now registers **nine** MCP tools (this walkthrough uses the three core ones) and ships **13** built-in rules (v0.3.1 added `no_stub_output`). The original text described the v0.1-era three-tool, 12-rule surface.
+
 # How to Evaluate AI Agent Output Without Calling Another LLM
 
 Here is the default approach to evaluating agent output in 2026: take the output, send it to another LLM, ask that LLM to judge quality, and trust the result.
@@ -50,7 +52,7 @@ That is the entire integration. When your agent starts, it queries its configure
 
 ## What Your Agent Discovers
 
-Once Iris is in the MCP config, your agent has access to three tools:
+Once Iris is in the MCP config, your agent has access to nine tools. The three core ones this walkthrough uses:
 
 - **`log_trace`** — Record an agent execution with input, output, tool calls, latency, token usage, and cost.
 - **`evaluate_output`** — Run deterministic eval rules against an output and get pass/fail scores.
@@ -125,7 +127,7 @@ No LLM call. No latency spike. The eval caught a real problem: the agent include
 
 ## The Eval Categories
 
-Iris ships with 12 built-in eval rules across four categories. Each one is a deterministic check — regex, heuristics, or arithmetic. No LLM involved.
+Iris ships with 13 built-in eval rules across four categories. Each one is a deterministic check — regex, heuristics, or arithmetic. No LLM involved.
 
 ### Completeness
 

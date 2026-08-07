@@ -1,5 +1,7 @@
 # MCP Discord / Community Post
 
+> **📁 Historical launch artifact (v0.1 era, March 2026).** Version, tool counts, and the "first MCP-native" framing reflect the original launch copy. Kept for record — do not repost without a full refresh against `.claims.json` and the current positioning ("the agent eval standard for MCP", no "first" superlative).
+
 ---
 
 ## Iris: First MCP-Native Eval & Observability Server

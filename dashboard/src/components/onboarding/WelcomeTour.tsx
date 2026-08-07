@@ -188,7 +188,7 @@ export function WelcomeTour({
           <>
             <p style={styles.text}>
               Iris is the agent eval standard for MCP. Every trace your agents log gets scored
-              against 13 built-in rules covering completeness, relevance, safety, and cost.
+              against {__IRIS_RULE_COUNT__} built-in rules covering completeness, relevance, safety, and cost.
             </p>
             <p style={styles.text}>
               The next 4 steps introduce the system-design ideas that make Iris different from

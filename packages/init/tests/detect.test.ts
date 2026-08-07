@@ -6,22 +6,43 @@ import {
 } from '../src/detect.js';
 
 describe('detect', () => {
-  it('returns four supported profiles', () => {
+  it('returns ten supported profiles', () => {
     const profiles = allProfiles();
-    expect(profiles).toHaveLength(4);
+    expect(profiles).toHaveLength(10);
     expect(profiles.map((p) => p.id).sort()).toEqual([
       'claude-code',
+      'claude-desktop',
+      'cline',
+      'codex',
       'continue',
       'cursor',
+      'gemini',
+      'vscode',
       'windsurf',
+      'zed',
     ]);
   });
 
   it('configPathFor returns a non-empty path per supported client', () => {
     expect(configPathFor('claude-code')).toMatch(/\.claude/);
+    expect(configPathFor('claude-desktop')).toMatch(/Claude/);
     expect(configPathFor('cursor')).toMatch(/\.cursor/);
     expect(configPathFor('windsurf')).toMatch(/codeium/);
     expect(configPathFor('continue')).toMatch(/\.continue/);
+    expect(configPathFor('vscode')).toMatch(/mcp\.json/);
+    expect(configPathFor('cline')).toMatch(/cline_mcp_settings/);
+    expect(configPathFor('zed')).toMatch(/[Zz]ed/);
+    expect(configPathFor('codex')).toMatch(/\.codex/);
+    expect(configPathFor('gemini')).toMatch(/\.gemini/);
+  });
+
+  it('new clients use the correct config strategies', () => {
+    expect(profileFor('vscode').configMode).toBe('vscode-servers');
+    expect(profileFor('zed').configMode).toBe('zed-context-servers');
+    expect(profileFor('codex').configMode).toBe('codex-toml');
+    expect(profileFor('claude-desktop').configMode).toBe('dedicated-mcp-json');
+    expect(profileFor('cline').configMode).toBe('dedicated-mcp-json');
+    expect(profileFor('gemini').configMode).toBe('dedicated-mcp-json');
   });
 
   it('profileFor returns the correct displayName per client', () => {

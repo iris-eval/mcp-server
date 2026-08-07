@@ -71,6 +71,27 @@ async function captureScope(scope) {
   return summary;
 }
 
+// Playwright E2E is captured STATICALLY — the spec inventory is deterministic
+// from the repo, and spawning browsers here would couple every capture to a
+// full E2E run. total = bare `test(` cases across tests/e2e/*.spec.ts;
+// passed/failed stay null (only a live run knows those); browsers come from
+// the project names in playwright.config.ts. CI runs the suite separately
+// (test:e2e job), so the claim is "these specs exist and run in CI".
+async function capturePlaywrightStatic() {
+  const { readdir } = await import('node:fs/promises');
+  const e2eDir = resolve(root, 'tests/e2e');
+  const entries = await readdir(e2eDir);
+  let total = 0;
+  for (const entry of entries) {
+    if (!entry.endsWith('.spec.ts')) continue;
+    const src = await readFile(resolve(e2eDir, entry), 'utf-8');
+    total += (src.match(/^\s*test\(/gm) ?? []).length;
+  }
+  const pwConfig = await readFile(resolve(root, 'playwright.config.ts'), 'utf-8');
+  const browsers = [...pwConfig.matchAll(/name:\s*'([^']+)'/g)].map(m => m[1]);
+  return { total: total > 0 ? total : null, passed: null, failed: null, browsers };
+}
+
 async function captureScopeWithFallback(scope, fallback) {
   try {
     const summary = await captureScope(scope);
@@ -105,7 +126,14 @@ async function main() {
   const dashboardCounts = await captureScopeWithFallback('dashboard', existingTests.vitestDashboard);
 
   const integration = existingTests.integration ?? { total: null, passed: null, failed: null };
-  const playwrightE2E = existingTests.playwrightE2E ?? { total: null, passed: null, failed: null, browsers: [] };
+
+  let playwrightE2E;
+  try {
+    playwrightE2E = await capturePlaywrightStatic();
+  } catch (err) {
+    console.warn('[claims:capture-tests] WARN — static Playwright capture failed:', err.message);
+    playwrightE2E = existingTests.playwrightE2E ?? { total: null, passed: null, failed: null, browsers: [] };
+  }
 
   const totalCombined =
     (rootCounts.total ?? 0) +

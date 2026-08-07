@@ -7,7 +7,9 @@ import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js'
  * patterns evaluate. Word-boundary anchors avoid matching inside larger
  * strings where appropriate.
  */
-const PII_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
+// Exported so the claims drift test can assert .claims.json counts against
+// the runtime truth (tests/claims-eval-rules-counts.test.ts).
+export const PII_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   // Original v0.3.0 patterns
   { name: 'SSN', pattern: /\b\d{3}-\d{2}-\d{4}\b/ },
   { name: 'Credit Card', pattern: /\b(?:\d{4}[-\s]?){3}\d{4}\b/ },
@@ -86,7 +88,7 @@ export const noBlocklistWords: EvalRule = {
  * leaks, or role-override acknowledgments). Input-side detection is the
  * agent host's job; output-side is Iris's.
  */
-const INJECTION_PATTERNS = [
+export const INJECTION_PATTERNS = [
   // Original v0.3.0 patterns
   /ignore (?:all )?(?:previous|above|prior) (?:instructions|prompts)/i,
   /you are now (?:a |in )/i,

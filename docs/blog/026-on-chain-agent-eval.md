@@ -8,6 +8,8 @@ relatedPosts: [the-eval-gap, self-calibrating-eval, the-ai-eval-tax]
 devto_tags: [ai, blockchain, security, programming]
 ---
 
+> **Editor's note (2026-07):** Updated for source discipline — the SCONE-bench description now reflects that Anthropic's red-team tested multiple frontier models (not Claude alone) and links the research; the Clawdbot section now clearly separates two distinct events (one agent's autonomous contract deployment, and the later discovery of exposed instances); and adoption figures are marked as industry estimates.
+
 # Why On-Chain Agent Actions Need Pre-Flight Eval
 
 There's no undo button on a blockchain.
@@ -18,17 +20,19 @@ And yet, that's exactly what's happening.
 
 ## The Numbers That Should Scare You
 
-There are now **250,000+ AI agents executing on-chain daily**, a 400% increase over 2025. 68% of new DeFi protocols in Q1 2026 include at least one autonomous AI agent. 41% of crypto hedge funds are testing on-chain AI agents for trading, rebalancing, and yield optimization.
+Industry estimates put it at **250,000+ AI agents executing on-chain daily** — a roughly 400% increase over 2025 — with 68% of new DeFi protocols in Q1 2026 including at least one autonomous AI agent and 41% of crypto hedge funds testing on-chain agents for trading, rebalancing, and yield optimization. (Early-2026 ecosystem estimates; the direction is unambiguous even where the precision isn't.)
 
-The losses keep pace. **$3.4 billion was stolen from crypto platforms in 2025.** Not from AI agents specifically — not yet. But Anthropic's SCONE-bench research, which red-teamed Claude against 405 smart contracts, found **$550 million in simulated exploits** that an AI agent could execute or be tricked into executing. These aren't theoretical attack surfaces. They're the exact patterns that autonomous agents will encounter in production.
+The losses keep pace. A reported **$3.4 billion was stolen from crypto platforms in 2025.** Not from AI agents specifically — not yet. But [Anthropic's SCONE-bench research](https://red.anthropic.com/2025/smart-contracts/), which red-teamed frontier models against 405 smart contracts with known historical exploits, found **$550 million in simulated exploits** that AI agents could execute or be tricked into executing. These aren't theoretical attack surfaces. They're the exact patterns that autonomous agents will encounter in production.
 
 The collision course is obvious. More agents, more autonomy, more value at risk, zero pre-execution safety checks.
 
 ## The Clawdbot Problem
 
-In early 2026, an AI agent called @clawdbotatg deployed a smart contract to a public blockchain. No human audit. No review. The agent decided to deploy, constructed the contract, signed the transaction, and shipped it on-chain. Over 900 Clawdbot instances were later found running with no authentication and no evaluation layer.
+In early 2026, an AI agent called @clawdbotatg deployed a smart contract to a public blockchain. No human audit. No review. The agent decided to deploy, constructed the contract, signed the transaction, and shipped it on-chain.
 
-This isn't a cautionary tale from a research paper. It happened. An AI agent wrote and deployed immutable financial code with nobody checking whether the code was safe, correct, or even intentional.
+Separately — and this is a second incident, not the same one — security researchers later found **over 900 Clawdbot instances running exposed on the public internet** with no authentication and, of course, no evaluation layer between agent decision and agent action.
+
+Neither is a cautionary tale from a research paper. Both happened. An AI agent wrote and deployed immutable financial code with nobody checking whether the code was safe, correct, or even intentional — and hundreds of similar agents were reachable by anyone who found them.
 
 Now scale that to 250,000 agents. Now add real money.
 

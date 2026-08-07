@@ -28,12 +28,12 @@
     "lucide-react": "^1.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.17.0",
+    "react-router-dom": "^7.18.2",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.3.5",
-    "@storybook/react-vite": "^10.4.3",
+    "@storybook/react-vite": "^10.4.6",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -51,9 +51,10 @@
     "storybook": "^10.3.5",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.9"
   },
   "overrides": {
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "ws": "^8.21.0"
   }
 }

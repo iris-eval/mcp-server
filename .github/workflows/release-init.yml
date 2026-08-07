@@ -1,0 +1,61 @@
+# Release workflow for @iris-eval/init (the universal installer).
+#
+# Mirrors release.yml's OIDC Trusted Publishing pattern (audit item #9):
+# `id-token: write` grants a GitHub-signed identity token used for BOTH
+# provenance attestation (--provenance) and publish auth — no NPM_TOKEN,
+# ever (see PR #176 incident notes for why).
+#
+# Fires only on init-v* tags (e.g. init-v0.2.0), so this workflow is inert
+# until a release is deliberately cut. Prerequisite before the first tag:
+# @iris-eval/init must exist on npm (one-time bootstrap publish — npm
+# Trusted Publishing cannot be configured for a package that does not
+# exist yet) AND the package must be configured on npmjs.com with this
+# repo + release-init.yml as a trusted publisher.
+name: Release init
+
+on:
+  push:
+    tags:
+      - 'init-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish @iris-eval/init
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm --provenance + Trusted Publishing token exchange
+    defaults:
+      run:
+        working-directory: packages/init
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.x.
+      # Pinned to an exact version, not `@latest`: a release job that installs
+      # whatever npm publishes at tag-time takes an untested (and unreviewable)
+      # supply-chain dependency on the npm CLI right before it publishes with
+      # our OIDC identity. Bump deliberately; keep it >= 11.5.1.
+      - name: Upgrade npm for Trusted Publishing (OIDC, >= 11.5.1)
+        run: |
+          npm install -g npm@11.19.0
+          npm --version
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#init-v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "FATAL: tag init-v$TAG_VERSION != package.json $PKG_VERSION" && exit 1
+          fi
+      # No NODE_AUTH_TOKEN: auth is the OIDC token exchange. A hard failure
+      # here is a real failure — never swallow it (PR #176 lesson).
+      - run: npm publish --access public --provenance

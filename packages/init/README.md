@@ -10,7 +10,7 @@
 npx @iris-eval/init claude-code      # install for Claude Code
 npx @iris-eval/init cursor           # install for Cursor
 npx @iris-eval/init windsurf         # install for Windsurf
-npx @iris-eval/init continue         # install for Continue
+npx @iris-eval/init zed              # install for Zed
 ```
 
 After install, **restart your client**. The next agent call gets scored by Iris.
@@ -23,14 +23,13 @@ npx @iris-eval/init --help                       # full help
 npx @iris-eval/init <client> --uninstall         # remove the iris entry from <client>
 ```
 
-## Supported clients (Phase 1)
+## Supported clients (all ten)
 
-- **Claude Code** → writes to `~/.claude/mcp.json`
-- **Cursor** → writes to `~/.cursor/mcp.json`
-- **Windsurf** → writes to `~/.codeium/windsurf/mcp_config.json`
-- **Continue** → writes to `~/.continue/config.json` (preserves your `models`, `customCommands`, etc.)
+`claude-code` · `claude-desktop` · `cursor` · `windsurf` · `continue` · `vscode` · `cline` · `zed` · `codex` · `gemini`
 
-Phase 2 will add Raycast, Zed, and Cline. Phase 3 will add MCP-spec-driven auto-detection for any unrecognized client.
+Each client gets its config written to the correct OS-specific path (e.g. Claude Code → `~/.claude/mcp.json`, Windsurf → `~/.codeium/windsurf/mcp_config.json`, Zed → `settings.json` `context_servers`), preserving every entry you already have. Run `npx @iris-eval/init --list` to see which clients are detected on your machine.
+
+A future release adds MCP-spec-driven auto-detection for unrecognized clients.
 
 For per-client install docs, friction notes, and troubleshooting, see [iris-eval.com/docs/clients](https://iris-eval.com/docs/clients).
 

@@ -1,6 +1,6 @@
 # Iris Roadmap
 
-Public roadmap for `@iris-eval/mcp-server`. Updated 2026-04-22.
+Public roadmap for `@iris-eval/mcp-server`. Updated 2026-07-07.
 
 The canonical public version lives at [iris-eval.com#roadmap](https://iris-eval.com/#roadmap). This file mirrors it with the per-version detail that doesn't fit on the marketing page.
 
@@ -86,7 +86,7 @@ Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export 
 
 ## v0.5 -- Cloud Tier
 
-**Status: Planned** — post-YC (summer 2026 target).
+**Status: Planned** — the next major release; timing follows design-partner traction.
 
 Managed Iris. Hosted, multi-tenant, team-collaboration-ready.
 

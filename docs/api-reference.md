@@ -376,7 +376,7 @@ Enumerate deployed custom eval rules. Read-only; returns the full rule catalog w
       "severity": "medium",
       "enabled": true,
       "createdAt": "2026-04-22T14:00:00Z",
-      "definition": { "name": "min-length-40", "type": "min_length", "config": { "min": 40 } }
+      "definition": { "name": "min-length-40", "type": "min_length", "config": { "min_length": 40 } }
     }
   ],
   "total": 1
@@ -827,7 +827,7 @@ Health check endpoint. Reports server status and storage connectivity.
 ```json
 {
   "status": "ok",
-  "version": "0.4.0",
+  "version": "0.4.4",
   "uptime_seconds": 3600,
   "trace_count": 142,
   "storage": "connected"
@@ -841,7 +841,7 @@ The `version` field is sourced dynamically from `package.json` at runtime (see `
 ```json
 {
   "status": "degraded",
-  "version": "0.4.0",
+  "version": "0.4.4",
   "uptime_seconds": 3600,
   "storage": "disconnected"
 }

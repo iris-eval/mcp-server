@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const PUBS = [
   {
     type: "Report",
@@ -60,10 +62,10 @@ export function Research(): React.ReactElement {
         </div>
 
         <div className="mt-10 text-center">
-          <a href="/blog" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-text-accent transition-colors hover:text-iris-400">
+          <Link href="/blog" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-text-accent transition-colors hover:text-iris-400">
             View all posts
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-          </a>
+          </Link>
         </div>
 
         {/* Survey */}
