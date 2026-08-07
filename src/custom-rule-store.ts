@@ -23,7 +23,8 @@
  * For now we use atomic write-via-rename so a crashed write doesn't
  * leave a half-file.
  */
-import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync, appendFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { writeAtomic } from './utils/write-atomic.js';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -255,13 +256,6 @@ function appendAudit(auditPath: string, entry: AuditLogEntry): void {
     // Audit best-effort. If filesystem is read-only or full, the deploy
     // still succeeds; the operator just loses the audit trail.
   }
-}
-
-function writeAtomic(targetPath: string, contents: string): void {
-  mkdirSync(dirname(targetPath), { recursive: true });
-  const tmp = `${targetPath}.tmp.${process.pid}`;
-  writeFileSync(tmp, contents, 'utf-8');
-  renameSync(tmp, targetPath);
 }
 
 function loadRulesFromDisk(rulesPath: string): DeployedCustomRule[] {

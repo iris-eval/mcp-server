@@ -18,7 +18,8 @@
  * /moments), dismissedTours, archivedMoments. These let the dashboard
  * remember the user's last view across reloads + across iris-mcp restarts.
  */
-import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { writeAtomic } from './utils/write-atomic.js';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { z } from 'zod';
@@ -89,13 +90,6 @@ function freshPreferences(): Preferences {
     dismissedTours: [],
     archivedMoments: [],
   });
-}
-
-function writeAtomic(targetPath: string, contents: string): void {
-  mkdirSync(dirname(targetPath), { recursive: true });
-  const tmp = `${targetPath}.tmp.${process.pid}`;
-  writeFileSync(tmp, contents, 'utf-8');
-  renameSync(tmp, targetPath);
 }
 
 export function loadOrInitPreferences(customPath?: string): PreferenceState {
