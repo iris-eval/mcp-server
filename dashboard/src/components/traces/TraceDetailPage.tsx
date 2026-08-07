@@ -5,7 +5,7 @@
  * the resource-specific summary card + semantic sections wrapped in
  * <section aria-labelledby> so AT users can navigate by structure.
  */
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router';
 import { useTraceDetail } from '../../api/hooks';
 import { SpanTree } from './SpanTree';
 import { ToolCallCard } from './ToolCallCard';

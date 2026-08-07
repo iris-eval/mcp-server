@@ -21,7 +21,7 @@
  * survives across browser reloads AND iris-mcp restarts.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useCommandPalette } from '../command/CommandPaletteProvider';
 import { useFocusTrap } from '../shared/useFocusTrap';

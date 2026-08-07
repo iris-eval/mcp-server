@@ -12,7 +12,7 @@
  *   - run: function executed when the command is selected
  *   - section: visual grouping in the palette
  */
-import type { NavigateFunction } from 'react-router-dom';
+import type { NavigateFunction } from 'react-router';
 
 export type CommandSection = 'Navigate' | 'Filter' | 'Action' | 'Help';
 

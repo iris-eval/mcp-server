@@ -14,7 +14,7 @@
  * The chrome `<Header>` (v2.B) carries the page identity ("Dashboard").
  * No inline page header — keeps a single h1 per route.
  */
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { ViewTabs, resolveView } from './ViewTabs';
 import { HealthView, HealthViewToolbar } from './HealthView';
 import { DriftView, DriftViewToolbar } from './DriftView';

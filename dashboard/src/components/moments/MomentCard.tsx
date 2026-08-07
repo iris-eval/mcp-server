@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { DecisionMoment } from '../../api/types';
 import { formatCost, formatLatency, formatTimeAgo } from '../../utils/formatters';
 import { getSignificanceVisual, getVerdictVisual } from './significance';

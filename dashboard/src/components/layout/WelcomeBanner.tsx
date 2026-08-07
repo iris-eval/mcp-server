@@ -11,7 +11,7 @@
  *   - where to go next
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 const STORAGE_KEY = 'iris-welcome-banner-dismissed';
 

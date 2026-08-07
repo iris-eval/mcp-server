@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router';
 import { Shell } from './components/layout/Shell';
 import { ThemeProvider } from './components/layout/ThemeProvider';
 import { DensitySync } from './components/layout/DensitySync';

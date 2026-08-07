@@ -11,7 +11,7 @@
  * we never write "notification objects" separately.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Bell, Sparkles, Trash2, ToggleRight, PencilLine } from 'lucide-react';
 import { Icon } from '../shared/Icon';
 import { useAuditLog } from '../../api/hooks';

@@ -6,7 +6,7 @@
  * editing of existing rules is deferred to v0.4.1 (full editor surface).
  */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Sparkles } from 'lucide-react';
 import { useCustomRules } from '../../api/hooks';
 import { api } from '../../api/client';
