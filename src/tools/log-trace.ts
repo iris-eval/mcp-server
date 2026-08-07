@@ -22,11 +22,11 @@ const SpanSchema = z.object({
   status_message: z.string().optional(),
   start_time: z.string(),
   end_time: z.string().optional(),
-  attributes: z.record(z.unknown()).optional(),
+  attributes: z.record(z.string(), z.unknown()).optional(),
   events: z.array(z.object({
     name: z.string(),
     timestamp: z.string(),
-    attributes: z.record(z.unknown()).optional(),
+    attributes: z.record(z.string(), z.unknown()).optional(),
   })).optional(),
 });
 
@@ -45,7 +45,7 @@ const inputSchema = {
   latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
   token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
   cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
-  metadata: z.record(z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
+  metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
   spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events)'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
 };

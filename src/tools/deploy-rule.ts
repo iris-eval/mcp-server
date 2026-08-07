@@ -28,7 +28,7 @@ const CustomRuleDefinitionSchema = z.object({
     'json_schema',
     'cost_threshold',
   ]),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   weight: z.number().optional(),
 });
 

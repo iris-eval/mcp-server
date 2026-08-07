@@ -93,7 +93,7 @@ const DefinitionSchema = z
   .object({
     name: z.string().min(1).max(80),
     type: z.enum(RULE_TYPE_VALUES),
-    config: z.record(z.unknown()),
+    config: z.record(z.string(), z.unknown()),
     weight: z.number().positive().optional(),
   })
   .superRefine((def, ctx) => {
