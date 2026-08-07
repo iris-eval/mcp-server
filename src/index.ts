@@ -91,7 +91,9 @@ Environment variables (CLI flags take precedence):
   IRIS_DASHBOARD                       true to enable web dashboard
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
   IRIS_API_KEY                         API key for HTTP authentication
-  IRIS_ALLOWED_ORIGINS                 Comma-separated CORS origin allowlist
+  IRIS_ALLOWED_ORIGINS                 Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. http://localhost:*).
+                                       HTTP transport: exact-match Origin allowlist for DNS-rebinding protection (globs ignored;
+                                       this server's own loopback origins are always allowed).
   IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
   IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
   IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)
