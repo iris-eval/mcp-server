@@ -15,7 +15,17 @@ RUN npm run build
 # ../.claims.json for __IRIS_RULE_COUNT__) — must be in the build context.
 COPY .claims.json ./
 COPY dashboard/ dashboard/
-RUN cd dashboard && npm install && npm run build
+# `npm ci` (not `npm install`): installs exactly what dashboard/package-lock.json
+# pins, integrity hashes included, so the image is reproducible and a drifted
+# lockfile fails the build loudly instead of resolving to something else.
+#
+# This used `npm install` because a Windows-generated lockfile prunes the
+# Linux-only @emnapi entries rolldown needs, which made `npm ci` fail here
+# (reference_rolldown_lockfile_trap). Lockfiles are now regenerated on Linux,
+# so that no longer applies — verified on Linux against the current lockfile:
+# `npm ci` installs 420 packages (exit 0) and `npm run build` succeeds.
+# Closes the Scorecard Pinned-Dependencies finding on this file.
+RUN cd dashboard && npm ci && npm run build
 
 FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS production
 
