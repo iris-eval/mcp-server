@@ -35,6 +35,12 @@ echo ""
 
 # Core manifests
 check_version "server.json" ".version"
+# server.json ALSO carries the npm version inside packages[] — the reference
+# clients follow to install. It drifted to 0.4.4 while the top-level version
+# said 0.4.5, and this gate passed because it only looked at `.version`.
+# Publishing that to the MCP Registry would have advertised 0.4.5 while
+# pointing installs at the previous (vulnerable) package.
+check_version "server.json" ".packages[0].version"
 check_version "package-lock.json" ".version"
 
 # Agent discovery endpoint
