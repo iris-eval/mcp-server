@@ -166,6 +166,41 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Decision:** **Patch** — Dependabot #177 (qs 6.15.2) queued in the 2026-06-09 drain; `tolerable_risk` analysis on record had the patch lagged.
 - **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
 
+### 2026-08-06 — four HIGH advisories remediated by override; remaining hono-family advisories triaged
+
+**Why this batch exists.** `npm audit --audit-level=high` is a step in the `lint-and-typecheck` CI job. Four HIGH advisories had accumulated at root (`brace-expansion`, `fast-uri`, `ip-address`, `postcss`), so that step exited non-zero on **every** pull request — including every Dependabot PR proposing the individual fixes. No single-package PR could turn the job green, because three other HIGHs would still be present. CI was deadlocked by the very advisories it was blocking the fixes for. This batch resolves all four at once via `overrides`, restoring a green gate.
+
+**Remediated (no longer reported by `npm audit`):**
+
+| Advisory(ies) | Package | Was → Now | Decision |
+|---|---|---|---|
+| [GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp), [GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg), [GHSA-rgw5-rvv9-x895](https://github.com/advisories/GHSA-rgw5-rvv9-x895), [GHSA-jxxr-4gwj-5jf2](https://github.com/advisories/GHSA-jxxr-4gwj-5jf2) | `brace-expansion` | 5.0.5 → 5.0.9 | **Override** `^5.0.7` |
+| [GHSA-4c8g-83qw-93j6](https://github.com/advisories/GHSA-4c8g-83qw-93j6), [GHSA-7p8r-x3mc-p8w7](https://github.com/advisories/GHSA-7p8r-x3mc-p8w7), [GHSA-v2hh-gcrm-f6hx](https://github.com/advisories/GHSA-v2hh-gcrm-f6hx) | `fast-uri` | 3.1.2 → 3.1.5 | **Override** `^3.1.5` (raised from `^3.1.2`) |
+| [GHSA-mwp4-54f8-5fhr](https://github.com/advisories/GHSA-mwp4-54f8-5fhr), [GHSA-4xrf-jv44-h6hh](https://github.com/advisories/GHSA-4xrf-jv44-h6hh), [GHSA-22jq-vg5j-6vgg](https://github.com/advisories/GHSA-22jq-vg5j-6vgg) | `ip-address` | 10.2.0 → 10.4.0 | **Override** `^10.4.0` |
+| [GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849), [GHSA-fxqj-rqcc-2cmp](https://github.com/advisories/GHSA-fxqj-rqcc-2cmp) | `postcss` | 8.5.15 → 8.5.26 | **Override** `^8.5.25` |
+
+All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri` ← ajv ← MCP SDK, `ip-address` ← express-rate-limit, `postcss` ← vite ← vitest), so `overrides` is the correct lever — there is no direct dependency to bump. The prior per-advisory reachability analyses above remain accurate; these are now moot in practice because the fixed versions are installed.
+
+**Lockfile provenance:** `package-lock.json` was regenerated under **Linux (WSL)** with `npm install --package-lock-only`, not on Windows. A Windows regeneration prunes the Linux-only `@emnapi/core` / `@emnapi/runtime` top-level entries that rolldown needs, producing a lockfile that fails `npm ci` on CI — the Session-28 incident recorded in `reference_rolldown_lockfile_trap`. Verified after regen: all three `@emnapi` entries present, zero package entries removed, integrity hashes balanced.
+
+**Load-graph correction (supersedes the "hono is never loaded" claim in the rows above).** `@modelcontextprotocol/sdk@1.29.0` rearchitected `StreamableHTTPServerTransport` into a thin wrapper over a Web-Standard transport. `dist/esm/server/streamableHttp.js:9` now **statically imports** `getRequestListener` from `@hono/node-server`, and iris's HTTP transport (`src/transport/http.ts:4`) imports that module — so on the **HTTP transport**, `@hono/node-server` IS loaded into iris's process. (On the default **stdio** transport it is not.) What iris uses from it is exactly one function, `getRequestListener`, a Node↔Web request/response bridge. Verified 2026-08-06: that code path pulls no `hono` core module, and `serveStatic` has zero call sites in `src/`.
+
+#### [GHSA-frvp-7c67-39w9](https://github.com/advisories/GHSA-frvp-7c67-39w9) — @hono/node-server serveStatic path traversal on Windows via encoded backslash (`%5C`)
+
+- **Severity:** moderate — **Package:** `@hono/node-server` (1.19.13 installed; advisory's fix is 2.0.5, a major bump that must arrive via the MCP SDK)
+- **Load-graph reachable:** **Yes on HTTP transport** (see correction above); no on stdio.
+- **Code-path reachable:** **No.** The vulnerability is in `serveStatic`; iris calls only `getRequestListener`. iris serves no static files through this package — dashboard assets go through Express `express.static`.
+- **Decision:** **Dismiss as `tolerable_risk`** — loaded, but the vulnerable static-file handler is off iris's call graph. Cannot be overridden locally without forcing a major version on the SDK's bridge; tracks the SDK upgrade.
+- **Assessed:** 2026-08-06.
+
+#### [GHSA-8j4g-w8fx-2239](https://github.com/advisories/GHSA-8j4g-w8fx-2239), [GHSA-hvrm-45r6-mjfj](https://github.com/advisories/GHSA-hvrm-45r6-mjfj), [GHSA-w62v-xxxg-mg59](https://github.com/advisories/GHSA-w62v-xxxg-mg59), [GHSA-xgm2-5f3f-mvvc](https://github.com/advisories/GHSA-xgm2-5f3f-mvvc) — hono core (CORS-middleware ReDoS, hono/jsx cross-request context leak, `cx()` JSX XSS, API-Gateway v1 adapter header de-dup)
+
+- **Severity:** moderate (all four) — **Package:** `hono` (transitive, under `@hono/node-server`)
+- **Load-graph reachable:** hono **core** is imported only by `@hono/node-server`'s `serve-static` and `vercel` adapters, neither of which iris loads; `getRequestListener` does not pull hono core.
+- **Code-path reachable:** **No.** Every affected surface is a submodule iris never invokes: CORS middleware (iris uses its own `src/middleware/cors.ts` on Express), `hono/jsx` SSR, the `cx()` utility, and the AWS API-Gateway adapter.
+- **Decision:** **Dismiss as `not_used`** — vulnerable submodules unreachable.
+- **Assessed:** 2026-08-06.
+
 ---
 
 ## Operational notes
@@ -174,5 +209,17 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **When an advisory is patched upstream:** update the affected sections to reflect the patched-and-installed state, or remove the section if the alert auto-closes.
 - **When iris's call graph changes:** re-verify the reachability claims for any open advisory whose package is on the changed code path. The `Assessed against iris commit X` line records the snapshot.
 - **When upstream releases a fix that removes a dep:** the affected section can be retired.
+
+### The no-self-deadlock rule for dependency gates
+
+**A blocking gate must always be satisfiable by a change made inside the pull request it blocks.** If clearing it requires some *other* pull request to merge first, the gate can deadlock the repository against itself.
+
+This is not hypothetical. `lint-and-typecheck` used to run `npm audit --audit-level=high`, which fails on the *whole set* of open advisories. Once four independent HIGHs were outstanding (`brace-expansion`, `fast-uri`, `ip-address`, `postcss`), every PR went red — including each Dependabot PR that fixed one of them, because the other three remained. No single PR could turn the gate green, so nothing merged, so the advisories never drained: 4 advisories froze all 40 open PRs. Removed 2026-08-06.
+
+`check-exposure-coverage.mjs` is the authoritative dependency-security gate because it satisfies the rule: both of its exits — add a triage row here, or bump the dependency — are edits within the PR being gated. It is also *stricter* than the check it replaced (≥moderate rather than ≥high, and it demands documented analysis rather than just a version number).
+
+Remediation pressure is preserved without blocking: the gate prints a **REMEDIATION AVAILABLE** report for advisories npm can already fix. That is informational on purpose — making it fatal would recreate the deadlock, since the fix usually lives in a separate Dependabot PR.
+
+When adding any future dependency gate, ask: *if this fires, can the PR author clear it without merging something else first?* If no, it belongs in a scheduled/reporting job, not a PR-blocking one.
 
 This file is a working operational record, not a marketing document. It exists so any auditor or contributor can read the actual exposure analysis instead of guessing from a count of red dots.
