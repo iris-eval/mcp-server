@@ -28,6 +28,8 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import isSafeRegex from 'safe-regex2';
+import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
   DeployedCustomRule,
   CustomRulesFile,
@@ -50,12 +52,130 @@ const RULE_TYPE_VALUES = [
   'cost_threshold',
 ] as const;
 
-const DefinitionSchema = z.object({
-  name: z.string().min(1).max(80),
-  type: z.enum(RULE_TYPE_VALUES),
-  config: z.record(z.unknown()),
-  weight: z.number().positive().optional(),
-});
+// Per-type config requirements, enforced at DEPLOY time.
+//
+// `config` was previously `z.record(z.unknown())` — any object passed. That
+// let a rule like {type:'min_length', config:{}} deploy successfully and then
+// fail on every single evaluation forever, silently dragging down aggregate
+// scores with no indication the RULE (not the agent) was broken. Validating
+// here means the failure surfaces once, at deploy, with an actionable message
+// — instead of quietly corrupting every eval that follows.
+const MAX_RULE_PATTERN_LENGTH = 1000;
+
+function requirePositiveNumber(
+  config: Record<string, unknown>,
+  type: keyof typeof CUSTOM_RULE_CONFIG_KEYS,
+  ctx: z.RefinementCtx,
+): void {
+  const value = readNumericConfig(config, type);
+  if (value == null || value <= 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['config', CUSTOM_RULE_CONFIG_KEYS[type][0]],
+      message: `${type} rule requires ${describeKeys(type)} (positive number)`,
+    });
+  }
+}
+
+function requireNonEmptyStringArray(
+  config: Record<string, unknown>,
+  key: string,
+  ctx: z.RefinementCtx,
+  hint: string,
+): void {
+  const value = config[key];
+  if (!Array.isArray(value) || value.length === 0 || !value.every((v) => typeof v === 'string')) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['config', key], message: hint });
+  }
+}
+
+const DefinitionSchema = z
+  .object({
+    name: z.string().min(1).max(80),
+    type: z.enum(RULE_TYPE_VALUES),
+    config: z.record(z.unknown()),
+    weight: z.number().positive().optional(),
+  })
+  .superRefine((def, ctx) => {
+    const config = def.config ?? {};
+    switch (def.type) {
+      case 'regex_match':
+      case 'regex_no_match': {
+        const pattern = config.pattern;
+        if (typeof pattern !== 'string' || pattern.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config', 'pattern'],
+            message: `${def.type} rule requires config.pattern (non-empty string)`,
+          });
+          break;
+        }
+        if (pattern.length > MAX_RULE_PATTERN_LENGTH) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config', 'pattern'],
+            message: `Regex pattern too long (${pattern.length} > ${MAX_RULE_PATTERN_LENGTH})`,
+          });
+          break;
+        }
+        // Strip a leading inline flag group the way the evaluator does, so a
+        // pattern that WILL run is not rejected here for syntax it tolerates.
+        const stripped = pattern.replace(/^\(\?[imsugy]+\)/, '');
+        // Syntax BEFORE safety: safe-regex2 returns false for anything it
+        // cannot parse, so checking it first reports a plainly broken pattern
+        // like `(` as "catastrophic backtracking" — an error that sends the
+        // author looking for a performance problem they do not have.
+        try {
+          new RegExp(stripped, typeof config.flags === 'string' ? config.flags : '');
+        } catch (e) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config', 'pattern'],
+            message: `Invalid regex syntax: ${e instanceof Error ? e.message : 'unknown error'}`,
+          });
+          break;
+        }
+        if (!isSafeRegex(stripped)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config', 'pattern'],
+            message: 'Regex pattern rejected: potentially unsafe (catastrophic backtracking)',
+          });
+        }
+        break;
+      }
+      case 'min_length':
+        requirePositiveNumber(config, 'min_length', ctx);
+        break;
+      case 'max_length':
+        requirePositiveNumber(config, 'max_length', ctx);
+        break;
+      case 'contains_keywords':
+        requireNonEmptyStringArray(config, 'keywords', ctx,
+          'contains_keywords rule requires config.keywords (non-empty string array)');
+        break;
+      case 'excludes_keywords':
+        requireNonEmptyStringArray(config, 'keywords', ctx,
+          'excludes_keywords rule requires config.keywords (non-empty string array)');
+        break;
+      case 'cost_threshold': {
+        // 0 is a legitimate threshold ("must be free"), so only reject
+        // missing / non-numeric / negative.
+        const max = readNumericConfig(config, 'cost_threshold');
+        if (max == null || max < 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config', CUSTOM_RULE_CONFIG_KEYS.cost_threshold[0]],
+            message: `cost_threshold rule requires ${describeKeys('cost_threshold')} (non-negative number)`,
+          });
+        }
+        break;
+      }
+      case 'json_schema':
+        // No required config — validity is judged against the output itself.
+        break;
+    }
+  });
 
 const DeployedRuleSchema = z.object({
   id: z.string().min(1),
