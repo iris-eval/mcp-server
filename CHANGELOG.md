@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (Unreleased content rolls forward to the next non-RC release.)
 
+## [0.4.5] - 2026-08-07
+
+**Security release.** Fixes three vulnerabilities present in 0.4.4, two of them found by driving iris the way a real user does — a live MCP session over stdio and an operator poking the HTTP transport — rather than by reading the code. Every dependency advisory across all four workspaces is also closed: `npm audit` reports **0 vulnerabilities** in the root, website, dashboard and `packages/init`.
+
+No MCP surface changes: the same 9 tools, same schemas, same eval rules.
+
+### Security
+
+- **DNS rebinding on the MCP HTTP transport.** The MCP spec requires servers to validate `Origin` on HTTP transports; iris validated nothing. Because `security.apiKey` is `undefined` by default (making the auth middleware a pass-through), a default `--transport http` server was reachable from **any web page the operator visited** via a hostname rebound to `127.0.0.1` — exposing traces and eval history, and allowing rule deployment and trace deletion. Reproduced against 0.4.4 (`Origin: https://evil.example.com` → **200, request executed**); now **403**. Enabled the SDK's DNS-rebinding protection with an `Origin` allowlist, plus a `Host` allowlist when bound to loopback. Real MCP clients (Claude Desktop, Cursor, the CLI) send no `Origin` header and are unaffected — verified. `IRIS_ALLOWED_ORIGINS` now feeds this allowlist; it previously reached only the dashboard despite being advertised in `--help`. PR #283.
+- **Absolute install path disclosed in dashboard 404s (CWE-209).** Any unmatched route returned `ENOENT: ... stat 'C:\...\dist\dashboard\index.html'`, leaking the install directory and OS username to anyone who could reach the dashboard. Two causes: the SPA fallback was gated on the `dist/dashboard` *directory* (which exists after `npm run build` even when the UI bundle does not), and the error handler echoed `err.message` verbatim below HTTP 500. Node system errors are now answered generically; genuine 4xx messages (body-parser size limits, Zod validation) still surface. PR #286.
+- **`@hono/node-server` → 2.1.0** closes GHSA-frvp-7c67-39w9 (`serveStatic` path traversal on Windows via encoded backslash). This package sits on the real request path — SDK 1.29+ made `StreamableHTTPServerTransport` a thin wrapper that statically imports `getRequestListener` — so the upgrade was validated by exercising the transport, not just the unit suite. Requires SDK ≥ 1.30.0, which widens the constraint. PR #288.
+- **Dependency advisories closed across every workspace:** `fast-uri` → 3.1.5, `ip-address` → 10.4.0, `postcss` → 8.5.26, `brace-expansion` → 5.0.9 (both major lines in website, via version-scoped overrides), `next` → 16.2.11, `sharp` → 0.35.0, `undici` → 7.29.0, `js-yaml` → 4.3.1, `ws` → 8.21.3, `body-parser` → 2.3.0, `hono` → 4.13.1. PRs #271, #274, #281, #288, #294 and the Dependabot drain.
+
+### Fixed
+
+- **Custom rules built from iris's own documentation never worked.** The `deploy_rule` tool description — the text an LLM agent reads to construct its call — specified `config.min` and `config.max_usd`, while the evaluator read `config.min_length` and `config.max_cost`. Deploy-time validation accepted any object, so a rule written from our docs deployed cleanly and then failed on *every* evaluation, forever. Worse, a rule that cannot run returned `score: 0` rather than skipping, so one broken rule silently deflated every aggregate score with no sign the rule (not the agent) was at fault. A correct output scored **0.304 / FAILED**; the same rules now score **1.0 / PASSED** and do what their author asked. Config keys now come from one shared module so the evaluator, the deploy validator and the tool description cannot drift apart; the spellings the old docs taught are honoured as aliases so already-deployed rules start working. Invalid configs are rejected at deploy time with the offending field named. PR #282.
+- **Misleading regex errors.** `safe-regex2` returns false for anything it cannot parse, so a plainly broken pattern like `(` was reported as *"catastrophic backtracking"* — sending the author after a performance problem they did not have. Syntax is now checked before safety in both the evaluator and the deploy validator. PR #282.
+- `docs/api-reference.md` taught the wrong `min_length` config key. PR #282.
+
+### Changed
+
+- **`zod` 3.25.76 → 4.4.3** and **`react-router` 7 → 8** (the dashboard drops `react-router-dom`, which has no 8.x). Internal only — no change to the MCP tool surface. PRs #292, #293.
+- **CI can no longer deadlock against itself.** `npm audit --audit-level=high` ran inside `lint-and-typecheck` and fails on the *whole set* of open advisories, so four HIGHs turned **every** PR red — including each Dependabot PR that fixed one of them. No single PR could go green, so nothing merged and nothing drained: 4 advisories froze 40 PRs. Removed, with the invariant recorded in three places: *a blocking gate must be satisfiable by a change made inside the pull request it blocks.* Dependency-security enforcement remains in the `security-exposure` job, which is stricter (≥moderate, and demands documented threat-model analysis) and cannot deadlock. PR #271.
+- Release workflows no longer `npm install -g npm@latest` before publishing; Node 24 ships a new-enough npm, so the unpinnable supply-chain dependency in the OIDC publish job is gone. The Docker dashboard build uses `npm ci` instead of `npm install`, making the image reproducible. PRs #285, #290.
+
+### Added
+
+- **A drift guard that deploys every rule-config example in our documentation** (51 of them) through the real schema. Numeric claims already had gates; nothing checked that the examples we tell users to copy actually run. Verified to fail, not just pass. PR #284.
+- Regression coverage for all of the above: config errors skip instead of scoring 0, documented aliases are honoured, deploy rejects each invalid config shape, the rebinding attack is refused while Origin-less clients are not, and 404s carry no filesystem path. Root suite 434 → 511.
+
+
 ## [0.4.4] - 2026-06-12
 
 Recovery release completing v0.4.3's distribution. v0.4.3 published to Docker (GHCR) and the GitHub Release, but its **npm publish silently failed** — the `NPM_TOKEN` secret had expired, npm returned `E404` on the publish PUT, and the pre-#176 `npm publish ... || echo "skipping"` step swallowed the failure into a green run. npm `@latest` (and therefore the MCP Registry + downstream mirrors) stalled at 0.4.2, so the v0.4.3 LLM-judge prompt-injection hardening never reached npm installs. v0.4.4 carries all v0.4.3 runtime content forward and is the first complete distribution since 0.4.2. **No runtime code changes versus 0.4.3.**
