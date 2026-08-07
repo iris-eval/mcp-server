@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-08-07T18:53:10.648Z",
-  "generatedFromCommit": "d0ef438",
+  "generatedAt": "2026-08-07T19:01:10.301Z",
+  "generatedFromCommit": "55d3a38",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -130,8 +130,8 @@
       "total": 111
     },
     "vitestRoot": {
-      "failed": 1,
-      "passed": 510,
+      "failed": 0,
+      "passed": 511,
       "total": 511
     }
   },
