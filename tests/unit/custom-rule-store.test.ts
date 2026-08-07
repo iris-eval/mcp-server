@@ -20,6 +20,76 @@ afterEach(() => {
 });
 
 describe('createCustomRuleStore (single-tenant / OSS)', () => {
+  // Regression: `config` was `z.record(z.unknown())`, so a rule missing the
+  // field its type needs deployed cleanly and then failed EVERY evaluation
+  // forever, silently deflating aggregate scores. Reject at deploy, naming
+  // the offending field, so the mistake surfaces once instead of corrupting
+  // every eval that follows.
+  describe('deploy-time config validation', () => {
+    const cases: Array<[string, Record<string, unknown>, RegExp]> = [
+      ['min_length', {}, /min_length rule requires/],
+      ['max_length', {}, /max_length rule requires/],
+      ['contains_keywords', {}, /contains_keywords rule requires/],
+      ['excludes_keywords', { keywords: [] }, /excludes_keywords rule requires/],
+      ['cost_threshold', {}, /cost_threshold rule requires/],
+      ['cost_threshold', { max_cost: -1 }, /cost_threshold rule requires/],
+      ['regex_match', {}, /requires config.pattern/],
+      ['regex_match', { pattern: '(' }, /Invalid regex syntax/],
+      ['regex_match', { pattern: '(a+)+$' }, /catastrophic backtracking/],
+    ];
+
+    for (const [type, config, expected] of cases) {
+      it(`rejects ${type} with config ${JSON.stringify(config)}`, () => {
+        const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+        expect(() =>
+          store.deploy(LOCAL_TENANT, {
+            name: `bad-${type}`,
+            description: 'invalid config',
+            evalType: 'custom',
+            severity: 'medium',
+            definition: { name: `bad-${type}`, type, config },
+          } as Parameters<typeof store.deploy>[1]),
+        ).toThrow(expected);
+      });
+    }
+
+    it('accepts the config spellings our docs shipped (min, max_usd)', () => {
+      const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+      expect(() =>
+        store.deploy(LOCAL_TENANT, {
+          name: 'documented-min',
+          description: 'uses the key docs/api-reference.md taught',
+          evalType: 'custom',
+          severity: 'medium',
+          definition: { name: 'documented-min', type: 'min_length', config: { min: 20 } },
+        } as Parameters<typeof store.deploy>[1]),
+      ).not.toThrow();
+
+      expect(() =>
+        store.deploy(LOCAL_TENANT, {
+          name: 'documented-cost',
+          description: 'uses the key deploy_rule described',
+          evalType: 'custom',
+          severity: 'medium',
+          definition: { name: 'documented-cost', type: 'cost_threshold', config: { max_usd: 0.5 } },
+        } as Parameters<typeof store.deploy>[1]),
+      ).not.toThrow();
+    });
+
+    it('accepts cost_threshold max_cost of 0 (must-be-free is a real threshold)', () => {
+      const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+      expect(() =>
+        store.deploy(LOCAL_TENANT, {
+          name: 'free-only',
+          description: 'zero is valid',
+          evalType: 'cost',
+          severity: 'low',
+          definition: { name: 'free-only', type: 'cost_threshold', config: { max_cost: 0 } },
+        } as Parameters<typeof store.deploy>[1]),
+      ).not.toThrow();
+    });
+  });
+
   it('starts with no rules when file does not exist', () => {
     const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
     expect(store.list(LOCAL_TENANT)).toEqual([]);

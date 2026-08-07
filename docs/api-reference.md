@@ -376,7 +376,7 @@ Enumerate deployed custom eval rules. Read-only; returns the full rule catalog w
       "severity": "medium",
       "enabled": true,
       "createdAt": "2026-04-22T14:00:00Z",
-      "definition": { "name": "min-length-40", "type": "min_length", "config": { "min": 40 } }
+      "definition": { "name": "min-length-40", "type": "min_length", "config": { "min_length": 40 } }
     }
   ],
   "total": 1
