@@ -103,14 +103,27 @@ export function createDashboardServer(
   registerAuditRoutes(router, options?.customRuleStore);
   app.use('/api/v1', router);
 
-  // Serve static dashboard files if built (rate limited)
+  // Serve static dashboard files if built (rate limited).
+  //
+  // Gate on index.html, not on the directory: `npm run build` compiles the
+  // dashboard SERVER into dist/dashboard (server.js, routes/) without the UI
+  // bundle, which is built separately by `cd dashboard && npm run build`. The
+  // directory therefore exists while index.html does not, so the SPA fallback
+  // was registered and every unmatched route hit res.sendFile on a missing
+  // file. The resulting ENOENT carries an absolute path, and the error
+  // handler returned it verbatim to the client:
+  //   {"error":"ENOENT: ... stat 'C:\\...\\dist\\dashboard\\index.html'"}
+  // — leaking the install path (and the OS user) to anyone who can reach the
+  // dashboard. Without the UI built there is nothing to fall back TO, so the
+  // route simply should not exist, and unmatched paths get Express's own 404.
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const staticDir = join(currentDir, '..', '..', 'dist', 'dashboard');
-  if (existsSync(staticDir)) {
+  const indexHtml = join(staticDir, 'index.html');
+  if (existsSync(indexHtml)) {
     app.use(createApiRateLimiter(config));
     app.use(express.static(staticDir));
     app.get('/{*path}', (_req, res) => {
-      res.sendFile(join(staticDir, 'index.html'));
+      res.sendFile(indexHtml);
     });
   }
 
