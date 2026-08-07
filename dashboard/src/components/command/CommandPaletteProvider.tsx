@@ -30,7 +30,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { CommandPalette } from './CommandPalette';
 import { KeyboardShortcutsOverlay } from './KeyboardShortcutsOverlay';
 import { useTour } from '../onboarding/TourProvider';

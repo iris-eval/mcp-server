@@ -10,7 +10,7 @@
  * Click a segment → also filters by verdict.
  */
 import { useMemo, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router';
 import { utcDay } from 'd3-time';
 import { utcFormat } from 'd3-time-format';
 import { drillToMoments } from '../../../utils/drillThrough';

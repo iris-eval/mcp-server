@@ -8,7 +8,7 @@
  * Empty state surfaces the workflow-inversion entry point — same copy
  * pattern as RuleListByCategory's empty custom-rules section.
  */
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { History, ChevronRight } from 'lucide-react';
 import { useAuditLog } from '../../api/hooks';
 import { Icon } from '../shared/Icon';

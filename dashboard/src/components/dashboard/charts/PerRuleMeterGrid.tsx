@@ -15,7 +15,7 @@
  * filtered moment set client-side.
  */
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Sparkline } from '../Sparkline';
 import { drillToMoments } from '../../../utils/drillThrough';
 import {

@@ -16,7 +16,7 @@
  *   - error: retry button
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useMoments, useFilters } from '../../api/hooks';
 import { usePreferences } from '../../hooks/usePreferences';
 import { api } from '../../api/client';

@@ -28,7 +28,7 @@
  * for BI dashboards, not a bug.
  */
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import {
   useEvalStats,
   useEvalTrend,

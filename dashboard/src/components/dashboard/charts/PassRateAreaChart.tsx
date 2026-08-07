@@ -20,7 +20,7 @@
  * the full list on hover.
  */
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { area as d3area, line as d3line, curveMonotoneX } from 'd3-shape';
 import { scaleLinear, scaleTime } from 'd3-scale';
 import { extent } from 'd3-array';

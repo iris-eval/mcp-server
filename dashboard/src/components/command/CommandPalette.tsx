@@ -22,7 +22,7 @@
  *   - Focus restored to trigger on close
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useTheme } from '../layout/ThemeProvider';
 import {
   buildCommands,

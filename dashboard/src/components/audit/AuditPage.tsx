@@ -12,7 +12,7 @@
  *   - error: retry button
  */
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { History, Download } from 'lucide-react';
 import { useAuditLog } from '../../api/hooks';
 import type { AuditAction, AuditLogEntry } from '../../api/types';

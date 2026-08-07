@@ -9,7 +9,7 @@
  * accept a per-bar color override (e.g., to match verdict semantics).
  */
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export interface HorizontalBar {
   id: string;

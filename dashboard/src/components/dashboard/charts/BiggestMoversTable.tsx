@@ -12,7 +12,7 @@
  * period of activity) — empty state is honest about that.
  */
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { TrendingUp, TrendingDown, Minus, Users } from 'lucide-react';
 import { Icon } from '../../shared/Icon';
 import { Sparkline } from '../Sparkline';

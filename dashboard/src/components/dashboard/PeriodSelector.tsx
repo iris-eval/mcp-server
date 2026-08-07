@@ -10,7 +10,7 @@
  * The selector itself doesn't know which view is active — DashboardPage
  * resolves the right default per view and passes it in.
  */
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 export type Period = '24h' | '7d' | '30d' | '90d';
 

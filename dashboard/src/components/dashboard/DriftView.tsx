@@ -19,7 +19,7 @@
  * pre-filtered Decision Moments view.
  */
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { useMoments } from '../../api/hooks';
 import {
   resolvePeriod,

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useTraces } from '../../api/hooks';
 import { TraceFilters } from './TraceFilters';
 import { TraceTable } from './TraceTable';

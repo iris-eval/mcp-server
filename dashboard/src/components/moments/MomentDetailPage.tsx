@@ -12,7 +12,7 @@
  * the page header for this resource route.
  */
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { useMomentDetail } from '../../api/hooks';
 import { CopyableId } from '../shared/CopyableId';
 import { LoadingSpinner } from '../shared/LoadingSpinner';

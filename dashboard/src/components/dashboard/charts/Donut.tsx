@@ -20,7 +20,7 @@
  *   Caller can override `emptyMessage` to make it onboarding-shaped.
  */
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { pie as d3pie, arc as d3arc } from 'd3-shape';
 
 export interface DonutSlice {

@@ -15,7 +15,7 @@
  * stream here once an MCP-compatible agent posts.
  */
 import { useTraces } from '../../../api/hooks';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Activity, ChevronRight } from 'lucide-react';
 import { Icon } from '../../shared/Icon';
 import { Tooltip } from '../../shared/Tooltip';

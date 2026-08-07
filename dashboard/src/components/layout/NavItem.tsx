@@ -7,7 +7,7 @@
  * is collapsed (icon-only at 64px), the label is replaced with a
  * native `title` tooltip.
  */
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 import type { LucideIcon } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../shared/Icon';

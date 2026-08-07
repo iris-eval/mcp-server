@@ -9,7 +9,7 @@
  * segments) gives at-a-glance distribution without a real chart
  * library.
  */
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Users, ChevronRight } from 'lucide-react';
 import { useMoments } from '../../api/hooks';
 import { Icon } from '../shared/Icon';

@@ -10,7 +10,7 @@
  * v2.C (2026-04-23): Notifications + Account are now real popovers.
  * Theme toggle moved from header into AccountMenu per R2.5 spec.
  */
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { Tooltip } from '../shared/Tooltip';
 import { CommandPaletteTrigger } from '../command/CommandPaletteTrigger';
 import { NotificationsPopover } from './NotificationsPopover';

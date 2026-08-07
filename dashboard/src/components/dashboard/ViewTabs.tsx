@@ -16,7 +16,7 @@
  * navigations don't fight each other.
  */
 import type { ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { Activity, Heart, Waves } from 'lucide-react';
 import { Icon } from '../shared/Icon';
 
