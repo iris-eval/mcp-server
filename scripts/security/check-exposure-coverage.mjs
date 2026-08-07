@@ -7,6 +7,26 @@
 // documented decision (override / dismiss / track / patch) instead of
 // accumulating silently.
 //
+// DEADLOCK-FREE BY DESIGN — preserve this property in any future change.
+// This is the repo's authoritative dependency-security gate as of
+// 2026-08-06, when `npm audit --audit-level=high` was removed from the
+// lint-and-typecheck job. That check failed on the WHOLE set of open
+// advisories, so with N>1 HIGHs outstanding every PR went red — including
+// each Dependabot PR that fixed one, since the other N-1 remained. Nothing
+// could merge, so nothing could drain (4 HIGHs blocked all 40 open PRs).
+//
+// The invariant that prevents it: A BLOCKING GATE MUST ALWAYS BE
+// SATISFIABLE BY A CHANGE MADE INSIDE THE PULL REQUEST IT BLOCKS. This
+// gate satisfies it — both exits (add a triage row, or bump the dep) are
+// edits within the PR. Never make failure here depend on another PR
+// merging first, and never gate on a total count of pre-existing debt.
+//
+// Remediation pressure is kept WITHOUT blocking: advisories that npm
+// reports as having an available fix are printed as a REMEDIATION
+// AVAILABLE report. It is informational on purpose — making it fatal
+// would recreate the deadlock, because the fix usually lives in a
+// separate Dependabot PR.
+//
 // Implementation: walks `npm audit --json` output instead of calling the
 // GitHub Dependabot Alerts API. The two sources are equivalent for this
 // purpose (both originate in the GitHub Advisory Database), and npm audit
@@ -93,10 +113,39 @@ function getAuditAdvisories() {
       seen.add(ghsa);
       const severity = (via.severity ?? '').toLowerCase();
       if (!SEVERITY_THRESHOLD.has(severity)) continue;
-      advisories.push({ ghsa, severity, package: pkg, title: via.title ?? '' });
+      advisories.push({
+        ghsa,
+        severity,
+        package: pkg,
+        title: via.title ?? '',
+        // npm sets this on the vulnerability entry, not the advisory:
+        // true | false | {name, version, isSemVerMajor}
+        fixAvailable: info.fixAvailable ?? false,
+      });
     }
   }
   return advisories;
+}
+
+// Informational, never fatal — see the deadlock note in the file header.
+// Surfaces advisories npm can already fix so documented-and-forgotten
+// doesn't become a permanent parking spot, without blocking any PR on
+// work that lives in a different one.
+function reportRemediable(advisories) {
+  const remediable = advisories.filter(a => a.fixAvailable);
+  if (remediable.length === 0) return;
+  const rank = { critical: 0, high: 1, moderate: 2 };
+  remediable.sort((a, b) => (rank[a.severity] ?? 9) - (rank[b.severity] ?? 9));
+  console.log(
+    `[security-gate] REMEDIATION AVAILABLE — ${remediable.length} advisory(ies) have an upstream fix:`,
+  );
+  for (const a of remediable) {
+    const via = typeof a.fixAvailable === 'object' && a.fixAvailable?.name
+      ? ` (via ${a.fixAvailable.name}@${a.fixAvailable.version}${a.fixAvailable.isSemVerMajor ? ', SEMVER-MAJOR' : ''})`
+      : '';
+    console.log(`  - ${a.severity.padEnd(8)} ${a.package}: ${a.ghsa}${via}`);
+  }
+  console.log('[security-gate] (informational — merge the Dependabot PR or add an override)');
 }
 
 async function main() {
@@ -105,6 +154,8 @@ async function main() {
 
   console.log(`[security-gate] npm audit reports ${advisories.length} advisory(ies) at >=moderate severity`);
   console.log(`[security-gate] SECURITY-EXPOSURE.md documents ${documented.size} GHSA reference(s)`);
+
+  reportRemediable(advisories);
 
   const undocumented = advisories.filter(a => !documented.has(a.ghsa));
   if (undocumented.length === 0) {
