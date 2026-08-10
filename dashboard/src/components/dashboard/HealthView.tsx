@@ -249,12 +249,33 @@ export function HealthView() {
       {/* §1 HEADLINE — scannable KPI strip */}
       <SectionHeader title="Headline" trailing={`window: ${period}`} />
       <div style={styles.rowKpis4}>
+        {/*
+         * No evals is NOT a 0% pass rate. With totalEvals === 0 the API
+         * returns passRate: 0, which rendered as a red "0%" — the first
+         * number a new user sees, telling them every agent is failing when
+         * in fact nothing has run yet. PassRateGauge below already gets
+         * this right ("No evals yet in {period}"), so the same metric was
+         * contradicting itself on one screen. Show the same em dash used
+         * while loading, with a neutral accent.
+         */}
         <StatTile
           label="Pass rate"
           icon={CheckCircle2}
-          value={kpis ? `${Math.round(kpis.passRate * 100)}%` : '—'}
-          sub={`${fmtDelta(kpis?.passRateDelta)} vs prior ${period}`}
-          accent={kpis && kpis.passRate >= 0.9 ? 'pass' : kpis && kpis.passRate >= 0.7 ? 'warn' : 'fail'}
+          value={kpis && kpis.totalEvals > 0 ? `${Math.round(kpis.passRate * 100)}%` : '—'}
+          sub={
+            kpis && kpis.totalEvals === 0
+              ? `no evals in ${period}`
+              : `${fmtDelta(kpis?.passRateDelta)} vs prior ${period}`
+          }
+          accent={
+            !kpis || kpis.totalEvals === 0
+              ? 'iris'
+              : kpis.passRate >= 0.9
+                ? 'pass'
+                : kpis.passRate >= 0.7
+                  ? 'warn'
+                  : 'fail'
+          }
         />
         <StatTile
           label="Total evals"

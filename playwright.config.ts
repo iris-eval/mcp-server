@@ -50,9 +50,9 @@ export default defineConfig({
        * custom-rules.json, audit.log, preferences.json) to the temp dir.
        * Before this, only the DB was isolated: each run WIPED the real
        * ~/.iris/audit.log, deployed make-rule test rules into the real
-       * custom-rules.json (8 pieces of april-2026 debris shipped in the
-       * founder's live store for months), and overwrote the real
-       * preferences.json via the globalSetup PATCH.
+       * custom-rules.json (where they then loaded at every subsequent
+       * server start), and overwrote the real preferences.json via the
+       * globalSetup PATCH.
        */
       IRIS_HOME: E2E_DB_DIR,
       IRIS_DB_PATH: E2E_DB_PATH,

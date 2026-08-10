@@ -2,7 +2,7 @@
 
 Screenshots and visual assets should be updated when the dashboard UI changes significantly.
 
-> **⚠️ Stale**: the four PNG screenshots below were captured at v0.1.0; the dashboard chrome shipped in v0.4.0 (AccountMenu, NotificationsPopover, density toggle, theme switch, RateLimitBanner, per-view polling cadence) is not yet reflected. Re-capture is queued in [`plans/post-phase-a-lattice-absorption-queue.md`](../../plans/post-phase-a-lattice-absorption-queue.md). Until then, the README screenshots are illustrative — not a faithful preview of the current UI.
+> **⚠️ Stale**: the four PNG screenshots below were captured at v0.1.0; the dashboard chrome shipped in v0.4.0 (AccountMenu, NotificationsPopover, density toggle, theme switch, RateLimitBanner, per-view polling cadence) is not yet reflected. Re-capture is queued in the maintainer's backlog. Until then, the README screenshots are illustrative — not a faithful preview of the current UI.
 
 | Asset | Captured At | Description | Status |
 |-------|-----------|-------------|--------|
