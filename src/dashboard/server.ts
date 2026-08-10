@@ -12,6 +12,7 @@ import { createCorsMiddleware } from '../middleware/cors.js';
 import { createErrorHandler } from '../middleware/error-handler.js';
 import { createApiRateLimiter } from '../middleware/rate-limit.js';
 import { createTenantMiddleware } from '../middleware/tenant.js';
+import { createRebindingGuard, isLoopbackHost } from '../middleware/rebinding-guard.js';
 import { registerTraceRoutes } from './routes/traces.js';
 import { registerSummaryRoutes } from './routes/summary.js';
 import { registerEvaluationRoutes } from './routes/evaluations.js';
@@ -67,6 +68,21 @@ export function createDashboardServer(
 
   // Body parser with size limit
   app.use(express.json({ limit: config.security.requestSizeLimit }));
+
+  /*
+   * DNS-rebinding guard BEFORE anything that reads or writes state. CORS
+   * runs after it and only decorates responses the guard already allowed —
+   * on its own CORS cannot stop a rebound page, because the write executes
+   * before the browser withholds the reply.
+   */
+  let boundPort: number | undefined;
+  app.use(
+    createRebindingGuard({
+      port: () => boundPort ?? config.dashboard.port,
+      host: config.dashboard.host,
+      allowedOrigins: config.security.allowedOrigins,
+    }),
+  );
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));
@@ -144,8 +160,29 @@ export function createDashboardServer(
   return {
     app,
     start() {
-      const server = app.listen(config.dashboard.port, () => {
-        logger.info(`Dashboard available at http://localhost:${config.dashboard.port}`);
+      /*
+       * Bind to config.dashboard.host (loopback by default). Omitting the
+       * host argument makes Node listen on 0.0.0.0 AND [::], which put an
+       * unauthenticated API — full trace history plus rule deploy/delete —
+       * on every interface. That happened silently whenever `--transport
+       * http` started the dashboard implicitly, so binding the MCP
+       * transport to loopback still left a wide-open second server.
+       */
+      const server = app.listen(config.dashboard.port, config.dashboard.host, () => {
+        // Record the port actually bound so the rebinding guard builds its
+        // allowlist from it rather than from a configured 0.
+        const addr = server.address();
+        if (typeof addr === 'object' && addr) boundPort = addr.port;
+
+        const shown = isLoopbackHost(config.dashboard.host) ? 'localhost' : config.dashboard.host;
+        logger.info(`Dashboard available at http://${shown}:${boundPort ?? config.dashboard.port}`);
+        if (!isLoopbackHost(config.dashboard.host) && !config.security.apiKey) {
+          logger.warn(
+            `Dashboard is bound to ${config.dashboard.host} with NO api key — the full trace ` +
+              `history and rule management are reachable by anyone who can route to this host. ` +
+              `Set --api-key / IRIS_API_KEY, or bind to 127.0.0.1.`,
+          );
+        }
       });
       /*
        * F-006: surface listen() errors instead of swallowing them.

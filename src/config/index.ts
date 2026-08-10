@@ -76,6 +76,12 @@ function loadEnvVars(): Partial<IrisConfig> {
       port: parsePortEnv(process.env.IRIS_DASHBOARD_PORT, 'IRIS_DASHBOARD_PORT'),
     };
   }
+  if (process.env.IRIS_DASHBOARD_HOST) {
+    config.dashboard = {
+      ...(config.dashboard as object),
+      host: process.env.IRIS_DASHBOARD_HOST,
+    };
+  }
   if (process.env.IRIS_API_KEY) {
     config.security = { ...(config.security as object), apiKey: process.env.IRIS_API_KEY };
   }
@@ -96,6 +102,7 @@ export interface CliArgs {
   dbPath?: string;
   dashboard?: boolean;
   dashboardPort?: number;
+  dashboardHost?: string;
   apiKey?: string;
 }
 
@@ -116,6 +123,9 @@ function cliArgsToConfig(args: CliArgs): Partial<IrisConfig> {
   }
   if (args.dashboardPort) {
     config.dashboard = { ...(config.dashboard as object), port: args.dashboardPort };
+  }
+  if (args.dashboardHost) {
+    config.dashboard = { ...(config.dashboard as object), host: args.dashboardHost };
   }
   if (args.apiKey) {
     config.security = { ...(config.security as object), apiKey: args.apiKey };
