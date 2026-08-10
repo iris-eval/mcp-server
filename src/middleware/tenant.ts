@@ -35,7 +35,6 @@ import { LOCAL_TENANT } from '../types/tenant.js';
  * without depending on the transitive package being hoisted.
  */
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       tenantId?: TenantId;
