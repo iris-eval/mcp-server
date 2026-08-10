@@ -33,6 +33,7 @@ export const defaultConfig: IrisConfig = {
   dashboard: {
     enabled: false,
     port: 6920,
+    host: '127.0.0.1',
   },
   eval: {
     defaultThreshold: 0.7,

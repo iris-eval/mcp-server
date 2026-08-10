@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import type { Server } from 'node:http';
 import { request as httpRequest } from 'node:http';
+import { once } from 'node:events';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
 import { createHttpTransport } from '../../src/transport/http.js';
@@ -151,6 +152,7 @@ describe('HTTP Transport Integration', () => {
 
     const dashboard = createDashboardServer(storage, testConfig, mockLogger);
     httpServer = dashboard.start();
+    await once(httpServer, 'listening');
 
     const addr = httpServer.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
@@ -168,6 +170,7 @@ describe('HTTP Transport Integration', () => {
 
     const dashboard = createDashboardServer(storage, testConfig, mockLogger);
     httpServer = dashboard.start();
+    await once(httpServer, 'listening');
 
     const addr = httpServer.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
@@ -184,6 +187,7 @@ describe('HTTP Transport Integration', () => {
 
     const dashboard = createDashboardServer(storage, testConfig, mockLogger);
     httpServer = dashboard.start();
+    await once(httpServer, 'listening');
 
     const addr = httpServer.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
@@ -201,6 +205,7 @@ describe('HTTP Transport Integration', () => {
 
     const dashboard = createDashboardServer(storage, testConfig, mockLogger);
     httpServer = dashboard.start();
+    await once(httpServer, 'listening');
 
     const addr = httpServer.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
@@ -219,6 +224,7 @@ describe('HTTP Transport Integration', () => {
     const authConfig = { ...testConfig, security: { ...testConfig.security, apiKey: 'test-key' } };
     const dashboard = createDashboardServer(storage, authConfig, mockLogger);
     httpServer = dashboard.start();
+    await once(httpServer, 'listening');
 
     const addr = httpServer.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
@@ -244,6 +250,7 @@ describe('HTTP Transport Integration', () => {
 
     const dashboard = createDashboardServer(storage, testConfig, mockLogger);
     httpServer = dashboard.start();
+    await once(httpServer, 'listening');
 
     const addr = httpServer.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;

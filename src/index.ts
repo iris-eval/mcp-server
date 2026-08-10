@@ -32,6 +32,7 @@ const CliSchema = z
     'api-key': z.string().min(1).optional(),
     dashboard: z.boolean().optional(),
     'dashboard-port': PortSchema.optional(),
+    'dashboard-host': z.string().min(1).optional(),
     help: z.boolean().optional(),
   })
   .strict();
@@ -47,6 +48,7 @@ try {
       'api-key': { type: 'string' },
       dashboard: { type: 'boolean', default: false },
       'dashboard-port': { type: 'string' },
+      'dashboard-host': { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },
     strict: true,
@@ -80,6 +82,9 @@ Options:
   --api-key <key>          API key for HTTP authentication
   --dashboard              Enable web dashboard
   --dashboard-port <port>  Dashboard port 1-65535 (default: 6920)
+  --dashboard-host <host>  Dashboard bind address (default: 127.0.0.1). The dashboard is
+                           unauthenticated unless --api-key is set — binding it beyond
+                           loopback exposes your full trace history to the network.
   -h, --help               Show this help message
 
 Environment variables (CLI flags take precedence):
@@ -92,6 +97,7 @@ Environment variables (CLI flags take precedence):
   IRIS_LOG_LEVEL                       debug | info | warn | error
   IRIS_DASHBOARD                       true to enable web dashboard
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
+  IRIS_DASHBOARD_HOST                  Dashboard bind address (default: 127.0.0.1)
   IRIS_API_KEY                         API key for HTTP authentication
   IRIS_ALLOWED_ORIGINS                 Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. http://localhost:*).
                                        HTTP transport: exact-match Origin allowlist for DNS-rebinding protection (globs ignored;
@@ -122,6 +128,7 @@ const config = loadConfig({
   apiKey: values['api-key'],
   dashboard: values.dashboard,
   dashboardPort: values['dashboard-port'],
+  dashboardHost: values['dashboard-host'],
 });
 
 const logger = createLogger(config);

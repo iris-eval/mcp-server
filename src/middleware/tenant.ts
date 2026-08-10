@@ -5,9 +5,15 @@
  * downstream code path reads `req.tenantId`; nothing else reads headers
  * or session cookies to figure out which tenant a request belongs to.
  *
- * Current (OSS): always resolves to LOCAL_TENANT. The dashboard is
- * localhost-only; there's no session; there's no multi-tenancy. All
- * data belongs to the single implicit user.
+ * Current (OSS): always resolves to LOCAL_TENANT. There's no session and
+ * no multi-tenancy — all data belongs to the single implicit user.
+ *
+ * This rests on the dashboard binding to loopback (config.dashboard.host,
+ * default 127.0.0.1). That premise used to be asserted here and was FALSE:
+ * app.listen() was called without a host, so Node bound every interface
+ * and an unauthenticated API served the whole trace history to the local
+ * network. An operator who deliberately binds wider is expected to set an
+ * api key; the server warns at startup when they haven't.
  *
  * Future (Cloud): this file is where the swap happens. The resolver
  * reads the authenticated session (set by an upstream auth middleware),

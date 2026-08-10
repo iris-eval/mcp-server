@@ -15,6 +15,13 @@ export interface IrisConfig {
   dashboard: {
     enabled: boolean;
     port: number;
+    /**
+     * Bind address. Defaults to loopback: the dashboard is unauthenticated
+     * by default (security.apiKey is undefined) and serves the full trace
+     * history, so binding it to every interface exposes agent inputs and
+     * outputs to the local network. Set explicitly to share it.
+     */
+    host: string;
   };
   eval: {
     defaultThreshold: number;
