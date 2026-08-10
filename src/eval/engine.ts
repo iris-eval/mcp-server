@@ -31,16 +31,31 @@ export class EvalEngine {
       };
     }
 
-    let rules: EvalRule[];
-
-    if (evalType === 'custom' && customRules) {
-      rules = customRules.map((def) => createCustomRule(def));
-    } else {
-      rules = [
-        ...getRulesForType(evalType),
-        ...(this.additionalRules.get(evalType) ?? []),
-      ];
-    }
+    /*
+     * Inline custom_rules are ADDITIVE, which is what evaluate_output's
+     * description promises in two places: "fires REGARDLESS of eval_type"
+     * and "otherwise both your rules AND the eval_type bundle run together".
+     *
+     * The old branch did neither. `evalType === 'custom' && customRules`
+     * meant:
+     *   - evaluate('safety', ctx, [myRule]) silently DISCARDED myRule and
+     *     returned a plausible score that never applied it. An agent
+     *     following the tool description got a wrong answer with no warning.
+     *   - evaluate('custom', ctx, [myRule]) replaced the rule list entirely,
+     *     EVICTING every rule the user had deployed and which the server
+     *     registers at boot. Passing one ad-hoc rule disabled their whole
+     *     library for that call.
+     *
+     * getRulesForType('custom') is [] (rules/index.ts), so eval_type="custom"
+     * still runs no built-in bundle — the documented "ONLY these" behaviour
+     * holds. What it now also includes is the caller's own deployed rules,
+     * which is the least surprising reading of having deployed them.
+     */
+    const rules: EvalRule[] = [
+      ...getRulesForType(evalType),
+      ...(this.additionalRules.get(evalType) ?? []),
+      ...(customRules ?? []).map((def) => createCustomRule(def)),
+    ];
 
     if (rules.length === 0) {
       return {
