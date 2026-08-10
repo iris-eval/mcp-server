@@ -192,11 +192,6 @@ const DeployedRuleSchema = z.object({
   version: z.number().int().positive(),
 });
 
-const FileSchema = z.object({
-  version: z.literal(1),
-  rules: z.array(DeployedRuleSchema),
-});
-
 /**
  * Default file path for a tenant. LOCAL_TENANT keeps the v0.4 path
  * (zero migration); others get a per-tenant suffix.
@@ -258,18 +253,59 @@ function appendAudit(auditPath: string, entry: AuditLogEntry): void {
   }
 }
 
-function loadRulesFromDisk(rulesPath: string): DeployedCustomRule[] {
-  if (!existsSync(rulesPath)) return [];
+interface LoadedRules {
+  /** Rules that validated — these are the ones that fire. */
+  rules: DeployedCustomRule[];
+  /**
+   * Entries that did NOT validate, preserved byte-for-byte. They never
+   * fire, but persist() writes them back so a later deploy cannot delete
+   * them. Without this the store silently destroys user data (below).
+   */
+  quarantined: unknown[];
+  /**
+   * False when the file exists but could not be read or JSON-parsed at
+   * all. persist() refuses to write in that state rather than replacing
+   * a file it never understood.
+   */
+  readable: boolean;
+}
+
+/*
+ * Read leniently, one rule at a time.
+ *
+ * This used to validate the whole array with a single safeParse and return
+ * [] if ANY element failed. The empty result was then cached, and the next
+ * deploy/delete/toggle called persist(), which wrote {version:1, rules:[]}
+ * over the file — permanently destroying every valid rule alongside the
+ * bad one. The old comment ("do NOT overwrite the file") described an
+ * intent the write path did not honour.
+ *
+ * It was reachable, not theoretical: DefinitionSchema's superRefine now
+ * runs on READ as well as WRITE, and eval/rules/custom.ts notes that rules
+ * predating that validation — e.g. {type:'min_length', config:{}} — are
+ * already sitting in users' files.
+ */
+function loadRulesFromDisk(rulesPath: string): LoadedRules {
+  if (!existsSync(rulesPath)) return { rules: [], quarantined: [], readable: true };
+
+  let parsedJson: unknown;
   try {
-    const raw = readFileSync(rulesPath, 'utf-8');
-    const parsed = FileSchema.safeParse(JSON.parse(raw));
-    if (parsed.success) return parsed.data.rules;
-    // Malformed: leave rules empty; do NOT overwrite the file.
-    return [];
+    parsedJson = JSON.parse(readFileSync(rulesPath, 'utf-8'));
   } catch {
-    // Unreadable: leave rules empty.
-    return [];
+    return { rules: [], quarantined: [], readable: false };
   }
+
+  const envelope = z.object({ rules: z.array(z.unknown()).optional() }).safeParse(parsedJson);
+  if (!envelope.success) return { rules: [], quarantined: [], readable: false };
+
+  const rules: DeployedCustomRule[] = [];
+  const quarantined: unknown[] = [];
+  for (const entry of envelope.data.rules ?? []) {
+    const rule = DeployedRuleSchema.safeParse(entry);
+    if (rule.success) rules.push(rule.data);
+    else quarantined.push(entry);
+  }
+  return { rules, quarantined, readable: true };
 }
 
 export function createCustomRuleStore(opts?: {
@@ -288,20 +324,41 @@ export function createCustomRuleStore(opts?: {
 
   // In-memory cache keyed by tenant. Lazy-loaded on first access per
   // tenant; subsequent calls hit the cache.
-  const tenantRules = new Map<TenantId, DeployedCustomRule[]>();
+  const tenantState = new Map<TenantId, LoadedRules>();
+
+  function state(tenantId: TenantId): LoadedRules {
+    let loaded = tenantState.get(tenantId);
+    if (loaded === undefined) {
+      loaded = loadRulesFromDisk(pathFor(tenantId));
+      tenantState.set(tenantId, loaded);
+    }
+    return loaded;
+  }
 
   function load(tenantId: TenantId): DeployedCustomRule[] {
-    let rules = tenantRules.get(tenantId);
-    if (rules === undefined) {
-      rules = loadRulesFromDisk(pathFor(tenantId));
-      tenantRules.set(tenantId, rules);
-    }
-    return rules;
+    return state(tenantId).rules;
   }
 
   function persist(tenantId: TenantId): void {
-    const rules = tenantRules.get(tenantId) ?? [];
-    const file: CustomRulesFile = { version: 1, rules };
+    const loaded = state(tenantId);
+    if (!loaded.readable) {
+      /*
+       * The file exists but never parsed. Overwriting it would replace
+       * content we could not read — exactly the data loss this store used
+       * to cause silently. Fail loudly so the caller surfaces a 500 and
+       * the operator can fix or move the file.
+       */
+      throw new Error(
+        `Refusing to write ${pathFor(tenantId)}: the existing file could not be parsed. ` +
+          `Fix or move it, then retry — writing now would destroy its contents.`,
+      );
+    }
+    // Quarantined entries ride along untouched so a deploy never deletes
+    // rules this version could not validate.
+    const file: CustomRulesFile = {
+      version: 1,
+      rules: [...loaded.rules, ...loaded.quarantined] as DeployedCustomRule[],
+    };
     writeAtomic(pathFor(tenantId), JSON.stringify(file, null, 2));
   }
 

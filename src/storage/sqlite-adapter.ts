@@ -224,9 +224,17 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void> {
     assertTenant(tenantId);
+    /*
+     * created_at is written EXPLICITLY as ISO-8601. Leaving it to the
+     * column DEFAULT (datetime('now')) stored "2026-08-09 15:00:00", which
+     * every period query then compared as a string against a JS
+     * toISOString() boundary — and ' ' sorts before 'T', so any eval whose
+     * calendar date matched the boundary's date was dropped from the
+     * window. Migration 005 rewrites rows written before this line existed.
+     */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -241,6 +249,7 @@ export class SqliteAdapter implements IStorageAdapter {
       result.rules_evaluated ?? null,
       result.rules_skipped ?? null,
       result.insufficient_data ? 1 : 0,
+      new Date().toISOString(),
     );
   }
 
