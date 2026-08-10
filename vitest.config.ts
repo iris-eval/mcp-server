@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/**/*.test.ts'],
+    /*
+     * Confines every in-process test to a scratch IRIS_HOME. Without it, a
+     * test that builds a server from defaultConfig writes to the developer's
+     * real ~/.iris — mcp-protocol.test.ts was appending to their actual
+     * audit.log on every run. See tests/setup/iris-home.ts.
+     */
+    setupFiles: ['./tests/setup/iris-home.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

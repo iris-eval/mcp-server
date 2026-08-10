@@ -16,8 +16,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createCustomRuleStore } from '../../src/custom-rule-store.js';
+import { irisHome } from '../../src/utils/iris-home.js';
 import { LOCAL_TENANT, asTenantId, type TenantId } from '../../src/types/tenant.js';
 
 let tmpDir: string;
@@ -148,13 +149,15 @@ describe('CustomRuleStore — tenant isolation', () => {
   });
 
   it('LOCAL_TENANT continues to use the v0.4 file path (zero migration)', () => {
-    // Spot-check the default `defaultPathFor` semantics by NOT passing
-    // a `pathFor` factory — uses the production default which lives in
-    // ~/.iris/. Verify it resolves to a path with `/.iris/custom-rules.json`
-    // for LOCAL_TENANT and `/.iris/custom-rules-<id>.json` otherwise.
+    // Spot-check the default `defaultPathFor` semantics by NOT passing a
+    // `pathFor` factory. Assert against the RESOLVED iris home rather than
+    // a literal '.iris' segment: the directory is IRIS_HOME-overridable
+    // (and the test suite sets it), while the guarantee under test is the
+    // FILENAME — LOCAL_TENANT keeps the unsuffixed v0.4 name so upgrading
+    // users need no migration, and other tenants get a suffix.
     const store = createCustomRuleStore({ auditPath });
-    expect(store.pathFor(LOCAL_TENANT)).toMatch(/[\\/]\.iris[\\/]custom-rules\.json$/);
-    expect(store.pathFor(TENANT_A)).toMatch(/[\\/]\.iris[\\/]custom-rules-tenant-a\.json$/);
+    expect(store.pathFor(LOCAL_TENANT)).toBe(join(irisHome(), 'custom-rules.json'));
+    expect(store.pathFor(TENANT_A)).toBe(join(irisHome(), 'custom-rules-tenant-a.json'));
   });
 
   it('sanitizes tenant ids to prevent directory traversal', () => {
@@ -162,8 +165,10 @@ describe('CustomRuleStore — tenant isolation', () => {
     // The TenantId brand doesn't enforce a charset; the store does.
     const evil = asTenantId('../../etc/passwd');
     const path = store.pathFor(evil);
-    // Path must NOT escape ~/.iris/ — the slashes/dots get sanitized to underscores.
-    expect(path).toMatch(/[\\/]\.iris[\\/]custom-rules-[a-zA-Z0-9._]+\.json$/);
+    // The invariant is containment: whatever the home directory is, the
+    // resolved path must stay inside it.
+    expect(resolve(path).startsWith(resolve(irisHome()))).toBe(true);
+    expect(path).toMatch(/custom-rules-[a-zA-Z0-9._]+\.json$/);
     expect(path).not.toContain('etc/passwd');
     expect(path).not.toMatch(/\.\.[\\/]/);
   });
