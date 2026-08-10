@@ -30,6 +30,7 @@ import { join, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import isSafeRegex from 'safe-regex2';
+import { regexBacktrackingBudgetExceeded } from './eval/rules/regex-budget.js';
 import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
   DeployedCustomRule,
@@ -142,6 +143,24 @@ const DefinitionSchema = z
             path: ['config', 'pattern'],
             message: 'Regex pattern rejected: potentially unsafe (catastrophic backtracking)',
           });
+          break;
+        }
+        // safe-regex2 is a star-height heuristic — it catches EXPONENTIAL
+        // blowup only. Polynomial patterns pass it: a*a*a*a*a*b is judged
+        // safe and takes 156ms on 40 characters. Measure what the static
+        // check cannot see.
+        {
+          const budgetIssue = regexBacktrackingBudgetExceeded(
+            stripped,
+            typeof config.flags === 'string' ? config.flags : '',
+          );
+          if (budgetIssue) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['config', 'pattern'],
+              message: budgetIssue,
+            });
+          }
         }
         break;
       }
