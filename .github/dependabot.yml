@@ -40,6 +40,14 @@ updates:
     ignore:
       - dependency-name: "eslint"
         versions: [">=10.0.0"]  # Blocked by eslint-config-next plugin peer deps (see #54)
+      # Same constraint as the root's #58 ceiling, one directory over — the
+      # root block's ignore does NOT apply here. eslint-config-next bundles
+      # its own typescript-eslint, which throws
+      # "TypeError: Cannot read properties of undefined (reading 'Cjs')"
+      # against TS 7. Without this, Dependabot re-proposes an unmergeable
+      # major every week (PR #300).
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
     groups:
       react:
         patterns:
@@ -83,6 +91,11 @@ updates:
       - "ci"
     commit-message:
       prefix: "ci"
+    # Cap raised from the default 5: the github-actions queue sat saturated
+    # at exactly 5 open PRs, so codeql-action/analyze and upload-sarif had no
+    # PR at all — not because they were current, but because there was no
+    # room. A silently-full queue looks identical to "nothing to update".
+    open-pull-requests-limit: 10
     groups:
       docker:
         patterns:
@@ -90,6 +103,17 @@ updates:
       github:
         patterns:
           - "actions/*"
+      # github/codeql-action/* matched NEITHER pattern above, so Dependabot
+      # opened one PR per step. CodeQL requires every step in a run to be on
+      # the SAME version — a lone init or autobuild bump makes Autobuild fail
+      # with "Not all workflow steps that use github/codeql-action actions use
+      # the same version", and no PR can fix that from inside itself (it is
+      # the four steps across codeql.yml + scorecard.yml that must move
+      # together). This already cost one hand-written batch PR; grouping is
+      # what stops a third round.
+      codeql:
+        patterns:
+          - "github/codeql-action*"
 
   - package-ecosystem: "docker"
     directory: "/"

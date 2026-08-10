@@ -43,6 +43,28 @@ jobs:
       - run: npm test
       - run: npm run clean
       - run: npm run build
+      # The tag IS the release identity — everything downstream (npm dist-tag,
+      # GHCR :vX + :latest, the GitHub release) is named from it. Nothing here
+      # checked that it matched what actually gets published, while the
+      # sibling release-init.yml has always had this guard.
+      #
+      # Without it: tag v0.4.6 at a commit whose package.json still says
+      # 0.4.5 -> npm publish tries 0.4.5 -> EPUBLISHCONFLICT -> the
+      # idempotent-re-run handler downstream swallows it as success -> Docker
+      # is tagged :v0.4.6 AND :latest with the 0.4.5 build, and a GitHub
+      # release is cut for a version that does not exist on npm. Fully green.
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "FATAL: tag v$TAG_VERSION != package.json $PKG_VERSION" && exit 1
+          fi
+      # And every other file carrying the version — server.json (both the
+      # top level and each packages[] entry the registry hands to installers),
+      # the lockfile, .well-known/mcp.json, the Claude Code plugin manifest.
+      - name: Verify all version-carrying files agree
+        run: bash scripts/check-version.sh
 
   publish-npm:
     needs: validate
