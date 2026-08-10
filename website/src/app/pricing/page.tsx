@@ -40,42 +40,42 @@ interface Tier {
 
 const tiers: Tier[] = [
   {
-    name: "Free",
-    subhead: "For solo devs + open source projects",
-    price: "$0 / month",
+    name: "Open Source",
+    subhead: "Everything Iris does today, self-hosted",
+    price: "$0",
+    priceSubline: "MIT licensed — no limits, no account",
     cta: {
       label: "Install",
       href: "https://github.com/iris-eval/mcp-server#install",
       primary: true,
     },
     features: [
-      "10,000 evaluations / month",
+      "Unlimited evaluations — no metering, no quota",
       `All ${RULE_COUNT_BUILT_IN} built-in eval rules`,
       "Custom Zod rules (unlimited)",
+      "LLM-as-judge + citation verification (your API key, no proxy)",
       "Dashboard + playground",
       "stdio + HTTP transports",
       "Community support (GitHub Issues + Discord)",
     ],
-    footer: "Stays free for personal projects. No credit card required.",
+    footer: "Runs entirely on your machine. Your traces never leave it.",
   },
   {
-    name: "Pro",
-    subhead: "For small teams in production",
-    price: "$25 / month base + usage",
-    priceSubline: "typical team $5–$10K / year",
+    name: "Team",
+    subhead: "Shared history and hosted storage — planned",
+    price: "Not yet priced",
+    priceSubline: "nothing to buy today",
     cta: { label: "Join waitlist", href: "/#waitlist", primary: true },
     features: [
-      "100,000 evaluations / month included",
-      "$0.0005 per evaluation above that",
-      "All Free-tier features",
-      "LLM-as-judge rules (v0.4)",
+      "Everything in Open Source",
+      "Managed hosting — no local database to run",
+      "Shared team history across machines",
       "Trace comparison (side-by-side)",
       "Cost breakdown by agent + rule",
       "Agent-level dashboard filtering",
-      "Email support, 48h SLA",
-      "Self-Calibrating Eval beta access (v0.5)",
     ],
-    footer: "Billed monthly. Cancel any time.",
+    footer:
+      "Under consideration, not under construction. We will publish pricing when there is something to sell — and the open-source server will keep doing everything it does today.",
     highlighted: true,
   },
   {
@@ -87,16 +87,14 @@ const tiers: Tier[] = [
       href: "mailto:hello@iris-eval.com?subject=Enterprise%20inquiry",
     },
     features: [
-      "Usage-based pricing, committed volume discount",
-      "All Pro-tier features",
+      "Everything in Team",
       "Single sign-on (SAML + OIDC)",
-      "Priority support, 4h SLA on P1",
       "Custom eval rule authoring services",
       "Security review + procurement support",
       "On-premise / VPC deployment option",
-      "Compliance documentation (SOC 2 in progress)",
     ],
-    footer: "Typical engagements start at $25K / year.",
+    footer:
+      "No compliance certifications have been started. If you need SOC 2 or similar today, we are not the right fit yet — the self-hosted server may still work for you, since it keeps all data on your own infrastructure.",
   },
 ];
 
@@ -107,28 +105,28 @@ interface FaqItem {
 
 const faq: FaqItem[] = [
   {
-    q: "What's an evaluation?",
-    a: "An evaluation is a single rule-check against a single agent output. Run a handful of rules against one trace, and you get one evaluation per rule. Traces themselves are free — we only meter the evaluations.",
+    q: "What does it cost to run Iris today?",
+    a: "Nothing. Iris is MIT licensed and runs on your own machine. There is no metering, no quota, no account, and no evaluation limit — the server does not count your usage, because there is nothing to count it for.",
   },
   {
-    q: "Why price on evaluations instead of traces?",
-    a: "Evaluations are the value unit. A trace with no rules applied is a log entry; a trace scored by 13 rules is an instrument. The Pro tier's 100K evaluations translates to roughly 8K traces with the default rule set, or more if you run a leaner subset.",
+    q: "Is LLM-as-judge a paid feature?",
+    a: "No. LLM-as-judge and citation verification ship in the open-source server. They call Anthropic or OpenAI with your own API key and never route through us, so you pay your provider directly with no markup. A per-evaluation cost cap is enforced before each call, and the heuristic rules stay free and offline.",
   },
   {
     q: "Can I self-host?",
-    a: "Yes. The OSS MCP server (@iris-eval/mcp-server) runs locally today on npm + Docker; the dashboard + playground run in-process. The Cloud Starter tier (launching v0.5) adds hosted storage, scaling, and alerting on top of the same core. Enterprise VPC deployment combines the two.",
+    a: "Self-hosting is the only way to run Iris right now — @iris-eval/mcp-server on npm or Docker, with the dashboard and playground in-process. Hosted options are described above as planned, not available.",
   },
   {
-    q: "What's the Self-Calibrating Eval beta?",
-    a: "A v0.5 feature that adjusts eval thresholds based on observed patterns in your traces, so rules stay useful as your agent evolves. Pro + Enterprise get early access. Details will ship with v0.5.",
+    q: "Will the open-source version get worse when a paid tier arrives?",
+    a: "No feature that is free today will move behind a paywall. If a hosted tier ever ships, it will earn its price on hosting, shared team history and scale — not by removing something you already have.",
   },
   {
-    q: "Is the Free tier forever?",
-    a: "The 10K evaluations / month threshold is the commitment we can make for individual use today. If your needs grow past it, Pro is priced to make the transition obvious.",
+    q: "Do you have SOC 2 or other compliance certifications?",
+    a: "No. None have been started, and we will say so plainly rather than imply otherwise. Because the server runs entirely on your infrastructure and sends no telemetry, many teams with compliance requirements can still use it — but that is your assessment to make, not a certification we hold.",
   },
   {
-    q: "How does billing work for Cloud Starter waitlist?",
-    a: "When Cloud Starter launches, waitlist members get first access + founding-member pricing lock for year 1. No payment until the tier goes live + you opt in.",
+    q: "What is the waitlist actually for?",
+    a: "It tells us whether hosted, team-shared storage is worth building. Joining costs nothing, commits you to nothing, and there is no price to be locked into yet.",
   },
 ];
 
