@@ -395,12 +395,28 @@ export class SqliteAdapter implements IStorageAdapter {
       WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { agent_count: number };
 
+    /*
+     * No `AND passed = 0` here — deliberately.
+     *
+     * A safety eval's score is the average across its rules, so a single
+     * violation is routinely outvoted: output containing "Your SSN is
+     * 123-45-6789" fails no_pii (score 0) while the three other safety
+     * rules pass, giving 0.733 overall — above the 0.7 threshold, so
+     * passed = 1. Filtering to failed evals therefore reported
+     * {pii: 0, injection: 0, hallucination: 0} for a trace that leaked a
+     * social security number.
+     *
+     * For a product whose job is catching PII, injection and hallucination,
+     * that error ran in the direction that HIDES problems. The count is
+     * per-VIOLATION, not per-failed-eval; the per-rule loop below already
+     * skips rules that passed, so scanning every safety eval in the window
+     * is both correct and sufficient.
+     */
     const safetyRows = this.db.prepare(`
       SELECT rule_results
       FROM eval_results
       WHERE tenant_id = ? AND created_at >= ?
         AND eval_type = 'safety'
-        AND passed = 0
     `).all(tenantId, since) as Array<{ rule_results: string }>;
 
     const violations = { pii: 0, injection: 0, hallucination: 0 };
