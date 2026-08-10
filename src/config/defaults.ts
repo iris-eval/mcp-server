@@ -1,9 +1,7 @@
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import type { IrisConfig } from '../types/index.js';
-
-const irisHome = join(homedir(), '.iris');
+import { irisHome } from '../utils/iris-home.js';
 
 // Read version from package.json to avoid hardcoded drift
 let pkgVersion = '0.1.8';
@@ -21,7 +19,7 @@ export const PKG_VERSION = pkgVersion;
 export const defaultConfig: IrisConfig = {
   storage: {
     type: 'sqlite',
-    path: join(irisHome, 'iris.db'),
+    path: join(irisHome(), 'iris.db'),
   },
   server: {
     name: 'iris-eval',

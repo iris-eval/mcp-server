@@ -17,7 +17,7 @@
  * run alongside tests without colliding.
  */
 import { defineConfig, devices } from '@playwright/test';
-import { E2E_PORT, E2E_DB_PATH, E2E_BASE_URL } from './tests/e2e/_constants.js';
+import { E2E_PORT, E2E_DB_DIR, E2E_DB_PATH, E2E_BASE_URL } from './tests/e2e/_constants.js';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -45,6 +45,16 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
     env: {
+      /*
+       * IRIS_HOME confines EVERY per-user file (config.json, iris.db,
+       * custom-rules.json, audit.log, preferences.json) to the temp dir.
+       * Before this, only the DB was isolated: each run WIPED the real
+       * ~/.iris/audit.log, deployed make-rule test rules into the real
+       * custom-rules.json (8 pieces of april-2026 debris shipped in the
+       * founder's live store for months), and overwrote the real
+       * preferences.json via the globalSetup PATCH.
+       */
+      IRIS_HOME: E2E_DB_DIR,
       IRIS_DB_PATH: E2E_DB_PATH,
       IRIS_NO_AUTO_LAUNCH: '1',
     },

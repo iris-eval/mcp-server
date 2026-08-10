@@ -125,6 +125,17 @@ export function createDashboardServer(
     app.get('/{*path}', (_req, res) => {
       res.sendFile(indexHtml);
     });
+  } else {
+    // Without this warning the server logs "Dashboard available at ..."
+    // while every page request 404s — an npm install always ships the
+    // bundle, so this only bites from-source runs, but when it bites the
+    // failure is opaque (before this line existed, a UI-less checkout
+    // failed the entire E2E suite with nothing but element-not-found
+    // timeouts).
+    logger.warn(
+      `Dashboard UI bundle not found at ${indexHtml} — serving API only. ` +
+        `Build it with: cd dashboard && npm run build`,
+    );
   }
 
   // Error handler (must be last)

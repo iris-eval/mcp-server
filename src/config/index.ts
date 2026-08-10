@@ -1,8 +1,8 @@
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { homedir } from 'node:os';
 import type { IrisConfig } from '../types/index.js';
 import { defaultConfig } from './defaults.js';
+import { irisHome } from '../utils/iris-home.js';
 
 function deepMerge(target: any, source: any): any {
   const result = { ...target };
@@ -125,12 +125,12 @@ function cliArgsToConfig(args: CliArgs): Partial<IrisConfig> {
 }
 
 export function loadConfig(cliArgs?: CliArgs): IrisConfig {
-  const irisHome = join(homedir(), '.iris');
-  if (!existsSync(irisHome)) {
-    mkdirSync(irisHome, { recursive: true });
+  const home = irisHome();
+  if (!existsSync(home)) {
+    mkdirSync(home, { recursive: true });
   }
 
-  const configPath = cliArgs?.config ?? join(irisHome, 'config.json');
+  const configPath = cliArgs?.config ?? join(home, 'config.json');
   const fileConfig = loadConfigFile(configPath);
   const envConfig = loadEnvVars();
   const argsConfig = cliArgs ? cliArgsToConfig(cliArgs) : {};

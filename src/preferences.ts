@@ -18,10 +18,10 @@
  * /moments), dismissedTours, archivedMoments. These let the dashboard
  * remember the user's last view across reloads + across iris-mcp restarts.
  */
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { writeAtomic } from './utils/write-atomic.js';
-import { join, dirname } from 'node:path';
-import { homedir } from 'node:os';
+import { irisHome } from './utils/iris-home.js';
+import { join } from 'node:path';
 import { z } from 'zod';
 
 const MomentFiltersSchema = z
@@ -77,7 +77,7 @@ export interface PreferenceState {
 }
 
 function defaultPreferencesPath(): string {
-  return join(homedir(), '.iris', 'preferences.json');
+  return join(irisHome(), 'preferences.json');
 }
 
 function freshPreferences(): Preferences {

@@ -15,13 +15,12 @@
  */
 import { mkdirSync, appendFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { homedir } from 'node:os';
 import Database from 'better-sqlite3';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { Trace } from '../../src/types/trace.js';
 import type { EvalResult } from '../../src/types/eval.js';
-import { E2E_BASE_URL, E2E_DB_PATH } from './_constants.js';
+import { E2E_BASE_URL, E2E_DB_DIR, E2E_DB_PATH } from './_constants.js';
 
 const AGENTS = ['research-synthesizer', 'content-drafter', 'data-extractor', 'code-reviewer'];
 
@@ -156,10 +155,11 @@ export default async function globalSetup(): Promise<void> {
   }
 
   // 6. Seed one audit entry so PassRateAreaChart renders an annotation.
-  //    The audit log writer uses the real ~/.iris/audit.log path (we
-  //    don't override IRIS_HOME for OSS scope — documented known limit
-  //    in #4b's plan). For deterministic tests we reset then append.
-  const auditLog = join(homedir(), '.iris', 'audit.log');
+  //    The webServer runs with IRIS_HOME=E2E_DB_DIR (playwright.config),
+  //    so its audit log lives in the temp dir — resetting it here touches
+  //    ONLY test state. (Before IRIS_HOME existed this line wiped the
+  //    user's real ~/.iris/audit.log on every run.)
+  const auditLog = join(E2E_DB_DIR, 'audit.log');
   const auditDir = dirname(auditLog);
   if (!existsSync(auditDir)) mkdirSync(auditDir, { recursive: true });
   // Reset — every e2e run starts with a single deterministic entry.

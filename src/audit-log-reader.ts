@@ -12,7 +12,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { irisHome } from './utils/iris-home.js';
 import { z } from 'zod';
 import type { AuditLogEntry } from './types/custom-rule.js';
 
@@ -52,7 +52,7 @@ export interface AuditQueryResult {
 }
 
 function defaultAuditPath(): string {
-  return join(homedir(), '.iris', 'audit.log');
+  return join(irisHome(), 'audit.log');
 }
 
 export function readAuditLog(opts?: {
