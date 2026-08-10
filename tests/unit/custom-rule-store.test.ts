@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCustomRuleStore } from '../../src/custom-rule-store.js';
@@ -226,5 +226,90 @@ describe('createCustomRuleStore (single-tenant / OSS)', () => {
       definition: { name: 'short', type: 'regex_no_match', config: { pattern: 'x' } },
     });
     expect(rule.name).toBe('short');
+  });
+});
+
+/*
+ * Regression: a single unparseable rule used to wipe the whole file.
+ *
+ * loadRulesFromDisk validated the entire array with one safeParse and
+ * returned [] if ANY element failed. That empty result was cached, and the
+ * next deploy called persist(), which wrote {version:1, rules:[]} over the
+ * file — destroying every valid rule alongside the bad one, with no error
+ * anywhere. The old comment claimed "do NOT overwrite the file"; the write
+ * path did not honour it.
+ *
+ * Reachable in the field: DefinitionSchema's superRefine runs on READ as
+ * well as WRITE, and eval/rules/custom.ts documents that rules predating
+ * that validation (e.g. {type:'min_length', config:{}}) already exist in
+ * users' files.
+ */
+describe('lenient load — one bad rule must not destroy the file', () => {
+  const validRule = {
+    id: 'rule-keepme',
+    name: 'keep-me',
+    description: 'a perfectly good rule',
+    evalType: 'custom',
+    severity: 'medium',
+    definition: { name: 'keep-me', type: 'min_length', config: { min_length: 10 } },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    version: 1,
+  };
+  // Exactly the legacy shape custom.ts says is already on disk.
+  const legacyRule = {
+    id: 'rule-legacy',
+    name: 'legacy-no-config',
+    description: 'deployed before config validation existed',
+    evalType: 'custom',
+    severity: 'medium',
+    definition: { name: 'legacy-no-config', type: 'min_length', config: {} },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    version: 1,
+  };
+
+  it('keeps the valid rules and quarantines only the invalid one', () => {
+    writeFileSync(rulesPath, JSON.stringify({ version: 1, rules: [validRule, legacyRule] }));
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    const listed = store.list(LOCAL_TENANT);
+    expect(listed.map((r) => r.id)).toEqual(['rule-keepme']);
+  });
+
+  it('a later deploy does NOT delete the valid rule or the quarantined one', () => {
+    writeFileSync(rulesPath, JSON.stringify({ version: 1, rules: [validRule, legacyRule] }));
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    store.deploy(LOCAL_TENANT, {
+      name: 'brand-new',
+      description: 'deployed after the bad rule was already on disk',
+      evalType: 'custom',
+      severity: 'medium',
+      definition: { name: 'brand-new', type: 'min_length', config: { min_length: 5 } },
+    } as Parameters<typeof store.deploy>[1]);
+
+    const onDisk = JSON.parse(readFileSync(rulesPath, 'utf-8'));
+    const ids = onDisk.rules.map((r: { id: string }) => r.id);
+    expect(ids).toContain('rule-keepme'); // survived — this is the data-loss guard
+    expect(ids).toContain('rule-legacy'); // preserved verbatim, never activated
+    expect(onDisk.rules).toHaveLength(3);
+  });
+
+  it('refuses to write over a file it could not parse at all', () => {
+    writeFileSync(rulesPath, '{ this is not json');
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(store.list(LOCAL_TENANT)).toEqual([]);
+    expect(() =>
+      store.deploy(LOCAL_TENANT, {
+        name: 'should-not-land',
+        description: 'writing here would destroy unreadable content',
+        evalType: 'custom',
+        severity: 'medium',
+        definition: { name: 'should-not-land', type: 'min_length', config: { min_length: 5 } },
+      } as Parameters<typeof store.deploy>[1]),
+    ).toThrow(/could not be parsed/);
+    // The unreadable file is still exactly as the user left it.
+    expect(readFileSync(rulesPath, 'utf-8')).toBe('{ this is not json');
   });
 });

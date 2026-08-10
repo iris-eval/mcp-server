@@ -3,13 +3,20 @@ import * as migration001 from './001-initial-schema.js';
 import * as migration002 from './002-eval-skip-fields.js';
 import * as migration003 from './003-eval-passed-index.js';
 import * as migration004 from './004-tenant-id.js';
+import * as migration005 from './005-normalize-created-at.js';
 
 interface Migration {
   id: string;
   up(db: Database.Database): void;
 }
 
-const migrations: Migration[] = [migration001, migration002, migration003, migration004];
+const migrations: Migration[] = [
+  migration001,
+  migration002,
+  migration003,
+  migration004,
+  migration005,
+];
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`
