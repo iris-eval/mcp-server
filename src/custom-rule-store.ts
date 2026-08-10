@@ -25,8 +25,8 @@
  */
 import { mkdirSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { writeAtomic } from './utils/write-atomic.js';
+import { irisHome } from './utils/iris-home.js';
 import { join, dirname } from 'node:path';
-import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import isSafeRegex from 'safe-regex2';
@@ -203,17 +203,17 @@ const FileSchema = z.object({
  */
 function defaultPathFor(tenantId: TenantId): string {
   if (tenantId === LOCAL_TENANT) {
-    return join(homedir(), '.iris', 'custom-rules.json');
+    return join(irisHome(), 'custom-rules.json');
   }
   // Sanitize tenant id for filesystem safety. TenantId is branded but
   // could in principle contain odd chars on Cloud — limit to a known-safe
   // alphabet so we never write outside the .iris directory.
   const safe = String(tenantId).replace(/[^a-zA-Z0-9._-]/g, '_');
-  return join(homedir(), '.iris', `custom-rules-${safe}.json`);
+  return join(irisHome(), `custom-rules-${safe}.json`);
 }
 
 function defaultAuditPath(): string {
-  return join(homedir(), '.iris', 'audit.log');
+  return join(irisHome(), 'audit.log');
 }
 
 export interface CustomRuleStore {

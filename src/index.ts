@@ -86,7 +86,9 @@ Environment variables (CLI flags take precedence):
   IRIS_TRANSPORT                       stdio | http
   IRIS_HOST                            Bind address for HTTP transport (default: 127.0.0.1)
   IRIS_PORT                            HTTP transport port (1-65535)
-  IRIS_DB_PATH                         SQLite database path
+  IRIS_HOME                            Directory for all per-user files: config.json, iris.db, custom-rules.json,
+                                       audit.log, preferences.json (default: ~/.iris)
+  IRIS_DB_PATH                         SQLite database path (overrides IRIS_HOME for the DB only)
   IRIS_LOG_LEVEL                       debug | info | warn | error
   IRIS_DASHBOARD                       true to enable web dashboard
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
