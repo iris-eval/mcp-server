@@ -43,7 +43,8 @@
 //   2 — script error (npm audit failed unexpectedly, parse failure, etc.)
 
 import { readFile } from 'node:fs/promises';
-import { resolve, dirname } from 'node:path';
+import { existsSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -78,13 +79,27 @@ async function getDocumentedGhsas() {
 // Walks `npm audit --json` output to collect every advisory referenced via
 // the `via[].url` chain at >=moderate severity. Returns array of
 // {ghsa, severity, package, title}.
-function getAuditAdvisories() {
+/*
+ * Every workspace with its own lockfile.
+ *
+ * This gate used to audit the ROOT only, while calling itself "the repo's
+ * authoritative dependency-security gate" — authoritative for one workspace
+ * and silent in three. That is exactly how dashboard/ carried 2 HIGHs while
+ * the Dependabot dashboard read 0 alerts. `npm audit` resolves against the
+ * lockfile in its cwd and does not traverse into nested projects, so each
+ * one needs its own run.
+ */
+const AUDIT_WORKSPACES = ['.', 'dashboard', 'website', 'packages/init'];
+
+function auditWorkspace(workspace) {
+  const cwd = resolve(root, workspace);
+  if (!existsSync(join(cwd, 'package-lock.json'))) return null;
   // Windows: shell:true is required for .cmd resolution (npm is npm.cmd).
   // Node 22+ deprecation warning about arg passing with shell:true does not
   // apply here because args are hardcoded literals, not user input. The
   // warning fires only on Windows; CI runs on Linux and uses shell:false.
   const proc = spawnSync('npm', ['audit', '--json'], {
-    cwd: root,
+    cwd,
     encoding: 'utf-8',
     shell: process.platform === 'win32',
     maxBuffer: 50 * 1024 * 1024,
@@ -92,38 +107,52 @@ function getAuditAdvisories() {
   // npm audit exits non-zero when vulnerabilities are found — that's not
   // a script error. Treat exit code 1 as "audit ran and found stuff."
   if (proc.status !== 0 && proc.status !== 1) {
-    err(`npm audit failed (exit ${proc.status}): ${proc.stderr || proc.stdout}`);
+    err(`npm audit failed in ${workspace} (exit ${proc.status}): ${proc.stderr || proc.stdout}`);
   }
-  let parsed;
   try {
-    parsed = JSON.parse(proc.stdout);
+    return JSON.parse(proc.stdout);
   } catch (e) {
-    err(`could not parse npm audit JSON: ${e.message}`);
+    err(`could not parse npm audit JSON from ${workspace}: ${e.message}`);
   }
+}
 
+function getAuditAdvisories() {
   const advisories = [];
   const seen = new Set();
-  for (const [pkg, info] of Object.entries(parsed.vulnerabilities ?? {})) {
-    for (const via of info.via ?? []) {
-      if (typeof via !== 'object' || !via.url) continue;
-      const m = via.url.match(GHSA_RE);
-      if (!m) continue;
-      const ghsa = m[0].toUpperCase();
-      if (seen.has(ghsa)) continue;
-      seen.add(ghsa);
-      const severity = (via.severity ?? '').toLowerCase();
-      if (!SEVERITY_THRESHOLD.has(severity)) continue;
-      advisories.push({
-        ghsa,
-        severity,
-        package: pkg,
-        title: via.title ?? '',
-        // npm sets this on the vulnerability entry, not the advisory:
-        // true | false | {name, version, isSemVerMajor}
-        fixAvailable: info.fixAvailable ?? false,
-      });
+  const audited = [];
+
+  for (const workspace of AUDIT_WORKSPACES) {
+    const parsed = auditWorkspace(workspace);
+    if (!parsed) continue;
+    audited.push(workspace);
+
+    for (const [pkg, info] of Object.entries(parsed.vulnerabilities ?? {})) {
+      for (const via of info.via ?? []) {
+        if (typeof via !== 'object' || !via.url) continue;
+        const m = via.url.match(GHSA_RE);
+        if (!m) continue;
+        const ghsa = m[0].toUpperCase();
+        if (seen.has(ghsa)) continue;
+        seen.add(ghsa);
+        const severity = (via.severity ?? '').toLowerCase();
+        if (!SEVERITY_THRESHOLD.has(severity)) continue;
+        advisories.push({
+          ghsa,
+          severity,
+          package: pkg,
+          workspace,
+          title: via.title ?? '',
+          // npm sets this on the vulnerability entry, not the advisory:
+          // true | false | {name, version, isSemVerMajor}
+          fixAvailable: info.fixAvailable ?? false,
+        });
+      }
     }
   }
+
+  // State which workspaces were covered. A gate that quietly audits a
+  // subset reads exactly like one that audited everything and found nothing.
+  console.log(`[security-gate] audited lockfiles: ${audited.join(', ')}`);
   return advisories;
 }
 

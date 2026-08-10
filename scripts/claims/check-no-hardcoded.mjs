@@ -31,6 +31,12 @@ const SCAN_DIRS = [
   'packages/langchain/src',
   'packages/init',
   'claude-plugin',
+  // The DOT-prefixed one, which is where the real manifests live —
+  // plugin.json and marketplace.json, the public plugin description Claude
+  // Code users read. 'claude-plugin' above is the skills payload directory;
+  // one missing dot left both manifests unscanned, and marketplace.json
+  // does hardcode a tool count.
+  '.claude-plugin',
   'skills',
 ];
 const SCAN_FILES = ['README.md', 'server.json'];
