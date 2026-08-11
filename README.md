@@ -13,7 +13,7 @@
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
 [![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/server/iris/iris-eval)
 
-**Know whether your AI agents are actually good enough to ship.** Iris is an open-source MCP server that scores output quality, catches safety failures, and enforces cost budgets across all your agents. Any MCP-compatible agent discovers and uses it automatically — no SDK, no code changes.
+**Know whether your AI agents are actually good enough to ship.** Iris is an open-source MCP server that scores output quality, catches safety failures, and enforces cost budgets. Any MCP-compatible agent discovers its nine tools on connect — no SDK, no code changes. Everything runs on your machine; your traces never leave it.
 
 ![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 
@@ -54,7 +54,9 @@ Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Win
 }
 ```
 
-That's it. Your agent discovers Iris and starts logging traces automatically.
+That's it — your agent discovers Iris's nine tools on connect.
+
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, that's what the HTTP API, CLI and SDK on the [roadmap](docs/roadmap.md) are for.
 
 ### Turn on the dashboard
 
@@ -189,11 +191,13 @@ When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effo
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
-## Cloud Tier (Coming Soon)
+## Hosted / team features
 
-Self-hosted Iris runs on your machine with SQLite. As your team's eval needs grow, the cloud tier adds PostgreSQL, team dashboards, alerting on quality regressions, and managed infrastructure.
+Iris runs entirely on your machine today, and everything it does is free and MIT licensed with no limits and no account.
 
-[Join the waitlist](https://iris-eval.com#waitlist) to get early access.
+Hosted storage, shared team history and alerting are **under consideration, not under construction**. There is no pricing, and nothing to buy. If shared history would be useful to you, [the waitlist](https://iris-eval.com#waitlist) is how we find out whether it's worth building — it commits you to nothing.
+
+Two commitments hold regardless: **nothing that is free today will move behind a paywall**, and **no compliance certification will be claimed before it is held**.
 
 ## Examples
 

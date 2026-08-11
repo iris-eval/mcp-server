@@ -1,8 +1,8 @@
 # `@iris-eval/client` — SDK Specification
 
-> **Status:** spec final; **implementation not yet shipped** (deferred out of v0.4.0 at release scope-cut — see the roadmap). The MCP-native path below remains the supported install today.
+> **Status:** design spec. **Not implemented.** This is the design for the SDK item in **Track 3 (Reach)** of the [roadmap](./roadmap.md) — it is not a commitment to a date. The MCP-native path described below is the supported install today.
 >
-> **Why this exists:** Iris's primary install path is MCP-native — the MCP server runs as a subprocess and any MCP-aware client (Claude Code, Cursor, Windsurf, Continue, Cline, Zed, custom MCP clients) discovers it. That's the right fit for hosted agents. Teams building **custom agents** in TypeScript, however, hit MCP's process-boundary cost on every call. UAT evidence (`memory/iris_first_live_testing.md`: a 249-line ad-hoc bridge a customer wrote because the MCP path was too slow for their high-volume real-time loop) makes the case directly: an in-process SDK is the right shape for that use case.
+> **Why this exists:** Iris's primary install path is MCP-native — the MCP server runs as a subprocess and any MCP-aware client (Claude Code, Cursor, Windsurf, Continue, Cline, Zed, custom MCP clients) discovers it. That's the right fit for hosted agents. Teams building **custom agents** in TypeScript hit two limits: MCP's process-boundary cost on every call, and the fact that under MCP a tool call is always the model's decision — so capture is best-effort. In early testing one user wrote a 249-line ad-hoc bridge precisely because the MCP path did not fit their high-volume real-time loop. An in-process SDK is the right shape for that use case, and it makes capture unconditional.
 
 ## Goals
 
@@ -13,7 +13,7 @@
 
 ## Non-goals
 
-- **Python SDK.** Out of scope for v0.4; planned for v0.5.
+- **Python SDK.** Out of scope for this spec. A Python client is listed under Track 3 alongside the TypeScript one; it should be a thin client over the same HTTP API rather than a second implementation of the eval engine.
 - **Streaming evaluations.** v1 SDK evaluates per-output (synchronous). Streaming evaluation lands later if real demand emerges.
 - **MCP server replacement.** The SDK does not deprecate the MCP server. Both are first-class install paths.
 
@@ -101,7 +101,7 @@ interface IrisOpts {
 - **Memory footprint:** < 30MB resident for default rule set + 1000-trace cache.
 - **Throughput:** > 200 evals/sec on a single Node process for deterministic-only rules.
 
-These targets establish the v0.4 perf bar; benchmarks ship with v0.4 release notes.
+These are targets, not measurements. No benchmark has been run. If this ships, the numbers get measured and published rather than asserted — the same standard Track 1 applies to evaluator accuracy.
 
 ## Migration from MCP-server-only deployments
 
@@ -111,13 +111,13 @@ A team currently using `@iris-eval/mcp-server` who wants to switch to (or also u
 2. Point the SDK at the same SQLite path the MCP server is using.
 3. Both write to the same DB; both read from the same dashboard. No migration needed.
 
-For shared-deployment scenarios, document the locking model (SQLite WAL handles concurrent writers within reason; high-throughput SDK + concurrent MCP server may require Postgres backend planned for v0.5+ Cloud Starter).
+For shared-deployment scenarios, document the locking model. SQLite WAL handles concurrent writers within reason; a high-throughput SDK running alongside a concurrent MCP server is the case that would justify a Postgres adapter. The storage layer already sits behind an adapter interface, so that is an addition rather than a rewrite — but it is not currently being built.
 
-## Open questions for v0.4 implementation
+## Open questions for implementation
 
-- **Worker thread for judged rules?** Async judge calls block the event loop briefly. Worker offload reduces tail latency at the cost of one extra IPC hop. Spike during v0.4 implementation.
-- **TypeScript-only or also CommonJS?** Default plan: TypeScript-first ESM, with a CJS build via tsup for legacy consumers. Confirm during v0.4 build.
-- **Rule registry plugin model?** Phase 1: `customRules: [...]` array on construct. Phase 2 (post-v0.4): npm-discoverable rules via `@iris-eval/rules-*` packages. Out of scope for v0.4.
+- **Worker thread for judged rules?** Async judge calls block the event loop briefly. Worker offload reduces tail latency at the cost of one extra IPC hop. Spike during implementation.
+- **TypeScript-only or also CommonJS?** Default plan: TypeScript-first ESM, with a CJS build via tsup for legacy consumers.
+- **Rule registry plugin model?** Phase 1: `customRules: [...]` array on construct. Phase 2: npm-discoverable rules via `@iris-eval/rules-*` packages. Out of scope for the first implementation.
 
 ## Relationship to the MCP server
 
@@ -128,9 +128,17 @@ For shared-deployment scenarios, document the locking model (SQLite WAL handles 
 
 Both share: rule library, dashboard, scoring algorithms, custom-rule format, storage. Migrating between them is a config change, not a rewrite.
 
-## Sources
+## Where this sits on the roadmap
 
-- `plans/master-plan/think-risk-decision-register.md` D4 lock (Tier A Wave 2 — A7).
-- `plans/master-plan/build-product-optimization.md` v0.4 list (P11 SDK ship).
-- `memory/iris_first_live_testing.md` (UAT evidence motivating the SDK).
-- `strategy/brand/per-client-docs/sdk-consumers.md` (parallel docs for SDK consumer clients).
+This spec is the design for the **SDK item in Track 3 (Reach)** — see [roadmap.md](./roadmap.md).
+
+One thing has changed since the spec was written, and it strengthens the case rather than weakening it. The original motivation was *performance*: MCP's process boundary is costly in a high-volume loop. That still holds. But the more important reason is **capture reliability**: under MCP a tool call is always the model's decision, so a trace is recorded only if the agent chooses to record it. An in-process SDK makes capture unconditional.
+
+That reframes the two front doors:
+
+- **MCP** — discovery and interactive use. Zero-config, works in any MCP client, best-effort capture.
+- **SDK** — programmatic use. Guaranteed capture, no process boundary.
+
+Neither replaces the other, and both remain first-class.
+
+Track 3 sequences the **HTTP write endpoints first** (`POST /traces`, `POST /evaluations`), because today MCP is the only path data can enter Iris at all. Once those exist, this SDK becomes a thin, well-typed client over a documented API rather than a parallel implementation of the same logic — which is the right shape, and less code to keep correct.

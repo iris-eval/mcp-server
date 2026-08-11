@@ -1,5 +1,7 @@
 # Iris Demo Script — "Zero to First Trace" (60s)
 
+> **📁 Historical template.** Written for an earlier release and kept as reference only. Counts, version numbers and the "discovers Iris and starts logging automatically" framing all reflect that moment — under MCP a tool call is always the model's decision, so capture is not automatic. Anything published from this must be composed fresh against `.claims.json` and the current [roadmap](../roadmap.md).
+
 Companion to the full 3-4 minute demo script (`demo-script.md`). This is a fast, punchy screen recording with voiceover. No slides. Real UI only.
 
 ---

@@ -75,7 +75,7 @@ Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export 
 - **LLM-as-judge evaluation**: use an LLM (OpenAI or Anthropic) to score output quality on dimensions like accuracy, helpfulness, and safety — configurable model, prompt templates, cost caps, token + pricing tracking
 - **Semantic citation verification**: graduates the v0.3.1 fabricated-citation heuristic to actual source-checking via LLM-as-judge
 - **OpenTelemetry trace export**: export Iris traces as OTel spans to Jaeger, Grafana Tempo, Datadog, Sentry via OTLP gRPC/HTTP
-- **Tenant-id storage scaffolding**: `tenant_id` column on every data table, 4-layer defense-in-depth (type system + runtime guard + SQL scope + composite indexes). OSS sees only 'local'; v0.5 Cloud Tier builds on this
+- **Tenant-id storage scaffolding**: `tenant_id` column on every data table, 4-layer defense-in-depth (type system + runtime guard + SQL scope + composite indexes). OSS resolves every request to a single local tenant; the scaffolding means shared/hosted storage could be added later without reworking the storage layer
 - **Supply-chain integrity**: SBOM + cosign keyless signing + SLSA build-provenance attestations on every release artifact
 - **Playwright E2E in CI**: Chromium + Firefox; smoke + drill-through + Make-This-A-Rule flow
 - **Storybook primitive catalog** + Lighthouse CI + bundle-size budgets + axe chart/detail/chrome coverage
@@ -123,7 +123,7 @@ Published measurement is only useful if the rules are aimed at real failures. Cu
 
 MCP is how Iris is discovered and how it is used interactively. It is not a guarantee of capture: under the protocol a tool call is always the model's decision, so anything that *must* be recorded needs a path that does not depend on the model choosing to call it.
 
-- **HTTP write endpoints** (`POST /traces`, `POST /evaluations`). Today MCP is the only way data enters Iris; this opens it to any language, runtime or CI job. It is also the keystone — the CLI and SDKs become thin clients over it rather than parallel implementations.
+- **HTTP write endpoints** (`POST /traces`, `POST /evaluations`). There is no HTTP ingestion path for traces or evaluations today — MCP is the only way they enter Iris, so a CI job, a service in another language, or plain `curl` cannot send them at all. (Rules and preferences already have HTTP write routes; traces and evals are the gap.) This is the keystone: once it exists, the CLI and SDKs become thin clients over it rather than parallel implementations.
 - **CLI** for CI quality gates and batch/offline evaluation.
 - **SDKs** for guaranteed capture, starting with LangChain, then generic TypeScript and Python clients.
 - **Server-provided MCP guidance** (`instructions`, shipped skill) to improve — not guarantee — tool invocation in interactive clients.
