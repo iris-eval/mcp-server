@@ -56,7 +56,7 @@ Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Win
 
 That's it — your agent discovers Iris's nine tools on connect.
 
-**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, that's what the HTTP API, CLI and SDK on the [roadmap](docs/roadmap.md) are for.
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](docs/http-ingest.md)). The CLI and SDKs on the [roadmap](docs/roadmap.md) will be thin clients over the same endpoint.
 
 ### Turn on the dashboard
 
@@ -212,6 +212,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
+- [HTTP Ingest](docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
 - [Roadmap](docs/roadmap.md) — What's coming next
 
 <details>
