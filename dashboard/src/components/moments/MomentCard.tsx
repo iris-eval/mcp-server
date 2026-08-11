@@ -118,6 +118,17 @@ const styles = {
     padding: '0 var(--space-2)',
     borderRadius: 'var(--border-radius-sm)',
   } as const,
+  newTag: {
+    fontSize: 'var(--font-size-xs)',
+    fontFamily: 'var(--font-mono)',
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    color: 'var(--iris-400)',
+    background: 'oklch(28% 0.12 295 / 0.18)',
+    border: '1px solid var(--iris-500)',
+    padding: '0 var(--space-2)',
+    borderRadius: 'var(--border-radius-sm)',
+  } as const,
   outputPreview: {
     fontSize: 'var(--font-size-xs)',
     color: 'var(--text-muted)',
@@ -163,9 +174,20 @@ interface Props {
   /** Selection state (B8.5). Undefined = not selectable; boolean = selectable. */
   selected?: boolean;
   onToggleSelected?: (id: string) => void;
+  /** True when the user hasn't looked at this failure yet. Renders a NEW tag. */
+  unseen?: boolean;
+  /** Fires when the user clicks through to the detail view. */
+  onOpen?: (id: string) => void;
 }
 
-export function MomentCard({ moment, archived = false, selected, onToggleSelected }: Props) {
+export function MomentCard({
+  moment,
+  archived = false,
+  selected,
+  onToggleSelected,
+  unseen = false,
+  onOpen,
+}: Props) {
   const sig = getSignificanceVisual(moment.significance.kind);
   const verdict = getVerdictVisual(moment.verdict);
   const outputPreview = moment.output?.slice(0, 140) ?? '';
@@ -204,8 +226,13 @@ export function MomentCard({ moment, archived = false, selected, onToggleSelecte
         </Tooltip>
       </div>
 
-      <Link to={`/moments/${moment.id}`} style={styles.bodyLink}>
+      <Link
+        to={`/moments/${moment.id}`}
+        style={styles.bodyLink}
+        onClick={onOpen ? () => onOpen(moment.id) : undefined}
+      >
         <div style={styles.headerRow}>
+          {unseen && <span style={styles.newTag}>NEW</span>}
           <span style={styles.agent}>{moment.agentName}</span>
           <Tooltip content={VERDICT_TOOLTIP[verdict.label] ?? ''}>
             <span style={{ ...styles.verdict, color: verdict.color }} tabIndex={0}>

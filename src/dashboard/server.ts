@@ -20,6 +20,7 @@ import { registerFilterRoutes } from './routes/filters.js';
 import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerMomentRoutes } from './routes/moments.js';
+import { registerFailureRoutes } from './routes/failures.js';
 import { registerRuleRoutes } from './routes/rules.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
@@ -105,6 +106,7 @@ export function createDashboardServer(
   registerFilterRoutes(router, storage);
   registerHealthRoutes(router, storage, config.server.version);
   registerMomentRoutes(router, storage);
+  registerFailureRoutes(router, storage);
   if (options?.customRuleStore && options?.evalEngine) {
     registerRuleRoutes(router, storage, {
       customRuleStore: options.customRuleStore,

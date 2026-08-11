@@ -1,5 +1,5 @@
 /*
- * HealthView — default Dashboard view (?view=health).
+ * HealthView — aggregate Dashboard view (?view=health).
  *
  * Restored composition (founder feedback: prior pass stripped out the
  * gauge + verdict donut + KPI strip — the visuals that actually worked).
@@ -334,7 +334,7 @@ export function HealthView() {
           title="Verdict mix"
           slices={verdictSlices}
           centerLabel="evals"
-          emptyMessage="No evals in this window — your fleet is idle."
+          emptyMessage="No evals in this window yet."
         />
         <Donut
           title="Significance mix"

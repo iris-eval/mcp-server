@@ -152,3 +152,24 @@ export interface MomentQueryResult {
   limit: number;
   offset: number;
 }
+
+/*
+ * Ranked failure list — the dashboard's landing surface. A failure is a
+ * moment with verdict fail/partial, or one flagged by the significance
+ * classifier (safety-violation / cost-spike) regardless of verdict.
+ * Ranking blends severity with recency; see src/eval/failure-rank.ts.
+ */
+
+export interface RankedFailure extends DecisionMoment {
+  /** Severity × recency-decay blend, 0-1. Higher = shown first. */
+  rankScore: number;
+}
+
+export interface FailureQueryResult {
+  failures: RankedFailure[];
+  /** How many recent traces were scanned to build the list. */
+  scanned: number;
+  /** Total traces matching the filter (pre-scan-cap). */
+  total: number;
+  limit: number;
+}

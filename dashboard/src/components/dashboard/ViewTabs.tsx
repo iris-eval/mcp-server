@@ -1,14 +1,18 @@
 /*
  * ViewTabs — segmented underline tab strip for switching dashboard views.
  *
- * Three views answer three different BI questions:
- *   Health  — fleet wellness in aggregate. Default.
- *   Drift   — what's changing this week and why.
- *   Stream  — live pulse + Decision Moments.
+ * Four views answer four different questions:
+ *   Failures — what failed, worst-and-newest first. Default. Nothing in
+ *              this category lands the user on the failure — every tool
+ *              opens on a picker or an aggregate. We land on the failure;
+ *              health/stats stay one click away on this strip.
+ *   Health   — evals in aggregate.
+ *   Drift    — what's changing this week and why.
+ *   Stream   — live pulse + Decision Moments.
  *
- * View state is URL-encoded (?view=health|drift|stream) so every view is
- * shareable as a link. Returning users land on whichever view they last
- * shared. First-time landing on `/` falls through to Health.
+ * View state is URL-encoded (?view=failures|health|drift|stream) so every
+ * view is shareable as a link. Returning users land on whichever view they
+ * last shared. First-time landing on `/` falls through to Failures.
  *
  * Visual treatment is underline-style (not pill, not segmented control)
  * because it matches the restrained chrome we already shipped — the
@@ -17,10 +21,10 @@
  */
 import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Activity, Heart, Waves } from 'lucide-react';
+import { Activity, AlertTriangle, Heart, Waves } from 'lucide-react';
 import { Icon } from '../shared/Icon';
 
-export type DashboardView = 'health' | 'drift' | 'stream';
+export type DashboardView = 'failures' | 'health' | 'drift' | 'stream';
 
 export const VIEW_OPTIONS: Array<{
   id: DashboardView;
@@ -28,17 +32,18 @@ export const VIEW_OPTIONS: Array<{
   icon: typeof Heart;
   description: string;
 }> = [
-  { id: 'health', label: 'Health', icon: Heart, description: 'Fleet wellness in aggregate' },
+  { id: 'failures', label: 'Failures', icon: AlertTriangle, description: 'What failed, worst and newest first' },
+  { id: 'health', label: 'Health', icon: Heart, description: 'Evals in aggregate' },
   { id: 'drift', label: 'Drift', icon: Activity, description: "What's changing and why" },
   { id: 'stream', label: 'Stream', icon: Waves, description: 'Live pulse + Decision Moments' },
 ];
 
-export const DEFAULT_VIEW: DashboardView = 'health';
+export const DEFAULT_VIEW: DashboardView = 'failures';
 
-/** Resolve the active view from the current URL — defaults to Health. */
+/** Resolve the active view from the current URL — defaults to Failures. */
 export function resolveView(searchParams: URLSearchParams): DashboardView {
   const raw = searchParams.get('view');
-  if (raw === 'drift' || raw === 'stream' || raw === 'health') return raw;
+  if (raw === 'failures' || raw === 'drift' || raw === 'stream' || raw === 'health') return raw;
   return DEFAULT_VIEW;
 }
 

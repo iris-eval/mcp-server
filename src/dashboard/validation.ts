@@ -32,3 +32,10 @@ export const evalStatsFailuresSchema = z.object({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
+
+export const failuresQuerySchema = z.object({
+  agent_name: z.string().min(1).max(200).optional(),
+  since: z.string().datetime({ offset: true }).optional(),
+  until: z.string().datetime({ offset: true }).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});

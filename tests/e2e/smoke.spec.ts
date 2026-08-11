@@ -25,15 +25,39 @@ async function failOnConsoleErrors(page: Page): Promise<string[]> {
 }
 
 test.describe('dashboard smoke', () => {
-  test('Health view loads as default with chrome + KPI tiles', async ({ page }) => {
+  test('Failure list loads as default — the dashboard lands on the failure', async ({ page }) => {
     const errors = await failOnConsoleErrors(page);
     await page.goto('/');
 
     // Chrome: sidebar, header title, view tabs
     await expect(page.locator('h1')).toHaveText('Dashboard');
-    await expect(page.getByRole('tab', { name: 'Health' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Failures' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Health' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Drift' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Stream' })).toBeVisible();
+
+    // The ranked list — seed data guarantees 3 min_output_length
+    // failures, so real failure rows must render with their rule chip
+    // and a click-through link to the moment detail.
+    await expect(page.getByRole('heading', { level: 2, name: 'What failed' })).toBeVisible();
+    await expect(page.getByText('min_output_length').first()).toBeVisible();
+    await expect(page.locator('a[href^="/moments/"]').first()).toBeVisible();
+
+    // Fresh browser context = nothing seen yet, so rows carry NEW tags.
+    await expect(page.getByText('NEW').first()).toBeVisible();
+
+    // Tolerate 400/429 from background polling — they don't block the
+    // visible UI. Hard failures that DO break rendering show up as
+    // console.error AND invalidate the visibility assertions above.
+    const blocking = errors.filter((e) => !/400|429/.test(e));
+    expect(blocking, `console errors during Failures load: ${blocking.join(' | ')}`).toEqual([]);
+  });
+
+  test('Health view renders KPI tiles one click from the landing', async ({ page }) => {
+    const errors = await failOnConsoleErrors(page);
+    await page.goto('/?view=health');
+
+    await expect(page.getByRole('tab', { name: 'Health' })).toHaveAttribute('aria-selected', 'true');
 
     // Health sections
     await expect(page.getByRole('heading', { level: 2, name: 'Headline' })).toBeVisible();
@@ -43,9 +67,6 @@ test.describe('dashboard smoke', () => {
     // Pass rate appears at least once (KPI tile) — seed data is ~85% pass.
     await expect(page.locator('body')).toContainText(/\d+%/);
 
-    // Tolerate 400/429 from background polling — they don't block the
-    // visible UI. Hard failures that DO break rendering show up as
-    // console.error AND invalidate the visibility assertions above.
     const blocking = errors.filter((e) => !/400|429/.test(e));
     expect(blocking, `console errors during Health load: ${blocking.join(' | ')}`).toEqual([]);
   });

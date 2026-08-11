@@ -13,6 +13,7 @@ import type {
   EvalFailure,
   MomentQueryResult,
   DecisionMomentDetail,
+  FailureQueryResult,
   DeployedCustomRule,
   AuditQueryResult,
 } from './types';
@@ -208,6 +209,18 @@ export function useMoments(params?: Record<string, string>) {
 export function useMomentDetail(id: string) {
   const fetcher = useCallback(() => api.getMomentDetail(id), [id]);
   return useApiData<DecisionMomentDetail>(fetcher);
+}
+
+export function useFailures(params?: Record<string, string>) {
+  const paramsKey = JSON.stringify(params);
+  // The landing view's data — a ranked read, not a live tail. NORMAL keeps
+  // it fresh without competing with Stream's FAST cadence.
+  const fetcher = useCallback(
+    () => api.getFailures(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
+  return useApiData<FailureQueryResult>(fetcher, CADENCE.NORMAL);
 }
 
 export function useCustomRules() {
