@@ -35,6 +35,6 @@ Run through this before every version release. No exceptions.
 - [ ] Review all 5 comparison pages for accuracy (competitors may have shipped new features)
 - [ ] Check Porkbun domain auto-renew is enabled for iris-eval.com
 - [ ] Verify npm token in GitHub Secrets hasn't expired
-- [ ] Verify Upstash Redis credentials still work (check /api/waitlist-count)
-- [ ] Review pricing across all files if any pricing changes planned
+- [ ] Verify Upstash Redis credentials still work (check /api/waitlist-count) — the waitlist is a demand signal for hosted features, not a product commitment
+- [ ] Verify no surface has acquired a price, a usage cap, or a compliance claim. There is no pricing, the open-source server is unlimited, and no certification is held — if any file says otherwise, that is the bug
 - [ ] Search for new MCP directories and awesome lists to submit to

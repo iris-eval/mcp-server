@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-08-10T18:14:12.607Z",
-  "generatedFromCommit": "ffc0b19",
+  "generatedAt": "2026-08-11T03:27:15.942Z",
+  "generatedFromCommit": "5e32950",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -104,8 +104,8 @@
   "release": {
     "currentReleaseDate": "2026-08-10",
     "currentReleaseVersion": "0.4.6",
-    "nextPlannedScope": "Cloud SKU foundation",
-    "nextPlannedVersion": "0.5.0"
+    "nextPlannedScope": null,
+    "nextPlannedVersion": null
   },
   "schemaVersion": 1,
   "tests": {

@@ -1,5 +1,7 @@
 # Iris — Directory Listing Templates
 
+> **📁 Historical template.** Written for an earlier release and kept as reference only. Counts, version numbers and the "discovers Iris and starts logging automatically" framing all reflect that moment — under MCP a tool call is always the model's decision, so capture is not automatic. Anything published from this must be composed fresh against `.claims.json` and the current [roadmap](../roadmap.md).
+
 Use these when submitting Iris to any MCP directory, awesome list, or marketplace.
 Copy-paste the appropriate version and customize if needed.
 **Refreshed 2026-07-07 against `.claims.json` (v0.4.4).** Before any submission, re-check the Key Stats against the current claims file.

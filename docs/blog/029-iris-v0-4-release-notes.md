@@ -10,6 +10,8 @@ devto_tags: [ai, agenteval, opensource, programming]
 
 # What changed in Iris v0.4.0
 
+> **Editor's note (2026-08):** The "Cloud tier" described below is no longer a planned release. Iris's roadmap moved from a version ladder (v0.5 Cloud / v0.6 Alerting / v0.7 Enterprise) to three tracks — Proof, Coverage and Reach — and hosted/team features are now explicitly *under consideration, not under construction*, with no pricing. The open-source server remains unlimited and free. See [the roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md).
+
 Iris v0.4.0 ships today. It's the release where protocol-native eval crosses from "deterministic rules" into "semantic scoring" — without giving up any of what made the deterministic layer work.
 
 Three headline features plus a lot of infrastructure work that quietly compounds. I'll go through each, why it matters, and how it fits the thesis.

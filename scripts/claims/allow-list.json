@@ -38,12 +38,6 @@
       "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 12 rules; v0.3.1 documents the 12→13 expansion)."
     },
     {
-      "file": "docs/v0.4.1-candidates.md",
-      "pattern": "test-count",
-      "line": 60,
-      "reason": "Hypothetical scenario reference (372 tests was current at write-time). Migration candidate when v0.4.1 ships."
-    },
-    {
       "file": "website/src/components/roadmap.tsx",
       "pattern": "mcp-tool-count",
       "line": "*",

@@ -827,7 +827,7 @@ Health check endpoint. Reports server status and storage connectivity.
 ```json
 {
   "status": "ok",
-  "version": "0.4.4",
+  "version": "0.4.6",
   "uptime_seconds": 3600,
   "trace_count": 142,
   "storage": "connected"
@@ -841,7 +841,7 @@ The `version` field is sourced dynamically from `package.json` at runtime (see `
 ```json
 {
   "status": "degraded",
-  "version": "0.4.4",
+  "version": "0.4.6",
   "uptime_seconds": 3600,
   "storage": "disconnected"
 }
@@ -1125,18 +1125,21 @@ Scoring: Binary -- 1 if under threshold, 0 if over. Requires `cost_usd` to be pa
 
 Iris uses a pluggable storage backend. The default (and currently only) implementation is SQLite.
 
+**Every method takes a `tenantId: TenantId` as its first parameter** — reads and writes alike. This is not optional and is enforced at four layers (branded type, runtime guard, SQL scope, composite index); see [architecture.md](./architecture.md) §8. OSS deployments always resolve to a single local tenant.
+
 | Method | Description |
 |--------|-------------|
-| `insertTrace(trace)` | Store a new trace |
-| `getTrace(traceId)` | Retrieve a single trace by ID |
-| `queryTraces(options)` | Query traces with filters, pagination, sorting |
-| `insertSpan(span)` | Store a span |
-| `getSpansByTraceId(traceId)` | Get all spans for a trace |
-| `insertEvalResult(result)` | Store an evaluation result |
-| `getEvalsByTraceId(traceId)` | Get all evals linked to a trace |
-| `queryEvalResults(options)` | Query eval results with filters |
-| `getDashboardSummary(sinceHours?)` | Aggregate metrics for the dashboard (default: 24h) |
-| `deleteTracesOlderThan(days)` | Purge old traces. Returns count of deleted rows |
-| `getDistinctValues(column)` | Get distinct values for a column (used by filter dropdowns) |
+| `insertTrace(tenantId, trace)` | Store a new trace |
+| `getTrace(tenantId, traceId)` | Retrieve a single trace by ID |
+| `queryTraces(tenantId, options)` | Query traces with filters, pagination, sorting |
+| `insertSpan(tenantId, span)` | Store a span |
+| `getSpansByTraceId(tenantId, traceId)` | Get all spans for a trace |
+| `insertEvalResult(tenantId, result)` | Store an evaluation result |
+| `getEvalsByTraceId(tenantId, traceId)` | Get all evals linked to a trace |
+| `queryEvalResults(tenantId, options)` | Query eval results with filters |
+| `getDashboardSummary(tenantId, sinceHours?)` | Aggregate metrics for the dashboard (default: 24h) |
+| `deleteTracesOlderThan(tenantId, days)` | Purge old traces. Returns count of deleted rows |
+| `getDistinctValues(tenantId, column)` | Get distinct values for a column (used by filter dropdowns) |
+| `getEvalStats(tenantId, period)` | Aggregate eval stats (pass rate, cost, safety violations) |
 
 Storage is configured via `config.storage.type` (currently: `"sqlite"`) and `config.storage.path` (path to the `.db` file).

@@ -8,12 +8,12 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: "Pricing — Iris",
   description:
-    "Pay for evaluations, not traces. Free up to 10K evaluations / month. Pro starts at $25/mo. Enterprise custom. Iris is the agent eval standard for MCP.",
+    "Iris is open source and free, with no evaluation limit and no account. Hosted and team features are under consideration, not under construction — there is no pricing yet.",
   alternates: { canonical: "https://iris-eval.com/pricing" },
   openGraph: {
     title: "Pricing — Iris",
     description:
-      "Pay for evaluations, not traces. Free tier covers 10K evaluations / month.",
+      "Open source and free, with no evaluation limit and no account required.",
     url: "https://iris-eval.com/pricing",
     type: "website",
     images: [OG_IMAGE_URL],
@@ -149,13 +149,13 @@ export default function PricingPage(): React.ReactElement {
             href="https://github.com/iris-eval/mcp-server#install"
             className="rounded-lg bg-iris-600 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-iris-600/20 transition-all hover:bg-iris-500"
           >
-            Start with the Free tier &rarr;
+            Install the open-source server &rarr;
           </a>
           <Link
             href="/#waitlist"
             className="rounded-lg border border-border-subtle bg-bg-base px-6 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-border-subtle"
           >
-            Join Cloud Starter waitlist &rarr;
+            Tell us if you need hosted &rarr;
           </Link>
         </div>
       </section>
@@ -220,10 +220,10 @@ export default function PricingPage(): React.ReactElement {
       {/* Footer banner */}
       <section className="mx-auto mt-24 max-w-3xl rounded-2xl border border-border-subtle bg-bg-base p-8 text-center sm:p-12">
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-          Not sure which tier fits?
+          Which one do I need?
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base text-text-secondary">
-          Start on Free. Move to Pro when your team&apos;s production agents exceed 10K evaluations a month (roughly 1K traces a day with default rules). Contact Enterprise when you need SSO, SLA, or custom deployment.
+          The open-source server, because it is the only one that exists. It has no evaluation limit and no account, and it is what every feature listed above actually runs on. If shared team history or hosted storage would change your answer, tell us — that is how we decide whether to build it.
         </p>
         <a
           href="https://github.com/iris-eval/mcp-server#install"

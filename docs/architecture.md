@@ -122,10 +122,16 @@ src/
     defaults.ts         Default configuration values
     index.ts            Config loader: defaults -> file -> env vars -> CLI args
   tools/
-    log-trace.ts        log_trace tool: ingest traces + spans
-    evaluate-output.ts  evaluate_output tool: run eval pipeline, store results
-    get-traces.ts       get_traces tool: query traces with filters + pagination
-    index.ts            Registers all tools on the MCP server
+    log-trace.ts        log_trace: ingest traces + spans
+    evaluate-output.ts  evaluate_output: run the heuristic eval pipeline, store results
+    get-traces.ts       get_traces: query traces with filters + pagination
+    delete-trace.ts     delete_trace: remove a single trace
+    list-rules.ts       list_rules: read the deployed custom-rule store
+    deploy-rule.ts      deploy_rule: validate + persist a custom rule, append to audit log
+    delete-rule.ts      delete_rule: remove a custom rule
+    evaluate-with-llm-judge.ts  evaluate_with_llm_judge: semantic scoring (BYOK, cost-capped)
+    verify-citations.ts verify_citations: resolve citations behind an SSRF guard + judge support
+    index.ts            Registers all nine tools on the MCP server
   eval/
     engine.ts           EvalEngine class: orchestrates rules, computes scores
     rules/
@@ -164,6 +170,15 @@ src/
       summary.ts        GET /api/v1/summary
       filters.ts        GET /api/v1/filters
       health.ts         GET /api/v1/health
+      eval-stats.ts     GET /api/v1/eval-stats (+ /trend, /rules, /failures)
+      moments.ts        GET /api/v1/moments — Decision Moment classification
+      rules.ts          GET/POST/DELETE custom rules, POST rules/custom/preview
+      audit.ts          GET /api/v1/audit — read of the append-only audit log
+      preferences.ts    GET/PATCH /api/v1/preferences
+
+    Note: rules and preferences accept writes over HTTP; traces and
+    evaluations are read-only here and can only be created through the MCP
+    tools. Closing that gap is Track 3 in the roadmap.
   types/
     config.ts           IrisConfig interface
     trace.ts            Trace, Span, TokenUsage, ToolCallRecord types
@@ -296,7 +311,7 @@ Registered rules are appended to the built-in set for that eval type and include
 
 ### Schema
 
-Every data table carries a `tenant_id TEXT NOT NULL DEFAULT 'local'` column (added in migration 004, v0.4.0). OSS single-node deployments only ever see `'local'`; the column is the foundation for the hosted Cloud tier's multi-tenant isolation without requiring a future painful data migration. See §8 for the four-layer defense-in-depth enforcement.
+Every data table carries a `tenant_id TEXT NOT NULL DEFAULT 'local'` column (added in migration 004, v0.4.0). OSS single-node deployments only ever see `'local'`; the column means shared or hosted storage could be added later without a painful data migration. No such deployment exists today. See §8 for the four-layer defense-in-depth enforcement.
 
 ```sql
 -- Traces: one row per agent execution
@@ -573,7 +588,7 @@ The `createCorsMiddleware` function accepts an allowlist of origin patterns. Wil
 
 ### Tenant isolation (defense-in-depth)
 
-OSS single-node deployments run with a single implicit tenant (`LOCAL_TENANT = 'local'`). The same code path enforces tenant isolation end-to-end, so the hosted Cloud tier (v0.4+) gets multi-tenant boundaries for free. Four independent layers prevent cross-tenant data leakage:
+OSS single-node deployments run with a single implicit tenant (`LOCAL_TENANT = 'local'`). The same code path enforces tenant isolation end-to-end, so any future multi-tenant deployment would inherit those boundaries rather than needing them retrofitted. Four independent layers prevent cross-tenant data leakage:
 
 1. **Type system** — `TenantId` is a branded type in `src/types/tenant.ts`. The `IStorageAdapter` interface requires `tenantId: TenantId` as the **first** parameter of every read and write. A developer who forgets to pass tenant context gets a compile error, not a runtime bug.
 2. **Runtime guard** — every adapter method calls `assertTenant(tenantId)` which throws `TenantContextRequiredError` if the value is missing, empty, or not a valid `TenantId`. This protects against type erasure (JSON parses, `any` casts) at integration boundaries.
@@ -681,7 +696,7 @@ export function createStorage(config: IrisConfig): IStorageAdapter {
 }
 ```
 
-The interface requires 11 methods covering trace CRUD, span CRUD, eval result CRUD, dashboard aggregation, retention cleanup, and distinct value queries.
+The interface covers lifecycle (initialize, close), trace and span CRUD, eval-result CRUD, dashboard and eval-stats aggregation, retention cleanup, and distinct-value queries. Every data method takes a `tenantId` as its first parameter.
 
 ### MCP resources
 
