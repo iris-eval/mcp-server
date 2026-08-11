@@ -1,6 +1,6 @@
 # Iris Roadmap
 
-Public roadmap for `@iris-eval/mcp-server`. Updated 2026-07-07.
+Public roadmap for `@iris-eval/mcp-server`. Updated 2026-08-10.
 
 The canonical public version lives at [iris-eval.com#roadmap](https://iris-eval.com/#roadmap). This file mirrors it with the per-version detail that doesn't fit on the marketing page.
 
@@ -84,48 +84,58 @@ Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export 
 
 ---
 
-## v0.5 -- Cloud Tier
+## What comes next
 
-**Status: Planned** — the next major release; timing follows design-partner traction.
+**Status: Planned.** The work below is organised as three tracks rather than a version ladder, because they progress in parallel and gate each other. Nothing here is shipped; each item says so plainly.
 
-Managed Iris. Hosted, multi-tenant, team-collaboration-ready.
-
-Includes three original v0.4 items that moved here because they only make sense alongside the hosted offering (see `strategy/product/v0.4-scope-decision-2026-04-23.md` for the decision record).
-
-- **PostgreSQL storage adapter**: production-grade concurrent writes, connection pooling; directly couples to Cloud backend. *(Moved from v0.4.)*
-- **Full multi-tenancy**: workspace isolation + user accounts + authentication + row-level-security enforcement (v0.4's tenant_id scaffolding is the foundation). *(Moved from v0.4.)*
-- **Team eval dashboards**: shared eval results, team-level quality scores, agent-by-agent comparison. *(Moved from v0.4.)*
-- **Managed hosting**: sign-up flow, onboarding, usage-based billing
-- **Workspace switcher + member invites**
+Iris is an evaluation tool, so the thing it owes you above all else is evidence that its own evaluations are correct. Track 1 is therefore first among equals — the other two are worth less without it.
 
 ---
 
-## v0.6 -- Alerting & Retention
+### Track 1 -- Proof: measure our own evaluators, and publish the results
 
-**Status: Planned** — after Cloud Tier GA.
+Every eval tool tells you your agent's score. Almost none tell you how often the evaluator itself is wrong. We intend to, including where the answer is unflattering.
 
-Alert on quality regressions and bound long-term storage. *(Cascaded from original v0.5.)*
+- **Labeled golden corpora per rule.** Versioned, downloadable, with per-item provenance and a published inter-annotator agreement floor — so the ground truth is auditable rather than asserted.
+- **Per-rule precision, recall and confusion matrices.** Broken out per rule and per pattern, never as a single aggregate accuracy number. Aggregates hide exactly the failures that matter.
+- **Chance-corrected agreement** (Cohen's kappa / Krippendorff's alpha) reported alongside raw agreement. Raw percentage agreement systematically overstates evaluator quality, and we would rather publish the smaller honest number.
+- **Confidence intervals and sample sizes** on every figure.
+- **Adversarial suite for the LLM-judge path**, reporting measured false-positive rates: known "master key" inputs, verbosity-matched pairs, and prompt-perturbation variance (rubric order, score range).
+- **Position-consistency accuracy** for any pairwise judging: swap the order, count only verdicts stable under the swap.
+- **One-command reproduction** with pinned model IDs, temperature, prompt hashes and dataset checksums, so the numbers can be re-derived on your machine and not just believed.
+- **Versioned results per release, gated in CI**, with a changelog entry when accuracy moves. Evaluator drift is the failure mode nobody reports.
+- **Published negative results.** Where a rule is weak, the table will say so.
 
-- **Quality alert rules**: configurable conditions (e.g., average eval score drops below 0.6 over 1 hour, safety failure rate exceeds 5%, cost per trace exceeds $0.50)
-- **Webhook notifications**: POST alert payloads to any URL (Slack, PagerDuty, custom endpoints)
-- **Email notifications**: SMTP integration for alert emails with summary and affected evaluations
-- **Retention policies**: automatic trace/eval deletion after configurable TTL (e.g., 30 days), storage usage tracking
-- **Dashboard alert panel**: view active alerts, alert history, and configure rules from the UI
-- **Drift detection**: automated alerts when eval scores trend downward per agent or per rule
+This maps directly onto NIST AI RMF MEASURE 2.13 (evaluating the effectiveness of the evaluation methods themselves) and EU AI Act Article 15(3), which requires declared accuracy metrics in the instructions for use.
 
----
+### Track 2 -- Coverage: evaluate what actually fails
 
-## v0.7 -- Enterprise
+Published measurement is only useful if the rules are aimed at real failures. Current coverage is strongest on single-output checks and weakest on everything that only appears across a trajectory.
 
-**Status: Planned** — regulated + large-organization tier. *(Cascaded from original v0.6.)*
+- **Correct the hallucination-marker rule.** It currently flags hedging language. Hedging correlates with agents that fail *honestly*; the expensive failure mode is confident, well-formed output that never changed any state. The rule as shipped is pointed at the safer case, and we intend to say so in the results table until it is fixed.
+- **False-success detection.** Output that reads as successful while the underlying task did not complete. This is the largest single failure class in the published research and is poorly served by LLM judges, which key on confident phrasing.
+- **Loop and non-termination rules**: near-duplicate tool-call detection, step and turn ceilings. Deterministic, cheap, and aimed at a large share of documented multi-agent failures.
+- **Trace ingestion via OpenTelemetry GenAI semantic conventions** (pinned version). This is the prerequisite for any trajectory-level rule.
+- **Verification auditing**: did the agent check its own work, and was that check correct.
+- **Data-flow checks for injection**, superseding pattern matching alone: untrusted content reaching a privileged tool call, and egress/exfiltration shapes.
 
-Features for regulated environments and large organizations.
+### Track 3 -- Reach: make Iris usable from wherever your agents run
 
-- **SSO / SAML**: single sign-on via SAML 2.0 and OIDC providers (Okta, Azure AD, Google Workspace)
-- **RBAC**: role-based access control with predefined roles (admin, editor, viewer) and custom roles
-- **Audit logs**: immutable log of all user actions (trace access, config changes, API key operations) with export capability
-- **SOC 2 compliance**: documentation, controls, and architecture changes to support SOC 2 Type II certification
-- **SLA and support tiers**: uptime guarantees, priority support, dedicated onboarding for enterprise customers
+MCP is how Iris is discovered and how it is used interactively. It is not a guarantee of capture: under the protocol a tool call is always the model's decision, so anything that *must* be recorded needs a path that does not depend on the model choosing to call it.
+
+- **HTTP write endpoints** (`POST /traces`, `POST /evaluations`). Today MCP is the only way data enters Iris; this opens it to any language, runtime or CI job. It is also the keystone — the CLI and SDKs become thin clients over it rather than parallel implementations.
+- **CLI** for CI quality gates and batch/offline evaluation.
+- **SDKs** for guaranteed capture, starting with LangChain, then generic TypeScript and Python clients.
+- **Server-provided MCP guidance** (`instructions`, shipped skill) to improve — not guarantee — tool invocation in interactive clients.
+- **Datasets and run comparison**, so evaluation becomes a regression workflow rather than a one-off score.
+
+### Hosted and team features
+
+**Status: Under consideration, not under construction.**
+
+Shared team history, managed storage, alerting, retention policies, SSO/RBAC and audit export are all plausible additions, and the codebase is deliberately built so they can be added without disturbing the self-hosted path — tenant scoping already runs through every storage call, and the storage layer sits behind an adapter interface.
+
+None of it is being built today, and no pricing exists. Two commitments hold regardless of what happens later: **nothing that is free today will move behind a paywall**, and **no compliance certification will be claimed before it is held**.
 
 ---
 
