@@ -364,9 +364,25 @@ export class SqliteAdapter implements IStorageAdapter {
   // Eval-stats endpoints (v0.2.0 dashboard)
   // ---------------------------------------------------------------------------
 
+  /*
+   * Table-driven rather than a nested ternary: the old form silently fell
+   * through to 720 hours for anything that wasn't '24h' or '7d', so a new
+   * period value would have quietly returned 30d data rather than failing.
+   */
+  private static readonly PERIOD_HOURS: Record<Exclude<EvalStatsPeriod, 'all'>, number> = {
+    '24h': 24,
+    '2d': 48,
+    '7d': 168,
+    '14d': 336,
+    '30d': 720,
+    '60d': 1440,
+    '90d': 2160,
+    '180d': 4320,
+  };
+
   private periodToSince(period: EvalStatsPeriod): string {
     if (period === 'all') return '1970-01-01T00:00:00.000Z';
-    const hours = period === '24h' ? 24 : period === '7d' ? 168 : 720;
+    const hours = SqliteAdapter.PERIOD_HOURS[period];
     return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   }
 

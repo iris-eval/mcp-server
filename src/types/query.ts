@@ -27,7 +27,26 @@ export interface TraceQueryResult {
   offset: number;
 }
 
-export type EvalStatsPeriod = '24h' | '7d' | '30d' | 'all';
+/*
+ * Windows the eval-stats endpoints accept.
+ *
+ * The doubled values (2d / 14d / 60d / 180d) are not decorative: the Health
+ * view derives a prior-period comparison by requesting a DOUBLE-width window
+ * and subtracting the current one. That arithmetic was always correct, but
+ * the server rejected the doubled window with a 400, so every "vs prior
+ * period" delta on the default screen rendered "—" and had never once
+ * worked. 90d was likewise offered by the period selector and rejected.
+ */
+export type EvalStatsPeriod =
+  | '24h'
+  | '2d'
+  | '7d'
+  | '14d'
+  | '30d'
+  | '60d'
+  | '90d'
+  | '180d'
+  | 'all';
 
 export interface EvalStats {
   passRate: number;
