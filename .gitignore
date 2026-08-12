@@ -36,3 +36,8 @@ storybook-static/
 # different machine, or CI had no exclusion at all, and the standard commit
 # recipe for this repo is `git add -A`. Belongs in the tracked ignore file.
 plans/
+
+# UAT harness scratch: per-run IRIS_HOMEs and the generated report. The
+# harness is the gate; its output is an artifact of one run on one machine.
+tests/uat/.work/
+tests/uat/UAT-REPORT.md
