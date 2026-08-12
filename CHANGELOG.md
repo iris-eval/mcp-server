@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-12
+
+**The acceptance-test release.** Seven simulated end users installed the packed tarball like strangers and filed 57 confirmed findings; this release is the remediation, plus the four builder-first features that have been waiting on main since 0.4.6. The headline: `passed` now tells the truth — a detected PII leak, prompt injection, or blocklist hit fails the eval no matter what the weighted average says; a hostile regex can no longer hang the server (hard-deadline sandbox worker); a misspelled tool argument is rejected instead of silently changing what gets evaluated; and startup reports bind failures instead of logging success over them.
+
+Ships everything merged since 0.4.6: `--demo` / `--demo-clear`, `--self-test`, `POST /api/v1/traces` HTTP ingest, the failure-first dashboard, the repaired safety-rule family (PII 19 patterns, injection 37, context-grounded hallucination detection), and the new brand front door.
+
+**Check before upgrading:** two deliberate breaking changes are detailed below — the critical-rule veto (pipelines seeing `passed: true` on violating output will start seeing `passed: false`) and the dashboard no longer starting implicitly with `--transport http` (pass `--dashboard` for the ingest endpoint). Audit `list_rules` for high/critical severities that were labels rather than gates.
+
+### Added
+
+- **`--demo` / `--demo-clear`** — a first-run you can click before wiring anything: one command seeds a demo database (five task-shaped agents, a week of runs, failures worth clicking into — a PII leak, an injection attempt, a failed judge score) and serves the dashboard against it. Hard isolation: demo data lives in its own `demo.db` with demo-scoped rules, preferences and audit log under your Iris home — a rule deployed from the demo UI can never touch your real `custom-rules.json`, and `--demo-clear` removes exactly what `--demo` created, printing every file it deletes. `--demo` combined with `--db-path` is refused rather than guessed at.
+- **`--self-test`** — a ~1-second offline diagnostic that answers "does this install work": 12 checks covering the storage round-trip, a planted SSN caught by the safety rules, a planted injection caught, dashboard boot on an ephemeral loopback port, and a live DNS-rebinding-guard probe — all inside an isolated temp home that is cleaned up afterwards, with your `IRIS_*` environment scrubbed and restored. Exit 0/1, so CI can gate on it.
+- **`POST /api/v1/traces`** — HTTP ingest on the dashboard server for stacks with no MCP client in the loop. The route validates against the SAME schema as the `log_trace` tool (one contract, two capture paths — they cannot drift), optionally runs the deterministic engine on the spot with `evaluate: true`, and the dashboard writes `${IRIS_HOME}/runtime.json` with the port it actually bound so capture clients can discover it without configuration. Documented in `docs/http-ingest.md`.
+- **The dashboard lands on Failures.** The default view is a ranked failure list — worst and newest first, seen/unseen tracked locally — instead of a metrics wall, because the question a builder brings to an eval tool is "what broke?". Command palette (⌘K) searches real rules, traces and evals; destructive actions get a real confirm dialog instead of `window.confirm`.
+
 ### Changed
 
 - **New tagline: "Stop shipping agents on vibes"** — replaces "The Agent Eval Standard for MCP" everywhere the brand speaks: README H1, npm package description, the Claude Code plugin manifest, `server.json` and `.well-known/mcp.json`, the repo banner, the shipped skill, `llms.txt`/`llms-full.txt`, the website (titles, hero, footer, compare/learn pages), and the dashboard's first-run tour. The claims truthbase (`brand.tagline`) is the single source; every surface is drift-locked against it. Historical blog posts keep their dated positioning language.
@@ -31,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Regression coverage for the three items above, root suite **852 → 861**. The transport rejects on an occupied port naming that port, and still resolves on a free one — asserted through an explicit settle-or-hang guard rather than the runner's timeout, because the original bug was a hang and "test timed out" reads exactly like a slow CI box. The dashboard's success path is asserted *absent* on a failed bind — no `Dashboard available` line, no `runtime.json` — alongside the error log and the exit code, and asserted *present* on a free port so the guard cannot pass by rejecting everything. Both bind a real throwaway socket first, since the bug lives in what the OS and Express do with each other rather than in our own branching. Through the real CLI: `--transport http` alone leaves nothing bound on the dashboard port and prints the pointer; a busy dashboard port no longer takes the transport down with it; and all three documented ways of asking for the dashboard actually start one.
 
-(Unreleased content rolls forward to the next non-RC release.)
 
 ### Changed
 
