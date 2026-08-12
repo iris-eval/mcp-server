@@ -81,6 +81,25 @@ updates:
         patterns:
           - "@types/*"
 
+  - package-ecosystem: "npm"
+    directory: "/packages/init"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(init)"
+    groups:
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      types:
+        patterns:
+          - "@types/*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

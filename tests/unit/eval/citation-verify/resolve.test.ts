@@ -108,6 +108,58 @@ describe('isSafeHost (SSRF guard)', () => {
     expect(isSafeHost('[:::1]')).toBe(false);
     expect(isSafeHost('[gggg::1]')).toBe(false);
   });
+
+  it('blocks carrier-grade NAT (RFC 6598) — the Tailscale/ISP overlay range', () => {
+    expect(isSafeHost('100.64.0.1')).toBe(false);
+    expect(isSafeHost('100.100.100.100')).toBe(false);
+    expect(isSafeHost('100.127.255.255')).toBe(false);
+    // Boundaries: 100.63.x and 100.128.x are ordinary public space.
+    expect(isSafeHost('100.63.255.255')).toBe(true);
+    expect(isSafeHost('100.128.0.1')).toBe(true);
+  });
+
+  it('blocks IETF-assigned, benchmarking, multicast and reserved v4 space', () => {
+    expect(isSafeHost('192.0.0.1')).toBe(false); // RFC 6890
+    expect(isSafeHost('198.18.0.1')).toBe(false); // RFC 2544 benchmarking
+    expect(isSafeHost('198.19.255.1')).toBe(false);
+    expect(isSafeHost('224.0.0.1')).toBe(false); // multicast
+    expect(isSafeHost('239.255.255.250')).toBe(false); // SSDP
+    expect(isSafeHost('240.0.0.1')).toBe(false); // reserved
+    // 192.0.1.x and 198.20.x sit just outside those blocks.
+    expect(isSafeHost('192.0.1.1')).toBe(true);
+    expect(isSafeHost('198.20.0.1')).toBe(true);
+  });
+
+  /*
+   * Transition mechanisms re-encode an IPv4 destination inside an IPv6
+   * literal. Without embedded-address classification, every v4 rule above
+   * is bypassable by rewriting the target in one of these forms.
+   */
+  it('blocks 6to4 (2002::/16) wrapping a private IPv4 destination', () => {
+    expect(isSafeHost('[2002:7f00:0001::]')).toBe(false); // 127.0.0.1
+    expect(isSafeHost('[2002:a9fe:a9fe::]')).toBe(false); // 169.254.169.254 IMDS
+    expect(isSafeHost('[2002:c0a8:0101::]')).toBe(false); // 192.168.1.1
+    expect(isSafeHost('[2002:6440:0001::]')).toBe(false); // 100.64.0.1 CGNAT
+    expect(isSafeHost('[2002:0808:0808::]')).toBe(true); // 8.8.8.8 — public
+  });
+
+  it('blocks Teredo (2001:0::/32) whose de-obfuscated client IPv4 is private', () => {
+    // Client v4 lives in the last two hextets, one's-complemented:
+    // 192.168.1.1 -> ~c0a8:0101 -> 3f57:fefe.
+    expect(isSafeHost('[2001:0:4136:e378:8000:63bf:3f57:fefe]')).toBe(false);
+    // ~7f00:0001 -> 80ff:fffe  == 127.0.0.1
+    expect(isSafeHost('[2001:0:4136:e378:8000:63bf:80ff:fffe]')).toBe(false);
+    // Server field is checked too: 2001:0:7f00:0001:... == server 127.0.0.1
+    expect(isSafeHost('[2001:0:7f00:0001:8000:63bf:1234:5678]')).toBe(false);
+    // ~0808:0808 -> f7f7:f7f7 == public 8.8.8.8 client, public server
+    expect(isSafeHost('[2001:0:4136:e378:8000:63bf:f7f7:f7f7]')).toBe(true);
+  });
+
+  it('does not over-block ordinary 2001: production addresses', () => {
+    // Only 2001:0000::/32 is Teredo — 2001:db8, 2001:4860 etc. are normal.
+    expect(isSafeHost('[2001:4860:4860::8888]')).toBe(true); // Google DNS
+    expect(isSafeHost('[2001:db8::1]')).toBe(true);
+  });
 });
 
 describe('resolveAndCheckHost (DNS rebinding guard)', () => {
