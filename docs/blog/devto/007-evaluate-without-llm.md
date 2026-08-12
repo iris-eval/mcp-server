@@ -137,7 +137,7 @@ These rules check whether the agent actually produced a substantive response.
 These rules check whether the output relates to what was asked.
 
 - **`keyword_overlap`** — Compares keywords in the input against the output. If someone asks about "refund policy for annual plans" and the response mentions none of those terms, something went wrong.
-- **`no_hallucination_markers`** — Scans for phrases that correlate with confabulation: "as an AI language model," "I don't have access to real-time data," "I cannot verify." These are not proof of hallucination, but they are signals worth flagging.
+- **`no_hallucination_markers`** — Cross-checks the output's specific claims against the provided input: numbers or quotes attributed to "the report" that the report never states, section citations the document doesn't contain, table rows bound to another row's figure, failures reported as successes. Deterministic string comparison — no LLM — and it stays silent when no input is provided rather than guess.
 - **`topic_consistency`** — Checks that the output stays within the semantic neighborhood of the input topic rather than drifting to unrelated subjects.
 
 ### Safety

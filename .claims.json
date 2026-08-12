@@ -26,7 +26,7 @@
       "cost"
     ],
     "categoryCount": 4,
-    "hallucinationMarkers": 17,
+    "hallucinationMarkers": 25,
     "injectionPatterns": 13,
     "names": [
       "costUnderThreshold",
@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-08-12T01:06:59.020Z",
-  "generatedFromCommit": "45db0dc",
+  "generatedAt": "2026-08-12T03:43:46.432Z",
+  "generatedFromCommit": "554cb89",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,

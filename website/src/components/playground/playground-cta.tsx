@@ -16,7 +16,7 @@ interface PlaygroundSession {
 
 const MISS_CONSEQUENCES: Record<string, string> = {
   no_pii: "In production, that miss could expose customer credit cards.",
-  no_hallucination_markers: "Hedging like that erodes user trust over time.",
+  no_hallucination_markers: "Confident numbers your sources never stated erode user trust fastest.",
   no_injection_patterns: "That injection pattern would have leaked your system prompt.",
   cost_under_threshold: "At scale, that cost overrun adds up to $14,100/month.",
 };

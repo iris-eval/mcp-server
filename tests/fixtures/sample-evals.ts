@@ -34,7 +34,13 @@ export const expensiveContext: EvalContext = {
   costUsd: 1.50,
 };
 
+// Confident fabrication against the provided source material — the failure
+// class no_hallucination_markers detects (v0.4.7 rewrite). The output
+// attributes a PTO figure and a section number to a handbook whose provided
+// excerpt contains neither.
 export const hallucinatingContext: EvalContext = {
-  output: 'As an AI, I cannot access real-time data. I apologize, but I must clarify that I don\'t have access to current weather information.',
-  input: 'What is the weather?',
+  output:
+    'You get 30 days of PTO per year — that is spelled out in section 9.4 of the handbook, so book the trip with confidence.',
+  input:
+    'User asked: "How many PTO days do I get per year?"\n\nEmployee Handbook excerpt (section 2, Leave): "Full-time employees accrue 12 days of paid time off per calendar year, accrued monthly."',
 };

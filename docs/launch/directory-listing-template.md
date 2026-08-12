@@ -18,7 +18,7 @@ Iris is an MCP server that any agent discovers and uses automatically — no SDK
 
 ## Long Description (paragraph)
 
-Iris is the agent eval standard for MCP — an MCP-native eval and observability tool for AI agents. It registers as an MCP server that your agents discover automatically through the protocol — no SDK imports, no decorators, no code changes. Add one line to your MCP config and every agent starts logging hierarchical traces, evaluating output quality (10 PII patterns, 13 prompt-injection patterns, 17 hallucination markers, cost thresholds), verifying citations, and tracking per-trace costs in USD. LLM-as-judge included (BYOK, five templates). Self-hosted with a single SQLite file. Real-time dashboard. OpenTelemetry export. Works with Claude Desktop, Claude Code, Cursor, Windsurf, or any MCP-compatible agent. Open-source core, MIT licensed.
+Iris is the agent eval standard for MCP — an MCP-native eval and observability tool for AI agents. It registers as an MCP server that your agents discover automatically through the protocol — no SDK imports, no decorators, no code changes. Add one line to your MCP config and every agent starts logging hierarchical traces, evaluating output quality (10 PII patterns, 13 prompt-injection patterns, 25 hallucination markers, cost thresholds), verifying citations, and tracking per-trace costs in USD. LLM-as-judge included (BYOK, five templates). Self-hosted with a single SQLite file. Real-time dashboard. OpenTelemetry export. Works with Claude Desktop, Claude Code, Cursor, Windsurf, or any MCP-compatible agent. Open-source core, MIT licensed.
 
 ## Config Snippet (include in every listing)
 

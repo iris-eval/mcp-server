@@ -136,8 +136,8 @@ src/
     engine.ts           EvalEngine class: orchestrates rules, computes scores
     rules/
       completeness.ts   4 rules: min_output_length, non_empty_output, sentence_count, expected_coverage
-      relevance.ts      3 rules: keyword_overlap, no_hallucination_markers (17 markers + fabricated-citation heuristic), topic_consistency
-      safety.ts         4 rules: no_pii (10 patterns), no_blocklist_words, no_injection_patterns (13 patterns), no_stub_output
+      relevance.ts      2 rules: keyword_overlap, topic_consistency
+      safety.ts         5 rules: no_pii (10 patterns), no_blocklist_words, no_injection_patterns (13 patterns), no_stub_output, no_hallucination_markers (25 context-grounded signals)
       cost.ts           2 rules: cost_under_threshold, token_efficiency
       custom.ts         Factory for 8 custom rule types (regex, length, keywords, JSON, cost)
       index.ts          Rule registry by eval type
@@ -226,8 +226,8 @@ dashboard/              React SPA (separate Vite build)
 | Category        | Rules                                                        | Default Weights |
 |-----------------|--------------------------------------------------------------|-----------------|
 | `completeness`  | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage` | 1, 2, 0.5, 1.5 |
-| `relevance`     | `keyword_overlap`, `no_hallucination_markers`, `topic_consistency` | 1, 1, 1 |
-| `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output` | 2, 2, 2, 2 |
+| `relevance`     | `keyword_overlap`, `topic_consistency`                       | 1, 1 |
+| `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output`, `no_hallucination_markers` | 2, 2, 2, 1.5, 1 |
 | `cost`          | `cost_under_threshold`, `token_efficiency`                   | 1, 0.5 |
 | `custom`        | Dynamically built from `CustomRuleDefinition` array          | User-defined |
 

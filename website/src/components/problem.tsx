@@ -16,7 +16,7 @@ const IRIS_ROWS = [
   { label: "PII Detected", detail: "SSN pattern in output (***-**-6789)", dot: "bg-eval-fail" },
   { label: "Injection Risk", detail: "Prompt manipulation attempt detected", dot: "bg-eval-warn" },
   { label: "Cost: $0.47 / query", detail: "4.7x over $0.10 threshold", dot: "bg-eval-warn" },
-  { label: "Hallucination Markers", detail: '"As an AI language model" in output', dot: "bg-eval-fail" },
+  { label: "Hallucination Markers", detail: "Numbers the provided docs never stated", dot: "bg-eval-fail" },
   { label: "Tool call #3 error", detail: "database_lookup timed out (30s)", dot: "bg-eval-fail" },
   { label: "Quality Score", detail: "0.32 / 1.0 — FAIL", dot: "bg-eval-fail" },
 ];

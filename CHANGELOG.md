@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`no_hallucination_markers` rewritten — it now detects hallucinations instead of politeness.** The old rule matched 17 refusal-boilerplate phrases ("as an AI", "I cannot provide", "I apologize"); measured against a 90-case gold corpus of realistic agent hallucinations it fired on **zero** of them — real hallucinations are confident fabrications, and no competent agent output contains refusal boilerplate. The rule is now context-grounded: pass `input` (the ask plus the source material the agent was given) and the output's specific claims are cross-checked against it — 25 signals covering fabricated citations/attributions (numbers, quotes, section numbers attributed to "the report"/"the docs" that appear nowhere in the input), contradictions with the input (boolean config flips, table/CSV rows bound to another row's number, dates, times, weekday-vs-date errors, cron-frequency misreads, ms-vs-seconds misreads, empty result sets described as findings, failures reported as successes, "may … up to N" strengthened to "will … N", inclusive thresholds flipped, versions/CLI flags absent from the material), and two context-free self-consistency checks (totals contradicting their own addends; the fabricated-citation shape). Without `input` the grounded signals stay silent rather than guess. Refusal text no longer trips the rule.
+- **`no_hallucination_markers` moved from the `relevance` bundle to `safety`.** The `evaluate_output` tool description, the dashboard's safety-violations panel, and the storage adapter's violation counts had always placed hallucination under safety — a caller following the docs and requesting `eval_type: "safety"` previously got **zero** hallucination checking. Docs and behavior now agree: `safety` = `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output`, `no_hallucination_markers`; `relevance` = `keyword_overlap`, `topic_consistency`.
+
 (Unreleased content rolls forward to the next non-RC release.)
 
 ## [0.4.6] - 2026-08-10

@@ -115,7 +115,7 @@ These are structural checks. An empty response is not a nuance problem. It is a 
 ### Relevance (3 rules)
 
 - **keyword_overlap** -- Measures word overlap between input and output. If you asked about "password reset" and the response is about "billing," that is detectable without an LLM. Weight: 1.
-- **no_hallucination_markers** -- Flags common AI hedging phrases: "as an AI," "I cannot," "I don't have access." These are exact string matches. Weight: 1.
+- **no_hallucination_markers** -- Cross-checks the output's specific claims (attributed numbers, quotes, section citations, table bindings, dates, times, statuses) against the provided input; stays silent without input rather than guess. Deterministic string comparison, no LLM. Weight: 1.
 - **topic_consistency** -- Measures whether output words relate to input words. A coarse but fast check for topic drift. Weight: 1.
 
 ### Safety (4 rules)
