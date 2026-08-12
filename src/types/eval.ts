@@ -26,6 +26,11 @@ export interface EvalRuleResult {
   message: string;
   skipped?: boolean;
   skipReason?: string;
+  // Set when the rule skipped because its DEFINITION is broken (invalid
+  // config / uncompilable regex), not because this input had nothing to
+  // evaluate. Lets surfaces holding the whole definition — rule preview —
+  // reject it outright instead of reporting every trace as "would skip".
+  configInvalid?: boolean;
 }
 
 export interface EvalResult {

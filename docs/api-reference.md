@@ -518,8 +518,9 @@ Extract citations from output, fetch sources behind an SSRF-guarded resolver, ru
   "id": "eval-xyz",
   "overall_score": 0.75,
   "passed": true,
-  "total_citations_found": 4,
-  "total_resolved": 3,
+  "total_citations_found": 5,
+  "total_resolved": 4,
+  "total_judged": 4,
   "total_supported": 3,
   "total_cost_usd": 0.002145,
   "citations": [

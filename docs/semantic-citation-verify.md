@@ -27,10 +27,11 @@ await callTool('verify_citations', {
 });
 // →
 // {
-//   "overall_score": 0.5,
-//   "passed": true,     // 0.5 >= 0.5 threshold
+//   "overall_score": 1.0,    // supported / judged — 1/1
+//   "passed": true,     // 1.0 >= 0.5 threshold
 //   "total_citations_found": 2,
 //   "total_resolved": 1,     // [1] is unresolvable — no URL to fetch
+//   "total_judged": 1,
 //   "total_supported": 1,
 //   "total_cost_usd": 0.000612,
 //   "citations": [

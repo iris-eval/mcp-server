@@ -209,10 +209,10 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   await step(SELF_TEST_STEPS.trace, async () => {
     /*
      * Evals are linked to a logged trace because that is the shape the
-     * real flow produces (log_trace → evaluate_output with trace_id) —
-     * and because getEvalStats counts trace-linked evals only, so
-     * unlinked fixtures would make the stats check below pass vacuously
-     * on an empty window.
+     * real flow produces (log_trace → evaluate_output with trace_id).
+     * getEvalStats counts unlinked evals too, so linking is not what
+     * gets the fixtures counted — it keeps the self-test exercising the
+     * same trace→eval join the per-trace and dashboard scans rely on.
      */
     traceId = generateTraceId();
     const trace: Trace = {
