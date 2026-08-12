@@ -20,6 +20,7 @@
  *     its own data.
  */
 import Database from 'better-sqlite3';
+import { ensureOwnerOnly } from '../utils/write-atomic.js';
 import type {
   IStorageAdapter,
   DashboardSummary,
@@ -54,8 +55,10 @@ function assertTenant(tenantId: TenantId): void {
 
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
+  private readonly dbPath: string;
 
   constructor(dbPath: string) {
+    this.dbPath = dbPath;
     this.db = new Database(dbPath);
   }
 
@@ -64,6 +67,17 @@ export class SqliteAdapter implements IStorageAdapter {
     this.db.pragma('busy_timeout = 5000');
     this.db.pragma('foreign_keys = ON');
     runMigrations(this.db);
+    /*
+     * iris.db holds agent inputs and outputs verbatim, and a tool that
+     * detects PII necessarily stores the PII it found. better-sqlite3
+     * creates the file with the process umask (typically 0644 = readable by
+     * every local account), and WAL mode creates two sidecars that hold the
+     * same data. Narrow all three after the pragmas, since -wal/-shm do not
+     * exist until WAL is enabled. No-op on Windows and on :memory:.
+     */
+    if (this.dbPath !== ':memory:') {
+      ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
+    }
   }
 
   async close(): Promise<void> {
