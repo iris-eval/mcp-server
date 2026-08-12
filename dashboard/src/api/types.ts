@@ -163,8 +163,9 @@ export interface DecisionMoment {
   timestamp: string;
   input?: string;
   output?: string;
-  costUsd?: number;
-  latencyMs?: number;
+  /** Serialized as explicit null when the trace reported no cost — guard with != null, not !== undefined. */
+  costUsd?: number | null;
+  latencyMs?: number | null;
   verdict: MomentVerdict;
   overallScore: number;
   evalCount: number;
