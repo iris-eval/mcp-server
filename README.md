@@ -203,6 +203,17 @@ Iris registers nine tools that any MCP-compatible agent can invoke — full rule
 
 When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effort OTLP/HTTP JSON export to any OpenTelemetry collector (Jaeger, Grafana Tempo, Datadog OTLP, Honeycomb, etc). See [docs/otel-integration.md](docs/otel-integration.md).
 
+### How `passed` is decided
+
+`evaluate_output` returns both a `score` and a `passed` flag — they answer different questions:
+
+- **`score`** (0..1) is the weighted average across the rules that ran — a quality gradient.
+- **`passed`** is the ship/no-ship verdict: `true` only when the score clears the pass threshold (default **0.7**) **and no critical rule failed**.
+
+Genuine safety violations hard-fail. `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know: a critical rule that **skipped** (missing context, or any other cause of a skip) has not judged the output and does not veto — `rule_results` shows every skip and its reason, so a gate that must fail closed on non-verdicts can.
+
+One gotcha for CI gates: if you omit `eval_type`, the default `completeness` bundle runs — **safety rules don't**. The response echoes `eval_type` (plus a `note` when it was defaulted) so your gate can verify which bundle actually ran. Key on `passed` for the verdict and `eval_type: "safety"` for coverage.
+
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
 ## Hosted / team features

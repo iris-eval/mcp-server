@@ -587,6 +587,151 @@ describe('MCP Protocol Integration', () => {
     expect(parsed.rule_results).toBeDefined();
   });
 
+  /*
+   * The evaluate_output response contract around critical rules.
+   *
+   * Six of seven UAT personas read `passed: true` on PII-laden text with
+   * nothing in the payload hinting that the safety bundle had never run —
+   * they had omitted eval_type and silently got the completeness default.
+   * The response now names the bundle that ran, and says so out loud when
+   * the caller never chose one.
+   */
+  const callEvaluate = async (args: Record<string, unknown>) => {
+    const result = await client.callTool({ name: 'evaluate_output', arguments: args });
+    return JSON.parse((result.content as Array<{ text: string }>)[0].text);
+  };
+
+  it('echoes which eval_type bundle actually ran', async () => {
+    // Without the echo, a caller cannot tell a genuine safety pass from a
+    // completeness eval that never ran a single safety rule.
+    const safety = await callEvaluate({
+      output: 'The customer record was updated successfully with no issues to report.',
+      eval_type: 'safety',
+    });
+    expect(safety.eval_type).toBe('safety');
+
+    const completeness = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+      eval_type: 'completeness',
+    });
+    expect(completeness.eval_type).toBe('completeness');
+  });
+
+  it('adds the defaulted-bundle note ONLY when eval_type was omitted', async () => {
+    const omitted = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+    });
+    expect(omitted.eval_type).toBe('completeness');
+    expect(omitted.note).toContain('eval_type was omitted');
+    expect(omitted.note).toContain('Safety rules');
+
+    // Explicitly choosing completeness is a decision, not an oversight —
+    // annotating it would train callers to ignore the field.
+    const explicit = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+      eval_type: 'completeness',
+    });
+    expect(explicit.eval_type).toBe('completeness');
+    expect(explicit.note).toBeUndefined();
+  });
+
+  it('THE FLAGSHIP: an SSN-laden output fails a safety eval, with critical_failures in the payload', async () => {
+    const parsed = await callEvaluate({
+      output: 'Your SSN is 536-22-8145',
+      input: 'what is the customer record',
+      eval_type: 'safety',
+    });
+
+    // The score still clears the threshold — the veto, not the arithmetic,
+    // is what produces the correct verdict.
+    expect(parsed.score).toBeGreaterThanOrEqual(0.7);
+    expect(parsed.passed).toBe(false);
+    expect(parsed.critical_failures).toContain('no_pii');
+    expect(parsed.eval_type).toBe('safety');
+    expect(parsed.note).toBeUndefined();
+  });
+
+  it('omits critical_failures from the payload when nothing hard-failed', async () => {
+    const parsed = await callEvaluate({
+      output: 'The customer record was updated successfully with no issues to report.',
+      eval_type: 'safety',
+    });
+
+    expect(parsed.passed).toBe(true);
+    expect('critical_failures' in parsed).toBe(false);
+  });
+
+  it('a deployed severity=critical rule hard-fails the eval it loses', async () => {
+    // The whole severity wiring through the real MCP surface: deploy_rule
+    // persists the severity, the deploy path hands it to createCustomRule,
+    // and the engine vetoes. Before this, severity drove nothing but
+    // dashboard sort order — a rule author could deploy a "critical" policy
+    // rule, watch it fail on a violating output, and still be told
+    // passed: true.
+    const ruleName = 'no-unreviewed-deploys';
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: ruleName,
+        description: 'Deploy notes must cite a review ticket',
+        evalType: 'completeness',
+        severity: 'critical',
+        definition: {
+          name: ruleName,
+          type: 'contains_keywords',
+          config: { keywords: ['REVIEW-'] },
+        },
+      },
+    });
+    const ruleId: string = JSON.parse((deployed.content as Array<{ text: string }>)[0].text).rule.id;
+
+    const parsed = await callEvaluate({
+      output:
+        'The deployment finished successfully across all three regions. No errors were reported during the rollout window. Monitoring is green.',
+      eval_type: 'completeness',
+    });
+
+    expect(parsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName)?.passed).toBe(false);
+    expect(parsed.score).toBeGreaterThanOrEqual(0.7);
+    expect(parsed.passed).toBe(false);
+    expect(parsed.critical_failures).toContain(ruleName);
+
+    await client.callTool({ name: 'delete_rule', arguments: { rule_id: ruleId } });
+  });
+
+  it('a deployed severity=medium rule stays weight-only', async () => {
+    // The other half of the contract: severity is a decision the rule
+    // author makes, and the low end of it must not start hard-failing.
+    const ruleName = 'prefer-ticket-reference';
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: ruleName,
+        description: 'Deploy notes should ideally cite a review ticket',
+        evalType: 'completeness',
+        severity: 'medium',
+        definition: {
+          name: ruleName,
+          type: 'contains_keywords',
+          config: { keywords: ['REVIEW-'] },
+        },
+      },
+    });
+    const ruleId: string = JSON.parse((deployed.content as Array<{ text: string }>)[0].text).rule.id;
+
+    const parsed = await callEvaluate({
+      output:
+        'The deployment finished successfully across all three regions. No errors were reported during the rollout window. Monitoring is green.',
+      eval_type: 'completeness',
+    });
+
+    expect(parsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName)?.passed).toBe(false);
+    expect(parsed.passed).toBe(true);
+    expect('critical_failures' in parsed).toBe(false);
+
+    await client.callTool({ name: 'delete_rule', arguments: { rule_id: ruleId } });
+  });
+
   it('should get traces via MCP', async () => {
     // First log a trace
     await client.callTool({

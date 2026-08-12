@@ -98,8 +98,9 @@ export function registerRuleRoutes(
       // evaluate_output calls without requiring a server restart. Registered
       // under its rule id so the delete paths can hot-remove it. The engine
       // is process-global in v0.4 — Cloud multi-tenant engine wiring is a
-      // v0.5 architectural item.
-      opts.evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition), rule.id);
+      // v0.5 architectural item. Severity rides along: high/critical makes
+      // the rule hard-failing (same as the MCP deploy path and boot loading).
+      opts.evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
 
       res.status(201).json({ rule });
     } catch (err) {
