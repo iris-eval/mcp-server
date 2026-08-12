@@ -136,6 +136,26 @@ export function createDashboardServer(
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const staticDir = join(currentDir, '..', '..', 'dist', 'dashboard');
   const indexHtml = join(staticDir, 'index.html');
+
+  /*
+   * An unmatched /api/ path must answer as an API, not as the app.
+   *
+   * The SPA fallback below is deliberately a blanket catch-all so deep links
+   * like /traces/<id> survive a reload. Without this guard it also swallowed
+   * mistyped API routes: `GET /api/v1/tracez` returned 200 with index.html,
+   * so a client saw SUCCESS and then threw "Unexpected token '<'" from
+   * res.json() — sending the developer to debug their payload instead of
+   * their URL. A liveness check asserting only status === 200 would call a
+   * nonexistent endpoint healthy. POST to an unknown /api/ route reached
+   * Express's HTML error page, which is the same problem in a smaller hat.
+   *
+   * Mounted before the static handler so it wins regardless of method, and
+   * scoped to /api/ so nothing else changes.
+   */
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Unknown API route' });
+  });
+
   if (existsSync(indexHtml)) {
     app.use(createApiRateLimiter(config));
     app.use(express.static(staticDir));
