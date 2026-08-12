@@ -258,4 +258,27 @@ describe('HTTP Transport Integration', () => {
     const response = await fetch(`http://localhost:${port}/api/v1/traces?limit=999999`);
     expect(response.status).toBe(400);
   });
+
+  it('CSP allows no external origins — fonts are self-hosted (#334)', async () => {
+    storage = new SqliteAdapter(':memory:');
+    await storage.initialize();
+
+    const dashboard = createDashboardServer(storage, testConfig, mockLogger);
+    httpServer = dashboard.start();
+    await once(httpServer, 'listening');
+
+    const addr = httpServer.address();
+    const port = typeof addr === 'object' && addr ? addr.port : 0;
+
+    const response = await fetch(`http://localhost:${port}/api/v1/health`);
+    const csp = response.headers.get('content-security-policy');
+    expect(csp).toBeTruthy();
+    // A local-first tool must not point browsers at any CDN. The Google
+    // Fonts origins were the only external sources; with the fonts
+    // self-hosted under /fonts nothing in the policy may reference an
+    // external host.
+    expect(csp).not.toContain('fonts.googleapis.com');
+    expect(csp).not.toContain('fonts.gstatic.com');
+    expect(csp).not.toMatch(/https?:\/\//);
+  });
 });

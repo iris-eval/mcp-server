@@ -2,9 +2,10 @@
 @import './utilities.css';
 
 /*
- * Fonts now loaded from tokens.css via @import url(...) for Space Grotesk
- * + Manrope + JetBrains Mono — matches website + brand guide. The previous
- * Geist load at this layer is removed because it duplicated the import.
+ * Fonts now self-hosted (tokens.css → fonts.css → public/fonts/, #334)
+ * for Space Grotesk + Manrope + JetBrains Mono — matches website + brand
+ * guide. The previous Geist load at this layer is removed because it
+ * duplicated the import.
  */
 
 *, *::before, *::after {

@@ -78,32 +78,51 @@ describe('writeAtomic', () => {
 
 /*
  * These files hold agent inputs and outputs verbatim, and a PII detector
- * necessarily stores the PII it found. Windows has no POSIX mode bits
- * (ACL inheritance governs), so the assertions are POSIX-only — which is
- * precisely why this class of defect survives local testing on Windows.
+ * necessarily stores the PII it found, so they must not be world-readable.
+ *
+ * Windows has no POSIX mode bits (ACL inheritance governs), so the mode
+ * assertions only mean something there. These tests deliberately RUN on
+ * both platforms anyway, branching the assertion rather than skipping the
+ * case: skipping made the suite's test COUNT platform-dependent, and
+ * .claims.json is derived truth captured on one machine and re-derived in
+ * CI on another — a Windows-captured 630/634 drifted against Linux's
+ * 634/634 and turned the truthbase gate red on main. A gate whose input
+ * changes with the developer's OS is not a gate.
+ *
+ * On Windows the assertion is still real: the write must succeed and the
+ * bytes must be readable back, proving the mode argument is inert there
+ * rather than corrupting the write path.
  */
-const posixOnly = process.platform === 'win32' ? describe.skip : describe;
+const isWindows = process.platform === 'win32';
 
-posixOnly('owner-only permissions (POSIX)', () => {
+function expectOwnerOnly(path: string, contents: string): void {
+  if (isWindows) {
+    expect(readFileSync(path, 'utf-8')).toBe(contents);
+    return;
+  }
+  expect(statSync(path).mode & 0o777).toBe(0o600);
+}
+
+describe('owner-only permissions', () => {
   it('writeAtomic creates files as 0600, not umask default', () => {
     const target = join(dir, 'secret.json');
     writeAtomic(target, '{"ssn":"123-45-6789"}');
-    expect(statSync(target).mode & 0o777).toBe(0o600);
+    expectOwnerOnly(target, '{"ssn":"123-45-6789"}');
   });
 
   it('the mode holds when writeAtomic overwrites an existing file', () => {
     const target = join(dir, 'secret.json');
     writeAtomic(target, 'first');
     writeAtomic(target, 'second');
-    expect(statSync(target).mode & 0o777).toBe(0o600);
+    expectOwnerOnly(target, 'second');
   });
 
   it('ensureOwnerOnly repairs a file that was already world-readable', () => {
     const target = join(dir, 'legacy.json');
     writeFileSync(target, 'created before the fix', { mode: 0o644 });
-    expect(statSync(target).mode & 0o777).toBe(0o644);
+    if (!isWindows) expect(statSync(target).mode & 0o777).toBe(0o644);
     ensureOwnerOnly(target);
-    expect(statSync(target).mode & 0o777).toBe(0o600);
+    expectOwnerOnly(target, 'created before the fix');
   });
 
   it('ensureOwnerOnly is silent on missing paths and never throws', () => {

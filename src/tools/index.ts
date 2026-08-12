@@ -22,8 +22,8 @@ export function registerAllTools(
   registerEvaluateOutputTool(server, storage, evalEngine);
   registerGetTracesTool(server, storage);
   registerListRulesTool(server, customRuleStore);
-  registerDeployRuleTool(server, customRuleStore);
-  registerDeleteRuleTool(server, customRuleStore);
+  registerDeployRuleTool(server, customRuleStore, evalEngine);
+  registerDeleteRuleTool(server, customRuleStore, evalEngine);
   registerDeleteTraceTool(server, storage);
   registerEvaluateWithLLMJudgeTool(server, storage);
   registerVerifyCitationsTool(server, storage);
