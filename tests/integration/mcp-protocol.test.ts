@@ -403,6 +403,7 @@ describe('MCP Protocol Integration', () => {
       expect(urlCitation.judge.supported).toBe(true);
       expect(urlCitation.judge.confidence).toBe(0.9);
       expect(parsed.total_resolved).toBeGreaterThanOrEqual(1);
+      expect(parsed.total_judged).toBeGreaterThanOrEqual(1);
       expect(parsed.total_supported).toBeGreaterThanOrEqual(1);
       expect(parsed.overall_score).toBeGreaterThan(0);
       expect(parsed.passed).toBe(true);

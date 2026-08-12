@@ -390,13 +390,22 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     const since = this.periodToSince(period);
 
+    /*
+     * No trace_id filter — deliberately. evaluate_output without a
+     * trace_id is documented and normal, and every sibling scan (trend,
+     * per-rule breakdown, failures) counts unlinked evals. Filtering only
+     * this headline made totalEvals disagree with the trend's sum, and —
+     * because eval_results.trace_id is ON DELETE SET NULL — deleting a
+     * trace retroactively shrank the headline while the trend kept the
+     * eval. One population everywhere: every eval in the window.
+     */
     const agg = this.db.prepare(`
       SELECT
         COUNT(*)                                     AS total_evals,
         COALESCE(AVG(score), 0)                      AS avg_score,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
       FROM eval_results
-      WHERE tenant_id = ? AND created_at >= ? AND trace_id IS NOT NULL
+      WHERE tenant_id = ? AND created_at >= ?
     `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
 
     const cost = this.db.prepare(`

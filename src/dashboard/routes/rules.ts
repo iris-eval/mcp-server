@@ -160,16 +160,16 @@ async function previewRule(
 
   const rule = createCustomRule(input.definition);
 
-  // Sanity-probe the rule against an empty input. Compile-time errors
-  // (invalid regex, pattern too long, ReDoS rejection) surface here as a
-  // failed result with a recognizable error prefix. Surface as a 422 so
-  // the UI can show the error instead of a misleading "5 traces fail."
+  // Sanity-probe the rule against an empty input. A broken DEFINITION —
+  // invalid regex, pattern too long, ReDoS rejection, missing required
+  // config — comes back marked configInvalid (custom.ts routes every
+  // compile/config failure through configError, which also sets skipped,
+  // so probing passed/message here would never fire). Config errors depend
+  // only on the definition, never the trace, so one probe hit means every
+  // trace would "skip" identically. Surface as a 422 so the UI can show
+  // the error instead of a misleading "N traces would skip."
   const probe = rule.evaluate({ output: '' });
-  if (
-    !probe.skipped &&
-    !probe.passed &&
-    /^(?:Invalid regex|Regex pattern (?:too long|rejected))/.test(probe.message)
-  ) {
+  if (probe.configInvalid) {
     const err = new Error(probe.message) as Error & { status?: number };
     err.status = 422;
     throw err;
