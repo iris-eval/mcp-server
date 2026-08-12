@@ -76,6 +76,23 @@ beforeEach(() => {
 });
 
 describe('FailuresView', () => {
+  it('survives explicit null costUsd/latencyMs — the shape the server actually serializes', () => {
+    /*
+     * Regression: the /failures API sends costUsd: null (not undefined) for
+     * traces that reported no cost. A `!== undefined` guard let null through
+     * into formatCost → null.toFixed() → the landing view white-screened.
+     * Caught live against demo data on 2026-08-11; unit mocks had only ever
+     * omitted the fields.
+     */
+    useFailuresMock.mockReturnValue(
+      apiResult([makeFailure('t-null', { costUsd: null, latencyMs: null })]),
+    );
+    renderView();
+
+    expect(screen.getByText('agent-t-null')).toBeInTheDocument();
+    expect(screen.queryByText(/\$/)).not.toBeInTheDocument(); // no cost chip rendered
+  });
+
   it('renders each failure with agent, failed rule, and time — and links to the detail view', () => {
     useFailuresMock.mockReturnValue(apiResult([makeFailure('t-1'), makeFailure('t-2')]));
     renderView();
