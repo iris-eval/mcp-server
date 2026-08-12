@@ -266,7 +266,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `IRIS_HOST` | HTTP transport host (default `127.0.0.1`) |
 | `IRIS_DB_PATH` | SQLite database path |
 | `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
-| `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`) |
+| `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`; `false` also overrides `dashboard.enabled` in config.json) |
 | `IRIS_DASHBOARD_PORT` | Dashboard port (default `6920`) |
 | `IRIS_API_KEY` | API key for HTTP authentication |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |

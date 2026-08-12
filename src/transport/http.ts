@@ -77,9 +77,35 @@ export async function createHttpTransport(
    * `127.0.0.1:0` and reject every real request with a 403 that looks
    * exactly like an attack. Routes are registered immediately after, and
    * the port is not discoverable by any client until this function returns.
+   *
+   * The callback MUST inspect its error argument. Express 5 wires the
+   * listen callback as `server.once('error', done)` as well as the
+   * listening callback — so on EADDRINUSE it is invoked WITH the error.
+   * Ignoring that argument resolved this promise on a server that never
+   * bound: the caller then logged "HTTP transport listening on <port>"
+   * while another process owned the port, and the process idled forever.
+   * A CI health poll got 200 from the OTHER instance and shipped
+   * evaluations to a stranger's database. A bind failure must reject,
+   * name the port, and take the process down nonzero.
    */
-  const httpServer = await new Promise<Server>((resolve) => {
-    const server = app.listen(config.transport.port, config.transport.host, () => resolve(server));
+  const httpServer = await new Promise<Server>((resolve, reject) => {
+    const server = app.listen(config.transport.port, config.transport.host, (err?: Error) => {
+      if (err) {
+        const bind = `${config.transport.host}:${config.transport.port}`;
+        const code = (err as NodeJS.ErrnoException).code;
+        reject(
+          code === 'EADDRINUSE'
+            ? new Error(
+                `HTTP transport failed to start: port ${config.transport.port} is already in use ` +
+                  `(EADDRINUSE on ${bind}). Another process — possibly another iris instance — owns it. ` +
+                  `Pass --port <other> (or set IRIS_PORT) or stop the other process.`,
+              )
+            : new Error(`HTTP transport failed to bind ${bind}: ${err.message}`),
+        );
+        return;
+      }
+      resolve(server);
+    });
   });
   const address = httpServer.address();
   const port = typeof address === 'object' && address ? address.port : config.transport.port;
