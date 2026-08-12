@@ -189,7 +189,21 @@ export function createDashboardServer(
        * http` started the dashboard implicitly, so binding the MCP
        * transport to loopback still left a wide-open second server.
        */
-      const server = app.listen(config.dashboard.port, config.dashboard.host, () => {
+      // Distinguishes "never bound" from "failed after startup" so the
+      // error handler below can say which one actually happened.
+      let bound = false;
+      const server = app.listen(config.dashboard.port, config.dashboard.host, (err?: Error) => {
+        /*
+         * Express 5 also invokes this callback on a bind ERROR (it wires it
+         * via `server.once('error', done)`). Before this guard, a port
+         * collision ran the success path anyway: it logged "Dashboard
+         * available at http://localhost:<port>" — a URL owned by a DIFFERENT
+         * process — and overwrote runtime.json to point capture clients at
+         * that stranger. Failures belong to the 'error' handler below.
+         */
+        if (err) return;
+        bound = true;
+
         // Record the port actually bound so the rebinding guard builds its
         // allowlist from it rather than from a configured 0.
         const addr = server.address();
@@ -239,15 +253,29 @@ export function createDashboardServer(
        * handler which emits a warning but doesn't crash — so the process
        * keeps running in a broken state. We log the specific cause then
        * exit(1) so the user sees the actual problem.
+       *
+       * Exiting nonzero is correct here because the dashboard only starts
+       * when EXPLICITLY requested (--dashboard / IRIS_DASHBOARD / --demo —
+       * see src/index.ts): the user asked for a surface they will not get,
+       * and running on while a health gate reports "ready" would send them
+       * to a port owned by a different process.
        */
       server.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
           logger.error(
-            `Dashboard failed to start: port ${config.dashboard.port} is already in use. ` +
-              `If running HTTP transport on the same port, use --dashboard-port <other>.`,
+            `Dashboard failed to start: port ${config.dashboard.port} is already in use ` +
+              `(EADDRINUSE on ${config.dashboard.host}:${config.dashboard.port}). The dashboard was ` +
+              `explicitly requested, so iris is exiting. Pass --dashboard-port <other> (or set ` +
+              `IRIS_DASHBOARD_PORT) or stop the process that owns the port.`,
+          );
+        } else if (!bound) {
+          logger.error(
+            `Dashboard failed to start on ${config.dashboard.host}:${config.dashboard.port}: ${err.message}`,
           );
         } else {
-          logger.error(`Dashboard server error: ${err.message}`);
+          // Post-bind failure (e.g. EMFILE on accept) — "failed to start"
+          // would misdescribe a server that had been up and serving.
+          logger.error(`Dashboard server error after startup: ${err.message}`);
         }
         process.exit(1);
       });

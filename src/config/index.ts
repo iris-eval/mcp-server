@@ -49,6 +49,24 @@ function parsePortEnv(value: string, name: string): number {
   return n;
 }
 
+/*
+ * IRIS_DASHBOARD used to be `value === 'true'`, which silently read every
+ * other spelling — 1, yes, on, TRUE — as an explicit DISABLE that then
+ * overrode config.json's dashboard.enabled in the layer merge. The user who
+ * exported IRIS_DASHBOARD=1 got no dashboard plus a pointer log telling
+ * them to set the very variable they believed they had set. Unrecognized
+ * values now throw, same contract as parsePortEnv: loud beats silently
+ * wrong for a startup switch.
+ */
+function parseBooleanEnv(value: string, name: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  throw new Error(
+    `${name}=${JSON.stringify(value)} is not a valid boolean (use true/1/yes/on or false/0/no/off)`,
+  );
+}
+
 function loadEnvVars(): Partial<IrisConfig> {
   const config: Record<string, unknown> = {};
 
@@ -68,7 +86,7 @@ function loadEnvVars(): Partial<IrisConfig> {
     config.logging = { level: process.env.IRIS_LOG_LEVEL };
   }
   if (process.env.IRIS_DASHBOARD) {
-    config.dashboard = { enabled: process.env.IRIS_DASHBOARD === 'true' };
+    config.dashboard = { enabled: parseBooleanEnv(process.env.IRIS_DASHBOARD, 'IRIS_DASHBOARD') };
   }
   if (process.env.IRIS_DASHBOARD_PORT) {
     config.dashboard = {

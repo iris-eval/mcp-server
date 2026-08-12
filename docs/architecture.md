@@ -214,7 +214,7 @@ dashboard/              React SPA (separate Vite build)
 5. Based on `config.transport.type`:
    - **stdio**: Creates `StdioServerTransport` and connects.
    - **http**: Creates an Express app with helmet, body parsing, auth, rate limiting, and error handling. Mounts the `StreamableHTTPServerTransport` at `/mcp` (POST, GET, DELETE). Starts listening.
-6. If the dashboard is enabled (or transport is HTTP), a second Express app starts on the dashboard port (default: 6920) with the REST API and static file serving.
+6. If the dashboard is explicitly enabled (`--dashboard`, `IRIS_DASHBOARD=true`, or `dashboard.enabled` in config.json), a second Express app starts on the dashboard port (default: 6920) with the REST API and static file serving. It never starts implicitly — with `--transport http` and no dashboard flag, iris logs how to enable it (the `POST /api/v1/traces` ingest endpoint lives on the dashboard server).
 7. SIGINT/SIGTERM handlers gracefully shut down HTTP servers (10s timeout) and close the database.
 
 ---
@@ -459,7 +459,7 @@ MCP Client (remote)            Iris HTTP Server (Express)
 | Dashboard port | `--dashboard-port 6920` | `IRIS_DASHBOARD_PORT=6920` | `6920` |
 | API key | `--api-key <key>` | `IRIS_API_KEY=<key>` | (none) |
 
-When transport is HTTP, the dashboard server is automatically enabled on its own port.
+The dashboard is off by default on both transports — enable it explicitly with `--dashboard` (or `IRIS_DASHBOARD=true`). It runs on its own port (default: 6920), and the `POST /api/v1/traces` HTTP ingest endpoint is served by it, so ingest also requires `--dashboard`.
 
 ---
 

@@ -60,7 +60,19 @@ try {
       config: { type: 'string' },
       'db-path': { type: 'string' },
       'api-key': { type: 'string' },
-      dashboard: { type: 'boolean', default: false },
+      /*
+       * No `default: false` here, unlike the other booleans. The value
+       * flows into loadConfig, and cliArgsToConfig writes the CLI layer
+       * whenever `dashboard !== undefined` — so a default made the flag's
+       * ABSENCE indistinguishable from an explicitly disabled dashboard and stamped
+       * `enabled: false` over the env and config-file layers, which merge
+       * before it. IRIS_DASHBOARD=true and `dashboard.enabled` in
+       * config.json therefore did nothing at all. Left undefined, the
+       * lower layers survive and `--dashboard` still wins when passed.
+       * The other boolean flags are read for truthiness only and never
+       * reach the merge, so their defaults are harmless.
+       */
+      dashboard: { type: 'boolean' },
       'dashboard-port': { type: 'string' },
       'dashboard-host': { type: 'string' },
       demo: { type: 'boolean', default: false },
@@ -122,7 +134,7 @@ Environment variables (CLI flags take precedence):
                                        audit.log, preferences.json (default: ~/.iris)
   IRIS_DB_PATH                         SQLite database path (overrides IRIS_HOME for the DB only)
   IRIS_LOG_LEVEL                       debug | info | warn | error
-  IRIS_DASHBOARD                       true to enable web dashboard
+  IRIS_DASHBOARD                       true/1/yes/on enables the web dashboard; false/0/no/off disables it (overrides config.json)
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
   IRIS_DASHBOARD_HOST                  Dashboard bind address (default: 127.0.0.1)
   IRIS_API_KEY                         API key for HTTP authentication
@@ -274,7 +286,18 @@ async function main(): Promise<void> {
     }
   }
 
-  if (config.dashboard.enabled || config.transport.type === 'http') {
+  /*
+   * The dashboard starts ONLY when explicitly enabled (--dashboard,
+   * IRIS_DASHBOARD=true, or dashboard.enabled in config.json). It used to
+   * also start implicitly whenever `--transport http` was chosen — which
+   * contradicted the README ("off by default"), and worse: if its default
+   * port 6920 was busy on a shared CI runner, the WHOLE process exited 1
+   * after the transport had already bound successfully. An unrequested
+   * server must never be able to kill the requested one. Users who relied
+   * on the ingest endpoint riding along get a loud pointer below instead
+   * of a silent 404.
+   */
+  if (config.dashboard.enabled) {
     const preferenceStore = createPreferenceStore();
     const dashboardServer = createDashboardServer(storage, config, logger, {
       customRuleStore,
@@ -288,21 +311,28 @@ async function main(): Promise<void> {
     // dashboard in the user's default browser. Skipped in CI, when the
     // user has previously set autoLaunch=false in ~/.iris/preferences.json,
     // or when IRIS_NO_AUTO_LAUNCH=1 is set.
-    if (config.dashboard.enabled) {
-      const prefState = loadOrInitPreferences();
-      if (prefState.isFirstRun && shouldAutoLaunchDashboard(prefState)) {
-        const url = `http://localhost:${config.dashboard.port}`;
-        logger.info(`First run detected — opening dashboard at ${url}`);
-        logger.info(
-          `(To disable auto-launch: set IRIS_NO_AUTO_LAUNCH=1 or edit ${prefState.path})`,
-        );
-        openBrowser(url);
-      } else if (prefState.isFirstRun) {
-        logger.info(
-          `First run detected — skipping auto-launch (CI/IRIS_NO_AUTO_LAUNCH set). Dashboard at http://localhost:${config.dashboard.port}`,
-        );
-      }
+    const prefState = loadOrInitPreferences();
+    if (prefState.isFirstRun && shouldAutoLaunchDashboard(prefState)) {
+      const url = `http://localhost:${config.dashboard.port}`;
+      logger.info(`First run detected — opening dashboard at ${url}`);
+      logger.info(
+        `(To disable auto-launch: set IRIS_NO_AUTO_LAUNCH=1 or edit ${prefState.path})`,
+      );
+      openBrowser(url);
+    } else if (prefState.isFirstRun) {
+      logger.info(
+        `First run detected — skipping auto-launch (CI/IRIS_NO_AUTO_LAUNCH set). Dashboard at http://localhost:${config.dashboard.port}`,
+      );
     }
+  } else if (config.transport.type === 'http') {
+    // Loud, because this used to start implicitly: anyone who relied on the
+    // ingest endpoint riding along with --transport http must learn how to
+    // get it back from this line, not from a connection refused.
+    logger.info(
+      `Dashboard not started (off by default). The dashboard — and the HTTP ingest endpoint ` +
+        `POST /api/v1/traces — start on port ${config.dashboard.port} when you pass --dashboard, ` +
+        `set IRIS_DASHBOARD=true, or set dashboard.enabled=true in config.json.`,
+    );
   }
 
   if (config.security.apiKey) {
