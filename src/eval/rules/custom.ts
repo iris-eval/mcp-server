@@ -2,6 +2,7 @@ import isSafeRegex from 'safe-regex2';
 import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition } from '../../types/eval.js';
 import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
+import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
 
 const MAX_PATTERN_LENGTH = 1000;
 
@@ -38,7 +39,20 @@ function safeRegexResult(definition: CustomRuleDefinition, message: string): Eva
   return configError(definition, message);
 }
 
-function compileRegex(definition: CustomRuleDefinition): RegExp | EvalRuleResult {
+/*
+ * Validates a user pattern and returns the normalized {pattern, flags} pair —
+ * NOT a compiled RegExp, deliberately. The pattern is compiled here once for
+ * syntax validation (compilation does not backtrack), but matching happens in
+ * the sandbox worker (regex-sandbox.ts), which compiles its own copy. Nothing
+ * on the main thread may ever call `.test()`/`.exec()` on a user pattern: the
+ * static checks below are best-effort UX (fast rejection with a good message),
+ * not the safety boundary. safe-regex2 is star-height-only — `(a|a)*$` passes
+ * it and is exponential — and no static or probe-based check is sound in
+ * general. The sandbox's hard deadline is the boundary.
+ */
+function validateRegex(
+  definition: CustomRuleDefinition,
+): { pattern: string; flags: string } | EvalRuleResult {
   let patternStr = definition.config.pattern as string;
   let flags = (definition.config.flags as string) ?? '';
 
@@ -60,16 +74,42 @@ function compileRegex(definition: CustomRuleDefinition): RegExp | EvalRuleResult
   // parse, so checking it first reports a plainly broken pattern like `(` as
   // "catastrophic backtracking" — sending the author hunting a performance
   // problem they do not have instead of the typo they do.
-  let compiled: RegExp;
   try {
-    compiled = new RegExp(patternStr, flags);
+    new RegExp(patternStr, flags);
   } catch (e) {
     return safeRegexResult(definition, `Invalid regex syntax: ${e instanceof Error ? e.message : 'unknown error'}`);
   }
   if (!isSafeRegex(patternStr)) {
     return safeRegexResult(definition, 'Regex pattern rejected: potentially unsafe (catastrophic backtracking)');
   }
-  return compiled;
+  return { pattern: patternStr, flags };
+}
+
+/*
+ * Budget breach is a property of pattern×input, not of the definition alone —
+ * the same pattern can be instant on one output and superlinear on the next
+ * (often one CRAFTED to stall it). So this is not configInvalid: the preview
+ * endpoint must not 422 a rule that merely met a hostile input. It follows the
+ * configError precedent instead: SKIPPED, because a rule whose match was
+ * killed mid-backtrack has not judged the output, and a skipped rule neither
+ * deflates the weighted score nor (for high/critical deployed rules) vetoes
+ * the eval on evidence it never gathered. The skipReason tells the author
+ * exactly what to fix, and the engine already surfaces it in suggestions.
+ */
+function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult {
+  const message =
+    `Regex evaluation terminated: pattern exceeded the ${REGEX_MATCH_BUDGET_MS}ms matching ` +
+    `budget on this output (superlinear backtracking) and was killed in its sandbox worker. ` +
+    `The rule did not judge this output. Rewrite the pattern to avoid ambiguous repetition ` +
+    `— e.g. bound quantifiers (\\s{0,8} not \\s*) and remove overlapping alternatives.`;
+  return {
+    ruleName: definition.name,
+    passed: false,
+    score: 0,
+    message,
+    skipped: true,
+    skipReason: message,
+  };
 }
 
 /**
@@ -94,15 +134,19 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
     evaluate(context: EvalContext): EvalRuleResult {
       switch (definition.type) {
         case 'regex_match': {
-          const result = compileRegex(definition);
-          if (!(result instanceof RegExp)) return result;
-          const passed = result.test(context.output);
+          const validated = validateRegex(definition);
+          if ('ruleName' in validated) return validated;
+          const outcome = sandboxedRegexTest(validated.pattern, validated.flags, context.output);
+          if (outcome.kind !== 'match') return budgetExceededResult(definition);
+          const passed = outcome.matched;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? 'Regex pattern matched' : 'Regex pattern did not match' };
         }
         case 'regex_no_match': {
-          const result = compileRegex(definition);
-          if (!(result instanceof RegExp)) return result;
-          const passed = !result.test(context.output);
+          const validated = validateRegex(definition);
+          if ('ruleName' in validated) return validated;
+          const outcome = sandboxedRegexTest(validated.pattern, validated.flags, context.output);
+          if (outcome.kind !== 'match') return budgetExceededResult(definition);
+          const passed = !outcome.matched;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? 'Forbidden pattern not found' : 'Forbidden pattern found in output' };
         }
         case 'min_length': {
