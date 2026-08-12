@@ -31,6 +31,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import isSafeRegex from 'safe-regex2';
 import { regexBacktrackingBudgetExceeded } from './eval/rules/regex-budget.js';
+import { normalizeRegexSource } from './eval/rules/custom.js';
 import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
   DeployedCustomRule,
@@ -120,15 +121,21 @@ const DefinitionSchema = z
           });
           break;
         }
-        // Strip a leading inline flag group the way the evaluator does, so a
-        // pattern that WILL run is not rejected here for syntax it tolerates.
-        const stripped = pattern.replace(/^\(\?[imsugy]+\)/, '');
+        // Normalize EXACTLY the way the evaluator does — same helper — so
+        // this layer validates and probes the identical pattern+flags pair
+        // that will actually run. (It used to strip the inline flag group
+        // but not merge its flags: a `(?i)` pattern was probed under
+        // different flags than evaluation used.)
+        const { pattern: stripped, flags: normalizedFlags } = normalizeRegexSource(
+          pattern,
+          typeof config.flags === 'string' ? config.flags : '',
+        );
         // Syntax BEFORE safety: safe-regex2 returns false for anything it
         // cannot parse, so checking it first reports a plainly broken pattern
         // like `(` as "catastrophic backtracking" — an error that sends the
         // author looking for a performance problem they do not have.
         try {
-          new RegExp(stripped, typeof config.flags === 'string' ? config.flags : '');
+          new RegExp(stripped, normalizedFlags);
         } catch (e) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -150,10 +157,7 @@ const DefinitionSchema = z
         // safe and takes 156ms on 40 characters. Measure what the static
         // check cannot see.
         {
-          const budgetIssue = regexBacktrackingBudgetExceeded(
-            stripped,
-            typeof config.flags === 'string' ? config.flags : '',
-          );
+          const budgetIssue = regexBacktrackingBudgetExceeded(stripped, normalizedFlags);
           if (budgetIssue) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,

@@ -26,7 +26,12 @@ const inputSchema = {
   expected: z.string().optional().describe('Expected output for comparison — REQUIRED when eval_type="relevance" (used as keyword-overlap target)'),
   input: z.string().optional().describe('Original input for context (the ask + any source material the agent was given) — improves relevance scoring and grounds the safety bundle\'s hallucination signals'),
   trace_id: z.string().optional().describe('Link evaluation to a trace — surfaces this eval in the dashboard\'s trace drill-through'),
-  custom_rules: z.array(CustomRuleSchema).optional().describe('Custom evaluation rules — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these'),
+  // .max(10): inline rules skip the deploy-time probe, and the engine runs
+  // rules synchronously — without a cap, one request carrying N sandbox-
+  // defeating regex rules stalls the server linearly in N (measured 9.3s at
+  // N=50). Ten is ample for per-call rules; persistent sets belong in
+  // deploy_rule, where deploy-time validation probes each pattern.
+  custom_rules: z.array(CustomRuleSchema).max(10).optional().describe('Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these'),
   cost_usd: z.number().optional().describe('Cost in USD — only consulted when eval_type="cost" (compared against cost_threshold rules)'),
   token_usage: z.object({
     prompt_tokens: z.number().optional(),
@@ -61,7 +66,7 @@ export function registerEvaluateOutputTool(
         '',
         'Parameters. expected is REQUIRED when eval_type="relevance" (used as the comparison target for keyword overlap + topic consistency); ignored for other eval_types. cost_usd + token_usage are ONLY consulted when eval_type="cost" (ignored otherwise). custom_rules ALWAYS fires regardless of eval_type — pass eval_type="custom" if you want ONLY your rules to run (otherwise both your rules AND the eval_type bundle run together). trace_id is optional but recommended (linking the eval to its trace surfaces it in the dashboard\'s drill-through). input adds context to keyword-overlap relevance checks AND grounds the safety bundle\'s hallucination signals (without it those signals stay silent rather than guess); ignored otherwise. Defaults: eval_type="completeness" — and when you rely on that default, the response carries a `note` reminding you that the safety bundle did not run.',
         '',
-        'Error modes. Throws on unknown argument names (strict schema — a misspelled argument is rejected with the valid argument list, never silently dropped). Throws on malformed custom_rules (Zod rejects). Returns 400 on regex patterns that fail safe-regex2 ReDoS check or exceed 1000-char limit. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions.',
+        'Error modes. Throws on unknown argument names (strict schema — a misspelled argument is rejected with the valid argument list, never silently dropped). Throws on malformed custom_rules (Zod rejects) and on more than 10 custom_rules in one call (use deploy_rule for persistent rule sets). Returns 400 on regex patterns that fail safe-regex2 ReDoS check or exceed 1000-char limit. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions. A regex that exceeds the 100ms sandbox matching budget on a given output reports skipped with budgetExceeded=true instead of hanging the server (fail-open per rule — gate on that flag if you must fail closed).',
       ].join('\n'),
       inputSchema: strictInput(inputSchema),
       annotations: {

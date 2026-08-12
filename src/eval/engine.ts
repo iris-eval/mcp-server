@@ -101,7 +101,16 @@ export class EvalEngine {
       };
     }
 
-    const ruleResults: EvalRuleResult[] = rules.map((rule) => rule.evaluate(context));
+    /*
+     * Shallow copy so the regex circuit breaker is scoped to THIS evaluation
+     * and never leaks into a caller-held context object. All rules in one
+     * evaluation share the breaker: after MAX_REGEX_BREACHES_PER_EVAL sandbox
+     * budget breaches (see rules/custom.ts), remaining regex rules skip
+     * without running — one hostile output cannot stall the request once per
+     * rule it carries.
+     */
+    const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 } };
+    const ruleResults: EvalRuleResult[] = rules.map((rule) => rule.evaluate(evalContext));
 
     // Partition into evaluated vs skipped
     const evaluatedIndices: number[] = [];
@@ -182,8 +191,20 @@ export class EvalEngine {
       );
     }
     if (rulesSkipped > 0) {
-      const skippedNames = ruleResults.filter((r) => r.skipped).map((r) => r.ruleName);
-      suggestions.push(`${rulesSkipped} rule(s) skipped (missing context): ${skippedNames.join(', ')}`);
+      /*
+       * Say WHY each rule skipped. The old line hardcoded "(missing
+       * context)" — but a rule whose regex was killed at the sandbox budget
+       * did not lack context, it was DEFEATED by this output, and labeling
+       * that "missing context" hid the one signal a fail-closed consumer
+       * needs. Each rule's own skipReason is the truth; missing context is
+       * only the default for rules that skip without stating a reason.
+       */
+      const skippedParts = ruleResults
+        .filter((r) => r.skipped)
+        .map((r) => `${r.ruleName} (${r.skipReason ?? 'missing context'})`);
+      suggestions.push(
+        `${rulesSkipped} rule(s) skipped — excluded from the weighted score: ${skippedParts.join('; ')}`,
+      );
     }
 
     return {

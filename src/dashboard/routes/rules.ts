@@ -183,6 +183,19 @@ async function previewRule(
   let wouldSkip = 0;
   const examples: RulePreviewResult['examples'] = [];
 
+  /*
+   * ONE regex budget for the whole preview, not one per trace. This loop
+   * runs a caller-supplied pattern against up to maxTraces (cap 5000)
+   * seedable outputs on the main thread — with no shared breaker, a
+   * sandbox-defeating pattern×output pair cost ~142ms per trace, ~12
+   * minutes of server freeze at the cap, from one self-serve request
+   * (the deploy probe guesses payloads and cannot catch every such
+   * pattern). Sharing the breaker means at most 3 traces pay the budget;
+   * the rest report wouldSkip instantly — and "this pattern gets
+   * defeated" is exactly the answer the rule author needs from a preview.
+   */
+  const regexBudget = { breaches: 0 };
+
   for (const trace of traceResult.traces) {
     if (trace.output === undefined) {
       wouldSkip++;
@@ -193,6 +206,7 @@ async function previewRule(
       input: trace.input,
       costUsd: trace.cost_usd,
       tokenUsage: trace.token_usage,
+      regexBudget,
     });
     if (result.skipped) {
       wouldSkip++;

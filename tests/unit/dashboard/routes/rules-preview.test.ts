@@ -127,4 +127,54 @@ describe('POST /rules/custom/preview — definition rejection', () => {
     // t3 has no output — a legitimate skip, NOT a definition rejection.
     expect(res.body.wouldSkip).toBe(1);
   });
+
+  it('shares ONE regex budget across the whole preview — a defeated pattern cannot stall per trace', async () => {
+    /*
+     * The preview loop runs a caller-supplied pattern against up to 5000
+     * seedable traces on the main thread. With a fresh budget per trace, a
+     * sandbox-defeating pattern×output pair cost ~142ms EACH (~12 min at
+     * the cap, one self-serve request). The loop must share one breaker:
+     * at most 3 traces pay the budget, the rest skip instantly.
+     */
+    const hostileTraces: Trace[] = Array.from({ length: 12 }, (_, i) => ({
+      trace_id: `h${i}`,
+      agent_name: 'agent-h',
+      input: 'in',
+      output: 'a'.repeat(40) + 'b',
+      timestamp: new Date().toISOString(),
+    }));
+    const app = express();
+    app.use(express.json());
+    app.use(createTenantMiddleware());
+    const router = express.Router();
+    registerRuleRoutes(
+      router,
+      { queryTraces: async () => ({ traces: hostileTraces, total: hostileTraces.length }) } as unknown as IStorageAdapter,
+      { customRuleStore: stubStore, evalEngine: stubEngine },
+    );
+    app.use('/api/v1', router);
+    const server = app.listen(0);
+    const addr = server.address() as { port: number };
+    try {
+      const started = Date.now();
+      const res = await fetch(`http://localhost:${addr.port}/api/v1/rules/custom/preview`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          // lgtm[js/redos] — intentionally hostile test input
+          definition: { name: 'hostile', type: 'regex_match', config: { pattern: '^(a|a)*$' } }, // codeql-suppress js/redos
+        }),
+      });
+      const elapsed = Date.now() - started;
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(res.status).toBe(200);
+      // All 12 hostile traces report wouldSkip; only ~3 paid the budget.
+      expect(body.wouldSkip).toBe(12);
+      // Per-trace budgets would be ≥12 × ~140ms ≈ 1.7s minimum; the shared
+      // breaker caps it at ~3 breaches. Generous bound for slow CI.
+      expect(elapsed).toBeLessThan(1500);
+    } finally {
+      server.close();
+    }
+  });
 });

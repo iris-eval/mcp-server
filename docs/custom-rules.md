@@ -400,31 +400,49 @@ The default weight is `1` when omitted.
 
 ## ReDoS Protection
 
-Every regex pattern passed to `regex_match` or `regex_no_match` is validated before execution.
+Protection has two layers. The static checks below reject obviously dangerous patterns up front with a clear message — but static analysis of backtracking is undecidable in general, and some superlinear patterns pass every static check. So the layer that actually holds is at runtime: **every match of a user-supplied pattern executes in a sandbox worker thread with a hard 100ms deadline**. A match still backtracking at the deadline is terminated mid-execution — a hostile pattern (or a hostile output crafted to stall a legitimate pattern) cannot hang the server, no matter what the static checks missed.
 
-### What Gets Rejected
+### Layer 1 — static checks (fast rejection with a clear message)
 
-1. **Patterns longer than 1000 characters.** Overly long patterns are rejected immediately with the message `Regex pattern too long (N > 1000)`.
+1. **Patterns longer than 1000 characters.** Rejected immediately with the message `Regex pattern too long (N > 1000)`.
 
-2. **Patterns vulnerable to catastrophic backtracking.** Iris uses the [`safe-regex2`](https://www.npmjs.com/package/safe-regex2) library to detect exponential-time patterns. Rejected patterns produce: `Regex pattern rejected: potentially unsafe (catastrophic backtracking)`.
+2. **Invalid regex syntax.** Patterns that fail `new RegExp()` are caught with the native error message.
 
-3. **Invalid regex syntax.** Patterns that fail `new RegExp()` are caught with the native error message.
+3. **Exponential star-height patterns.** Iris uses [`safe-regex2`](https://www.npmjs.com/package/safe-regex2) to detect nested-quantifier blowup. Rejected patterns produce: `Regex pattern rejected: potentially unsafe (catastrophic backtracking)`.
 
-### Examples of Rejected Patterns
+4. **Deploy-time probe** (`deploy_rule` and the dashboard composer only): candidate patterns are also test-run against short adversarial payloads inside the sandbox; a pattern that blows a 50ms budget on a ≤128-character input is rejected before it is persisted.
 
-These patterns cause exponential backtracking and are rejected:
+Examples rejected statically (nested quantifiers — caught by safe-regex2):
 
 ```
 (a+)+$           — nested quantifiers
-(a|a)*$          — overlapping alternatives with quantifier
 (a+){2,}         — nested quantifiers
-(.*a){20}        — greedy quantifier with backreference-like repetition
+(.*a){20}        — greedy quantifier under bounded repetition
 ([a-zA-Z]+)*     — character class with nested quantifier
 ```
 
+### Layer 2 — the runtime sandbox deadline (the actual safety boundary)
+
+Some patterns pass every static check and still backtrack catastrophically:
+
+```
+(a|a)*$          — exponential, but star height 1: safe-regex2 judges it safe
+a*a*a*a*a*b      — polynomial: no nesting at all
+.*.*.*.*=.*      — polynomial: slow only on long inputs with no '='
+```
+
+These deploy (or arrive inline via `custom_rules`) — and at evaluation time their match runs in the sandbox worker. If the match exceeds the 100ms budget on a given output, the worker is killed and the rule reports **skipped** for that evaluation with `budgetExceeded: true` and the message `Regex evaluation terminated: pattern exceeded the 100ms matching budget…`. The server keeps serving; other rules in the same evaluation still run.
+
+**This is fail-open per rule, and you should know it.** A budget-killed rule did not judge the output — and an adversary who knows your pattern can CRAFT output that stalls it into skipping, letting the rest of the rules decide. That trade-off is deliberate: failing closed would let the same adversary force false violations on benign output, which is worse for an eval product. The `budgetExceeded` flag on the rule result exists precisely so a consumer that must fail closed can do so on its own terms: treat any `skipped && budgetExceeded` result as a failure in your gate.
+
+Two additional bounds keep a hostile output from stalling a request repeatedly:
+
+- **Per-evaluation circuit breaker**: after 3 budget breaches in one evaluation, remaining regex rules skip without running (also reported with `budgetExceeded: true`) — including provably safe linear patterns later in the same evaluation, which is the non-obvious part: an open breaker is a per-request stop, not a per-pattern judgment. The dashboard's rule-preview endpoint shares one breaker across all traces in a preview for the same reason.
+- **Inline rule cap**: `evaluate_output` accepts at most 10 `custom_rules` per call — persistent rule sets belong in `deploy_rule`, where deploy-time validation probes each pattern.
+
 ### Examples of Safe Patterns
 
-These patterns are accepted:
+These patterns are accepted and run normally:
 
 ```
 v\d+\.\d+\.\d+                   — version number
@@ -436,7 +454,9 @@ https?://[^\s]+                   — URL detection
 
 ### What Happens on Rejection
 
-When a regex is rejected, the rule returns `passed: false`, `score: 0`, and a message explaining the rejection. The evaluation continues — other rules still run. The rejected rule simply contributes a 0 score at its weight.
+A **statically rejected** pattern (length, syntax, safe-regex2) makes the rule report `skipped: true` with `configInvalid` — the rule could not run at all, so it neither passes nor deflates the score, and the message names the exact problem. Deploy-time validation rejects these outright with a 400 before they are ever persisted.
+
+A **budget-exceeded** match reports `skipped: true` + `budgetExceeded: true` for that evaluation only (no `configInvalid` — the same pattern may be fine on the next output; the breach is a property of pattern × input). The rule's skip reason appears verbatim in the evaluation's `suggestions` (each skipped rule is listed with its own reason), telling the rule author to bound quantifiers (e.g. `\s{0,8}` rather than `\s*`) and remove overlapping alternatives.
 
 ---
 

@@ -29,6 +29,15 @@ export interface EvalContext {
   costUsd?: number;
   metadata?: Record<string, unknown>;
   customConfig?: Record<string, unknown>;
+  /**
+   * Per-evaluation regex circuit breaker, initialized by the engine (never
+   * by callers). Each sandbox budget breach increments `breaches`; once it
+   * reaches the cap, remaining regex rules in the SAME evaluation skip
+   * without running. Bounds how long a single hostile output can stall a
+   * request: without it, N regex rules × (budget + worker respawn) of
+   * main-thread stall scale linearly with N.
+   */
+  regexBudget?: { breaches: number };
 }
 
 export interface EvalRuleResult {
@@ -43,6 +52,14 @@ export interface EvalRuleResult {
   // evaluate. Lets surfaces holding the whole definition — rule preview —
   // reject it outright instead of reporting every trace as "would skip".
   configInvalid?: boolean;
+  // Set when the rule skipped because its regex exceeded the sandbox
+  // matching budget ON THIS OUTPUT (or the per-evaluation circuit breaker
+  // was already open). Distinct from configInvalid and from missing-context
+  // skips on purpose: an output CRAFTED to stall a policy pattern lands
+  // here, so a consumer that must fail closed can treat budgetExceeded
+  // skips as failures on its own terms. Without this flag, "the pattern
+  // was defeated" is indistinguishable from "nothing to evaluate".
+  budgetExceeded?: boolean;
 }
 
 export interface EvalResult {
