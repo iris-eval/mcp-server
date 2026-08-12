@@ -81,15 +81,21 @@ const PATTERNS = [
     expected: c => [c.evalRules?.builtInCount],
     fix: 'Import BUILT_IN_RULE_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
+  // The pii/injection regexes cover BOTH orderings: "N PII patterns" and
+  // "PII <up to 40 chars> N patterns" — the second catches "PII detection
+  // across 10 patterns", "prompt injection (13 patterns)" and "13 attack
+  // patterns", which all slipped past the count-first-only forms while the
+  // gate reported OK (the gate-coverage-vs-claim failure: alive, but not
+  // covering the set its name says it covers).
   {
     name: 'pii-pattern-count',
-    re: /\b(\d{1,2})\s+PII\s+patterns\b/gi,
+    re: /\b(\d{1,2})\s+PII\s+patterns\b|\bPII[^.\n]{0,40}?\b(\d{1,2})\s+patterns\b/gi,
     expected: c => [c.evalRules?.piiPatterns],
     fix: 'Import PII_PATTERN_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
   {
     name: 'injection-pattern-count',
-    re: /\b(\d{1,2})\s+(?:prompt[- ])?injection\s+patterns\b/gi,
+    re: /\b(\d{1,2})\s+(?:prompt[- ])?injection\s+(?:attack\s+)?patterns\b|\binjection[^.\n]{0,40}?\b(\d{1,2})\s+(?:attack\s+)?patterns\b|\b(\d{1,2})\s+attack\s+patterns\b/gi,
     expected: c => [c.evalRules?.injectionPatterns],
     fix: 'Import INJECTION_PATTERN_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
@@ -147,10 +153,12 @@ const SCAN_EXTS = new Set([
 
 // CODE files must import the truthbase reader — any match flags. PROSE files
 // may restate the truth — a match flags only when the number is wrong.
+// The captured number is the first defined group: multi-alternative regexes
+// (pii/injection) capture in different group positions per alternative.
 function matchFlags(pattern, m, relPath, claims) {
   const ext = relPath.slice(relPath.lastIndexOf('.'));
   if (CODE_EXTS.has(ext) || !pattern.expected || !claims) return true;
-  const captured = Number(m[1]);
+  const captured = Number(m.slice(1).find(g => g !== undefined));
   const truthful = pattern.expected(claims).filter(v => typeof v === 'number');
   return truthful.length === 0 || !truthful.includes(captured);
 }
