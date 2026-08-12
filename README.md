@@ -19,23 +19,7 @@
 
 ![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 
-## A failure on screen in 60 seconds
-
-No agent wiring, no config — one command:
-
-```bash
-npx @iris-eval/mcp-server --demo
-```
-
-This seeds a demo database — a handful of small agents with a week of runs — and serves the dashboard against it at **http://localhost:6920** (your browser opens automatically on first run). The dashboard lands on **Failures**: what failed, worst and newest first. Worth clicking into — a PII leak caught by the safety rules, a flagged prompt-injection attempt, and a failed LLM-judge score with its rationale.
-
-Demo data lives in its own database (`demo.db` in your Iris home directory — `~/.iris` on macOS/Linux, `%USERPROFILE%\.iris` on Windows) and never mixes with your real traces. Remove all of it with one command:
-
-```bash
-npx @iris-eval/mcp-server --demo-clear
-```
-
-## Hook up your own agent
+## Quickstart
 
 Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent. One block, dashboard included:
 
@@ -56,33 +40,7 @@ Your agent discovers Iris's nine tools on connect, and the dashboard serves at *
 
 The trace lands on the dashboard with its scores. Prefer the MCP server headless? Drop `--dashboard` from the args — you can open the same dashboard any time with `npx @iris-eval/mcp-server --dashboard`.
 
-**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](docs/http-ingest.md)). The CLI and SDKs on the [roadmap](docs/roadmap.md) will be thin clients over the same endpoint.
-
-### Capture over HTTP (no model in the loop)
-
-With the dashboard running, anything that can send an HTTP request can log a trace — and optionally run the deterministic evals in the same request:
-
-```bash
-curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agent_name": "support-bot",
-    "input": "What is the refund policy?",
-    "output": "Refunds are available within 30 days of purchase.",
-    "evaluate": true,
-    "eval_type": "safety"
-  }'
-```
-
-Returns `201` with the stored `trace_id` and the evaluation result. The endpoint accepts the same body as the `log_trace` tool and sits behind the same loopback-only middleware stack as the rest of the dashboard. Full contract, field reference, and error semantics: [docs/http-ingest.md](docs/http-ingest.md).
-
-### Check the install
-
-```bash
-npx @iris-eval/mcp-server --self-test
-```
-
-An offline install diagnostic: storage round-trip, deterministic evals, dashboard + DNS-rebinding guard — all inside an isolated temp home, so your real database is never opened. Exit code 0 = healthy, 1 = a check failed.
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, that's what the HTTP API, CLI and SDK on the [roadmap](docs/roadmap.md) are for.
 
 <details>
 <summary><strong>Setup by tool</strong></summary>
@@ -186,7 +144,7 @@ docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 | **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (10 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport), prompt injection (13 patterns), stub-output detection, hallucination markers (17 hedging phrases + fabricated-citation heuristic). Add custom rules with Zod schemas. |
 | **LLM-as-Judge** | Optional semantic scoring via Anthropic or OpenAI — bring your own API key. Five templates. Hard per-eval cost cap (`IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL`, default $0.25), per-eval pricing disclosed in the result. |
 | **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
-| **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
+| **Web Dashboard** | Real-time dark-mode UI with trace visualization, eval results, cost breakdowns, and a command palette (⌘K) for jumping between views and filters. |
 | **Local-first** | Everything lives in SQLite on your disk. No account, no sign-up, no telemetry. Outbound HTTP happens only where you opt in: your own LLM-judge key, citation fetching, or an OTel exporter you configure. |
 
 Where this is going next: [the roadmap](docs/roadmap.md).
@@ -230,7 +188,6 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
-- [HTTP Ingest](docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
 - [Roadmap](docs/roadmap.md) — What's coming next
 
 <details>
@@ -248,9 +205,6 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--dashboard` | `false` | Enable web dashboard |
 | `--dashboard-port` | `6920` | Dashboard port |
 | `--dashboard-host` | `127.0.0.1` | Dashboard bind address. Loopback by default — the dashboard is unauthenticated unless `--api-key` is set, so binding beyond loopback exposes your full trace history |
-| `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
-| `--demo-clear` | `false` | Delete the demo database and exit |
-| `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
 
 ### Environment Variables
 
@@ -291,14 +245,6 @@ iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dash
 
 <details>
 <summary><strong>Troubleshooting</strong></summary>
-
-### First move: run the self-test
-
-```bash
-npx @iris-eval/mcp-server --self-test
-```
-
-It checks storage, the deterministic evals, and the dashboard in an isolated temp home and prints a per-step verdict — the failure output names the broken step. Exit code 0 means the install is healthy.
 
 ### Iris won't start / `ERR_MODULE_NOT_FOUND`
 
