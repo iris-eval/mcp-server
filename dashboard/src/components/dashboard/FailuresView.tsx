@@ -97,7 +97,8 @@ export function FailuresView() {
             body={
               <>
                 When an agent runs through Iris, anything that fails a rule lands
-                right here — worst and newest first. The{' '}
+                right here — worst and newest first. See a real failure on screen
+                right now with demo mode, or the{' '}
                 <a
                   href="https://github.com/iris-eval/mcp-server#quickstart"
                   target="_blank"
@@ -108,6 +109,7 @@ export function FailuresView() {
                 wires up your agent in about a minute.
               </>
             }
+            command="npx @iris-eval/mcp-server --demo"
           />
         ) : (
           <PageEmptyState

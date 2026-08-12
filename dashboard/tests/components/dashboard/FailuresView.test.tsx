@@ -124,11 +124,14 @@ describe('FailuresView', () => {
     expect(screen.getByText('nothing new since you last looked')).toBeInTheDocument();
   });
 
-  it('with no runs at all, points to the quickstart', () => {
+  it('with no runs at all, points to demo mode and the quickstart', () => {
     useFailuresMock.mockReturnValue(apiResult([], { total: 0 }));
     renderView();
 
     expect(screen.getByText('Nothing has run yet')).toBeInTheDocument();
+    // The advertised command must stay in lockstep with the real CLI flag
+    // shipped in src/index.ts (--demo) — it hard-fails if the flag renames.
+    expect(screen.getByText('npx @iris-eval/mcp-server --demo')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'quickstart' })).toHaveAttribute(
       'href',
       'https://github.com/iris-eval/mcp-server#quickstart',
