@@ -51,7 +51,7 @@ const inputSchema = {
   severity: z
     .enum(['low', 'medium', 'high', 'critical'])
     .default('medium')
-    .describe('Severity used for dashboard sort + audit alerts'),
+    .describe('What a FAILURE of this rule means. low/medium: informational — contributes to the weighted score only (plus dashboard sort + audit alerts). high/critical: hard-fail — a failing evaluation of this rule forces the overall passed=false regardless of the weighted score'),
   definition: CustomRuleDefinitionSchema.describe('Check definition (regex, length, keyword, cost, or schema)'),
   sourceMomentId: z
     .string()
@@ -81,7 +81,7 @@ export function registerDeployRuleTool(
         '',
         "Don't use to VALIDATE a rule before committing — deploy writes immediately. Use the dashboard's preview endpoint (POST /api/v1/rules/custom/preview) for dry-run validation against sample output. Don't use to EDIT an existing rule — this call only creates; edits require a dedicated flow (coming in v0.5). To update a rule today: delete_rule then deploy_rule with the new definition.",
         '',
-        'Parameters. name is 1-80 chars (Zod-enforced min/max — the same cap the persisted store applies); appears in eval_result rule_results so make it human-readable. description is optional, max 500 chars (used in dashboard tooltips). evalType determines WHEN the rule fires (must match the eval_type your evaluate_output calls use; e.g., a "completeness" rule fires on every evaluate_output where eval_type="completeness" OR eval_type="custom"). severity affects dashboard sort + audit log signal but does NOT affect scoring (scoring uses the rule\'s weight). definition.type and definition.config must match (e.g., regex_match needs config.pattern; cost_threshold needs config.max_cost; min_length needs config.min_length; max_length needs config.max_length; contains_keywords/excludes_keywords need config.keywords). Invalid configs are now REJECTED at deploy time with the offending field named, instead of deploying and then failing every evaluation. sourceMomentId is optional but recommended (preserves workflow-inversion provenance from Make-This-A-Rule composer). Defaults: severity="medium".',
+        'Parameters. name is 1-80 chars (Zod-enforced min/max — the same cap the persisted store applies); appears in eval_result rule_results so make it human-readable. description is optional, max 500 chars (used in dashboard tooltips). evalType determines WHEN the rule fires (must match the eval_type your evaluate_output calls use; e.g., a "completeness" rule fires on every evaluate_output where eval_type="completeness" OR eval_type="custom"). severity decides what a FAILURE of the rule does: low/medium failures only lower the weighted score (and drive dashboard sort + audit alerts); high/critical failures HARD-FAIL the evaluation — the overall `passed` is forced to false regardless of the weighted score, and the rule is listed in the response\'s `critical_failures`. Severity never changes the numeric score itself (that uses the rule\'s weight). definition.type and definition.config must match (e.g., regex_match needs config.pattern; cost_threshold needs config.max_cost; min_length needs config.min_length; max_length needs config.max_length; contains_keywords/excludes_keywords need config.keywords). Invalid configs are now REJECTED at deploy time with the offending field named, instead of deploying and then failing every evaluation. sourceMomentId is optional but recommended (preserves workflow-inversion provenance from Make-This-A-Rule composer). Defaults: severity="medium".',
         '',
         "Error modes. Throws 400 on invalid definition (Zod rejects — e.g., regex that fails safe-regex2 ReDoS check, or length > 1000 chars). Throws 400 on empty `name` or `name` over 80 chars. Any evalType/definition.type combination is valid (a regex_match rule can enforce a safety policy; a max_length rule can express completeness) — there is no category/type mismatch error. Returns 429 when HTTP rate limit exceeded. File-write failures (disk full, read-only fs) propagate as 500; the audit log is best-effort and does not block deploy.",
       ].join('\n'),
@@ -120,7 +120,8 @@ export function registerDeployRuleTool(
       // process" this description promises. Previously only the dashboard's
       // deploy route did this; MCP deploys silently waited for a restart.
       // Registered under its rule id so delete_rule can hot-remove it.
-      evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition), rule.id);
+      // Severity rides along: high/critical makes the rule hard-failing.
+      evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
 
       return {
         content: [

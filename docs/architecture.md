@@ -89,7 +89,7 @@ MCP Client                    Iris MCP Server    EvalEngine        SqliteAdapter
 1. The MCP client calls `evaluate_output` with the output text, eval type, and optionally the original input, expected output, cost, token usage, and custom rules.
 2. The `EvalEngine` selects the appropriate rule set (or builds custom rules from definitions).
 3. Each rule runs independently, returning a `{ passed, score, message }` result.
-4. A weighted average score is computed. Pass/fail is determined by the configured threshold (default: 0.7).
+4. A weighted average score is computed. `passed` requires the score to meet the configured threshold (default: 0.7) AND no critical rule to have failed — a failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`, or a deployed rule with severity high/critical) forces `passed: false` regardless of the weighted score.
 5. The result is persisted to `eval_results` and returned to the client.
 
 ### Dashboard data flow

@@ -1,5 +1,6 @@
 import isSafeRegex from 'safe-regex2';
 import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition } from '../../types/eval.js';
+import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 
 const MAX_PATTERN_LENGTH = 1000;
@@ -71,12 +72,25 @@ function compileRegex(definition: CustomRuleDefinition): RegExp | EvalRuleResult
   return compiled;
 }
 
-export function createCustomRule(definition: CustomRuleDefinition): EvalRule {
+/**
+ * Builds a runnable EvalRule from a persisted/inline definition.
+ *
+ * `severity` comes from the DEPLOYED rule's metadata (deploy_rule / the
+ * dashboard composer). high/critical severities make the rule CRITICAL:
+ * a failing evaluation forces the overall eval to passed=false regardless
+ * of the weighted score. Before this, a rule-author could deploy a
+ * severity="critical" policy rule, watch it FAIL on a violating output,
+ * and still get passed:true (score 0.895) — severity affected nothing but
+ * dashboard sorting. Inline custom_rules (evaluate_output's per-call
+ * definitions) carry no severity and stay weight-only.
+ */
+export function createCustomRule(definition: CustomRuleDefinition, severity?: RuleSeverity): EvalRule {
   return {
     name: definition.name,
     description: `Custom rule: ${definition.name}`,
     evalType: 'custom',
     weight: definition.weight ?? 1,
+    critical: severity === 'high' || severity === 'critical',
     evaluate(context: EvalContext): EvalRuleResult {
       switch (definition.type) {
         case 'regex_match': {

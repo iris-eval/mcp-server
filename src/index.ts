@@ -228,7 +228,9 @@ async function main(): Promise<void> {
   // and would need per-tenant rule registration).
   const enabled = customRuleStore.enabledRules(LOCAL_TENANT);
   for (const rule of enabled) {
-    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition), rule.id);
+    // Severity rides along: high/critical deployed rules hard-fail the
+    // evals they lose (createCustomRule sets EvalRule.critical from it).
+    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }
   if (enabled.length > 0) {
     logger.info(
@@ -389,7 +391,7 @@ async function runDemo(): Promise<void> {
   });
   const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds);
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
-    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition), rule.id);
+    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }
   const preferenceStore = createPreferenceStore(demoPreferencesPath());
 

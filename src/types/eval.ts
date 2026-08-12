@@ -5,6 +5,18 @@ export interface EvalRule {
   description: string;
   evalType: EvalType;
   weight: number;
+  /**
+   * Hard-fail marker. When a critical rule FAILS (and was not skipped), the
+   * overall eval reports passed=false regardless of the weighted score.
+   *
+   * Exists because the weighted average routinely outvotes a genuine
+   * violation: an output leaking a real SSN failed no_pii while the other
+   * safety rules passed, scoring ~0.765 — above the 0.7 threshold — so the
+   * one field every CI gate reads said passed:true about the product's
+   * flagship failure scenario. The score stays a quality gradient; `passed`
+   * is the verdict, and a critical violation must never be averaged away.
+   */
+  critical?: boolean;
   evaluate(context: EvalContext): EvalRuleResult;
 }
 
@@ -47,6 +59,13 @@ export interface EvalResult {
   rules_evaluated?: number;
   rules_skipped?: number;
   insufficient_data?: boolean;
+  /**
+   * Names of critical rules that failed (present only when non-empty).
+   * Any entry here forces passed=false regardless of the weighted score —
+   * this field is how a caller tells "failed the quality bar" apart from
+   * "committed a hard violation".
+   */
+  critical_failures?: string[];
 }
 
 export type CustomRuleType =

@@ -150,13 +150,36 @@ export class EvalEngine {
     const rawScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
     const score = Number.isFinite(rawScore) ? rawScore : 0;
 
-    const passed = score >= this.threshold;
+    /*
+     * Critical rules hard-fail. Before this existed, the weighted average
+     * routinely outvoted a genuine violation: an output containing a real
+     * SSN failed no_pii while the other safety rules passed, landing at
+     * ~0.765 — over the 0.7 threshold — so `passed`, the one field every
+     * automated gate keys on, said true about the product's flagship
+     * failure scenario. A detection that reports an all-clear is worse
+     * than no detection.
+     *
+     * Only EVALUATED failures count: a critical rule that skipped (missing
+     * context, broken config) has not judged the output and must not veto
+     * it. The score is left as-is — it stays a quality gradient; `passed`
+     * is the verdict, and the two answer different questions.
+     */
+    const criticalFailures = evaluatedIndices
+      .filter((i) => rules[i].critical === true && !ruleResults[i].passed)
+      .map((i) => ruleResults[i].ruleName);
+
+    const passed = score >= this.threshold && criticalFailures.length === 0;
 
     const suggestions: string[] = [];
     for (const result of ruleResults) {
       if (!result.passed && !result.skipped) {
         suggestions.push(`[${result.ruleName}] ${result.message}`);
       }
+    }
+    if (criticalFailures.length > 0 && score >= this.threshold) {
+      suggestions.push(
+        `Critical rule(s) failed (${criticalFailures.join(', ')}) — passed=false regardless of the weighted score`,
+      );
     }
     if (rulesSkipped > 0) {
       const skippedNames = ruleResults.filter((r) => r.skipped).map((r) => r.ruleName);
@@ -175,6 +198,7 @@ export class EvalEngine {
       rules_evaluated: rulesEvaluated,
       rules_skipped: rulesSkipped,
       insufficient_data: false,
+      ...(criticalFailures.length > 0 ? { critical_failures: criticalFailures } : {}),
     };
   }
 }

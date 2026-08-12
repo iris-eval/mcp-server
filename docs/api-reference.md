@@ -199,7 +199,11 @@ The final score is a weighted average of all rule scores:
 score = sum(rule_score * rule_weight) / sum(rule_weight)
 ```
 
-An evaluation passes when the score meets or exceeds the configured threshold (default: `0.7`). The threshold is set via `config.eval.defaultThreshold` at server initialization.
+An evaluation passes when the score meets or exceeds the configured threshold (default: `0.7`) **and no critical rule failed**. The threshold is set via `config.eval.defaultThreshold` at server initialization.
+
+**Critical rules hard-fail.** `score` is a quality gradient; `passed` is the verdict. A failing (non-skipped) critical rule forces `passed: false` regardless of the weighted score, and the response lists the culprits in `critical_failures`. The critical rules are `no_pii`, `no_injection_patterns`, and `no_blocklist_words`, plus any deployed custom rule with severity `high` or `critical` — a leaked SSN cannot be averaged away by the other rules passing.
+
+The response echoes the `eval_type` that ran. When `eval_type` was omitted, the response also carries a `note` naming the defaulted `completeness` bundle and stating that safety rules were not part of the evaluation.
 
 #### Example Request
 
@@ -397,7 +401,7 @@ Register a new custom eval rule so it fires automatically on every `evaluate_out
 | `name` | `string` | Yes | Human-readable rule name |
 | `description` | `string` | Yes | What the rule checks + why |
 | `evalType` | `enum` | Yes | Category: `completeness` / `relevance` / `safety` / `cost` / `custom` |
-| `severity` | `enum` | No | `low` / `medium` / `high` (default `medium`) |
+| `severity` | `enum` | No | `low` / `medium` / `high` / `critical` (default `medium`). low/medium: contributes to the weighted score only. **high/critical: a failing evaluation of this rule hard-fails the eval — `passed` is forced to `false` regardless of the weighted score** |
 | `definition` | `CustomRuleDefinition` | Yes | Shape: `{ name, type, config, weight? }` — see [Custom Rules](#custom-rules) |
 
 #### Response
