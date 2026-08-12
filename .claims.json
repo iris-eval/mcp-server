@@ -27,7 +27,7 @@
     ],
     "categoryCount": 4,
     "hallucinationMarkers": 17,
-    "injectionPatterns": 13,
+    "injectionPatterns": 37,
     "names": [
       "costUnderThreshold",
       "expectedCoverage",
@@ -43,7 +43,7 @@
       "tokenEfficiency",
       "topicConsistency"
     ],
-    "piiPatterns": 10,
+    "piiPatterns": 19,
     "stubMarkers": [
       "TODO",
       "FIXME",
@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-08-12T04:54:21.268Z",
-  "generatedFromCommit": "cea39d6",
+  "generatedAt": "2026-08-12T05:13:02.414Z",
+  "generatedFromCommit": "2c53575",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -123,7 +123,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 831,
+    "totalCombined": 970,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -131,8 +131,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 665,
-      "total": 665
+      "passed": 804,
+      "total": 804
     }
   },
   "version": {

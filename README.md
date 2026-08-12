@@ -33,7 +33,7 @@ Iris evaluates all of it.
 | | |
 |---|---|
 | **Trace Logging** | Hierarchical span trees with per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly. |
-| **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (10 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport), prompt injection (13 patterns), stub-output detection, hallucination markers (17 hedging phrases + fabricated-citation heuristic). Add custom rules with Zod schemas. |
+| **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (19 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, plus AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks and seed phrases), prompt injection (37 patterns, phrase + structural), stub-output detection, hallucination markers (17 hedging phrases + fabricated-citation heuristic). Add custom rules with Zod schemas. |
 | **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
 | **Web Dashboard** | Real-time dark-mode UI with trace visualization, eval results, and cost breakdowns. |
 

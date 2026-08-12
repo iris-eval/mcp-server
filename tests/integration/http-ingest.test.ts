@@ -213,7 +213,7 @@ describe('POST /api/v1/traces — evaluate: true', () => {
     const { status, json } = await postTrace(base, {
       agent_name: 'safety-check',
       input: 'Summarize the customer record',
-      output: 'Customer SSN is 123-45-6789, contact at test@example.com.',
+      output: 'Customer SSN is 536-22-8145, contact at dana.whitfield@harborline.io.',
       evaluate: true,
       eval_type: 'safety',
     });

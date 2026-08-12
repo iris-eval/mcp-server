@@ -43,7 +43,7 @@ const trace: Trace = {
   agent_name: 'leaky-agent',
   framework: 'mcp',
   input: 'what is the customer record',
-  output: 'Your SSN is 123-45-6789',
+  output: 'Your SSN is 536-22-8145',
   cost_usd: 0.001,
   latency_ms: 100,
   timestamp: new Date().toISOString(),
