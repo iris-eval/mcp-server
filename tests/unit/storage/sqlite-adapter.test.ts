@@ -91,6 +91,73 @@ describe('SqliteAdapter', () => {
     });
   });
 
+  // #332: get_traces promises min_score / max_score both apply to the
+  // LATEST eval per trace. Two independent EXISTS subqueries let a
+  // DIFFERENT eval satisfy each bound, so a trace with no single
+  // in-range eval still matched.
+  describe('queryTraces score filters — latest eval per trace', () => {
+    async function insertEval(traceId: string, score: number): Promise<void> {
+      await adapter.insertEvalResult(LOCAL_TENANT, {
+        id: generateEvalId(),
+        trace_id: traceId,
+        eval_type: 'completeness',
+        output_text: 'Test output',
+        score,
+        passed: score >= 0.7,
+        rule_results: [],
+        suggestions: [],
+      });
+    }
+
+    it('does NOT match when different evals satisfy each bound (issue scenario)', async () => {
+      // Evals at 0.95 then 0.05: the old min-EXISTS found 0.95, the old
+      // max-EXISTS found 0.05, and the trace matched min 0.4 / max 0.6
+      // even though neither eval — latest included — is in range.
+      await adapter.insertTrace(LOCAL_TENANT, sampleTrace);
+      await insertEval(sampleTrace.trace_id, 0.95);
+      await insertEval(sampleTrace.trace_id, 0.05);
+
+      const result = await adapter.queryTraces(LOCAL_TENANT, {
+        filter: { min_score: 0.4, max_score: 0.6 },
+      });
+      expect(result.total).toBe(0);
+      expect(result.traces).toEqual([]);
+    });
+
+    it('matches when the latest eval satisfies both bounds', async () => {
+      await adapter.insertTrace(LOCAL_TENANT, sampleTrace);
+      await insertEval(sampleTrace.trace_id, 0.95);
+      await insertEval(sampleTrace.trace_id, 0.5);
+
+      const result = await adapter.queryTraces(LOCAL_TENANT, {
+        filter: { min_score: 0.4, max_score: 0.6 },
+      });
+      expect(result.total).toBe(1);
+      expect(result.traces[0].trace_id).toBe(sampleTrace.trace_id);
+    });
+
+    it('a lone min_score applies to the latest eval, not any historical one', async () => {
+      // Latest eval is 0.2; an OLDER eval at 0.9 must not satisfy
+      // min_score=0.8 on its behalf.
+      await adapter.insertTrace(LOCAL_TENANT, sampleTrace);
+      await insertEval(sampleTrace.trace_id, 0.9);
+      await insertEval(sampleTrace.trace_id, 0.2);
+
+      const filtered = await adapter.queryTraces(LOCAL_TENANT, {
+        filter: { min_score: 0.8 },
+      });
+      expect(filtered.total).toBe(0);
+    });
+
+    it('excludes traces with no evals at all', async () => {
+      await adapter.insertTrace(LOCAL_TENANT, minimalTrace);
+      const result = await adapter.queryTraces(LOCAL_TENANT, {
+        filter: { min_score: 0 },
+      });
+      expect(result.total).toBe(0);
+    });
+  });
+
   describe('spans', () => {
     it('should insert and retrieve spans', async () => {
       await adapter.insertTrace(LOCAL_TENANT, sampleTrace);

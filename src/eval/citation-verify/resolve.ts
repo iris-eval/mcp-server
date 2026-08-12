@@ -90,6 +90,17 @@ const BLOCKED_IPV4 = [
   /^255\.255\.255\.255$/,
   // This-network
   /^0\./,
+  // Carrier-grade NAT (RFC 6598). Routable inside an ISP or a corporate
+  // overlay — Tailscale hands out 100.64/10 addresses, so this range reaches
+  // real internal hosts on a very common setup.
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
+  // IETF protocol assignments (RFC 6890) incl. 192.0.0.0/24
+  /^192\.0\.0\./,
+  // Benchmarking (RFC 2544) — routed to internal test networks in practice
+  /^198\.(1[89])\./,
+  // Multicast and reserved/future space
+  /^(22[4-9]|23\d)\./,
+  /^(24\d|25[0-5])\./,
 ];
 
 const BLOCKED_HOST_SUBSTRINGS = ['localhost', 'internal', '.local', 'metadata.google', 'metadata.azure'];
@@ -174,6 +185,25 @@ function isBlockedIpv6(addr: string): boolean {
   if (first === 'fe80' || /^fe[89ab]/.test(first)) return true;
   // fc00::/7 unique-local (fc.. / fd..)
   if (first.startsWith('fc') || first.startsWith('fd')) return true;
+  /*
+   * Transition mechanisms tunnel an IPv4 destination inside an IPv6 literal,
+   * so the v4 blocklist has to be applied to the embedded address or the
+   * whole v4 ruleset is bypassable by re-encoding the target.
+   *
+   * 6to4 (2002::/16, RFC 3056): the destination v4 is hextets 1-2, plain.
+   * Teredo (2001:0000::/32, RFC 4380): the client v4 is hextets 6-7, stored
+   * one's-complemented, so it must be un-obfuscated before classification.
+   */
+  if (first === '2002') {
+    return BLOCKED_IPV4.some((re) => re.test(ipv4FromHextets(g[1], g[2])));
+  }
+  if (first === '2001' && g[1] === '0000') {
+    const deobfuscate = (h: string): string =>
+      (parseInt(h, 16) ^ 0xffff).toString(16).padStart(4, '0');
+    const client = ipv4FromHextets(deobfuscate(g[6]), deobfuscate(g[7]));
+    const server = ipv4FromHextets(g[2], g[3]);
+    return BLOCKED_IPV4.some((re) => re.test(client) || re.test(server));
+  }
   // IPv4-mapped ::ffff:a.b.c.d  and  IPv4-compatible ::a.b.c.d (deprecated)
   const mapped = g.slice(0, 5).every((h) => h === '0000') && g[5] === 'ffff';
   const compat = g.slice(0, 6).every((h) => h === '0000') && !(g[6] === '0000' && g[7] === '0000');

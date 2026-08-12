@@ -8,11 +8,8 @@
  *   - User collapses sidebar, reloads, loses the preference
  *   - <html data-density> stops matching the stored preference after
  *     a PATCH race
- *
- * Uses the shared fixture (font-blocking) so clicks don't race on
- * Google Fonts layout shifts in CI.
  */
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 
 test.describe('v2.C chrome persistence', () => {
   test('density toggle applies data-density + persists across reload', async ({ page }) => {

@@ -88,7 +88,30 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        launchOptions: {
+          firefoxUserPrefs: {
+            /*
+             * Root cause of the intermittent page.reload() >30s hang on
+             * firefox/Windows (#334): helmet sends
+             * Cross-Origin-Opener-Policy: same-origin, and Firefox
+             * responds to COOP by swapping the browsing-context group on
+             * every navigation. Playwright's Firefox driver (Juggler)
+             * loses the frame across that swap — reload() never sees the
+             * 'load' event and even evaluate() on the page goes dead.
+             *
+             * Measured against the built bundle on Windows: with COOP
+             * served, 8-10 of 16 reloads hung; with COOP stripped OR with
+             * this pref, 0 of 16. (Origin-Agent-Cluster was innocent:
+             * removing it alone still hung 8/16.) The pref disables
+             * COOP-driven process swaps in the TEST browser only — the
+             * production security header stays exactly as shipped.
+             */
+            'browser.tabs.remote.useCrossOriginOpenerPolicy': false,
+          },
+        },
+      },
     },
   ],
 });

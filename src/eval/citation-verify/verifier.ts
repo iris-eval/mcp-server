@@ -35,8 +35,10 @@ export interface VerifiedCitation {
 }
 
 export interface VerifyCitationsResult {
-  // Aggregate — fraction of resolvable citations judged supported.
-  // Null when there were zero citations or zero resolvable ones.
+  // Aggregate — fraction of JUDGED citations rated supported. Null when
+  // there were zero citations, zero resolvable ones, or no citation got a
+  // judge verdict (cost cap, judge timeout/error, malformed verdict —
+  // infrastructure failures are unverified, never unsupported).
   overallScore: number | null;
   passed: boolean;
   // Per-citation detail for the dashboard.
@@ -45,6 +47,10 @@ export interface VerifyCitationsResult {
   totalCostUsd: number;
   totalCitationsFound: number;
   totalResolved: number;
+  // Citations with a parseable judge verdict — the score denominator.
+  // totalResolved - totalJudged = infrastructure failures, each carrying
+  // its resolveError kind per-citation.
+  totalJudged: number;
   totalSupported: number;
 }
 
@@ -123,6 +129,7 @@ export async function verifyCitations(
   const out: VerifiedCitation[] = [];
   let totalCost = 0;
   let totalResolved = 0;
+  let totalJudged = 0;
   let totalSupported = 0;
 
   for (const citation of selected) {
@@ -234,6 +241,7 @@ export async function verifyCitations(
       continue;
     }
 
+    totalJudged++;
     if (parsed.supported) totalSupported++;
 
     out.push({
@@ -258,10 +266,15 @@ export async function verifyCitations(
     });
   }
 
-  const overallScore = totalResolved > 0 ? Math.round((totalSupported / totalResolved) * 100) / 100 : null;
-  // Fail if >= 50% of resolved sources don't support the claim. When
-  // no citations or none resolved, we don't fail — there's nothing to
-  // score, we just report that.
+  // Denominator = citations the judge actually ruled on. A resolved
+  // citation whose judge call hit the cost cap, timed out, errored, or
+  // emitted unparseable JSON was never verified — counting it as
+  // unsupported would make a judge outage on 5 of 10 supported citations
+  // score 0.5, indistinguishable from fabrication.
+  const overallScore = totalJudged > 0 ? Math.round((totalSupported / totalJudged) * 100) / 100 : null;
+  // Fail if >= 50% of judged sources don't support the claim. When no
+  // citations, none resolved, or none judged, we don't fail — there's
+  // nothing to score, we just report that.
   const passed = overallScore === null ? true : overallScore >= 0.5;
 
   return {
@@ -271,6 +284,7 @@ export async function verifyCitations(
     totalCostUsd: Math.round(totalCost * 1_000_000) / 1_000_000,
     totalCitationsFound: totalFound,
     totalResolved,
+    totalJudged,
     totalSupported,
   };
 }

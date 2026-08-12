@@ -68,6 +68,26 @@ async function captureScope(scope) {
     console.warn(`[claims:capture-tests] WARN — could not parse vitest report for scope "${scope || 'root'}" (exit ${exitCode}). stderr tail:`);
     console.warn(stderrTail);
   }
+  /*
+   * A skipped test makes the captured counts depend on WHERE capture ran.
+   * .claims.json is derived truth: captured on a developer's machine, then
+   * re-derived by the truthbase CI job on Linux and compared. A suite with
+   * `describe.skip(process.platform === 'win32' ? ... )` captures 630/634 on
+   * Windows and 634/634 in CI — the gate goes red on main for a reason that
+   * lives in nobody's diff. Fail loudly at capture time instead: make the
+   * test run on every platform and branch its assertions.
+   */
+  if (summary.total !== null && summary.passed !== null && summary.failed === 0) {
+    const skipped = summary.total - summary.passed;
+    if (skipped > 0) {
+      throw new Error(
+        `[claims:capture-tests] ${skipped} test(s) skipped in scope "${scope || 'root'}" ` +
+          `(${summary.passed} passed of ${summary.total}). Captured counts must be ` +
+          `platform-invariant — .claims.json is re-derived in CI on Linux and compared. ` +
+          `Make the test run everywhere and branch its assertions instead of skipping it.`,
+      );
+    }
+  }
   return summary;
 }
 
