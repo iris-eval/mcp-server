@@ -437,7 +437,7 @@ These deploy (or arrive inline via `custom_rules`) — and at evaluation time th
 
 Two additional bounds keep a hostile output from stalling a request repeatedly:
 
-- **Per-evaluation circuit breaker**: after 3 budget breaches in one evaluation, remaining regex rules skip without running (also reported with `budgetExceeded: true`).
+- **Per-evaluation circuit breaker**: after 3 budget breaches in one evaluation, remaining regex rules skip without running (also reported with `budgetExceeded: true`) — including provably safe linear patterns later in the same evaluation, which is the non-obvious part: an open breaker is a per-request stop, not a per-pattern judgment. The dashboard's rule-preview endpoint shares one breaker across all traces in a preview for the same reason.
 - **Inline rule cap**: `evaluate_output` accepts at most 10 `custom_rules` per call — persistent rule sets belong in `deploy_rule`, where deploy-time validation probes each pattern.
 
 ### Examples of Safe Patterns
