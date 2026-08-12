@@ -66,7 +66,7 @@ export function Hero(): React.ReactElement {
           </div>
 
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-text-secondary md:text-[20px]">
-            The agent eval standard for MCP. Install once. Every agent
+            Stop shipping agents on vibes. Install once. Every agent
             auto-discovers it. Zero SDK. Decision Moments classify what matters,
             so safety violations and cost spikes surface before happy-path passes.
           </p>
@@ -89,7 +89,7 @@ export function Hero(): React.ReactElement {
           </div>
 
           {/* Validated-by proof row (B7) — surfaces the real evidence behind
-              the headline so visitors who hover over "agent eval standard"
+              the headline so visitors who wonder what backs the tagline
               see what's actually shipped. */}
           <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-text-muted">
             <span className="font-mono">

@@ -24,9 +24,9 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://iris-eval.com"),
-  title: "Iris — The Agent Eval Standard for MCP",
+  title: "Iris — stop shipping agents on vibes",
   description:
-    "The agent eval standard for MCP. Score output quality, detect PII and injection attacks, enforce cost thresholds across all your agents. Open-source core, self-hosted, one command to start.",
+    "Stop shipping agents on vibes. Score output quality, detect PII and injection attacks, enforce cost thresholds across all your agents. Open-source core, self-hosted, one command to start.",
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Iris — The Agent Eval Standard for MCP",
+    title: "Iris — stop shipping agents on vibes",
     description:
       "Score output quality, catch safety failures, enforce cost budgets across every MCP agent. Open-source core.",
     url: "https://iris-eval.com",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Iris — The Agent Eval Standard for MCP",
+    title: "Iris — stop shipping agents on vibes",
     description:
       "Score your agents. Catch PII leaks, hallucinations, and cost overruns before users do. Open-source MCP server.",
     images: [OG_IMAGE_URL],

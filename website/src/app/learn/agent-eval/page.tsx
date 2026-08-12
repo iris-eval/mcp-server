@@ -610,7 +610,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               </SectionHeading>
 
               <p>
-                Iris is the agent eval standard for MCP. Any MCP-compatible agent can discover and
+                Iris is the agent eval server for MCP. Any MCP-compatible agent can discover and
                 use it automatically — no SDK, no code changes. Add it to your MCP configuration:
               </p>
 

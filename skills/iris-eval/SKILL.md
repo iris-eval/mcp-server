@@ -7,7 +7,7 @@ metadata:
   bashPattern: ["iris", "mcp-server", "evaluate", "eval"]
 ---
 
-# Iris — The Agent Eval Standard for MCP
+# Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
 safety failures, and enforces cost budgets. Nine MCP tools, 13 built-in

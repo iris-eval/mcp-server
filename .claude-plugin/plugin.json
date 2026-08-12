@@ -1,7 +1,7 @@
 {
   "name": "iris",
   "version": "0.4.6",
-  "description": "The agent eval standard for MCP. Score every agent output for quality, safety, and cost.",
+  "description": "Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.",
   "author": {
     "name": "Iris",
     "email": "hello@iris-eval.com",

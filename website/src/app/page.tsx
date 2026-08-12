@@ -35,7 +35,7 @@ export default function Home(): React.ReactElement {
             applicationSubCategory: "AI Agent Evaluation",
             url: "https://iris-eval.com",
             description:
-              "The agent eval standard for MCP. Score output quality, catch safety failures, enforce cost budgets across all your agents.",
+              "Stop shipping agents on vibes. Score output quality, catch safety failures, enforce cost budgets across all your agents.",
             offers: {
               "@type": "Offer",
               price: "0",

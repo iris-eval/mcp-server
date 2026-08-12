@@ -130,7 +130,7 @@ export default function CompareIndex() {
           Compare Iris
         </h1>
         <p className="mb-12 text-lg text-text-secondary max-w-2xl">
-          Iris is the MCP-native agent eval standard. See how it compares to
+          Iris is agent eval for MCP — built so you stop shipping agents on vibes. See how it compares to
           other evaluation and observability platforms — feature by feature, with
           no vendor lock-in.
         </p>

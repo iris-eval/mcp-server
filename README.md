@@ -1,7 +1,7 @@
-# Iris — The Agent Eval Standard for MCP
+# Iris — stop shipping agents on vibes
 
 [![Glama Score](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server)
-[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19)
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19)
 [![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![npm downloads](https://img.shields.io/npm/dt/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![GitHub stars](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
@@ -13,54 +13,31 @@
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
 [![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/server/iris/iris-eval)
 
-**Know whether your AI agents are actually good enough to ship.** Iris is an open-source MCP server that scores output quality, catches safety failures, and enforces cost budgets. Any MCP-compatible agent discovers its nine tools on connect — no SDK, no code changes. Everything runs on your machine; your traces never leave it.
-
-![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
-
-## The Problem
-
-Your agents are running in production. Infrastructure monitoring sees `200 OK` and moves on. It has no idea the agent just:
-
-- Leaked a social security number in its response
-- Hallucinated an answer with zero factual grounding
-- Burned $0.47 on a single query — 4.7x your budget threshold
-- Made 6 tool calls when 2 would have sufficed
-
-Iris evaluates all of it.
-
-## What You Get
-
-| | |
-|---|---|
-| **Trace Logging** | Hierarchical span trees with per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly. |
-| **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (19 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, plus AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks and seed phrases), prompt injection (37 patterns, phrase + structural), stub-output detection, hallucination detection (25 context-grounded fabrication/contradiction signals — pass `input` to ground them against the agent's source material). Add custom rules with Zod schemas. |
-| **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
-| **Web Dashboard** | Real-time dark-mode UI with trace visualization, eval results, and cost breakdowns. |
+**Iris scores every agent run for quality, safety, and cost — on your machine, with no SDK and no account.** Most agent projects check quality by running a few remembered prompts and eyeballing the output. Iris replaces that with numbers you can audit: your agent's runs land in a SQLite database on your disk, 13 built-in rules score them deterministically — PII, prompt injection, hallucination markers, cost thresholds — free, with no LLM calls, and an optional LLM judge with a hard per-eval cost cap handles the semantic questions. Every rule is inspectable and editable, because a judge you can't audit is just vibes with a number on it. MIT licensed, no telemetry; your traces never leave your machine.
 
 **Requires Node.js 20 or later.** Check with `node --version`.
 
-## Quickstart
+![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
 
-Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent.
+## A failure on screen in 60 seconds
 
-```json
-{
-  "mcpServers": {
-    "iris-eval": {
-      "command": "npx",
-      "args": ["@iris-eval/mcp-server"]
-    }
-  }
-}
+No agent wiring, no config — one command:
+
+```bash
+npx @iris-eval/mcp-server --demo
 ```
 
-That's it — your agent discovers Iris's nine tools on connect.
+This seeds a demo database — a handful of small agents with a week of runs — and serves the dashboard against it at **http://localhost:6920** (your browser opens automatically on first run). The dashboard lands on **Failures**: what failed, worst and newest first. Worth clicking into — a PII leak caught by the safety rules, a flagged prompt-injection attempt, and a failed LLM-judge score with its rationale.
 
-**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](docs/http-ingest.md)). The CLI and SDKs on the [roadmap](docs/roadmap.md) will be thin clients over the same endpoint.
+Demo data lives in its own database (`demo.db` in your Iris home directory — `~/.iris` on macOS/Linux, `%USERPROFILE%\.iris` on Windows) and never mixes with your real traces. Remove all of it with one command:
 
-### Turn on the dashboard
+```bash
+npx @iris-eval/mcp-server --demo-clear
+```
 
-Iris ships with a real-time web dashboard showing traces, eval results, cost breakdowns, and rule pass-rates. It's off by default so the MCP server stays lightweight — flip it on with a flag.
+## Hook up your own agent
+
+Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent. One block, dashboard included:
 
 ```json
 {
@@ -73,25 +50,39 @@ Iris ships with a real-time web dashboard showing traces, eval results, cost bre
 }
 ```
 
-Then open **http://localhost:6920** after your agent runs a trace. The same dashboard is available via CLI:
+Your agent discovers Iris's nine tools on connect, and the dashboard serves at **http://localhost:6920**. Now paste this to your agent:
+
+> Log that last task to Iris and evaluate the output.
+
+The trace lands on the dashboard with its scores. Prefer the MCP server headless? Drop `--dashboard` from the args — you can open the same dashboard any time with `npx @iris-eval/mcp-server --dashboard`.
+
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](docs/http-ingest.md)). The CLI and SDKs on the [roadmap](docs/roadmap.md) will be thin clients over the same endpoint.
+
+### Capture over HTTP (no model in the loop)
+
+With the dashboard running, anything that can send an HTTP request can log a trace — and optionally run the deterministic evals in the same request:
 
 ```bash
-npx @iris-eval/mcp-server --dashboard
+curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_name": "support-bot",
+    "input": "What is the refund policy?",
+    "output": "Refunds are available within 30 days of purchase.",
+    "evaluate": true,
+    "eval_type": "safety"
+  }'
 ```
 
-### See it working first (demo mode)
+Returns `201` with the stored `trace_id` and the evaluation result. The endpoint accepts the same body as the `log_trace` tool and sits behind the same loopback-only middleware stack as the rest of the dashboard. Full contract, field reference, and error semantics: [docs/http-ingest.md](docs/http-ingest.md).
 
-Want the dashboard with data on screen before wiring up your agent? Demo mode seeds a demo database and serves the dashboard against it:
+### Check the install
 
 ```bash
-npx @iris-eval/mcp-server --demo
+npx @iris-eval/mcp-server --self-test
 ```
 
-The seeded project includes failures worth clicking into — a PII leak caught by the safety rules, a flagged prompt-injection attempt, and a failed LLM-judge score with its rationale. Demo data lives in its own database (`demo.db` in your Iris home directory — `~/.iris` on macOS/Linux, `%USERPROFILE%\.iris` on Windows) and never mixes with your real traces. Remove all of it with one command:
-
-```bash
-npx @iris-eval/mcp-server --demo-clear
-```
+An offline install diagnostic: storage round-trip, deterministic evals, dashboard + DNS-rebinding guard — all inside an isolated temp home, so your real database is never opened. Exit code 0 = healthy, 1 = a check failed.
 
 <details>
 <summary><strong>Setup by tool</strong></summary>
@@ -187,6 +178,19 @@ docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 
 > **Tip:** Global install (`npm install -g`) stores traces persistently at `~/.iris/iris.db`. With `npx`, traces persist in the same location, but startup is slower due to package resolution.
 
+## What You Get
+
+| | |
+|---|---|
+| **Trace Logging** | Hierarchical span trees with per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly. |
+| **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (19 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, plus AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks and seed phrases), prompt injection (37 patterns, phrase + structural), stub-output detection, hallucination detection (25 context-grounded fabrication/contradiction signals — pass `input` to ground them against the agent's source material). Add custom rules with Zod schemas. |
+| **LLM-as-Judge** | Optional semantic scoring via Anthropic or OpenAI — bring your own API key. Five templates. Hard per-eval cost cap (`IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL`, default $0.25), per-eval pricing disclosed in the result. |
+| **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
+| **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
+| **Local-first** | Everything lives in SQLite on your disk. No account, no sign-up, no telemetry. Outbound HTTP happens only where you opt in: your own LLM-judge key, citation fetching, or an OTel exporter you configure. |
+
+Where this is going next: [the roadmap](docs/roadmap.md).
+
 ## MCP Tools
 
 Iris registers nine tools that any MCP-compatible agent can invoke — full rule + trace lifecycle + LLM-as-judge + semantic citation verification:
@@ -216,7 +220,7 @@ One gotcha for CI gates: if you omit `eval_type`, the default `completeness` bun
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
-## Hosted / team features
+## Hosted features
 
 Iris runs entirely on your machine today, and everything it does is free and MIT licensed with no limits and no account.
 
@@ -254,8 +258,10 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--api-key` | — | API key for HTTP authentication |
 | `--dashboard` | `false` | Enable web dashboard |
 | `--dashboard-port` | `6920` | Dashboard port |
+| `--dashboard-host` | `127.0.0.1` | Dashboard bind address. Loopback by default — the dashboard is unauthenticated unless `--api-key` is set, so binding beyond loopback exposes your full trace history |
 | `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
 | `--demo-clear` | `false` | Delete the demo database and exit |
+| `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
 
 ### Environment Variables
 
@@ -264,10 +270,12 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `IRIS_TRANSPORT` | Transport type (`stdio` or `http`) |
 | `IRIS_PORT` | HTTP transport port |
 | `IRIS_HOST` | HTTP transport host (default `127.0.0.1`) |
-| `IRIS_DB_PATH` | SQLite database path |
+| `IRIS_HOME` | Directory for all per-user files: `config.json`, `iris.db`, `custom-rules.json`, `audit.log`, `preferences.json` (default `~/.iris`) |
+| `IRIS_DB_PATH` | SQLite database path (overrides `IRIS_HOME` for the DB only) |
 | `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
 | `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`; `false` also overrides `dashboard.enabled` in config.json) |
 | `IRIS_DASHBOARD_PORT` | Dashboard port (default `6920`) |
+| `IRIS_DASHBOARD_HOST` | Dashboard bind address (default `127.0.0.1`) |
 | `IRIS_API_KEY` | API key for HTTP authentication |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
 
@@ -295,6 +303,14 @@ iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dash
 <details>
 <summary><strong>Troubleshooting</strong></summary>
 
+### First move: run the self-test
+
+```bash
+npx @iris-eval/mcp-server --self-test
+```
+
+It checks storage, the deterministic evals, and the dashboard in an isolated temp home and prints a per-step verdict — the failure output names the broken step. Exit code 0 means the install is healthy.
+
 ### Iris won't start / `ERR_MODULE_NOT_FOUND`
 
 You may have a cached older version. Clear the npx cache and retry:
@@ -315,12 +331,14 @@ MCP tools only load at session start. After adding iris-eval, restart the sessio
 
 ### Version check
 
-Verify which version is running:
+Iris logs its version on the first startup line:
 
 ```bash
-npx @iris-eval/mcp-server --help
-# Shows "Iris — MCP-Native Agent Eval Server vX.Y.Z"
+npx @iris-eval/mcp-server --dashboard
+# First log line: "Starting Iris MCP server vX.Y.Z"
 ```
+
+For a global install, `npm ls -g @iris-eval/mcp-server` shows the installed version.
 
 ### Updating
 

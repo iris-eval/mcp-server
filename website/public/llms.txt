@@ -1,4 +1,4 @@
-# Iris — The Agent Eval Standard for MCP
+# Iris — stop shipping agents on vibes
 
 > Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx @iris-eval/mcp-server`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
 

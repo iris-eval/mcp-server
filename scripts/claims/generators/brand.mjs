@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..', '..');
 
-const TAGLINE = 'The agent eval standard for MCP';
+const TAGLINE = 'Stop shipping agents on vibes';
 
 export async function generate() {
   // Cross-check: package.json.description should start with the tagline.
