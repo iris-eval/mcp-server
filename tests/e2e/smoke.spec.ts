@@ -8,7 +8,7 @@
  * These tests are the lowest-cost highest-value coverage: a regression
  * here means the dashboard is broken-broken (not just ugly).
  */
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**

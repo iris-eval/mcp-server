@@ -20,6 +20,9 @@ export const E2E_DB_PATH = join(E2E_DB_DIR, 'iris.db');
  * Measured, so nobody re-derives it: this does NOT fix the intermittent
  * Firefox page.reload() timeout in v2c-chrome.spec — that reproduces the
  * same way against either address, and against a build without the
- * loopback-bind change. It is a pre-existing flake, tracked separately.
+ * loopback-bind change. Root-caused in #334: helmet's
+ * Cross-Origin-Opener-Policy header makes Firefox swap browsing-context
+ * groups on navigation and Playwright's driver loses the frame. Fixed by
+ * the firefoxUserPrefs block in playwright.config.ts (details there).
  */
 export const E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
