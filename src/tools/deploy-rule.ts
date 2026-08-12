@@ -13,6 +13,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
+import type { EvalEngine } from '../eval/engine.js';
+import { createCustomRule } from '../eval/rules/custom.js';
 import type { CustomRuleDefinition } from '../types/eval.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 
@@ -33,7 +35,11 @@ const CustomRuleDefinitionSchema = z.object({
 });
 
 const inputSchema = {
-  name: z.string().min(1).max(120).describe('Human-readable rule name (used in eval results)'),
+  // 80 mirrors the persisted store's cap (custom-rule-store.ts). The tool
+  // used to allow 120, so a 100-char name passed the tool schema and then
+  // surfaced the store's ZodError as a raw 500 (#332). One limit, enforced
+  // at the boundary, fails cleanly as a 400.
+  name: z.string().min(1).max(80).describe('Human-readable rule name (1-80 chars; used in eval results)'),
   description: z
     .string()
     .max(500)
@@ -56,6 +62,7 @@ const inputSchema = {
 export function registerDeployRuleTool(
   server: McpServer,
   customRuleStore: CustomRuleStore,
+  evalEngine: EvalEngine,
 ): void {
   server.registerTool(
     'deploy_rule',
@@ -74,9 +81,9 @@ export function registerDeployRuleTool(
         '',
         "Don't use to VALIDATE a rule before committing — deploy writes immediately. Use the dashboard's preview endpoint (POST /api/v1/rules/custom/preview) for dry-run validation against sample output. Don't use to EDIT an existing rule — this call only creates; edits require a dedicated flow (coming in v0.5). To update a rule today: delete_rule then deploy_rule with the new definition.",
         '',
-        'Parameters. name is 1-120 chars (Zod-enforced min/max); appears in eval_result rule_results so make it human-readable. description is optional, max 500 chars (used in dashboard tooltips). evalType determines WHEN the rule fires (must match the eval_type your evaluate_output calls use; e.g., a "completeness" rule fires on every evaluate_output where eval_type="completeness" OR eval_type="custom"). severity affects dashboard sort + audit log signal but does NOT affect scoring (scoring uses the rule\'s weight). definition.type and definition.config must match (e.g., regex_match needs config.pattern; cost_threshold needs config.max_cost; min_length needs config.min_length; max_length needs config.max_length; contains_keywords/excludes_keywords need config.keywords). Invalid configs are now REJECTED at deploy time with the offending field named, instead of deploying and then failing every evaluation. sourceMomentId is optional but recommended (preserves workflow-inversion provenance from Make-This-A-Rule composer). Defaults: severity="medium".',
+        'Parameters. name is 1-80 chars (Zod-enforced min/max — the same cap the persisted store applies); appears in eval_result rule_results so make it human-readable. description is optional, max 500 chars (used in dashboard tooltips). evalType determines WHEN the rule fires (must match the eval_type your evaluate_output calls use; e.g., a "completeness" rule fires on every evaluate_output where eval_type="completeness" OR eval_type="custom"). severity affects dashboard sort + audit log signal but does NOT affect scoring (scoring uses the rule\'s weight). definition.type and definition.config must match (e.g., regex_match needs config.pattern; cost_threshold needs config.max_cost; min_length needs config.min_length; max_length needs config.max_length; contains_keywords/excludes_keywords need config.keywords). Invalid configs are now REJECTED at deploy time with the offending field named, instead of deploying and then failing every evaluation. sourceMomentId is optional but recommended (preserves workflow-inversion provenance from Make-This-A-Rule composer). Defaults: severity="medium".',
         '',
-        "Error modes. Throws 400 on invalid definition (Zod rejects — e.g., regex that fails safe-regex2 ReDoS check, or length > 1000 chars). Throws 400 on empty `name`. Throws 400 if the eval category mismatches the definition type. Returns 429 when HTTP rate limit exceeded. File-write failures (disk full, read-only fs) propagate as 500; the audit log is best-effort and does not block deploy.",
+        "Error modes. Throws 400 on invalid definition (Zod rejects — e.g., regex that fails safe-regex2 ReDoS check, or length > 1000 chars). Throws 400 on empty `name` or `name` over 80 chars. Any evalType/definition.type combination is valid (a regex_match rule can enforce a safety policy; a max_length rule can express completeness) — there is no category/type mismatch error. Returns 429 when HTTP rate limit exceeded. File-write failures (disk full, read-only fs) propagate as 500; the audit log is best-effort and does not block deploy.",
       ].join('\n'),
       inputSchema,
       annotations: {
@@ -87,16 +94,34 @@ export function registerDeployRuleTool(
       },
     },
     async (args) => {
+      // Server overrides the inner definition's `name` so it always matches
+      // the user-facing rule name — same normalization the dashboard's
+      // deploy route applies. Also keeps the tool's 80-char cap authoritative
+      // (an unchecked definition.name used to reach the store and surface its
+      // ZodError as a raw 500).
+      const definition: CustomRuleDefinition = {
+        ...(args.definition as CustomRuleDefinition),
+        name: args.name,
+      };
+
       // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
       const rule = customRuleStore.deploy(LOCAL_TENANT, {
         name: args.name,
         description: args.description,
         evalType: args.evalType,
         severity: args.severity,
-        definition: args.definition as CustomRuleDefinition,
+        definition,
         sourceMomentId: args.sourceMomentId,
         user: 'mcp',
       });
+
+      // Register with the live engine so the rule fires on the very next
+      // evaluate_output call — the "activates immediately for the running
+      // process" this description promises. Previously only the dashboard's
+      // deploy route did this; MCP deploys silently waited for a restart.
+      // Registered under its rule id so delete_rule can hot-remove it.
+      evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition), rule.id);
+
       return {
         content: [
           {

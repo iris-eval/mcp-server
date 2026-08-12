@@ -4,6 +4,13 @@ import { generateEvalId } from '../utils/ids.js';
 
 export class EvalEngine {
   private additionalRules: Map<EvalType, EvalRule[]> = new Map();
+  /**
+   * Registered-rule handles keyed by deployed rule id, so delete paths can
+   * hot-remove exactly the instance they registered. Keyed by id (not name)
+   * because deploy_rule doesn't enforce name uniqueness — two rules can
+   * share a name with different definitions.
+   */
+  private rulesById: Map<string, { evalType: EvalType; rule: EvalRule }> = new Map();
   private threshold: number;
   private ruleThresholds?: Record<string, unknown>;
 
@@ -12,10 +19,31 @@ export class EvalEngine {
     this.ruleThresholds = ruleThresholds;
   }
 
-  registerRule(evalType: EvalType, rule: EvalRule): void {
+  registerRule(evalType: EvalType, rule: EvalRule, ruleId?: string): void {
     const existing = this.additionalRules.get(evalType) ?? [];
     existing.push(rule);
     this.additionalRules.set(evalType, existing);
+    if (ruleId !== undefined) {
+      this.rulesById.set(ruleId, { evalType, rule });
+    }
+  }
+
+  /**
+   * Hot-remove a rule registered under `ruleId` so it stops firing on the
+   * live process — what delete_rule's description promises (#332). Returns
+   * false when the id was never registered (already removed, or registered
+   * without an id); callers treat that as a no-op, not an error.
+   */
+  unregisterRule(ruleId: string): boolean {
+    const entry = this.rulesById.get(ruleId);
+    if (!entry) return false;
+    this.rulesById.delete(ruleId);
+    const rules = this.additionalRules.get(entry.evalType);
+    if (rules) {
+      const idx = rules.indexOf(entry.rule);
+      if (idx !== -1) rules.splice(idx, 1);
+    }
+    return true;
   }
 
   evaluate(
