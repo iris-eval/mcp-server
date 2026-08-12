@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, readdirSync, existsSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeAtomic } from '../../../src/utils/write-atomic.js';
+import { writeAtomic, ensureOwnerOnly } from '../../../src/utils/write-atomic.js';
 
 let dir: string;
 
@@ -73,5 +73,40 @@ describe('writeAtomic', () => {
     rmSync(target, { recursive: true, force: true });
     writeAtomic(join(dir, 'seed.json'), 'x');
     expect(() => writeAtomic(join('\0invalid', 'nope.json'), 'x')).toThrow();
+  });
+});
+
+/*
+ * These files hold agent inputs and outputs verbatim, and a PII detector
+ * necessarily stores the PII it found. Windows has no POSIX mode bits
+ * (ACL inheritance governs), so the assertions are POSIX-only — which is
+ * precisely why this class of defect survives local testing on Windows.
+ */
+const posixOnly = process.platform === 'win32' ? describe.skip : describe;
+
+posixOnly('owner-only permissions (POSIX)', () => {
+  it('writeAtomic creates files as 0600, not umask default', () => {
+    const target = join(dir, 'secret.json');
+    writeAtomic(target, '{"ssn":"123-45-6789"}');
+    expect(statSync(target).mode & 0o777).toBe(0o600);
+  });
+
+  it('the mode holds when writeAtomic overwrites an existing file', () => {
+    const target = join(dir, 'secret.json');
+    writeAtomic(target, 'first');
+    writeAtomic(target, 'second');
+    expect(statSync(target).mode & 0o777).toBe(0o600);
+  });
+
+  it('ensureOwnerOnly repairs a file that was already world-readable', () => {
+    const target = join(dir, 'legacy.json');
+    writeFileSync(target, 'created before the fix', { mode: 0o644 });
+    expect(statSync(target).mode & 0o777).toBe(0o644);
+    ensureOwnerOnly(target);
+    expect(statSync(target).mode & 0o777).toBe(0o600);
+  });
+
+  it('ensureOwnerOnly is silent on missing paths and never throws', () => {
+    expect(() => ensureOwnerOnly(join(dir, 'does-not-exist'), join(dir, 'nor-this'))).not.toThrow();
   });
 });
