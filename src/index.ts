@@ -46,6 +46,7 @@ const CliSchema = z
     'dashboard-host': z.string().min(1).optional(),
     demo: z.boolean().optional(),
     'demo-clear': z.boolean().optional(),
+    'self-test': z.boolean().optional(),
     help: z.boolean().optional(),
   })
   .strict();
@@ -64,6 +65,7 @@ try {
       'dashboard-host': { type: 'string' },
       demo: { type: 'boolean', default: false },
       'demo-clear': { type: 'boolean', default: false },
+      'self-test': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
     strict: true,
@@ -107,6 +109,9 @@ Options:
                            transport). Idempotent: re-running reuses the seeded data.
   --demo-clear             Delete the demo database (and its sidecar files), then exit.
                            Your real traces are not touched.
+  --self-test              Run the offline install diagnostic and exit: storage round-trip,
+                           deterministic evals, dashboard + rebinding guard — all inside an
+                           isolated temp home. Exit code 0 = healthy, 1 = a check failed.
   -h, --help               Show this help message
 
 Environment variables (CLI flags take precedence):
@@ -140,6 +145,17 @@ Dashboard preferences (~/.iris/preferences.json):
   Edit autoLaunch: false to permanently disable first-run dashboard auto-launch.
 `);
   process.exit(0);
+}
+
+/*
+ * --self-test exits BEFORE loadConfig() runs at module scope below —
+ * deliberately. The diagnostic builds its own isolated IRIS_HOME and
+ * scrubs the IRIS_* env layer (src/self-test.ts), so the normal boot
+ * path's config (and the user's real ~/.iris) must never load first.
+ */
+if (values['self-test']) {
+  const { runSelfTest } = await import('./self-test.js');
+  process.exit(await runSelfTest());
 }
 
 /*
