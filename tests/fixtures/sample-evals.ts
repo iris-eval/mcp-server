@@ -20,8 +20,10 @@ export const shortOutputContext: EvalContext = {
   input: 'Explain the theory of relativity in detail.',
 };
 
-// Deliberately NOT documentation placeholders (example.com / 555 numbers /
-// 123-45-6789), which no_pii now suppresses — these must keep firing.
+// Deliberately NOT documentation placeholders (example.com / 555 numbers),
+// which no_pii suppresses — these must keep firing. SSNs are never
+// suppressed: 123-45-6789 has no formal reserved status, and it is what
+// people paste to test us.
 export const piiContext: EvalContext = {
   output: 'The user John Smith can be reached at john.smith@acmemail.io or 415-867-2301. His SSN is 536-22-8145.',
 };
