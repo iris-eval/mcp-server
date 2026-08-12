@@ -165,17 +165,31 @@ export class SqliteAdapter implements IStorageAdapter {
       conditions.push('timestamp <= ?');
       params.push(filter.until);
     }
-    if (filter?.min_score !== undefined) {
+    if (filter?.min_score !== undefined || filter?.max_score !== undefined) {
+      /*
+       * Both bounds apply to the LATEST eval per trace (created_at DESC,
+       * rowid breaking ties within the same millisecond) — the semantics
+       * the get_traces description promises. These used to be two
+       * INDEPENDENT EXISTS subqueries, so a trace with evals at 0.95 and
+       * 0.05 matched min_score=0.4 + max_score=0.6: each bound was
+       * satisfied by a different eval even though no single eval — let
+       * alone the latest — was in range (#332).
+       */
+      const scoreBounds: string[] = [];
+      if (filter.min_score !== undefined) {
+        scoreBounds.push('e.score >= ?');
+      }
+      if (filter.max_score !== undefined) {
+        scoreBounds.push('e.score <= ?');
+      }
       conditions.push(
-        'EXISTS (SELECT 1 FROM eval_results e WHERE e.tenant_id = traces.tenant_id AND e.trace_id = traces.trace_id AND e.score >= ?)',
+        'EXISTS (SELECT 1 FROM eval_results e WHERE e.rowid = ' +
+          '(SELECT e2.rowid FROM eval_results e2 WHERE e2.tenant_id = traces.tenant_id AND e2.trace_id = traces.trace_id ' +
+          'ORDER BY e2.created_at DESC, e2.rowid DESC LIMIT 1) ' +
+          `AND ${scoreBounds.join(' AND ')})`,
       );
-      params.push(filter.min_score);
-    }
-    if (filter?.max_score !== undefined) {
-      conditions.push(
-        'EXISTS (SELECT 1 FROM eval_results e WHERE e.tenant_id = traces.tenant_id AND e.trace_id = traces.trace_id AND e.score <= ?)',
-      );
-      params.push(filter.max_score);
+      if (filter.min_score !== undefined) params.push(filter.min_score);
+      if (filter.max_score !== undefined) params.push(filter.max_score);
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
