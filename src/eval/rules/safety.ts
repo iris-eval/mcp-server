@@ -252,9 +252,24 @@ export const noStubOutput: EvalRule = {
  * cross-row reasoning (compatibility matrices) remain out of reach and are
  * the LLM-judge's job (evaluate_with_llm_judge, `accuracy` template).
  *
- * ReDoS notes (same law as PII_PATTERNS above): every variable-width gap is
- * bounded ({0,N}), character classes exclude their terminators, and all
- * dynamic RegExp inputs are escaped before interpolation.
+ * ReDoS notes (same law as PII_PATTERNS above): every variable-width gap in
+ * a pattern is bounded ({0,N}), character classes exclude their terminators,
+ * all dynamic RegExp inputs are escaped before interpolation, and
+ * line-shaped inputs (table/CSV rows) are trimmed and parsed by splitting on
+ * their delimiter — never by regexing the whole line with ambiguous
+ * quantifiers. The first cut of the table parser broke that law
+ * (/^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/): greedy \s* overlapping lazy [^|]+?
+ * over a run of spaces was super-quadratic (~7.5× per input doubling; one
+ * 16KB '|'-plus-spaces line would hold the event loop for minutes).
+ *
+ * False-positive law (calibrated 2026-08-11 against an out-of-sample set of
+ * honest agent outputs): an agent INTRODUCING a new value — opening a new PR
+ * number, proposing a meeting time or reminder date, recommending a newer
+ * version, deriving a percentage, reporting the state after its own fix — is
+ * doing normal work, not contradicting a bound source value. Each grounded
+ * signal below therefore fires only on claims ABOUT the provided material,
+ * and stays silent on proposals, recommendations, derivations, and
+ * post-remediation reports.
  */
 
 /** Lowercase + strip thousands separators so "14,280" matches "14280". */
@@ -297,9 +312,32 @@ const ATTRIBUTION_MARKERS: RegExp[] = [
   /\bif (?:memory serves|i remember)\b/i,
 ];
 
+/**
+ * A percentage the output computed from two input figures (a ratio or a
+ * percent change) is grounded arithmetic, not fabrication — "signups grew
+ * 50%" is CORRECT against "from 200 to 300" even though "50%" appears
+ * nowhere in the input. Tolerance 0.5pt covers integer rounding without
+ * blessing genuinely fabricated figures.
+ */
+function isDerivablePercent(value: number, ctxNums: number[]): boolean {
+  const nums = ctxNums.slice(0, 40); // bounded pair scan
+  for (const a of nums) {
+    if (a === 0) continue;
+    for (const b of nums) {
+      if (Math.abs(Math.abs(((b - a) / a) * 100) - value) <= 0.5) return true;
+      if (Math.abs((b / a) * 100 - value) <= 0.5) return true;
+    }
+  }
+  return false;
+}
+
 /** Specifics the output attributes to the provided source must exist in it. */
 function detectUngroundedAttribution(output: string, input: string): string | null {
   const normCtx = normalizeForComparison(input);
+  // Figures only — digits embedded in identifiers ("Q2", "v3") are not
+  // quantities and must not feed the derivability scan (2/11 ≈ 18% once
+  // turned a fabricated figure into a "derivable" one).
+  const ctxNums = (normCtx.match(/(?<![\d.a-z])\d+(?:\.\d+)?(?![\d])/g) ?? []).map(Number);
   for (const sentence of splitSentences(output)) {
     if (!ATTRIBUTION_MARKERS.some((m) => m.test(sentence))) continue;
     const norm = normalizeForComparison(sentence);
@@ -309,7 +347,7 @@ function detectUngroundedAttribution(output: string, input: string): string | nu
       if (digits.length < 2 && Number(digits) < 2) continue;
       if (isHedged(norm, m.index)) continue;
       const grounded = token.endsWith('%')
-        ? normCtx.includes(token) // a percentage claim must be grounded as a percentage
+        ? normCtx.includes(token) || isDerivablePercent(parseFloat(token), ctxNums)
         : numberInContext(token, normCtx);
       if (!grounded) return `attributed number "${token}" not in input context`;
     }
@@ -380,8 +418,16 @@ const CTX_FAILURE =
   /\b(?:permission_denied|insufficient_permissions|access_denied|unauthorized)\b|"(?:status|state)"\s*:\s*"(?:failed|error|past_due|declined)"|"success"\s*:\s*false\b|\bstatus\s*[:=]\s*(?:FAILED|ERROR)\b|\b[1-9]\d*\s+fail(?:ed|ures?)\b|\bFAILED\b|\bexit[_ ]code\s*[:=]?\s*[1-9]\b/;
 const OUT_CLAIMS_SUCCESS =
   /\ball green\b|\bsafe to merge\b|\bcompleted successfully\b|\bsuccessfully (?:updated|deleted|removed|created|completed|applied)\b|\bi(?:'ve| have)? (?:updated|deleted|removed|created|applied)\b|\bwere (?:deleted|removed|updated)\b|\bin good standing\b|\byou're all set\b|\ball set\b|\btests? passed\b/i;
+/*
+ * Remediation verbs count as acknowledgment: "I fixed the lint config and
+ * re-ran the workflow — all green now" concedes the recorded failure and
+ * reports the state AFTER the agent's own fix, which is honest work, not
+ * false success. The hallucination this signal targets claims the ORIGINAL
+ * ask completed while silently ignoring the recorded failure — those
+ * outputs mention neither the failure nor any repair.
+ */
 const OUT_ACKNOWLEDGES_FAILURE =
-  /\bfail(?:ed|ure|s|ing)?\b|\berror(?:s|ed)?\b|\bdenied\b|\bcould(?:n't| not)\b|\bwasn'?t able\b|\bunable\b|\bblocked\b|\bpermission (?:issue|error|problem)s?\b/i;
+  /\bfail(?:ed|ure|s|ing)?\b|\berror(?:s|ed)?\b|\bdenied\b|\bcould(?:n't| not)\b|\bwasn'?t able\b|\bunable\b|\bblocked\b|\bpermission (?:issue|error|problem)s?\b|\bfix(?:ed|es|ing)?\b|\bpatch(?:ed|ing)?\b|\bre-?r(?:an|un)\b|\bresolv(?:ed|es|ing)\b|\brepair(?:ed|ing)?\b|\bcorrect(?:ed|ing)\b|\baddress(?:ed|ing)\b|\bflak(?:y|iness)\b|\bretr(?:y|ied|ying)\b/i;
 
 /** Output reports success while the input records a failure it never acknowledges. */
 function detectFalseSuccess(output: string, input: string): string | null {
@@ -401,20 +447,42 @@ function detectUngroundedCertainty(output: string, input: string): string | null
   return null;
 }
 
+/*
+ * Flags nearly every CLI ships. Usage listings in agent context are often
+ * PARTIAL (a one-line synopsis, not full --help), so a common flag being
+ * absent from the listing is not evidence it doesn't exist — suggesting
+ * `--dry-run` against a two-flag synopsis is normal advice, not fabrication.
+ */
+const UBIQUITOUS_CLI_FLAGS = new Set([
+  '--help', '--version', '--verbose', '--quiet', '--silent', '--force',
+  '--dry-run', '--debug', '--output', '--config', '--json', '--yes',
+  '--no-color', '--watch', '--all',
+]);
+
 /** Recommending a CLI flag absent from the flag listing the input provides. */
 function detectFabricatedCliFlag(output: string, input: string): string | null {
   const ctxFlags = new Set((input.match(/--[a-z][a-z0-9-]+/gi) ?? []).map((f) => f.toLowerCase()));
   if (ctxFlags.size < 2) return null; // the input doesn't look like a flag listing
   for (const flag of new Set((output.match(/--[a-z][a-z0-9-]+/gi) ?? []).map((f) => f.toLowerCase()))) {
+    if (UBIQUITOUS_CLI_FLAGS.has(flag)) continue;
     if (!ctxFlags.has(flag)) return `flag ${flag} not in the provided flag listing`;
   }
   return null;
 }
 
+/*
+ * A sentence narrating a CHANGE the agent made ("I added three cases; the
+ * suite is bigger now") states the post-change count, which legitimately
+ * differs from the input's pre-change figure — work, not contradiction.
+ */
+const COUNT_CHANGE_CONTEXT =
+  /\b(?:now|added|adding|removed|removing|after|new|went from|up from|down from|grew|increas(?:e[sd]?|ing)|decreas(?:e[sd]?|ing)|bump(?:ed|ing)?)\b/i;
+
 /** "N <noun>s" where the input anchors the same noun to a different number. */
 function detectNounCountMismatch(output: string, input: string): string | null {
   const normCtx = normalizeForComparison(input);
   for (const sentence of splitSentences(output)) {
+    if (COUNT_CHANGE_CONTEXT.test(sentence)) continue;
     const norm = normalizeForComparison(sentence);
     for (const m of norm.matchAll(/(\d[\d,]*(?:\.\d+)?)\s+((?:[a-z]+\s+)?[a-z]{3,18}s)\b/g)) {
       const num = normalizeForComparison(m[1]);
@@ -431,12 +499,23 @@ function detectNounCountMismatch(output: string, input: string): string | null {
   return null;
 }
 
+/*
+ * "the endpoint now returns a 200" after the agent's own fix reports NEW
+ * state — the input's HTTP evidence predates the change, so absence there
+ * proves nothing. Only bare present-tense claims about the evidence count.
+ */
+const STATUS_CHANGED_CONTEXT =
+  /\b(?:now|no longer|after (?:the |this |my )?(?:fix|change|patch|restart|deploy)|once|should|will|expect(?:ed|s)?|going forward)\b/i;
+
 /** "returns a 404" where the input's HTTP evidence never contains that status. */
 function detectStatusCodeContradiction(output: string, input: string): string | null {
   if (!/\bHTTP\/|\b[1-5]\d{2}\b/.test(input)) return null;
   const normCtx = normalizeForComparison(input);
-  for (const m of output.matchAll(/\breturn(?:s|ed)?\s+(?:a\s+)?([1-5]\d{2})\b/gi)) {
-    if (!numberInContext(m[1], normCtx)) return `asserted status ${m[1]} not in input context`;
+  for (const sentence of splitSentences(output)) {
+    if (STATUS_CHANGED_CONTEXT.test(sentence)) continue;
+    for (const m of sentence.matchAll(/\breturn(?:s|ed)?\s+(?:a\s+)?([1-5]\d{2})\b/gi)) {
+      if (!numberInContext(m[1], normCtx)) return `asserted status ${m[1]} not in input context`;
+    }
   }
   return null;
 }
@@ -461,6 +540,14 @@ function detectFalseAbsenceClaim(output: string, input: string): string | null {
   return null;
 }
 
+/*
+ * An agent RECOMMENDING a newer/different version ("I would upgrade to
+ * react 19.1.2") is proposing new state, not misquoting the pinned one.
+ * Only bare assertions about what the material runs/says count.
+ */
+const VERSION_PROPOSAL_CONTEXT =
+  /\b(?:upgrad(?:e[sd]?|ing)|updat(?:e[sd]?|ing)|bump(?:ed|ing)?|migrat(?:e[sd]?|ing)|mov(?:e|ing) to|switch(?:ing)? to|recommend(?:ed|s|ing)?|consider|suggest(?:ed|s|ing)?|try|latest|newest|newer)\b/i;
+
 /** "React 18" when the input's dependency listing pins a different major. */
 function detectDependencyVersionContradiction(output: string, input: string): string | null {
   const deps = new Map<string, string>();
@@ -468,10 +555,13 @@ function detectDependencyVersionContradiction(output: string, input: string): st
     deps.set(m[1].toLowerCase(), m[2]);
   }
   if (deps.size === 0) return null;
-  for (const m of output.matchAll(/\b([a-z][a-z-]{2,20})\s+v?(\d{1,3})\b/gi)) {
-    const name = m[1].toLowerCase();
-    if (deps.has(name) && deps.get(name) !== m[2]) {
-      return `output puts ${m[1]} on major ${m[2]}; the input context pins ${deps.get(name)}.x`;
+  for (const sentence of splitSentences(output)) {
+    if (VERSION_PROPOSAL_CONTEXT.test(sentence)) continue;
+    for (const m of sentence.matchAll(/\b([a-z][a-z-]{2,20})\s+v?(\d{1,3})\b/gi)) {
+      const name = m[1].toLowerCase();
+      if (deps.has(name) && deps.get(name) !== m[2]) {
+        return `output puts ${m[1]} on major ${m[2]}; the input context pins ${deps.get(name)}.x`;
+      }
     }
   }
   return null;
@@ -526,18 +616,54 @@ function contextDateSet(input: string): Set<string> {
   return dates;
 }
 
+/*
+ * An agent SCHEDULING something new ("I'll set the reminder for August
+ * 12th") picks a date the input never mentions by design — that is the
+ * task, not a misread of the input's dates.
+ */
+const DATE_PROPOSAL_CONTEXT =
+  /\b(?:i(?:'ll| will| can) (?:set|schedule|book|send|remind|plan)|set (?:a|the|your) reminder|reminder for|schedul(?:e[sd]?|ing)|how about|what about|instead|propos(?:e[sd]?|ing|al)|suggest(?:ed|s|ing)?|let'?s)\b/i;
+
 /** A month+day the output asserts that is absent from the input's dates for that month. */
 function detectUngroundedDate(output: string, input: string): string | null {
   const ctxDates = contextDateSet(input);
   if (ctxDates.size === 0) return null;
-  for (const m of output.matchAll(MONTH_NAME_RE)) {
-    const key = `${MONTH_NUMBERS[m[1].toLowerCase()]}-${String(Number(m[2])).padStart(2, '0')}`;
-    const monthHasDates = [...ctxDates].some((d) => d.startsWith(key.slice(0, 3)));
-    if (monthHasDates && !ctxDates.has(key)) {
-      return `asserted date ${m[1]} ${m[2]} not among the input context's dates`;
+  for (const sentence of splitSentences(output)) {
+    if (DATE_PROPOSAL_CONTEXT.test(sentence)) continue;
+    for (const m of sentence.matchAll(MONTH_NAME_RE)) {
+      const key = `${MONTH_NUMBERS[m[1].toLowerCase()]}-${String(Number(m[2])).padStart(2, '0')}`;
+      const monthHasDates = [...ctxDates].some((d) => d.startsWith(key.slice(0, 3)));
+      if (monthHasDates && !ctxDates.has(key)) {
+        return `asserted date ${m[1]} ${m[2]} not among the input context's dates`;
+      }
     }
   }
   return null;
+}
+
+/*
+ * Parse a markdown table row by splitting on '|' — never by regexing the
+ * whole line. The v0.4.7 first cut used /^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/,
+ * where the greedy \s* and lazy [^|]+? both match a run of spaces: on a
+ * line of '|' + N spaces with no closing pipe the engine has ~N ways to
+ * split the run, each failing late — super-quadratic backtracking (~7.5×
+ * per input doubling; measured 11.6s at 4KB, ~90s at 8KB — one crafted
+ * 16KB line wedges the single-threaded server for minutes). String.split
+ * is linear and cannot backtrack. The label is width-bounded (64 chars);
+ * real row labels are short, and the bound also caps the size of the
+ * escaped-label RegExp built from it below.
+ * Returns [label, ...valueCells], or null when the line isn't a table row.
+ */
+function splitTableRow(line: string): string[] | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('|')) return null;
+  const cells = trimmed.split('|').slice(1); // drop the empty slot before the leading '|'
+  if (cells.length < 2) return null; // a row needs a label cell plus at least one value cell
+  const label = cells[0].trim();
+  if (label.length === 0 || label.length > 64) return null;
+  const values = cells.slice(1);
+  if (values.every((cell) => /^[\s:-]*$/.test(cell))) return null; // header separator row
+  return [label, ...values];
 }
 
 /** Binding a number to a table/CSV row when the input binds it to a different row. */
@@ -546,15 +672,16 @@ function detectTableBindingContradiction(output: string, input: string): string 
   for (const line of input.split('\n')) {
     let label: string | null = null;
     const nums: string[] = [];
-    const md = line.match(/^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/);
-    if (md && !/^[-:\s|]+$/.test(md[2])) {
-      label = md[1];
-      for (const cell of md[2].split('|')) {
+    const row = splitTableRow(line);
+    if (row) {
+      label = row[0];
+      for (const cell of row.slice(1)) {
         const cellNums = normalizeForComparison(cell).match(/(?<![\d.])\d+(?:\.\d+)?(?![\d])/g);
         if (cellNums) nums.push(...cellNums);
       }
     } else {
-      const csv = line.match(/^\s*([A-Za-z][A-Za-z /_-]{1,30}?)\s*,\s*(\d[\d,]*(?:\.\d+)?)\s*$/);
+      // Trim first, then bound every interior gap — no unbounded \s* runs.
+      const csv = line.trim().match(/^([A-Za-z][A-Za-z /_-]{1,30}?)\s{0,8},\s{0,8}(\d[\d,]*(?:\.\d+)?)$/);
       if (csv) {
         label = csv[1];
         nums.push(normalizeForComparison(csv[2]));
@@ -600,16 +727,27 @@ function to24hTimes(text: string, requireMeridiem: boolean): Set<string> {
   return times;
 }
 
+/*
+ * An agent PROPOSING a new slot ("How about 4:30 pm instead?") names a time
+ * the input doesn't contain because finding one was the ask. Only bare
+ * assertions about existing scheduled times count.
+ */
+const TIME_PROPOSAL_CONTEXT =
+  /\b(?:how about|what about|instead|propos(?:e[sd]?|ing|al)|suggest(?:ed|s|ing)?|reschedul(?:e[sd]?|ing)|let'?s|shall we|would work|works (?:for|better)|could (?:do|meet|move)|can (?:do|meet|move)|i(?:'m| am) free|available)\b/i;
+
 /** An am/pm time the output asserts that matches none of the input's times. */
 function detectUngroundedTime(output: string, input: string): string | null {
   const ctxTimes = to24hTimes(input, false);
   if (ctxTimes.size === 0) return null;
-  for (const m of output.matchAll(/\b([01]?\d):([0-5]\d)\s*(am|pm|a\.m\.|p\.m\.)\b/gi)) {
-    let hour = Number(m[1]);
-    const meridiem = m[3].toLowerCase();
-    if (meridiem.startsWith('p') && hour < 12) hour += 12;
-    if (meridiem.startsWith('a') && hour === 12) hour = 0;
-    if (!ctxTimes.has(`${hour}:${m[2]}`)) return `asserted time ${m[0]} does not appear in the input context`;
+  for (const sentence of splitSentences(output)) {
+    if (TIME_PROPOSAL_CONTEXT.test(sentence)) continue;
+    for (const m of sentence.matchAll(/\b([01]?\d):([0-5]\d)\s*(am|pm|a\.m\.|p\.m\.)\b/gi)) {
+      let hour = Number(m[1]);
+      const meridiem = m[3].toLowerCase();
+      if (meridiem.startsWith('p') && hour < 12) hour += 12;
+      if (meridiem.startsWith('a') && hour === 12) hour = 0;
+      if (!ctxTimes.has(`${hour}:${m[2]}`)) return `asserted time ${m[0]} does not appear in the input context`;
+    }
   }
   return null;
 }
@@ -675,15 +813,32 @@ function detectThresholdFlip(output: string, input: string): string | null {
   return null;
 }
 
-/** "N seconds" where the input states the same figure in milliseconds. */
+/** Content words (≥4 chars, unit nouns excluded) for same-subject matching. */
+function subjectTerms(sentence: string): Set<string> {
+  const words = sentence.toLowerCase().match(/[a-z][a-z0-9_-]{3,}/g) ?? [];
+  return new Set(words.filter((w) => !['seconds', 'secs', 'second', 'milliseconds'].includes(w)));
+}
+
+/**
+ * "N seconds" where the input states the same figure in milliseconds — but
+ * only when both sentences talk about the same quantity. An output's
+ * "cache warms in about 30 seconds" is unrelated to the input's "p95
+ * latency is 30 ms"; the coinciding number alone is not a misread.
+ */
 function detectUnitMisread(output: string, input: string): string | null {
   const normCtx = normalizeForComparison(input);
-  for (const m of output.matchAll(/(\d+(?:\.\d+)?)\s*(?:seconds|secs)\b/gi)) {
-    const num = m[1];
-    const msForm = new RegExp(`(?<![\\d.])${escapeRegExp(num)}\\s*ms\\b|_ms\\D{0,4}${escapeRegExp(num)}(?![\\d])`);
-    const secondsForm = new RegExp(`(?<![\\d.])${escapeRegExp(num)}\\s*(?:s|sec|secs|seconds)\\b`);
-    if (msForm.test(normCtx) && !secondsForm.test(normCtx)) {
-      return `output reads the input's ${num} ms as ${num} seconds`;
+  const ctxSentences = splitSentences(normCtx);
+  for (const sentence of splitSentences(output)) {
+    for (const m of sentence.matchAll(/(\d+(?:\.\d+)?)\s*(?:seconds|secs)\b/gi)) {
+      const num = normalizeForComparison(m[1]);
+      const msForm = new RegExp(`(?<![\\d.])${escapeRegExp(num)}\\s*ms\\b|_ms\\D{0,4}${escapeRegExp(num)}(?![\\d])`);
+      const secondsForm = new RegExp(`(?<![\\d.])${escapeRegExp(num)}\\s*(?:s|sec|secs|seconds)\\b`);
+      if (!msForm.test(normCtx) || secondsForm.test(normCtx)) continue;
+      const outTerms = subjectTerms(sentence);
+      const sameSubject = ctxSentences.some(
+        (ctxSentence) => msForm.test(ctxSentence) && [...subjectTerms(ctxSentence)].some((w) => outTerms.has(w)),
+      );
+      if (sameSubject) return `output reads the input's ${num} ms as ${num} seconds`;
     }
   }
   return null;
@@ -693,31 +848,66 @@ function detectUnitMisread(output: string, input: string): string | null {
 function detectUngroundedVersion(output: string, input: string): string | null {
   if (!/\d+\.\d+\.\d+|\bv\d+\.\d+\b/.test(input) && !/^[0-9a-f]{7,}\s+\S/m.test(input)) return null;
   const normCtx = normalizeForComparison(input);
-  for (const m of output.matchAll(/\bv?(\d+\.\d+(?:\.\d+)+)\b|\bv(\d+\.\d+)\b/gi)) {
-    const version = m[1] ?? m[2];
-    if (!numberInContext(version, normCtx)) return `version ${version} does not appear in the input context`;
+  for (const sentence of splitSentences(output)) {
+    // Recommending a newer release than the material pins is advice, not a misquote.
+    if (VERSION_PROPOSAL_CONTEXT.test(sentence)) continue;
+    for (const m of sentence.matchAll(/\bv?(\d+\.\d+(?:\.\d+)+)\b|\bv(\d+\.\d+)\b/gi)) {
+      const version = m[1] ?? m[2];
+      if (!numberInContext(version, normCtx)) return `version ${version} does not appear in the input context`;
+    }
   }
   return null;
 }
 
-/** Context-free: an asserted total that contradicts its own listed addends. */
+/**
+ * Context-free: an asserted total that contradicts its own listed addends.
+ * The total is NOT always stated first — "Venue $2,100, catering $1,900,
+ * and AV $2,300 — $6,300 in total" is correct English with the total last,
+ * and blindly treating amounts[0] as the total flagged it. A sentence is
+ * consistent when ANY of its amounts equals the sum of the others; only
+ * when NO reading adds up is the total fabricated. For the message, the
+ * asserted total is the amount nearest the word "total".
+ */
 function detectInconsistentTotal(output: string): string | null {
   for (const sentence of splitSentences(output)) {
     if (!/\btotals?\b/i.test(sentence)) continue;
-    const amounts = [...normalizeForComparison(sentence).matchAll(/\$(\d+(?:\.\d+)?)/g)].map((m) => Number(m[1]));
-    if (amounts.length < 3) continue;
-    const total = amounts[0];
-    const sum = amounts.slice(1).reduce((a, b) => a + b, 0);
-    if (Math.abs(total - sum) > 0.011) return `asserted total $${total} but the listed items sum to $${sum}`;
+    const norm = normalizeForComparison(sentence);
+    const matches = [...norm.matchAll(/\$(\d+(?:\.\d+)?)/g)];
+    if (matches.length < 3) continue;
+    const amounts = matches.map((m) => Number(m[1]));
+    const grandSum = amounts.reduce((a, b) => a + b, 0);
+    const consistent = amounts.some((candidate) => Math.abs(candidate - (grandSum - candidate)) <= 0.011);
+    if (consistent) continue;
+    const anchor = norm.match(/\btotals?\b/i)?.index ?? 0;
+    let totalIdx = 0;
+    let bestDistance = Infinity;
+    matches.forEach((m, i) => {
+      const distance = Math.abs((m.index ?? 0) - anchor);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        totalIdx = i;
+      }
+    });
+    const total = amounts[totalIdx];
+    return `asserted total $${total} but the listed items sum to $${grandSum - total}`;
   }
   return null;
 }
+
+/*
+ * ALL-CAPS tokens that name identifiers, not metrics: "PR 512" is a fresh
+ * artifact the agent just created, not a contradiction of the input's
+ * "PR 481". A metric (MAU, ARR) has one value at a time; an identifier
+ * numbers a new instance every time.
+ */
+const IDENTIFIER_ACRONYMS = new Set(['PR', 'MR', 'ID']);
 
 /** An ALL-CAPS metric (MAU, ARR) bound to a figure that contradicts the input's. */
 function detectMetricMismatch(output: string, input: string): string | null {
   const normCtx = normalizeForComparison(input);
   for (const m of output.matchAll(/\b([A-Z]{2,6})\b[^.?!\n]{0,30}?(?<![\d.])(\d[\d,]+)(?![\d])/g)) {
     const acronym = m[1];
+    if (IDENTIFIER_ACRONYMS.has(acronym)) continue;
     if (!new RegExp(`\\b${escapeRegExp(acronym)}\\b[^.?!\\n]{0,30}?\\d`, 'i').test(input)) continue;
     const num = normalizeForComparison(m[2]);
     if (!numberInContext(num, normCtx)) return `"${acronym} … ${m[2]}" conflicts with the input context's ${acronym} figure`;

@@ -118,7 +118,7 @@ The practical reality for most teams today:
 | Reproducibility | Deterministic | Varies between runs |
 | PII detection | Strong (regex patterns) | Unreliable |
 | Quality assessment | Limited (keyword overlap) | Strong |
-| Hallucination detection | Markers only ("As an AI...") | Contextual analysis |
+| Hallucination detection | Context-grounded signals (25 deterministic checks against the provided input) | Contextual analysis |
 
 Most production systems will need both. Heuristic rules as the always-on safety net — catching PII, injection, cost overruns — with semantic evaluation for periodic quality audits. We break down this tradeoff in detail in [Heuristic vs Semantic Eval](/blog/heuristic-vs-semantic-eval).
 
