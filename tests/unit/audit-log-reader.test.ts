@@ -124,4 +124,15 @@ describe('readAuditLog', () => {
     const result = readAuditLog({ filePath: auditPath, limit: 99999 });
     expect(result.limit).toBe(1000);
   });
+
+  it('does not echo the audit file path (install-path disclosure, #334)', () => {
+    writeEntries([sample()]);
+    for (const result of [
+      readAuditLog({ filePath: auditPath }),
+      readAuditLog({ filePath: join(tmpDir, 'does-not-exist.log') }),
+    ]) {
+      expect(result).not.toHaveProperty('path');
+      expect(JSON.stringify(result)).not.toContain(JSON.stringify(tmpDir).slice(1, -1));
+    }
+  });
 });

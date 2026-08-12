@@ -13,7 +13,7 @@
  * landing shipped, `/` defaults to Failures, so these navigate to
  * ?view=health explicitly.
  */
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 
 test.describe('drill-through from dashboard', () => {
   test('clicking a verdict donut legend row drills to /moments?verdict=', async ({ page }) => {
