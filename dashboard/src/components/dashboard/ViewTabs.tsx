@@ -47,43 +47,11 @@ export function resolveView(searchParams: URLSearchParams): DashboardView {
   return DEFAULT_VIEW;
 }
 
-const styles = {
-  strip: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-1)',
-    borderBottom: '1px solid var(--border-subtle)',
-    marginBottom: 'var(--space-5)',
-    paddingBottom: 0,
-  } as const,
-  tab: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-    padding: 'var(--space-2) var(--space-3)',
-    fontFamily: 'var(--font-display)',
-    fontSize: 'var(--text-body-sm)',
-    fontWeight: 600,
-    color: 'var(--text-muted)',
-    textDecoration: 'none',
-    borderBottom: '2px solid transparent',
-    marginBottom: '-1px',
-    transition: 'color var(--transition-fast), border-color var(--transition-fast)',
-    cursor: 'pointer',
-    letterSpacing: '-0.01em',
-  } as const,
-  tabActive: {
-    color: 'var(--text-primary)',
-    borderBottomColor: 'var(--iris-500)',
-  } as const,
-  tabHint: {
-    fontSize: 'var(--text-caption-xs)',
-    color: 'var(--text-muted)',
-    marginLeft: 'auto',
-    fontFamily: 'var(--font-mono)',
-    paddingLeft: 'var(--space-3)',
-  } as const,
-};
+/*
+ * Static styling lives in utilities.css (.view-tabs block). The active
+ * state keys off aria-selected there, so the accessibility state IS the
+ * visual state — the two can't drift.
+ */
 
 export interface ViewTabsProps {
   /** Optional right-aligned slot — typically the period selector. */
@@ -110,7 +78,7 @@ export function ViewTabs({ trailing }: ViewTabsProps) {
   };
 
   return (
-    <div style={styles.strip} role="tablist" aria-label="Dashboard view">
+    <div className="view-tabs" role="tablist" aria-label="Dashboard view">
       {VIEW_OPTIONS.map((opt) => {
         const isActive = opt.id === active;
         return (
@@ -121,14 +89,14 @@ export function ViewTabs({ trailing }: ViewTabsProps) {
             aria-selected={isActive}
             aria-controls={`view-panel-${opt.id}`}
             title={opt.description}
-            style={{ ...styles.tab, ...(isActive ? styles.tabActive : {}) }}
+            className="view-tabs__tab"
           >
             <Icon as={opt.icon} size={16} />
             {opt.label}
           </Link>
         );
       })}
-      {trailing && <div style={styles.tabHint}>{trailing}</div>}
+      {trailing && <div className="view-tabs__hint">{trailing}</div>}
     </div>
   );
 }

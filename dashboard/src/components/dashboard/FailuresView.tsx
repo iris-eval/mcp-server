@@ -27,60 +27,6 @@ import { RateLimitBanner } from '../shared/RateLimitBanner';
 
 const FAILURE_LIST_LIMIT = '50';
 
-const styles = {
-  view: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-3)',
-  } as const,
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-3)',
-  } as const,
-  newStrip: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-3)',
-  } as const,
-  markAllBtn: {
-    appearance: 'none',
-    background: 'transparent',
-    border: '1px solid var(--border-color)',
-    color: 'var(--text-secondary)',
-    borderRadius: 'var(--border-radius-sm)',
-    padding: 'var(--space-1) var(--space-3)',
-    cursor: 'pointer',
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-  } as const,
-  errorBox: {
-    background: 'oklch(28% 0.10 25 / 0.18)',
-    border: '1px solid var(--accent-error)',
-    borderRadius: 'var(--border-radius)',
-    padding: 'var(--space-4)',
-    color: 'var(--accent-error)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-  } as const,
-  retryBtn: {
-    appearance: 'none',
-    background: 'transparent',
-    border: '1px solid var(--accent-error)',
-    color: 'var(--accent-error)',
-    borderRadius: 'var(--border-radius-sm)',
-    padding: 'var(--space-1) var(--space-3)',
-    cursor: 'pointer',
-    fontSize: 'var(--font-size-sm)',
-    fontFamily: 'inherit',
-    width: 'fit-content',
-  } as const,
-  quickstartLink: {
-    color: 'var(--iris-400)',
-  } as const,
-};
-
 export function FailuresView() {
   const { data, loading, error, rateLimitedUntil, refetch } = useFailures({
     limit: FAILURE_LIST_LIMIT,
@@ -94,7 +40,7 @@ export function FailuresView() {
   );
 
   return (
-    <div style={styles.view} role="tabpanel" id="view-panel-failures" aria-labelledby="failures-tab">
+    <div className="iris-stack" role="tabpanel" id="view-panel-failures" aria-labelledby="failures-tab">
       {rateLimitedUntil && <RateLimitBanner until={rateLimitedUntil} onRetry={refetch} />}
 
       <SectionHeader
@@ -102,7 +48,7 @@ export function FailuresView() {
         question="Recent failed and flagged runs, worst and newest first. Click one to see why."
         trailing={
           data && failures.length > 0 ? (
-            <span style={styles.newStrip}>
+            <span className="iris-row">
               <span>
                 {unseenIds.length > 0
                   ? `${unseenIds.length} new since you last looked`
@@ -111,7 +57,7 @@ export function FailuresView() {
               {unseenIds.length > 0 && (
                 <button
                   type="button"
-                  style={styles.markAllBtn}
+                  className="iris-btn iris-btn--ghost iris-btn--sm iris-btn--mono"
                   onClick={() => markAllSeen(unseenIds)}
                 >
                   Mark all seen
@@ -123,10 +69,15 @@ export function FailuresView() {
       />
 
       {error && (
-        <div style={styles.errorBox} role="alert">
+        <div className="iris-error-box" role="alert">
           <strong>Could not load failures</strong>
           <span>{error}</span>
-          <button type="button" style={styles.retryBtn} onClick={refetch}>
+          <button
+            type="button"
+            className="iris-btn iris-btn--danger"
+            style={{ width: 'fit-content' }}
+            onClick={refetch}
+          >
             Retry
           </button>
         </div>
@@ -151,7 +102,6 @@ export function FailuresView() {
                   href="https://github.com/iris-eval/mcp-server#quickstart"
                   target="_blank"
                   rel="noreferrer"
-                  style={styles.quickstartLink}
                 >
                   quickstart
                 </a>{' '}
@@ -171,7 +121,7 @@ export function FailuresView() {
       )}
 
       {data && failures.length > 0 && (
-        <div style={styles.list}>
+        <div className="iris-stack">
           {failures.map((f) => (
             <MomentCard
               key={f.id}

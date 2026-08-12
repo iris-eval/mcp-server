@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import type { DecisionMoment } from '../../api/types';
 import { formatCost, formatLatency, formatTimeAgo } from '../../utils/formatters';
@@ -24,148 +25,11 @@ const SIG_TOOLTIP: Record<string, string> = {
   'novel-pattern': TT.sigNovelPattern,
 };
 
-const styles = {
-  card: {
-    display: 'grid',
-    gridTemplateColumns: '24px 48px 1fr auto',
-    gap: 'var(--space-3)',
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    borderLeft: '3px solid transparent',
-    borderRadius: 'var(--border-radius-lg)',
-    padding: 'var(--space-4)',
-    color: 'var(--text-primary)',
-    transition: 'var(--transition-fast)',
-    alignItems: 'start',
-  } as const,
-  cardArchived: {
-    opacity: 0.5,
-  } as const,
-  cardSelected: {
-    background: 'var(--bg-hover)',
-    borderColor: 'var(--accent-primary)',
-  } as const,
-  checkboxWrap: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: '4px',
-  } as const,
-  checkbox: {
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer',
-    accentColor: 'var(--accent-primary)',
-  } as const,
-  rail: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--space-1)',
-  } as const,
-  glyph: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 'var(--font-size-base)',
-    fontFamily: 'var(--font-mono)',
-    fontWeight: 700,
-    color: 'var(--bg-primary)',
-  } as const,
-  body: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-    minWidth: 0,
-  } as const,
-  bodyLink: {
-    textDecoration: 'none',
-    color: 'inherit',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-    minWidth: 0,
-  } as const,
-  headerRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-    flexWrap: 'wrap',
-  } as const,
-  agent: {
-    fontSize: 'var(--font-size-sm)',
-    fontWeight: 600,
-    color: 'var(--text-primary)',
-  } as const,
-  significanceLabel: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    fontWeight: 500,
-    color: 'var(--text-secondary)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  } as const,
-  archivedTag: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-muted)',
-    background: 'var(--bg-tertiary)',
-    border: '1px solid var(--border-color)',
-    padding: '0 var(--space-2)',
-    borderRadius: 'var(--border-radius-sm)',
-  } as const,
-  newTag: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-    color: 'var(--iris-400)',
-    background: 'oklch(28% 0.12 295 / 0.18)',
-    border: '1px solid var(--iris-500)',
-    padding: '0 var(--space-2)',
-    borderRadius: 'var(--border-radius-sm)',
-  } as const,
-  outputPreview: {
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--text-muted)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    fontFamily: 'var(--font-mono)',
-  } as const,
-  ruleChips: {
-    display: 'flex',
-    gap: 'var(--space-1)',
-    flexWrap: 'wrap',
-  } as const,
-  ruleChip: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    padding: '1px 6px',
-    borderRadius: 'var(--border-radius-sm)',
-    background: 'oklch(28% 0.10 25 / 0.18)',
-    color: 'var(--accent-error)',
-  } as const,
-  meta: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: 'var(--space-1)',
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-mono)',
-  } as const,
-  verdict: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-  } as const,
-};
+/*
+ * Static styling lives in utilities.css (.moment-card block) so the row
+ * gets real :hover / :focus-within states. Only the data-driven colors
+ * (significance rail + verdict) stay inline — CSS can't know them.
+ */
 
 interface Props {
   moment: DecisionMoment;
@@ -193,20 +57,27 @@ export function MomentCard({
   const outputPreview = moment.output?.slice(0, 140) ?? '';
   const selectable = onToggleSelected !== undefined;
 
-  const cardStyle = {
-    ...styles.card,
-    borderLeftColor: sig.color,
-    ...(archived ? styles.cardArchived : {}),
-    ...(selected ? styles.cardSelected : {}),
-  };
+  const cardClass = [
+    'iris-card',
+    'iris-card--hover',
+    'moment-card',
+    archived ? 'moment-card--archived' : '',
+    selected ? 'moment-card--selected' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
-    <div style={cardStyle} title={moment.significance.reason}>
-      <div style={styles.checkboxWrap}>
+    <div
+      className={cardClass}
+      style={{ '--moment-sig-color': sig.color } as CSSProperties}
+      title={moment.significance.reason}
+    >
+      <div className="moment-card__checkbox-wrap">
         {selectable && (
           <input
             type="checkbox"
-            style={styles.checkbox}
+            className="moment-card__checkbox"
             checked={Boolean(selected)}
             onChange={() => onToggleSelected!(moment.id)}
             aria-label={`Select moment ${moment.id.slice(0, 12)}`}
@@ -214,10 +85,11 @@ export function MomentCard({
         )}
       </div>
 
-      <div style={styles.rail}>
+      <div className="moment-card__rail">
         <Tooltip content={SIG_TOOLTIP[moment.significance.kind] ?? sig.name}>
           <span
-            style={{ ...styles.glyph, background: sig.color }}
+            className="moment-card__glyph"
+            style={{ background: sig.color }}
             aria-label={sig.name}
             tabIndex={0}
           >
@@ -228,39 +100,39 @@ export function MomentCard({
 
       <Link
         to={`/moments/${moment.id}`}
-        style={styles.bodyLink}
+        className="moment-card__body-link"
         onClick={onOpen ? () => onOpen(moment.id) : undefined}
       >
-        <div style={styles.headerRow}>
-          {unseen && <span style={styles.newTag}>NEW</span>}
-          <span style={styles.agent}>{moment.agentName}</span>
+        <div className="moment-card__header">
+          {unseen && <span className="moment-card__tag moment-card__tag--new">NEW</span>}
+          <span className="moment-card__agent">{moment.agentName}</span>
           <Tooltip content={VERDICT_TOOLTIP[verdict.label] ?? ''}>
-            <span style={{ ...styles.verdict, color: verdict.color }} tabIndex={0}>
+            <span className="moment-card__verdict" style={{ color: verdict.color }} tabIndex={0}>
               {verdict.label}
             </span>
           </Tooltip>
-          <span style={styles.significanceLabel}>· {moment.significance.label}</span>
-          {archived && <span style={styles.archivedTag}>archived</span>}
+          <span className="moment-card__sig">· {moment.significance.label}</span>
+          {archived && <span className="moment-card__tag">archived</span>}
         </div>
         {moment.ruleSnapshot.failed.length > 0 && (
-          <div style={styles.ruleChips}>
+          <div className="moment-card__chips">
             {moment.ruleSnapshot.failed.slice(0, 6).map((name) => (
-              <span key={name} style={styles.ruleChip}>{name}</span>
+              <span key={name} className="moment-card__chip">{name}</span>
             ))}
             {moment.ruleSnapshot.failed.length > 6 && (
-              <span style={styles.ruleChip}>+{moment.ruleSnapshot.failed.length - 6}</span>
+              <span className="moment-card__chip">+{moment.ruleSnapshot.failed.length - 6}</span>
             )}
           </div>
         )}
         {outputPreview && (
-          <div style={styles.outputPreview} aria-label="Output preview">
+          <div className="moment-card__preview" aria-label="Output preview">
             {outputPreview}
             {moment.output && moment.output.length > 140 ? '…' : ''}
           </div>
         )}
       </Link>
 
-      <div style={styles.meta}>
+      <div className="moment-card__meta iris-num iris-num--right">
         <span>{formatTimeAgo(moment.timestamp)}</span>
         {moment.costUsd !== undefined && (
           <Tooltip content={TT.costPerTrace}>
