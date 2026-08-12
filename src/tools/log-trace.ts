@@ -36,7 +36,14 @@ const TokenUsageSchema = z.object({
   total_tokens: z.number().optional(),
 });
 
-const inputSchema = {
+/*
+ * The log_trace input contract. Exported because POST /api/v1/traces
+ * (src/dashboard/routes/traces.ts) accepts the SAME body — one schema,
+ * two capture paths. Duplicating it there would let the tool and the
+ * HTTP endpoint drift apart silently; importing it means a field added
+ * here is accepted (and validated identically) on both.
+ */
+export const logTraceInputShape = {
   agent_name: z.string().describe('Agent name — used for filtering in get_traces (e.g., "customer-support-bot")'),
   framework: z.string().optional().describe('Agent framework identifier (e.g., langchain, autogen, custom)'),
   input: z.string().optional().describe('Agent input text — the user prompt or upstream input that produced this output'),
@@ -72,7 +79,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         '',
         'Error modes. Throws on missing agent_name. Throws on malformed span or tool_call objects (Zod rejects). Returns 500 on storage failure (disk full, DB locked). Never blocks on the agent — returns within ~50ms for typical payloads.',
       ].join('\n'),
-      inputSchema,
+      inputSchema: logTraceInputShape,
       annotations: {
         readOnlyHint: false,     // Writes a row to storage
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete

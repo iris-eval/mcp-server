@@ -56,7 +56,7 @@ Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Win
 
 That's it — your agent discovers Iris's nine tools on connect.
 
-**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, that's what the HTTP API, CLI and SDK on the [roadmap](docs/roadmap.md) are for.
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](docs/http-ingest.md)). The CLI and SDKs on the [roadmap](docs/roadmap.md) will be thin clients over the same endpoint.
 
 ### Turn on the dashboard
 
@@ -77,6 +77,20 @@ Then open **http://localhost:6920** after your agent runs a trace. The same dash
 
 ```bash
 npx @iris-eval/mcp-server --dashboard
+```
+
+### See it working first (demo mode)
+
+Want the dashboard with data on screen before wiring up your agent? Demo mode seeds a demo database and serves the dashboard against it:
+
+```bash
+npx @iris-eval/mcp-server --demo
+```
+
+The seeded project includes failures worth clicking into — a PII leak caught by the safety rules, a flagged prompt-injection attempt, and a failed LLM-judge score with its rationale. Demo data lives in its own database (`demo.db` in your Iris home directory — `~/.iris` on macOS/Linux, `%USERPROFILE%\.iris` on Windows) and never mixes with your real traces. Remove all of it with one command:
+
+```bash
+npx @iris-eval/mcp-server --demo-clear
 ```
 
 <details>
@@ -212,6 +226,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
+- [HTTP Ingest](docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
 - [Roadmap](docs/roadmap.md) — What's coming next
 
 <details>
@@ -228,6 +243,8 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--api-key` | — | API key for HTTP authentication |
 | `--dashboard` | `false` | Enable web dashboard |
 | `--dashboard-port` | `6920` | Dashboard port |
+| `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
+| `--demo-clear` | `false` | Delete the demo database and exit |
 
 ### Environment Variables
 

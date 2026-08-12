@@ -1,4 +1,28 @@
 import { z } from 'zod';
+import { logTraceInputShape } from '../tools/log-trace.js';
+
+/*
+ * POST /api/v1/traces body — the log_trace tool contract plus the
+ * HTTP-only evaluation opt-in. Built FROM logTraceInputShape rather than
+ * restating it so the two capture paths (MCP tool, HTTP ingest) cannot
+ * drift. `trace_id` is deliberately absent: the server mints it, and
+ * zod's default unknown-key stripping discards any client-supplied one.
+ */
+export const ingestTraceSchema = z
+  .object({
+    ...logTraceInputShape,
+    evaluate: z.boolean().default(false),
+    eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']).default('completeness'),
+  })
+  .superRefine((body, ctx) => {
+    if (body.evaluate && body.output === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['output'],
+        message: '"output" is required when "evaluate" is true — the eval engine scores the output text',
+      });
+    }
+  });
 
 export const traceQuerySchema = z.object({
   agent_name: z.string().optional(),

@@ -23,6 +23,7 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [iris://dashboard/summary](#irisdashboardsummary)
   - [iris://traces/{trace_id}](#iristracestrace_id)
 - [Dashboard API Routes](#dashboard-api-routes)
+  - [POST /api/v1/traces](#post-apiv1traces)
   - [GET /api/v1/traces](#get-apiv1traces)
   - [GET /api/v1/traces/:id](#get-apiv1tracesid)
   - [GET /api/v1/evaluations](#get-apiv1evaluations)
@@ -658,7 +659,46 @@ Returns full trace detail including spans and linked evaluation results.
 
 ## Dashboard API Routes
 
-The dashboard serves an HTTP API under `/api/v1`. All routes return JSON. Query parameters are validated with Zod and return 400 on invalid input.
+The dashboard serves an HTTP API under `/api/v1`. All routes return JSON. Query parameters and request bodies are validated with Zod and return 400 on invalid input.
+
+### POST /api/v1/traces
+
+Store a trace over plain HTTP — the deterministic capture path. The MCP [`log_trace`](#log_trace) tool fires only when the model chooses to call it; this endpoint fires when your code calls it. Same body, same storage row, same dashboard. Full guide: [http-ingest.md](http-ingest.md).
+
+#### Request Body
+
+The [`log_trace`](#log_trace) tool contract — both capture paths validate against the same schema — plus two HTTP-only fields:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `evaluate` | `boolean` | `false` | Run the deterministic eval engine on `output` and store the result linked to the trace. Requires `output`. |
+| `eval_type` | `string` | `"completeness"` | `completeness`, `relevance`, `safety`, `cost`, `custom` |
+
+`trace_id` is server-minted, never client-supplied — one in the body is ignored. Each POST creates a new trace (not idempotent), mirroring `log_trace`.
+
+#### Response (201)
+
+```json
+{
+  "trace_id": "3f2a9c...",
+  "status": "stored",
+  "evaluation": { "id": "eval_...", "eval_type": "safety", "score": 1, "passed": true, ... }
+}
+```
+
+`evaluation` is present only when `evaluate: true`.
+
+#### Error Responses
+
+| Status | Meaning |
+|--------|---------|
+| `400` | Invalid body: `{ "error": "Invalid trace payload", "details": [ ...zod issues... ] }` |
+| `401` / `403` | Missing / wrong `Authorization: Bearer <key>` when the server was started with an API key; `403` is also the DNS-rebinding guard rejecting a hostile `Origin`/`Host` |
+| `413` | Body over the request size limit (default `1mb`) |
+| `429` | Shared API rate limit exceeded — back off and retry |
+| `501` | `evaluate: true` on a server with no eval engine wired. The trace is **not** stored — retry without `evaluate` |
+
+---
 
 ### GET /api/v1/traces
 
