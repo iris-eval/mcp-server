@@ -2,7 +2,7 @@
 
 **Universal installer for Iris** — detects your MCP client and writes the right config in one command.
 
-[Iris](https://iris-eval.com) is the agent eval standard for MCP. This package gets it into your client without you hunting for the right config path or syntax.
+[Iris](https://iris-eval.com) scores every agent output for quality, safety, and cost — so you stop shipping agents on vibes. This package gets it into your client without you hunting for the right config path or syntax.
 
 ## Install + use (one shot)
 

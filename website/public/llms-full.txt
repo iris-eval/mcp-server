@@ -1,4 +1,4 @@
-# Iris — The Agent Eval Standard for MCP (full reference for LLMs)
+# Iris — stop shipping agents on vibes (full reference for LLMs)
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 

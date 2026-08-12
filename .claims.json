@@ -14,7 +14,7 @@
     "publicRepoUrl": "https://github.com/iris-eval/mcp-server",
     "securityEmail": "security@iris-eval.com",
     "supportEmail": "hello@iris-eval.com",
-    "tagline": "The agent eval standard for MCP",
+    "tagline": "Stop shipping agents on vibes",
     "websiteUrl": "https://iris-eval.com"
   },
   "evalRules": {
@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-08-12T15:27:30.856Z",
-  "generatedFromCommit": "a624b4e",
+  "generatedAt": "2026-08-12T17:02:10.831Z",
+  "generatedFromCommit": "9d3e2e9",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,

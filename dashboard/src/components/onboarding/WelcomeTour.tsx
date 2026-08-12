@@ -187,7 +187,7 @@ export function WelcomeTour({
         body: (
           <>
             <p style={styles.text}>
-              Iris is the agent eval standard for MCP. Every trace your agents log gets scored
+              Iris exists so you stop shipping agents on vibes. Every trace your agents log gets scored
               against {__IRIS_RULE_COUNT__} built-in rules covering completeness, relevance, safety, and cost.
             </p>
             <p style={styles.text}>

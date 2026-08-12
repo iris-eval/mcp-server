@@ -30,7 +30,7 @@
   <text x="630" y="265" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="56" font-weight="700" fill="#ffffff" letter-spacing="2">Iris</text>
 
   <!-- Tagline -->
-  <text x="560" y="330" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="#a5a5c0" letter-spacing="1">The Agent Eval Standard for MCP</text>
+  <text x="560" y="330" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="#a5a5c0" letter-spacing="1">Stop shipping agents on vibes</text>
 
   <!-- Accent line -->
   <rect x="560" y="185" width="300" height="2" fill="#14b8a6" opacity="0.4" rx="1"/>
