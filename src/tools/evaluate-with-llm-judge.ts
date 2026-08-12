@@ -7,6 +7,7 @@ import { findPricing } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output text to evaluate'),
@@ -95,7 +96,7 @@ export function registerEvaluateWithLLMJudgeTool(
         '',
         'Error modes. Throws when the required API key env var is missing. Throws when the estimated worst-case cost exceeds max_cost_usd (raise the cap or trim prompts). Throws LLMJudgeError on provider errors — kind=`auth` on 401/403, `rate_limit` on 429 (auto-retried once), `server_error` on 5xx, `timeout` on abort, `malformed_response` when the judge fails to emit valid JSON on both attempts. Throws "Unknown model" for unsupported model IDs — update src/eval/llm-judge/pricing.ts first.',
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,      // Writes eval_result; also spends money (external API cost)
         destructiveHint: false,   // Creates data; doesn't overwrite or delete

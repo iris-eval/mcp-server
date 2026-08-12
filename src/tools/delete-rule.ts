@@ -15,6 +15,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   rule_id: z
@@ -49,7 +50,7 @@ export function registerDeleteRuleTool(
         '',
         "Error modes. Throws 400 on malformed rule_id (wrong prefix). Returns `{deleted: false}` if rule_id doesn't match any deployed rule (not an error — idempotent-ish). Returns 429 on HTTP rate limit. File-write failures propagate as 500.",
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,

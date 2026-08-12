@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards in v0.4)'),
@@ -42,7 +43,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         '',
         'Error modes. Returns 400 on invalid sort_by / sort_order (Zod enum). Returns 400 if limit > 1000. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. Empty result with `total: 0` on no matches (not an error).',
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: true,      // Pure query: never writes, never deletes
         destructiveHint: false,  // Inverse of readOnly — trivially false

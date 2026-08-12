@@ -17,6 +17,7 @@ import type { EvalEngine } from '../eval/engine.js';
 import { createCustomRule } from '../eval/rules/custom.js';
 import type { CustomRuleDefinition } from '../types/eval.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const CustomRuleDefinitionSchema = z.object({
   name: z.string(),
@@ -85,7 +86,7 @@ export function registerDeployRuleTool(
         '',
         "Error modes. Throws 400 on invalid definition (Zod rejects — e.g., regex that fails safe-regex2 ReDoS check, or length > 1000 chars). Throws 400 on empty `name` or `name` over 80 chars. Any evalType/definition.type combination is valid (a regex_match rule can enforce a safety policy; a max_length rule can express completeness) — there is no category/type mismatch error. Returns 429 when HTTP rate limit exceeded. File-write failures (disk full, read-only fs) propagate as 500; the audit log is best-effort and does not block deploy.",
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,

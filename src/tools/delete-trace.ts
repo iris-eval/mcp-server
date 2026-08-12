@@ -13,6 +13,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   trace_id: z
@@ -46,7 +47,7 @@ export function registerDeleteTraceTool(
         '',
         "Error modes. Throws 400 on malformed trace_id (wrong format: not 32-char lowercase hex). Returns `{deleted: false}` when the id doesn't exist in the caller's tenant (not an error — the trace may simply have been deleted already). Returns 429 on HTTP rate limit. Storage failures propagate as 500.",
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
