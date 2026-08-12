@@ -119,7 +119,6 @@ describe('no_pii — documentation placeholders are not PII', () => {
     ['555-01XX reserved exchange', 'Fixture contact: Rosa Delgado, front desk, (312) 555-0117.'],
     ['toll-free support line', 'Call 1-888-410-2200 for warranty service around the clock.'],
     ['published test card', 'Checkout sandbox takes 4242 4242 4242 4242 and any future expiry date.'],
-    ['documented never-issued SSN', 'Support macros show the SSN slot as 123-45-6789 in every screenshot.'],
     ['Unix timestamp read as a phone number', 'The job row stores next_run_epoch 1786359120 beside the cron spec.'],
     ['masked API key', 'Demo env only: export ACME_KEY="sk-xxxxxxxxxxxxxxxxxxxxx"'],
   ];
@@ -146,6 +145,22 @@ describe('no_pii — documentation placeholders are not PII', () => {
     });
     expect(verdict.passed).toBe(false);
     expect(verdict.message).toContain('Phone');
+  });
+
+  /*
+   * SSN is the one shape with NO placeholder exemption, and that is a
+   * decision rather than an oversight — see the comment on PII_PATTERNS.
+   * The other exemptions rest on formal reservations (RFC 2606, the
+   * 555-01XX fictional exchange, issuer-published card numbers);
+   * 123-45-6789 is convention only, and it is the string people paste
+   * when they are checking whether we work at all.
+   */
+  it('flags the canonical documentation SSN — no exemption for SSN shapes', () => {
+    const verdict = noPii.evaluate({
+      output: 'Support macros show the SSN slot as 123-45-6789 in every screenshot.',
+    });
+    expect(verdict.passed).toBe(false);
+    expect(verdict.message).toContain('SSN');
   });
 });
 

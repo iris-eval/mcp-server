@@ -42,7 +42,24 @@ import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js'
  */
 export const PII_PATTERNS: Array<{ name: string; pattern: RegExp; placeholders?: RegExp[] }> = [
   // Original v0.3.0 patterns
-  { name: 'SSN', pattern: /\b\d{3}-\d{2}-\d{4}\b/, placeholders: [/^123-45-6789$/] },
+  /*
+   * No placeholder suppression for SSN, deliberately.
+   *
+   * Every other suppression below rests on a FORMAL reservation: example.com
+   * is RFC 2606, 555-01XX is the reserved fictional exchange, the card
+   * numbers are published by their issuers as never-real. 123-45-6789 has no
+   * such status — it is convention, not a standard, and an SSN-shaped string
+   * in agent output is the exact thing this rule exists to catch.
+   *
+   * It is also how people test us. Pasting the canonical fake SSN is the
+   * first thing a builder tries against a PII detector; our own acceptance
+   * harness, written without knowledge of this list, did precisely that and
+   * caught the suppression as a failure. Staying silent there reads as
+   * "Iris is broken", and the cost is asymmetric: a false positive on a doc
+   * that quotes the example costs a moment of noise, while a false negative
+   * on the canonical shape costs trust in every other result.
+   */
+  { name: 'SSN', pattern: /\b\d{3}-\d{2}-\d{4}\b/ },
   {
     name: 'Credit Card',
     pattern: /\b(?:\d{4}[-\s]?){3}\d{4}\b/,
