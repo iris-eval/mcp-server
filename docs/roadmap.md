@@ -123,7 +123,7 @@ Published measurement is only useful if the rules are aimed at real failures. Cu
 
 MCP is how Iris is discovered and how it is used interactively. It is not a guarantee of capture: under the protocol a tool call is always the model's decision, so anything that *must* be recorded needs a path that does not depend on the model choosing to call it.
 
-- **HTTP write endpoints** (`POST /traces`, `POST /evaluations`). There is no HTTP ingestion path for traces or evaluations today — MCP is the only way they enter Iris, so a CI job, a service in another language, or plain `curl` cannot send them at all. (Rules and preferences already have HTTP write routes; traces and evals are the gap.) This is the keystone: once it exists, the CLI and SDKs become thin clients over it rather than parallel implementations.
+- **HTTP write endpoints.** `POST /api/v1/traces` now exists ([docs/http-ingest.md](http-ingest.md)): the same contract as the `log_trace` tool, with optional deterministic evaluation on write, so a CI job, a service in another language, or plain `curl` can send traces without an MCP client. This was the keystone: the CLI and SDKs below become thin clients over it rather than parallel implementations. Still open: a batch shape and a dedicated `POST /evaluations` route.
 - **CLI** for CI quality gates and batch/offline evaluation.
 - **SDKs** for guaranteed capture, starting with LangChain, then generic TypeScript and Python clients.
 - **Server-provided MCP guidance** (`instructions`, shipped skill) to improve — not guarantee — tool invocation in interactive clients.
