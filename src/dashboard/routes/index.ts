@@ -5,6 +5,7 @@ export { registerEvalStatsRoutes } from './eval-stats.js';
 export { registerFilterRoutes } from './filters.js';
 export { registerHealthRoutes } from './health.js';
 export { registerMomentRoutes } from './moments.js';
+export { registerFailureRoutes } from './failures.js';
 export { registerRuleRoutes } from './rules.js';
 export { registerPreferencesRoutes } from './preferences.js';
 export { registerAuditRoutes } from './audit.js';

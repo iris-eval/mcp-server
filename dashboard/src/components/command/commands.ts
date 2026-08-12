@@ -14,7 +14,16 @@
  */
 import type { NavigateFunction } from 'react-router';
 
-export type CommandSection = 'Navigate' | 'Filter' | 'Action' | 'Help';
+/* 'Rules' | 'Traces' | 'Evals' are DATA sections — populated from the
+ * user's own data by useCommandSearch, not from this static registry. */
+export type CommandSection =
+  | 'Navigate'
+  | 'Rules'
+  | 'Traces'
+  | 'Evals'
+  | 'Filter'
+  | 'Action'
+  | 'Help';
 
 export interface Command {
   id: string;

@@ -8,12 +8,16 @@
  * Chart rendering is unit-tested elsewhere (tests/a11y/charts.test.tsx
  * proves the hidden drill-through lists are present in the DOM when
  * data is populated). Here we verify the wire-up holds end-to-end.
+ *
+ * All three sources live on the Health view — since the failure-first
+ * landing shipped, `/` defaults to Failures, so these navigate to
+ * ?view=health explicitly.
  */
 import { test, expect } from './fixtures';
 
 test.describe('drill-through from dashboard', () => {
   test('clicking a verdict donut legend row drills to /moments?verdict=', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?view=health');
 
     // The verdict donut's legend exposes Links with descriptive
     // aria-labels. Seed data guarantees "Pass" has count > 0.
@@ -24,7 +28,7 @@ test.describe('drill-through from dashboard', () => {
   });
 
   test('top-failing-rules row drills to /moments with filter', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?view=health');
 
     // TopFailingRulesBars renders one Link per failing rule. Seed has
     // ~3 failures, all on min_output_length, so this should click.
@@ -38,7 +42,7 @@ test.describe('drill-through from dashboard', () => {
   });
 
   test('biggest-movers row drills to /moments with agent filter', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?view=health');
 
     const movers = page.getByRole('region', { name: 'Biggest movers' });
     const firstMover = movers.getByRole('link').first();

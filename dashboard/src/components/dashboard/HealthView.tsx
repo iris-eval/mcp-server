@@ -1,5 +1,5 @@
 /*
- * HealthView — default Dashboard view (?view=health).
+ * HealthView — aggregate Dashboard view (?view=health).
  *
  * Restored composition (founder feedback: prior pass stripped out the
  * gauge + verdict donut + KPI strip — the visuals that actually worked).
@@ -60,30 +60,12 @@ import {
 } from 'lucide-react';
 import type { MomentVerdict, MomentSignificanceKind } from '../../api/types';
 
-const styles = {
-  view: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-3)',
-  } as const,
-  rowKpis4: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: 'var(--space-3)',
-  } as const,
-  rowGaugePlusChart: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(280px, 1fr) minmax(0, 1.8fr)',
-    gap: 'var(--space-3)',
-    alignItems: 'stretch',
-  } as const,
-  rowSplit2: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 'var(--space-3)',
-  } as const,
-};
-
+/*
+ * Layout classes live in utilities.css: .iris-stack for the view rhythm,
+ * .iris-grid-kpis / .iris-grid-split reflow via auto-fit (a narrow
+ * window gets fewer columns instead of crushed ones — the old hard
+ * repeat(4, 1fr) crushed), .iris-grid-gauge stacks below 960px.
+ */
 const VERDICTS_FOR_DONUT: MomentVerdict[] = ['pass', 'partial', 'fail', 'unevaluated'];
 
 /* Failure-only significance kinds — drops normal-pass so the donut
@@ -241,14 +223,14 @@ export function HealthView() {
   };
 
   return (
-    <div style={styles.view} role="tabpanel" id="view-panel-health" aria-labelledby="health-tab">
+    <div className="iris-stack" role="tabpanel" id="view-panel-health" aria-labelledby="health-tab">
       {rateLimitedUntil && (
         <RateLimitBanner until={rateLimitedUntil} onRetry={retryAll} />
       )}
 
       {/* §1 HEADLINE — scannable KPI strip */}
       <SectionHeader title="Headline" trailing={`window: ${period}`} />
-      <div style={styles.rowKpis4}>
+      <div className="iris-grid-kpis">
         {/*
          * No evals is NOT a 0% pass rate. With totalEvals === 0 the API
          * returns passRate: 0, which rendered as a red "0%" — the first
@@ -302,7 +284,7 @@ export function HealthView() {
 
       {/* §2 TRAJECTORY — gauge (threshold lens) + annotated trend (time lens) */}
       <SectionHeader title="Trajectory" question="Where is pass rate now and how did it get there?" />
-      <div style={styles.rowGaugePlusChart}>
+      <div className="iris-grid-gauge">
         <PassRateGauge
           value={kpis?.passRate}
           delta={kpis?.passRateDelta}
@@ -329,12 +311,12 @@ export function HealthView() {
 
       {/* §4 FAILURE BREAKDOWN — verdict mix (overall) + significance mix (failure pile) */}
       <SectionHeader title="Failure breakdown" question="How are evals distributed and what categories are failing?" />
-      <div style={styles.rowSplit2}>
+      <div className="iris-grid-split">
         <Donut
           title="Verdict mix"
           slices={verdictSlices}
           centerLabel="evals"
-          emptyMessage="No evals in this window — your fleet is idle."
+          emptyMessage="No evals in this window yet."
         />
         <Donut
           title="Significance mix"
@@ -346,7 +328,7 @@ export function HealthView() {
 
       {/* §5 ACTIONABLE — what's broken + who's moving */}
       <SectionHeader title="Where to act" question="Which rules failed most and which agents shifted most?" />
-      <div style={styles.rowSplit2}>
+      <div className="iris-grid-split">
         <TopFailingRulesBars
           moments={currentMoments?.moments}
           periodStartIso={periodStartIso}

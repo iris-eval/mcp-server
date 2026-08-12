@@ -15,40 +15,7 @@
  */
 import type { ReactNode } from 'react';
 
-const styles = {
-  wrap: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-    paddingTop: 'var(--space-3)',
-    marginBottom: 'var(--space-1)',
-  } as const,
-  topRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 'var(--space-3)',
-    flexWrap: 'wrap',
-  } as const,
-  title: {
-    fontFamily: 'var(--font-display)',
-    fontSize: 'var(--text-heading-sm)',
-    fontWeight: 600,
-    color: 'var(--text-primary)',
-    letterSpacing: '-0.015em',
-    margin: 0,
-  } as const,
-  trailing: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-caption)',
-    color: 'var(--text-muted)',
-  } as const,
-  question: {
-    fontSize: 'var(--text-caption)',
-    color: 'var(--text-muted)',
-    margin: 0,
-  } as const,
-};
+/* Static styling lives in utilities.css (.section-header block). */
 
 export interface SectionHeaderProps {
   /** Section name — sentence case. */
@@ -61,12 +28,12 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, question, trailing }: SectionHeaderProps) {
   return (
-    <div style={styles.wrap}>
-      <div style={styles.topRow}>
-        <h2 style={styles.title}>{title}</h2>
-        {trailing && <span style={styles.trailing}>{trailing}</span>}
+    <div className="section-header">
+      <div className="section-header__top">
+        <h2 className="section-header__title">{title}</h2>
+        {trailing && <span className="section-header__trailing">{trailing}</span>}
       </div>
-      {question && <p style={styles.question}>{question}</p>}
+      {question && <p className="section-header__question">{question}</p>}
     </div>
   );
 }

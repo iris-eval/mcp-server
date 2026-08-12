@@ -11,52 +11,8 @@ import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Icon } from '../shared/Icon';
 
-const styles = {
-  tile: {
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border-default)',
-    borderRadius: 'var(--radius-lg)',
-    padding: 'var(--space-4) var(--space-5)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-    minHeight: '110px',
-    transition: 'border-color var(--transition-fast)',
-  } as const,
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-    fontSize: 'var(--text-caption-xs)',
-    fontWeight: 600,
-    fontFamily: 'var(--font-body)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    color: 'var(--text-muted)',
-  } as const,
-  valueRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: 'var(--space-2)',
-  } as const,
-  value: {
-    fontFamily: 'var(--font-display)',
-    fontSize: 'var(--text-display-sm)',
-    fontWeight: 700,
-    lineHeight: 'var(--leading-display)',
-    color: 'var(--text-primary)',
-    letterSpacing: '-0.02em',
-  } as const,
-  delta: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-caption)',
-    fontWeight: 500,
-  } as const,
-  sub: {
-    fontSize: 'var(--text-caption)',
-    color: 'var(--text-secondary)',
-  } as const,
-};
+/* Static styling lives in utilities.css (.stat-tile block). Only the
+ * accent/delta colors stay inline — they're chosen from data. */
 
 export interface StatTileProps {
   label: string;
@@ -98,18 +54,18 @@ export function StatTile({
   deltaSemantic = 'neutral',
 }: StatTileProps) {
   return (
-    <div style={styles.tile}>
-      <div style={styles.header}>
+    <div className="iris-card stat-tile">
+      <div className="stat-tile__header">
         {icon && <Icon as={icon} size={14} />}
         {label}
       </div>
-      <div style={styles.valueRow}>
-        <span style={{ ...styles.value, color: ACCENT_COLORS[accent] }}>{value}</span>
+      <div className="stat-tile__value-row">
+        <span className="stat-tile__value" style={{ color: ACCENT_COLORS[accent] }}>{value}</span>
         {delta && (
-          <span style={{ ...styles.delta, color: DELTA_COLORS[deltaSemantic] }}>{delta}</span>
+          <span className="stat-tile__delta" style={{ color: DELTA_COLORS[deltaSemantic] }}>{delta}</span>
         )}
       </div>
-      {sub && <span style={styles.sub}>{sub}</span>}
+      {sub && <span className="stat-tile__sub">{sub}</span>}
     </div>
   );
 }

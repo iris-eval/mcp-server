@@ -1,11 +1,12 @@
 /*
  * DashboardPage — root surface at `/`.
  *
- * Hosts three BI views, switched via the ViewTabs strip:
+ * Hosts four views, switched via the ViewTabs strip:
  *
- *   Health  — fleet wellness in aggregate  (default, executive shape)
- *   Drift   — what's changing this week    (tactical / comparison shape)
- *   Stream  — live pulse + Decision Moments (operational / live shape)
+ *   Failures — ranked failure list          (default — land on the failure)
+ *   Health   — evals in aggregate           (executive shape)
+ *   Drift    — what's changing this week    (tactical / comparison shape)
+ *   Stream   — live pulse + Decision Moments (operational / live shape)
  *
  * Each view owns its composition and its own period default. The page-
  * level chrome is just: ViewTabs (with trailing PeriodSelector slot for
@@ -16,6 +17,7 @@
  */
 import { useSearchParams } from 'react-router';
 import { ViewTabs, resolveView } from './ViewTabs';
+import { FailuresView } from './FailuresView';
 import { HealthView, HealthViewToolbar } from './HealthView';
 import { DriftView, DriftViewToolbar } from './DriftView';
 import { StreamView } from './StreamView';
@@ -33,7 +35,8 @@ export function DashboardPage() {
   const view = resolveView(searchParams);
 
   // Per-view trailing toolbar slot — the period selector lives here for
-  // views that have one. Stream is always live, so no toolbar.
+  // views that have one. Failures is a ranked list and Stream is always
+  // live, so neither has a toolbar.
   const trailing =
     view === 'health' ? <HealthViewToolbar /> :
     view === 'drift' ? <DriftViewToolbar /> :
@@ -42,6 +45,7 @@ export function DashboardPage() {
   return (
     <div style={styles.page}>
       <ViewTabs trailing={trailing} />
+      {view === 'failures' && <FailuresView />}
       {view === 'health' && <HealthView />}
       {view === 'drift' && <DriftView />}
       {view === 'stream' && <StreamView />}
