@@ -105,11 +105,9 @@ export function FailuresView() {
                 >
                   quickstart
                 </a>{' '}
-                wires up your agent, or see a real failure on screen right now
-                with demo mode:
+                wires up your agent in about a minute.
               </>
             }
-            command="npx @iris-eval/mcp-server --demo"
           />
         ) : (
           <PageEmptyState

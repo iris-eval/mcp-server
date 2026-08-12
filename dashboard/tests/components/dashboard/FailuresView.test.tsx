@@ -124,12 +124,11 @@ describe('FailuresView', () => {
     expect(screen.getByText('nothing new since you last looked')).toBeInTheDocument();
   });
 
-  it('with no runs at all, points to the quickstart and demo mode', () => {
+  it('with no runs at all, points to the quickstart', () => {
     useFailuresMock.mockReturnValue(apiResult([], { total: 0 }));
     renderView();
 
     expect(screen.getByText('Nothing has run yet')).toBeInTheDocument();
-    expect(screen.getByText('npx @iris-eval/mcp-server --demo')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'quickstart' })).toHaveAttribute(
       'href',
       'https://github.com/iris-eval/mcp-server#quickstart',
@@ -141,7 +140,7 @@ describe('FailuresView', () => {
     renderView();
 
     expect(screen.getByText('No failures in your recent runs')).toBeInTheDocument();
-    expect(screen.queryByText('npx @iris-eval/mcp-server --demo')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'quickstart' })).not.toBeInTheDocument();
   });
 
   it('shows the error state with a retry action when the fetch fails', () => {
