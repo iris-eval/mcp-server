@@ -16,7 +16,7 @@ deterministic rules, optional LLM-as-judge (BYOK). No SDK. No code changes.
 ## When to Use
 
 - An agent returned output and you want to verify its quality
-- You need to check agent responses for PII leaks (10 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key)
+- You need to check agent responses for PII leaks (19 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
 - You want to track per-execution costs and flag expensive runs
 - You need to compare agent quality across different prompts or models
 - You want automated eval rules running on every agent execution
@@ -75,11 +75,11 @@ carry the judge's reasoning.
 | Completeness | expected_coverage | Key expected elements are present |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
-| Relevance | no_hallucination_markers | No hedging/fabrication markers (17 patterns) |
-| Safety | no_pii | No PII leaked (10 patterns) |
-| Safety | no_injection_patterns | No prompt-injection attempts (13 patterns) |
+| Safety | no_pii | No PII leaked (19 patterns) |
+| Safety | no_injection_patterns | No prompt-injection attempts (37 patterns) |
 | Safety | no_blocklist_words | No prohibited terms |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |
+| Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |
 | Cost | cost_under_threshold | Execution cost within budget |
 | Cost | token_efficiency | Token usage proportionate to the output |
 

@@ -86,22 +86,21 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "hallucination",
     title: "Hallucination",
-    prompt: "What are the current API rate limits for our platform?",
+    prompt:
+      "What's the rate limit on the export endpoint? Docs excerpt:\n\n| Endpoint | Rate limit |\n|----------|------------|\n| /search | 60 requests/minute |\n| /export | 10 requests/minute |",
     output:
-      "As an AI language model, I cannot access your specific platform's current rate limits in real-time. However, I can provide some general guidance.\n\nTypically, API rate limits range from 100 to 10,000 requests per minute depending on your plan tier. I apologize, but I should mention that as a language model, I don't have access to your actual configuration. I'd recommend checking your dashboard at /settings/api for the most accurate information.",
+      "The export endpoint allows 60 requests per minute, so you can schedule bulk exports a second apart and stay comfortably under the ceiling. The docs note a 120-request burst allowance as well, so short spikes are fine. No token-bucket client needed at that volume.",
     highlights: [
-      { text: "As an AI language model", startIndex: 0 },
-      { text: "I cannot", startIndex: 27 },
-      { text: "I apologize", startIndex: 173 },
-      { text: "as a language model", startIndex: 206 },
+      { text: "60 requests per minute", startIndex: 27 },
+      { text: "120-request burst allowance", startIndex: 155 },
     ],
     evalScore: 0.52,
     verdict: "FAIL",
-    rules: allPass({ no_hallucination_markers: { score: 0.1 } }),
+    rules: allPass({ no_hallucination_markers: { score: 0.4 } }),
     failedRule: "no_hallucination_markers",
     lesson:
-      "The agent punted instead of answering. These hedging phrases indicate unreliable output.",
-    humanReviewSeconds: 15,
+      "Every number is plausible and one is even real — it belongs to the other endpoint. Confident fabrication against provided docs is the failure hedging detectors never catch.",
+    humanReviewSeconds: 40,
   },
   {
     id: "injection",

@@ -1,7 +1,7 @@
 # Iris — stop shipping agents on vibes
 
 [![Glama Score](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server)
-[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19)
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19)
 [![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![npm downloads](https://img.shields.io/npm/dt/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![GitHub stars](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
@@ -183,7 +183,7 @@ docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 | | |
 |---|---|
 | **Trace Logging** | Hierarchical span trees with per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly. |
-| **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (10 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport), prompt injection (13 patterns), stub-output detection, hallucination markers (17 hedging phrases + fabricated-citation heuristic). Add custom rules with Zod schemas. |
+| **Output Evaluation** | 13 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (19 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, plus AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks and seed phrases), prompt injection (37 patterns, phrase + structural), stub-output detection, hallucination detection (25 context-grounded fabrication/contradiction signals — pass `input` to ground them against the agent's source material). Add custom rules with Zod schemas. |
 | **LLM-as-Judge** | Optional semantic scoring via Anthropic or OpenAI — bring your own API key. Five templates. Hard per-eval cost cap (`IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL`, default $0.25), per-eval pricing disclosed in the result. |
 | **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
 | **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
@@ -206,6 +206,17 @@ Iris registers nine tools that any MCP-compatible agent can invoke — full rule
 - **`verify_citations`** — Extract citations from output (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded + domain-allowlisted resolver, and use an LLM judge to check whether each source actually supports the cited claim. Opt-in outbound HTTP. Same BYOK requirement as `evaluate_with_llm_judge`.
 
 When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effort OTLP/HTTP JSON export to any OpenTelemetry collector (Jaeger, Grafana Tempo, Datadog OTLP, Honeycomb, etc). See [docs/otel-integration.md](docs/otel-integration.md).
+
+### How `passed` is decided
+
+`evaluate_output` returns both a `score` and a `passed` flag — they answer different questions:
+
+- **`score`** (0..1) is the weighted average across the rules that ran — a quality gradient.
+- **`passed`** is the ship/no-ship verdict: `true` only when the score clears the pass threshold (default **0.7**) **and no critical rule failed**.
+
+Genuine safety violations hard-fail. `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know: a critical rule that **skipped** (missing context, or any other cause of a skip) has not judged the output and does not veto — `rule_results` shows every skip and its reason, so a gate that must fail closed on non-verdicts can.
+
+One gotcha for CI gates: if you omit `eval_type`, the default `completeness` bundle runs — **safety rules don't**. The response echoes `eval_type` (plus a `note` when it was defaulted) so your gate can verify which bundle actually ran. Key on `passed` for the verdict and `eval_type: "safety"` for coverage.
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
@@ -262,7 +273,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `IRIS_HOME` | Directory for all per-user files: `config.json`, `iris.db`, `custom-rules.json`, `audit.log`, `preferences.json` (default `~/.iris`) |
 | `IRIS_DB_PATH` | SQLite database path (overrides `IRIS_HOME` for the DB only) |
 | `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
-| `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`) |
+| `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`; `false` also overrides `dashboard.enabled` in config.json) |
 | `IRIS_DASHBOARD_PORT` | Dashboard port (default `6920`) |
 | `IRIS_DASHBOARD_HOST` | Dashboard bind address (default `127.0.0.1`) |
 | `IRIS_API_KEY` | API key for HTTP authentication |

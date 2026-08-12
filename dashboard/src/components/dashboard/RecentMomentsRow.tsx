@@ -185,7 +185,7 @@ export function RecentMomentsRow() {
             </Tooltip>
             <span style={styles.agent}>{m.agentName}</span>
             <span style={styles.failedRules}>{failedRulesPreview}</span>
-            {m.costUsd !== undefined ? (
+            {m.costUsd != null ? (
               <Tooltip content={TT.costPerTrace}>
                 <span style={styles.cost} tabIndex={0}>{formatCost(m.costUsd)}</span>
               </Tooltip>

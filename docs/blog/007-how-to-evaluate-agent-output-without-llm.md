@@ -101,29 +101,34 @@ Now the interesting part. Call `evaluate_output` to run deterministic checks aga
   "arguments": {
     "output": "Our refund policy for annual plans allows full refunds within 30 days of purchase. After 30 days, we offer prorated refunds for the remaining months. Contact support@acme.com or call 1-800-555-0199 to initiate a refund.",
     "input": "What is your refund policy for annual plans?",
-    "rules": ["non_empty_output", "keyword_overlap", "no_pii", "no_hallucination_markers"]
+    "eval_type": "safety"
   }
 }
 ```
 
-The response comes back in under a millisecond:
+`eval_type` picks the rule bundle — `safety` runs the PII, injection, blocklist, stub and hallucination checks. The response comes back in under a millisecond (trimmed to the interesting fields):
 
 ```json
 {
-  "score": 0.75,
-  "passed": ["non_empty_output", "keyword_overlap"],
-  "failed": ["no_pii"],
-  "warnings": ["no_hallucination_markers"],
-  "details": {
-    "no_pii": {
-      "status": "fail",
-      "reason": "Detected email pattern: support@acme.com; Detected phone pattern: 1-800-555-0199"
-    }
-  }
+  "eval_type": "safety",
+  "score": 0.765,
+  "passed": false,
+  "critical_failures": ["no_pii"],
+  "rule_results": [
+    { "ruleName": "no_pii", "passed": false, "score": 0, "message": "Potential PII detected: Email" },
+    { "ruleName": "no_blocklist_words", "passed": true, "score": 1, "message": "No blocklisted content found" },
+    { "ruleName": "no_injection_patterns", "passed": true, "score": 1, "message": "No injection patterns detected" },
+    { "ruleName": "no_stub_output", "passed": true, "score": 1, "message": "No stub/placeholder markers detected" },
+    { "ruleName": "no_hallucination_markers", "passed": true, "score": 1, "message": "No hallucination signals detected against the provided input context" }
+  ],
+  "suggestions": [
+    "[no_pii] Potential PII detected: Email",
+    "Critical rule(s) failed (no_pii) — passed=false regardless of the weighted score"
+  ]
 }
 ```
 
-No LLM call. No latency spike. The eval caught a real problem: the agent included an email address and phone number in its response. Depending on your use case, that might be intended (customer support) or a serious issue (public-facing chatbot leaking internal contact info). Either way, you know about it.
+No LLM call. No latency spike. And two details worth noticing. The eval caught a real problem — the agent included an email address — while the `1-800-555-0199` number was deliberately ignored: 555 numbers are reserved documentation placeholders, and flagging them would train you to ignore the detector. And look at the verdict: the weighted score is 0.765, above the 0.7 pass threshold, but `passed` is `false` — `no_pii` is a critical rule, and a detected leak can't be averaged away by the other rules passing. Depending on your use case the email might be intended (customer support) or a serious issue (a public-facing chatbot leaking internal contact info). Either way, you know about it.
 
 ## The Eval Categories
 
@@ -142,7 +147,7 @@ These rules check whether the agent actually produced a substantive response.
 These rules check whether the output relates to what was asked.
 
 - **`keyword_overlap`** — Compares keywords in the input against the output. If someone asks about "refund policy for annual plans" and the response mentions none of those terms, something went wrong.
-- **`no_hallucination_markers`** — Scans for phrases that correlate with confabulation: "as an AI language model," "I don't have access to real-time data," "I cannot verify." These are not proof of hallucination, but they are signals worth flagging.
+- **`no_hallucination_markers`** — Cross-checks the output's specific claims against the provided input: numbers or quotes attributed to "the report" that the report never states, section citations the document doesn't contain, table rows bound to another row's figure, failures reported as successes. Deterministic string comparison — no LLM — and it stays silent when no input is provided rather than guess.
 - **`topic_consistency`** — Checks that the output stays within the semantic neighborhood of the input topic rather than drifting to unrelated subjects.
 
 ### Safety

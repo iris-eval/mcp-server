@@ -54,15 +54,13 @@ export function createDashboardServer(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        // 'self' covers our bundled CSS. fonts.googleapis.com hosts the
-        // brand fonts (Space Grotesk + Manrope + JetBrains Mono) loaded
-        // via @import in tokens.css. Without this, the @import gets
-        // blocked and the entire stylesheet is dropped by the browser.
-        // v0.4.1 will self-host these fonts and let us tighten this back
-        // to 'self' only.
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        // The fontFaces in those stylesheets resolve to fonts.gstatic.com.
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        // 'self' covers our bundled CSS. The brand fonts (Space Grotesk +
+        // Manrope + JetBrains Mono) are self-hosted from /fonts as of
+        // #334, so no Google Fonts origins are needed. 'unsafe-inline'
+        // stays: the React components set style={} inline throughout.
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        // Self-hosted woff2 under /fonts resolves via 'self'.
+        fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
       },
     },
@@ -138,6 +136,26 @@ export function createDashboardServer(
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const staticDir = join(currentDir, '..', '..', 'dist', 'dashboard');
   const indexHtml = join(staticDir, 'index.html');
+
+  /*
+   * An unmatched /api/ path must answer as an API, not as the app.
+   *
+   * The SPA fallback below is deliberately a blanket catch-all so deep links
+   * like /traces/<id> survive a reload. Without this guard it also swallowed
+   * mistyped API routes: `GET /api/v1/tracez` returned 200 with index.html,
+   * so a client saw SUCCESS and then threw "Unexpected token '<'" from
+   * res.json() — sending the developer to debug their payload instead of
+   * their URL. A liveness check asserting only status === 200 would call a
+   * nonexistent endpoint healthy. POST to an unknown /api/ route reached
+   * Express's HTML error page, which is the same problem in a smaller hat.
+   *
+   * Mounted before the static handler so it wins regardless of method, and
+   * scoped to /api/ so nothing else changes.
+   */
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Unknown API route' });
+  });
+
   if (existsSync(indexHtml)) {
     app.use(createApiRateLimiter(config));
     app.use(express.static(staticDir));
@@ -171,7 +189,21 @@ export function createDashboardServer(
        * http` started the dashboard implicitly, so binding the MCP
        * transport to loopback still left a wide-open second server.
        */
-      const server = app.listen(config.dashboard.port, config.dashboard.host, () => {
+      // Distinguishes "never bound" from "failed after startup" so the
+      // error handler below can say which one actually happened.
+      let bound = false;
+      const server = app.listen(config.dashboard.port, config.dashboard.host, (err?: Error) => {
+        /*
+         * Express 5 also invokes this callback on a bind ERROR (it wires it
+         * via `server.once('error', done)`). Before this guard, a port
+         * collision ran the success path anyway: it logged "Dashboard
+         * available at http://localhost:<port>" — a URL owned by a DIFFERENT
+         * process — and overwrote runtime.json to point capture clients at
+         * that stranger. Failures belong to the 'error' handler below.
+         */
+        if (err) return;
+        bound = true;
+
         // Record the port actually bound so the rebinding guard builds its
         // allowlist from it rather than from a configured 0.
         const addr = server.address();
@@ -221,15 +253,29 @@ export function createDashboardServer(
        * handler which emits a warning but doesn't crash — so the process
        * keeps running in a broken state. We log the specific cause then
        * exit(1) so the user sees the actual problem.
+       *
+       * Exiting nonzero is correct here because the dashboard only starts
+       * when EXPLICITLY requested (--dashboard / IRIS_DASHBOARD / --demo —
+       * see src/index.ts): the user asked for a surface they will not get,
+       * and running on while a health gate reports "ready" would send them
+       * to a port owned by a different process.
        */
       server.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
           logger.error(
-            `Dashboard failed to start: port ${config.dashboard.port} is already in use. ` +
-              `If running HTTP transport on the same port, use --dashboard-port <other>.`,
+            `Dashboard failed to start: port ${config.dashboard.port} is already in use ` +
+              `(EADDRINUSE on ${config.dashboard.host}:${config.dashboard.port}). The dashboard was ` +
+              `explicitly requested, so iris is exiting. Pass --dashboard-port <other> (or set ` +
+              `IRIS_DASHBOARD_PORT) or stop the process that owns the port.`,
+          );
+        } else if (!bound) {
+          logger.error(
+            `Dashboard failed to start on ${config.dashboard.host}:${config.dashboard.port}: ${err.message}`,
           );
         } else {
-          logger.error(`Dashboard server error: ${err.message}`);
+          // Post-bind failure (e.g. EMFILE on accept) — "failed to start"
+          // would misdescribe a server that had been up and serving.
+          logger.error(`Dashboard server error after startup: ${err.message}`);
         }
         process.exit(1);
       });

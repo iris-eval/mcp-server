@@ -6,6 +6,7 @@ import { verifyCitations } from '../eval/citation-verify/verifier.js';
 import { findPricing } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import { generateEvalId } from '../utils/ids.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output containing citations to verify'),
@@ -73,7 +74,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         '',
         'Behavior. Three-phase pipeline: (1) regex extraction of [N] numbered refs, (Author, Year) parentheticals, bare URLs, and DOIs (in-process, no network); (2) SSRF-guarded fetch of URL + DOI citations, with scheme allowlist, private/link-local/cloud-metadata IP blocking, optional domain allowlist (IRIS_CITATION_DOMAINS), 10s timeout, 5MB body cap, manual redirect chase (max 3, re-checked), in-process LRU cache; (3) per-citation LLM judge call asking "does this source support this claim?" with a 256-token verdict. Opt-in via allow_fetch=true or IRIS_CITATION_ALLOW_FETCH=1 — Iris refuses outbound HTTP by default. Cost-capped across the entire call by max_cost_usd_total (default $1.00) — the pipeline stops when the cap would be exceeded. Rate-limited to 20 req/min on HTTP MCP. Writes one eval_result row tagged with per-citation provenance.',
         '',
-        'Output shape. Returns JSON: `{ "id": "<uuid>", "overall_score": 0..1|null, "passed": boolean, "total_citations_found": number, "total_resolved": number, "total_supported": number, "total_cost_usd": number, "citations": [{ "citation": { "raw", "kind", "identifier", "offset_start", "offset_end" }, "resolve_status": "ok"|"skipped"|"error", "resolve_error"?, "source"?: { "url", "status", "content_type", "bytes_fetched", "truncated" }, "judge"?: { "supported", "confidence", "rationale", "cost_usd", "latency_ms", "input_tokens", "output_tokens" } }] }`. `overall_score = supported / resolved`; `null` when nothing resolvable was found.',
+        'Output shape. Returns JSON: `{ "id": "<uuid>", "overall_score": 0..1|null, "passed": boolean, "total_citations_found": number, "total_resolved": number, "total_judged": number, "total_supported": number, "total_cost_usd": number, "citations": [{ "citation": { "raw", "kind", "identifier", "offset_start", "offset_end" }, "resolve_status": "ok"|"skipped"|"error", "resolve_error"?, "source"?: { "url", "status", "content_type", "bytes_fetched", "truncated" }, "judge"?: { "supported", "confidence", "rationale", "cost_usd", "latency_ms", "input_tokens", "output_tokens" } }] }`. `overall_score = supported / judged`; `null` when nothing was judged (no resolvable citations, or every judge call failed). Infrastructure failures (cost cap, judge timeout/error, malformed verdict) leave a citation resolved-but-unjudged — reported per-citation via resolve_error, never scored as unsupported.',
         '',
         'Use when the output makes factual claims backed by [1]-style references, DOIs, or URLs and you want to separate "cited correctly" from "cited and wrong" from "cited but unresolvable". Particularly useful for research/legal/medical agents where fabricated citations are the dominant failure mode.',
         "",
@@ -83,7 +84,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         '',
         'Error modes. Throws when the API key env var is missing. Throws "Unknown model" on unsupported model IDs. Per-citation errors are collected (resolve_error.kind = bad_scheme / ssrf / not_allowed_domain / timeout / too_large / bad_status / redirect_loop / not_text / fetch_disabled / malformed_judge_response / cost_cap_reached / unresolvable_kind) and returned in the response rather than thrown. An empty output or output with zero extractable citations returns overall_score=null + passed=true (nothing to fail).',
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,      // Writes eval_result + spends money
         destructiveHint: false,   // Creates data; doesn't overwrite/delete
@@ -130,11 +131,11 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
             score,
             message:
               result.overallScore === null
-                ? `No resolvable citations (found ${result.totalCitationsFound}, resolved ${result.totalResolved})`
-                : `${result.totalSupported}/${result.totalResolved} cited sources supported the output`,
+                ? `No citations judged (found ${result.totalCitationsFound}, resolved ${result.totalResolved}, judged 0)`
+                : `${result.totalSupported}/${result.totalJudged} judged sources supported the output`,
           },
         ],
-        suggestions: result.passed ? [] : [`Only ${result.totalSupported}/${result.totalResolved} cited sources actually supported the claim.`],
+        suggestions: result.passed ? [] : [`Only ${result.totalSupported}/${result.totalJudged} judged sources actually supported the claim.`],
         rules_evaluated: 1,
         rules_skipped: 0,
         insufficient_data: result.overallScore === null,
@@ -150,6 +151,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
               passed: result.passed,
               total_citations_found: result.totalCitationsFound,
               total_resolved: result.totalResolved,
+              total_judged: result.totalJudged,
               total_supported: result.totalSupported,
               total_cost_usd: result.totalCostUsd,
               citations: result.citations.map((c) => ({

@@ -155,6 +155,56 @@ describe('EvalEngine', () => {
     expect(costRule?.passed).toBe(true);
   });
 
+  // #332: delete_rule's description promises the rule "stops firing
+  // immediately on the live process" — unregisterRule is what makes that
+  // true. Registration is id-tracked so removal hits exactly the instance
+  // the delete path owns.
+  describe('unregisterRule', () => {
+    const makeRule = (name: string) => ({
+      name,
+      description: 'A hot-removable rule',
+      evalType: 'completeness' as const,
+      weight: 1,
+      evaluate: () => ({ ruleName: name, passed: true, score: 1, message: 'OK' }),
+    });
+
+    it('unregistered rule stops firing on the next evaluate', () => {
+      const engine = new EvalEngine(0.7);
+      engine.registerRule('completeness', makeRule('hot_removed'), 'rule-abc123');
+      const before = engine.evaluate('completeness', passingContext);
+      expect(before.rule_results.find((r) => r.ruleName === 'hot_removed')).toBeDefined();
+
+      expect(engine.unregisterRule('rule-abc123')).toBe(true);
+      const after = engine.evaluate('completeness', passingContext);
+      expect(after.rule_results.find((r) => r.ruleName === 'hot_removed')).toBeUndefined();
+    });
+
+    it('returns false for an id that was never registered', () => {
+      const engine = new EvalEngine(0.7);
+      expect(engine.unregisterRule('rule-ffffff')).toBe(false);
+    });
+
+    it('removes only the instance registered under the id — a same-named rule keeps firing', () => {
+      // deploy_rule doesn't enforce name uniqueness, so removal must key on
+      // rule id, not name. Deleting one of two same-named rules leaves the
+      // survivor registered.
+      const engine = new EvalEngine(0.7);
+      engine.registerRule('completeness', makeRule('twin'), 'rule-111111');
+      engine.registerRule('completeness', makeRule('twin'), 'rule-222222');
+
+      expect(engine.unregisterRule('rule-111111')).toBe(true);
+      const result = engine.evaluate('completeness', passingContext);
+      expect(result.rule_results.filter((r) => r.ruleName === 'twin')).toHaveLength(1);
+    });
+
+    it('re-deleting the same id is a no-op that reports false', () => {
+      const engine = new EvalEngine(0.7);
+      engine.registerRule('completeness', makeRule('once'), 'rule-abcdef');
+      expect(engine.unregisterRule('rule-abcdef')).toBe(true);
+      expect(engine.unregisterRule('rule-abcdef')).toBe(false);
+    });
+  });
+
   it('should generate unique eval IDs', () => {
     const engine = new EvalEngine(0.7);
     const r1 = engine.evaluate('completeness', passingContext);

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards in v0.4)'),
@@ -10,7 +11,10 @@ const inputSchema = {
   until: z.string().optional().describe('ISO timestamp upper bound — return traces with timestamp < this'),
   min_score: z.number().optional().describe('Minimum eval score filter (0..1) — applied to LATEST eval per trace, not all evals'),
   max_score: z.number().optional().describe('Maximum eval score filter (0..1) — applied to LATEST eval per trace'),
-  limit: z.number().default(50).describe('Results per page (default 50, max 1000 — values >1000 return 400)'),
+  // Mirrors traceQuerySchema in dashboard/validation.ts — both capture paths
+  // (MCP tool, HTTP query) enforce the same 1..1000 bound. Unclamped, limit:-1
+  // meant "LIMIT -1" in SQLite, i.e. every row (#332).
+  limit: z.number().int().min(1).max(1000).default(50).describe('Results per page (default 50, max 1000 — values >1000 return 400)'),
   offset: z.number().default(0).describe('Zero-based pagination offset — skip first N results'),
   sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp').describe('Sort by timestamp | latency_ms | cost_usd (default timestamp)'),
   sort_order: z.enum(['asc', 'desc']).default('desc').describe('Sort order: asc | desc (default desc — most recent / highest first)'),
@@ -39,7 +43,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         '',
         'Error modes. Returns 400 on invalid sort_by / sort_order (Zod enum). Returns 400 if limit > 1000. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. Empty result with `total: 0` on no matches (not an error).',
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: true,      // Pure query: never writes, never deletes
         destructiveHint: false,  // Inverse of readOnly — trivially false

@@ -297,12 +297,12 @@ export function MomentDetailPage() {
             <span style={{ color: verdict.color, fontWeight: 700 }}>{verdict.label}</span>
             <span>{data.agentName}</span>
             <span>{formatTimestamp(data.timestamp)}</span>
-            {data.costUsd !== undefined && (
+            {data.costUsd != null && (
               <Tooltip content={TT.costPerTrace}>
                 <span tabIndex={0}>{formatCost(data.costUsd)}</span>
               </Tooltip>
             )}
-            {data.latencyMs !== undefined && (
+            {data.latencyMs != null && (
               <Tooltip content={TT.latencyMs}>
                 <span tabIndex={0}>{formatLatency(data.latencyMs)}</span>
               </Tooltip>

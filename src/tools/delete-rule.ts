@@ -2,8 +2,9 @@
  * delete_rule MCP tool — remove a deployed custom rule.
  *
  * Destructive counterpart to deploy_rule. Removes the rule from
- * ~/.iris/custom-rules.json (stops firing on future evaluate_output
- * calls) and appends a `rule.delete` entry to the audit log.
+ * ~/.iris/custom-rules.json AND unregisters it from the live eval
+ * engine, so it stops firing on the very next evaluate_output call —
+ * no restart needed. Appends a `rule.delete` entry to the audit log.
  *
  * Past eval_results that referenced this rule stay intact — the
  * history is preserved even after the rule is removed. The audit
@@ -12,7 +13,9 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
+import type { EvalEngine } from '../eval/engine.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   rule_id: z
@@ -24,6 +27,7 @@ const inputSchema = {
 export function registerDeleteRuleTool(
   server: McpServer,
   customRuleStore: CustomRuleStore,
+  evalEngine: EvalEngine,
 ): void {
   server.registerTool(
     'delete_rule',
@@ -46,7 +50,7 @@ export function registerDeleteRuleTool(
         '',
         "Error modes. Throws 400 on malformed rule_id (wrong prefix). Returns `{deleted: false}` if rule_id doesn't match any deployed rule (not an error — idempotent-ish). Returns 429 on HTTP rate limit. File-write failures propagate as 500.",
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -57,6 +61,13 @@ export function registerDeleteRuleTool(
     async (args) => {
       // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
       const deleted = customRuleStore.delete(LOCAL_TENANT, args.rule_id, 'mcp');
+      if (deleted) {
+        // Hot-remove from the live engine so the rule stops firing on the
+        // very next evaluate_output call — the "stops firing immediately on
+        // the live process" this description promises (#332). No-op when the
+        // rule was never registered in this process.
+        evalEngine.unregisterRule(args.rule_id);
+      }
       return {
         content: [
           {

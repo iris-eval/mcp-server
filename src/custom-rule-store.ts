@@ -24,13 +24,14 @@
  * leave a half-file.
  */
 import { mkdirSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
-import { writeAtomic } from './utils/write-atomic.js';
+import { writeAtomic, ensureOwnerOnly, OWNER_ONLY_FILE_MODE } from './utils/write-atomic.js';
 import { irisHome } from './utils/iris-home.js';
 import { join, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import isSafeRegex from 'safe-regex2';
 import { regexBacktrackingBudgetExceeded } from './eval/rules/regex-budget.js';
+import { normalizeRegexSource } from './eval/rules/custom.js';
 import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
   DeployedCustomRule,
@@ -120,15 +121,21 @@ const DefinitionSchema = z
           });
           break;
         }
-        // Strip a leading inline flag group the way the evaluator does, so a
-        // pattern that WILL run is not rejected here for syntax it tolerates.
-        const stripped = pattern.replace(/^\(\?[imsugy]+\)/, '');
+        // Normalize EXACTLY the way the evaluator does — same helper — so
+        // this layer validates and probes the identical pattern+flags pair
+        // that will actually run. (It used to strip the inline flag group
+        // but not merge its flags: a `(?i)` pattern was probed under
+        // different flags than evaluation used.)
+        const { pattern: stripped, flags: normalizedFlags } = normalizeRegexSource(
+          pattern,
+          typeof config.flags === 'string' ? config.flags : '',
+        );
         // Syntax BEFORE safety: safe-regex2 returns false for anything it
         // cannot parse, so checking it first reports a plainly broken pattern
         // like `(` as "catastrophic backtracking" — an error that sends the
         // author looking for a performance problem they do not have.
         try {
-          new RegExp(stripped, typeof config.flags === 'string' ? config.flags : '');
+          new RegExp(stripped, normalizedFlags);
         } catch (e) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -150,10 +157,7 @@ const DefinitionSchema = z
         // safe and takes 156ms on 40 characters. Measure what the static
         // check cannot see.
         {
-          const budgetIssue = regexBacktrackingBudgetExceeded(
-            stripped,
-            typeof config.flags === 'string' ? config.flags : '',
-          );
+          const budgetIssue = regexBacktrackingBudgetExceeded(stripped, normalizedFlags);
           if (budgetIssue) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -265,7 +269,13 @@ function generateRuleId(): string {
 function appendAudit(auditPath: string, entry: AuditLogEntry): void {
   try {
     mkdirSync(dirname(auditPath), { recursive: true });
-    appendFileSync(auditPath, `${JSON.stringify(entry)}\n`, 'utf-8');
+    // mode applies only when appendFileSync creates the file; an existing
+    // audit.log keeps its mode, which is why ensureOwnerOnly() also runs at
+    // store construction to repair files created before this change.
+    appendFileSync(auditPath, `${JSON.stringify(entry)}\n`, {
+      encoding: 'utf-8',
+      mode: OWNER_ONLY_FILE_MODE,
+    });
   } catch {
     // Audit best-effort. If filesystem is read-only or full, the deploy
     // still succeeds; the operator just loses the audit trail.
@@ -348,7 +358,11 @@ export function createCustomRuleStore(opts?: {
   function state(tenantId: TenantId): LoadedRules {
     let loaded = tenantState.get(tenantId);
     if (loaded === undefined) {
-      loaded = loadRulesFromDisk(pathFor(tenantId));
+      const path = pathFor(tenantId);
+      loaded = loadRulesFromDisk(path);
+      // Repair permissions on files created before the owner-only change
+      // (and on the audit log, which appendFileSync only modes at creation).
+      ensureOwnerOnly(path, auditPath);
       tenantState.set(tenantId, loaded);
     }
     return loaded;

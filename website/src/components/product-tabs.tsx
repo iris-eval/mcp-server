@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
+import { RULE_COUNT_BUILT_IN, PII_PATTERN_COUNT, INJECTION_PATTERN_COUNT, HALLUCINATION_MARKER_COUNT } from "@/lib/claims";
 import * as Tabs from "@radix-ui/react-tabs";
 
 const EVAL_ROWS = [
@@ -152,7 +152,7 @@ export function ProductTabs(): React.ReactElement {
                   scores quality across completeness, relevance, safety, and cost with actionable suggestions.
                 </p>
                 <ul className="mt-8 space-y-4">
-                  {["PII detection: 10 patterns (SSN, credit card, phone, email, IBAN, DOB, medical record number, IP address, API key, passport)", "Prompt injection detection: 13 attack patterns", "Hallucination markers (17) + topic consistency + stub-output detection", "Custom rules with regex, keywords, JSON validation, min length"].map((t) => (
+                  {[`PII detection: ${PII_PATTERN_COUNT} patterns (SSN, credit card, phone, email, IBAN, DOB, medical record number, IP address, API keys and vendor tokens, private key blocks, seed phrases)`, `Prompt injection detection: ${INJECTION_PATTERN_COUNT} attack patterns (phrase + structural tiers)`, `Hallucination detection: ${HALLUCINATION_MARKER_COUNT} context-grounded fabrication/contradiction signals + stub-output detection`, "Custom rules with regex, keywords, JSON validation, min length"].map((t) => (
                     <li key={t} className="flex items-start gap-3 text-[15px] text-text-secondary">
                       <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-iris-500 shadow-[0_0_6px_var(--iris-500)]" />
                       {t}

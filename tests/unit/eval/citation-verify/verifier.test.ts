@@ -128,6 +128,7 @@ describe('verifyCitations', () => {
 
     expect(res.totalCitationsFound).toBe(1);
     expect(res.totalResolved).toBe(1);
+    expect(res.totalJudged).toBe(1);
     expect(res.totalSupported).toBe(1);
     expect(res.overallScore).toBe(1);
     expect(res.passed).toBe(true);
@@ -207,6 +208,123 @@ describe('verifyCitations', () => {
     // judge skipped due to cap.
     expect(res.citations[0].judge).toBeDefined();
     expect(res.citations[1].resolveError?.kind).toBe('cost_cap_reached');
+    // Hitting the cap is an infrastructure stop, not evidence against the
+    // citation: 1 judged, 1 supported — full marks, not 1/2.
+    expect(res.totalResolved).toBe(2);
+    expect(res.totalJudged).toBe(1);
+    expect(res.overallScore).toBe(1);
+  });
+
+  /*
+   * The denominator is citations the judge actually RULED ON, not
+   * citations that merely fetched. Before this fix totalResolved was the
+   * denominator and it incremented on fetch success — so a judge timeout
+   * on half the supported citations scored 0.5, indistinguishable from
+   * half the citations being fabricated. Infrastructure failure must
+   * never be reported as "source does not support the claim".
+   */
+  it('judge timeout mid-run leaves citations unverified, not unsupported', async () => {
+    global.fetch = makeMockedFetch([
+      // source 1
+      async () => new Response('supporting source', { headers: { 'content-type': 'text/plain' } }),
+      // judge 1 — supported
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'm',
+            content: [{ type: 'text', text: '{"supported":true,"confidence":0.9,"rationale":"x"}' }],
+            usage: { input_tokens: 50, output_tokens: 10 },
+          }),
+        ),
+      // source 2
+      async () => new Response('also supporting', { headers: { 'content-type': 'text/plain' } }),
+      // judge 2 — times out (client.ts converts AbortError -> LLMJudgeError 'timeout')
+      async () => {
+        throw Object.assign(new Error('This operation was aborted'), { name: 'AbortError' });
+      },
+    ]);
+
+    const res = await verifyCitations({
+      output: 'Claim one https://a.com and claim two https://b.com.',
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5',
+      apiKey: 'k',
+      allowFetch: true,
+    });
+
+    expect(res.totalResolved).toBe(2);
+    expect(res.totalJudged).toBe(1);
+    expect(res.totalSupported).toBe(1);
+    // 1/1 judged — NOT 1/2. The timed-out citation is unverified.
+    expect(res.overallScore).toBe(1);
+    expect(res.passed).toBe(true);
+    expect(res.citations[1].judge).toBeUndefined();
+    expect(res.citations[1].resolveError?.kind).toBe('timeout');
+  });
+
+  it('scores null (not zero) when every judge call fails', async () => {
+    global.fetch = makeMockedFetch([
+      // source fetch succeeds
+      async () => new Response('source text', { headers: { 'content-type': 'text/plain' } }),
+      // judge — provider outage
+      async () => new Response('', { status: 500 }),
+    ]);
+
+    const res = await verifyCitations({
+      output: 'See https://a.com for details.',
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5',
+      apiKey: 'k',
+      allowFetch: true,
+    });
+
+    expect(res.totalResolved).toBe(1);
+    expect(res.totalJudged).toBe(0);
+    expect(res.totalSupported).toBe(0);
+    // Nothing was judged — there is no verdict, so no score and no fail.
+    expect(res.overallScore).toBeNull();
+    expect(res.passed).toBe(true);
+    expect(res.citations[0].resolveError?.kind).toBe('server_error');
+  });
+
+  it('excludes malformed judge responses from the denominator', async () => {
+    global.fetch = makeMockedFetch([
+      // source 1
+      async () => new Response('supporting source', { headers: { 'content-type': 'text/plain' } }),
+      // judge 1 — supported
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'm',
+            content: [{ type: 'text', text: '{"supported":true,"confidence":0.9,"rationale":"x"}' }],
+            usage: { input_tokens: 50, output_tokens: 10 },
+          }),
+        ),
+      // source 2
+      async () => new Response('also supporting', { headers: { 'content-type': 'text/plain' } }),
+      // judge 2 — replies, but not with JSON
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'm2',
+            content: [{ type: 'text', text: 'I cannot answer in the requested format.' }],
+            usage: { input_tokens: 50, output_tokens: 10 },
+          }),
+        ),
+    ]);
+
+    const res = await verifyCitations({
+      output: 'Claim one https://a.com and claim two https://b.com.',
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5',
+      apiKey: 'k',
+      allowFetch: true,
+    });
+
+    expect(res.totalResolved).toBe(2);
+    expect(res.totalJudged).toBe(1);
+    expect(res.overallScore).toBe(1);
+    expect(res.citations[1].resolveError?.kind).toBe('malformed_judge_response');
   });
 
   it('respects max_citations', async () => {

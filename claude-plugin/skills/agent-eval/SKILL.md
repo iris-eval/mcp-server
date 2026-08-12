@@ -14,8 +14,10 @@ the server starts with `npx -y @iris-eval/mcp-server` in any MCP client config.
 1. **Log** the agent execution: `log_trace` with spans, tool calls, token
    usage, and cost. This builds the record everything else reads.
 2. **Score** the output: `evaluate_output` runs 13 built-in rules across
-   completeness, relevance, safety (10 PII patterns, 13 injection patterns,
-   17 hallucination markers), and cost. Heuristic, deterministic, free.
+   completeness, relevance, safety (19 PII patterns, 37 injection patterns,
+   25 hallucination markers), and cost. Heuristic, deterministic, free.
+   Pass `input` so the hallucination signals can cross-check the output
+   against the material the agent was given.
 3. **Judge** semantically when heuristics aren't enough:
    `evaluate_with_llm_judge` (templates: accuracy, helpfulness, safety,
    correctness, faithfulness). Requires the user's own API key in

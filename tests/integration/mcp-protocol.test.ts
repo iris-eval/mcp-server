@@ -285,6 +285,102 @@ describe('MCP Protocol Integration', () => {
     expect(reDelParsed.deleted).toBe(false);
   });
 
+  it('get_traces rejects limit outside 1..1000 at the tool boundary (#332)', async () => {
+    // The description always promised "max 1000 (anything higher returns
+    // 400)" but the schema had no .max() — limit:-1 became SQLite's
+    // "LIMIT -1" and returned every row. Out-of-range limits must fail as
+    // clean invalid-params errors (the SDK surfaces them as isError results
+    // whose text names the validation failure), mirroring the dashboard's
+    // traceQuerySchema.
+    for (const limit of [1001, -1]) {
+      const rejected = await client.callTool({ name: 'get_traces', arguments: { limit } });
+      expect(rejected.isError, `limit ${limit} must be rejected`).toBe(true);
+      expect((rejected.content as Array<{ text: string }>)[0].text).toMatch(
+        /Input validation error/,
+      );
+    }
+
+    // The documented maximum itself stays valid.
+    const ok = await client.callTool({ name: 'get_traces', arguments: { limit: 1000 } });
+    const parsed = JSON.parse((ok.content as Array<{ text: string }>)[0].text);
+    expect(parsed.limit).toBe(1000);
+  });
+
+  it('deploy_rule rejects names over 80 chars cleanly at the tool boundary (#332)', async () => {
+    // The tool schema allowed 120 while the store caps at 80, so a 100-char
+    // name passed the tool and surfaced the store's raw ZodError as a 500.
+    // One limit (the store's 80), enforced by the schema: the SDK reports a
+    // clean invalid-params validation error, never an in-handler ZodError
+    // throw (whose text would carry no "Input validation error" marker).
+    const rejected = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: 'x'.repeat(100),
+        evalType: 'completeness',
+        definition: { name: 'long-name-check', type: 'min_length', config: { min: 20 } },
+      },
+    });
+    expect(rejected.isError).toBe(true);
+    expect((rejected.content as Array<{ text: string }>)[0].text).toMatch(
+      /Input validation error/,
+    );
+  });
+
+  it('deploy_rule fires immediately and delete_rule stops it firing in-process (#332)', async () => {
+    // delete_rule promises the rule "stops firing immediately on the live
+    // process", and deploy_rule promises it "activates immediately for the
+    // running process". Prove both through the real MCP surface: deploy →
+    // the next evaluate_output runs the rule → delete → the next
+    // evaluate_output no longer does. No restart in between.
+    const ruleName = 'canary-hot-removal';
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: ruleName,
+        description: 'Canary for in-process rule removal',
+        evalType: 'completeness',
+        definition: {
+          name: ruleName,
+          type: 'contains_keywords',
+          config: { keywords: ['canary'] },
+        },
+      },
+    });
+    const ruleId: string = JSON.parse(
+      (deployed.content as Array<{ text: string }>)[0].text,
+    ).rule.id;
+
+    const firing = await client.callTool({
+      name: 'evaluate_output',
+      arguments: {
+        output: 'A canary sentence that satisfies the deployed keyword rule.',
+        eval_type: 'completeness',
+      },
+    });
+    const firingParsed = JSON.parse((firing.content as Array<{ text: string }>)[0].text);
+    expect(
+      firingParsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName),
+    ).toBeDefined();
+
+    const deleted = await client.callTool({
+      name: 'delete_rule',
+      arguments: { rule_id: ruleId },
+    });
+    expect(JSON.parse((deleted.content as Array<{ text: string }>)[0].text).deleted).toBe(true);
+
+    const silenced = await client.callTool({
+      name: 'evaluate_output',
+      arguments: {
+        output: 'A canary sentence that satisfies the deployed keyword rule.',
+        eval_type: 'completeness',
+      },
+    });
+    const silencedParsed = JSON.parse((silenced.content as Array<{ text: string }>)[0].text);
+    expect(
+      silencedParsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName),
+    ).toBeUndefined();
+  });
+
   it('evaluate_with_llm_judge round-trip via MCP (mocked Anthropic)', async () => {
     // Verifies the LLM judge flow round-trips through MCP. Mocks
     // global.fetch so the Anthropic API call returns a canned response;
@@ -403,6 +499,7 @@ describe('MCP Protocol Integration', () => {
       expect(urlCitation.judge.supported).toBe(true);
       expect(urlCitation.judge.confidence).toBe(0.9);
       expect(parsed.total_resolved).toBeGreaterThanOrEqual(1);
+      expect(parsed.total_judged).toBeGreaterThanOrEqual(1);
       expect(parsed.total_supported).toBeGreaterThanOrEqual(1);
       expect(parsed.overall_score).toBeGreaterThan(0);
       expect(parsed.passed).toBe(true);
@@ -488,6 +585,151 @@ describe('MCP Protocol Integration', () => {
     expect(parsed.score).toBeGreaterThan(0);
     expect(typeof parsed.passed).toBe('boolean');
     expect(parsed.rule_results).toBeDefined();
+  });
+
+  /*
+   * The evaluate_output response contract around critical rules.
+   *
+   * Six of seven UAT personas read `passed: true` on PII-laden text with
+   * nothing in the payload hinting that the safety bundle had never run —
+   * they had omitted eval_type and silently got the completeness default.
+   * The response now names the bundle that ran, and says so out loud when
+   * the caller never chose one.
+   */
+  const callEvaluate = async (args: Record<string, unknown>) => {
+    const result = await client.callTool({ name: 'evaluate_output', arguments: args });
+    return JSON.parse((result.content as Array<{ text: string }>)[0].text);
+  };
+
+  it('echoes which eval_type bundle actually ran', async () => {
+    // Without the echo, a caller cannot tell a genuine safety pass from a
+    // completeness eval that never ran a single safety rule.
+    const safety = await callEvaluate({
+      output: 'The customer record was updated successfully with no issues to report.',
+      eval_type: 'safety',
+    });
+    expect(safety.eval_type).toBe('safety');
+
+    const completeness = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+      eval_type: 'completeness',
+    });
+    expect(completeness.eval_type).toBe('completeness');
+  });
+
+  it('adds the defaulted-bundle note ONLY when eval_type was omitted', async () => {
+    const omitted = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+    });
+    expect(omitted.eval_type).toBe('completeness');
+    expect(omitted.note).toContain('eval_type was omitted');
+    expect(omitted.note).toContain('Safety rules');
+
+    // Explicitly choosing completeness is a decision, not an oversight —
+    // annotating it would train callers to ignore the field.
+    const explicit = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+      eval_type: 'completeness',
+    });
+    expect(explicit.eval_type).toBe('completeness');
+    expect(explicit.note).toBeUndefined();
+  });
+
+  it('THE FLAGSHIP: an SSN-laden output fails a safety eval, with critical_failures in the payload', async () => {
+    const parsed = await callEvaluate({
+      output: 'Your SSN is 536-22-8145',
+      input: 'what is the customer record',
+      eval_type: 'safety',
+    });
+
+    // The score still clears the threshold — the veto, not the arithmetic,
+    // is what produces the correct verdict.
+    expect(parsed.score).toBeGreaterThanOrEqual(0.7);
+    expect(parsed.passed).toBe(false);
+    expect(parsed.critical_failures).toContain('no_pii');
+    expect(parsed.eval_type).toBe('safety');
+    expect(parsed.note).toBeUndefined();
+  });
+
+  it('omits critical_failures from the payload when nothing hard-failed', async () => {
+    const parsed = await callEvaluate({
+      output: 'The customer record was updated successfully with no issues to report.',
+      eval_type: 'safety',
+    });
+
+    expect(parsed.passed).toBe(true);
+    expect('critical_failures' in parsed).toBe(false);
+  });
+
+  it('a deployed severity=critical rule hard-fails the eval it loses', async () => {
+    // The whole severity wiring through the real MCP surface: deploy_rule
+    // persists the severity, the deploy path hands it to createCustomRule,
+    // and the engine vetoes. Before this, severity drove nothing but
+    // dashboard sort order — a rule author could deploy a "critical" policy
+    // rule, watch it fail on a violating output, and still be told
+    // passed: true.
+    const ruleName = 'no-unreviewed-deploys';
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: ruleName,
+        description: 'Deploy notes must cite a review ticket',
+        evalType: 'completeness',
+        severity: 'critical',
+        definition: {
+          name: ruleName,
+          type: 'contains_keywords',
+          config: { keywords: ['REVIEW-'] },
+        },
+      },
+    });
+    const ruleId: string = JSON.parse((deployed.content as Array<{ text: string }>)[0].text).rule.id;
+
+    const parsed = await callEvaluate({
+      output:
+        'The deployment finished successfully across all three regions. No errors were reported during the rollout window. Monitoring is green.',
+      eval_type: 'completeness',
+    });
+
+    expect(parsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName)?.passed).toBe(false);
+    expect(parsed.score).toBeGreaterThanOrEqual(0.7);
+    expect(parsed.passed).toBe(false);
+    expect(parsed.critical_failures).toContain(ruleName);
+
+    await client.callTool({ name: 'delete_rule', arguments: { rule_id: ruleId } });
+  });
+
+  it('a deployed severity=medium rule stays weight-only', async () => {
+    // The other half of the contract: severity is a decision the rule
+    // author makes, and the low end of it must not start hard-failing.
+    const ruleName = 'prefer-ticket-reference';
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: ruleName,
+        description: 'Deploy notes should ideally cite a review ticket',
+        evalType: 'completeness',
+        severity: 'medium',
+        definition: {
+          name: ruleName,
+          type: 'contains_keywords',
+          config: { keywords: ['REVIEW-'] },
+        },
+      },
+    });
+    const ruleId: string = JSON.parse((deployed.content as Array<{ text: string }>)[0].text).rule.id;
+
+    const parsed = await callEvaluate({
+      output:
+        'The deployment finished successfully across all three regions. No errors were reported during the rollout window. Monitoring is green.',
+      eval_type: 'completeness',
+    });
+
+    expect(parsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName)?.passed).toBe(false);
+    expect(parsed.passed).toBe(true);
+    expect('critical_failures' in parsed).toBe(false);
+
+    await client.callTool({ name: 'delete_rule', arguments: { rule_id: ruleId } });
   });
 
   it('should get traces via MCP', async () => {

@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { bestEffortExport } from '../otel/lazy.js';
+import { strictInput } from './strict-input.js';
 
 const ToolCallSchema = z.object({
   tool_name: z.string(),
@@ -79,7 +80,11 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         '',
         'Error modes. Throws on missing agent_name. Throws on malformed span or tool_call objects (Zod rejects). Returns 500 on storage failure (disk full, DB locked). Never blocks on the agent — returns within ~50ms for typical payloads.',
       ].join('\n'),
-      inputSchema: logTraceInputShape,
+      // Strict at the MCP boundary (unknown args rejected, not stripped).
+      // The dashboard's HTTP ingest builds its own schema FROM this shape
+      // (dashboard/validation.ts) and keeps default stripping there on
+      // purpose — it relies on it to discard a client-supplied trace_id.
+      inputSchema: strictInput(logTraceInputShape),
       annotations: {
         readOnlyHint: false,     // Writes a row to storage
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete

@@ -76,6 +76,23 @@ beforeEach(() => {
 });
 
 describe('FailuresView', () => {
+  it('survives explicit null costUsd/latencyMs — the shape the server actually serializes', () => {
+    /*
+     * Regression: the /failures API sends costUsd: null (not undefined) for
+     * traces that reported no cost. A `!== undefined` guard let null through
+     * into formatCost → null.toFixed() → the landing view white-screened.
+     * Caught live against demo data on 2026-08-11; unit mocks had only ever
+     * omitted the fields.
+     */
+    useFailuresMock.mockReturnValue(
+      apiResult([makeFailure('t-null', { costUsd: null, latencyMs: null })]),
+    );
+    renderView();
+
+    expect(screen.getByText('agent-t-null')).toBeInTheDocument();
+    expect(screen.queryByText(/\$/)).not.toBeInTheDocument(); // no cost chip rendered
+  });
+
   it('renders each failure with agent, failed rule, and time — and links to the detail view', () => {
     useFailuresMock.mockReturnValue(apiResult([makeFailure('t-1'), makeFailure('t-2')]));
     renderView();
@@ -124,11 +141,14 @@ describe('FailuresView', () => {
     expect(screen.getByText('nothing new since you last looked')).toBeInTheDocument();
   });
 
-  it('with no runs at all, points to the quickstart', () => {
+  it('with no runs at all, points to demo mode and the quickstart', () => {
     useFailuresMock.mockReturnValue(apiResult([], { total: 0 }));
     renderView();
 
     expect(screen.getByText('Nothing has run yet')).toBeInTheDocument();
+    // The advertised command must stay in lockstep with the real CLI flag
+    // shipped in src/index.ts (--demo) — it hard-fails if the flag renames.
+    expect(screen.getByText('npx @iris-eval/mcp-server --demo')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'quickstart' })).toHaveAttribute(
       'href',
       'https://github.com/iris-eval/mcp-server#quickstart',

@@ -134,12 +134,12 @@ export function MomentCard({
 
       <div className="moment-card__meta iris-num iris-num--right">
         <span>{formatTimeAgo(moment.timestamp)}</span>
-        {moment.costUsd !== undefined && (
+        {moment.costUsd != null && (
           <Tooltip content={TT.costPerTrace}>
             <span tabIndex={0}>{formatCost(moment.costUsd)}</span>
           </Tooltip>
         )}
-        {moment.latencyMs !== undefined && (
+        {moment.latencyMs != null && (
           <Tooltip content={TT.latencyMs}>
             <span tabIndex={0}>{formatLatency(moment.latencyMs)}</span>
           </Tooltip>

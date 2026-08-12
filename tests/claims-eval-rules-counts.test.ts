@@ -15,8 +15,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { HALLUCINATION_MARKERS, noHallucinationMarkers } from '../src/eval/rules/relevance.js';
-import { INJECTION_PATTERNS, PII_PATTERNS, noInjectionPatterns } from '../src/eval/rules/safety.js';
+import {
+  HALLUCINATION_MARKERS,
+  INJECTION_PATTERNS,
+  PII_PATTERNS,
+  noHallucinationMarkers,
+  noInjectionPatterns,
+} from '../src/eval/rules/safety.js';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { countTopLevelElements, generate } from '../scripts/claims/generators/eval-rules.mjs';
 

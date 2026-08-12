@@ -34,78 +34,13 @@ export const keywordOverlap: EvalRule = {
   },
 };
 
-// Exported so the claims drift test can assert .claims.json counts against
-// the runtime truth (tests/claims-eval-rules-counts.test.ts).
-export const HALLUCINATION_MARKERS = [
-  'as an ai',
-  'as a language model',
-  'i cannot',
-  'i don\'t have access',
-  'i apologize',
-  'i\'m not able to',
-  'i must clarify',
-  'it\'s important to note that i',
-  'i should mention that as',
-  'i\'m just an ai',
-  'i don\'t actually',
-  'i cannot provide',
-  'i\'m unable to',
-  'please note that i',
-  'as a digital assistant',
-  'i want to be transparent',
-  'i need to be honest',
-];
-
 /*
- * Heuristic for fabricated-citation patterns — added v0.3.1.
- *
- * Looks for the shape: numbered citation markers ([1], [2], etc.) appearing
- * 3+ times AND density of "Dr." / "Professor" / "according to" / "study by"
- * markers. Heuristic only — doesn't verify citations are real (that's v0.5
- * LLM-as-judge work). Catches the common pattern where an agent emits
- * confident-sounding citations to fabricated sources.
+ * no_hallucination_markers moved to the safety bundle (safety.ts) in
+ * v0.4.7 — its rewrite is context-grounded fabrication/contradiction
+ * detection, and the safety bundle is where the evaluate_output docs,
+ * the dashboard's safety-violations panel, and the storage adapter's
+ * violation counts have always placed it.
  */
-function looksLikeFabricatedCitations(output: string): boolean {
-  const numberedCitations = (output.match(/\[\d+\]/g) ?? []).length;
-  if (numberedCitations < 3) return false;
-  const expertMarkers = (
-    output.match(/\b(?:Dr\.|Professor|according to|study by|research by|paper by)\b/gi) ?? []
-  ).length;
-  return expertMarkers >= 2;
-}
-
-export const noHallucinationMarkers: EvalRule = {
-  name: 'no_hallucination_markers',
-  description: 'Checks for AI hedging markers + heuristic fabricated-citation pattern',
-  evalType: 'relevance',
-  weight: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
-    const lower = context.output.toLowerCase();
-    const foundMarkers = HALLUCINATION_MARKERS.filter((marker) => lower.includes(marker));
-    const fabricatedCitationPattern = looksLikeFabricatedCitations(context.output);
-
-    const totalIssues = foundMarkers.length + (fabricatedCitationPattern ? 1 : 0);
-    const passed = totalIssues === 0;
-
-    let message: string;
-    if (passed) {
-      message = 'No hallucination markers detected';
-    } else if (fabricatedCitationPattern && foundMarkers.length === 0) {
-      message = 'Heuristic: fabricated-citation pattern detected (3+ numbered citations + expert markers)';
-    } else if (fabricatedCitationPattern) {
-      message = `Markers: ${foundMarkers.join(', ')}; plus fabricated-citation heuristic`;
-    } else {
-      message = `Found markers: ${foundMarkers.join(', ')}`;
-    }
-
-    return {
-      ruleName: 'no_hallucination_markers',
-      passed,
-      score: passed ? 1 : Math.max(0, 1 - totalIssues * 0.3),
-      message,
-    };
-  },
-};
 
 export const topicConsistency: EvalRule = {
   name: 'topic_consistency',
@@ -152,4 +87,4 @@ export const topicConsistency: EvalRule = {
   },
 };
 
-export const relevanceRules: EvalRule[] = [keywordOverlap, noHallucinationMarkers, topicConsistency];
+export const relevanceRules: EvalRule[] = [keywordOverlap, topicConsistency];

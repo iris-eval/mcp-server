@@ -163,8 +163,9 @@ export interface DecisionMoment {
   timestamp: string;
   input?: string;
   output?: string;
-  costUsd?: number;
-  latencyMs?: number;
+  /** Serialized as explicit null when the trace reported no cost — guard with != null, not !== undefined. */
+  costUsd?: number | null;
+  latencyMs?: number | null;
   verdict: MomentVerdict;
   overallScore: number;
   evalCount: number;
@@ -304,7 +305,6 @@ export interface Preferences {
 
 export interface PreferencesEnvelope {
   preferences: Preferences;
-  path: string;
 }
 
 export type PreferencesPatch = Partial<Preferences>;
@@ -336,5 +336,4 @@ export interface AuditQueryResult {
   total: number;
   limit: number;
   offset: number;
-  path: string;
 }

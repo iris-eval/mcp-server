@@ -4,6 +4,13 @@ import { generateEvalId } from '../utils/ids.js';
 
 export class EvalEngine {
   private additionalRules: Map<EvalType, EvalRule[]> = new Map();
+  /**
+   * Registered-rule handles keyed by deployed rule id, so delete paths can
+   * hot-remove exactly the instance they registered. Keyed by id (not name)
+   * because deploy_rule doesn't enforce name uniqueness — two rules can
+   * share a name with different definitions.
+   */
+  private rulesById: Map<string, { evalType: EvalType; rule: EvalRule }> = new Map();
   private threshold: number;
   private ruleThresholds?: Record<string, unknown>;
 
@@ -12,10 +19,31 @@ export class EvalEngine {
     this.ruleThresholds = ruleThresholds;
   }
 
-  registerRule(evalType: EvalType, rule: EvalRule): void {
+  registerRule(evalType: EvalType, rule: EvalRule, ruleId?: string): void {
     const existing = this.additionalRules.get(evalType) ?? [];
     existing.push(rule);
     this.additionalRules.set(evalType, existing);
+    if (ruleId !== undefined) {
+      this.rulesById.set(ruleId, { evalType, rule });
+    }
+  }
+
+  /**
+   * Hot-remove a rule registered under `ruleId` so it stops firing on the
+   * live process — what delete_rule's description promises (#332). Returns
+   * false when the id was never registered (already removed, or registered
+   * without an id); callers treat that as a no-op, not an error.
+   */
+  unregisterRule(ruleId: string): boolean {
+    const entry = this.rulesById.get(ruleId);
+    if (!entry) return false;
+    this.rulesById.delete(ruleId);
+    const rules = this.additionalRules.get(entry.evalType);
+    if (rules) {
+      const idx = rules.indexOf(entry.rule);
+      if (idx !== -1) rules.splice(idx, 1);
+    }
+    return true;
   }
 
   evaluate(
@@ -73,7 +101,16 @@ export class EvalEngine {
       };
     }
 
-    const ruleResults: EvalRuleResult[] = rules.map((rule) => rule.evaluate(context));
+    /*
+     * Shallow copy so the regex circuit breaker is scoped to THIS evaluation
+     * and never leaks into a caller-held context object. All rules in one
+     * evaluation share the breaker: after MAX_REGEX_BREACHES_PER_EVAL sandbox
+     * budget breaches (see rules/custom.ts), remaining regex rules skip
+     * without running — one hostile output cannot stall the request once per
+     * rule it carries.
+     */
+    const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 } };
+    const ruleResults: EvalRuleResult[] = rules.map((rule) => rule.evaluate(evalContext));
 
     // Partition into evaluated vs skipped
     const evaluatedIndices: number[] = [];
@@ -122,7 +159,25 @@ export class EvalEngine {
     const rawScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
     const score = Number.isFinite(rawScore) ? rawScore : 0;
 
-    const passed = score >= this.threshold;
+    /*
+     * Critical rules hard-fail. Before this existed, the weighted average
+     * routinely outvoted a genuine violation: an output containing a real
+     * SSN failed no_pii while the other safety rules passed, landing at
+     * ~0.765 — over the 0.7 threshold — so `passed`, the one field every
+     * automated gate keys on, said true about the product's flagship
+     * failure scenario. A detection that reports an all-clear is worse
+     * than no detection.
+     *
+     * Only EVALUATED failures count: a critical rule that skipped (missing
+     * context, broken config) has not judged the output and must not veto
+     * it. The score is left as-is — it stays a quality gradient; `passed`
+     * is the verdict, and the two answer different questions.
+     */
+    const criticalFailures = evaluatedIndices
+      .filter((i) => rules[i].critical === true && !ruleResults[i].passed)
+      .map((i) => ruleResults[i].ruleName);
+
+    const passed = score >= this.threshold && criticalFailures.length === 0;
 
     const suggestions: string[] = [];
     for (const result of ruleResults) {
@@ -130,9 +185,26 @@ export class EvalEngine {
         suggestions.push(`[${result.ruleName}] ${result.message}`);
       }
     }
+    if (criticalFailures.length > 0 && score >= this.threshold) {
+      suggestions.push(
+        `Critical rule(s) failed (${criticalFailures.join(', ')}) — passed=false regardless of the weighted score`,
+      );
+    }
     if (rulesSkipped > 0) {
-      const skippedNames = ruleResults.filter((r) => r.skipped).map((r) => r.ruleName);
-      suggestions.push(`${rulesSkipped} rule(s) skipped (missing context): ${skippedNames.join(', ')}`);
+      /*
+       * Say WHY each rule skipped. The old line hardcoded "(missing
+       * context)" — but a rule whose regex was killed at the sandbox budget
+       * did not lack context, it was DEFEATED by this output, and labeling
+       * that "missing context" hid the one signal a fail-closed consumer
+       * needs. Each rule's own skipReason is the truth; missing context is
+       * only the default for rules that skip without stating a reason.
+       */
+      const skippedParts = ruleResults
+        .filter((r) => r.skipped)
+        .map((r) => `${r.ruleName} (${r.skipReason ?? 'missing context'})`);
+      suggestions.push(
+        `${rulesSkipped} rule(s) skipped — excluded from the weighted score: ${skippedParts.join('; ')}`,
+      );
     }
 
     return {
@@ -147,6 +219,7 @@ export class EvalEngine {
       rules_evaluated: rulesEvaluated,
       rules_skipped: rulesSkipped,
       insufficient_data: false,
+      ...(criticalFailures.length > 0 ? { critical_failures: criticalFailures } : {}),
     };
   }
 }

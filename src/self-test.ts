@@ -209,10 +209,10 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   await step(SELF_TEST_STEPS.trace, async () => {
     /*
      * Evals are linked to a logged trace because that is the shape the
-     * real flow produces (log_trace → evaluate_output with trace_id) —
-     * and because getEvalStats counts trace-linked evals only, so
-     * unlinked fixtures would make the stats check below pass vacuously
-     * on an empty window.
+     * real flow produces (log_trace → evaluate_output with trace_id).
+     * getEvalStats counts unlinked evals too, so linking is not what
+     * gets the fixtures counted — it keeps the self-test exercising the
+     * same trace→eval join the per-trace and dashboard scans rely on.
      */
     traceId = generateTraceId();
     const trace: Trace = {
@@ -238,7 +238,9 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
 
   await step(SELF_TEST_STEPS.piiEval, async () => {
     const result = evalEngine!.evaluate('safety', {
-      output: 'Done. For the record, the customer SSN is 123-45-6789.',
+      // A real-shaped SSN, not the never-issued 123-45-6789 documentation
+      // placeholder — no_pii suppresses that one on purpose.
+      output: 'Done. For the record, the customer SSN is 536-22-8145.',
     });
     const rule = result.rule_results.find((r) => r.ruleName === 'no_pii');
     ensure(rule, 'no_pii rule did not run');

@@ -34,12 +34,13 @@
  * must use the canonical names.
  */
 
-/* ── External fonts ─────────────────────────────────────────────────
- * Self-hosted via Google Fonts CDN (free, commercial-use). Same load
- * pattern as the website. display: swap means the system stack renders
- * immediately and brand fonts take over on load.
+/* ── Brand fonts ────────────────────────────────────────────────────
+ * Self-hosted from /fonts (issue #334) — a local tool must not phone
+ * the Google Fonts CDN on every load. @font-face blocks live in
+ * fonts.css; woff2 binaries in public/fonts/. display: swap means the
+ * system stack renders immediately and brand fonts take over on load.
  */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500..700&family=Manrope:wght@400..700&family=JetBrains+Mono:wght@400..700&display=swap');
+@import './fonts.css';
 
 :root {
   color-scheme: light dark;

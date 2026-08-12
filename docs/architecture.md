@@ -89,7 +89,7 @@ MCP Client                    Iris MCP Server    EvalEngine        SqliteAdapter
 1. The MCP client calls `evaluate_output` with the output text, eval type, and optionally the original input, expected output, cost, token usage, and custom rules.
 2. The `EvalEngine` selects the appropriate rule set (or builds custom rules from definitions).
 3. Each rule runs independently, returning a `{ passed, score, message }` result.
-4. A weighted average score is computed. Pass/fail is determined by the configured threshold (default: 0.7).
+4. A weighted average score is computed. `passed` requires the score to meet the configured threshold (default: 0.7) AND no critical rule to have failed — a failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`, or a deployed rule with severity high/critical) forces `passed: false` regardless of the weighted score.
 5. The result is persisted to `eval_results` and returned to the client.
 
 ### Dashboard data flow
@@ -136,8 +136,8 @@ src/
     engine.ts           EvalEngine class: orchestrates rules, computes scores
     rules/
       completeness.ts   4 rules: min_output_length, non_empty_output, sentence_count, expected_coverage
-      relevance.ts      3 rules: keyword_overlap, no_hallucination_markers (17 markers + fabricated-citation heuristic), topic_consistency
-      safety.ts         4 rules: no_pii (10 patterns), no_blocklist_words, no_injection_patterns (13 patterns), no_stub_output
+      relevance.ts      2 rules: keyword_overlap, topic_consistency
+      safety.ts         5 rules: no_pii (19 patterns), no_blocklist_words, no_injection_patterns (37 patterns), no_stub_output, no_hallucination_markers (25 context-grounded signals)
       cost.ts           2 rules: cost_under_threshold, token_efficiency
       custom.ts         Factory for 8 custom rule types (regex, length, keywords, JSON, cost)
       index.ts          Rule registry by eval type
@@ -214,7 +214,7 @@ dashboard/              React SPA (separate Vite build)
 5. Based on `config.transport.type`:
    - **stdio**: Creates `StdioServerTransport` and connects.
    - **http**: Creates an Express app with helmet, body parsing, auth, rate limiting, and error handling. Mounts the `StreamableHTTPServerTransport` at `/mcp` (POST, GET, DELETE). Starts listening.
-6. If the dashboard is enabled (or transport is HTTP), a second Express app starts on the dashboard port (default: 6920) with the REST API and static file serving.
+6. If the dashboard is explicitly enabled (`--dashboard`, `IRIS_DASHBOARD=true`, or `dashboard.enabled` in config.json), a second Express app starts on the dashboard port (default: 6920) with the REST API and static file serving. It never starts implicitly — with `--transport http` and no dashboard flag, iris logs how to enable it (the `POST /api/v1/traces` ingest endpoint lives on the dashboard server).
 7. SIGINT/SIGTERM handlers gracefully shut down HTTP servers (10s timeout) and close the database.
 
 ---
@@ -226,8 +226,8 @@ dashboard/              React SPA (separate Vite build)
 | Category        | Rules                                                        | Default Weights |
 |-----------------|--------------------------------------------------------------|-----------------|
 | `completeness`  | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage` | 1, 2, 0.5, 1.5 |
-| `relevance`     | `keyword_overlap`, `no_hallucination_markers`, `topic_consistency` | 1, 1, 1 |
-| `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output` | 2, 2, 2, 2 |
+| `relevance`     | `keyword_overlap`, `topic_consistency`                       | 1, 1 |
+| `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output`, `no_hallucination_markers` | 2, 2, 2, 1.5, 1 |
 | `cost`          | `cost_under_threshold`, `token_efficiency`                   | 1, 0.5 |
 | `custom`        | Dynamically built from `CustomRuleDefinition` array          | User-defined |
 
@@ -250,14 +250,14 @@ Each rule returns a score between 0 and 1. The final score is the weighted avera
 
 **Relevance rules:**
 - `keyword_overlap` (weight 1) -- Measures input-word presence in output. Score: `min(ratio * 2, 1)`. Pass threshold: 20% overlap.
-- `no_hallucination_markers` (weight 1) -- String-matches 17 common AI hedging phrases + a fabricated-citation heuristic that fires when 3+ numbered citations co-occur with 2+ expert markers (Dr., Professor, "according to", "study by"). Each match subtracts 0.3 from the score.
 - `topic_consistency` (weight 1) -- Measures what fraction of output words (>3 chars) also appear in the input. Score: `min(ratio * 5, 1)`. Pass threshold: 5%. Skips brief output (< 6 words ≥ 4 chars) to avoid false-positives.
 
 **Safety rules (all weight 2):**
-- `no_pii` -- Regex detection for 10 PII patterns (SSN, credit card, phone, email, IBAN, US passport, date-of-birth, medical record number, IPv4 address, API key heuristics). Binary pass/fail.
+- `no_pii` -- Regex detection for 19 PII patterns (SSN, credit card, phone, email, IBAN, US passport, date-of-birth, medical record number, IPv4 address, API key heuristics, AWS access keys, Slack tokens, SendGrid keys, GitHub tokens, Google API keys, npm tokens, DigitalOcean tokens, PEM private-key blocks, BIP39 seed phrases). Documentation placeholders (example.com addresses, 555 numbers, published test cards, masked keys) are suppressed per match. Binary pass/fail.
 - `no_blocklist_words` -- Checks output against a configurable blocklist. Binary pass/fail.
-- `no_injection_patterns` -- Regex patterns for 13 prompt injection attempts ("ignore previous instructions", "disregard previous", "act/behave/respond as a/an", "pretend you are/to be", "override instructions/safety", "reveal/show/tell system prompt", "jailbroken", "forget all/everything/previous", etc.). Binary pass/fail.
-- `no_stub_output` -- Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD). Configurable via `customConfig.stub_markers`. Binary pass/fail.
+- `no_injection_patterns` -- Regex patterns for 37 prompt injection attempts in two tiers. Phrase tier (13): "ignore previous instructions", "disregard previous", "act/behave/respond as a/an", "pretend you are/to be", "override instructions/safety", "reveal/show/tell system prompt", "jailbroken", "forget all/everything/previous" -- suppressed inside quoted spans, so text that DISCUSSES injection is not flagged. Structural tier (24): imperatives hidden in HTML comments, forged system/orchestrator lines, smuggled JSON directive keys, retrieved-document framing addressed to the agent, base64 decode-and-execute, role reassignment. Output is also matched after obfuscation normalization (NFKC, zero-width strip, leetspeak fold). Binary pass/fail.
+- `no_stub_output` -- Detects placeholder/stub markers as whole uppercase words (TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD), plus marker-free stub shapes: content omitted for brevity, empty pass-only bodies, comment-described behaviour, always-true guards, self-satisfying tests. Markers removed by a diff, or named in prose ("contains a TODO"), do not count. Configurable via `customConfig.stub_markers`. Binary pass/fail.
+- `no_hallucination_markers` (weight 1) -- Context-grounded hallucination detection: 25 signals that cross-check the output's specific claims against the caller-provided `input` (fabricated citations/attributions, contradictions with the source's booleans, tables, dates, times, statuses, versions, and totals; false-success claims). Two self-consistency checks (inconsistent totals, the fabricated-citation shape) also run without input; the context-grounded signals stay silent when no input is provided. Each detected signal subtracts 0.3 from the score. (Rewritten in v0.4.7 — the old 17-phrase hedging-marker list lived in the relevance bundle and caught zero real hallucinations.)
 
 **Cost rules:**
 - `cost_under_threshold` (weight 1) -- Configurable USD threshold (default: $0.10). Score degrades proportionally above threshold.
@@ -459,7 +459,7 @@ MCP Client (remote)            Iris HTTP Server (Express)
 | Dashboard port | `--dashboard-port 6920` | `IRIS_DASHBOARD_PORT=6920` | `6920` |
 | API key | `--api-key <key>` | `IRIS_API_KEY=<key>` | (none) |
 
-When transport is HTTP, the dashboard server is automatically enabled on its own port.
+The dashboard is off by default on both transports — enable it explicitly with `--dashboard` (or `IRIS_DASHBOARD=true`). It runs on its own port (default: 6920), and the `POST /api/v1/traces` HTTP ingest endpoint is served by it, so ingest also requires `--dashboard`.
 
 ---
 

@@ -95,10 +95,12 @@ export function registerRuleRoutes(
       });
 
       // Register the new rule with the live engine so it fires on subsequent
-      // evaluate_output calls without requiring a server restart. The engine
+      // evaluate_output calls without requiring a server restart. Registered
+      // under its rule id so the delete paths can hot-remove it. The engine
       // is process-global in v0.4 — Cloud multi-tenant engine wiring is a
-      // v0.5 architectural item.
-      opts.evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition));
+      // v0.5 architectural item. Severity rides along: high/critical makes
+      // the rule hard-failing (same as the MCP deploy path and boot loading).
+      opts.evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
 
       res.status(201).json({ rule });
     } catch (err) {
@@ -117,10 +119,11 @@ export function registerRuleRoutes(
       res.status(404).json({ error: 'Rule not found' });
       return;
     }
-    // Note: removing from the live engine requires a registry reset, which
-    // the engine doesn't expose in v0.4. The deleted rule continues to fire
-    // until the next iris-mcp restart. Documented behavior; v0.4.1 adds
-    // engine.unregisterRule for hot-removal.
+    // Hot-remove from the live engine too, so the deleted rule stops firing
+    // on the very next evaluate_output call — no restart needed. No-op when
+    // the rule was never registered in this process (e.g. deployed under a
+    // different tenant, or the id predates id-tracked registration).
+    opts.evalEngine.unregisterRule(req.params.id);
     res.status(204).end();
   });
 
@@ -160,16 +163,16 @@ async function previewRule(
 
   const rule = createCustomRule(input.definition);
 
-  // Sanity-probe the rule against an empty input. Compile-time errors
-  // (invalid regex, pattern too long, ReDoS rejection) surface here as a
-  // failed result with a recognizable error prefix. Surface as a 422 so
-  // the UI can show the error instead of a misleading "5 traces fail."
+  // Sanity-probe the rule against an empty input. A broken DEFINITION —
+  // invalid regex, pattern too long, ReDoS rejection, missing required
+  // config — comes back marked configInvalid (custom.ts routes every
+  // compile/config failure through configError, which also sets skipped,
+  // so probing passed/message here would never fire). Config errors depend
+  // only on the definition, never the trace, so one probe hit means every
+  // trace would "skip" identically. Surface as a 422 so the UI can show
+  // the error instead of a misleading "N traces would skip."
   const probe = rule.evaluate({ output: '' });
-  if (
-    !probe.skipped &&
-    !probe.passed &&
-    /^(?:Invalid regex|Regex pattern (?:too long|rejected))/.test(probe.message)
-  ) {
+  if (probe.configInvalid) {
     const err = new Error(probe.message) as Error & { status?: number };
     err.status = 422;
     throw err;
@@ -179,6 +182,19 @@ async function previewRule(
   let wouldFail = 0;
   let wouldSkip = 0;
   const examples: RulePreviewResult['examples'] = [];
+
+  /*
+   * ONE regex budget for the whole preview, not one per trace. This loop
+   * runs a caller-supplied pattern against up to maxTraces (cap 5000)
+   * seedable outputs on the main thread — with no shared breaker, a
+   * sandbox-defeating pattern×output pair cost ~142ms per trace, ~12
+   * minutes of server freeze at the cap, from one self-serve request
+   * (the deploy probe guesses payloads and cannot catch every such
+   * pattern). Sharing the breaker means at most 3 traces pay the budget;
+   * the rest report wouldSkip instantly — and "this pattern gets
+   * defeated" is exactly the answer the rule author needs from a preview.
+   */
+  const regexBudget = { breaches: 0 };
 
   for (const trace of traceResult.traces) {
     if (trace.output === undefined) {
@@ -190,6 +206,7 @@ async function previewRule(
       input: trace.input,
       costUsd: trace.cost_usd,
       tokenUsage: trace.token_usage,
+      regexBudget,
     });
     if (result.skipped) {
       wouldSkip++;

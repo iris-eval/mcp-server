@@ -74,7 +74,7 @@ Categories: completeness, relevance, safety, cost.
 
 Rules: nonEmptyOutput, minOutputLength, noStubOutput, sentenceCount, expectedCoverage, keywordOverlap, topicConsistency, noPii, noInjectionPatterns, noHallucinationMarkers, noBlocklistWords, costUnderThreshold, tokenEfficiency.
 
-Safety depth: 10 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key), 13 prompt-injection patterns, 17 hallucination markers, stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
+Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 37 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Trust signals
 
