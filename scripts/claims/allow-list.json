@@ -114,6 +114,12 @@
       "pattern": "builtin-rule-count",
       "line": "*",
       "reason": "Dev.to syndication snapshot — records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
+    },
+    {
+      "file": "src/dashboard/seed-demo-data.ts",
+      "pattern": "test-count",
+      "line": "*",
+      "reason": "Fixture prose inside seeded demo agent outputs (a fictional CI status report) — not a claim about iris's own test suite."
     }
   ]
 }

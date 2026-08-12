@@ -79,6 +79,20 @@ Then open **http://localhost:6920** after your agent runs a trace. The same dash
 npx @iris-eval/mcp-server --dashboard
 ```
 
+### See it working first (demo mode)
+
+Want the dashboard with data on screen before wiring up your agent? Demo mode seeds a demo database and serves the dashboard against it:
+
+```bash
+npx @iris-eval/mcp-server --demo
+```
+
+The seeded project includes failures worth clicking into — a PII leak caught by the safety rules, a flagged prompt-injection attempt, and a failed LLM-judge score with its rationale. Demo data lives in its own database (`demo.db` in your Iris home directory — `~/.iris` on macOS/Linux, `%USERPROFILE%\.iris` on Windows) and never mixes with your real traces. Remove all of it with one command:
+
+```bash
+npx @iris-eval/mcp-server --demo-clear
+```
+
 <details>
 <summary><strong>Setup by tool</strong></summary>
 
@@ -228,6 +242,8 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--api-key` | — | API key for HTTP authentication |
 | `--dashboard` | `false` | Enable web dashboard |
 | `--dashboard-port` | `6920` | Dashboard port |
+| `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
+| `--demo-clear` | `false` | Delete the demo database and exit |
 
 ### Environment Variables
 

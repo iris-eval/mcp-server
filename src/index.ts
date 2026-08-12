@@ -14,8 +14,19 @@ import { loadOrInitPreferences, shouldAutoLaunchDashboard, createPreferenceStore
 import { openBrowser } from './utils/open-browser.js';
 import { createCustomRuleStore } from './custom-rule-store.js';
 import { createCustomRule } from './eval/rules/custom.js';
+import { EvalEngine } from './eval/engine.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { validatePortConfig } from './utils/validate-port-config.js';
+import { irisHome } from './utils/iris-home.js';
+import {
+  seedDemoData,
+  clearDemoData,
+  demoDbPath,
+  demoPreferencesPath,
+  demoCustomRulesPath,
+  demoAuditLogPath,
+  type SeedDemoDataSummary,
+} from './dashboard/seed-demo-data.js';
 
 const PortSchema = z
   .string()
@@ -33,6 +44,8 @@ const CliSchema = z
     dashboard: z.boolean().optional(),
     'dashboard-port': PortSchema.optional(),
     'dashboard-host': z.string().min(1).optional(),
+    demo: z.boolean().optional(),
+    'demo-clear': z.boolean().optional(),
     'self-test': z.boolean().optional(),
     help: z.boolean().optional(),
   })
@@ -50,6 +63,8 @@ try {
       dashboard: { type: 'boolean', default: false },
       'dashboard-port': { type: 'string' },
       'dashboard-host': { type: 'string' },
+      demo: { type: 'boolean', default: false },
+      'demo-clear': { type: 'boolean', default: false },
       'self-test': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
@@ -87,6 +102,13 @@ Options:
   --dashboard-host <host>  Dashboard bind address (default: 127.0.0.1). The dashboard is
                            unauthenticated unless --api-key is set — binding it beyond
                            loopback exposes your full trace history to the network.
+  --demo                   Seed a demo database and serve the dashboard against it —
+                           see the dashboard working before wiring up your agent.
+                           Demo data lives in its own files (demo.db) and never mixes
+                           with your real traces. Serves the dashboard only (no MCP
+                           transport). Idempotent: re-running reuses the seeded data.
+  --demo-clear             Delete the demo database (and its sidecar files), then exit.
+                           Your real traces are not touched.
   --self-test              Run the offline install diagnostic and exit: storage round-trip,
                            deterministic evals, dashboard + rebinding guard — all inside an
                            isolated temp home. Exit code 0 = healthy, 1 = a check failed.
@@ -136,13 +158,44 @@ if (values['self-test']) {
   process.exit(await runSelfTest());
 }
 
+/*
+ * Demo-mode flag validation happens before loadConfig so a refused
+ * combination exits without touching the filesystem.
+ */
+if (values.demo && values['demo-clear']) {
+  process.stderr.write('iris-mcp: --demo and --demo-clear cannot be combined.\nRun `iris-mcp --help` for usage.\n');
+  process.exit(2);
+}
+if (values.demo && values['db-path']) {
+  process.stderr.write(
+    'iris-mcp: --demo always serves its own database (demo.db under your iris home) and cannot be combined with --db-path.\n' +
+      'Run `iris-mcp --demo` alone, or drop --demo to use your own database.\n',
+  );
+  process.exit(2);
+}
+
+if (values['demo-clear']) {
+  const { removed } = clearDemoData();
+  if (removed.length === 0) {
+    process.stderr.write(`iris-mcp: no demo data found under "${irisHome()}" — nothing to remove.\n`);
+  } else {
+    for (const path of removed) {
+      process.stderr.write(`iris-mcp: removed "${path}"\n`);
+    }
+    process.stderr.write('iris-mcp: demo data cleared. Your real traces were not touched.\n');
+  }
+  process.exit(0);
+}
+
 const config = loadConfig({
   transport: values.transport,
   port: values.port,
   config: values.config,
-  dbPath: values['db-path'],
+  // Demo mode serves the dashboard against the dedicated demo database —
+  // never the real store — and always with the dashboard enabled.
+  dbPath: values.demo ? demoDbPath() : values['db-path'],
   apiKey: values['api-key'],
-  dashboard: values.dashboard,
+  dashboard: values.demo ? true : values.dashboard,
   dashboardPort: values['dashboard-port'],
   dashboardHost: values['dashboard-host'],
 });
@@ -277,7 +330,105 @@ async function main(): Promise<void> {
   process.on('SIGTERM', shutdown);
 }
 
-main().catch((err) => {
+function printDemoBanner(summary: SeedDemoDataSummary, url: string): void {
+  const line = '='.repeat(60);
+  const counts = summary.alreadySeeded
+    ? `  Reusing the existing demo database (${summary.traceCount} traces, ${summary.evalCount} evaluations).`
+    : `  Seeded ${summary.traceCount} traces / ${summary.evalCount} evaluations across the last 7 days.`;
+  process.stderr.write(`
+${line}
+  IRIS DEMO MODE — everything on screen is demo data
+${line}
+
+${counts}
+  Demo database: "${summary.dbPath}"
+  Your real trace database is untouched — demo data never mixes with it.
+
+  Worth clicking into:
+    - a PII leak (a synthetic SSN in an agent reply) caught by the safety rules
+    - a prompt-injection attempt flagged in summarized forum posts
+    - a failed LLM-judge score, with the judge's rationale
+
+  Dashboard: ${url}
+
+  Remove the demo data with one command:
+    npx @iris-eval/mcp-server --demo-clear
+
+  Press Ctrl+C to stop.
+
+`);
+}
+
+/*
+ * Demo mode (--demo): seed the dedicated demo database (idempotent) and
+ * serve the dashboard against it. No MCP transport is started — demo mode
+ * exists to put something real on screen before an agent is wired up.
+ *
+ * Isolation: everything demo mode writes lives in demo-scoped files under
+ * irisHome() (demo.db, demo-preferences.json, demo-custom-rules.json,
+ * demo-audit.log). A rule deployed from the demo dashboard lands in the
+ * demo rule store, and --demo-clear removes all of it. The real iris.db,
+ * custom-rules.json, audit.log and preferences.json are never touched.
+ */
+async function runDemo(): Promise<void> {
+  logger.info(`Starting Iris demo mode v${config.server.version}`);
+
+  const seedSummary = await seedDemoData();
+  if (seedSummary.alreadySeeded) {
+    logger.info(`Demo database already seeded (${seedSummary.traceCount} traces) — reusing it`);
+  } else {
+    logger.info(`Seeded demo database with ${seedSummary.traceCount} traces at ${seedSummary.dbPath}`);
+  }
+
+  const storage = createStorage(config);
+  await storage.initialize();
+
+  const customRuleStore = createCustomRuleStore({
+    pathFor: () => demoCustomRulesPath(),
+    auditPath: demoAuditLogPath(),
+  });
+  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds);
+  for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
+    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition));
+  }
+  const preferenceStore = createPreferenceStore(demoPreferencesPath());
+
+  const dashboardServer = createDashboardServer(storage, config, logger, {
+    customRuleStore,
+    evalEngine,
+    preferenceStore,
+  });
+  const server = dashboardServer.start();
+
+  server.on('listening', () => {
+    // Use the port actually bound (supports --dashboard-port 0 in tests).
+    const addr = server.address();
+    const port = typeof addr === 'object' && addr ? addr.port : config.dashboard.port;
+    const url = `http://localhost:${port}`;
+    printDemoBanner(seedSummary, url);
+    const prefState = loadOrInitPreferences(demoPreferencesPath());
+    if (shouldAutoLaunchDashboard(prefState)) {
+      openBrowser(url);
+    }
+  });
+
+  const shutdown = async () => {
+    logger.info('Shutting down gracefully...');
+    await Promise.race([
+      new Promise<void>((resolve) => server.close(() => resolve())),
+      new Promise((resolve) => setTimeout(resolve, 10_000)),
+    ]);
+    await storage.close();
+    logger.info('Shutdown complete');
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+const run = values.demo ? runDemo : main;
+run().catch((err) => {
   logger.error(`Fatal error: ${err instanceof Error ? err.message : err}`, {
     stack: err instanceof Error ? err.stack : undefined,
   });
