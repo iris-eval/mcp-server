@@ -40,15 +40,20 @@ export function registerPreferencesRoutes(
   router: Router,
   store: PreferenceStore,
 ): void {
+  /*
+   * Responses deliberately omit store.path: the absolute path embeds the
+   * OS username (install-path disclosure, CWE-209 — same class as PR
+   * #286) and the frontend never read it.
+   */
   router.get('/preferences', (_req, res) => {
-    res.json({ preferences: store.read(), path: store.path });
+    res.json({ preferences: store.read() });
   });
 
   router.patch('/preferences', (req, res) => {
     try {
       const patch = PatchSchema.parse(req.body);
       const updated = store.patch(patch);
-      res.json({ preferences: updated, path: store.path });
+      res.json({ preferences: updated });
     } catch (err) {
       if (err instanceof z.ZodError) {
         res.status(400).json({ error: 'Invalid preferences patch', details: err.issues });

@@ -46,7 +46,14 @@ const assetsDir = join(repoRoot, 'dist', 'dashboard', 'assets');
 const BUDGETS_KB = {
   jsRaw: 600,
   jsGzip: 160,
-  cssRaw: 20,
+  // cssRaw 20 -> 28 (#334): self-hosting the brand fonts adds ~4KB of
+  // @font-face blocks — 15 unicode-range subsets across three families.
+  // The raw number went up; what the user actually waits for went DOWN,
+  // because the page no longer makes a blocking round-trip to
+  // fonts.googleapis.com and then another to fonts.gstatic.com. Gzip is
+  // 5KB against an unchanged 8KB budget, which is the number that bounds
+  // transfer. 28 keeps the usual ~15% headroom over the new 24KB.
+  cssRaw: 28,
   cssGzip: 8,
 };
 
