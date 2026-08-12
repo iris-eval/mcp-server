@@ -24,7 +24,7 @@
  * leave a half-file.
  */
 import { mkdirSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
-import { writeAtomic } from './utils/write-atomic.js';
+import { writeAtomic, ensureOwnerOnly, OWNER_ONLY_FILE_MODE } from './utils/write-atomic.js';
 import { irisHome } from './utils/iris-home.js';
 import { join, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -265,7 +265,13 @@ function generateRuleId(): string {
 function appendAudit(auditPath: string, entry: AuditLogEntry): void {
   try {
     mkdirSync(dirname(auditPath), { recursive: true });
-    appendFileSync(auditPath, `${JSON.stringify(entry)}\n`, 'utf-8');
+    // mode applies only when appendFileSync creates the file; an existing
+    // audit.log keeps its mode, which is why ensureOwnerOnly() also runs at
+    // store construction to repair files created before this change.
+    appendFileSync(auditPath, `${JSON.stringify(entry)}\n`, {
+      encoding: 'utf-8',
+      mode: OWNER_ONLY_FILE_MODE,
+    });
   } catch {
     // Audit best-effort. If filesystem is read-only or full, the deploy
     // still succeeds; the operator just loses the audit trail.
@@ -348,7 +354,11 @@ export function createCustomRuleStore(opts?: {
   function state(tenantId: TenantId): LoadedRules {
     let loaded = tenantState.get(tenantId);
     if (loaded === undefined) {
-      loaded = loadRulesFromDisk(pathFor(tenantId));
+      const path = pathFor(tenantId);
+      loaded = loadRulesFromDisk(path);
+      // Repair permissions on files created before the owner-only change
+      // (and on the audit log, which appendFileSync only modes at creation).
+      ensureOwnerOnly(path, auditPath);
       tenantState.set(tenantId, loaded);
     }
     return loaded;

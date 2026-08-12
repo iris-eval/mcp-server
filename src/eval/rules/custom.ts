@@ -16,6 +16,11 @@ const MAX_PATTERN_LENGTH = 1000;
 // Deploy-time validation in custom-rule-store.ts now rejects these configs
 // outright; this path remains the safety net for rules already persisted in
 // a user's ~/.iris/custom-rules.json from before that validation existed.
+//
+// configInvalid distinguishes this skip from a legitimate one: config
+// errors depend only on the definition, never the input, so a caller that
+// holds the whole definition (the rule-preview endpoint) can reject it
+// as a 422 instead of reporting every trace as "would skip".
 function configError(definition: CustomRuleDefinition, message: string): EvalRuleResult {
   return {
     ruleName: definition.name,
@@ -24,6 +29,7 @@ function configError(definition: CustomRuleDefinition, message: string): EvalRul
     message,
     skipped: true,
     skipReason: message,
+    configInvalid: true,
   };
 }
 

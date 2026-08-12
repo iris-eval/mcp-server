@@ -285,6 +285,102 @@ describe('MCP Protocol Integration', () => {
     expect(reDelParsed.deleted).toBe(false);
   });
 
+  it('get_traces rejects limit outside 1..1000 at the tool boundary (#332)', async () => {
+    // The description always promised "max 1000 (anything higher returns
+    // 400)" but the schema had no .max() — limit:-1 became SQLite's
+    // "LIMIT -1" and returned every row. Out-of-range limits must fail as
+    // clean invalid-params errors (the SDK surfaces them as isError results
+    // whose text names the validation failure), mirroring the dashboard's
+    // traceQuerySchema.
+    for (const limit of [1001, -1]) {
+      const rejected = await client.callTool({ name: 'get_traces', arguments: { limit } });
+      expect(rejected.isError, `limit ${limit} must be rejected`).toBe(true);
+      expect((rejected.content as Array<{ text: string }>)[0].text).toMatch(
+        /Input validation error/,
+      );
+    }
+
+    // The documented maximum itself stays valid.
+    const ok = await client.callTool({ name: 'get_traces', arguments: { limit: 1000 } });
+    const parsed = JSON.parse((ok.content as Array<{ text: string }>)[0].text);
+    expect(parsed.limit).toBe(1000);
+  });
+
+  it('deploy_rule rejects names over 80 chars cleanly at the tool boundary (#332)', async () => {
+    // The tool schema allowed 120 while the store caps at 80, so a 100-char
+    // name passed the tool and surfaced the store's raw ZodError as a 500.
+    // One limit (the store's 80), enforced by the schema: the SDK reports a
+    // clean invalid-params validation error, never an in-handler ZodError
+    // throw (whose text would carry no "Input validation error" marker).
+    const rejected = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: 'x'.repeat(100),
+        evalType: 'completeness',
+        definition: { name: 'long-name-check', type: 'min_length', config: { min: 20 } },
+      },
+    });
+    expect(rejected.isError).toBe(true);
+    expect((rejected.content as Array<{ text: string }>)[0].text).toMatch(
+      /Input validation error/,
+    );
+  });
+
+  it('deploy_rule fires immediately and delete_rule stops it firing in-process (#332)', async () => {
+    // delete_rule promises the rule "stops firing immediately on the live
+    // process", and deploy_rule promises it "activates immediately for the
+    // running process". Prove both through the real MCP surface: deploy →
+    // the next evaluate_output runs the rule → delete → the next
+    // evaluate_output no longer does. No restart in between.
+    const ruleName = 'canary-hot-removal';
+    const deployed = await client.callTool({
+      name: 'deploy_rule',
+      arguments: {
+        name: ruleName,
+        description: 'Canary for in-process rule removal',
+        evalType: 'completeness',
+        definition: {
+          name: ruleName,
+          type: 'contains_keywords',
+          config: { keywords: ['canary'] },
+        },
+      },
+    });
+    const ruleId: string = JSON.parse(
+      (deployed.content as Array<{ text: string }>)[0].text,
+    ).rule.id;
+
+    const firing = await client.callTool({
+      name: 'evaluate_output',
+      arguments: {
+        output: 'A canary sentence that satisfies the deployed keyword rule.',
+        eval_type: 'completeness',
+      },
+    });
+    const firingParsed = JSON.parse((firing.content as Array<{ text: string }>)[0].text);
+    expect(
+      firingParsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName),
+    ).toBeDefined();
+
+    const deleted = await client.callTool({
+      name: 'delete_rule',
+      arguments: { rule_id: ruleId },
+    });
+    expect(JSON.parse((deleted.content as Array<{ text: string }>)[0].text).deleted).toBe(true);
+
+    const silenced = await client.callTool({
+      name: 'evaluate_output',
+      arguments: {
+        output: 'A canary sentence that satisfies the deployed keyword rule.',
+        eval_type: 'completeness',
+      },
+    });
+    const silencedParsed = JSON.parse((silenced.content as Array<{ text: string }>)[0].text);
+    expect(
+      silencedParsed.rule_results.find((r: { ruleName: string }) => r.ruleName === ruleName),
+    ).toBeUndefined();
+  });
+
   it('evaluate_with_llm_judge round-trip via MCP (mocked Anthropic)', async () => {
     // Verifies the LLM judge flow round-trips through MCP. Mocks
     // global.fetch so the Anthropic API call returns a canned response;
@@ -403,6 +499,7 @@ describe('MCP Protocol Integration', () => {
       expect(urlCitation.judge.supported).toBe(true);
       expect(urlCitation.judge.confidence).toBe(0.9);
       expect(parsed.total_resolved).toBeGreaterThanOrEqual(1);
+      expect(parsed.total_judged).toBeGreaterThanOrEqual(1);
       expect(parsed.total_supported).toBeGreaterThanOrEqual(1);
       expect(parsed.overall_score).toBeGreaterThan(0);
       expect(parsed.passed).toBe(true);

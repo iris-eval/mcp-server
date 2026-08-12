@@ -305,7 +305,6 @@ export interface Preferences {
 
 export interface PreferencesEnvelope {
   preferences: Preferences;
-  path: string;
 }
 
 export type PreferencesPatch = Partial<Preferences>;
@@ -337,5 +336,4 @@ export interface AuditQueryResult {
   total: number;
   limit: number;
   offset: number;
-  path: string;
 }

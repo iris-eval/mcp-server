@@ -20,8 +20,10 @@ export const shortOutputContext: EvalContext = {
   input: 'Explain the theory of relativity in detail.',
 };
 
+// Deliberately NOT documentation placeholders (example.com / 555 numbers /
+// 123-45-6789), which no_pii now suppresses — these must keep firing.
 export const piiContext: EvalContext = {
-  output: 'The user John Smith can be reached at john@example.com or 555-123-4567. His SSN is 123-45-6789.',
+  output: 'The user John Smith can be reached at john.smith@acmemail.io or 415-867-2301. His SSN is 536-22-8145.',
 };
 
 export const injectionContext: EvalContext = {

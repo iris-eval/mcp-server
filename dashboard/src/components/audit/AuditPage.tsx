@@ -93,11 +93,6 @@ const styles = {
     gap: 'var(--space-1_5)',
     transition: 'background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast)',
   } as const,
-  pathHint: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-caption)',
-    color: 'var(--text-muted)',
-  } as const,
   countBadge: {
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-caption)',
@@ -266,7 +261,6 @@ export function AuditPage() {
         meta={
           <span style={styles.countBadge}>
             {data ? `${data.entries.length} entries` : '—'}
-            {data?.path && <> · <span style={styles.pathHint}>{data.path}</span></>}
           </span>
         }
       />

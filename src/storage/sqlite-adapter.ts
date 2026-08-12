@@ -20,6 +20,7 @@
  *     its own data.
  */
 import Database from 'better-sqlite3';
+import { ensureOwnerOnly } from '../utils/write-atomic.js';
 import type {
   IStorageAdapter,
   DashboardSummary,
@@ -54,8 +55,10 @@ function assertTenant(tenantId: TenantId): void {
 
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
+  private readonly dbPath: string;
 
   constructor(dbPath: string) {
+    this.dbPath = dbPath;
     this.db = new Database(dbPath);
   }
 
@@ -64,6 +67,17 @@ export class SqliteAdapter implements IStorageAdapter {
     this.db.pragma('busy_timeout = 5000');
     this.db.pragma('foreign_keys = ON');
     runMigrations(this.db);
+    /*
+     * iris.db holds agent inputs and outputs verbatim, and a tool that
+     * detects PII necessarily stores the PII it found. better-sqlite3
+     * creates the file with the process umask (typically 0644 = readable by
+     * every local account), and WAL mode creates two sidecars that hold the
+     * same data. Narrow all three after the pragmas, since -wal/-shm do not
+     * exist until WAL is enabled. No-op on Windows and on :memory:.
+     */
+    if (this.dbPath !== ':memory:') {
+      ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
+    }
   }
 
   async close(): Promise<void> {
@@ -151,17 +165,31 @@ export class SqliteAdapter implements IStorageAdapter {
       conditions.push('timestamp <= ?');
       params.push(filter.until);
     }
-    if (filter?.min_score !== undefined) {
+    if (filter?.min_score !== undefined || filter?.max_score !== undefined) {
+      /*
+       * Both bounds apply to the LATEST eval per trace (created_at DESC,
+       * rowid breaking ties within the same millisecond) — the semantics
+       * the get_traces description promises. These used to be two
+       * INDEPENDENT EXISTS subqueries, so a trace with evals at 0.95 and
+       * 0.05 matched min_score=0.4 + max_score=0.6: each bound was
+       * satisfied by a different eval even though no single eval — let
+       * alone the latest — was in range (#332).
+       */
+      const scoreBounds: string[] = [];
+      if (filter.min_score !== undefined) {
+        scoreBounds.push('e.score >= ?');
+      }
+      if (filter.max_score !== undefined) {
+        scoreBounds.push('e.score <= ?');
+      }
       conditions.push(
-        'EXISTS (SELECT 1 FROM eval_results e WHERE e.tenant_id = traces.tenant_id AND e.trace_id = traces.trace_id AND e.score >= ?)',
+        'EXISTS (SELECT 1 FROM eval_results e WHERE e.rowid = ' +
+          '(SELECT e2.rowid FROM eval_results e2 WHERE e2.tenant_id = traces.tenant_id AND e2.trace_id = traces.trace_id ' +
+          'ORDER BY e2.created_at DESC, e2.rowid DESC LIMIT 1) ' +
+          `AND ${scoreBounds.join(' AND ')})`,
       );
-      params.push(filter.min_score);
-    }
-    if (filter?.max_score !== undefined) {
-      conditions.push(
-        'EXISTS (SELECT 1 FROM eval_results e WHERE e.tenant_id = traces.tenant_id AND e.trace_id = traces.trace_id AND e.score <= ?)',
-      );
-      params.push(filter.max_score);
+      if (filter.min_score !== undefined) params.push(filter.min_score);
+      if (filter.max_score !== undefined) params.push(filter.max_score);
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
@@ -390,13 +418,22 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     const since = this.periodToSince(period);
 
+    /*
+     * No trace_id filter — deliberately. evaluate_output without a
+     * trace_id is documented and normal, and every sibling scan (trend,
+     * per-rule breakdown, failures) counts unlinked evals. Filtering only
+     * this headline made totalEvals disagree with the trend's sum, and —
+     * because eval_results.trace_id is ON DELETE SET NULL — deleting a
+     * trace retroactively shrank the headline while the trend kept the
+     * eval. One population everywhere: every eval in the window.
+     */
     const agg = this.db.prepare(`
       SELECT
         COUNT(*)                                     AS total_evals,
         COALESCE(AVG(score), 0)                      AS avg_score,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
       FROM eval_results
-      WHERE tenant_id = ? AND created_at >= ? AND trace_id IS NOT NULL
+      WHERE tenant_id = ? AND created_at >= ?
     `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
 
     const cost = this.db.prepare(`

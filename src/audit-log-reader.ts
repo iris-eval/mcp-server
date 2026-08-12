@@ -42,13 +42,17 @@ export interface AuditQueryFilter {
   search?: string;
 }
 
+/*
+ * Note: the result deliberately does NOT echo the audit log's absolute
+ * path. It embeds the OS username (install-path disclosure, CWE-209 —
+ * same class as PR #286) and the dashboard never needed the value; the
+ * UI states the canonical ~/.iris/audit.log location instead.
+ */
 export interface AuditQueryResult {
   entries: AuditLogEntry[];
   total: number;
   limit: number;
   offset: number;
-  /** Absolute path to the audit log file (for diagnostics). */
-  path: string;
 }
 
 function defaultAuditPath(): string {
@@ -66,14 +70,14 @@ export function readAuditLog(opts?: {
   const offset = Math.max(opts?.offset ?? 0, 0);
 
   if (!existsSync(filePath)) {
-    return { entries: [], total: 0, limit, offset, path: filePath };
+    return { entries: [], total: 0, limit, offset };
   }
 
   let raw: string;
   try {
     raw = readFileSync(filePath, 'utf-8');
   } catch {
-    return { entries: [], total: 0, limit, offset, path: filePath };
+    return { entries: [], total: 0, limit, offset };
   }
 
   // Parse line-by-line, drop malformed rows silently. The audit log is
@@ -110,5 +114,5 @@ export function readAuditLog(opts?: {
   const total = filtered.length;
   const entries = filtered.slice(offset, offset + limit);
 
-  return { entries, total, limit, offset, path: filePath };
+  return { entries, total, limit, offset };
 }

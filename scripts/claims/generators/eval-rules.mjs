@@ -30,10 +30,14 @@ export async function generate() {
   }
   const names = [...new Set(allNames)].sort();
 
-  // Pattern arrays — search across all rule files.
-  const piiPatterns = countArrayElements(sources, /(?:const|let|var)\s+PII_PATTERNS[\s\S]*?\[([\s\S]*?)\];/);
-  const injectionPatterns = countArrayElements(sources, /(?:const|let|var)\s+INJECTION_PATTERNS[\s\S]*?\[([\s\S]*?)\];/);
-  const hallucinationMarkers = countArrayElements(sources, /(?:const|let|var)\s+HALLUCINATION_MARKERS[\s\S]*?\[([\s\S]*?)\];/);
+  // Pattern arrays — search across all rule files. The capture is anchored
+  // to the `= [` ASSIGNMENT bracket, not the first `[` after the name: a
+  // type annotation like `Array<{ placeholders?: RegExp[] }>` contains its
+  // own `[`, and capturing from there put the annotation's tail inside the
+  // counted body (shipped as 12 where the runtime truth was 19).
+  const piiPatterns = countArrayElements(sources, /(?:const|let|var)\s+PII_PATTERNS[^=]*=\s*\[([\s\S]*?)\];/);
+  const injectionPatterns = countArrayElements(sources, /(?:const|let|var)\s+INJECTION_PATTERNS[^=]*=\s*\[([\s\S]*?)\];/);
+  const hallucinationMarkers = countArrayElements(sources, /(?:const|let|var)\s+HALLUCINATION_MARKERS[^=]*=\s*\[([\s\S]*?)\];/);
   const stubMarkers = extractStubMarkers(sources);
 
   return {
@@ -82,6 +86,11 @@ export function countTopLevelElements(s) {
   let escape = false;
   let count = 0;
   let segmentHasContent = false;
+  // Last meaningful CODE character — comments excluded. The regex-opener
+  // heuristic below must not read comment text: a regex element directly
+  // after `// …payloads.` saw `.` as the previous character, was parsed as
+  // division + bare quotes, and every element after it merged into one.
+  let lastCode = '';
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     const n = s[i + 1];
@@ -89,38 +98,38 @@ export function countTopLevelElements(s) {
     if (inBlockComment) { if (c === '*' && n === '/') { inBlockComment = false; i++; } continue; }
     if (escape) { escape = false; continue; }
     if (c === '\\') { escape = true; continue; }
-    if (inSingle) { if (c === "'") inSingle = false; continue; }
-    if (inDouble) { if (c === '"') inDouble = false; continue; }
-    if (inTemplate) { if (c === '`') inTemplate = false; continue; }
+    if (inSingle) { if (c === "'") { inSingle = false; lastCode = c; } continue; }
+    if (inDouble) { if (c === '"') { inDouble = false; lastCode = c; } continue; }
+    if (inTemplate) { if (c === '`') { inTemplate = false; lastCode = c; } continue; }
     if (inRegex) {
       if (c === '[') inRegexClass = true;
       else if (c === ']') inRegexClass = false;
-      else if (c === '/' && !inRegexClass) inRegex = false;
+      else if (c === '/' && !inRegexClass) { inRegex = false; lastCode = c; }
       continue;
     }
     if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
     if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
-    if (c === "'") { inSingle = true; segmentHasContent = true; continue; }
-    if (c === '"') { inDouble = true; segmentHasContent = true; continue; }
-    if (c === '`') { inTemplate = true; segmentHasContent = true; continue; }
+    if (c === "'") { inSingle = true; segmentHasContent = true; lastCode = c; continue; }
+    if (c === '"') { inDouble = true; segmentHasContent = true; lastCode = c; continue; }
+    if (c === '`') { inTemplate = true; segmentHasContent = true; lastCode = c; continue; }
     if (c === '/') {
       // Regex literal opener — in code position a `/` here can only start a
       // regex (after `,` `[` `(` `=` `:` or at segment start).
-      const prev = s.slice(0, i).trimEnd().slice(-1);
-      if (prev === ',' || prev === '[' || prev === '(' || prev === '=' || prev === ':' || prev === '') {
+      if (lastCode === ',' || lastCode === '[' || lastCode === '(' || lastCode === '=' || lastCode === ':' || lastCode === '') {
         inRegex = true;
         segmentHasContent = true;
         continue;
       }
     }
-    if (c === '(' || c === '[' || c === '{') { depth++; segmentHasContent = true; continue; }
-    if (c === ')' || c === ']' || c === '}') { depth--; segmentHasContent = true; continue; }
+    if (c === '(' || c === '[' || c === '{') { depth++; segmentHasContent = true; lastCode = c; continue; }
+    if (c === ')' || c === ']' || c === '}') { depth--; segmentHasContent = true; lastCode = c; continue; }
     if (c === ',' && depth === 0) {
       if (segmentHasContent) count++;
       segmentHasContent = false;
+      lastCode = c;
       continue;
     }
-    if (!/\s/.test(c)) segmentHasContent = true;
+    if (!/\s/.test(c)) { segmentHasContent = true; lastCode = c; }
   }
   if (segmentHasContent) count++;
   return count;
