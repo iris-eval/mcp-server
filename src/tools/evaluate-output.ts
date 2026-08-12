@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import type { EvalType, CustomRuleDefinition } from '../types/eval.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const CustomRuleSchema = z.object({
   name: z.string(),
@@ -60,9 +61,9 @@ export function registerEvaluateOutputTool(
         '',
         'Parameters. expected is REQUIRED when eval_type="relevance" (used as the comparison target for keyword overlap + topic consistency); ignored for other eval_types. cost_usd + token_usage are ONLY consulted when eval_type="cost" (ignored otherwise). custom_rules ALWAYS fires regardless of eval_type — pass eval_type="custom" if you want ONLY your rules to run (otherwise both your rules AND the eval_type bundle run together). trace_id is optional but recommended (linking the eval to its trace surfaces it in the dashboard\'s drill-through). input adds context to keyword-overlap relevance checks AND grounds the safety bundle\'s hallucination signals (without it those signals stay silent rather than guess); ignored otherwise. Defaults: eval_type="completeness" — and when you rely on that default, the response carries a `note` reminding you that the safety bundle did not run.',
         '',
-        'Error modes. Throws on malformed custom_rules (Zod rejects). Returns 400 on regex patterns that fail safe-regex2 ReDoS check or exceed 1000-char limit. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions.',
+        'Error modes. Throws on unknown argument names (strict schema — a misspelled argument is rejected with the valid argument list, never silently dropped). Throws on malformed custom_rules (Zod rejects). Returns 400 on regex patterns that fail safe-regex2 ReDoS check or exceed 1000-char limit. Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions.',
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,     // Writes an eval_result row
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete

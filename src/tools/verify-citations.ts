@@ -6,6 +6,7 @@ import { verifyCitations } from '../eval/citation-verify/verifier.js';
 import { findPricing } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import { generateEvalId } from '../utils/ids.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output containing citations to verify'),
@@ -83,7 +84,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         '',
         'Error modes. Throws when the API key env var is missing. Throws "Unknown model" on unsupported model IDs. Per-citation errors are collected (resolve_error.kind = bad_scheme / ssrf / not_allowed_domain / timeout / too_large / bad_status / redirect_loop / not_text / fetch_disabled / malformed_judge_response / cost_cap_reached / unresolvable_kind) and returned in the response rather than thrown. An empty output or output with zero extractable citations returns overall_score=null + passed=true (nothing to fail).',
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: false,      // Writes eval_result + spends money
         destructiveHint: false,   // Creates data; doesn't overwrite/delete

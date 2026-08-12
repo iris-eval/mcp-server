@@ -14,6 +14,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { strictInput } from './strict-input.js';
 
 const inputSchema = {
   eval_type: z
@@ -51,7 +52,7 @@ export function registerListRulesTool(
         '',
         "Error modes. Returns empty list if the rule store file doesn't exist (first run). Returns 429 if HTTP rate limit exceeded. Never throws on valid input.",
       ].join('\n'),
-      inputSchema,
+      inputSchema: strictInput(inputSchema),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
