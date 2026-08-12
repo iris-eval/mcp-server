@@ -2,11 +2,12 @@
  * ruleCategories — vendored mapping of built-in rule names → category.
  *
  * Mirrors iris/src/eval/rules/{safety,relevance,completeness,cost}.ts as
- * of v0.3.1. Keep in sync when the rule library expands. The mapping
+ * of v0.4.7. Keep in sync when the rule library expands. The mapping
  * lives client-side because the eval-stats endpoint returns rule names
  * but not categories.
  *
- * Synced: 2026-04-23 (v0.3.1 — 13 rules)
+ * Synced: 2026-08-11 (v0.4.7 — 13 rules; no_hallucination_markers moved
+ * relevance → safety with the context-grounded rewrite)
  */
 
 export type RuleCategory = 'safety' | 'relevance' | 'completeness' | 'cost' | 'custom';
@@ -25,13 +26,13 @@ export const CATEGORY_META: Record<RuleCategory, CategoryMeta> = {
     id: 'safety',
     label: 'Safety',
     color: 'var(--eval-fail)',
-    description: 'PII, prompt injection, blocklist, stub-output detection',
+    description: 'PII, prompt injection, hallucination, blocklist, stub-output detection',
   },
   relevance: {
     id: 'relevance',
     label: 'Relevance',
     color: 'var(--eval-warn)',
-    description: 'Hallucination, fabricated citations, on-topic checks',
+    description: 'Keyword overlap and on-topic checks against the input',
   },
   completeness: {
     id: 'completeness',
@@ -62,18 +63,18 @@ export const CATEGORY_ORDER: RuleCategory[] = [
 ];
 
 /**
- * v0.3.1 built-in rule → category map.
- * Total: 13 rules (4 safety + 3 relevance + 4 completeness + 2 cost).
+ * v0.4.7 built-in rule → category map.
+ * Total: 13 rules (5 safety + 2 relevance + 4 completeness + 2 cost).
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
-  // safety (4)
+  // safety (5)
   no_pii: 'safety',
   no_blocklist_words: 'safety',
   no_injection_patterns: 'safety',
   no_stub_output: 'safety',
-  // relevance (3)
+  no_hallucination_markers: 'safety',
+  // relevance (2)
   keyword_overlap: 'relevance',
-  no_hallucination_markers: 'relevance',
   topic_consistency: 'relevance',
   // completeness (4)
   min_output_length: 'completeness',
@@ -91,7 +92,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'no_blocklist_words', category: 'safety' },
   { name: 'no_injection_patterns', category: 'safety' },
   { name: 'no_stub_output', category: 'safety' },
-  { name: 'no_hallucination_markers', category: 'relevance' },
+  { name: 'no_hallucination_markers', category: 'safety' },
   { name: 'keyword_overlap', category: 'relevance' },
   { name: 'topic_consistency', category: 'relevance' },
   { name: 'min_output_length', category: 'completeness' },

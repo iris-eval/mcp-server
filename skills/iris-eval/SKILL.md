@@ -75,11 +75,11 @@ carry the judge's reasoning.
 | Completeness | expected_coverage | Key expected elements are present |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
-| Relevance | no_hallucination_markers | No hedging/fabrication markers (17 patterns) |
 | Safety | no_pii | No PII leaked (19 patterns) |
 | Safety | no_injection_patterns | No prompt-injection attempts (37 patterns) |
 | Safety | no_blocklist_words | No prohibited terms |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |
+| Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |
 | Cost | cost_under_threshold | Execution cost within budget |
 | Cost | token_efficiency | Token usage proportionate to the output |
 

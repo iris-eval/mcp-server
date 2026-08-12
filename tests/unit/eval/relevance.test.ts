@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { keywordOverlap, noHallucinationMarkers, topicConsistency } from '../../../src/eval/rules/relevance.js';
-import { passingContext, hallucinatingContext } from '../../fixtures/sample-evals.js';
+import { keywordOverlap, topicConsistency } from '../../../src/eval/rules/relevance.js';
+import { passingContext } from '../../fixtures/sample-evals.js';
 
 describe('relevance rules', () => {
   describe('keywordOverlap', () => {
@@ -17,40 +17,8 @@ describe('relevance rules', () => {
     });
   });
 
-  describe('noHallucinationMarkers', () => {
-    it('should pass for clean output', () => {
-      expect(noHallucinationMarkers.evaluate(passingContext).passed).toBe(true);
-    });
-
-    it('should fail for output with hallucination markers', () => {
-      const result = noHallucinationMarkers.evaluate(hallucinatingContext);
-      expect(result.passed).toBe(false);
-    });
-
-    // v0.3.1 fabricated-citation heuristic
-    it('should detect fabricated citation pattern (3+ numbered citations + expert markers)', () => {
-      const result = noHallucinationMarkers.evaluate({
-        output:
-          'According to Dr. Smith [1], market grew 87% [2]. Study by Professor Jones found similar trends [3]. Per analyst report [4].',
-      });
-      expect(result.passed).toBe(false);
-      expect(result.message).toContain('fabricated-citation');
-    });
-
-    it('should not flag legitimate single citation as fabricated', () => {
-      const result = noHallucinationMarkers.evaluate({
-        output: 'According to the research paper [1], the result was reproducible.',
-      });
-      expect(result.passed).toBe(true);
-    });
-
-    it('should not flag numbered list without expert markers as fabricated', () => {
-      const result = noHallucinationMarkers.evaluate({
-        output: 'Steps: [1] Install. [2] Configure. [3] Run. [4] Verify.',
-      });
-      expect(result.passed).toBe(true);
-    });
-  });
+  // no_hallucination_markers moved to the safety bundle (v0.4.7) —
+  // its tests live in tests/unit/eval/safety.test.ts.
 
   describe('topicConsistency', () => {
     it('should pass when output is on-topic', () => {
