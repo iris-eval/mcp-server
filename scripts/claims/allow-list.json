@@ -38,6 +38,24 @@
       "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 12 rules; v0.3.1 documents the 12→13 expansion)."
     },
     {
+      "file": "docs/roadmap.md",
+      "pattern": "pii-pattern-count",
+      "line": "*",
+      "reason": "The v0.3.1 section records the 4→10 PII expansion as shipped then; the safety-corpus release took it to 19. Past-tense release history, correct as-of-version."
+    },
+    {
+      "file": "docs/launch/directory-listing-template.md",
+      "pattern": "pii-pattern-count",
+      "line": "*",
+      "reason": "Frozen launch template with an in-file historical banner instructing a fresh compose against .claims.json before any submission."
+    },
+    {
+      "file": "docs/launch/directory-listing-template.md",
+      "pattern": "injection-pattern-count",
+      "line": "*",
+      "reason": "Frozen launch template with an in-file historical banner instructing a fresh compose against .claims.json before any submission."
+    },
+    {
       "file": "website/src/components/roadmap.tsx",
       "pattern": "mcp-tool-count",
       "line": "*",

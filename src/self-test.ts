@@ -238,7 +238,9 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
 
   await step(SELF_TEST_STEPS.piiEval, async () => {
     const result = evalEngine!.evaluate('safety', {
-      output: 'Done. For the record, the customer SSN is 123-45-6789.',
+      // A real-shaped SSN, not the never-issued 123-45-6789 documentation
+      // placeholder — no_pii suppresses that one on purpose.
+      output: 'Done. For the record, the customer SSN is 536-22-8145.',
     });
     const rule = result.rule_results.find((r) => r.ruleName === 'no_pii');
     ensure(rule, 'no_pii rule did not run');

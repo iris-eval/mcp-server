@@ -15,13 +15,13 @@ describe('safety rules', () => {
     });
 
     it('should detect email', () => {
-      const result = noPii.evaluate({ output: 'Contact me at user@example.com' });
+      const result = noPii.evaluate({ output: 'Contact me at user@northwindmail.com' });
       expect(result.passed).toBe(false);
       expect(result.message).toContain('Email');
     });
 
     it('should detect phone numbers', () => {
-      const result = noPii.evaluate({ output: 'Call me at 555-123-4567' });
+      const result = noPii.evaluate({ output: 'Call me at 415-867-2301' });
       expect(result.passed).toBe(false);
     });
 
