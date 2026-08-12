@@ -66,7 +66,7 @@ export function TopFailingRulesBars({ moments, periodStartIso, periodLabel }: To
       title="Top failing rules"
       hint={`by failure count · ${periodLabel}`}
       bars={bars}
-      emptyMessage="No rule failures in this window — fleet's clean."
+      emptyMessage="No rule failures in this window — all clear."
     />
   );
 }

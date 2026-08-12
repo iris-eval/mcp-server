@@ -11,6 +11,7 @@ import type {
   EvalFailure,
   MomentQueryResult,
   DecisionMomentDetail,
+  FailureQueryResult,
   DeployedCustomRule,
   DeployRuleRequest,
   RulePreviewRequest,
@@ -127,6 +128,10 @@ export const api = {
 
   getMomentDetail(id: string): Promise<DecisionMomentDetail> {
     return fetchJson<DecisionMomentDetail>(`${API_BASE_URL}/moments/${id}`);
+  },
+
+  getFailures(params?: Record<string, string>): Promise<FailureQueryResult> {
+    return fetchJson<FailureQueryResult>(`${API_BASE_URL}/failures`, params);
   },
 
   getCustomRules(): Promise<{ rules: DeployedCustomRule[] }> {

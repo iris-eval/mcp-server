@@ -200,6 +200,22 @@ export interface MomentQueryResult {
   offset: number;
 }
 
+/* ── Ranked failures (failure-first landing view) ── */
+
+export interface RankedFailure extends DecisionMoment {
+  /** Severity × recency-decay blend, 0-1. Higher = shown first. */
+  rankScore: number;
+}
+
+export interface FailureQueryResult {
+  failures: RankedFailure[];
+  /** How many recent traces the server scanned to build the list. */
+  scanned: number;
+  /** Total traces matching the filter (pre-scan-cap). */
+  total: number;
+  limit: number;
+}
+
 /* ── Custom Rules (B3 — Make-This-A-Rule) ── */
 
 export type RuleSeverity = 'low' | 'medium' | 'high' | 'critical';

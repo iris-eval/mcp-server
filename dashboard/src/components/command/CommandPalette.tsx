@@ -1,6 +1,10 @@
 /*
  * CommandPalette — ⌘K (Cmd+K on macOS, Ctrl+K elsewhere) palette.
  *
+ * Searches BOTH the command registry and the user's data (rules, traces,
+ * recent evals — via useCommandSearch). In Linear and Stripe the palette
+ * IS search; commands alone made ours a fancy nav menu.
+ *
  * Opens via:
  *   - The ⌘K shortcut (handled in CommandPaletteProvider's global listener)
  *   - Clicking the trigger in Header
@@ -20,6 +24,9 @@
  *   - aria-activedescendant tracks selection
  *   - Each item has role="option" with stable id
  *   - Focus restored to trigger on close
+ *
+ * Static styling lives in utilities.css (.cmdk block). No entrance
+ * animation by design — high-frequency surfaces open instantly.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -32,126 +39,24 @@ import {
   type Command,
   type CommandSection,
 } from './commands';
+import { useCommandSearch, type DataMatch } from './useCommandSearch';
 
-const SECTION_ORDER: CommandSection[] = ['Navigate', 'Filter', 'Action', 'Help'];
+/* Data sections sit right under Navigate: when the user types, their own
+ * rules/traces/evals are usually the thing they're hunting. */
+const SECTION_ORDER: CommandSection[] = [
+  'Navigate',
+  'Rules',
+  'Traces',
+  'Evals',
+  'Filter',
+  'Action',
+  'Help',
+];
 
-const styles = {
-  backdrop: {
-    position: 'fixed',
-    inset: 0,
-    background: 'oklch(0% 0 0 / 0.55)',
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    paddingTop: '15vh',
-    zIndex: 110,
-  } as const,
-  panel: {
-    width: 'min(640px, calc(100% - 32px))',
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius-lg)',
-    boxShadow: 'var(--shadow-lg)',
-    display: 'flex',
-    flexDirection: 'column',
-    maxHeight: '70vh',
-    overflow: 'hidden',
-  } as const,
-  inputWrap: {
-    padding: 'var(--space-3) var(--space-4)',
-    borderBottom: '1px solid var(--border-color)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-  } as const,
-  prompt: {
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-muted)',
-    fontSize: 'var(--font-size-sm)',
-  } as const,
-  input: {
-    flex: 1,
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--text-primary)',
-    fontSize: 'var(--font-size-base)',
-    fontFamily: 'inherit',
-    outline: 'none',
-  } as const,
-  hint: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-muted)',
-  } as const,
-  list: {
-    overflow: 'auto',
-    flex: 1,
-    padding: 'var(--space-2)',
-  } as const,
-  sectionTitle: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-muted)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    padding: 'var(--space-2) var(--space-3)',
-  } as const,
-  item: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 'var(--space-2) var(--space-3)',
-    borderRadius: 'var(--border-radius-sm)',
-    cursor: 'pointer',
-    color: 'var(--text-secondary)',
-  } as const,
-  itemActive: {
-    background: 'var(--bg-hover)',
-    color: 'var(--text-primary)',
-  } as const,
-  itemBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-    minWidth: 0,
-  } as const,
-  itemTitle: {
-    fontSize: 'var(--font-size-sm)',
-    fontWeight: 500,
-  } as const,
-  itemSubtitle: {
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-mono)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  } as const,
-  shortcut: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    background: 'var(--bg-tertiary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius-sm)',
-    padding: '2px var(--space-2)',
-    color: 'var(--text-muted)',
-  } as const,
-  empty: {
-    padding: 'var(--space-6)',
-    textAlign: 'center',
-    color: 'var(--text-muted)',
-    fontSize: 'var(--font-size-sm)',
-  } as const,
-  footer: {
-    display: 'flex',
-    gap: 'var(--space-3)',
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-mono)',
-    padding: 'var(--space-2) var(--space-4)',
-    borderTop: '1px solid var(--border-color)',
-    background: 'var(--bg-tertiary)',
-  } as const,
+const DATA_SECTION: Record<DataMatch['kind'], CommandSection> = {
+  rule: 'Rules',
+  trace: 'Traces',
+  eval: 'Evals',
 };
 
 interface Props {
@@ -174,6 +79,22 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
     [navigate, setTheme, toggleTheme, onOpenShortcuts, onOpenTour],
   );
 
+  const { matches: dataMatches, searching } = useCommandSearch(open, query);
+
+  /* Data matches arrive pre-filtered + pre-ranked by useCommandSearch;
+   * wrap them as commands that navigate to the matched resource. */
+  const dataCommands = useMemo<Command[]>(
+    () =>
+      dataMatches.map((m) => ({
+        id: m.id,
+        title: m.title,
+        subtitle: m.subtitle,
+        section: DATA_SECTION[m.kind],
+        run: () => navigate(m.to),
+      })),
+    [dataMatches, navigate],
+  );
+
   const filtered = useMemo(() => {
     const recents = new Set(readRecentCommands());
     const scored = allCommands
@@ -189,8 +110,8 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
       return a.cmd.title.localeCompare(b.cmd.title);
     });
 
-    return scored.map((s) => s.cmd);
-  }, [allCommands, query]);
+    return [...scored.map((s) => s.cmd), ...dataCommands];
+  }, [allCommands, dataCommands, query]);
 
   // Group filtered commands by section while preserving the global ranked order
   // within each section so recents/scores still bubble up.
@@ -269,7 +190,7 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
 
   return (
     <div
-      style={styles.backdrop}
+      className="iris-backdrop cmdk-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -277,13 +198,13 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
       aria-modal="true"
       aria-label="Command palette"
     >
-      <div style={styles.panel}>
-        <div style={styles.inputWrap}>
-          <span style={styles.prompt}>›</span>
+      <div className="iris-modal cmdk__panel">
+        <div className="cmdk__input-wrap">
+          <span className="cmdk__prompt">›</span>
           <input
             ref={inputRef}
-            style={styles.input}
-            placeholder="Type a command or search…"
+            className="cmdk__input"
+            placeholder="Search your rules, traces, evals — or type a command…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -296,32 +217,27 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
               flatList[activeIndex] ? `cmd-${flatList[activeIndex].id}` : undefined
             }
           />
-          <span style={styles.hint}>esc</span>
+          <span className="iris-kbd">esc</span>
         </div>
 
-        <div style={styles.list} id="command-palette-list" role="listbox">
+        <div className="cmdk__list" id="command-palette-list" role="listbox">
           {flatList.length === 0 && (
-            <div style={styles.empty}>
-              No commands match "{query}".{' '}
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--accent-primary)',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  fontSize: 'inherit',
-                }}
-              >
-                Clear
-              </button>
+            <div className="cmdk__empty">
+              {searching ? (
+                <>Searching your data…</>
+              ) : (
+                <>
+                  Nothing matches "{query}".{' '}
+                  <button type="button" onClick={() => setQuery('')} className="cmdk__empty-clear">
+                    Clear
+                  </button>
+                </>
+              )}
             </div>
           )}
           {grouped.map(({ section, items }) => (
             <div key={section}>
-              <div style={styles.sectionTitle}>{section}</div>
+              <div className="cmdk__section-title">{section}</div>
               {items.map((cmd) => {
                 const isActive = flatList[activeIndex]?.id === cmd.id;
                 return (
@@ -332,15 +248,15 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
                     aria-selected={isActive}
                     onMouseMove={() => setActiveIndex(flatList.indexOf(cmd))}
                     onClick={() => runCommand(cmd)}
-                    style={{ ...styles.item, ...(isActive ? styles.itemActive : {}) }}
+                    className="cmdk__item"
                   >
-                    <div style={styles.itemBody}>
-                      <span style={styles.itemTitle}>{cmd.title}</span>
+                    <div className="cmdk__item-body">
+                      <span className="cmdk__item-title">{cmd.title}</span>
                       {cmd.subtitle && (
-                        <span style={styles.itemSubtitle}>{cmd.subtitle}</span>
+                        <span className="cmdk__item-subtitle">{cmd.subtitle}</span>
                       )}
                     </div>
-                    {cmd.shortcut && <span style={styles.shortcut}>{cmd.shortcut}</span>}
+                    {cmd.shortcut && <span className="iris-kbd">{cmd.shortcut}</span>}
                   </div>
                 );
               })}
@@ -348,11 +264,13 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
           ))}
         </div>
 
-        <div style={styles.footer}>
+        <div className="cmdk__footer">
           <span>↑↓ navigate</span>
           <span>↵ run</span>
           <span>esc close</span>
-          <span style={{ marginLeft: 'auto' }}>{flatList.length} commands</span>
+          <span className="cmdk__footer-count">
+            {searching ? 'searching data…' : `${flatList.length} results`}
+          </span>
         </div>
       </div>
     </div>

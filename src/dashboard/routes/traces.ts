@@ -1,9 +1,122 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
+import type { Trace } from '../../types/trace.js';
+import type { EvalEngine } from '../../eval/engine.js';
 import { requireTenant } from '../../middleware/tenant.js';
-import { traceQuerySchema } from '../validation.js';
+import { generateTraceId, generateSpanId } from '../../utils/ids.js';
+import { bestEffortExport } from '../../otel/lazy.js';
+import { traceQuerySchema, ingestTraceSchema } from '../validation.js';
 
-export function registerTraceRoutes(router: Router, storage: IStorageAdapter): void {
+export interface TraceRouteOptions {
+  /**
+   * Live engine for the `evaluate: true` opt-in on POST /traces. When
+   * absent (an embedder that wired storage but no engine), an evaluate
+   * request is refused with 501 BEFORE the trace is stored — silently
+   * storing without the requested eval would be a skipped gate dressed
+   * as a success.
+   */
+  evalEngine?: EvalEngine;
+}
+
+export function registerTraceRoutes(
+  router: Router,
+  storage: IStorageAdapter,
+  options?: TraceRouteOptions,
+): void {
+  /*
+   * Deterministic capture over HTTP. MCP tool calls are model-
+   * discretionary — a trace lands only if the model chooses to call
+   * log_trace — so builders get a path that doesn't depend on the model:
+   * POST the same body the log_trace tool accepts (ingestTraceSchema IS
+   * that schema) and the row is stored unconditionally. Sits behind the
+   * full middleware stack: loopback bind + DNS-rebinding guard + auth +
+   * tenant resolution + the shared API rate limiter.
+   */
+  router.post('/traces', async (req, res) => {
+    try {
+      const tenantId = requireTenant(req);
+      const body = ingestTraceSchema.parse(req.body);
+
+      if (body.evaluate && !options?.evalEngine) {
+        res.status(501).json({
+          error: 'Evaluation is not available on this server — trace was NOT stored. Retry without "evaluate", or start the dashboard via iris-mcp so the eval engine is wired.',
+        });
+        return;
+      }
+
+      // Server-minted, exactly like log_trace — a client-supplied
+      // trace_id was already stripped by the schema.
+      const traceId = generateTraceId();
+      const timestamp = body.timestamp ?? new Date().toISOString();
+
+      const trace: Trace = {
+        trace_id: traceId,
+        agent_name: body.agent_name,
+        framework: body.framework,
+        input: body.input,
+        output: body.output,
+        tool_calls: body.tool_calls,
+        latency_ms: body.latency_ms,
+        token_usage: body.token_usage,
+        cost_usd: body.cost_usd,
+        metadata: body.metadata as Record<string, unknown> | undefined,
+        timestamp,
+        spans: body.spans?.map((s) => ({
+          ...s,
+          span_id: s.span_id ?? generateSpanId(),
+          trace_id: traceId,
+        })),
+      };
+
+      await storage.insertTrace(tenantId, trace);
+
+      // Same best-effort OTel fan-out as log_trace: switching capture
+      // paths must not silently drop the operator's collector feed.
+      bestEffortExport(trace, (err) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[iris.otel] ${err.message}`);
+      });
+
+      if (!body.evaluate || !options?.evalEngine) {
+        res.status(201).json({ trace_id: traceId, status: 'stored' });
+        return;
+      }
+
+      // Deterministic engine, same context evaluate_output builds. The
+      // superRefine on ingestTraceSchema guarantees output is present.
+      const evaluation = options.evalEngine.evaluate(body.eval_type, {
+        output: body.output as string,
+        input: body.input,
+        costUsd: body.cost_usd,
+        tokenUsage: body.token_usage,
+      });
+      evaluation.trace_id = traceId;
+      await storage.insertEvalResult(tenantId, evaluation);
+
+      res.status(201).json({
+        trace_id: traceId,
+        status: 'stored',
+        evaluation: {
+          id: evaluation.id,
+          eval_type: evaluation.eval_type,
+          score: evaluation.score,
+          passed: evaluation.passed,
+          rule_results: evaluation.rule_results,
+          suggestions: evaluation.suggestions,
+          rules_evaluated: evaluation.rules_evaluated,
+          rules_skipped: evaluation.rules_skipped,
+          insufficient_data: evaluation.insufficient_data,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid trace payload', details: (err as unknown as { issues: unknown }).issues });
+        return;
+      }
+      throw err;
+    }
+  });
+
   router.get('/traces', async (req, res) => {
     try {
       const tenantId = requireTenant(req);

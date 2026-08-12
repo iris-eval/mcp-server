@@ -3,7 +3,8 @@ import type { Server } from 'node:http';
 import helmet from 'helmet';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { irisHome } from '../utils/iris-home.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { IrisConfig } from '../types/config.js';
 import type { Logger } from '../utils/logger.js';
@@ -20,6 +21,7 @@ import { registerFilterRoutes } from './routes/filters.js';
 import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerMomentRoutes } from './routes/moments.js';
+import { registerFailureRoutes } from './routes/failures.js';
 import { registerRuleRoutes } from './routes/rules.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
@@ -98,13 +100,14 @@ export function createDashboardServer(
   // API routes with rate limiting
   const router = express.Router();
   router.use(createApiRateLimiter(config));
-  registerTraceRoutes(router, storage);
+  registerTraceRoutes(router, storage, { evalEngine: options?.evalEngine });
   registerSummaryRoutes(router, storage);
   registerEvaluationRoutes(router, storage);
   registerEvalStatsRoutes(router, storage);
   registerFilterRoutes(router, storage);
   registerHealthRoutes(router, storage, config.server.version);
   registerMomentRoutes(router, storage);
+  registerFailureRoutes(router, storage);
   if (options?.customRuleStore && options?.evalEngine) {
     registerRuleRoutes(router, storage, {
       customRuleStore: options.customRuleStore,
@@ -173,6 +176,33 @@ export function createDashboardServer(
         // allowlist from it rather than from a configured 0.
         const addr = server.address();
         if (typeof addr === 'object' && addr) boundPort = addr.port;
+
+        /*
+         * Port-discovery handshake for capture clients (the
+         * @iris-eval/capture design pins this contract): write the port
+         * actually bound to ${IRIS_HOME}/runtime.json so an SDK can find
+         * the ingest endpoint without configuration. Best-effort — a
+         * failed write must never take the dashboard down. The file may
+         * go stale after an unclean exit; clients are expected to verify
+         * with GET /api/v1/health before trusting it.
+         */
+        try {
+          mkdirSync(irisHome(), { recursive: true });
+          writeFileSync(
+            join(irisHome(), 'runtime.json'),
+            JSON.stringify(
+              {
+                dashboardPort: boundPort ?? config.dashboard.port,
+                pid: process.pid,
+                startedAt: new Date().toISOString(),
+              },
+              null,
+              2,
+            ),
+          );
+        } catch (err) {
+          logger.warn(`Could not write runtime.json: ${(err as Error).message}`);
+        }
 
         const shown = isLoopbackHost(config.dashboard.host) ? 'localhost' : config.dashboard.host;
         logger.info(`Dashboard available at http://${shown}:${boundPort ?? config.dashboard.port}`);

@@ -4,6 +4,10 @@
  * Lightweight listing: shows every rule deployed via the composer, with
  * source moment provenance, severity, and a delete action. Read-only
  * editing of existing rules is deferred to v0.4.1 (full editor surface).
+ *
+ * Deletion confirms through ConfirmDialog (in-app modal) — the previous
+ * window.confirm()/window.alert() pair was the loudest side-project tell
+ * in the app, and a native alert can't show the failed request inline.
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -12,6 +16,7 @@ import { useCustomRules } from '../../api/hooks';
 import { api } from '../../api/client';
 import type { DeployedCustomRule, RuleSeverity } from '../../api/types';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { Tooltip } from '../shared/Tooltip';
 import { TT } from '../shared/tooltipText';
 import { formatTimeAgo } from '../../utils/formatters';
@@ -25,143 +30,48 @@ const SEVERITY_TOOLTIP: Record<RuleSeverity, string> = {
   critical: TT.ruleSeverityCritical,
 };
 
-const styles = {
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-6)',
-  } as const,
-  header: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-1)',
-  } as const,
-  title: {
-    fontSize: 'var(--font-size-2xl)',
-    fontWeight: 700,
-    margin: 0,
-    color: 'var(--text-primary)',
-  } as const,
-  subtitle: {
-    fontSize: 'var(--font-size-sm)',
-    color: 'var(--text-muted)',
-    margin: 0,
-    maxWidth: '720px',
-  } as const,
-  empty: {
-    background: 'var(--bg-secondary)',
-    border: '1px dashed var(--border-color)',
-    borderRadius: 'var(--border-radius-lg)',
-    padding: 'var(--space-12)',
-    textAlign: 'center',
-    color: 'var(--text-muted)',
-  } as const,
-  emptyTitle: {
-    fontSize: 'var(--font-size-lg)',
-    fontWeight: 600,
-    color: 'var(--text-primary)',
-    margin: '0 0 var(--space-2)',
-  } as const,
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-3)',
-  } as const,
-  card: {
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--border-radius-lg)',
-    padding: 'var(--space-4)',
-    display: 'grid',
-    gridTemplateColumns: '1fr auto',
-    gap: 'var(--space-3)',
-    alignItems: 'start',
-  } as const,
-  cardBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-    minWidth: 0,
-  } as const,
-  nameRow: {
-    display: 'flex',
-    gap: 'var(--space-2)',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-  } as const,
-  name: {
-    fontSize: 'var(--font-size-base)',
-    fontWeight: 600,
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-primary)',
-  } as const,
-  description: {
-    fontSize: 'var(--font-size-sm)',
-    color: 'var(--text-secondary)',
-    margin: 0,
-  } as const,
-  metaRow: {
-    display: 'flex',
-    gap: 'var(--space-3)',
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-mono)',
-    flexWrap: 'wrap',
-  } as const,
-  badge: {
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    padding: '1px 6px',
-    borderRadius: 'var(--border-radius-sm)',
-    background: 'var(--bg-tertiary)',
-    color: 'var(--text-secondary)',
-  } as const,
-  severityBadge: {
-    low: { background: 'var(--bg-tertiary)', color: 'var(--text-muted)' },
-    medium: { background: 'oklch(28% 0.10 240 / 0.20)', color: 'var(--accent-tool)' },
-    high: { background: 'oklch(28% 0.10 80 / 0.20)', color: 'var(--accent-warning)' },
-    critical: { background: 'oklch(28% 0.10 25 / 0.20)', color: 'var(--accent-error)' },
-  } as const,
-  deleteBtn: {
-    appearance: 'none',
-    background: 'transparent',
-    border: '1px solid var(--border-color)',
-    color: 'var(--accent-error)',
-    borderRadius: 'var(--border-radius-sm)',
-    padding: 'var(--space-1) var(--space-3)',
-    cursor: 'pointer',
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'inherit',
-  } as const,
-  sourceLink: {
-    color: 'var(--accent-primary)',
-    fontSize: 'var(--font-size-xs)',
-    fontFamily: 'var(--font-mono)',
-    textDecoration: 'underline',
-  } as const,
+/* Static styling lives in utilities.css (.rule-card block). Severity
+ * badge colors stay inline — they're chosen from data. */
+const SEVERITY_BADGE_STYLE: Record<RuleSeverity, { background: string; color: string }> = {
+  low: { background: 'var(--bg-surface)', color: 'var(--text-muted)' },
+  medium: { background: 'oklch(28% 0.10 240 / 0.20)', color: 'var(--eval-tool)' },
+  high: { background: 'oklch(28% 0.10 80 / 0.20)', color: 'var(--eval-warn)' },
+  critical: { background: 'oklch(28% 0.10 25 / 0.20)', color: 'var(--eval-fail)' },
 };
 
 export function RulesPage() {
   const { data, loading, error, refetch } = useCustomRules();
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DeployedCustomRule | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const onDelete = async (rule: DeployedCustomRule) => {
-    if (!window.confirm(`Delete rule "${rule.name}"? It will stop firing on subsequent iris-mcp restart.`)) return;
-    setDeleting(rule.id);
+  const closeDeleteDialog = () => {
+    if (deleting) return;
+    setPendingDelete(null);
+    setDeleteError(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await api.deleteCustomRule(rule.id);
+      await api.deleteCustomRule(pendingDelete.id);
+      setPendingDelete(null);
       refetch();
     } catch (err) {
-      window.alert(`Delete failed: ${err instanceof Error ? err.message : err}`);
+      // Keep the dialog open with the failure inline so the user can
+      // retry or bail — the old window.alert() dead-ended here.
+      setDeleteError(`Delete failed: ${err instanceof Error ? err.message : err}`);
     } finally {
-      setDeleting(null);
+      setDeleting(false);
     }
   };
 
   if (loading && !data) return <LoadingSpinner />;
 
   return (
-    <div style={styles.page}>
+    <div className="iris-stack iris-stack--lg">
       <PageHeader
         subtitle={
           <>
@@ -201,7 +111,7 @@ export function RulesPage() {
             <>
               Workflow inversion: rules are born from observed Decision Moments, not authored
               from scratch. Open any{' '}
-              <Link to="/moments" style={{ color: 'var(--text-accent)', textDecoration: 'underline' }}>
+              <Link to="/moments" style={{ textDecoration: 'underline' }}>
                 Decision Moment
               </Link>
               , click <strong style={{ color: 'var(--text-primary)' }}>Make this a rule</strong>,
@@ -209,21 +119,7 @@ export function RulesPage() {
             </>
           }
           cta={
-            <Link
-              to="/moments"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                background: 'var(--iris-600)',
-                color: 'white',
-                padding: 'var(--space-2) var(--space-4)',
-                borderRadius: 'var(--radius-sm)',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: 'var(--text-body-sm)',
-              }}
-            >
+            <Link to="/moments" className="iris-btn iris-btn--primary">
               Open Decision Moments →
             </Link>
           }
@@ -231,31 +127,41 @@ export function RulesPage() {
       )}
 
       {data && data.length > 0 && (
-        <div style={styles.list}>
+        <div className="iris-stack">
           {data.map((rule) => (
-            <div key={rule.id} style={styles.card}>
-              <div style={styles.cardBody}>
-                <div style={styles.nameRow}>
-                  <span style={styles.name}>{rule.name}</span>
+            <div key={rule.id} className="iris-card iris-card--hover rule-card">
+              <div className="rule-card__body">
+                <div className="rule-card__name-row">
+                  <span className="rule-card__name">{rule.name}</span>
                   <Tooltip content={SEVERITY_TOOLTIP[rule.severity]}>
-                    <span style={{ ...styles.badge, ...styles.severityBadge[rule.severity] }} tabIndex={0}>
+                    <span
+                      className="rule-card__badge"
+                      style={SEVERITY_BADGE_STYLE[rule.severity]}
+                      tabIndex={0}
+                    >
                       {rule.severity}
                     </span>
                   </Tooltip>
                   <Tooltip content={`Fires on every evaluate_output call with eval_type='${rule.evalType}'.`}>
-                    <span style={styles.badge} tabIndex={0}>{rule.evalType}</span>
+                    <span className="rule-card__badge" tabIndex={0}>{rule.evalType}</span>
                   </Tooltip>
                   <Tooltip content={`Underlying check: ${rule.definition.type.replace(/_/g, ' ')}.`}>
-                    <span style={styles.badge} tabIndex={0}>{rule.definition.type}</span>
+                    <span className="rule-card__badge" tabIndex={0}>{rule.definition.type}</span>
                   </Tooltip>
                   {!rule.enabled && (
                     <Tooltip content={TT.ruleEnabled}>
-                      <span style={{ ...styles.badge, color: 'var(--accent-warning)' }} tabIndex={0}>disabled</span>
+                      <span
+                        className="rule-card__badge"
+                        style={{ color: 'var(--eval-warn)' }}
+                        tabIndex={0}
+                      >
+                        disabled
+                      </span>
                     </Tooltip>
                   )}
                 </div>
-                {rule.description && <p style={styles.description}>{rule.description}</p>}
-                <div style={styles.metaRow}>
+                {rule.description && <p className="rule-card__description">{rule.description}</p>}
+                <div className="rule-card__meta">
                   <span>id {rule.id}</span>
                   <Tooltip content={TT.ruleVersion}>
                     <span tabIndex={0}>v{rule.version}</span>
@@ -263,7 +169,7 @@ export function RulesPage() {
                   <span>created {formatTimeAgo(rule.createdAt)}</span>
                   {rule.sourceMomentId && (
                     <Tooltip content={TT.sourceMoment}>
-                      <Link to={`/moments/${rule.sourceMomentId}`} style={styles.sourceLink}>
+                      <Link to={`/moments/${rule.sourceMomentId}`} className="rule-card__source-link">
                         from moment {rule.sourceMomentId.slice(0, 12)}…
                       </Link>
                     </Tooltip>
@@ -272,16 +178,27 @@ export function RulesPage() {
               </div>
               <button
                 type="button"
-                onClick={() => onDelete(rule)}
-                disabled={deleting === rule.id}
-                style={styles.deleteBtn}
+                onClick={() => setPendingDelete(rule)}
+                className="iris-btn iris-btn--danger iris-btn--sm"
               >
-                {deleting === rule.id ? 'Deleting…' : 'Delete'}
+                Delete
               </button>
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete rule "${pendingDelete?.name ?? ''}"?`}
+        body="It will stop firing on subsequent iris-mcp restart. This cannot be undone."
+        confirmLabel="Delete rule"
+        danger
+        busy={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={closeDeleteDialog}
+      />
     </div>
   );
 }

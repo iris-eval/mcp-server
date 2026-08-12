@@ -1,0 +1,881 @@
+/*
+ * Iris Dashboard — shared utility + component classes (elite-feel pass).
+ *
+ * Why this file exists: almost every surface was styled with inline
+ * style={{}}, and inline styles cannot express :hover / :focus-visible /
+ * :active. The absence of those states is most of what made the app feel
+ * flat. This stylesheet gives every interactive element its microstates
+ * (default, hover, focus-visible, active, disabled) from ONE place, on
+ * top of the existing tokens.css palette — polish, not a rebrand.
+ *
+ * Structure:
+ *   1. PRIMITIVES — buttons, chips, kbd, cards, stacks, grids, numerics.
+ *      Reusable anywhere; prefix `iris-`.
+ *   2. COMPONENT RECIPES — layout classes owned by one component each
+ *      (moment-card, view-tabs, cmdk, …). Named after their owner so
+ *      the path from class to component is obvious.
+ *
+ * Rules of the road:
+ *   - Colors/sizes come from tokens.css vars. No new hex values except
+ *     where a token has no darker step (noted inline).
+ *   - Data-driven colors (significance, verdict, accent) stay inline in
+ *     the component — CSS can't know them. Everything static lives here.
+ *   - New components use these classes; remaining inline-style files are
+ *     tracked in dashboard/MIGRATION-NOTES.md.
+ */
+
+/* ════════════════════════════════════════════════════════════════════
+ * 1. PRIMITIVES
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* ── Buttons ─────────────────────────────────────────────────────────
+ * Base + variants. Six microstates: default, hover, focus-visible
+ * (global ring in globals.css), active (1px press), disabled, busy
+ * (aria-busy — callers set it while a request is in flight).
+ */
+.iris-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1_5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: var(--leading-body);
+  padding: var(--space-1_5) var(--space-3);
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  transition:
+    background-color var(--transition-instant),
+    border-color var(--transition-instant),
+    color var(--transition-instant),
+    transform var(--transition-instant);
+}
+
+.iris-btn:disabled,
+.iris-btn[aria-busy='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.iris-btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+/* Ghost — quiet bordered button for secondary actions. */
+.iris-btn--ghost {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.iris-btn--ghost:not(:disabled):hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+/* Primary — the one accented action on a surface. */
+.iris-btn--primary {
+  background: var(--iris-600);
+  border-color: var(--iris-600);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.iris-btn--primary:not(:disabled):hover {
+  background: var(--iris-500);
+  border-color: var(--iris-500);
+}
+
+/* Danger (outline) — destructive affordance at rest. */
+.iris-btn--danger {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--eval-fail);
+}
+
+.iris-btn--danger:not(:disabled):hover {
+  border-color: var(--eval-fail);
+  background: color-mix(in srgb, var(--eval-fail) 10%, transparent);
+}
+
+/* Danger (solid) — the confirm button inside a destructive dialog only. */
+.iris-btn--danger-solid {
+  background: var(--eval-fail);
+  border-color: var(--eval-fail);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.iris-btn--danger-solid:not(:disabled):hover {
+  /* One step darker than --eval-fail (#ef4444); no darker token exists. */
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Size + face modifiers. */
+.iris-btn--sm {
+  padding: var(--space-0_5) var(--space-2_5);
+  font-size: var(--text-caption);
+}
+
+.iris-btn--mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Keyboard hint chip (shortcut labels, esc hints) ───────────────── */
+.iris-kbd {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xs);
+  padding: 2px var(--space-2);
+  color: var(--text-muted);
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────
+ * Base card surface. Add --hover on cards that are (or contain) an
+ * interactive target so the pointer gets feedback before the click.
+ */
+.iris-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.iris-card--hover:hover,
+.iris-card--hover:focus-within {
+  border-color: var(--border-strong);
+}
+
+/* ── Stacks + grids ─────────────────────────────────────────────────
+ * The two layout rhythms every view uses. Grids reflow via auto-fit
+ * instead of hard repeat(N, 1fr) so narrow windows get fewer columns
+ * rather than crushed ones.
+ */
+.iris-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.iris-stack--lg {
+  gap: var(--space-6);
+}
+
+.iris-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.iris-grid-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.iris-grid-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-3);
+}
+
+.iris-grid-gauge {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 1.8fr);
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+@media (max-width: 960px) {
+  .iris-grid-gauge {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Numerics ───────────────────────────────────────────────────────
+ * tabular-nums keeps digits on a fixed grid so columns of numbers
+ * align; right-align in tables/metas so magnitudes compare visually.
+ */
+.iris-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.iris-num--right {
+  text-align: right;
+}
+
+/* ── Error panel (inline fetch failures with a retry action) ─────── */
+.iris-error-box {
+  background: color-mix(in srgb, var(--eval-fail) 12%, transparent);
+  border: 1px solid var(--eval-fail);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  color: var(--eval-fail);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── Modal backdrop + panel (command palette, confirm dialog) ─────── */
+.iris-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0% 0 0 / 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 110;
+}
+
+.iris-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * 2. COMPONENT RECIPES
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* ── MomentCard (moments/MomentCard.tsx) ────────────────────────────
+ * List row for a Decision Moment / ranked failure. The significance
+ * color arrives from data as --moment-sig-color (inline custom prop).
+ * Hover/focus-within lifts the row — the single highest-leverage state
+ * in the app since this is the landing view's primary element.
+ */
+.moment-card {
+  display: grid;
+  grid-template-columns: 24px 48px 1fr auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4);
+  color: var(--text-primary);
+  border-left: 3px solid var(--moment-sig-color, transparent);
+}
+
+.moment-card:hover,
+.moment-card:focus-within {
+  background: var(--bg-card-hover);
+  border-left-color: var(--moment-sig-color, transparent);
+}
+
+.moment-card--archived {
+  opacity: 0.5;
+}
+
+.moment-card--selected {
+  background: var(--bg-card-hover);
+  border-color: var(--iris-500);
+  border-left-color: var(--moment-sig-color, transparent);
+}
+
+.moment-card__checkbox-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--space-1);
+}
+
+.moment-card__checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--iris-500);
+}
+
+.moment-card__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.moment-card__glyph {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-body);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--bg-base);
+}
+
+.moment-card__body-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The row link is the click target; keep link hover from recoloring it
+ * (globals.css a:hover) — the row background is the hover signal. */
+.moment-card__body-link:hover {
+  color: inherit;
+}
+
+.moment-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.moment-card__agent {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.moment-card__sig {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moment-card__verdict {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.moment-card__tag {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+}
+
+.moment-card__tag--new {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-accent);
+  background: var(--glow-primary);
+  border-color: var(--iris-500);
+}
+
+.moment-card__preview {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moment-card__chips {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.moment-card__chip {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  padding: 1px var(--space-1_5);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--eval-fail) 12%, transparent);
+  color: var(--eval-fail);
+}
+
+.moment-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+/* ── ViewTabs (dashboard/ViewTabs.tsx) ──────────────────────────────
+ * Underline tab strip. Active state keys off aria-selected so the
+ * markup's accessibility state IS the visual state — they can't drift.
+ */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-5);
+}
+
+.view-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.view-tabs__tab:hover {
+  color: var(--text-primary);
+}
+
+.view-tabs__tab[aria-selected='true'] {
+  color: var(--text-primary);
+  border-bottom-color: var(--iris-500);
+}
+
+.view-tabs__hint {
+  font-size: var(--text-caption-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+  font-family: var(--font-mono);
+  padding-left: var(--space-3);
+}
+
+/* ── CommandPalette (command/CommandPalette.tsx) ────────────────────
+ * No entrance animation by design — high-frequency surfaces open
+ * instantly (the palette is muscle memory, not a moment).
+ */
+.cmdk-backdrop {
+  padding-top: 15vh;
+}
+
+.cmdk__panel {
+  width: min(640px, calc(100% - 32px));
+  max-height: 70vh;
+}
+
+.cmdk__input-wrap {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cmdk__prompt {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  font-size: var(--text-body-sm);
+}
+
+.cmdk__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--text-body);
+  font-family: inherit;
+  outline: none;
+}
+
+.cmdk__list {
+  overflow: auto;
+  flex: 1;
+  padding: var(--space-2);
+}
+
+.cmdk__section-title {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-2) var(--space-3);
+}
+
+.cmdk__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+/* Selection follows aria-selected (keyboard) and hover (pointer) with
+ * the same treatment — one active look, two input methods. */
+.cmdk__item:hover,
+.cmdk__item[aria-selected='true'] {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.cmdk__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cmdk__item-title {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+}
+
+.cmdk__item-subtitle {
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk__empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-body-sm);
+}
+
+.cmdk__empty-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.cmdk__footer {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.cmdk__footer-count {
+  margin-left: auto;
+}
+
+/* ── ConfirmDialog (shared/ConfirmDialog.tsx) ─────────────────────── */
+.confirm-dialog__panel {
+  width: min(440px, calc(100% - 32px));
+  margin-top: 20vh;
+  padding: var(--space-5);
+  gap: var(--space-3);
+}
+
+.confirm-dialog__title {
+  font-family: var(--font-display);
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.confirm-dialog__body {
+  font-size: var(--text-body-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-body);
+  margin: 0;
+}
+
+.confirm-dialog__error {
+  font-size: var(--text-body-sm);
+  color: var(--eval-fail);
+  margin: 0;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* ── StatTile (dashboard/StatTile.tsx) ─────────────────────────────── */
+.stat-tile {
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 110px;
+}
+
+.stat-tile__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption-xs);
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.stat-tile__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.stat-tile__value {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: 700;
+  line-height: var(--leading-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-tile__delta {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.stat-tile__sub {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* ── SectionHeader (dashboard/SectionHeader.tsx) ───────────────────── */
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.section-header__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.section-header__title {
+  font-family: var(--font-display);
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.section-header__trailing {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.section-header__question {
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Detail pages (traces/TraceDetailPage.tsx, evals/EvalDetailCard.tsx) ── */
+.detail-back {
+  color: var(--text-muted);
+  font-size: var(--text-body-sm);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: fit-content;
+  transition: color var(--transition-instant);
+}
+
+.detail-back:hover {
+  color: var(--text-primary);
+}
+
+.detail-card {
+  padding: var(--space-5);
+}
+
+.detail-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  font-size: var(--text-body-sm);
+}
+
+.detail-card__label {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.detail-section__title {
+  font-family: var(--font-display);
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: var(--leading-heading);
+  margin: 0;
+}
+
+.eval-card {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.eval-card__badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.eval-card__rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.eval-card__rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-body-sm);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-base);
+  border-radius: var(--radius-xs);
+}
+
+.eval-card__rule-mark {
+  width: 16px;
+}
+
+.eval-card__rule-name {
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.eval-card__rule-message {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.eval-card__suggestions {
+  font-size: var(--text-body-sm);
+}
+
+.eval-card__suggestions-label {
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.eval-card__suggestions-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--text-secondary);
+}
+
+/* ── RulesPage (rules/RulesPage.tsx) ───────────────────────────────── */
+.rule-card {
+  padding: var(--space-4);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.rule-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.rule-card__name-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.rule-card__name {
+  font-size: var(--text-body);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.rule-card__description {
+  font-size: var(--text-body-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.rule-card__meta {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-wrap: wrap;
+}
+
+.rule-card__badge {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  padding: 1px var(--space-1_5);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+
+.rule-card__source-link {
+  color: var(--text-accent);
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  text-decoration: underline;
+}
