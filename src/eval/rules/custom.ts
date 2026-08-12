@@ -39,6 +39,30 @@ function safeRegexResult(definition: CustomRuleDefinition, message: string): Eva
   return configError(definition, message);
 }
 
+/**
+ * Converts a leading inline flag group like `(?i)` or `(?im)` into a real
+ * flags argument. Node's RegExp engine does not support inline flag groups,
+ * and a user pasting `(?i)foo` from a regex tutorial would otherwise hit
+ * "Invalid group" with no clear recovery.
+ *
+ * Exported so deploy-time validation (custom-rule-store) probes the SAME
+ * pattern+flags pair the evaluator will actually run — the store used to
+ * strip the inline group but not merge its flags, probing `(?i)…` under
+ * different flags than evaluation used.
+ */
+export function normalizeRegexSource(
+  patternStr: string,
+  flags: string,
+): { pattern: string; flags: string } {
+  const inlineFlagMatch = patternStr.match(/^\(\?([imsugy]+)\)/);
+  if (inlineFlagMatch) {
+    const inlineFlags = inlineFlagMatch[1];
+    flags = [...new Set((flags + inlineFlags).split(''))].join('');
+    patternStr = patternStr.slice(inlineFlagMatch[0].length);
+  }
+  return { pattern: patternStr, flags };
+}
+
 /*
  * Validates a user pattern and returns the normalized {pattern, flags} pair —
  * NOT a compiled RegExp, deliberately. The pattern is compiled here once for
@@ -53,19 +77,10 @@ function safeRegexResult(definition: CustomRuleDefinition, message: string): Eva
 function validateRegex(
   definition: CustomRuleDefinition,
 ): { pattern: string; flags: string } | EvalRuleResult {
-  let patternStr = definition.config.pattern as string;
-  let flags = (definition.config.flags as string) ?? '';
-
-  // Defensive UX: convert leading inline flag like `(?i)` or `(?im)` to a
-  // real flags arg. Node's RegExp engine does not support inline flag
-  // groups in older versions, and a user pasting `(?i)foo` from a regex
-  // tutorial would otherwise hit "Invalid group" with no clear recovery.
-  const inlineFlagMatch = patternStr.match(/^\(\?([imsugy]+)\)/);
-  if (inlineFlagMatch) {
-    const inlineFlags = inlineFlagMatch[1];
-    flags = [...new Set((flags + inlineFlags).split(''))].join('');
-    patternStr = patternStr.slice(inlineFlagMatch[0].length);
-  }
+  const { pattern: patternStr, flags } = normalizeRegexSource(
+    definition.config.pattern as string,
+    (definition.config.flags as string) ?? '',
+  );
 
   if (patternStr.length > MAX_PATTERN_LENGTH) {
     return safeRegexResult(definition, `Regex pattern too long (${patternStr.length} > ${MAX_PATTERN_LENGTH})`);
@@ -100,7 +115,8 @@ function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult 
   const message =
     `Regex evaluation terminated: pattern exceeded the ${REGEX_MATCH_BUDGET_MS}ms matching ` +
     `budget on this output (superlinear backtracking) and was killed in its sandbox worker. ` +
-    `The rule did not judge this output. Rewrite the pattern to avoid ambiguous repetition ` +
+    `The rule did NOT judge this output — a gate that must fail closed should treat ` +
+    `budgetExceeded skips as failures. Rewrite the pattern to avoid ambiguous repetition ` +
     `— e.g. bound quantifiers (\\s{0,8} not \\s*) and remove overlapping alternatives.`;
   return {
     ruleName: definition.name,
@@ -109,7 +125,82 @@ function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult 
     message,
     skipped: true,
     skipReason: message,
+    budgetExceeded: true,
   };
+}
+
+/**
+ * Per-evaluation cap on sandbox budget breaches. Each breach costs the
+ * request its budget PLUS a worker respawn (~190ms total measured), and the
+ * engine runs rules synchronously — so without a breaker, one request
+ * carrying N hostile regex rules stalls the server N × ~190ms (measured
+ * 9.3s at N=50). After this many breaches, remaining regex rules in the
+ * same evaluation skip WITHOUT running, bounding the whole request at
+ * roughly cap × 190ms regardless of rule count.
+ */
+const MAX_REGEX_BREACHES_PER_EVAL = 3;
+
+function circuitOpenResult(definition: CustomRuleDefinition): EvalRuleResult {
+  const message =
+    `Regex evaluation skipped: ${MAX_REGEX_BREACHES_PER_EVAL} earlier pattern(s) in this ` +
+    `evaluation already exhausted the ${REGEX_MATCH_BUDGET_MS}ms matching budget, so the ` +
+    `regex circuit breaker is open for the rest of this evaluation. The rule did NOT judge ` +
+    `this output — a gate that must fail closed should treat budgetExceeded skips as failures.`;
+  return {
+    ruleName: definition.name,
+    passed: false,
+    score: 0,
+    message,
+    skipped: true,
+    skipReason: message,
+    budgetExceeded: true,
+  };
+}
+
+/*
+ * A sandbox 'error' is NOT the author's fault and must not be reported as
+ * backtracking: it means the worker could not run the (pre-validated)
+ * pattern at all — in practice a worker that died between calls (postMessage
+ * to a terminated worker is a silent no-op). Accusing the pattern sends the
+ * author hunting a performance problem they do not have.
+ */
+function sandboxErrorResult(definition: CustomRuleDefinition): EvalRuleResult {
+  const message =
+    'Regex evaluation skipped: internal sandbox error (the matching worker restarted). ' +
+    'The rule did not judge this output; the pattern itself is fine — retry the evaluation.';
+  return {
+    ruleName: definition.name,
+    passed: false,
+    score: 0,
+    message,
+    skipped: true,
+    skipReason: message,
+  };
+}
+
+/**
+ * Executes a validated user pattern through the sandbox with the
+ * per-evaluation circuit breaker. Shared by regex_match and regex_no_match.
+ */
+function runSandboxed(
+  definition: CustomRuleDefinition,
+  pattern: string,
+  flags: string,
+  context: EvalContext,
+): { matched: boolean } | EvalRuleResult {
+  const budget = context.regexBudget;
+  if (budget && budget.breaches >= MAX_REGEX_BREACHES_PER_EVAL) {
+    return circuitOpenResult(definition);
+  }
+  const outcome = sandboxedRegexTest(pattern, flags, context.output);
+  if (outcome.kind === 'timeout') {
+    if (budget) budget.breaches += 1;
+    return budgetExceededResult(definition);
+  }
+  if (outcome.kind === 'error') {
+    return sandboxErrorResult(definition);
+  }
+  return { matched: outcome.matched };
 }
 
 /**
@@ -136,17 +227,17 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
         case 'regex_match': {
           const validated = validateRegex(definition);
           if ('ruleName' in validated) return validated;
-          const outcome = sandboxedRegexTest(validated.pattern, validated.flags, context.output);
-          if (outcome.kind !== 'match') return budgetExceededResult(definition);
-          const passed = outcome.matched;
+          const run = runSandboxed(definition, validated.pattern, validated.flags, context);
+          if ('ruleName' in run) return run;
+          const passed = run.matched;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? 'Regex pattern matched' : 'Regex pattern did not match' };
         }
         case 'regex_no_match': {
           const validated = validateRegex(definition);
           if ('ruleName' in validated) return validated;
-          const outcome = sandboxedRegexTest(validated.pattern, validated.flags, context.output);
-          if (outcome.kind !== 'match') return budgetExceededResult(definition);
-          const passed = !outcome.matched;
+          const run = runSandboxed(definition, validated.pattern, validated.flags, context);
+          if ('ruleName' in run) return run;
+          const passed = !run.matched;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? 'Forbidden pattern not found' : 'Forbidden pattern found in output' };
         }
         case 'min_length': {

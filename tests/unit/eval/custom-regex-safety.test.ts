@@ -115,6 +115,20 @@ describe('custom regex safety', () => {
       expect(result.message).toContain('matching budget');
     });
 
+    it('a budget skip carries budgetExceeded so consumers can fail closed', () => {
+      const rule = createCustomRule({
+        name: 'policy',
+        type: 'regex_no_match',
+        config: { pattern: '^(a|a)*$' }, // codeql-suppress js/redos
+      });
+      const result = rule.evaluate({ output: 'a'.repeat(40) + 'b' });
+      expect(result.skipped).toBe(true);
+      expect(result.budgetExceeded).toBe(true);
+      // The distinct flag is the whole point: an output CRAFTED to stall a
+      // policy pattern must be distinguishable from a missing-context skip.
+      expect(result.message).toContain('fail closed');
+    });
+
     it('a budget skip is NOT configInvalid — it depends on the input', () => {
       const rule = createCustomRule({
         name: 'hostile',

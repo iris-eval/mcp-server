@@ -431,7 +431,14 @@ a*a*a*a*a*b      — polynomial: no nesting at all
 .*.*.*.*=.*      — polynomial: slow only on long inputs with no '='
 ```
 
-These deploy (or arrive inline via `custom_rules`) — and at evaluation time their match runs in the sandbox worker. If the match exceeds the 100ms budget on a given output, the worker is killed and the rule reports **skipped** for that evaluation with the message `Regex evaluation terminated: pattern exceeded the 100ms matching budget…`. The server keeps serving; other rules in the same evaluation still run.
+These deploy (or arrive inline via `custom_rules`) — and at evaluation time their match runs in the sandbox worker. If the match exceeds the 100ms budget on a given output, the worker is killed and the rule reports **skipped** for that evaluation with `budgetExceeded: true` and the message `Regex evaluation terminated: pattern exceeded the 100ms matching budget…`. The server keeps serving; other rules in the same evaluation still run.
+
+**This is fail-open per rule, and you should know it.** A budget-killed rule did not judge the output — and an adversary who knows your pattern can CRAFT output that stalls it into skipping, letting the rest of the rules decide. That trade-off is deliberate: failing closed would let the same adversary force false violations on benign output, which is worse for an eval product. The `budgetExceeded` flag on the rule result exists precisely so a consumer that must fail closed can do so on its own terms: treat any `skipped && budgetExceeded` result as a failure in your gate.
+
+Two additional bounds keep a hostile output from stalling a request repeatedly:
+
+- **Per-evaluation circuit breaker**: after 3 budget breaches in one evaluation, remaining regex rules skip without running (also reported with `budgetExceeded: true`).
+- **Inline rule cap**: `evaluate_output` accepts at most 10 `custom_rules` per call — persistent rule sets belong in `deploy_rule`, where deploy-time validation probes each pattern.
 
 ### Examples of Safe Patterns
 
@@ -449,7 +456,7 @@ https?://[^\s]+                   — URL detection
 
 A **statically rejected** pattern (length, syntax, safe-regex2) makes the rule report `skipped: true` with `configInvalid` — the rule could not run at all, so it neither passes nor deflates the score, and the message names the exact problem. Deploy-time validation rejects these outright with a 400 before they are ever persisted.
 
-A **budget-exceeded** match reports `skipped: true` for that evaluation only (no `configInvalid` — the same pattern may be fine on the next output; the breach is a property of pattern × input). The skip reason appears in the evaluation's `suggestions`, telling the rule author to bound quantifiers (e.g. `\s{0,8}` rather than `\s*`) and remove overlapping alternatives.
+A **budget-exceeded** match reports `skipped: true` + `budgetExceeded: true` for that evaluation only (no `configInvalid` — the same pattern may be fine on the next output; the breach is a property of pattern × input). The rule's skip reason appears verbatim in the evaluation's `suggestions` (each skipped rule is listed with its own reason), telling the rule author to bound quantifiers (e.g. `\s{0,8}` rather than `\s*`) and remove overlapping alternatives.
 
 ---
 
