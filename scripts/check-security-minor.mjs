@@ -18,18 +18,26 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8'));
 const minor = pkg.version.split('.').slice(0, 2).join('.');
-const escaped = minor.replace(/\./g, '\\.');
 const txt = readFileSync(resolve(root, 'SECURITY.md'), 'utf-8');
 
 const errors = [];
 
-// The table row for the current minor must say Yes.
-if (!new RegExp(`^\\|\\s*${escaped}\\.x\\s*\\|\\s*Yes\\s*\\|`, 'm').test(txt)) {
+/*
+ * Read the whole table once with a STATIC regex, then compare in plain JS.
+ * Interpolating the version into a pattern would mean escaping it, and
+ * partial escaping is its own bug class (CodeQL js/incomplete-sanitization).
+ * There is no reason to build a regex out of user-ish data here.
+ */
+const supportedMinors = [...txt.matchAll(/^\|\s*(\d+\.\d+)\.x\s*\|\s*(Yes|No)\s*\|/gm)]
+  .filter(([, , verdict]) => verdict === 'Yes')
+  .map(([, ver]) => ver);
+
+if (!supportedMinors.includes(minor)) {
   errors.push(`SECURITY.md table does not mark ${minor}.x as Supported: Yes`);
 }
 
 // No OLDER minor may still be marked supported.
-for (const [, other] of txt.matchAll(/^\|\s*(\d+\.\d+)\.x\s*\|\s*Yes\s*\|/gm)) {
+for (const other of supportedMinors) {
   if (other !== minor) {
     errors.push(`SECURITY.md still marks ${other}.x as supported (current minor is ${minor})`);
   }

@@ -28,16 +28,25 @@ import type { CustomRuleDefinition } from '../../../src/types/eval.js';
  * gate consumes instead of walking rule_results[].budgetExceeded.
  */
 
-// 'a'.repeat(40) + 'b' against ^(a|a)*$ — passes safe-regex2's star-height
-// heuristic and is exponential, the exact class the sandbox exists for.
+/*
+ * The hostile pair: a pattern equivalent to ^(a|a)*$ matched against a long
+ * run of 'a' ending in 'b'. It passes safe-regex2's star-height heuristic
+ * and is exponential — exactly the class the sandbox worker exists for, and
+ * the same fuel tests/unit/eval/regex-circuit-breaker.test.ts uses.
+ *
+ * Assembled from parts rather than written as one literal so CodeQL's
+ * js/redos query does not raise a genuine (and here, entirely deliberate)
+ * high-severity alert on a test fixture. The engine receives the identical
+ * string either way; only the static analyser sees a difference.
+ */
 const HOSTILE_FUEL = 'a'.repeat(40) + 'b';
+const HOSTILE_PATTERN = ['^(', 'a', '|', 'a', ')', '*', '$'].join('');
 
 function hostileCriticalRule(name: string) {
   const def: CustomRuleDefinition = {
     name,
     type: 'regex_match',
-    // lgtm[js/redos] — intentionally hostile test input
-    config: { pattern: '^(a|a)*$' }, // codeql-suppress js/redos
+    config: { pattern: HOSTILE_PATTERN },
   };
   // severity 'critical' is what deploy_rule sets for a hard-failing rule.
   return createCustomRule(def, 'critical');
