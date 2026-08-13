@@ -25,6 +25,19 @@ import {
 } from './detect.js';
 import { installIris, uninstallIris } from './config-writer.js';
 
+/*
+ * The per-client docs link, in ONE place.
+ *
+ * It used to be a `/docs/clients` page on the marketing site, restated
+ * across three surfaces — package.json `homepage`, the README, and the last
+ * line of `--help` — and that page has never existed. A 404 was the final
+ * impression the installer left, printed at exactly the moment someone was
+ * stuck. It now points at the README section that does exist;
+ * tests/docs-link.test.ts holds all three surfaces to this constant and
+ * refuses the retired path.
+ */
+export const CLIENT_DOCS_URL = 'https://github.com/iris-eval/mcp-server#hook-up-your-own-agent';
+
 const SUPPORTED: SupportedClient[] = [
   'claude-code',
   'claude-desktop',
@@ -54,7 +67,7 @@ Examples:
   npx @iris-eval/init claude-code
   npx @iris-eval/init cursor --uninstall
 
-Per-client docs: https://iris-eval.com/docs/clients
+Per-client docs: ${CLIENT_DOCS_URL}
 `);
 }
 

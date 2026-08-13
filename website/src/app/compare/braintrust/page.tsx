@@ -93,7 +93,7 @@ const FEATURES = [
   { feature: "License", iris: "MIT (fully permissive)", braintrust: "Proprietary (proxy is MIT)", irisWin: true },
   { feature: "Pricing", iris: "Free & open-source", braintrust: "Free tier (1M spans) / Pro $249/mo / Enterprise custom", irisWin: true },
   { feature: "Tracing depth", iris: "MCP tool calls and agent traces", braintrust: "Full trace trees with token-level detail, visual timeline", braintrustWin: true },
-  { feature: "Enterprise features", iris: "Roadmap (v0.5)", braintrust: "SOC 2, SSO, hybrid deployment, dedicated support", braintrustWin: true, irisNeutral: true },
+  { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", braintrust: "SOC 2, SSO, hybrid deployment, dedicated support", braintrustWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [

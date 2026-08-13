@@ -17,7 +17,7 @@ describe('relevance rules', () => {
     });
   });
 
-  // no_hallucination_markers moved to the safety bundle (v0.4.7) —
+  // no_hallucination_markers moved to the safety bundle (v0.5.0) —
   // its tests live in tests/unit/eval/safety.test.ts.
 
   describe('topicConsistency', () => {

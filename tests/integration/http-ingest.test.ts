@@ -228,6 +228,7 @@ describe('POST /api/v1/traces — evaluate: true', () => {
       rule_results: EvalRuleResult[];
       rules_evaluated: number;
       insufficient_data: boolean;
+      critical_failures?: string[];
     };
     expect(evaluation.eval_type).toBe('safety');
     expect(evaluation.insufficient_data).toBe(false);
@@ -238,13 +239,43 @@ describe('POST /api/v1/traces — evaluate: true', () => {
     expect(pii).toBeDefined();
     expect(pii!.passed).toBe(false);
 
-    // The eval row landed in storage, linked to the trace.
+    /*
+     * The critical-rule veto, asserted on the HTTP capture path — not just
+     * the per-rule verdict.
+     *
+     * This test used to stop at `pii.passed === false`, which is the one
+     * assertion that cannot catch the bug the veto exists to fix. The whole
+     * point of the feature is that no_pii failing while the other safety
+     * rules pass leaves the WEIGHTED score above the 0.7 threshold — so
+     * before the veto this exact payload returned `passed: true` with a
+     * failing no_pii buried in rule_results, and every automated gate keys
+     * on `passed`. Asserting the score clears the threshold FIRST is what
+     * makes the `passed:false` assertion meaningful: it proves the verdict
+     * came from the veto rather than from a low average.
+     */
+    expect(evaluation.score).toBeGreaterThanOrEqual(0.7);
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.critical_failures).toContain('no_pii');
+
+    // The eval row landed in storage, linked to the trace — and the veto
+    // reason SURVIVED the round trip (it used to be response-only, so a
+    // stored vetoed eval was indistinguishable from a low-scoring one).
     const res = await fetch(`${base}/api/v1/traces/${json.trace_id as string}`);
-    const detail = (await res.json()) as { evals: Array<{ id: string; trace_id: string; eval_type: string }> };
+    const detail = (await res.json()) as {
+      evals: Array<{
+        id: string;
+        trace_id: string;
+        eval_type: string;
+        passed: boolean;
+        critical_failures?: string[];
+      }>;
+    };
     expect(detail.evals).toHaveLength(1);
     expect(detail.evals[0].id).toBe(evaluation.id);
     expect(detail.evals[0].trace_id).toBe(json.trace_id);
     expect(detail.evals[0].eval_type).toBe('safety');
+    expect(detail.evals[0].passed).toBe(false);
+    expect(detail.evals[0].critical_failures).toContain('no_pii');
   });
 
   it('rejects evaluate:true without output — nothing to score', async () => {

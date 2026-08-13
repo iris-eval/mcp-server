@@ -19,7 +19,7 @@ function s(value: unknown): string { return String(value ?? "").replace(/</g, "\
 
 const FAQ_ITEMS = [
   { question: "What is the Output Quality Score?", answer: "The Output Quality Score (OQS) is a composite metric that rolls completeness, relevance, safety, and cost into a single number between 0 and 1 for every agent output. It gives teams one signal to answer 'is this output good enough?' instead of checking multiple dimensions separately." },
-  { question: "How is the OQS calculated?", answer: "OQS combines individual eval rule scores using weighted aggregation. Each dimension (completeness, relevance, safety, cost) contributes based on configurable weights. A safety violation can override the composite regardless of other scores — you can't average away a PII leak." },
+  { question: "How is the OQS calculated?", answer: "OQS combines individual eval rule scores using weighted aggregation. Each dimension (completeness, relevance, safety, cost) contributes based on configurable weights. A failing critical safety rule (PII, prompt injection, blocklist) does not lower that score — it forces passed:false regardless of it and names itself in critical_failures. Output containing a real SSN still scores 0.765 and still fails. The score is the quality gradient; passed is the verdict, which is why you can't average away a PII leak." },
   { question: "What is a good OQS?", answer: "There is no universal 'good' score — it depends on your use case. A customer-facing chatbot might require OQS > 0.85. An internal research assistant might be fine at 0.6. The value of OQS is not the absolute number but the trend over time and the ability to compare across agents." },
 ];
 
@@ -84,7 +84,7 @@ export default function LearnOQS(): React.ReactElement {
           Individual eval rules tell you what&apos;s wrong. The OQS tells you whether you should care. A response might score 0.9 on completeness but 0.3 on relevance — the OQS captures that it&apos;s a detailed answer to the wrong question. It&apos;s the signal you monitor on a dashboard, set alerts on, and report to stakeholders.
         </p>
         <CalloutBox variant="stat">
-          Safety scores override the composite. A response with perfect completeness, relevance, and cost scores 0 on OQS if it contains PII. You can&apos;t average away a safety violation.
+          A critical safety failure — PII, prompt injection, or a blocklist hit — forces <code>passed: false</code> no matter how high the weighted score is. Output carrying a real SSN still scores 0.765 and still returns <code>passed: false</code>, with <code>no_pii</code> named in <code>critical_failures</code>. The score stays a quality gradient; <code>passed</code> is the verdict. That veto, not a zeroed score, is why you can&apos;t average away a safety violation.
         </CalloutBox>
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>

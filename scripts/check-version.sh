@@ -84,6 +84,19 @@ check_version "website/public/.well-known/mcp.json" ".version"
 # set of files or the gate is decorative.
 check_version ".claude-plugin/plugin.json" ".version"
 
+# SECURITY.md's supported-versions table. Not a `.version` field, so it needs
+# its own check — and it earned one: the policy says "only the latest minor
+# receives security fixes", and on v0.5.0's ship day the table still listed
+# 0.4.x as supported and told readers to upgrade to it. By the policy's own
+# rule the security page was advertising an UNSUPPORTED line as the supported
+# one. A version-carrying surface no gate walks drifts on exactly the release
+# where it matters most.
+if node scripts/check-security-minor.mjs; then
+  :
+else
+  ERRORS=$((ERRORS + 1))
+fi
+
 # ============================================================
 # Add new version-carrying files here as the project grows:
 # check_version "path/to/file.json" ".version"

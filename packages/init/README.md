@@ -27,11 +27,11 @@ npx @iris-eval/init <client> --uninstall         # remove the iris entry from <c
 
 `claude-code` · `claude-desktop` · `cursor` · `windsurf` · `continue` · `vscode` · `cline` · `zed` · `codex` · `gemini`
 
-Each client gets its config written to the correct OS-specific path (e.g. Claude Code → `~/.claude/mcp.json`, Windsurf → `~/.codeium/windsurf/mcp_config.json`, Zed → `settings.json` `context_servers`), preserving every entry you already have. Run `npx @iris-eval/init --list` to see which clients are detected on your machine.
+Each client gets its config written to the correct OS-specific path (e.g. Claude Code → `~/.claude.json`, merged under the top-level `mcpServers` key, Windsurf → `~/.codeium/windsurf/mcp_config.json`, Zed → `settings.json` `context_servers`), preserving every entry you already have. Run `npx @iris-eval/init --list` to see which clients are detected on your machine.
 
 A future release adds MCP-spec-driven auto-detection for unrecognized clients.
 
-For per-client install docs, friction notes, and troubleshooting, see [iris-eval.com/docs/clients](https://iris-eval.com/docs/clients).
+For per-client install docs, friction notes, and troubleshooting, see [Hook up your own agent](https://github.com/iris-eval/mcp-server#hook-up-your-own-agent).
 
 ## What it does
 

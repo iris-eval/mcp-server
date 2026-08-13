@@ -97,11 +97,12 @@ Iris has a built-in eval rule called `cost_under_threshold`. Set a budget per tr
 
 Using the built-in cost eval:
 
+(`trace_id` is optional and deliberately omitted here. When you do pass one it must be a trace_id that `log_trace` returned — it is a foreign key into an existing trace, and a made-up value fails the call.)
+
 ```json
 {
   "output": "The AI developer tools market...",
   "eval_type": "cost",
-  "trace_id": "trc_research_4a8f",
   "cost_usd": 0.47
 }
 ```

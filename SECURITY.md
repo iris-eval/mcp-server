@@ -23,12 +23,22 @@ For every open Dependabot advisory on this repo, [`SECURITY-EXPOSURE.md`](./SECU
 
 ## Supported Versions
 
-Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.4.x` line.
+Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.5.x` line.
 
 | Version          | Supported |
 |------------------|-----------|
-| 0.4.x            | Yes       |
-| 0.3.x and lower  | No        |
+| 0.5.x            | Yes       |
+| 0.4.x and lower  | No        |
+
+<!--
+  This table is release-gated: it must name the CURRENT minor, which is
+  `release.currentReleaseVersion` in .claims.json. On v0.5.0's ship day it
+  still read "upgrade to the current 0.4.x line", i.e. by the policy's own
+  rule it advertised an unsupported line as the supported one. Update it in
+  the release PR, alongside CHANGELOG.md and the version sync.
+-->
+
+Verify what you are running: `npx @iris-eval/mcp-server --version`, or read the first startup log line.
 
 ## What We Consider a Vulnerability
 

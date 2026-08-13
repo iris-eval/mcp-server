@@ -2,11 +2,11 @@
  * ruleCategories — vendored mapping of built-in rule names → category.
  *
  * Mirrors iris/src/eval/rules/{safety,relevance,completeness,cost}.ts as
- * of v0.4.7. Keep in sync when the rule library expands. The mapping
+ * of v0.5.0. Keep in sync when the rule library expands. The mapping
  * lives client-side because the eval-stats endpoint returns rule names
  * but not categories.
  *
- * Synced: 2026-08-11 (v0.4.7 — 13 rules; no_hallucination_markers moved
+ * Synced: 2026-08-11 (v0.5.0 — 13 rules; no_hallucination_markers moved
  * relevance → safety with the context-grounded rewrite)
  */
 
@@ -63,7 +63,7 @@ export const CATEGORY_ORDER: RuleCategory[] = [
 ];
 
 /**
- * v0.4.7 built-in rule → category map.
+ * v0.5.0 built-in rule → category map.
  * Total: 13 rules (5 safety + 2 relevance + 4 completeness + 2 cost).
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {

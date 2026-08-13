@@ -184,6 +184,12 @@ const styles = {
     paddingBottom: 'var(--space-1)',
     borderBottom: '1px solid var(--border-default)',
   } as const,
+  vetoNotice: {
+    marginTop: 'var(--space-1)',
+    fontSize: 'var(--text-body-sm)',
+    fontWeight: 600,
+    color: 'var(--eval-fail)',
+  } as const,
   ruleRow: {
     display: 'grid',
     gridTemplateColumns: '20px 1fr auto',
@@ -422,6 +428,19 @@ export function MomentDetailPage() {
                       {passed.length}p · {failed.length}f · {skipped.length}s
                     </span>
                   </div>
+                  {/*
+                   * Names the veto. Without this the header reads
+                   * "safety · fail  score 0.92" and gives no way to tell a
+                   * critical-rule hard-fail from a merely-low weighted
+                   * score — an eval carrying a real SSN scores 0.765 and
+                   * would otherwise look like a near miss.
+                   */}
+                  {e.criticalFailures && e.criticalFailures.length > 0 && (
+                    <div style={styles.vetoNotice}>
+                      Vetoed by: {e.criticalFailures.join(', ')} — this evaluation fails
+                      regardless of its score.
+                    </div>
+                  )}
                   {[...failed, ...passed, ...skipped].map((r) => (
                     <div key={r.ruleName} style={styles.ruleRow}>
                       <span

@@ -98,6 +98,14 @@ export interface DecisionMomentDetail extends DecisionMoment {
       skipReason?: string;
     }>;
     suggestions: string[];
+    /**
+     * Rules that HARD-FAILED this evaluation — a critical safety rule
+     * (no_pii / no_injection_patterns / no_blocklist_words) or a deployed
+     * rule with severity high/critical. Present only when the veto fired;
+     * absent means nothing vetoed, or the row predates migration 006. This
+     * is what lets a surface distinguish "vetoed" from "scored low".
+     */
+    criticalFailures?: string[];
     createdAt?: string;
   }>;
   /** Full input (uncompressed). */

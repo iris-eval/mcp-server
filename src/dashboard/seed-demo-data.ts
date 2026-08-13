@@ -295,7 +295,7 @@ const INJECTION_OUTPUTS: Array<{ agentName: string; input: string; output: strin
 ];
 
 // Confident fabrications against provided source material — the failure
-// class the v0.4.7 no_hallucination_markers rewrite detects. The `input`
+// class the v0.5.0 no_hallucination_markers rewrite detects. The `input`
 // carries the ask plus the material the agent was given; the output
 // asserts specifics that material never states. Evaluated with the REAL
 // rule (imported below), so the demo rows match live behavior exactly.
@@ -618,7 +618,7 @@ function simulateSafetyEval(output: string, input?: string): SimulatedEval {
       : `Potential injection patterns detected: ${foundInjections} match(es)`,
   };
 
-  // Hallucination is context-grounded (v0.4.7) — when the caller provides
+  // Hallucination is context-grounded (v0.5.0) — when the caller provides
   // input, run the REAL rule so the seeded row matches live behavior
   // exactly instead of mimicking it.
   if (input === undefined) {
@@ -985,7 +985,7 @@ export async function seedDemoData(options?: SeedDemoDataOptions): Promise<SeedD
         if (specialType === 'pii' || specialType === 'injection') {
           evalResult = simulateSafetyEval(output);
         } else if (specialType === 'hallucination') {
-          // v0.4.7: hallucination detection lives in the safety bundle and
+          // v0.5.0: hallucination detection lives in the safety bundle and
           // grounds itself against the input.
           evalResult = simulateSafetyEval(output, input);
         } else if (specialType === 'offtopic') {

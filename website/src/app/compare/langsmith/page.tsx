@@ -93,7 +93,7 @@ const FEATURES = [
   { feature: "Dashboard", iris: "Real-time dark-mode UI", langsmith: "Auto-clustering, pattern detection, custom dashboards", langsmithWin: true },
   { feature: "Framework support", iris: "Any MCP-compatible agent", langsmith: "LangChain, OpenAI, Anthropic, Vercel AI, LlamaIndex + more", langsmithWin: true },
   { feature: "Data retention", iris: "Unlimited (your SQLite, your storage)", langsmith: "14 days (free) / 400 days (paid)", irisWin: true },
-  { feature: "Enterprise features", iris: "Roadmap (v0.5)", langsmith: "SSO, BYOC, SOC 2, dedicated support", langsmithWin: true, irisNeutral: true },
+  { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", langsmith: "SSO, BYOC, SOC 2, dedicated support", langsmithWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [

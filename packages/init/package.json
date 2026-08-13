@@ -39,7 +39,7 @@
     "url": "git+https://github.com/iris-eval/mcp-server.git",
     "directory": "packages/init"
   },
-  "homepage": "https://iris-eval.com/docs/clients",
+  "homepage": "https://github.com/iris-eval/mcp-server#hook-up-your-own-agent",
   "bugs": {
     "url": "https://github.com/iris-eval/mcp-server/issues"
   },

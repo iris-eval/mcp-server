@@ -93,7 +93,7 @@ const FEATURES = [
   { feature: "Dashboard", iris: "Real-time dark-mode UI", arize: "Full-featured dashboards, Prompt IDE, Alyx AI assistant", arizeWin: true },
   { feature: "Framework support", iris: "Any MCP-compatible agent", arize: "20+ frameworks (OpenAI, LangGraph, CrewAI, LlamaIndex, DSPy, etc.)", arizeWin: true },
   { feature: "Prompt management", iris: "Not included", arize: "Prompt IDE with versioning and optimization", arizeWin: true, irisNeutral: true },
-  { feature: "Enterprise features", iris: "Roadmap (v0.5)", arize: "RBAC, SOC 2, online evals, Alyx assistant", arizeWin: true, irisNeutral: true },
+  { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", arize: "RBAC, SOC 2, online evals, Alyx assistant", arizeWin: true, irisNeutral: true },
   { feature: "Pricing", iris: "Free and open-source", arize: "Phoenix free; AX from $50/mo; Enterprise $50k–100k/yr", irisWin: true },
   { feature: "Setup time", iris: "60 seconds, one config line", arize: "Minutes to hours depending on deployment", irisWin: true },
 ];

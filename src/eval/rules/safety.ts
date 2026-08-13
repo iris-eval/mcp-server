@@ -10,9 +10,10 @@ import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js'
  *
  * `placeholders` suppresses documentation values that are PII-shaped but by
  * definition not PII: RFC 2606 example domains, the reserved 555 fictional
- * phone block and toll-free lines, published payment test cards, the
- * never-issued docs SSN, masked keys, and 10-digit runs with no separators
- * (Unix timestamps, JWTs and rate-limit headers read as "phone numbers").
+ * phone block and toll-free lines, published payment test cards, masked
+ * keys, and 10-digit runs with no separators (Unix timestamps, JWTs and
+ * rate-limit headers read as "phone numbers"). The canonical documentation
+ * SSN is deliberately NOT suppressed — see the SSN entry below (#362).
  * A pattern only fails the rule when at least one of its matches is NOT
  * covered by a placeholder — so real PII beside a placeholder still fails.
  */
@@ -774,7 +775,7 @@ export const noStubOutput: EvalRule = {
 };
 
 /*
- * Hallucination detection — rewritten v0.4.7, moved here from the relevance
+ * Hallucination detection — rewritten v0.5.0, moved here from the relevance
  * bundle in the same change.
  *
  * The previous incarnation matched 17 refusal-boilerplate phrases ("as an
@@ -1204,7 +1205,7 @@ function detectUngroundedDate(output: string, input: string): string | null {
 
 /*
  * Parse a markdown table row by splitting on '|' — never by regexing the
- * whole line. The v0.4.7 first cut used /^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/,
+ * whole line. The v0.5.0 first cut used /^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/,
  * where the greedy \s* and lazy [^|]+? both match a run of spaces: on a
  * line of '|' + N spaces with no closing pipe the engine has ~N ways to
  * split the run, each failing late — super-quadratic backtracking (~7.5×

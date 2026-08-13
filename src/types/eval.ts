@@ -83,6 +83,21 @@ export interface EvalResult {
    * "committed a hard violation".
    */
   critical_failures?: string[];
+  /**
+   * Names of critical rules that were SKIPPED and therefore did not judge
+   * this output (present only when non-empty). Almost always a sandbox
+   * budget breach — a regex killed mid-backtrack, which an adversary can
+   * provoke deliberately by crafting output that stalls a known pattern.
+   *
+   * This is the fail-open seam between the release's two headline features:
+   * a budget-killed critical rule does NOT veto, so the evaluation can
+   * return passed=true with no `critical_failures` at all. That is
+   * deliberate (failing closed would let the same adversary force false
+   * violations on benign output), but a consumer that must fail closed
+   * needs to see it WITHOUT walking rule_results[].budgetExceeded. Treat a
+   * non-empty `critical_skipped` as "unknown", not as "clean".
+   */
+  critical_skipped?: string[];
 }
 
 export type CustomRuleType =

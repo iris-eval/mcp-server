@@ -106,6 +106,15 @@ export function registerTraceRoutes(
           rules_evaluated: evaluation.rules_evaluated,
           rules_skipped: evaluation.rules_skipped,
           insufficient_data: evaluation.insufficient_data,
+          /*
+           * The veto reason travels the ingest path too. Omitting it left an
+           * HTTP caller seeing passed:false beside a high score with no way
+           * to learn that a critical rule — not the weighted average —
+           * produced the verdict. Absent when nothing vetoed.
+           */
+          ...(evaluation.critical_failures?.length
+            ? { critical_failures: evaluation.critical_failures }
+            : {}),
         },
       });
     } catch (err) {

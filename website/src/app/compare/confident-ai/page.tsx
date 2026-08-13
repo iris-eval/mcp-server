@@ -4,6 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
+import { PII_PATTERN_COUNT } from "@/lib/claims";
 
 function sanitizeText(value: unknown): string {
   return String(value ?? "")
@@ -92,7 +93,7 @@ const FEATURES = [
   { feature: "Cost tracking", iris: "Per-trace USD cost, aggregate visibility", confidentai: "Not a primary feature", irisWin: true },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", confidentai: "Not MCP-aware", irisWin: true },
   { feature: "Pricing", iris: "Free and open-source (MIT)", confidentai: "Free tier + paid plans", irisWin: true },
-  { feature: "PII detection", iris: "Built-in (SSN, credit card, phone, email)", confidentai: "Via custom metrics or toxicity checks", irisWin: true },
+  { feature: "PII and credential detection", iris: `Built-in — ${PII_PATTERN_COUNT} patterns: PII plus vendor credentials (AWS, Slack, GitHub, Google, npm, SendGrid, DigitalOcean), private keys and wallet seed phrases; doc placeholders suppressed per match; a hit forces passed:false`, confidentai: "Via custom metrics or toxicity checks", irisWin: true },
 ];
 
 const IRIS_REASONS = [

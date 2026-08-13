@@ -257,7 +257,7 @@ Each rule returns a score between 0 and 1. The final score is the weighted avera
 - `no_blocklist_words` -- Checks output against a configurable blocklist. Binary pass/fail.
 - `no_injection_patterns` -- Regex patterns for 37 prompt injection attempts in two tiers. Phrase tier (13): "ignore previous instructions", "disregard previous", "act/behave/respond as a/an", "pretend you are/to be", "override instructions/safety", "reveal/show/tell system prompt", "jailbroken", "forget all/everything/previous" -- suppressed inside quoted spans, so text that DISCUSSES injection is not flagged. Structural tier (24): imperatives hidden in HTML comments, forged system/orchestrator lines, smuggled JSON directive keys, retrieved-document framing addressed to the agent, base64 decode-and-execute, role reassignment. Output is also matched after obfuscation normalization (NFKC, zero-width strip, leetspeak fold). Binary pass/fail.
 - `no_stub_output` -- Detects placeholder/stub markers as whole uppercase words (TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD), plus marker-free stub shapes: content omitted for brevity, empty pass-only bodies, comment-described behaviour, always-true guards, self-satisfying tests. Markers removed by a diff, or named in prose ("contains a TODO"), do not count. Configurable via `customConfig.stub_markers`. Binary pass/fail.
-- `no_hallucination_markers` (weight 1) -- Context-grounded hallucination detection: 25 signals that cross-check the output's specific claims against the caller-provided `input` (fabricated citations/attributions, contradictions with the source's booleans, tables, dates, times, statuses, versions, and totals; false-success claims). Two self-consistency checks (inconsistent totals, the fabricated-citation shape) also run without input; the context-grounded signals stay silent when no input is provided. Each detected signal subtracts 0.3 from the score. (Rewritten in v0.4.7 — the old 17-phrase hedging-marker list lived in the relevance bundle and caught zero real hallucinations.)
+- `no_hallucination_markers` (weight 1) -- Context-grounded hallucination detection: 25 signals that cross-check the output's specific claims against the caller-provided `input` (fabricated citations/attributions, contradictions with the source's booleans, tables, dates, times, statuses, versions, and totals; false-success claims). Two self-consistency checks (inconsistent totals, the fabricated-citation shape) also run without input; the context-grounded signals stay silent when no input is provided. Each detected signal subtracts 0.3 from the score. (Rewritten in v0.5.0 — the old 17-phrase hedging-marker list lived in the relevance bundle and caught zero real hallucinations.)
 
 **Cost rules:**
 - `cost_under_threshold` (weight 1) -- Configurable USD threshold (default: $0.10). Score degrades proportionally above threshold.
@@ -278,7 +278,12 @@ When `eval_type` is `custom`, rules are built from `CustomRuleDefinition` object
 | `json_schema`        | (none)                 | Output must be valid JSON |
 | `cost_threshold`     | `max_cost`             | Cost USD <= max_cost |
 
-Regex rules are validated with `safe-regex2` to reject patterns vulnerable to catastrophic backtracking (ReDoS). Pattern length is capped at 1000 characters.
+Regex rules are protected against ReDoS in two layers, and only the second one is a boundary:
+
+1. **Static checks (fast rejection, not a guarantee).** Pattern length is capped at 1000 characters, syntax is validated by compiling once, and `safe-regex2` rejects patterns it recognises as catastrophic. `safe-regex2` is a star-height heuristic — it does not catch everything, and `(a|a)*$` passes it while being exponential. `deploy_rule` and the dashboard composer additionally probe the candidate against short adversarial payloads inside the sandbox (50ms on a ≤128-char input) before persisting it.
+2. **The runtime sandbox deadline (the actual boundary).** Every match of a user-supplied pattern runs in a worker thread under a hard 100ms budget. A match still backtracking at the deadline is terminated mid-execution and the rule reports `skipped: true` with `budgetExceeded: true`, so it neither passes nor deflates the weighted score. A per-evaluation circuit breaker opens after 3 breaches: remaining regex rules in that evaluation skip without running, bounding one hostile request regardless of how many regex rules it carries.
+
+This is **fail-open per rule** by design — see [Custom Rules § ReDoS protection](./custom-rules.md#redos-protection) for the trade-off and how a fail-closed gate consumes `budgetExceeded`.
 
 ### Extending the eval engine
 
@@ -455,9 +460,12 @@ MCP Client (remote)            Iris HTTP Server (Express)
 |---------|-----|---------|---------|
 | Transport type | `--transport http` | `IRIS_TRANSPORT=http` | `stdio` |
 | HTTP port | `--port 3000` | `IRIS_PORT=3000` | `3000` |
-| HTTP bind address | (config file) | (config file) | `0.0.0.0` |
+| HTTP bind address | (config file) | `IRIS_HOST=127.0.0.1` | `127.0.0.1` |
 | Dashboard port | `--dashboard-port 6920` | `IRIS_DASHBOARD_PORT=6920` | `6920` |
+| Dashboard bind address | `--dashboard-host <host>` | `IRIS_DASHBOARD_HOST=127.0.0.1` | `127.0.0.1` |
 | API key | `--api-key <key>` | `IRIS_API_KEY=<key>` | (none) |
+
+Both HTTP surfaces bind to loopback by default — nothing is reachable from the network until you deliberately change the bind address. When you do, and no API key is set, the server warns: an unauthenticated non-loopback bind accepts writes from anyone who can route to it.
 
 The dashboard is off by default on both transports — enable it explicitly with `--dashboard` (or `IRIS_DASHBOARD=true`). It runs on its own port (default: 6920), and the `POST /api/v1/traces` HTTP ingest endpoint is served by it, so ingest also requires `--dashboard`.
 
@@ -471,7 +479,7 @@ The dashboard is a React SPA built with Vite, served as static files by the dash
 
 The dashboard API server (`src/dashboard/server.ts`) is a separate Express application from the MCP HTTP transport. It serves:
 
-- **REST API** at `/api/v1/*` with rate limiting (100 req/min), CORS, auth, and Zod-validated query parameters.
+- **REST API** at `/api/v1/*` with rate limiting (600 req/min), CORS, auth, and Zod-validated query parameters.
 - **Static files** from `dist/dashboard/` (the built React app).
 - **SPA fallback** -- all non-API routes serve `index.html` for client-side routing.
 
@@ -557,14 +565,18 @@ Request
   v
 [Rate limiting]    Two separate limiters:
   |                  - MCP endpoint: 20 requests/min (POST + DELETE /mcp only, not GET/SSE)
-  |                  - Dashboard API: 100 requests/min (all /api/v1/* routes)
+  |                  - Dashboard API: 600 requests/min (all /api/v1/* routes)
   |                Uses draft-7 standard headers (RateLimit, RateLimit-Policy)
   v
 [Zod validation]   All tool inputs and API query params validated with Zod schemas
   |                Invalid requests return 400 with structured error details
   v
-[ReDoS protection] Custom regex rules validated with safe-regex2 before compilation
-  |                Pattern length capped at 1000 characters
+[ReDoS protection] Boundary: every user-regex match runs in a sandbox WORKER under a
+  |                hard 100ms deadline; a match still backtracking at the deadline is
+  |                killed and the rule reports skipped + budgetExceeded (fail-open)
+  |                Circuit breaker: 3 breaches per evaluation -> remaining regex rules skip
+  |                Fast-path rejection only (NOT the boundary): 1000-char cap, syntax
+  |                compile, safe-regex2 (star-height heuristic — misses (a|a)*$)
   v
 [Error handler]    Centralized handler: Zod errors -> 400, known errors -> status code,
                    unknown errors -> 500 with generic message (stack only in development)
@@ -584,7 +596,7 @@ The `createCorsMiddleware` function accepts an allowlist of origin patterns. Wil
 
 - **MCP tool inputs**: Validated by Zod schemas registered with `server.registerTool()`. Invalid inputs are rejected by the MCP SDK before the handler runs.
 - **Dashboard API query params**: Validated by Zod schemas in `src/dashboard/validation.ts`. Limits: pagination max 1000 rows, summary max 8760 hours (1 year).
-- **Custom eval rules**: Regex patterns are checked with `safe-regex2` for ReDoS safety, length-capped at 1000 chars, and compiled in a try/catch.
+- **Custom eval rules**: static checks (1000-char cap, syntax compile in a try/catch, `safe-regex2`) reject obvious offenders early, but the enforced boundary is the sandbox worker — user patterns never `.test()` on the main thread, and every match runs under a hard 100ms deadline with a 3-breach-per-evaluation circuit breaker.
 
 ### Tenant isolation (defense-in-depth)
 

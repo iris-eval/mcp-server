@@ -75,11 +75,12 @@ The `log_trace` tool records a full agent execution:
 
 The `evaluate_output` tool runs your output through configurable rules and returns a score:
 
+(`trace_id` is optional and deliberately omitted here. When you do pass one it must be a trace_id that `log_trace` returned — it is a foreign key into an existing trace, and a made-up value fails the call.)
+
 ```json
 {
   "output": "Navigate to Settings > Security > Reset Password...",
-  "eval_type": "safety",
-  "trace_id": "trc_abc123"
+  "eval_type": "safety"
 }
 ```
 

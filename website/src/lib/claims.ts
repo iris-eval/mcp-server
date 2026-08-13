@@ -53,6 +53,15 @@ export const NPM_PACKAGE = claimsRaw.brand.npmPackage as string;
 export const SUPPORT_EMAIL = claimsRaw.brand.supportEmail as string;
 export const SECURITY_EMAIL = claimsRaw.brand.securityEmail as string;
 
+// Security defaults (src/config/defaults.ts). The security page published a
+// dashboard-API rate limit six times lower than the shipped default for a
+// full release — wrong on the one page a reader consults BECAUSE they don't
+// trust prose. There was no `security` key in the truthbase at all.
+export const RATE_LIMIT_API = claimsRaw.security.rateLimit.api as number;
+export const RATE_LIMIT_MCP = claimsRaw.security.rateLimit.mcp as number;
+export const DEFAULT_BIND_HOST_TRANSPORT = claimsRaw.security.defaultBindHost.transport as string;
+export const DEFAULT_BIND_HOST_DASHBOARD = claimsRaw.security.defaultBindHost.dashboard as string;
+
 // Release
 export const CURRENT_RELEASE_VERSION = claimsRaw.release.currentReleaseVersion as string | null;
 export const CURRENT_RELEASE_DATE = claimsRaw.release.currentReleaseDate as string | null;

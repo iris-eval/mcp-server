@@ -10,6 +10,8 @@ devto_tags: [ai, testing, agenteval, programming]
 
 # The Eval Loop: Why Evals Are the Loss Function for Agent Quality
 
+> **Editor's note (2026-08):** rule count updated — Iris ships 13 built-in rules; v0.3.1 added `no_stub_output`. The post originally said 12.
+
 If you've trained a model, you know the loss function. You feed data in, measure how wrong the output is, adjust the weights, and measure again. The model never "passes" the loss function and graduates. The loss function runs on every batch, forever, because the goal is not to pass — it's to converge.
 
 Most teams building AI agents have not internalized this. They treat evaluation as a gate: run the evals, get a passing score, ship. The eval is a tollbooth on the road to production. You pay once and drive through.
@@ -71,7 +73,7 @@ Deterministic eval rules — pattern matching, threshold checks, structural vali
 - You can audit the entire history of calibrations.
 - You can reproduce any eval result from any point in time.
 
-Iris runs 12 deterministic eval rules across four categories — completeness, relevance, safety, and cost. Every rule result is persisted with a timestamp. When you calibrate a threshold, the before-and-after is fully traceable. This is [eval-driven development](/blog/eval-driven-development) in practice: the rules are the specification, and calibrating them is how the specification evolves with production reality.
+Iris runs 13 deterministic eval rules across four categories — completeness, relevance, safety, and cost. Every rule result is persisted with a timestamp. When you calibrate a threshold, the before-and-after is fully traceable. This is [eval-driven development](/blog/eval-driven-development) in practice: the rules are the specification, and calibrating them is how the specification evolves with production reality.
 
 ## The Self-Calibrating Eval — Where This Goes Next
 

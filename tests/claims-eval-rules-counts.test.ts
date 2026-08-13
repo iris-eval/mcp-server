@@ -22,8 +22,12 @@ import {
   noHallucinationMarkers,
   noInjectionPatterns,
 } from '../src/eval/rules/safety.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAllTools } from '../src/tools/index.js';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { countTopLevelElements, generate } from '../scripts/claims/generators/eval-rules.mjs';
+// @ts-ignore — plain .mjs module, no type declarations needed for a test
+import { generate as generateMcpTools } from '../scripts/claims/generators/mcp-tools.mjs';
 
 describe('countTopLevelElements (the text counter itself)', () => {
   it('does not count a trailing comma as an extra element', () => {
@@ -93,6 +97,91 @@ describe('public llms-full.txt quotes the real pattern counts', () => {
     expect(txt).toContain(`${PII_PATTERNS.length} PII patterns`);
     expect(txt).toContain(`${INJECTION_PATTERNS.length} prompt-injection patterns`);
     expect(txt).toContain(`${HALLUCINATION_MARKERS.length} hallucination markers`);
+  });
+});
+
+/*
+ * Annotation counts, anchored to what the tools ACTUALLY register.
+ *
+ * .claims.json shipped `mcpTools.annotations.openWorldHintCount: 3` while
+ * tools/list advertised 2. The generator text-scanned each whole file for
+ * `openWorldHint:\s*true`, and evaluate-output.ts explains its own
+ * `openWorldHint: false` in a trailing comment naming the opposite value —
+ * so the truthbase counted a sentence. Textbook gate-coverage-vs-claim: the
+ * gate was alive and did not cover the set its name implied. The generator
+ * now reads only the annotations literal, and this suite compares all three
+ * counts against a live registration pass rather than against text.
+ */
+describe('mcpTools.annotations match what the tools register', () => {
+  const claims = JSON.parse(readFileSync(resolve(__dirname, '..', '.claims.json'), 'utf-8')) as {
+    mcpTools: {
+      count: number;
+      names: string[];
+      annotations: {
+        readOnlyHintCount: number;
+        destructiveHintCount: number;
+        openWorldHintCount: number;
+      };
+    };
+  };
+
+  /** Registers every tool against a capture stub and returns the annotations. */
+  function registeredAnnotations(): Array<{ name: string; annotations: Record<string, boolean> }> {
+    const captured: Array<{ name: string; annotations: Record<string, boolean> }> = [];
+    const server = {
+      registerTool(name: string, config: { annotations?: Record<string, boolean> }) {
+        captured.push({ name, annotations: config.annotations ?? {} });
+      },
+    } as unknown as McpServer;
+    // Registration never touches the deps — they are only closed over by the
+    // handlers — so stubs are enough to read the advertised contract.
+    registerAllTools(server, {} as never, {} as never, {} as never);
+    return captured;
+  }
+
+  const countTrue = (
+    tools: Array<{ annotations: Record<string, boolean> }>,
+    hint: string,
+  ): number => tools.filter((t) => t.annotations[hint] === true).length;
+
+  it('registers exactly the tools the truthbase names', () => {
+    const names = registeredAnnotations()
+      .map((t) => t.name)
+      .sort();
+    expect(names).toEqual([...claims.mcpTools.names].sort());
+    expect(names).toHaveLength(claims.mcpTools.count);
+  });
+
+  it('openWorldHintCount matches the live registrations (shipped 3 against a live 2)', () => {
+    expect(claims.mcpTools.annotations.openWorldHintCount).toBe(
+      countTrue(registeredAnnotations(), 'openWorldHint'),
+    );
+  });
+
+  it('readOnlyHintCount matches the live registrations', () => {
+    expect(claims.mcpTools.annotations.readOnlyHintCount).toBe(
+      countTrue(registeredAnnotations(), 'readOnlyHint'),
+    );
+  });
+
+  it('destructiveHintCount matches the live registrations', () => {
+    expect(claims.mcpTools.annotations.destructiveHintCount).toBe(
+      countTrue(registeredAnnotations(), 'destructiveHint'),
+    );
+  });
+
+  it('the generator agrees with the live registrations too', async () => {
+    const out = (await generateMcpTools()) as {
+      annotations: {
+        readOnlyHintCount: number;
+        destructiveHintCount: number;
+        openWorldHintCount: number;
+      };
+    };
+    const tools = registeredAnnotations();
+    expect(out.annotations.readOnlyHintCount).toBe(countTrue(tools, 'readOnlyHint'));
+    expect(out.annotations.destructiveHintCount).toBe(countTrue(tools, 'destructiveHint'));
+    expect(out.annotations.openWorldHintCount).toBe(countTrue(tools, 'openWorldHint'));
   });
 });
 
