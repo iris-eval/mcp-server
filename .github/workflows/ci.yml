@@ -202,7 +202,47 @@ jobs:
         # injection positives), a dashboard bind and the rebinding guard,
         # then exits non-zero on any failure. Runs as the image's own
         # unprivileged `iris` user, which is how it will actually run.
+        #
+        # NOT sufficient alone: --self-test builds its OWN config and never
+        # calls loadConfig, so it cannot see a broken ENV block. It passes
+        # happily on an image whose shipped CMD exits 1 on a port collision.
+        # The step below is the one that catches that.
         run: docker run --rm iris-eval/mcp-server:ci node dist/index.js --self-test
+
+      - name: Run the image AS SHIPPED — default CMD, both ports answering
+        # The gate the DOA image walked through for four months. This runs no
+        # command of its own: it starts the container exactly as `docker run
+        # ghcr.io/iris-eval/mcp-server` does, publishes the two documented
+        # ports, and requires both servers to answer THROUGH the published
+        # mapping — which also proves the in-container bind address is
+        # reachable, since loopback inside a container is not.
+        run: |
+          set -euo pipefail
+          docker run -d --name iris-ci -p 3000:3000 -p 6920:6920 iris-eval/mcp-server:ci
+          ready=""
+          for _ in $(seq 1 30); do
+            if curl -fsS -o /dev/null "http://127.0.0.1:6920/api/v1/health"; then ready=1; break; fi
+            if [ -z "$(docker ps --filter name=iris-ci --filter status=running -q)" ]; then
+              echo "::error::container exited before becoming ready — as shipped, this image does not start"
+              docker logs iris-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ -z "$ready" ]; then
+            echo "::error::dashboard never answered on the published port"
+            docker logs iris-ci
+            docker rm -f iris-ci
+            exit 1
+          fi
+          echo "--- dashboard health ---"
+          curl -fsS "http://127.0.0.1:6920/api/v1/health"
+          echo ""
+          echo "--- MCP transport must answer on its own port (any HTTP status proves a live listener) ---"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000/mcp" || true)
+          echo "GET /mcp -> $code"
+          docker rm -f iris-ci
+          test "$code" != "000"
 
   e2e:
     runs-on: ubuntu-latest

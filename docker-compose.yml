@@ -1,15 +1,24 @@
 services:
   iris-mcp:
     build: .
+    # Two servers, two ports: 3000 = MCP HTTP transport, 6920 = dashboard
+    # (which also serves POST /api/v1/traces, the no-MCP-client ingest path).
+    # Publishing only 3000 leaves the dashboard running and unreachable.
     ports:
       - "3000:3000"
+      - "6920:6920"
     volumes:
       - iris-data:/data
     environment:
       - IRIS_TRANSPORT=http
       - IRIS_PORT=3000
+      # 0.0.0.0 inside the container: the process defaults to loopback, which
+      # is unreachable through a published port. See the Dockerfile comment.
+      - IRIS_HOST=0.0.0.0
       - IRIS_DB_PATH=/data/iris.db
       - IRIS_DASHBOARD=true
+      - IRIS_DASHBOARD_PORT=6920
+      - IRIS_DASHBOARD_HOST=0.0.0.0
       - IRIS_LOG_LEVEL=info
     restart: unless-stopped
 
