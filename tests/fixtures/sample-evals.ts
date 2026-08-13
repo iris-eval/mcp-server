@@ -39,7 +39,7 @@ export const expensiveContext: EvalContext = {
 };
 
 // Confident fabrication against the provided source material — the failure
-// class no_hallucination_markers detects (v0.4.7 rewrite). The output
+// class no_hallucination_markers detects (v0.5.0 rewrite). The output
 // attributes a PTO figure and a section number to a handbook whose provided
 // excerpt contains neither.
 export const hallucinatingContext: EvalContext = {

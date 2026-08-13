@@ -93,7 +93,7 @@ const FEATURES = [
   { feature: "Dashboard", iris: "Real-time dark-mode UI", langfuse: "Customizable multi-dimension dashboards", irisWin: false },
   { feature: "Framework support", iris: "Any MCP-compatible agent", langfuse: "20+ framework integrations", langfuseWin: true },
   { feature: "Prompt management", iris: "Not included", langfuse: "Full versioned prompt management", langfuseWin: true, irisNeutral: true },
-  { feature: "Enterprise features", iris: "Roadmap (v0.5)", langfuse: "SOC 2, ISO 27001, HIPAA, SCIM", langfuseWin: true, irisNeutral: true },
+  { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", langfuse: "SOC 2, ISO 27001, HIPAA, SCIM", langfuseWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [

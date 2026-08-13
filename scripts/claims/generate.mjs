@@ -22,6 +22,7 @@ import { generate as evalRules } from './generators/eval-rules.mjs';
 import { generate as llmJudgeTemplates } from './generators/llm-judge-templates.mjs';
 import { generate as brand } from './generators/brand.mjs';
 import { generate as release } from './generators/release.mjs';
+import { generate as security } from './generators/security.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -41,6 +42,7 @@ async function main() {
     ['llmJudgeTemplates', llmJudgeTemplates],
     ['brand', brand],
     ['release', release],
+    ['security', security],
   ];
 
   const results = await Promise.allSettled(

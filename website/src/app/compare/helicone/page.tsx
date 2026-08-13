@@ -93,7 +93,7 @@ const FEATURES = [
   { feature: "Caching", iris: "Not included", helicone: "Semantic caching (up to 95% cost reduction on repeated queries)", heliconeWin: true, irisNeutral: true },
   { feature: "Gateway features", iris: "Observability-focused", helicone: "Rate limiting, retries, fallbacks, load balancing across 100+ providers", heliconeWin: true, irisNeutral: true },
   { feature: "Data retention", iris: "Unlimited (your SQLite, your storage)", helicone: "1 month (free) / 3 months (Pro) / lifetime (Enterprise)", irisWin: true },
-  { feature: "Enterprise features", iris: "Roadmap (v0.5)", helicone: "SOC 2, GDPR, rate limiting, Helm charts", heliconeWin: true, irisNeutral: true },
+  { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", helicone: "SOC 2, GDPR, rate limiting, Helm charts", heliconeWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [

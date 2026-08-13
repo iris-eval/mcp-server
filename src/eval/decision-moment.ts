@@ -95,6 +95,13 @@ export function deriveMomentDetail(
         skipReason: r.skipReason,
       })),
       suggestions: e.suggestions ?? [],
+      /*
+       * Carried through so the moment detail can say WHY an eval failed.
+       * Without it the UI renders "safety · fail  score 0.92" with no way to
+       * tell a critical-rule veto from a merely-low weighted score — the
+       * release's flagship behaviour, invisible on every dashboard surface.
+       */
+      criticalFailures: e.critical_failures,
       createdAt: e.created_at,
     })),
     toolCalls: trace.tool_calls,

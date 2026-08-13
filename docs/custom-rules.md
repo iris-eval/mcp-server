@@ -462,26 +462,23 @@ A **budget-exceeded** match reports `skipped: true` + `budgetExceeded: true` for
 
 ## Combining Built-in and Custom Rules
 
-Built-in rules (`completeness`, `relevance`, `safety`, `cost`) and custom rules are separate evaluation runs. You cannot mix them in a single `evaluate_output` call. But you can run multiple evaluations against the same output.
+**Since v0.5.0, inline `custom_rules` are additive.** They fire regardless of `eval_type`, running together with whatever bundle `eval_type` selects — one `evaluate_output` call, one weighted score. Before v0.5.0, passing `custom_rules` alongside `eval_type: "safety"` silently discarded them; that is fixed.
 
-### Run Built-in and Custom Sequentially
+The two knobs compose like this:
 
-First, run a built-in safety check:
+| Call | Rules that run |
+|---|---|
+| `eval_type: "safety"` | the safety built-ins + your deployed rules on `safety` |
+| `eval_type: "safety"` + `custom_rules: [...]` | the above **plus** your inline rules — one score |
+| `eval_type: "custom"` + `custom_rules: [...]` | **only** your inline rules + your deployed rules whose eval type is `custom` (there is no built-in `custom` bundle) |
+| `eval_type: "custom"` with no `custom_rules` | only your deployed `custom` rules |
+
+### Run Built-in and Custom Together (one call)
 
 ```json
 {
   "output": "Patient records indicate...",
   "eval_type": "safety",
-  "trace_id": "trc_abc123"
-}
-```
-
-Then run domain-specific custom rules against the same output:
-
-```json
-{
-  "output": "Patient records indicate...",
-  "eval_type": "custom",
   "trace_id": "trc_abc123",
   "custom_rules": [
     {
@@ -498,7 +495,36 @@ Then run domain-specific custom rules against the same output:
 }
 ```
 
-Both evaluations are linked to the same trace via `trace_id` and appear together in the dashboard.
+The safety built-ins and both inline rules are weighted into a single `score`, and every rule appears in `rule_results`. A failing **critical** rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`) still forces `passed: false` regardless of that score, and names itself in `critical_failures`.
+
+### Run Them Sequentially (optional style)
+
+Separate calls remain perfectly valid, and are the right shape when you want the built-in verdict and the domain verdict scored independently rather than averaged together:
+
+```json
+{
+  "output": "Patient records indicate...",
+  "eval_type": "safety",
+  "trace_id": "trc_abc123"
+}
+```
+
+```json
+{
+  "output": "Patient records indicate...",
+  "eval_type": "custom",
+  "trace_id": "trc_abc123",
+  "custom_rules": [
+    {
+      "name": "no_patient_names",
+      "type": "regex_no_match",
+      "config": { "pattern": "\\b[A-Z][a-z]+ [A-Z][a-z]+\\b" }
+    }
+  ]
+}
+```
+
+Both evaluations are linked to the same trace via `trace_id` and appear together in the dashboard. Choose per call: one evaluation when you want one verdict, two when you want two.
 
 ### Extend Built-in Rules Programmatically
 

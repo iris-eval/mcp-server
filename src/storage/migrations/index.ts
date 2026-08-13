@@ -4,6 +4,7 @@ import * as migration002 from './002-eval-skip-fields.js';
 import * as migration003 from './003-eval-passed-index.js';
 import * as migration004 from './004-tenant-id.js';
 import * as migration005 from './005-normalize-created-at.js';
+import * as migration006 from './006-eval-critical-failures.js';
 
 interface Migration {
   id: string;
@@ -16,6 +17,7 @@ const migrations: Migration[] = [
   migration003,
   migration004,
   migration005,
+  migration006,
 ];
 
 export function runMigrations(db: Database.Database): void {

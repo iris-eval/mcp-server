@@ -2,10 +2,14 @@
  * Vendored copy of the Iris rule library for the Live Playground.
  *
  * Source: iris/src/eval/rules/{safety,relevance,completeness,cost}.ts
- * Synced: 2026-08-11 — verified against v0.4.7 source: the
- * no_hallucination_markers rewrite (context-grounded fabrication and
- * contradiction signals, refusal boilerplate dropped) moved the rule from
- * the relevance category to safety. Still 13 rules across 4 categories.
+ * Synced: 2026-08-12 — re-verified against the shipped v0.5.0 source.
+ * Matching: 13 rules across 4 categories; no_hallucination_markers is
+ * context-grounded and lives in `safety`; min_output_length defaults to 50
+ * and sentence_count to 2.
+ *
+ * This label previously read "v0.4.7" — a version that never existed. The
+ * CHANGELOG goes 0.4.6 → 0.5.0, and the playground was telling every
+ * visitor it ran a phantom release.
  *
  * Why vendored: the website is a separate Next.js project that doesn't
  * share an npm workspace with iris/. Cross-project source imports would
@@ -16,17 +20,29 @@
  * results (test case in tests/playground-eval.test.ts catches the most
  * common cases).
  *
- * Differences from the canonical iris engine:
+ * Differences from the canonical iris engine — KNOWN, and disclosed in the
+ * playground UI rather than hidden behind the version label:
  *   - No customConfig threshold overrides — playground uses defaults
  *   - No skipped-rule mechanism — every rule produces a pass/fail
  *   - No weighted-score aggregation — playground returns raw rule results
- *   - No custom-rule support — that ships in v0.4.1 with sandboxed exec
+ *   - No custom-rule support — that ships with sandboxed exec
+ *   - NOT the full v0.5.0 safety pattern libraries. `no_pii` runs only the
+ *     original PII set and `no_injection_patterns` only the phrase tier;
+ *     the shipped server runs a much larger library, including the
+ *     vendor-credential family, the structural injection detectors,
+ *     obfuscation
+ *     normalization, and per-match placeholder/quote suppression. The
+ *     playground therefore UNDER-reports safety hits relative to the real
+ *     server, never over-reports. Porting them is not a copy-paste: the
+ *     suppression logic has to come with them, or the playground would
+ *     start flagging documentation placeholders the server deliberately
+ *     ignores. Tracked as follow-up work; until then the UI says so.
  */
 
 // Keep this in lockstep with the sync date in the file header.
 // Read by /api/playground/eval/route.ts so the playground response can
 // surface which iris version this vendored copy was synced from.
-export const VENDORED_FROM_VERSION = 'v0.4.7';
+export const VENDORED_FROM_VERSION = 'v0.5.0';
 
 export type EvalCategory = 'safety' | 'relevance' | 'completeness' | 'cost';
 
@@ -151,7 +167,7 @@ function noStubOutput(ctx: EvalContext): EvalRuleResult {
   };
 }
 
-/* ── Hallucination detection (safety, v0.4.7 rewrite) ────────────── */
+/* ── Hallucination detection (safety, v0.5.0 rewrite) ────────────── */
 /*
  * Context-grounded: when ctx.input carries the ask + source material, the
  * output's specific claims are cross-checked against it. Refusal
@@ -509,7 +525,7 @@ function detectUngroundedDate(output: string, input: string): string | null {
 
 /*
  * Parse a markdown table row by splitting on '|' — never by regexing the
- * whole line. The v0.4.7 first cut used /^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/,
+ * whole line. The v0.5.0 first cut used /^\s*\|\s*([^|]+?)\s*\|(.+)\|?\s*$/,
  * where the greedy \s* and lazy [^|]+? both match a run of spaces: on a
  * line of '|' + N spaces with no closing pipe the engine has ~N ways to
  * split the run — super-quadratic backtracking (~90s at 8KB; one crafted

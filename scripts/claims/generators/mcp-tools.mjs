@@ -21,6 +21,30 @@ const root = resolve(here, '..', '..', '..');
  */
 const REGISTER_TOOL_RE = /server\.registerTool\s*\(\s*['"]([a-z_][a-z0-9_]*)['"]/g;
 
+/*
+ * The ANNOTATIONS object literal only — never the whole file.
+ *
+ * These counters used to test the raw source, so ANY mention of a hint
+ * anywhere in the file counted, comments included. evaluate-output.ts
+ * annotates `openWorldHint: false` and explains it in a trailing comment —
+ * "…LLM-as-judge has its own tool with openWorldHint:true" — and that
+ * sentence made the truthbase ship `openWorldHintCount: 3` while
+ * `tools/list` advertised 2. A gate that reads comments is not reading the
+ * product. tests/claims-eval-rules-counts.test.ts now anchors all three
+ * counts to what the tools actually register at runtime.
+ */
+const ANNOTATIONS_BLOCK_RE = /annotations:\s*\{([\s\S]*?)\}/;
+
+/*
+ * Strip `//` line comments and `/* … *\/` blocks from an annotations
+ * literal. Safe here precisely because an annotations block holds nothing
+ * but `key: boolean,` pairs — no strings, no regex literals, nothing a
+ * naive stripper can corrupt.
+ */
+function stripComments(block) {
+  return block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
 export async function generate() {
   const toolsDir = resolve(root, 'src/tools');
   const files = (await readdir(toolsDir))
@@ -34,9 +58,12 @@ export async function generate() {
   for (const f of files) {
     const src = await readFile(resolve(toolsDir, f), 'utf-8');
     for (const m of src.matchAll(REGISTER_TOOL_RE)) names.push(m[1]);
-    if (/readOnlyHint:\s*true/.test(src)) readOnlyHintCount++;
-    if (/destructiveHint:\s*true/.test(src)) destructiveHintCount++;
-    if (/openWorldHint:\s*true/.test(src)) openWorldHintCount++;
+    const block = src.match(ANNOTATIONS_BLOCK_RE);
+    if (!block) continue;
+    const annotations = stripComments(block[1]);
+    if (/readOnlyHint:\s*true/.test(annotations)) readOnlyHintCount++;
+    if (/destructiveHint:\s*true/.test(annotations)) destructiveHintCount++;
+    if (/openWorldHint:\s*true/.test(annotations)) openWorldHintCount++;
   }
 
   names.sort();

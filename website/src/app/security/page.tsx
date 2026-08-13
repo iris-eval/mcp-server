@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { RATE_LIMIT_API, RATE_LIMIT_MCP } from "@/lib/claims";
 
 export const metadata: Metadata = {
   title: "Security — Iris",
@@ -43,13 +44,16 @@ export default function Security(): React.ReactElement {
               home. There is no telemetry.
             </p>
             <p className="mt-3">
-              <strong className="text-text-primary">Cloud tier (planned, v0.5):</strong>{" "}
-              data will be stored in a per-tenant logical partition in a managed
-              backend running on hardened US-region infrastructure.
-              Encryption at rest (AES-256) + encryption in transit (TLS 1.3)
-              are table stakes. Cross-tenant isolation is enforced at four
-              independent layers — see the architecture guide for the
-              technical detail.
+              <strong className="text-text-primary">
+                A hosted tier is under consideration, not under construction.
+              </strong>{" "}
+              No version is committed to it and no pricing exists. The
+              cross-tenant isolation described below is already enforced at four
+              independent layers in the self-hosted code — see the architecture
+              guide for the technical detail — so <em>if</em> a hosted tier ever
+              ships it inherits those boundaries rather than retrofitting them.
+              Until it does, every control on this page describes software that
+              runs on your machine.
             </p>
           </section>
 
@@ -103,9 +107,11 @@ export default function Security(): React.ReactElement {
               </li>
             </ol>
             <p className="mt-3">
-              In Cloud mode the tenant ID is resolved server-side from your
-              auth token&rsquo;s claims — never from a client-supplied query
-              parameter or header. Regression coverage lives in{" "}
+              Self-hosted Iris runs a single implicit tenant, so the boundary
+              is scaffolding rather than a live multi-tenant surface today. The
+              design rule it encodes: a tenant ID would be resolved server-side
+              from an auth token&rsquo;s claims — never from a client-supplied
+              query parameter or header. Regression coverage lives in{" "}
               <code className="rounded bg-surface-elevated px-1.5 py-0.5 text-[13px]">
                 tests/unit/storage/sqlite-adapter.test.ts
               </code>{" "}
@@ -196,8 +202,9 @@ export default function Security(): React.ReactElement {
               </li>
               <li>
                 <strong className="text-text-primary">Rate limiting:</strong>{" "}
-                20 req/min on MCP endpoints, 100 req/min on dashboard APIs,
-                standard RateLimit headers.
+                {RATE_LIMIT_MCP} req/min on MCP endpoints,{" "}
+                {RATE_LIMIT_API} req/min on dashboard APIs, standard RateLimit
+                headers.
               </li>
               <li>
                 <strong className="text-text-primary">Zod input validation</strong>{" "}
@@ -206,11 +213,41 @@ export default function Security(): React.ReactElement {
               </li>
               <li>
                 <strong className="text-text-primary">ReDoS protection:</strong>{" "}
-                custom regex rules are validated with{" "}
+                every match of a user-supplied regex runs in a sandbox worker
+                thread under a hard 100 ms deadline. A match still backtracking
+                at the deadline is terminated mid-execution and the rule reports{" "}
+                <code className="rounded bg-surface-elevated px-1.5 py-0.5 text-[13px]">
+                  skipped
+                </code>{" "}
+                with{" "}
+                <code className="rounded bg-surface-elevated px-1.5 py-0.5 text-[13px]">
+                  budgetExceeded: true
+                </code>
+                ; a per-evaluation circuit breaker opens after 3 breaches, so
+                one hostile request cannot stall the server no matter how many
+                regex rules it carries.{" "}
                 <code className="rounded bg-surface-elevated px-1.5 py-0.5 text-[13px]">
                   safe-regex2
                 </code>{" "}
-                and length-capped at 1,000 characters before compilation.
+                and the 1,000-character cap remain as fast-path rejection, not
+                as the boundary — safe-regex2 is a star-height heuristic and{" "}
+                <code className="rounded bg-surface-elevated px-1.5 py-0.5 text-[13px]">
+                  (a|a)*$
+                </code>{" "}
+                passes it.{" "}
+                <strong className="text-text-primary">
+                  The trade-off, stated plainly:
+                </strong>{" "}
+                this fails <em>open</em> per rule. A budget-killed rule did not
+                judge the output, so an adversary who knows your pattern can
+                craft input that stalls it into skipping. Failing closed would
+                let the same adversary force false violations on benign output,
+                which is worse for an eval product — so the{" "}
+                <code className="rounded bg-surface-elevated px-1.5 py-0.5 text-[13px]">
+                  budgetExceeded
+                </code>{" "}
+                flag is exported precisely so a gate that must fail closed can
+                treat those skips as failures on its own terms.
               </li>
               <li>
                 <strong className="text-text-primary">Request size limit</strong>{" "}
@@ -303,14 +340,18 @@ export default function Security(): React.ReactElement {
                 internal STRIDE threat model.
               </li>
               <li>
-                <strong className="text-text-primary">Cloud GA (v0.5):</strong>{" "}
-                formal SOC 2 Type I readiness, independent penetration test,
-                incident response playbook.
+                <strong className="text-text-primary">
+                  If a hosted tier ever ships:
+                </strong>{" "}
+                formal SOC 2 Type I readiness, an independent penetration test
+                and an incident-response playbook would come with it. A hosted
+                tier is under consideration, not under construction — no version
+                is committed to it.
               </li>
               <li>
-                <strong className="text-text-primary">Enterprise tier:</strong>{" "}
-                single-tenant isolation option, custom data-residency,
-                BAA/DPA support, SOC 2 Type II within 18 months of Cloud GA.
+                <strong className="text-text-primary">The commitment:</strong>{" "}
+                no compliance certification will be claimed before it is held.
+                Nothing on this page is a certification.
               </li>
             </ul>
           </section>

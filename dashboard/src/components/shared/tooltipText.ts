@@ -6,6 +6,23 @@
  * /rules all share one definition). Edit here to update everywhere.
  */
 
+/*
+ * Severity semantics — the SAME sentence the MCP tool tells agents.
+ *
+ * These two constants must stay byte-identical to the phrases in
+ * src/tools/deploy-rule.ts's `severity` description; tests/severity-copy.test.ts
+ * fails the build if they drift. Before v0.5.0 severity was purely a triage
+ * label, and these tooltips said so ("failures should be reviewed within the
+ * day", "should page"). v0.5.0 made high/critical a hard veto — so the badge
+ * on a rule that now blocks every evaluation it loses was rendering help text
+ * describing the opposite behaviour. Authoritative help that contradicts the
+ * product is worse than no help.
+ */
+export const SEVERITY_WEIGHT_ONLY =
+  'contributes to the weighted score only (plus dashboard sort + audit alerts)';
+export const SEVERITY_HARD_FAIL =
+  'a failing evaluation of this rule forces the overall passed=false regardless of the weighted score';
+
 export const TT = {
   // Eval verdicts
   verdictPass: 'All evaluation rules that ran for this trace passed.',
@@ -34,10 +51,10 @@ export const TT = {
   tokenEfficiency: 'Output-to-input token ratio. High values may indicate verbose padding.',
 
   // Rule library
-  ruleSeverityLow: 'Informational — surface in lists but do not page on failure.',
-  ruleSeverityMedium: 'Standard severity — failures are noted but not urgent.',
-  ruleSeverityHigh: 'High severity — failures should be reviewed within the day.',
-  ruleSeverityCritical: 'Critical — failures should page or trigger immediate response.',
+  ruleSeverityLow: `Low — informational: ${SEVERITY_WEIGHT_ONLY}. Does not block an evaluation.`,
+  ruleSeverityMedium: `Medium — informational: ${SEVERITY_WEIGHT_ONLY}. Does not block an evaluation.`,
+  ruleSeverityHigh: `High — HARD-FAIL: ${SEVERITY_HARD_FAIL}, and the rule is named in critical_failures.`,
+  ruleSeverityCritical: `Critical — HARD-FAIL: ${SEVERITY_HARD_FAIL}, and the rule is named in critical_failures.`,
 
   // Source moment provenance
   sourceMoment:

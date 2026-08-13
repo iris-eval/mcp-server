@@ -144,6 +144,36 @@
       "pattern": "test-count",
       "line": "*",
       "reason": "Fixture prose inside seeded demo agent outputs (a fictional CI status report) — not a claim about iris's own test suite."
+    },
+    {
+      "file": "docs/roadmap.md",
+      "pattern": "injection-pattern-count",
+      "line": "*",
+      "reason": "The v0.3.1 section records the 5→13 injection expansion as shipped then; the safety-corpus release took it to 37. Past-tense release history, correct as-of-version. Surfaced when the scanner learned the 'no_injection_patterns … N patterns' spelling."
+    },
+    {
+      "file": "website/src/app/api/playground/eval/route.ts",
+      "pattern": "rate-limit",
+      "line": "*",
+      "reason": "A DIFFERENT limiter — the hosted playground's own per-IP throttle, not the shipped server's dashboard/MCP limits that security.rateLimit describes."
+    },
+    {
+      "file": "website/src/components/playground/playground-data.ts",
+      "pattern": "rate-limit",
+      "line": "*",
+      "reason": "Fixture prose inside a demo agent transcript (a fictional API's docs excerpt) — not a claim about iris's own rate limits."
+    },
+    {
+      "file": "website/src/components/problem.tsx",
+      "pattern": "rate-limit",
+      "line": "*",
+      "reason": "Illustrative throughput figure on a mock observability panel — a metric about the reader's agent, not an iris limit."
+    },
+    {
+      "file": "dashboard/src/api/hooks.ts",
+      "pattern": "rate-limit",
+      "line": "*",
+      "reason": "Arithmetic in a comment about the dashboard's own polling cadence (requests the UI generates), not a published limit."
     }
   ]
 }

@@ -313,11 +313,11 @@ const TABLE: ControlledCase[] = [
     expectations: { no_injection_patterns: 'fire' },
   },
 
-  // no_hallucination_markers — v0.4.7 rewrite (context-grounded; moved to safety)
+  // no_hallucination_markers — v0.5.0 rewrite (context-grounded; moved to safety)
   {
     id: 'safety.hallucination.pass-refusal-boilerplate',
     category: 'safety-v047',
-    // The pre-v0.4.7 rule fired on this. Refusal boilerplate is not
+    // The pre-v0.5.0 rule fired on this. Refusal boilerplate is not
     // hallucination — a 90-case gold corpus showed the old marker list
     // caught 0/46 real hallucinations.
     output: 'As an AI language model, I cannot provide real-time information about that topic.',

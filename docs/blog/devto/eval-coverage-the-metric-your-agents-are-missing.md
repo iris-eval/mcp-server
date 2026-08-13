@@ -68,7 +68,7 @@ The reason most teams run at 0% eval coverage is that adding per-call evaluation
 
 The path to 100% follows the same pattern:
 
-1. **Make it structural, not discretionary.** If evaluation requires developers to add per-call instrumentation, coverage will always be incomplete. If evaluation is built into the protocol layer — the communication channel every agent already uses — coverage is automatic.
+1. **Remove the per-call burden.** If evaluation requires developers to add instrumentation at every call site, coverage will always be incomplete. Building evaluation into the protocol layer — the channel every agent already uses — makes high coverage *reachable* without touching application code. It does not make it automatic: under MCP a tool call is always the model's decision, so protocol-native eval removes the instrumentation tax, not the uncertainty. Guaranteed capture needs a path that does not depend on the model choosing to call it — `POST /api/v1/traces` or an SDK.
 
 2. **Measure it.** You can't improve what you don't measure. Track your eval coverage as a metric: (evaluated executions / total executions) x 100.
 
@@ -80,7 +80,7 @@ Iris enables high eval coverage by integrating at the MCP protocol layer. Agents
 
 The architectural advantage: when eval is an MCP tool the agent can invoke on any output, adding coverage doesn't require per-call instrumentation in your application code. You configure Iris once, and the agent has access to eval on every execution.
 
-This is why the coverage framing matters: protocol-native eval makes high coverage a matter of agent configuration, not developer discipline. The same way CI pipelines made test coverage structural, MCP-native eval makes agent eval coverage structural.
+This is why the coverage framing matters: protocol-native eval makes high coverage a matter of agent configuration rather than developer discipline. It is a large reduction in effort, not a guarantee — MCP hands the invocation decision to the model, which is exactly why Iris also ships `POST /api/v1/traces`, a CLI and SDKs. Use the protocol path for interactive work; use the ingest path for anything that must be recorded.
 
 ---
 

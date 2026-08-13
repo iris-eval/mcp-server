@@ -287,7 +287,7 @@ When using HTTP transport, Iris includes:
 
 - API key authentication with timing-safe comparison
 - CORS restricted to localhost by default
-- Rate limiting (100 req/min API, 20 req/min MCP)
+- Rate limiting (600 req/min dashboard API, 20 req/min MCP)
 - Helmet security headers
 - Zod input validation on all routes
 - ReDoS-safe regex for custom eval rules

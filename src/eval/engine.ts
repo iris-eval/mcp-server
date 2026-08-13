@@ -177,6 +177,24 @@ export class EvalEngine {
       .filter((i) => rules[i].critical === true && !ruleResults[i].passed)
       .map((i) => ruleResults[i].ruleName);
 
+    /*
+     * The other half of that sentence, surfaced as a field.
+     *
+     * A critical rule that SKIPPED is the fail-open seam between this
+     * release's two headline features: an adversary who knows a deployed
+     * critical regex can craft output that stalls it past the sandbox
+     * budget, and the rule then neither judges nor vetoes — so the eval
+     * returns passed=true with an EMPTY critical_failures on output that
+     * nobody actually cleared. The trade-off is deliberate (failing closed
+     * would let the same adversary force false violations on benign
+     * output), but before this field the only trace of it was a suggestions
+     * line — prose. A gate that must fail closed should not have to walk
+     * rule_results[].budgetExceeded to discover it was defeated.
+     */
+    const criticalSkipped = skippedIndices
+      .filter((i) => rules[i].critical === true)
+      .map((i) => ruleResults[i].ruleName);
+
     const passed = score >= this.threshold && criticalFailures.length === 0;
 
     const suggestions: string[] = [];
@@ -206,6 +224,14 @@ export class EvalEngine {
         `${rulesSkipped} rule(s) skipped — excluded from the weighted score: ${skippedParts.join('; ')}`,
       );
     }
+    if (criticalSkipped.length > 0) {
+      suggestions.push(
+        `Critical rule(s) did NOT judge this output (${criticalSkipped.join(', ')}) — ` +
+          'they skipped, so they could not veto. This evaluation is "unknown" on those ' +
+          'checks, not "clean"; a gate that must fail closed should treat critical_skipped ' +
+          'as a failure.',
+      );
+    }
 
     return {
       id: generateEvalId(),
@@ -220,6 +246,7 @@ export class EvalEngine {
       rules_skipped: rulesSkipped,
       insufficient_data: false,
       ...(criticalFailures.length > 0 ? { critical_failures: criticalFailures } : {}),
+      ...(criticalSkipped.length > 0 ? { critical_skipped: criticalSkipped } : {}),
     };
   }
 }

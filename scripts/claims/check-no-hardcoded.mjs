@@ -28,7 +28,10 @@ const SCAN_DIRS = [
   'website/public',
   'dashboard/src',
   'docs',
-  'packages/langchain/src',
+  // The whole package dir, not just src/ — packages/langchain/README.md is
+  // published to npm and led with the retired tagline for a full release
+  // while the scanner walked only its source.
+  'packages/langchain',
   'packages/init',
   'claude-plugin',
   // The DOT-prefixed one, which is where the real manifests live —
@@ -81,21 +84,32 @@ const PATTERNS = [
     expected: c => [c.evalRules?.builtInCount],
     fix: 'Import BUILT_IN_RULE_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
-  // The pii/injection regexes cover BOTH orderings: "N PII patterns" and
-  // "PII <up to 40 chars> N patterns" — the second catches "PII detection
-  // across 10 patterns", "prompt injection (13 patterns)" and "13 attack
-  // patterns", which all slipped past the count-first-only forms while the
-  // gate reported OK (the gate-coverage-vs-claim failure: alive, but not
-  // covering the set its name says it covers).
+  /*
+   * The pii/injection regexes cover BOTH orderings: "N PII patterns" and
+   * "PII <up to 60 chars> N patterns" — the second catches "PII detection
+   * across 10 patterns", "prompt injection (13 patterns)" and "13 attack
+   * patterns", which all slipped past the count-first-only forms while the
+   * gate reported OK (the gate-coverage-vs-claim failure: alive, but not
+   * covering the set its name says it covers).
+   *
+   * Two more blind spots, both found on a CANONICAL live post (blog 005,
+   * "10 regex patterns" / "13 regex patterns"), both now closed:
+   *   - an INTERPOSED QUALIFIER between the number and the noun —
+   *     `(?:\w+[\s-]+){0,2}` absorbs "regex", "distinct", "attack",
+   *     "structural detector" and the like;
+   *   - the rule-name spelling `no_pii` / `no_injection_patterns`, where
+   *     the leading `_` is a word character so `\bPII` never matched. Both
+   *     spellings are now anchors.
+   */
   {
     name: 'pii-pattern-count',
-    re: /\b(\d{1,2})\s+PII\s+patterns\b|\bPII[^.\n]{0,40}?\b(\d{1,2})\s+patterns\b/gi,
+    re: /\b(\d{1,3})\s+(?:\w+[\s-]+){0,2}PII\s+patterns\b|(?:\bPII\b|\bno_pii\b)[^.\n]{0,60}?\b(\d{1,3})\s+(?:\w+[\s-]+){0,2}patterns\b/gi,
     expected: c => [c.evalRules?.piiPatterns],
     fix: 'Import PII_PATTERN_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
   {
     name: 'injection-pattern-count',
-    re: /\b(\d{1,2})\s+(?:prompt[- ])?injection\s+(?:attack\s+)?patterns\b|\binjection[^.\n]{0,40}?\b(\d{1,2})\s+(?:attack\s+)?patterns\b|\b(\d{1,2})\s+attack\s+patterns\b/gi,
+    re: /\b(\d{1,3})\s+(?:\w+[\s-]+){0,2}(?:prompt[- ])?injection\s+(?:attack\s+)?patterns\b|(?:\binjection\b|\bno_injection_patterns\b)[^.\n]{0,60}?\b(\d{1,3})\s+(?:\w+[\s-]+){0,2}(?:attack\s+)?patterns\b|\b(\d{1,3})\s+(?:\w+[\s-]+){0,2}attack\s+patterns\b/gi,
     expected: c => [c.evalRules?.injectionPatterns],
     fix: 'Import INJECTION_PATTERN_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
@@ -109,6 +123,45 @@ const PATTERNS = [
     name: 'iris-version-literal',
     re: /\bsoftwareVersion\s*[:=]\s*["']0\.\d+\.\d+["']/g,
     fix: 'Use VERSION_MCP_SERVER from ~/lib/claims (do not hardcode JSON-LD softwareVersion)',
+  },
+  /*
+   * Published rate limits. The security page told readers the dashboard API
+   * allowed 100 req/min while the shipped default had been 600 for a full
+   * release — wrong by 6x on the one page a reader consults BECAUSE they
+   * do not trust prose. There was no `security` key in the truthbase at
+   * all, so neither claims gate could have caught it.
+   *
+   * `valueCheckedInCode` because the natural home for these numbers is a
+   * sentence — nine MCP tool descriptions state "Rate-limited to 20
+   * req/min on HTTP MCP" as part of the contract an agent reads. For those
+   * the useful lock is "the number must be the shipped one", not "import a
+   * constant"; the moment src/config/defaults.ts moves, every restatement
+   * lights up.
+   */
+  {
+    name: 'rate-limit',
+    re: /\b(\d{1,5})\s*(?:requests?|req)\s*(?:\/|per\s+)\s*min(?:ute)?\b/gi,
+    expected: c => [c.security?.rateLimit?.api, c.security?.rateLimit?.mcp],
+    valueCheckedInCode: true,
+    fix: 'State the shipped limit from .claims.json security.rateLimit (api=dashboard REST, mcp=MCP endpoint), or allow-list the site if it is a fixture / a different limiter',
+  },
+  /*
+   * Retired positioning. 0.5.0 replaced "The Agent Eval Standard for MCP"
+   * with the current tagline across ~19 surfaces, and the release notes
+   * claimed every surface was drift-locked to brand.tagline — which was
+   * prose: the exported TAGLINE constant had no consumers and no scanner
+   * pattern existed. This is the lock. It is value-free: the retired
+   * strings must not appear on a live surface at all.
+   */
+  {
+    name: 'retired-positioning',
+    re: /The Agent Eval Standard for MCP|the agent eval standard for MCP|MCP-Native Agent Eval (?:&|and) Observability/g,
+    // Dated artifacts keep their period voice on purpose: published blog
+    // posts carry editor's notes rather than being rewritten, and
+    // docs/launch/* are frozen templates that each open with a historical
+    // banner instructing a fresh compose before any reuse.
+    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    fix: 'Use the current tagline (.claims.json brand.tagline / TAGLINE from ~/lib/claims). If this is a dated artifact, it belongs under docs/blog/ or docs/launch/.',
   },
 ];
 
@@ -155,9 +208,14 @@ const SCAN_EXTS = new Set([
 // may restate the truth — a match flags only when the number is wrong.
 // The captured number is the first defined group: multi-alternative regexes
 // (pii/injection) capture in different group positions per alternative.
+//
+// `valueCheckedInCode` opts a pattern out of the code-is-strict rule: some
+// numbers live inside natural-language strings that ARE the product (MCP
+// tool descriptions), where the useful lock is "the value must be right".
 function matchFlags(pattern, m, relPath, claims) {
   const ext = relPath.slice(relPath.lastIndexOf('.'));
-  if (CODE_EXTS.has(ext) || !pattern.expected || !claims) return true;
+  const strictBecauseCode = CODE_EXTS.has(ext) && !pattern.valueCheckedInCode;
+  if (strictBecauseCode || !pattern.expected || !claims) return true;
   const captured = Number(m.slice(1).find(g => g !== undefined));
   const truthful = pattern.expected(claims).filter(v => typeof v === 'number');
   return truthful.length === 0 || !truthful.includes(captured);
@@ -186,6 +244,52 @@ async function main() {
   }
   const findings = [];
 
+  /*
+   * Coverage bookkeeping. A gate that only prints OK/FAIL cannot be audited:
+   * "0 findings" reads identically whether a pattern walked 400 files or
+   * matched nothing because its regex was structurally blind to the phrasing
+   * actually used (feedback_gate_coverage_vs_claim — that is exactly how
+   * "10 regex patterns" survived on a canonical live post). So the run now
+   * reports, per pattern, how many sites it SAW, how many it cleared, how
+   * many the allow-list excused and how many it skipped by prefix.
+   */
+  const coverage = new Map(
+    PATTERNS.map(p => [p.name, { seen: 0, ok: 0, allowed: 0, skipped: 0, flagged: 0 }]),
+  );
+  let filesScanned = 0;
+
+  const scanText = (rel, text) => {
+    filesScanned++;
+    for (const pattern of PATTERNS) {
+      const cov = coverage.get(pattern.name);
+      const skippedByPrefix = (pattern.skipPrefixes ?? []).some(p => rel.startsWith(p));
+      pattern.re.lastIndex = 0;
+      let m;
+      while ((m = pattern.re.exec(text)) !== null) {
+        cov.seen++;
+        if (skippedByPrefix) {
+          cov.skipped++;
+          continue;
+        }
+        if (!matchFlags(pattern, m, rel, claims)) {
+          cov.ok++;
+          continue;
+        }
+        const line = lineNumber(text, m.index);
+        const lineText = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index)).trim();
+        const allowed = allowList.entries.some(
+          e => e.file === rel && e.pattern === pattern.name && (e.line === line || e.line === '*'),
+        );
+        if (allowed) {
+          cov.allowed++;
+          continue;
+        }
+        cov.flagged++;
+        findings.push({ file: rel, line, pattern: pattern.name, match: m[0], lineText, fix: pattern.fix });
+      }
+    }
+  };
+
   // Walk scan dirs
   for (const d of SCAN_DIRS) {
     const full = resolve(root, d);
@@ -197,49 +301,20 @@ async function main() {
     for await (const path of walk(full)) {
       if (!fileShouldScan(path)) continue;
       const rel = relative(root, path).split(sep).join('/');
-      const text = await readFile(path, 'utf-8');
-      for (const pattern of PATTERNS) {
-        pattern.re.lastIndex = 0;
-        let m;
-        while ((m = pattern.re.exec(text)) !== null) {
-          if (!matchFlags(pattern, m, rel, claims)) continue;
-          const line = lineNumber(text, m.index);
-          const lineText = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index)).trim();
-          const allowed = allowList.entries.some(
-            e => e.file === rel && e.pattern === pattern.name && (e.line === line || e.line === '*'),
-          );
-          if (!allowed) {
-            findings.push({ file: rel, line, pattern: pattern.name, match: m[0], lineText, fix: pattern.fix });
-          }
-        }
-      }
+      scanText(rel, await readFile(path, 'utf-8'));
     }
   }
 
   // Specific top-level files
   for (const f of SCAN_FILES) {
-    const path = resolve(root, f);
     try {
-      const text = await readFile(path, 'utf-8');
-      for (const pattern of PATTERNS) {
-        pattern.re.lastIndex = 0;
-        let m;
-        while ((m = pattern.re.exec(text)) !== null) {
-          if (!matchFlags(pattern, m, f, claims)) continue;
-          const line = lineNumber(text, m.index);
-          const lineText = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index)).trim();
-          const allowed = allowList.entries.some(
-            e => e.file === f && e.pattern === pattern.name && (e.line === line || e.line === '*'),
-          );
-          if (!allowed) {
-            findings.push({ file: f, line, pattern: pattern.name, match: m[0], lineText, fix: pattern.fix });
-          }
-        }
-      }
+      scanText(f, await readFile(resolve(root, f), 'utf-8'));
     } catch {
       /* file missing is fine */
     }
   }
+
+  printCoverage(coverage, filesScanned, PATTERNS);
 
   if (findings.length === 0) {
     console.log('[claims:check-no-hardcoded] OK — no unguarded hardcoded claims found');
@@ -254,6 +329,32 @@ async function main() {
   }
   console.error('\nIf this site is intentional, add an entry to scripts/claims/allow-list.json with reasoning.');
   process.exit(1);
+}
+
+function printCoverage(coverage, filesScanned, patterns) {
+  const tracksALiveNumber = new Map(patterns.map(p => [p.name, Boolean(p.expected)]));
+  console.log(`[claims:check-no-hardcoded] coverage — ${filesScanned} files scanned`);
+  for (const [name, c] of coverage) {
+    const detail = [
+      `${c.seen} site(s)`,
+      `${c.ok} correct`,
+      `${c.allowed} allow-listed`,
+      `${c.skipped} dated-artifact`,
+      `${c.flagged} flagged`,
+    ].join(' · ');
+    /*
+     * A pattern that tracks a live number and matches NOTHING is the exact
+     * failure this report exists to expose: the gate looks green while its
+     * regex has gone structurally blind to the phrasing in use. Say it out
+     * loud. Value-free GUARD patterns (retired taglines, forbidden
+     * literals) are supposed to match nothing — silence there is success.
+     */
+    const note =
+      c.seen === 0 && tracksALiveNumber.get(name)
+        ? '   <- MATCHED NOTHING: verify the phrasing it targets still exists'
+        : '';
+    console.log(`  ${name.padEnd(26)} ${detail}${note}`);
+  }
 }
 
 main().catch(err => {

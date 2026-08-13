@@ -59,12 +59,12 @@ Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris.
 ## MCP tools (9)
 
 1. `log_trace` — Log an agent execution with spans, tool calls, token usage, and cost in USD. Emits optional OTLP/HTTP export to any OpenTelemetry collector when `IRIS_OTEL_ENDPOINT` is set.
-2. `evaluate_output` — Score output quality against completeness, relevance, safety, and cost rules. Heuristic, deterministic, free.
+2. `evaluate_output` — Score output against ONE rule bundle chosen by `eval_type` (completeness | relevance | safety | cost | custom). Defaults to completeness when omitted — safety rules do NOT run unless you pass `eval_type: "safety"`. Heuristic, deterministic, free. Inline `custom_rules` are additive and fire alongside whichever bundle you chose. A failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`) forces `passed: false` regardless of the weighted `score` and names itself in `critical_failures`. Worked example: `evaluate_output({output: "<agent text>", eval_type: "safety"})` on output containing an SSN returns `{score: 0.765, passed: false, critical_failures: ["no_pii"]}` — the score stays a quality gradient, `passed` is the verdict. Checking both quality and safety takes two calls.
 3. `get_traces` — Query stored traces with filtering, pagination, and time-range support.
 4. `list_rules` — Enumerate deployed custom eval rules (read-only).
 5. `deploy_rule` — Register a custom eval rule that fires on every matching `evaluate_output`.
-6. `delete_rule` — Remove a deployed custom rule (destructive, idempotent).
-7. `delete_trace` — Remove a single stored trace by ID (destructive, tenant-scoped).
+6. `delete_rule` — Remove a deployed custom rule (destructive; NOT idempotent — a repeat delete returns `deleted: false` and emits no audit row). Hot-removes the rule from the live engine, so it stops firing immediately rather than at the next restart.
+7. `delete_trace` — Remove a single stored trace by ID (destructive, tenant-scoped; NOT idempotent — a repeat delete returns `deleted: false`).
 8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). Five templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
 9. `verify_citations` — Extract citations (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded, domain-allowlisted resolver, and use an LLM judge to check whether each source supports the cited claim. Opt-in outbound HTTP; same BYOK requirement.
 

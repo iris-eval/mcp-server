@@ -260,9 +260,17 @@ export class SqliteAdapter implements IStorageAdapter {
      * calendar date matched the boundary's date was dropped from the
      * window. Migration 005 rewrites rows written before this line existed.
      */
+    /*
+     * critical_failures is PERSISTED (migration 006) because the veto is a
+     * verdict, not a presentation detail. It used to live only in the live
+     * tool response, so the moment an evaluation was stored a vetoed eval
+     * became indistinguishable from one that merely scored below threshold —
+     * no surface could filter, count, or explain the release's flagship
+     * behaviour. NULL when nothing vetoed.
+     */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -277,6 +285,7 @@ export class SqliteAdapter implements IStorageAdapter {
       result.rules_evaluated ?? null,
       result.rules_skipped ?? null,
       result.insufficient_data ? 1 : 0,
+      result.critical_failures?.length ? JSON.stringify(result.critical_failures) : null,
       new Date().toISOString(),
     );
   }
@@ -703,6 +712,14 @@ export class SqliteAdapter implements IStorageAdapter {
       rules_evaluated: row.rules_evaluated as number | undefined,
       rules_skipped: row.rules_skipped as number | undefined,
       insufficient_data: row.insufficient_data != null ? (row.insufficient_data as number) === 1 : undefined,
+      /*
+       * Absent, not [], when NULL. Rows written before migration 006 never
+       * captured the field, and returning an empty array would assert "no
+       * critical rule failed" about an evaluation that never recorded one.
+       */
+      ...(row.critical_failures != null
+        ? { critical_failures: JSON.parse(row.critical_failures as string) as string[] }
+        : {}),
     };
   }
 }

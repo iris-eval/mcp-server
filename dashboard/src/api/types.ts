@@ -58,6 +58,14 @@ export interface EvalResult {
   passed: boolean;
   rule_results: EvalRuleResult[];
   suggestions: string[];
+  /**
+   * Rules that HARD-FAILED this evaluation — a critical safety rule
+   * (no_pii / no_injection_patterns / no_blocklist_words) or a deployed rule
+   * with severity high/critical. When present, `passed` is false because of
+   * these regardless of `score`. Absent means nothing vetoed, or the row
+   * predates migration 006.
+   */
+  critical_failures?: string[];
   created_at?: string;
 }
 
@@ -188,6 +196,8 @@ export interface DecisionMomentDetail extends DecisionMoment {
       skipReason?: string;
     }>;
     suggestions: string[];
+    /** See EvalResult.critical_failures — the rules that vetoed this eval. */
+    criticalFailures?: string[];
     createdAt?: string;
   }>;
   toolCalls?: ToolCallRecord[];

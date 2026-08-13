@@ -36,7 +36,7 @@ export const keywordOverlap: EvalRule = {
 
 /*
  * no_hallucination_markers moved to the safety bundle (safety.ts) in
- * v0.4.7 — its rewrite is context-grounded fabrication/contradiction
+ * v0.5.0 — its rewrite is context-grounded fabrication/contradiction
  * detection, and the safety bundle is where the evaluate_output docs,
  * the dashboard's safety-violations panel, and the storage adapter's
  * violation counts have always placed it.

@@ -20,7 +20,7 @@ function s(value: unknown): string { return String(value ?? "").replace(/</g, "\
 const FAQ_ITEMS = [
   { question: "What is eval coverage?", answer: "Eval coverage is the percentage of agent executions that receive automated evaluation. If your agent handles 1,000 requests and 50 are evaluated, your eval coverage is 5%. Most teams are at 0% — no outputs are scored at all." },
   { question: "Why does eval coverage matter?", answer: "Agents fail intermittently and silently. A 5% sample might miss every failure. The edge cases, drift events, and rare safety violations that matter most are exactly the ones sampling misses. 100% coverage means every output is scored — no blind spots." },
-  { question: "How do you achieve 100% eval coverage?", answer: "By making evaluation zero-effort. If eval requires a pipeline, SDK integration, or manual setup, teams run it on samples or skip it entirely. Iris achieves 100% coverage by evaluating inline at the protocol layer — every output is scored automatically with no additional code." },
+  { question: "How do you achieve 100% eval coverage?", answer: "By removing the per-call instrumentation burden. If eval requires a pipeline, SDK integration, or manual setup, teams run it on samples or skip it entirely. Iris makes high coverage reachable by evaluating inline at the protocol layer, with no additional application code. Reachable, not automatic: under MCP a tool call is always the model's decision, so anything that must be recorded should go through POST /api/v1/traces or an SDK, which do not depend on the model choosing to call the tool." },
 ];
 
 const TOC_ITEMS = [
@@ -74,7 +74,7 @@ export default function LearnEvalCoverage(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris achieves 100% eval coverage by design. Every output that flows through the MCP protocol gets scored — no sampling, no pipeline, no opt-in. The eval rules run in under one millisecond, so there&apos;s no performance reason to sample. Full coverage, zero overhead.
+          Iris makes full coverage <em>reachable</em> by design. Evaluation is an MCP tool the agent can invoke on any output, so no sampling, pipeline or per-call instrumentation stands between you and scoring every execution — and the rules run in under a millisecond, so there is no performance reason to sample. What the protocol cannot do is guarantee the call: under MCP, invoking a tool is always the model&apos;s decision. For traffic that must be recorded regardless — CI gates, batch jobs, services in other languages — send it to <code>POST /api/v1/traces</code>, which takes the same contract as <code>log_trace</code> and does not wait on a model to choose.
         </p>
         <p className="mt-6 text-text-secondary"><Link href="/blog/eval-coverage-the-metric-your-agents-are-missing" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: Eval Coverage &rarr;</Link></p>
 

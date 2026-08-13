@@ -66,8 +66,20 @@ function appDataDir(): string {
 export function configPathFor(client: SupportedClient): string {
   switch (client) {
     case 'claude-code':
-      // ~/.claude/mcp.json on mac/linux; %USERPROFILE%\.claude\mcp.json on Windows
-      return join(home, '.claude', 'mcp.json');
+      /*
+       * ~/.claude.json — the FILE, not the ~/.claude/ directory.
+       *
+       * This used to write ~/.claude/mcp.json, a path Claude Code never
+       * reads. Claude Code stores MCP servers in ~/.claude.json (user and
+       * local scope) or <project>/.mcp.json (project scope), so the install
+       * printed success and the user restarted to find nothing — the worst
+       * shape of failure, because it leaves no error to search for.
+       *
+       * User scope is the right default for a CLI installing a
+       * general-purpose eval server; project scope would tie it to whatever
+       * directory `npx` happened to run in.
+       */
+      return join(home, '.claude.json');
     case 'claude-desktop':
       return join(appDataDir(), 'Claude', 'claude_desktop_config.json');
     case 'cursor':
@@ -107,7 +119,13 @@ const PROFILES: ClientProfile[] = [
     id: 'claude-code',
     displayName: 'Claude Code',
     configPath: configPathFor('claude-code'),
-    configMode: 'dedicated-mcp-json',
+    /*
+     * embedded-in-config-json, not dedicated-mcp-json: ~/.claude.json holds
+     * far more than MCP config (projects, history, preferences). Both modes
+     * dispatch to the same merge, but the label has to say "this file
+     * belongs to someone else — add to it without disturbing the rest".
+     */
+    configMode: 'embedded-in-config-json',
   },
   {
     id: 'claude-desktop',

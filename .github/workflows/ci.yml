@@ -189,9 +189,20 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: false
-          load: false
+          # load: true so the image lands in the local daemon and the step
+          # below can RUN it. With load:false this job proved the image
+          # BUILDS and nothing more — an image that builds and then exits 1
+          # on start passed the gate cleanly.
+          load: true
+          tags: iris-eval/mcp-server:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Run the image — does it actually start?
+        # --self-test exercises boot, storage init, the eval engine (PII and
+        # injection positives), a dashboard bind and the rebinding guard,
+        # then exits non-zero on any failure. Runs as the image's own
+        # unprivileged `iris` user, which is how it will actually run.
+        run: docker run --rm iris-eval/mcp-server:ci node dist/index.js --self-test
 
   e2e:
     runs-on: ubuntu-latest

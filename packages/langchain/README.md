@@ -1,6 +1,6 @@
 # @iris-eval/langchain
 
-Evaluate LangChain agent output with [Iris](https://iris-eval.com) — the agent eval standard for MCP. Auto-trace runs, score output quality, catch safety failures.
+Evaluate LangChain agent output with [Iris](https://iris-eval.com) — stop shipping agents on vibes. Auto-trace runs, score output quality, catch safety failures.
 
 ## Install
 

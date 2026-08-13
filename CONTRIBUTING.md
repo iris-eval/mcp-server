@@ -55,7 +55,25 @@ The dev server proxies API requests to `http://localhost:6920`.
 
 ### What to expect after you open a PR
 
-- **CI must pass.** Required checks: `lint-and-typecheck`, `test (Node 20)`, `test (Node 22)`, `integration`, `build`, `e2e`, `lighthouse`, `analyze (CodeQL)`, `Vercel`. Branch protection blocks merge until every check is green.
+- **CI must pass.** Branch protection blocks merge until all eleven required checks are green. These are the exact context names, as GitHub reports them:
+
+  | Check | What it covers |
+  |---|---|
+  | `lint-and-typecheck` | ESLint + `tsc --noEmit` over `src/` and `tests/` |
+  | `test (20)` | Unit suite on Node 20 |
+  | `test (22)` | Unit suite on Node 22 |
+  | `integration` | `tests/integration/` |
+  | `e2e` | Playwright end-to-end |
+  | `build` | `tsc -p tsconfig.build.json` |
+  | `docker-build` | The published image builds |
+  | `security-exposure` | The exposure surface matches `SECURITY-EXPOSURE.md` |
+  | `website-lint-and-typecheck` | Lint + typecheck for `website/` |
+  | `Hardcoded-claim scanner` | No number/claim restated outside the truthbase |
+  | `Truthbase regen vs committed` | `.claims.json` regenerates byte-identical to what you committed |
+
+  Other workflows (Lighthouse, CodeQL, the Vercel preview) run on PRs and are worth reading, but they do **not** block merge.
+
+- **The two claims checks are the ones docs contributors hit first.** Every public number in Iris — rule counts, pattern counts, tool counts, the current version — is generated into [`.claims.json`](.claims.json) from source. If you change any of those, or any doc that quotes them, run `npm run claims:generate` and commit the regenerated `.claims.json` in the same PR; use `npm run claims:check-hardcoded` locally to see what the scanner sees before you push.
 - **One CODEOWNER approval** is required (see [.github/CODEOWNERS](.github/CODEOWNERS)). Direct pushes to `main` are forbidden — every change goes through the PR cycle, no exceptions, including hotfixes.
 - **Squash-merge** is the default. Your branch is deleted automatically on merge; the squash commit message is what lands in `main` history, so write the PR title carefully.
 - **Conventional Commits** for the PR title: `fix(scope):`, `feat(scope):`, `chore(scope):`, `docs(scope):`, `test(scope):`. Scope examples: `claims`, `security`, `website`, `dashboard`, `cors`, `tests`.

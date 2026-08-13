@@ -101,8 +101,8 @@ Iris ships with 12 heuristic eval rules across 4 categories. Here is what each c
 ### Completeness (4 rules)
 
 - **non_empty_output** -- Output is not empty or whitespace-only. Weight: 2.
-- **min_output_length** -- Output meets a configurable minimum character count (default: 10). Weight: 1.
-- **sentence_count** -- Output contains at least N complete sentences (default: 1). Weight: 0.5.
+- **min_output_length** -- Output meets a configurable minimum character count (default: 50). Weight: 1.
+- **sentence_count** -- Output contains at least N complete sentences (default: 2). Weight: 0.5.
 - **expected_coverage** -- When an expected output is provided, checks what percentage of key terms appear in the actual output. Passes at 50% coverage. Weight: 1.5.
 
 These are structural checks. An empty response is not a nuance problem. It is a boolean.

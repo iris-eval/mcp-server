@@ -7,7 +7,9 @@ tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
 relatedPosts: [how-to-evaluate-agent-output-without-llm, the-ai-eval-tax, eval-driven-development]
 ---
 
-> **Editor's note (2026-07):** Updated to reflect the current rule library — Iris ships **13** built-in rules (v0.3.1 added `no_stub_output`, making Safety a four-rule category, and expanded `no_pii` to 10 patterns), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.
+> **Editor's note (2026-07):** Updated to reflect the current rule library — Iris ships **13** built-in rules (v0.3.1 added `no_stub_output`, making Safety a four-rule category), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.
+>
+> **Editor's note (2026-08):** Pattern counts and two completeness defaults refreshed for v0.5.0. `no_pii` now runs **19** patterns and `no_injection_patterns` **37** — both were measured against a labeled corpus and rebuilt, so the earlier 10/13 figures understate coverage by a wide margin. `min_output_length` defaults to 50 characters and `sentence_count` to 2 sentences (both configurable via `config.eval.ruleThresholds`); this post previously quoted the pre-0.4 defaults of 10 and 1.
 
 # Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge
 
@@ -106,8 +108,8 @@ Iris ships with 13 heuristic eval rules across 4 categories. Here is what each c
 ### Completeness (4 rules)
 
 - **non_empty_output** -- Output is not empty or whitespace-only. Weight: 2.
-- **min_output_length** -- Output meets a configurable minimum character count (default: 10). Weight: 1.
-- **sentence_count** -- Output contains at least N complete sentences (default: 1). Weight: 0.5.
+- **min_output_length** -- Output meets a configurable minimum character count (default: 50). Weight: 1.
+- **sentence_count** -- Output contains at least N complete sentences (default: 2). Weight: 0.5.
 - **expected_coverage** -- When an expected output is provided, checks what percentage of key terms appear in the actual output. Passes at 50% coverage. Weight: 1.5.
 
 These are structural checks. An empty response is not a nuance problem. It is a boolean.
@@ -120,9 +122,9 @@ These are structural checks. An empty response is not a nuance problem. It is a 
 
 ### Safety (4 rules)
 
-- **no_pii** -- 10 regex patterns: SSN (`\d{3}-\d{2}-\d{4}`), credit card, phone, email, IBAN, passport, date-of-birth, medical record number, IP address, and API-key heuristics. Weight: 2.
+- **no_pii** -- 19 regex patterns: SSN (`\d{3}-\d{2}-\d{4}`), credit card, phone, email, IBAN, passport, date-of-birth, medical record number, IP address, and the vendor-credential family (AWS, Slack, GitHub, Google, npm, SendGrid, DigitalOcean keys, PEM private keys, wallet seed phrases). Documentation placeholders are suppressed per match. Weight: 2.
 - **no_blocklist_words** -- Configurable phrase blocklist. Default includes harmful content patterns. Weight: 2.
-- **no_injection_patterns** -- 13 regex patterns matching common prompt injection attempts. Weight: 2.
+- **no_injection_patterns** -- 37 regex patterns matching prompt-injection attempts, in two tiers: a phrase tier (13) and 24 structural detectors (directives hidden in HTML comments, forged `system:` lines, smuggled JSON directive keys), matched after obfuscation normalization. Weight: 2.
 - **no_stub_output** -- Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, [INSERT) that mean the agent shipped scaffolding instead of an answer. Weight: 2.
 
 Safety rules have the highest weights because a safety failure matters more than a completeness failure.

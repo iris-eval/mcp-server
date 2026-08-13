@@ -207,7 +207,7 @@ describe('safety rules', () => {
   });
 
   /*
-   * no_hallucination_markers — v0.4.7 rewrite (moved here from relevance).
+   * no_hallucination_markers — v0.5.0 rewrite (moved here from relevance).
    * Context-grounded fabrication/contradiction detection: the rule
    * cross-checks the output's specific claims against context.input.
    */
@@ -476,7 +476,7 @@ describe('safety rules', () => {
     });
 
     describe('refusal boilerplate is no longer treated as hallucination', () => {
-      // The pre-v0.4.7 rule matched 17 refusal phrases ("as an AI",
+      // The pre-v0.5.0 rule matched 17 refusal phrases ("as an AI",
       // "I cannot provide"…). Measured against a 90-case gold corpus it
       // caught 0/46 real hallucinations — refusal text is a different
       // failure family and must not trip this rule.
