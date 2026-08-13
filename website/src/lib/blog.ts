@@ -96,7 +96,12 @@ export function getAllPosts(): BlogPost[] {
         description: (meta.description as string) || extractDescription(content),
         content,
         filename,
-        published: meta.published !== false,
+        // parseFrontmatter yields STRINGS, so `meta.published` is the string
+        // "false", never the boolean — `!== false` was therefore always true
+        // and this gate has never withheld anything. A post written with
+        // `published: false` rendered live on the site. Compare the parsed
+        // form instead.
+        published: String(meta.published ?? "true").trim().toLowerCase() !== "false",
         relatedPosts: (meta.relatedPosts as string[]) || undefined,
       };
     })
