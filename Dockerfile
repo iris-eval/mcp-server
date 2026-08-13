@@ -61,14 +61,38 @@ RUN mkdir -p /data && chown iris:iris /data
 
 USER iris
 
+# Two settings here are load-bearing, and both were wrong — which is why
+# every published image since 2026-03 exited 1 on `docker run`.
+#
+# PORTS MUST DIFFER. The MCP transport and the dashboard are two servers.
+# `validatePortConfig` refuses to start when both are aimed at one port, and
+# that check has been in the code since 2026-04-23 while this file kept
+# pointing both at 3000. The container did not "mostly work": it failed fast,
+# before any bind, with no partial function.
+#
+# HOSTS MUST BE 0.0.0.0 INSIDE THE CONTAINER. The process defaults to
+# 127.0.0.1 — correct on a laptop, and 0.4.6 made it the default to close a
+# real LAN-exposure bug. But 127.0.0.1 inside a container's own network
+# namespace is unreachable from `-p`, so the loopback default silently turns
+# every published port into a connection refused. The exposure control here
+# is the container boundary plus whatever the operator publishes with `-p`,
+# not the in-container bind address. The DNS-rebinding guard still applies,
+# and the startup warning for binding beyond loopback without an API key
+# still fires — which is exactly what an operator should see.
 ENV IRIS_TRANSPORT=http \
     IRIS_PORT=3000 \
+    IRIS_HOST=0.0.0.0 \
     IRIS_DB_PATH=/data/iris.db \
     IRIS_DASHBOARD=true \
-    IRIS_DASHBOARD_PORT=3000
+    IRIS_DASHBOARD_PORT=6920 \
+    IRIS_DASHBOARD_HOST=0.0.0.0
 
-EXPOSE 3000
+EXPOSE 3000 6920
 
 VOLUME ["/data"]
 
-CMD ["node", "dist/index.js", "--transport", "http", "--port", "3000", "--dashboard"]
+# No --port/--dashboard-port flags baked in: the ENV above is the single
+# source, so an operator overriding IRIS_DASHBOARD_PORT at `docker run` is
+# not silently beaten by a CLI flag in the image (CLI wins over env in the
+# config merge).
+CMD ["node", "dist/index.js"]

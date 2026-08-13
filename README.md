@@ -172,8 +172,9 @@ Iris is a standard stdio MCP server — one `npx @iris-eval/mcp-server` command,
 npm install -g @iris-eval/mcp-server
 iris-mcp --dashboard
 
-# Docker
-docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
+# Docker — two servers, two ports: 3000 = MCP HTTP transport,
+# 6920 = dashboard (which also serves the POST /api/v1/traces ingest endpoint)
+docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 ```
 
 > **Tip:** Global install (`npm install -g`) stores traces persistently at `~/.iris/iris.db`. With `npx`, traces persist in the same location, but startup is slower due to package resolution.
