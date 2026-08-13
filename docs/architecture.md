@@ -176,9 +176,13 @@ src/
       audit.ts          GET /api/v1/audit — read of the append-only audit log
       preferences.ts    GET/PATCH /api/v1/preferences
 
-    Note: rules and preferences accept writes over HTTP; traces and
-    evaluations are read-only here and can only be created through the MCP
-    tools. Closing that gap is Track 3 in the roadmap.
+    Note: since v0.5.0 traces can also be CREATED over HTTP — POST
+    /api/v1/traces (traces.ts) takes the same body as the log_trace tool,
+    validated against the same exported schema, and with evaluate:true it
+    runs the deterministic engine and writes an eval_result too. That is
+    the no-MCP-client capture path; see docs/http-ingest.md. It is served
+    by the DASHBOARD server, so it requires --dashboard (the dashboard no
+    longer starts implicitly with --transport http).
   types/
     config.ts           IrisConfig interface
     trace.ts            Trace, Span, TokenUsage, ToolCallRecord types
@@ -234,11 +238,15 @@ dashboard/              React SPA (separate Vite build)
 ### Scoring algorithm
 
 ```
-score = SUM(rule[i].score * rule[i].weight) / SUM(rule[i].weight)
-passed = score >= threshold   (default threshold: 0.7)
+score  = SUM(rule[i].score * rule[i].weight) / SUM(rule[i].weight)   # evaluated rules only
+passed = score >= threshold AND no critical rule failed              (default threshold: 0.7)
 ```
 
-Each rule returns a score between 0 and 1. The final score is the weighted average of all rule scores, rounded to three decimal places. Rules that don't apply (e.g., `expected_coverage` when no expected output is given) return `score: 1` with a skip message.
+Each rule returns a score between 0 and 1. The final score is the weighted average across the rules that actually ran, rounded to three decimal places.
+
+**`score` and `passed` answer different questions.** `score` is a quality gradient; `passed` is the ship/no-ship verdict. A failing (non-skipped) **critical** rule forces `passed: false` regardless of how high the weighted score is, and the response names the culprits in `critical_failures`. The critical rules are `no_pii`, `no_injection_patterns` and `no_blocklist_words`, plus any deployed custom rule with severity `high`/`critical`. A leaked SSN scores 0.765 against a 0.7 threshold and still fails — that is the point (see §Scoring semantics in `docs/api-reference.md`).
+
+**Skipped rules are excluded, not scored 1.** A rule that cannot judge the output — `expected_coverage` with no expected output, a missing-context relevance rule, or a regex killed at the sandbox matching budget — returns `score: 0` with `skipped: true` and a `skipReason`, and is left OUT of both the weighted average and the critical-rule veto. A skipped rule therefore neither deflates the score nor vetoes on evidence it never gathered; budget-killed rules additionally carry `budgetExceeded: true` so a gate that must fail closed can treat them as failures.
 
 ### Built-in rule details
 
