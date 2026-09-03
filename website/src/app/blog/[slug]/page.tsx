@@ -32,9 +32,12 @@ export async function generateMetadata({
   const post = getPostBySlug(slug);
   if (!post) return {};
 
+  // `seoTitle` / `seoDescription` (frontmatter, optional) shorten only the
+  // <title> tag and meta description — the search snippet. The H1 below and
+  // the OG/Twitter card keep the editorial title and description.
   return {
-    title: `${post.title} — Iris`,
-    description: post.description,
+    title: `${post.seoTitle ?? post.title} — Iris`,
+    description: post.seoDescription ?? post.description,
     alternates: {
       canonical: `https://iris-eval.com/blog/${slug}`,
     },

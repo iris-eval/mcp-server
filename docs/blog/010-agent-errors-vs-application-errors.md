@@ -2,7 +2,8 @@
 title: "Agent Errors vs Application Errors: Why Your Error Tracker Can't See AI Failures"
 description: "Why Sentry and Bugsnag can't detect hallucinations, PII leaks, or prompt injection — and what agent-level error tracking looks like."
 date: 2026-03-17
-updated: 2026-04-16
+updated: 2026-09-03
+seoTitle: "Agent Errors vs Application Errors"
 author: Ian Parent
 tags: [observability, agents, error-tracking, eval, safety, pii]
 relatedPosts: [eval-drift-the-silent-quality-killer, the-cost-of-invisible-agents, on-chain-agent-eval]
@@ -61,6 +62,8 @@ Agent failures break this model because the code executes correctly. The LLM API
 The failure is in what the response says, not in whether the response was returned. Error trackers do not read responses for meaning. They do not know that "Your return policy allows 90-day returns" is a hallucination when your actual policy is 30 days. They do not know that `438-22-1847` in a chat response is a Social Security number that should not be there. They do not know that $0.47 is fifteen times higher than the expected cost for this query type.
 
 This is not a limitation that can be patched. It is a category mismatch. Error trackers operate at the code execution layer. Agent failures happen at the output layer. Different layer, different detection model.
+
+> **Editor's note (2026-09-03):** The prompt-injection paragraph in this section describes scanning the agent's *input*. Iris's `no_injection_patterns` rule scans the agent's **output** only — it never reads the input. An injection attempt in user input is caught when the agent echoes or acts on it in what it produces; a payload that stays in the input and leaves no trace in the output is not something this rule sees. Configure it as an output check, and treat input-side filtering as a separate control. The original text is left as written.
 
 ## What Agent Error Tracking Looks Like
 

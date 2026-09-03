@@ -1,11 +1,26 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { OG_IMAGE_URL } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Terms of Use — Iris",
   description: "Terms and conditions for using Iris and iris-eval.com.",
   alternates: { canonical: "https://iris-eval.com/terms" },
+  openGraph: {
+    title: "Terms of Use — Iris",
+    description: "Terms and conditions for using Iris and iris-eval.com.",
+    url: "https://iris-eval.com/terms",
+    type: "website",
+    images: [OG_IMAGE_URL],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Use — Iris",
+    description: "Terms and conditions for using Iris and iris-eval.com.",
+    images: [OG_IMAGE_URL],
+    site: "@iris_eval",
+  },
 };
 
 export default function Terms(): React.ReactElement {

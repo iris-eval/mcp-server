@@ -2,7 +2,8 @@
 title: "Why Every MCP Agent Needs an Independent Observer"
 description: "Why self-reported agent logs are structurally untrustworthy and how MCP enables architecturally independent observability for AI agents."
 date: 2026-03-15
-updated: 2026-07-07
+updated: 2026-09-03
+seoTitle: "Why Every MCP Agent Needs an Independent Observer"
 author: Ian Parent
 tags: [observability, agents, mcp, architecture, trust]
 relatedPosts: [why-your-ai-agents-need-observability, mcp-observability-is-the-new-apm, the-eval-gap]
@@ -100,13 +101,15 @@ The agent gains nine tools without any code changes. The three core ones:
 
 The critical detail: Iris runs in its own process. It writes to its own SQLite database at `~/.iris/iris.db`. The agent cannot modify, delete, or selectively omit traces after the fact. The observer's record is independent of the agent's state.
 
-For networked deployments where you want the observer even further separated from the agent's environment:
+> **Editor's note (2026-09-03):** The remote-observer config below originally pointed at port `6920`. That is the dashboard port, and the dashboard has no `/mcp` route, so the config as first published could never connect. The MCP Streamable-HTTP endpoint is `/mcp` on the **transport** port — default `3000`, started with `--transport http`. The sample now shows the address that works.
+
+For networked deployments where you want the observer even further separated from the agent's environment, start Iris with `--transport http` and point the client at the transport port:
 
 ```json
 {
   "mcpServers": {
     "iris": {
-      "url": "http://your-iris-host:6920/mcp"
+      "url": "http://your-iris-host:3000/mcp"
     }
   }
 }

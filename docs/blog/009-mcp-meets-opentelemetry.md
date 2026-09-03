@@ -2,7 +2,8 @@
 title: "MCP Meets OpenTelemetry: Bridging Agent Observability and Infrastructure Monitoring"
 description: "How Iris bridges agent observability and infrastructure monitoring by exporting MCP traces as OpenTelemetry spans to Datadog and Grafana."
 date: 2026-03-17
-updated: 2026-07-07
+updated: 2026-09-03
+seoTitle: "MCP Meets OpenTelemetry"
 author: Ian Parent
 tags: [opentelemetry, observability, mcp, infrastructure, datadog, grafana, agents, tracing]
 relatedPosts: [mcp-observability-specification, iris-v0-4-release-notes, state-of-mcp-agent-observability-2026]
@@ -38,6 +39,8 @@ OpenTelemetry has become the standard for infrastructure observability. Not beca
 
 The question is whether agent traces can be represented as OTel spans without losing the semantics that make them useful. After working through this for Iris, I believe the answer is yes -- and the mapping is more natural than I expected.
 
+> **Editor's note (2026-09-03):** The "same span expressed as an OTel span" example in this section originally showed attribute keys the shipped exporter never emits (`llm.model`, `llm.usage.*`, `iris.cost_usd` on a span, and `iris.span.kind` with a dot). What the exporter actually does: it passes a span's `attributes` through **unchanged** and adds one key, `iris.span_kind`, for `LLM`/`TOOL` spans; the `iris.*` keys (`iris.agent_name`, `iris.cost_usd`, `iris.input`, …) appear only on the root span it synthesizes for a trace logged without spans. The example is now the actual OTLP/HTTP JSON produced by running the exporter's mapper on the span above, and the mapping table was corrected to match.
+
 ## How Iris Spans Map to OTel
 
 Iris already uses an OTel-compatible span structure. This was a deliberate design choice. Here is what an Iris span looks like:
@@ -69,37 +72,60 @@ Iris already uses an OTel-compatible span structure. This was a deliberate desig
 }
 ```
 
-Now here is the same span expressed as an OTel protobuf span:
+Now here is the same span as the exporter actually sends it — the OTLP/HTTP JSON body of the `POST /v1/traces` request, produced by running Iris v0.5.1's mapper on the span above (the resource block is included because it is part of every payload):
 
-```protobuf
-Span {
-  trace_id:       bytes(0f1e2d3c4b5a69780f1e2d3c4b5a6978)
-  span_id:        bytes(a1b2c3d4e5f6a7b8)
-  parent_span_id: bytes(9f8e7d6c5b4a3210)
-  name:           "llm_call"
-  kind:           SPAN_KIND_INTERNAL
-  status:         { code: STATUS_CODE_OK }
-  start_time_unix_nano: 1742221800000000000
-  end_time_unix_nano:   1742221803200000000
-  attributes: [
-    { key: "iris.span.kind",        value: "LLM" },
-    { key: "llm.model",             value: "claude-sonnet-4-20250514" },
-    { key: "llm.usage.prompt_tokens",      value: 1800 },
-    { key: "llm.usage.completion_tokens",  value: 650 },
-    { key: "iris.cost_usd",         value: 0.0187 }
-  ]
-  events: [
+```json
+{
+  "resourceSpans": [
     {
-      name: "retrieval_fallback"
-      time_unix_nano: 1742221801100000000
-      attributes: [
-        { key: "reason",         value: "timeout" },
-        { key: "retrieved_docs", value: 0 }
+      "resource": {
+        "attributes": [
+          { "key": "service.name", "value": { "stringValue": "iris-mcp" } },
+          { "key": "telemetry.sdk.name", "value": { "stringValue": "iris-mcp" } },
+          { "key": "telemetry.sdk.language", "value": { "stringValue": "nodejs" } },
+          { "key": "telemetry.sdk.version", "value": { "stringValue": "0.5.1" } }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": { "name": "iris.trace.v1" },
+          "spans": [
+            {
+              "traceId": "0f1e2d3c4b5a69780f1e2d3c4b5a6978",
+              "spanId": "a1b2c3d4e5f6a7b8",
+              "parentSpanId": "9f8e7d6c5b4a3210",
+              "name": "llm_call",
+              "kind": 1,
+              "startTimeUnixNano": "1773757800000000000",
+              "endTimeUnixNano": "1773757803200000000",
+              "attributes": [
+                { "key": "model", "value": { "stringValue": "claude-sonnet-4-20250514" } },
+                { "key": "prompt_tokens", "value": { "intValue": "1800" } },
+                { "key": "completion_tokens", "value": { "intValue": "650" } },
+                { "key": "cost_usd", "value": { "doubleValue": 0.0187 } },
+                { "key": "iris.span_kind", "value": { "stringValue": "LLM" } }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1773757801100000000",
+                  "name": "retrieval_fallback",
+                  "attributes": [
+                    { "key": "reason", "value": { "stringValue": "timeout" } },
+                    { "key": "retrieved_docs", "value": { "intValue": "0" } }
+                  ]
+                }
+              ],
+              "status": { "code": 1 }
+            }
+          ]
+        }
       ]
     }
   ]
 }
 ```
+
+Three things to notice. The span's own attributes arrive with their keys unchanged — `model`, `prompt_tokens`, `cost_usd` — so whatever your agent logged is what your backend indexes. The exporter adds exactly one attribute, `iris.span_kind`, because OTel has no `LLM` span kind (the `kind: 1` is `SPAN_KIND_INTERNAL`). And a trace logged *without* spans still exports: the mapper synthesizes one root span from the trace-level fields, and that is where the `iris.*` keys live — `iris.agent_name`, `iris.framework`, `iris.input`, `iris.output`, `iris.cost_usd`, `iris.total_tokens`, `iris.prompt_tokens`, `iris.completion_tokens`.
 
 The structural mapping is nearly one-to-one:
 
@@ -109,10 +135,10 @@ The structural mapping is nearly one-to-one:
 | `span_id` | `span_id` | Iris uses 16 hex chars (8 bytes). OTel expects 8 bytes. Direct match. |
 | `parent_span_id` | `parent_span_id` | Same structure. Null for root spans. |
 | `name` | `name` | String. Identical. |
-| `kind` | `kind` + `attributes` | OTel has 5 span kinds (CLIENT, SERVER, INTERNAL, PRODUCER, CONSUMER). Iris adds LLM and TOOL as attribute values. |
-| `status_code` | `status.code` | UNSET, OK, ERROR map directly. |
-| `start_time` / `end_time` | `start_time_unix_nano` / `end_time_unix_nano` | ISO 8601 to nanosecond Unix timestamp. Straightforward conversion. |
-| `attributes` | `attributes` | Key-value pairs. Iris uses JSON objects, OTel uses typed key-value arrays. |
+| `kind` | `kind` + `attributes` | OTel has 5 span kinds (CLIENT, SERVER, INTERNAL, PRODUCER, CONSUMER). Iris maps LLM and TOOL to INTERNAL and records the original as the `iris.span_kind` attribute. |
+| `status_code` | `status.code` | UNSET, OK, ERROR map directly (0, 1, 2). |
+| `start_time` / `end_time` | `startTimeUnixNano` / `endTimeUnixNano` | ISO 8601 to nanosecond Unix timestamp, sent as a decimal string. |
+| `attributes` | `attributes` | Key-value pairs, keys unchanged. Iris uses JSON objects, OTel uses typed key-value arrays (`stringValue`, `intValue`, `doubleValue`, …). |
 | `events` | `events` | Timestamped events with attributes. Same semantics, different serialization. |
 
 This structural compatibility is why we proposed standard trace schemas in [Toward an MCP Observability Specification](/blog/toward-an-mcp-observability-specification). The only real gap is span kind. OTel does not have native `LLM` or `TOOL` span kinds. The emerging [Semantic Conventions for LLM](https://opentelemetry.io/docs/specs/semconv/gen-ai/) handle this by using `INTERNAL` as the span kind and putting the semantic type in attributes like `gen_ai.operation.name`. Iris can adopt the same convention at export time without losing information.

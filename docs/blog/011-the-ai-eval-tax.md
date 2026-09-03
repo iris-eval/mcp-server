@@ -2,7 +2,8 @@
 title: "The AI Eval Tax: The Hidden Cost Every Agent Team Is Paying"
 description: "The eval tax is the compounding cost of every unscored agent output — in trust, engineering hours, and liability. Here's how to stop paying."
 date: 2026-03-21
-updated: 2026-07-07
+updated: 2026-09-03
+seoTitle: "The AI Eval Tax: What Unscored Output Costs"
 author: Ian Parent
 tags: [eval-tax, agent-eval, production, cost, mcp, vocabulary]
 relatedPosts: [eval-drift-the-silent-quality-killer, on-chain-agent-eval, eval-coverage-the-metric-your-agents-are-missing]

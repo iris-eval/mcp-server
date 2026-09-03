@@ -9,7 +9,7 @@ import { FaqSection } from "@/components/learn/faq-section";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 
 export const metadata: Metadata = {
-  title: "Output Quality Score (OQS): The Single Number for Agent Quality — Iris",
+  title: "Output Quality Score (OQS) for AI Agents — Iris",
   description: "What is the Output Quality Score? A composite metric that rolls completeness, relevance, safety, and cost into one number for every agent output.",
   alternates: { canonical: "https://iris-eval.com/learn/output-quality-score" },
   openGraph: { title: "Output Quality Score (OQS): The Single Number for Agent Quality", description: "A composite metric for every agent output.", url: "https://iris-eval.com/learn/output-quality-score", type: "article", images: [OG_IMAGE_URL] },

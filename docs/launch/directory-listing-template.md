@@ -1,24 +1,22 @@
 # Iris — Directory Listing Templates
 
-> **📁 Historical template.** Written for an earlier release and kept as reference only. Counts, version numbers and the "discovers Iris and starts logging automatically" framing all reflect that moment — under MCP a tool call is always the model's decision, so capture is not automatic. Anything published from this must be composed fresh against `.claims.json` and the current [roadmap](../roadmap.md).
+> **Refreshed 2026-09-03 against `.claims.json` (v0.5.1).** The three description blocks below are the canonical listing copy — paste them, don't rewrite them. Before any submission, re-check the Key Stats against the current `.claims.json`; never write a number that isn't in it, and never write "first", "best", "leading" or "standard". Under MCP a tool call is always the model's decision, so no listing may say Iris captures or scores "automatically".
 
 Use these when submitting Iris to any MCP directory, awesome list, or marketplace.
-Copy-paste the appropriate version and customize if needed.
-**Refreshed 2026-07-07 against `.claims.json` (v0.4.4).** Before any submission, re-check the Key Stats against the current claims file.
 
 ---
 
-## Short Description (1 line)
+## Short Description (1 line — Block A, 156 chars)
 
-MCP-native eval and observability for AI agents. Log traces, evaluate output quality, track costs. Zero code changes.
+Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 13 deterministic rules, local SQLite, MIT licensed.
 
-## Medium Description (2-3 lines)
+## Medium Description (short paragraph — Block B)
 
-Iris is an MCP server that any agent discovers and uses automatically — no SDK, no code changes. Log every trace, evaluate output quality with 13 built-in rules, and track costs across all your agents. Open-source core. MIT licensed. 60 seconds to first trace.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 9 tools any MCP-compatible agent discovers automatically — no SDK, no code changes. 13 built-in rules (19 PII patterns, 37 prompt-injection patterns, 25 hallucination signals, cost thresholds) score deterministically and free; a detected PII leak, injection, or blocklist hit fails the eval outright. Optional LLM judge and citation verification for the semantic questions. Self-hosted on SQLite, MIT-licensed core.
 
-## Long Description (paragraph)
+## Long Description (full paragraph — Block C)
 
-Iris is the agent eval standard for MCP — an MCP-native eval and observability tool for AI agents. It registers as an MCP server that your agents discover automatically through the protocol — no SDK imports, no decorators, no code changes. Add one line to your MCP config and every agent starts logging hierarchical traces, evaluating output quality (10 PII patterns, 13 prompt-injection patterns, 25 hallucination markers, cost thresholds), verifying citations, and tracking per-trace costs in USD. LLM-as-judge included (BYOK, five templates). Self-hosted with a single SQLite file. Real-time dashboard. OpenTelemetry export. Works with Claude Desktop, Claude Code, Cursor, Windsurf, or any MCP-compatible agent. Open-source core, MIT licensed.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 9 tools automatically — no SDK, no code changes. 13 built-in rules across completeness, relevance, safety and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (5 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
 
 ## Config Snippet (include in every listing)
 
@@ -36,11 +34,13 @@ Iris is the agent eval standard for MCP — an MCP-native eval and observability
 ## Key Stats (for listings that show features)
 
 - 9 MCP tools: log_trace, evaluate_output, get_traces, list_rules, deploy_rule, delete_rule, delete_trace, evaluate_with_llm_judge, verify_citations
-- 13 built-in eval rules across 4 categories
-- <1ms eval latency (heuristic layer; LLM-as-judge optional, BYOK)
+- 13 built-in eval rules across 4 categories (completeness, relevance, safety, cost)
+- 19 PII patterns · 37 prompt-injection patterns · 25 context-grounded hallucination signals
+- A detected PII leak, injection, or blocklist hit fails the eval regardless of the weighted score
+- <1ms eval latency (heuristic layer; LLM-as-judge optional, 5 templates, BYOK, cost-capped)
 - 0 lines of code to integrate
-- SQLite storage — zero infrastructure
-- OpenTelemetry OTLP export
+- SQLite storage — zero infrastructure; `--demo` puts a failure on screen in 60 seconds
+- OpenTelemetry OTLP/HTTP export
 - MIT licensed
 
 ## Links
@@ -52,10 +52,10 @@ Iris is the agent eval standard for MCP — an MCP-native eval and observability
 
 ## Categories / Tags
 
-mcp-server, mcp, model-context-protocol, eval, observability, ai-agent, tracing, monitoring, llm, cost-tracking, pii-detection, agent-evaluation
+mcp-server, mcp, model-context-protocol, eval, agent-eval, agent-evaluation, ai-agent, llm, llm-as-a-judge, cost-tracking, pii-detection, prompt-injection, quality-gate, tracing, observability
 
 ## Awesome List PR Template
 
 ```markdown
-- [Iris](https://github.com/iris-eval/mcp-server) - MCP-native eval and observability. Log traces, evaluate output quality, track costs. Zero code changes. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
+- [Iris](https://github.com/iris-eval/mcp-server) - Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 13 deterministic rules, local SQLite, MIT licensed. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
 ```

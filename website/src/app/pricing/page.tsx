@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: "Pricing — Iris",
   description:
-    "Iris is open source and free, with no evaluation limit and no account. Hosted and team features are under consideration, not under construction — there is no pricing yet.",
+    "Iris is open source and free — no evaluation limit, no account. Hosted and team features are under consideration, not under construction. No pricing yet.",
   alternates: { canonical: "https://iris-eval.com/pricing" },
   openGraph: {
     title: "Pricing — Iris",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Pricing — Iris",
-    description: "Pay for evaluations, not traces.",
+    description: "Open source and free, with no evaluation limit and no account required.",
     images: [OG_IMAGE_URL],
     site: "@iris_eval",
   },
@@ -80,10 +80,11 @@ const tiers: Tier[] = [
   },
   {
     name: "Enterprise",
-    subhead: "For organizations with volume + compliance needs",
-    price: "Custom",
+    subhead: "For organizations with volume + compliance needs — planned",
+    price: "Not yet priced",
+    priceSubline: "nothing to buy today",
     cta: {
-      label: "Contact sales",
+      label: "Tell us what you need",
       href: "mailto:hello@iris-eval.com?subject=Enterprise%20inquiry",
     },
     features: [
@@ -139,10 +140,10 @@ export default function PricingPage(): React.ReactElement {
       <section className="mx-auto max-w-3xl text-center">
         <p className="text-sm font-medium uppercase tracking-wider text-text-accent">Pricing</p>
         <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-text-primary sm:text-5xl lg:text-6xl">
-          Pay for evaluations, not traces.
+          Free to run. Nothing to buy yet.
         </h1>
         <p className="mt-6 text-lg text-text-secondary sm:text-xl">
-          Iris scores every agent output for quality, safety, and cost. The evaluation is the value unit — that&apos;s what you pay for. Traces are commodity. Start free.
+          Iris scores agent output for quality, safety, and cost, and today it runs entirely on your machine — MIT licensed, no evaluation limit, no account. Hosted and team features are under consideration, not under construction. If they ever ship, the evaluation will be the unit that matters, not the trace.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a

@@ -11,7 +11,7 @@ import { TableOfContents } from "@/components/learn/table-of-contents";
 export const metadata: Metadata = {
   title: "What is the Eval Gap? Demo vs Production — Iris",
   description:
-    "What is the eval gap? The distance between demo performance and production reality. Learn the four mechanisms that create it and how inline evaluation closes it.",
+    "What is the eval gap? The distance between demo performance and production reality — the four mechanisms that create it, and how inline evaluation closes it.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-gap" },
   openGraph: {
     title: "The Eval Gap: Why Your AI Demo Works and Production Doesn't",
@@ -96,7 +96,7 @@ export default function LearnEvalGap(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris evaluates every production output with the same rules you define in development. No gap between test-time scoring and production scoring — same rules, same thresholds, every execution. The dashboard shows you production quality in real-time, making the eval gap visible and quantifiable.
+          Iris scores production outputs with the same rules you define in development — the agent calls the same tool, or your code posts to the same endpoint. No gap between test-time scoring and production scoring — same rules, same thresholds, every execution. The dashboard shows you production quality in real-time, making the eval gap visible and quantifiable.
         </p>
         <p className="mt-6 text-text-secondary"><Link href="/blog/the-eval-gap" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: The Eval Gap &rarr;</Link></p>
 

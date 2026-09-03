@@ -75,7 +75,7 @@ export default function LearnEDD(): React.ReactElement {
           <div className="rounded-lg border border-border-default bg-surface-primary p-5 text-center">
             <div className="text-2xl font-bold text-iris-400 mb-2">3</div>
             <h3 className="font-semibold text-text-primary mb-1">Score Outputs</h3>
-            <p className="text-xs text-text-secondary">Run the agent. Eval rules score every output automatically.</p>
+            <p className="text-xs text-text-secondary">Run the agent. It calls Iris to score each output against your rules.</p>
           </div>
           <div className="rounded-lg border border-border-default bg-surface-primary p-5 text-center">
             <div className="text-2xl font-bold text-iris-400 mb-2">4</div>
@@ -103,7 +103,7 @@ export default function LearnEDD(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris makes EDD practical. Define your eval rules, add Iris to your MCP config, and every agent output is scored against those rules automatically. The same rules that guide development continue running in production — no separate test harness needed.
+          Iris makes EDD practical. Define your eval rules, add Iris to your MCP config, and the agent scores its outputs against those rules by calling Iris — or your code sends them to <code>POST /api/v1/traces</code> when the call must not depend on the model. The same rules that guide development continue running in production — no separate test harness needed.
         </p>
         <p className="mt-6 text-text-secondary"><Link href="/blog/eval-driven-development" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: Eval-Driven Development &rarr;</Link></p>
 

@@ -52,21 +52,10 @@ Then open `http://localhost:6920` in your browser to view the dashboard.
 
 ## With HTTP Transport
 
-For network access (e.g., multiple agents connecting):
+Claude Desktop talks to the servers in `mcpServers` over **stdio**, so the two configs above are the ones it uses. The HTTP transport is for networked setups — several agents sharing one Iris, or an observer on a different host. Run it as its own process:
 
-```json
-{
-  "mcpServers": {
-    "iris-eval": {
-      "command": "npx",
-      "args": [
-        "@iris-eval/mcp-server",
-        "--transport", "http",
-        "--port", "3000",
-        "--api-key", "your-secret-key",
-        "--dashboard"
-      ]
-    }
-  }
-}
+```bash
+npx @iris-eval/mcp-server --transport http --port 3000 --api-key "your-secret-key" --dashboard
 ```
+
+Clients that speak Streamable HTTP connect to `http://your-iris-host:3000/mcp` with `Authorization: Bearer your-secret-key`; the dashboard and the `POST /api/v1/traces` ingest endpoint are on port 6920 because `--dashboard` was passed. The full walkthrough is in [`../http-transport/README.md`](../http-transport/README.md).
