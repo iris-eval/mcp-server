@@ -13,6 +13,24 @@ export function createApiRateLimiter(config: Pick<IrisConfig, 'security'>) {
 }
 
 /**
+ * Mounted directly in front of the session layer, so every request that
+ * is about to be AUTHORIZED — cookie check, Bearer check, the `?key=`
+ * exchange — has passed a per-IP ceiling first (CodeQL
+ * js/missing-rate-limiting on the session middleware). Same figure as the
+ * API limiter with its own counter; static assets share it, which a
+ * dashboard page load (a few dozen requests) never approaches.
+ */
+export function createAuthGateRateLimiter(config: Pick<IrisConfig, 'security'>) {
+  return rateLimit({
+    windowMs: 60_000,
+    limit: config.security.rateLimit.api,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  });
+}
+
+/**
  * JSON-RPC 2.0 application error code for "rate limited". The reserved
  * server range is -32000..-32099; the MCP SDK uses -32000/-32001 for
  * connection-closed and request-timeout, so this sits clear of both.

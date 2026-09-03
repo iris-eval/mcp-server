@@ -11,7 +11,7 @@ import type { Logger } from '../utils/logger.js';
 import { createAuthMiddleware } from '../middleware/auth.js';
 import { createCorsMiddleware } from '../middleware/cors.js';
 import { createErrorHandler } from '../middleware/error-handler.js';
-import { createApiRateLimiter } from '../middleware/rate-limit.js';
+import { createApiRateLimiter, createAuthGateRateLimiter } from '../middleware/rate-limit.js';
 import { createTenantMiddleware } from '../middleware/tenant.js';
 import { createRebindingGuard, isLoopbackHost } from '../middleware/rebinding-guard.js';
 import { registerTraceRoutes } from './routes/traces.js';
@@ -94,8 +94,10 @@ export function createDashboardServer(
    * BROWSER present the same key once (`?key=` or the sign-in form) and
    * then ride an HttpOnly cookie — without it, `--api-key` made the
    * dashboard UI 401 on every page load (#373 item 6). With no key
-   * configured both are pass-throughs.
+   * configured both are pass-throughs. The limiter ahead of it is the
+   * ceiling every authorization decision sits behind.
    */
+  app.use(createAuthGateRateLimiter(config));
   app.use(createSessionAuth({ apiKey: config.security.apiKey, bearerAuth: createAuthMiddleware(config) }));
 
   // Tenant resolution — attaches req.tenantId to every request.
