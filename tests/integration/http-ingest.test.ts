@@ -312,6 +312,56 @@ describe('POST /api/v1/traces — evaluate: true', () => {
     expect(detail.evals[0].critical_failures).toContain('no_pii');
   });
 
+  it('eval_type "all" runs every bundle, returns the per-category breakdown, and is stored under "all"', async () => {
+    /*
+     * The ingest schema stopped one bundle short of evaluate_output's list
+     * and the route only ever called the single-bundle engine, so an HTTP
+     * caller could not get the every-bundle verdict the MCP tool returns.
+     * Same evaluateAll path now: one pass, veto spanning every bundle,
+     * `categories` beside the overall verdict, `category` on every rule.
+     */
+    const { base } = await bootServer();
+    const { status, json } = await postTrace(base, {
+      agent_name: 'all-bundles',
+      input: 'Summarize the customer record',
+      output: 'Customer SSN is 536-22-8145, contact at dana.whitfield@harborline.io.',
+      cost_usd: 0.002,
+      evaluate: true,
+      eval_type: 'all',
+    });
+
+    expect(status).toBe(201);
+    const evaluation = json.evaluation as {
+      eval_type: string;
+      passed: boolean;
+      rule_results: EvalRuleResult[];
+      critical_failures?: string[];
+      categories?: Record<string, { passed: boolean; rules_evaluated: number }>;
+    };
+    expect(evaluation.eval_type).toBe('all');
+    expect(evaluation.categories).toBeDefined();
+    expect(Object.keys(evaluation.categories!)).toEqual(
+      expect.arrayContaining(['completeness', 'relevance', 'safety', 'cost']),
+    );
+    // Every rule result says which bundle it came from.
+    expect(evaluation.rule_results.length).toBeGreaterThan(0);
+    expect(evaluation.rule_results.every((r) => typeof r.category === 'string')).toBe(true);
+    expect(evaluation.rule_results.find((r) => r.ruleName === 'no_pii')?.category).toBe('safety');
+    // The veto spans bundles: the PII leak fails the safety category AND
+    // the overall verdict, whatever the other bundles scored.
+    expect(evaluation.categories!.safety.passed).toBe(false);
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.critical_failures).toContain('no_pii');
+
+    // Stored under "all" — the same rows the MCP tool writes, which the
+    // dashboard's safety-violation counter already reads.
+    const res = await fetch(`${base}/api/v1/traces/${json.trace_id as string}`);
+    const detail = (await res.json()) as { evals: Array<{ eval_type: string; passed: boolean }> };
+    expect(detail.evals).toHaveLength(1);
+    expect(detail.evals[0].eval_type).toBe('all');
+    expect(detail.evals[0].passed).toBe(false);
+  });
+
   it('rejects evaluate:true without output — nothing to score', async () => {
     const { base } = await bootServer();
     const { status, json } = await postTrace(base, {
@@ -337,6 +387,51 @@ describe('POST /api/v1/traces — evaluate: true', () => {
     const res = await fetch(`${base}/api/v1/traces`);
     const { total } = (await res.json()) as { total: number };
     expect(total).toBe(0);
+  });
+});
+
+describe('GET /api/v1/traces — impossible ranges are refused, like get_traces', () => {
+  /*
+   * The dashboard query used to accept `since` after `until`, a `since` of
+   * "yesterday", or min_score above max_score and return an empty page,
+   * which reads as "no such traces" when the truth is "no trace could
+   * match this". The MCP tool refuses those (#373); the HTTP query now
+   * runs the same validators.
+   */
+  async function query(base: string, qs: string): Promise<{ status: number; json: Record<string, unknown> }> {
+    const res = await fetch(`${base}/api/v1/traces?${qs}`);
+    return { status: res.status, json: (await res.json()) as Record<string, unknown> };
+  }
+
+  it('400s since later than until, naming both values', async () => {
+    const { base } = await bootServer();
+    const { status, json } = await query(base, 'since=2026-08-02T00:00:00Z&until=2026-08-01T00:00:00Z');
+    expect(status).toBe(400);
+    expect(json.error).toBe('Invalid query parameters');
+    const details = JSON.stringify(json.details);
+    expect(details).toContain('since (2026-08-02T00:00:00Z) must not be later than until (2026-08-01T00:00:00Z)');
+  });
+
+  it('400s a non-timestamp bound and a crossed score range', async () => {
+    const { base } = await bootServer();
+    const junk = await query(base, 'since=yesterday');
+    expect(junk.status).toBe(400);
+    expect(JSON.stringify(junk.json.details)).toContain('ISO 8601');
+
+    const crossed = await query(base, 'min_score=0.9&max_score=0.1');
+    expect(crossed.status).toBe(400);
+    expect(JSON.stringify(crossed.json.details)).toContain('min_score (0.9) must be <= max_score (0.1)');
+
+    const outOfRange = await query(base, 'max_score=7');
+    expect(outOfRange.status).toBe(400);
+  });
+
+  it('accepts a calendar-date since and a valid score range', async () => {
+    const { base } = await bootServer();
+    await postTrace(base, { agent_name: 'ranged', output: 'stored for the range query' });
+    const { status, json } = await query(base, 'since=2020-01-01&min_score=0&max_score=1');
+    expect(status).toBe(200);
+    expect(typeof json.total).toBe('number');
   });
 });
 

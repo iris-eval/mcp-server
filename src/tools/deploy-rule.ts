@@ -15,11 +15,83 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { createCustomRule } from '../eval/rules/custom.js';
+import type { DeployedCustomRule } from '../types/custom-rule.js';
 import type { CustomRuleDefinition, EvalType } from '../types/eval.js';
-import { LOCAL_TENANT } from '../types/tenant.js';
+import { LOCAL_TENANT, type TenantId } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
 
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
+
+/**
+ * A rule with this name is already deployed and the caller did not ask to
+ * replace it. Carries the existing rule(s) so an HTTP surface can answer
+ * 409 with them beside the same message the MCP tool throws.
+ */
+export class DuplicateRuleNameError extends Error {
+  readonly existing: DeployedCustomRule[];
+
+  constructor(name: string, existing: DeployedCustomRule[]) {
+    const listed = existing
+      .map((r) => `${r.id} (eval_type ${r.evalType}, severity ${r.severity}, ${r.enabled ? 'enabled' : 'disabled'})`)
+      .join('; ');
+    super(
+      `A rule named "${name}" is already deployed: ${listed}. Deploying a second rule with the same name ` +
+        'would make both fire with indistinguishable rule_results. Pass replace: true to delete the existing rule ' +
+        'and deploy this one in its place, call delete_rule first, or choose a different name. Nothing was deployed.',
+    );
+    this.name = 'DuplicateRuleNameError';
+    this.existing = existing;
+  }
+}
+
+/** One rule retired by a `replace: true` deploy. */
+export interface ReplacedRule {
+  id: string;
+  evalType: string;
+  severity: string;
+}
+
+/**
+ * Same-name redeploy (#373). Two rules with one name both fire, and their
+ * rule_results used to be indistinguishable — the same ruleName showing
+ * PASS and FAIL in one response. Refuse by default; with replace:true,
+ * retire the earlier rule(s) first so the name means one thing again. The
+ * store keeps the audit trail either way.
+ *
+ * One function for both deploy surfaces — the `deploy_rule` tool and the
+ * dashboard's `POST /api/v1/rules/custom` — so the semantics and the
+ * wording cannot drift between them. Returns the rules it retired (empty
+ * when the name was free); throws DuplicateRuleNameError when the name is
+ * taken and `replace` is false. Nothing is deployed by this function.
+ */
+export function retireSameNamedRules(
+  store: CustomRuleStore,
+  engine: EvalEngine,
+  tenantId: TenantId,
+  name: string,
+  replace: boolean,
+  user: string,
+): ReplacedRule[] {
+  const sameName = store.list(tenantId).filter((r) => r.name === name);
+  if (sameName.length === 0) return [];
+  if (!replace) throw new DuplicateRuleNameError(name, sameName);
+  const replaced: ReplacedRule[] = [];
+  for (const old of sameName) {
+    if (store.delete(tenantId, old.id, user)) {
+      engine.unregisterRule(old.id);
+      replaced.push({ id: old.id, evalType: old.evalType, severity: old.severity });
+    }
+  }
+  return replaced;
+}
+
+/** The `warning` both deploy surfaces attach when a replace retired rules. */
+export function replacedRulesWarning(name: string, replaced: ReplacedRule[]): string {
+  return (
+    `Replaced ${replaced.length} previously deployed rule(s) named "${name}" ` +
+    `(${replaced.map((r) => r.id).join(', ')}); they no longer fire. Their audit rows are preserved.`
+  );
+}
 
 /*
  * Strict one level down, like evaluate_output's custom_rules entries
@@ -157,31 +229,10 @@ export function registerDeployRuleTool(
         name: args.name,
       };
 
-      /*
-       * Same-name redeploy (#373). Two rules with one name both fire, and
-       * their rule_results used to be indistinguishable — the same ruleName
-       * showing PASS and FAIL in one response. Refuse by default; with
-       * replace:true, retire the earlier rule(s) first so the name means
-       * one thing again. The store keeps the audit trail either way.
-       */
-      const sameName = customRuleStore.list(LOCAL_TENANT).filter((r) => r.name === args.name);
-      if (sameName.length > 0 && !args.replace) {
-        const existing = sameName.map((r) => `${r.id} (eval_type ${r.evalType}, severity ${r.severity}, ${r.enabled ? 'enabled' : 'disabled'})`).join('; ');
-        throw new Error(
-          `A rule named "${args.name}" is already deployed: ${existing}. Deploying a second rule with the same name ` +
-            'would make both fire with indistinguishable rule_results. Pass replace: true to delete the existing rule ' +
-            'and deploy this one in its place, call delete_rule first, or choose a different name. Nothing was deployed.',
-        );
-      }
-      const replaced: Array<{ id: string; evalType: string; severity: string }> = [];
-      if (sameName.length > 0) {
-        for (const old of sameName) {
-          if (customRuleStore.delete(LOCAL_TENANT, old.id, 'mcp')) {
-            evalEngine.unregisterRule(old.id);
-            replaced.push({ id: old.id, evalType: old.evalType, severity: old.severity });
-          }
-        }
-      }
+      // Same-name redeploy (#373) — shared with the dashboard's deploy
+      // route; see retireSameNamedRules above. Throws (nothing deployed)
+      // when the name is taken and replace is false.
+      const replaced = retireSameNamedRules(customRuleStore, evalEngine, LOCAL_TENANT, args.name, args.replace, 'mcp');
 
       // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
       const rule = customRuleStore.deploy(LOCAL_TENANT, {
@@ -209,12 +260,7 @@ export function registerDeployRuleTool(
             text: JSON.stringify({
               rule,
               ...(replaced.length > 0
-                ? {
-                    replaced,
-                    warning:
-                      `Replaced ${replaced.length} previously deployed rule(s) named "${args.name}" ` +
-                      `(${replaced.map((r) => r.id).join(', ')}); they no longer fire. Their audit rows are preserved.`,
-                  }
+                ? { replaced, warning: replacedRulesWarning(args.name, replaced) }
                 : {}),
             }),
           },

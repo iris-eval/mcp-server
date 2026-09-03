@@ -9,6 +9,7 @@ import { requireTenant } from '../../middleware/tenant.js';
 import type { TenantId } from '../../types/tenant.js';
 import type { RulePreviewResult } from '../../types/custom-rule.js';
 import type { CustomRuleDefinition, EvalType } from '../../types/eval.js';
+import { DuplicateRuleNameError, replacedRulesWarning, retireSameNamedRules } from '../../tools/deploy-rule.js';
 import { strictBody } from '../validation.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
@@ -53,6 +54,12 @@ const DeploySchema = strictBody({
   severity: SeveritySchema.optional(),
   definition: DefinitionSchema,
   sourceMomentId: z.string().optional(),
+  /**
+   * Same contract as deploy_rule's `replace`: a name that is already
+   * deployed is refused (409) unless this is true, in which case the
+   * existing same-named rule(s) are deleted and this one takes their place.
+   */
+  replace: z.boolean().default(false),
 });
 
 /*
@@ -161,6 +168,23 @@ export function registerRuleRoutes(
         name: input.name,
       };
 
+      /*
+       * Same-name redeploy — the SAME helper deploy_rule uses, so the
+       * dashboard cannot accept a duplicate the tool refuses (two rules
+       * with one name both fire with indistinguishable rule_results).
+       * Throws before anything is written when the name is taken and
+       * `replace` is false; with `replace: true` the earlier rule(s) are
+       * deleted (audit rows kept, unregistered from the engine) beforehand.
+       */
+      const replaced = retireSameNamedRules(
+        opts.customRuleStore,
+        opts.evalEngine,
+        tenantId,
+        input.name,
+        input.replace,
+        'local',
+      );
+
       const rule = opts.customRuleStore.deploy(tenantId, {
         name: input.name,
         description: input.description,
@@ -178,10 +202,21 @@ export function registerRuleRoutes(
       // the rule hard-failing (same as the MCP deploy path and boot loading).
       opts.evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
 
-      res.status(201).json({ rule });
+      res.status(201).json({
+        rule,
+        ...(replaced.length > 0 ? { replaced, warning: replacedRulesWarning(input.name, replaced) } : {}),
+      });
     } catch (err) {
       if (err instanceof z.ZodError) {
         res.status(400).json({ error: 'Invalid rule definition', details: err.issues });
+        return;
+      }
+      if (err instanceof DuplicateRuleNameError) {
+        // 409, not 400: the body was valid — the name is taken.
+        res.status(409).json({
+          error: err.message,
+          existing: err.existing.map((r) => ({ id: r.id, evalType: r.evalType, severity: r.severity, enabled: r.enabled })),
+        });
         return;
       }
       throw err;

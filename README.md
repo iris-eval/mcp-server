@@ -335,7 +335,7 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 
 When using HTTP transport, Iris includes:
 
-- API key authentication with timing-safe comparison
+- API key authentication with timing-safe comparison (Bearer for API clients; browser sign-in to the dashboard via `?key=`)
 - CORS restricted to localhost by default
 - Rate limiting (600 req/min dashboard API, 20 req/min MCP)
 - Helmet security headers
@@ -347,6 +347,8 @@ When using HTTP transport, Iris includes:
 # Production deployment
 iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
 ```
+
+With a key set, API clients — MCP clients, capture SDKs, `POST /api/v1/traces` — send `Authorization: Bearer <key>`. To open the dashboard in a browser, append the key once to any dashboard URL, `http://localhost:6920/?key=<api key>`: Iris exchanges it for an HttpOnly, SameSite=Lax session cookie and redirects to the same page with the key removed from the address bar. A page opened without a session shows a sign-in form that does the same exchange. The key is never stored in the browser, and sessions live only in the server process.
 
 ### Your data on disk
 

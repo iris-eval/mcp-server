@@ -30,6 +30,12 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [GET /api/v1/summary](#get-apiv1summary)
   - [GET /api/v1/filters](#get-apiv1filters)
   - [GET /api/v1/health](#get-apiv1health)
+  - [GET /api/v1/rules/builtin](#get-apiv1rulesbuiltin)
+  - [GET /api/v1/rules/custom](#get-apiv1rulescustom)
+  - [POST /api/v1/rules/custom](#post-apiv1rulescustom)
+  - [PATCH /api/v1/rules/custom/:id](#patch-apiv1rulescustomid)
+  - [DELETE /api/v1/rules/custom/:id](#delete-apiv1rulescustomid)
+  - [POST /api/v1/rules/custom/preview](#post-apiv1rulescustompreview)
 - [Evaluation Rules](#evaluation-rules)
   - [Completeness Rules](#completeness-rules)
   - [Relevance Rules](#relevance-rules)
@@ -398,20 +404,25 @@ Register a new custom eval rule so it fires automatically on every `evaluate_out
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | `string` | Yes | Human-readable rule name |
-| `description` | `string` | Yes | What the rule checks + why |
-| `evalType` | `enum` | Yes | Category: `completeness` / `relevance` / `safety` / `cost` / `custom` |
+| `name` | `string` | Yes | Human-readable rule name, 1-80 chars. Unique among deployed rules unless `replace` is `true` |
+| `description` | `string` | No | What the rule checks + why (up to 500 chars) |
+| `eval_type` | `enum` | Yes | Category: `completeness` / `relevance` / `safety` / `cost` / `custom` — the rule fires on `evaluate_output` calls of this type (and on `all`). `evalType` is accepted as an alias; pass one spelling, not both |
 | `severity` | `enum` | No | `low` / `medium` / `high` / `critical` (default `medium`). low/medium: contributes to the weighted score only. **high/critical: a failing evaluation of this rule hard-fails the eval — `passed` is forced to `false` regardless of the weighted score** |
-| `definition` | `CustomRuleDefinition` | Yes | Shape: `{ name, type, config, weight? }` — see [Custom Rules](#custom-rules) |
+| `definition` | `CustomRuleDefinition` | Yes | Shape: `{ name?, type, config, weight? }` — strict (an unknown key is rejected); `name` is optional and always replaced by the top-level `name`. See [Custom Rules](#custom-rules) |
+| `source_moment_id` | `string` | No | Decision Moment the rule was derived from (`sourceMomentId` accepted as an alias) |
+| `replace` | `boolean` | No | Default `false`. When a rule with this `name` is already deployed: `false` rejects the call, naming the existing rule's id; `true` deletes the existing same-named rule(s) and deploys this one in their place (fresh id; audit rows preserved) |
 
 #### Response
 
 ```json
 {
   "rule": { "id": "rule-abc123", "name": "...", "enabled": true, ... },
-  "status": "deployed"
+  "replaced": [ { "id": "rule-9f8e7d", "evalType": "safety", "severity": "high" } ],
+  "warning": "Replaced 1 previously deployed rule(s) named \"...\" (rule-9f8e7d); they no longer fire. Their audit rows are preserved."
 }
 ```
+
+`replaced` and `warning` appear only when `replace: true` retired an earlier rule. The dashboard's [`POST /api/v1/rules/custom`](#post-apiv1rulescustom) route has the same contract.
 
 ---
 
@@ -664,7 +675,15 @@ Returns full trace detail including spans and linked evaluation results.
 
 ## Dashboard API Routes
 
-The dashboard serves an HTTP API under `/api/v1`. All routes return JSON. Query parameters and request bodies are validated with Zod and return 400 on invalid input.
+The dashboard serves an HTTP API under `/api/v1`. All routes return JSON. Query parameters and request bodies are validated with Zod and return 400 on invalid input; mutating bodies are strict — an unknown or misspelled key is rejected with the valid keys listed, never silently dropped.
+
+#### Authentication
+
+With no `--api-key` / `IRIS_API_KEY` configured, every route is open — the loopback bind is what keeps the dashboard to your own machine. With a key configured:
+
+- **API clients** send `Authorization: Bearer <key>` on every request (a missing header is `401`, a wrong key `403`). `GET /api/v1/health` is always exempt.
+- **Browsers** cannot send a Bearer header, so any dashboard *page* URL accepts the key once as `?key=<api key>`. The server exchanges it for a random 256-bit session token in an `HttpOnly`, `SameSite=Lax`, `Path=/` cookie (`Secure` when the request arrived over HTTPS) and answers `302` to the same URL with `key` stripped from the address bar, so a shared link opens the dashboard without leaving the key in anyone's history. A page opened without a session gets a `401` sign-in form (HTML, only for requests that accept HTML — API paths still get the JSON `401`); the form's `POST /session` does the same exchange and lands on `/`. A wrong key is a `403` sign-in page and sets no cookie. A request carrying a valid session cookie skips the Bearer check; every other request falls through to it unchanged.
+- **Sessions** live in the server process only — 30-day TTL, at most 256 at a time, nothing written to disk, all gone on restart — and the key itself is never stored in the browser. The key exchange is capped at 10 attempts per client address per minute, and the whole session/Bearer layer additionally sits behind a per-address rate limiter, so no authorization decision runs unthrottled.
 
 ### POST /api/v1/traces
 
@@ -677,9 +696,9 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `evaluate` | `boolean` | `false` | Run the deterministic eval engine on `output` and store the result linked to the trace. Requires `output`. |
-| `eval_type` | `string` | `"completeness"` | `completeness`, `relevance`, `safety`, `cost`, `custom` |
+| `eval_type` | `string` | `"completeness"` | `completeness`, `relevance`, `safety`, `cost`, `custom`, `all`. `all` runs every bundle in one pass — the critical veto spans all of them — and adds a per-bundle `categories` map, exactly as the [`evaluate_output`](#evaluate_output) tool does; the result is stored under `eval_type: "all"` |
 
-`trace_id` is server-minted, never client-supplied — one in the body is ignored. Each POST creates a new trace (not idempotent), mirroring `log_trace`.
+`trace_id` is server-minted, never client-supplied — one in the body is **rejected with `400`**, and the message says the server mints it; read the id from the `201` response. Each POST creates a new trace (not idempotent), mirroring `log_trace`.
 
 #### Response (201)
 
@@ -691,7 +710,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 }
 ```
 
-`evaluation` is present only when `evaluate: true`.
+`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `suggestions`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, and `categories` when `eval_type` is `all`.
 
 #### Error Responses
 
@@ -715,12 +734,16 @@ List traces with filtering and pagination.
 |-----------|------|---------|-------------|-------------|
 | `agent_name` | `string` | -- | -- | Filter by agent name |
 | `framework` | `string` | -- | -- | Filter by framework |
-| `since` | `string` | -- | ISO 8601 | Timestamp lower bound |
-| `until` | `string` | -- | ISO 8601 | Timestamp upper bound |
+| `since` | `string` | -- | ISO 8601 timestamp or date | Timestamp lower bound (inclusive) |
+| `until` | `string` | -- | ISO 8601 timestamp or date; not earlier than `since` | Timestamp upper bound (inclusive) |
+| `min_score` | `number` | -- | 0..1; not above `max_score` | Minimum latest-eval score |
+| `max_score` | `number` | -- | 0..1 | Maximum latest-eval score |
 | `limit` | `integer` | `50` | 1-1000 | Results per page |
 | `offset` | `integer` | `0` | >= 0 | Pagination offset |
 | `sort_by` | `string` | `"timestamp"` | `timestamp`, `latency_ms`, `cost_usd` | Sort field |
 | `sort_order` | `string` | `"desc"` | `asc`, `desc` | Sort direction |
+
+Same rules as the [`get_traces`](#get_traces) tool, enforced by the same validators: a `since` later than `until`, a `since`/`until` that is not an ISO 8601 timestamp (`2026-08-01T00:00:00Z`, offsets allowed) or calendar date (`2026-08-01`), a `min_score` above `max_score`, a score outside 0..1, or a negative `offset` is a `400` — `{ "error": "Invalid query parameters", "details": [...] }`, with both values named — rather than an empty page.
 
 #### Response
 
@@ -891,6 +914,142 @@ The `version` field is sourced dynamically from `package.json` at runtime (see `
   "storage": "disconnected"
 }
 ```
+
+---
+
+### GET /api/v1/rules/builtin
+
+The engine's own rule roster — name, category, description, weight, and whether the rule is critical — derived from the rule registry rather than restated, so a rule added to a bundle is categorised correctly here without a second edit. Built-ins are process-global (not tenant-scoped).
+
+#### Response
+
+```json
+{
+  "rules": [
+    { "name": "no_pii", "category": "safety", "description": "Detects potential PII and leaked credentials ...", "weight": 2, "critical": true },
+    ...
+  ]
+}
+```
+
+---
+
+### GET /api/v1/rules/custom
+
+List the deployed custom rules (`custom-rules.json` under your Iris home). Same rows `list_rules` returns.
+
+#### Response
+
+```json
+{ "rules": [ { "id": "rule-588823d0", "name": "...", "evalType": "safety", "severity": "critical", "enabled": true, "definition": { ... }, "version": 1, "createdAt": "...", "updatedAt": "..." } ] }
+```
+
+---
+
+### POST /api/v1/rules/custom
+
+Deploy a custom rule — the HTTP twin of [`deploy_rule`](#deploy_rule), same store, same live-engine registration (the rule fires on the very next evaluation, no restart).
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | Yes | 1-80 chars; letters, digits, `.`, `-`, `_`. Unique among deployed rules unless `replace` is `true` |
+| `description` | `string` | No | Up to 500 chars |
+| `evalType` | `string` | Yes | `completeness`, `relevance`, `safety`, `cost`, `custom` — the rule fires on evaluations of this type (and on `all`) |
+| `severity` | `string` | No | `low`, `medium` (default), `high`, `critical`. high/critical failures hard-fail the evaluation |
+| `definition` | `object` | Yes | `{ name?, type, config, weight? }` — strict: an unknown key is rejected. `name` is optional and always replaced by the top-level `name`. See [Custom Rules](#custom-rules) |
+| `sourceMomentId` | `string` | No | Decision Moment the rule was derived from (provenance) |
+| `replace` | `boolean` | No | Default `false`. When a rule with this `name` is already deployed: `false` rejects the call with `409`; `true` deletes the existing same-named rule(s) and deploys this one in their place (fresh id; audit rows preserved) |
+
+#### Response (201)
+
+```json
+{
+  "rule": { "id": "rule-588823d0", "name": "no_internal_hostnames", "evalType": "safety", "severity": "critical", "enabled": true, "version": 1, "definition": { "..." : "..." } },
+  "replaced": [ { "id": "rule-1a2b3c4d", "evalType": "safety", "severity": "high" } ],
+  "warning": "Replaced 1 previously deployed rule(s) named \"no_internal_hostnames\" (rule-1a2b3c4d); they no longer fire. Their audit rows are preserved."
+}
+```
+
+`replaced` and `warning` appear only when `replace: true` retired an earlier rule.
+
+#### Error Responses
+
+| Status | Meaning |
+|--------|---------|
+| `400` | `{ "error": "Invalid rule definition", "details": [...] }` — a malformed body, an unknown key (top level or inside `definition`), or a definition the store refuses (a regex that fails the ReDoS check or exceeds 1000 chars, a missing config key, a non-positive weight) |
+| `409` | A rule with this `name` is already deployed and `replace` is not `true`. `{ "error": "A rule named \"...\" is already deployed: rule-XXXX (eval_type ..., severity ..., enabled). ... Pass replace: true ...", "existing": [ { "id", "evalType", "severity", "enabled" } ] }` — nothing was deployed |
+
+---
+
+### PATCH /api/v1/rules/custom/:id
+
+Enable or disable a deployed rule without deleting it — the dashboard's toggle, and the same thing `delete_rule` does with its `enabled` argument. The engine follows in lockstep: a disabled rule stops firing on the very next evaluation and is not loaded at the next boot; a re-enabled one fires again. Idempotent — setting the state a rule already has changes nothing and returns `200`.
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `enabled` | `boolean` | Yes | `true` to re-enable, `false` to pause. Strict body — the only key accepted |
+
+#### Responses
+
+| Status | Meaning |
+|--------|---------|
+| `200` | `{ "rule": { ..., "enabled": false } }` — the rule as persisted |
+| `400` | Non-boolean `enabled`, or an unknown key: `{ "error": "Invalid toggle request", "details": [...] }` |
+| `404` | `{ "error": "Rule not found" }` |
+
+---
+
+### DELETE /api/v1/rules/custom/:id
+
+Delete a deployed rule. Hot-removed from the live engine, so it stops firing on the very next evaluation — no restart. Audit rows are kept.
+
+| Status | Meaning |
+|--------|---------|
+| `204` | Deleted |
+| `404` | `{ "error": "Rule not found" }` |
+
+---
+
+### POST /api/v1/rules/custom/preview
+
+Dry-run a rule definition before deploying it: replay it against recent stored traces and, optionally, judge one sample output you supply. Nothing is written.
+
+#### Request Body
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `definition` | `object` | -- | `{ name?, type, config, weight? }`, strict. `name` is optional here too |
+| `evalType` | `string` | `"custom"` | Accepted for symmetry with deploy |
+| `windowDays` | `integer` | `7` | 1-30 — how far back to replay |
+| `maxTraces` | `integer` | `1000` | 1-5000 — trace cap for the replay |
+| `sampleOutput` | `string` | -- | Up to 100,000 chars. When present, the rule is **also** evaluated against exactly this text and the verdict comes back under `sample` |
+
+#### Response (200)
+
+```json
+{
+  "tracesEvaluated": 253,
+  "wouldPass": 240,
+  "wouldFail": 11,
+  "wouldSkip": 2,
+  "examples": [ { "traceId": "...", "agentName": "...", "timestamp": "...", "outputPreview": "up to 200 chars of the output ..." } ],
+  "windowSinceIso": "2026-08-27T12:00:00.000Z",
+  "sample": { "passed": false, "score": 0, "message": "Pattern matched (should not match)", "skipped": false }
+}
+```
+
+`examples` lists up to 5 traces that would fail. `sample` is present only when `sampleOutput` was sent; it carries `passed`, `score`, `message`, `skipped`, and `skipReason` when the rule skipped (for example a regex that exceeded the sandbox budget on that text). The replay shares one regex budget across all traces — a sandbox-defeating pattern shows up as `wouldSkip` almost immediately rather than freezing the server — while the sample is judged with a budget of its own.
+
+#### Error Responses
+
+| Status | Meaning |
+|--------|---------|
+| `400` | `{ "error": "Invalid preview request", "details": [...] }` — malformed body or an unknown key |
+| `422` | `{ "error": "Rule definition rejected", "message": "..." }` — the definition itself cannot run (invalid regex, pattern too long, ReDoS rejection, missing config key), so every trace would skip identically |
 
 ---
 

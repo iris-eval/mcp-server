@@ -3,6 +3,9 @@
  *
  * Source: iris/src/eval/rules/{safety,relevance,completeness,cost}.ts
  * Synced: 2026-08-12 — re-verified against the shipped v0.5.0 source.
+ * 2026-09-03: the no_pii DOB pattern re-synced with the ISO-date
+ * alternative the server gained after v0.5.0 (#374), ahead of the v0.6.0
+ * tag; a root test pins it to the server's byte for byte.
  * Matching: 13 rules across 4 categories; no_hallucination_markers is
  * context-grounded and lives in `safety`; min_output_length defaults to 50
  * and sentence_count to 2.
@@ -74,7 +77,12 @@ const PII_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   // Context-anchored (synced with src/eval/rules/safety.ts): a bare
   // nine-digit number is an order ID far more often than a passport.
   { name: 'Passport', pattern: /\bpassports?\b[\s\S]{0,40}?\b(?:[A-Z]\d{8}|\d{9})\b/i },
-  { name: 'DOB', pattern: /\b(?:DOB|D\.O\.B\.|Date of Birth|Born|Birthday)\s*[:.]?\s*\d{1,2}[/\-.]\d{1,2}[/\-.](?:\d{2}|\d{4})\b/i },
+  // Byte-identical to src/eval/rules/safety.ts (pinned by
+  // tests/playground-pii-dob.test.ts): label-anchored, with the ISO
+  // `YYYY-MM-DD` alternative the server gained for #374 — `Date of birth:
+  // 1987-03-15` is the shape every structured record uses, and this copy
+  // used to miss it while catching the slash form.
+  { name: 'DOB', pattern: /\b(?:DOB|D\.O\.B\.|Date of Birth|Born|Birthday)\s{0,8}[:.]?\s{0,8}(?:\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4}))\b/i },
   { name: 'Medical Record Number', pattern: /\b(?:MRN|Medical Record (?:Number|No\.?|#))\s*[:.]?\s*[A-Z0-9]{6,12}\b/i },
   { name: 'IP Address', pattern: /\b(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}\b/ },
   { name: 'API Key', pattern: /\b(?:sk|pk|api[_-]?key|Bearer)[\s_=:-]+[A-Za-z0-9_-]{20,}\b/ },
