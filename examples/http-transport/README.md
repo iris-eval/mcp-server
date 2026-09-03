@@ -15,7 +15,9 @@ This starts two servers:
 | Server | Default Port | Purpose |
 |--------|-------------|---------|
 | MCP over HTTP | 3000 | Streamable HTTP transport for MCP tool calls (`/mcp`) |
-| Dashboard API | 6920 | REST API for querying traces, evaluations, and metrics (`/api/v1/*`) |
+| Dashboard API | 6920 | REST API for querying traces, evaluations, and metrics (`/api/v1/*`), plus the `POST /api/v1/traces` ingest endpoint |
+
+The second server exists only because `--dashboard` is passed. `--transport http` on its own starts just the MCP server on port 3000 — the dashboard, and with it `POST /api/v1/traces`, never starts implicitly.
 
 ### Environment Variables
 
@@ -38,14 +40,14 @@ The `/health` endpoint on the MCP server is unauthenticated:
 
 ```bash
 curl http://localhost:3000/health
-# {"status":"ok","server":"iris-eval","timestamp":"2026-03-16T12:00:00.000Z"}
+# {"status":"ok","server":"iris-eval","timestamp":"2026-09-03T16:38:19.962Z"}
 ```
 
-The dashboard also has its own health endpoint at `/api/v1/health` (requires auth if `--api-key` is set):
+The dashboard has its own health endpoint at `/api/v1/health`, which is always auth-exempt so capture clients can probe it before sending:
 
 ```bash
-curl -H "Authorization: Bearer my-secret-key" http://localhost:6920/api/v1/health
-# {"status":"ok","version":"0.1.0","uptime_seconds":3600,"trace_count":142,"storage":"connected"}
+curl http://localhost:6920/api/v1/health
+# {"status":"ok","version":"0.5.1","uptime_seconds":269,"trace_count":38,"storage":"connected"}
 ```
 
 ---
@@ -420,7 +422,7 @@ Both servers enforce rate limits per client IP:
 | Server | Default Limit | Window |
 |--------|--------------|--------|
 | MCP (`POST /mcp`, `DELETE /mcp`) | 20 requests | 60 seconds |
-| Dashboard API (`/api/v1/*`) | 100 requests | 60 seconds |
+| Dashboard API (`/api/v1/*`) | 600 requests | 60 seconds |
 
 Rate limit headers follow the [draft-7 standard](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/). When exceeded, the server returns `429 Too Many Requests`.
 

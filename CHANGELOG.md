@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Storage adapter: `deleteEvalResultsOlderThan(tenantId, days)`, `purge(tenantId)` and `checkpoint()` on `IStorageAdapter`; `EvalEngine.evaluateAll()`, `hasRule(id)`, and id-idempotent `registerRule`; `EvalRuleResult.ruleId` / `.category`; `EvalResult.categories`.
 - The mode flags `--demo`, `--demo-clear`, `--self-test` and `--purge` are mutually exclusive and refused together with exit 2, before anything touches the filesystem — `--self-test --purge` used to run only the first one it saw.
 
+### Changed
+
+- **`iris-eval.com/docs` now resolves.** The dashboard's command palette ("Open Iris docs") and older directory listings link there, and the site had no such route — the entry landed on a 404. `/docs` and `/docs/<path>` now redirect (temporarily, until a hosted docs site exists) to the `docs/` directory on GitHub. The `$schema` URL `.claims.json` has carried since the truthbase was introduced, `https://iris-eval.com/claims-schema-v1.json`, also resolves now instead of 404ing.
+
 **The dashboard tells the truth.** The dashboard is the product's face for anyone who runs `--demo`, and a first-run walkthrough found it contradicting the engine in the places that matter most: a PII leak wearing an amber PARTIAL chip, a delete dialog promising a safety rule would keep enforcing until a restart, a "cost cap" that was really a length check, a docs link that 404'd, and a tab title from the previous brand. Every item below has a test that fails on the previous code.
 
 ### Added

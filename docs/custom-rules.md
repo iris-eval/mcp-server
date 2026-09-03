@@ -83,7 +83,7 @@ Add a second rule to require a minimum length. Now both rules contribute to the 
     {
       "name": "not_trivial",
       "type": "min_length",
-      "config": { "length": 10 }
+      "config": { "min_length": 10 }
     }
   ]
 }
@@ -179,7 +179,7 @@ Output must be at least N characters long. Use to enforce substantive responses.
 
 | Key | Type | Required | Description |
 |-----|------|----------|-------------|
-| `length` | `number` | Yes | Minimum character count |
+| `min_length` | `number` | Yes | Minimum character count (`length` and `min` are accepted as aliases) |
 
 **Scoring:** Partial credit. If the output is shorter than the minimum, score is `output.length / min`. A 150-character output against a 200-character minimum scores `0.75`.
 
@@ -187,7 +187,7 @@ Output must be at least N characters long. Use to enforce substantive responses.
 {
   "name": "substantial_answer",
   "type": "min_length",
-  "config": { "length": 200 }
+  "config": { "min_length": 200 }
 }
 ```
 
@@ -201,7 +201,7 @@ Output must be at most N characters long. Use to enforce concise responses or AP
 
 | Key | Type | Required | Description |
 |-----|------|----------|-------------|
-| `length` | `number` | Yes | Maximum character count |
+| `max_length` | `number` | Yes | Maximum character count (`length` and `max` are accepted as aliases) |
 
 **Scoring:** Partial credit. If the output exceeds the maximum, score is `max / output.length`. A 600-character output against a 500-character maximum scores `0.833`.
 
@@ -209,7 +209,7 @@ Output must be at most N characters long. Use to enforce concise responses or AP
 {
   "name": "concise_summary",
   "type": "max_length",
-  "config": { "length": 500 }
+  "config": { "max_length": 500 }
 }
 ```
 
@@ -321,11 +321,11 @@ Execution cost must be under a USD limit. Reads the `cost_usd` value from the ev
 
 | Key | Type | Required | Description |
 |-----|------|----------|-------------|
-| `max_cost` | `number` | Yes | Maximum cost in USD |
+| `max_cost` | `number` | Yes | Maximum cost in USD (`max_usd` is accepted as an alias) |
 
 **Scoring:** Binary. 1 if cost is at or under the threshold, 0 if over.
 
-You must pass `cost_usd` in the `evaluate_output` call for this rule to work:
+The rule reads `cost_usd` from the `evaluate_output` call. When `cost_usd` is not passed, the rule **skips** — `skipped: true`, `skipReason: "context.costUsd not provided"` — rather than passing or failing: it is excluded from the weighted score, and a deployed rule with severity `high`/`critical` is named in `critical_skipped` so a gate that must fail closed can see the rule did not run. (Before v0.5.1 a missing cost was read as `$0` and the rule passed.) Pass `cost_usd`:
 
 ```json
 {
@@ -803,7 +803,7 @@ A healthcare agent must not leak Protected Health Information and should include
     {
       "name": "sufficient_detail",
       "type": "min_length",
-      "config": { "length": 100 },
+      "config": { "min_length": 100 },
       "weight": 1
     }
   ]
@@ -930,13 +930,13 @@ A customer-facing agent must follow brand guidelines: no competitor mentions, re
     {
       "name": "not_too_short",
       "type": "min_length",
-      "config": { "length": 100 },
+      "config": { "min_length": 100 },
       "weight": 1
     },
     {
       "name": "not_too_long",
       "type": "max_length",
-      "config": { "length": 2000 },
+      "config": { "max_length": 2000 },
       "weight": 1
     },
     {

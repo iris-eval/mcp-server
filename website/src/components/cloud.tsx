@@ -64,11 +64,11 @@ const TIERS = [
   },
   {
     name: "Enterprise",
-    badge: "Custom",
-    price: "Custom",
+    badge: "Planned",
+    price: "Not yet priced",
     period: "",
-    description: "For organizations that need audit-grade evaluation records, compliance, and dedicated support.",
-    cta: { label: "Contact Us", href: "mailto:hello@iris-eval.com" },
+    description: "For organizations that would need audit-grade evaluation records, compliance support, and dedicated help. Not built yet, and no certification is held or claimed.",
+    cta: { label: "Tell us what you need", href: "mailto:hello@iris-eval.com" },
     highlight: false,
     coming: true,
     features: [
@@ -148,12 +148,13 @@ export function Pricing(): React.ReactElement {
           </p>
           <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
             Free to self-host.{" "}
-            <span className="text-gradient">Cloud when you&apos;re ready.</span>
+            <span className="text-gradient">Hosted, if it earns its place.</span>
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
-            The open-source core is MIT licensed with no limits. The cloud adds
-            team dashboards, alerting, and managed infrastructure — starting
-            free.
+            The open-source server is MIT licensed with no limits and no account.
+            A hosted tier with shared team history is under consideration, not
+            under construction — nothing below the first card is built or priced,
+            and the waitlist is how we find out whether it should be.
           </p>
         </div>
 
@@ -197,7 +198,7 @@ export function Pricing(): React.ReactElement {
                 </span>
                 {tier.coming && (
                   <span className="rounded-full bg-eval-warn/10 px-2 py-0.5 text-[10px] font-bold text-eval-warn">
-                    Coming Soon
+                    Not built yet
                   </span>
                 )}
               </div>
@@ -257,20 +258,20 @@ export function Pricing(): React.ReactElement {
 
         {/* Bottom note */}
         <p className="mt-10 text-center text-[13px] text-text-muted">
-          All plans include unlimited eval rules, both transports (stdio + HTTP), and full API access.
+          The self-hosted server already includes unlimited eval rules, both transports (stdio + HTTP), and the full API.
           <br />
-          Waitlist members get founding-member pricing and a direct line to shape the roadmap.
+          Joining the waitlist commits you to nothing and locks in nothing — there is no price to lock in. It tells us whether shared history is worth building.
         </p>
 
         {/* Waitlist form */}
         <div className="mx-auto mt-12 max-w-md text-center" id="waitlist">
           <p className="mb-4 text-[14px] font-semibold text-text-primary">
-            Get early access to Iris Cloud
+            Would hosted, shared eval history help you?
           </p>
           {submitted ? (
             <div className="inline-flex items-center gap-2 text-[15px] font-medium text-eval-pass">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-              You&apos;re on the list. We&apos;ll email when it launches.
+              You&apos;re on the list. We&apos;ll email only if a hosted tier ships.
             </div>
           ) : (
             <>
@@ -298,7 +299,7 @@ export function Pricing(): React.ReactElement {
           <p className="mt-3 text-[12px] text-text-muted">
             {waitlistCount && waitlistCount > 0
               ? `${waitlistCount} developer${waitlistCount === 1 ? "" : "s"} on the waitlist. No spam.`
-              : "No spam. One email when the cloud tier launches."}
+              : "No spam. One email if a hosted tier ships — none if it doesn't."}
           </p>
         </div>
       </div>

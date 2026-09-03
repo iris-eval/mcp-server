@@ -15,9 +15,9 @@ import { TableOfContents } from "@/components/learn/table-of-contents";
 /* ------------------------------------------------------------------ */
 
 export const metadata: Metadata = {
-  title: "Agent Eval: The Definitive Guide to AI Agent Evaluation — Iris",
+  title: "Agent Eval: How to Evaluate AI Agent Output — Iris",
   description:
-    "What is agent eval? The complete guide to evaluating AI agent outputs for quality, safety, and cost. Covers heuristic vs. semantic eval, eval-driven development, the eval loop, and practical implementation.",
+    "What is agent eval? How to evaluate AI agent outputs for quality, safety, and cost: heuristic vs. semantic eval, eval-driven development, and the eval loop.",
   alternates: { canonical: "https://iris-eval.com/learn/agent-eval" },
   openGraph: {
     title: "Agent Eval: The Definitive Guide to AI Agent Evaluation",
@@ -611,8 +611,8 @@ export default function AgentEvalGuide(): React.ReactElement {
               </SectionHeading>
 
               <p>
-                Iris is the agent eval server for MCP. Any MCP-compatible agent can discover and
-                use it automatically — no SDK, no code changes. Add it to your MCP configuration:
+                Iris is the agent eval server for MCP. Any MCP-compatible agent discovers it
+                automatically and can call its tools — no SDK, no code changes. Add it to your MCP configuration:
               </p>
 
               <pre className="my-6 overflow-x-auto rounded-xl border border-border-default bg-bg-card p-5 font-mono text-[13px] leading-relaxed text-text-secondary">

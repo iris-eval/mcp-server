@@ -2,7 +2,8 @@
 title: "How to Evaluate AI Agent Output Without Calling Another LLM"
 description: "A step-by-step tutorial for evaluating AI agent output using deterministic heuristic rules — no LLM-as-Judge, no added cost, sub-millisecond."
 date: 2026-03-16
-updated: 2026-09-02
+updated: 2026-09-03
+seoTitle: "Evaluate AI Agent Output Without Another LLM"
 author: Ian Parent
 tags: [eval, agents, mcp, tutorial, heuristics, observability]
 relatedPosts: [heuristic-vs-semantic-eval, eval-driven-development, output-quality-score]
@@ -168,9 +169,11 @@ These rules enforce budgets and efficiency.
 - **`cost_under_threshold`** — Fails if the execution cost exceeds a configured limit. Set a $0.05 ceiling per request and catch the runaway chains before they hit your bill.
 - **`token_efficiency`** — Checks the completion-to-prompt token ratio. A 10,000-token prompt generating a 5-token response suggests the agent is consuming context without producing proportional value.
 
+> **Editor's note (2026-09-03):** The two examples in this section originally used `type: "regex"` / `type: "keywords"` with top-level `pattern`, `flags`, `keywords`, `mode`, `expected` and `message` keys. That shape never shipped, and Iris v0.5 rejects it outright — the server answers `Invalid option: expected one of "regex_match"|"regex_no_match"|"min_length"|"max_length"|"contains_keywords"|"excludes_keywords"|"json_schema"|"cost_threshold" at custom_rules[0].type` and `expected record, received undefined at custom_rules[0].config`. Both examples below are now real requests run against Iris v0.5.1, each followed by the engine's actual response. The full reference is [docs/custom-rules.md](https://github.com/iris-eval/mcp-server/blob/main/docs/custom-rules.md).
+
 ## Custom Rules
 
-The built-in rules cover common patterns, but your domain has its own requirements. You can define custom rules using regex patterns or keyword lists.
+The built-in rules cover common patterns, but your domain has its own requirements. You can define custom rules using regex patterns or keyword lists. Every custom rule has a `name`, one of eight `type`s, and a `config` object whose keys depend on the type; `eval_type: "custom"` runs only your rules (leave it off and they run alongside the built-in bundle instead).
 
 A custom regex rule that fails if the agent outputs raw SQL:
 
@@ -179,34 +182,74 @@ A custom regex rule that fails if the agent outputs raw SQL:
   "tool": "evaluate_output",
   "arguments": {
     "output": "To get that data, run: SELECT * FROM users WHERE id = 42",
+    "eval_type": "custom",
     "custom_rules": [
       {
         "name": "no_raw_sql",
-        "type": "regex",
-        "pattern": "\\b(SELECT|INSERT|UPDATE|DELETE|DROP)\\b.*\\b(FROM|INTO|SET|TABLE)\\b",
-        "flags": "i",
-        "expected": "no_match",
-        "message": "Output contains raw SQL that could expose database schema"
+        "type": "regex_no_match",
+        "config": {
+          "pattern": "\\b(SELECT|INSERT|UPDATE|DELETE|DROP)\\b.*\\b(FROM|INTO|SET|TABLE)\\b",
+          "flags": "i"
+        }
       }
     ]
   }
 }
 ```
 
-A custom keyword rule that checks whether the agent mentioned required disclaimer language:
+The engine's response:
 
 ```json
 {
-  "custom_rules": [
-    {
-      "name": "includes_disclaimer",
-      "type": "keywords",
-      "keywords": ["not financial advice", "consult a professional"],
-      "mode": "any",
-      "expected": "match",
-      "message": "Financial responses must include disclaimer language"
-    }
-  ]
+  "eval_type": "custom",
+  "score": 0,
+  "passed": false,
+  "rule_results": [
+    { "ruleName": "no_raw_sql", "passed": false, "score": 0, "message": "Forbidden pattern found in output" }
+  ],
+  "suggestions": ["[no_raw_sql] Forbidden pattern found in output"],
+  "rules_evaluated": 1,
+  "rules_skipped": 0,
+  "insufficient_data": false
+}
+```
+
+A custom keyword rule that checks whether the agent mentioned required disclaimer language. `threshold: 0.5` means half the keywords must appear; leave it out and all of them must:
+
+```json
+{
+  "tool": "evaluate_output",
+  "arguments": {
+    "output": "Index funds have historically returned about 7% a year after inflation, but this is not financial advice. Consult a professional before investing.",
+    "eval_type": "custom",
+    "custom_rules": [
+      {
+        "name": "includes_disclaimer",
+        "type": "contains_keywords",
+        "config": {
+          "keywords": ["not financial advice", "consult a professional"],
+          "threshold": 0.5
+        }
+      }
+    ]
+  }
+}
+```
+
+The engine's response:
+
+```json
+{
+  "eval_type": "custom",
+  "score": 1,
+  "passed": true,
+  "rule_results": [
+    { "ruleName": "includes_disclaimer", "passed": true, "score": 1, "message": "Found 2/2 required keywords" }
+  ],
+  "suggestions": [],
+  "rules_evaluated": 1,
+  "rules_skipped": 0,
+  "insufficient_data": false
 }
 ```
 

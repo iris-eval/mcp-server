@@ -1,11 +1,26 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { OG_IMAGE_URL } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Iris",
   description: "How Iris collects, uses, and protects your data.",
   alternates: { canonical: "https://iris-eval.com/privacy" },
+  openGraph: {
+    title: "Privacy Policy — Iris",
+    description: "How Iris collects, uses, and protects your data.",
+    url: "https://iris-eval.com/privacy",
+    type: "website",
+    images: [OG_IMAGE_URL],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy — Iris",
+    description: "How Iris collects, uses, and protects your data.",
+    images: [OG_IMAGE_URL],
+    site: "@iris_eval",
+  },
 };
 
 export default function Privacy(): React.ReactElement {

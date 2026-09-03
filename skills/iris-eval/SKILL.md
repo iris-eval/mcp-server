@@ -64,7 +64,7 @@ A result carries **two** fields that answer different questions. Read both.
 | `score` | Weighted average across the rules that ran — a 0..1 **quality gradient**. | Trend it; compare prompts and models. Never read it alone as a safety signal. |
 | `passed` | The **ship / no-ship verdict**: `score >= threshold` (default 0.7) **AND** no critical rule failed. | This is the field a gate branches on. |
 | `critical_failures` | Names of the critical rules that failed. Present only when non-empty. | If present, the eval failed *because of these*, not because of the score. |
-| `critical_skipped` | Critical rules that did not judge the output (e.g. a regex killed at the 100 ms sandbox budget). Present only when non-empty. | Treat as **unknown**, not clean, if you must fail closed. |
+| `critical_skipped` | Critical rules that did not judge the output (e.g. a regex killed at the 100 ms sandbox budget, or a `cost_threshold` rule with no `cost_usd`). Present only when non-empty. | Treat as **unknown**, not clean, if you must fail closed. |
 | `rule_results` | Per-rule `{ ruleName, passed, score, message, skipped? }`. | Tells you exactly what tripped. |
 | `eval_type` | The bundle that actually ran. | Confirm you evaluated what you meant to. |
 
@@ -116,13 +116,15 @@ carry the judge's reasoning.
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
-| IRIS_API_KEY | (none) | API key for HTTP transport auth |
-| IRIS_DB_PATH | ~/.iris/iris.db | SQLite database path |
+| IRIS_HOME | ~/.iris | Directory for all per-user files: `config.json`, `iris.db`, `custom-rules.json`, `audit.log`, `preferences.json` |
+| IRIS_API_KEY | (none) | API key for HTTP transport + dashboard auth |
+| IRIS_DB_PATH | ~/.iris/iris.db | SQLite database path (overrides IRIS_HOME for the DB only) |
 | IRIS_LOG_LEVEL | info | Logging verbosity |
-| IRIS_DASHBOARD | (off) | Set `true` to enable the web dashboard |
+| IRIS_DASHBOARD | (off) | Set `true` to enable the web dashboard (and with it `POST /api/v1/traces`) |
 | IRIS_DASHBOARD_PORT | 6920 | Dashboard port |
 | IRIS_OTEL_ENDPOINT | (none) | OTLP/HTTP collector for trace export |
-| IRIS_ANTHROPIC_API_KEY / IRIS_OPENAI_API_KEY | (none) | BYOK for the LLM judge |
+| IRIS_ANTHROPIC_API_KEY / IRIS_OPENAI_API_KEY | (none) | BYOK for the LLM judge and citation verifier |
+| IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL | 0.25 | Hard cost cap per LLM judge call |
 
 ## Example Workflows
 

@@ -2,7 +2,8 @@
 title: "The Cost of Invisible Agents: What $0.47 Per Query Looks Like at Scale"
 description: "How invisible token costs compound to $14,000 monthly bills when agents lack per-trace cost tracking and budget threshold enforcement."
 date: 2026-03-15
-updated: 2026-08-13
+updated: 2026-09-03
+seoTitle: "The Cost of Invisible Agents at Scale"
 author: Ian Parent
 tags: [cost, observability, agents, mcp, evaluation, budgets]
 relatedPosts: [the-ai-eval-tax, why-your-ai-agents-need-observability, eval-coverage-the-metric-your-agents-are-missing]

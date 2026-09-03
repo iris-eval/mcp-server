@@ -3,23 +3,27 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { DashboardMockup } from "./dashboard-mockup";
 import { RotatingWords } from "./rotating-words";
-import { TEST_COUNT_VITEST_ROOT } from "../lib/claims";
+import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, TEST_COUNT_VITEST_ROOT } from "../lib/claims";
 
 const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChain", "CrewAI", "MCP SDK", "AutoGen"];
 
+// `width` is each badge SVG's intrinsic width at its 20px height, read from
+// the SVGs themselves (2026-09-03). Explicit dimensions let the browser
+// reserve the row before the images arrive, so the hero text below does not
+// shift when they load — the badges are the first images on the page.
 const BADGES = [
-  { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server" },
-  { src: "https://img.shields.io/badge/Cursor_Directory-Listed-171717?style=flat-square", alt: "Cursor Directory", href: "https://cursor.directory/plugins/iris" },
+  { src: "https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg", alt: "Glama Score", href: "https://glama.ai/mcp/servers/iris-eval/mcp-server", width: 110 },
+  { src: "https://img.shields.io/badge/Cursor_Directory-Listed-171717?style=flat-square", alt: "Cursor Directory", href: "https://cursor.directory/plugins/iris", width: 144 },
   // No cacheSeconds on the VERSION badge. At 86400 shields.io served the
   // previous version for a full day after a release — the site showed
   // v0.4.4 while npm, the registry and our own banner all said v0.4.5,
   // which reads as "the release did not land". Freshness matters here;
   // it does not for a download counter.
-  { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
-  { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads&cacheSeconds=86400", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server" },
-  { src: "https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat-square&color=0d9488&label=stars", alt: "GitHub stars", href: "https://github.com/iris-eval/mcp-server" },
-  { src: "https://img.shields.io/github/actions/workflow/status/iris-eval/mcp-server/ci.yml?style=flat-square&label=CI", alt: "CI status", href: "https://github.com/iris-eval/mcp-server/actions" },
-  { src: "https://img.shields.io/badge/license-MIT-22c55e?style=flat-square", alt: "MIT License", href: "https://github.com/iris-eval/mcp-server/blob/main/LICENSE" },
+  { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server", width: 80 },
+  { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads&cacheSeconds=86400", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server", width: 104 },
+  { src: "https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat-square&color=0d9488&label=stars", alt: "GitHub stars", href: "https://github.com/iris-eval/mcp-server", width: 54 },
+  { src: "https://img.shields.io/github/actions/workflow/status/iris-eval/mcp-server/ci.yml?style=flat-square&label=CI", alt: "CI status", href: "https://github.com/iris-eval/mcp-server/actions", width: 74 },
+  { src: "https://img.shields.io/badge/license-MIT-22c55e?style=flat-square", alt: "MIT License", href: "https://github.com/iris-eval/mcp-server/blob/main/LICENSE", width: 78 },
 ];
 
 export function Hero(): React.ReactElement {
@@ -50,7 +54,7 @@ export function Hero(): React.ReactElement {
             {BADGES.map((b) => (
               <a key={b.alt} href={b.href} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.src} alt={b.alt} height={20} className="h-5" />
+                <img src={b.src} alt={b.alt} width={b.width} height={20} className="h-5 w-auto" decoding="async" />
               </a>
             ))}
           </div>
@@ -93,13 +97,13 @@ export function Hero(): React.ReactElement {
               see what's actually shipped. */}
           <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-text-muted">
             <span className="font-mono">
-              <span className="text-text-secondary font-semibold">13 rules</span>
+              <span className="text-text-secondary font-semibold">{RULE_COUNT_BUILT_IN} rules</span>
               <span> · regression-protected CI</span>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono">
-              <span className="text-text-secondary font-semibold">5 real-domain case studies</span>
-              <span> · executed end-to-end through MCP</span>
+              <span className="text-text-secondary font-semibold">{MCP_TOOL_COUNT} MCP tools</span>
+              <span> · strict argument validation, any MCP client</span>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono">
