@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-03T06:45:42.613Z",
-  "generatedFromCommit": "d666445",
+  "generatedAt": "2026-09-03T07:08:26.521Z",
+  "generatedFromCommit": "1b335d9",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -102,9 +102,9 @@
     ]
   },
   "release": {
-    "currentReleaseDate": "2026-08-12",
-    "currentReleaseHeadline": "The acceptance-test release",
-    "currentReleaseVersion": "0.5.0",
+    "currentReleaseDate": "2026-09-03",
+    "currentReleaseHeadline": "The verdict-integrity patch",
+    "currentReleaseVersion": "0.5.1",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -151,7 +151,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.5.0",
+    "mcpServer": "0.5.1",
     "websitePackage": "0.1.0"
   }
 }
