@@ -84,6 +84,28 @@ check_version "website/public/.well-known/mcp.json" ".version"
 # set of files or the gate is decorative.
 check_version ".claude-plugin/plugin.json" ".version"
 
+# The OTHER plugin manifest — and the one that matters. The marketplace
+# index (.claude-plugin/marketplace.json) points plugin installs at
+# `./claude-plugin`, so claude-plugin/.claude-plugin/plugin.json is the
+# version a `/plugin install iris-eval` user actually gets. The gate above
+# covered the root manifest no marketplace entry points at, reported
+# PASSED, and this file sat at 0.1.0 while the product shipped 0.5.0 and
+# 0.5.1. Same lesson as the lockfile and server.json packages[]: the gate
+# must walk the surface the USER sees, not the one that is easy to find.
+check_version "claude-plugin/.claude-plugin/plugin.json" ".version"
+
+# @iris-eval/langchain's dependency range on this package. Not a `.version`
+# field and not synced (the adapter releases on its own cadence), but the
+# range must admit the version being released: `^0.4.0` excluded every
+# 0.5.x, so a fresh install of the adapter resolved to the pre-veto,
+# pre-sandbox 0.4.6 line for the whole 0.5.0 release. Fails when the range
+# does not admit the current version; the fix is a deliberate hand edit.
+if node scripts/check-langchain-range.mjs; then
+  :
+else
+  ERRORS=$((ERRORS + 1))
+fi
+
 # SECURITY.md's supported-versions table. Not a `.version` field, so it needs
 # its own check — and it earned one: the policy says "only the latest minor
 # receives security fixes", and on v0.5.0's ship day the table still listed
