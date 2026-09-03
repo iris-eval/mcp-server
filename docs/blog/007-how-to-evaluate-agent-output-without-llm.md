@@ -225,6 +225,9 @@ This is where the picture comes together. You are not reading logs. You are look
 
 ## When You Still Need LLM-as-Judge
 
+> **Editor's note (2026-09):** This section was written before LLM-as-judge existed in Iris. It has shipped since v0.4.0 as the `evaluate_with_llm_judge` tool (five templates, bring your own key, a hard per-eval cost cap), so the routing described below is what Iris does today, not a plan.
+
+
 I am not arguing that heuristic eval replaces LLM-as-judge entirely. There are eval dimensions where you genuinely need semantic understanding: tone, persuasiveness, factual accuracy against a knowledge base, nuanced style conformance. For those, LLM-as-judge makes sense, and it is on our roadmap.
 
 But a surprising number of production eval checks do not need semantic understanding. They need pattern matching. And running those checks in under a millisecond for free instead of in 2 seconds for $0.03 is not a minor optimization — it is a different architecture. You can run heuristic evals on every single agent execution in production without worrying about cost or latency. Try doing that with LLM-as-judge.
