@@ -89,10 +89,11 @@ const FEATURES = [
   { feature: "Cost tracking", iris: "Per-trace USD cost", helicone: "Multi-dimension cost analytics (user, model, session, geography)", heliconeWin: true },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", helicone: "MCP server for data access only", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", helicone: "Apache 2.0 (permissive)", irisWin: false },
-  { feature: "Pricing", iris: "Free + Cloud waitlist", helicone: "Free (10k req/mo), Pro $20/seat/mo, Enterprise custom", irisWin: false, irisNeutral: true },
+  { feature: "Independence", iris: "Independent, founder-led", helicone: "Acquired by Mintlify (Mar 2026); changelog last updated Nov 2025", irisWin: true },
+  { feature: "Pricing", iris: "Free + Cloud waitlist", helicone: "Hobby free (1 seat) / Pro $79/mo / Team $799/mo / Enterprise custom", irisWin: false, irisNeutral: true },
   { feature: "Caching", iris: "Not included", helicone: "Semantic caching (up to 95% cost reduction on repeated queries)", heliconeWin: true, irisNeutral: true },
   { feature: "Gateway features", iris: "Observability-focused", helicone: "Rate limiting, retries, fallbacks, load balancing across 100+ providers", heliconeWin: true, irisNeutral: true },
-  { feature: "Data retention", iris: "Unlimited (your SQLite, your storage)", helicone: "1 month (free) / 3 months (Pro) / lifetime (Enterprise)", irisWin: true },
+  { feature: "Data retention", iris: "Unlimited (your SQLite, your storage)", helicone: "7 days (Hobby) / 1 month (Pro) / 3 months (Team) / forever (Enterprise)", irisWin: true },
   { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", helicone: "SOC 2, GDPR, rate limiting, Helm charts", heliconeWin: true, irisNeutral: true },
 ];
 
@@ -249,7 +250,7 @@ export default function CompareHelicone(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="Helicone" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="Helicone" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

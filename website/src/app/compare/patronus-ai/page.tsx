@@ -88,8 +88,8 @@ const FEATURES = [
   { feature: "Safety scoring", iris: "PII detection, prompt injection, blocklist", patronus: "Toxicity, bias, safety classifiers", patronusWin: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost, aggregate visibility", patronus: "Not a primary feature", irisWin: true },
   { feature: "When eval runs", iris: "Inline, every output in production", patronus: "API call per evaluation request", irisWin: true },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", patronus: "Not MCP-aware", irisWin: true },
-  { feature: "Pricing", iris: "Free and open-source (MIT)", patronus: "Enterprise pricing (contact sales)", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", patronus: "Patronus MCP server (evaluate, batch_evaluate, run_experiment)" },
+  { feature: "Pricing", iris: "Free and open-source (MIT)", patronus: "Self-serve: $10 free credits, then $10 per 1,000 small evaluator calls, $20 per 1,000 large; enterprise plans", irisWin: true },
   { feature: "Custom eval criteria", iris: "Zod schema custom rules", patronus: "Custom fine-tuned models", patronusWin: true },
   { feature: "Compliance", iris: "Self-hosted (you control data)", patronus: "SOC 2, enterprise security", patronusWin: true, irisNeutral: true },
   { feature: "Target audience", iris: "Individual developers, small teams", patronus: "Enterprise AI teams, regulated industries", irisWin: false },
@@ -245,7 +245,7 @@ export default function ComparePatronusAI(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="Patronus AI" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="Patronus AI" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

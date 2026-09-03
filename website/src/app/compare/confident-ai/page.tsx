@@ -85,21 +85,21 @@ const FEATURES = [
   { feature: "Deployment", iris: "Self-hosted (your infrastructure)", confidentai: "Managed cloud (SaaS)", irisWin: true },
   { feature: "Integration method", iris: "MCP config (zero code)", confidentai: "Python SDK + API key", irisWin: true },
   { feature: "Eval approach", iris: "Deterministic heuristic rules (<1ms)", confidentai: "LLM-as-Judge metrics (semantic)", confidentaiWin: true },
-  { feature: "When eval runs", iris: "Inline, every output in production", confidentai: "Batch experiments and CI/CD", irisWin: true },
+  { feature: "When eval runs", iris: "Inline, every output in production", confidentai: "Online evals on traces and spans as they are ingested, plus batch experiments and CI/CD" },
   { feature: "Data ownership", iris: "100% local (SQLite, your machine)", confidentai: "Cloud-hosted (vendor manages)", irisWin: true },
   { feature: "Team collaboration", iris: "Single-user (team features on roadmap)", confidentai: "Multi-user dashboards, shared experiments", confidentaiWin: true, irisNeutral: true },
   { feature: "Regression testing", iris: "Not included", confidentai: "Built-in experiment comparison", confidentaiWin: true, irisNeutral: true },
   { feature: "Dataset management", iris: "Not included", confidentai: "Synthetic data generation, golden datasets", confidentaiWin: true, irisNeutral: true },
-  { feature: "Cost tracking", iris: "Per-trace USD cost, aggregate visibility", confidentai: "Not a primary feature", irisWin: true },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", confidentai: "Not MCP-aware", irisWin: true },
-  { feature: "Pricing", iris: "Free and open-source (MIT)", confidentai: "Free tier + paid plans", irisWin: true },
+  { feature: "Cost tracking", iris: "Per-trace USD cost, aggregate visibility", confidentai: "Cost tracking by user in LLM observability" },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", confidentai: "MCP server for coding agents (75 tools: run evals, evaluate traces, simulate conversations); needs a Confident AI account" },
+  { feature: "Pricing", iris: "Free and open-source (MIT)", confidentai: "Free (2 seats) / Starter $200/mo / Team $2,000/mo / Enterprise", irisWin: true },
   { feature: "PII and credential detection", iris: `Built-in — ${PII_PATTERN_COUNT} patterns: PII plus vendor credentials (AWS, Slack, GitHub, Google, npm, SendGrid, DigitalOcean), private keys and wallet seed phrases; doc placeholders suppressed per match; a hit forces passed:false`, confidentai: "Via custom metrics or toxicity checks", irisWin: true },
 ];
 
 const IRIS_REASONS = [
   "You want to own your eval data — no cloud dependency, no vendor lock-in",
   "You're building with MCP-compatible agents and want zero-code setup",
-  "You want inline production eval, not just pre-deployment testing",
+  "You want eval inside the agent's own loop, with no platform account",
   "You need cost tracking and PII detection out of the box",
   "You want fully open-source with no usage limits",
 ];
@@ -245,7 +245,7 @@ export default function CompareConfidentAI(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="Confident AI" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="Confident AI" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

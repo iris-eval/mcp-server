@@ -87,14 +87,14 @@ const FEATURES = [
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", arize: "OpenTelemetry collector + SDK in application", irisWin: true },
   { feature: "Eval capabilities", iris: "13 built-in heuristic rules + 4 custom-rule types (<1 ms)", arize: "LLM-as-Judge, custom evaluators, agent eval templates", arizeWin: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost", arize: "Token and cost tracking across models", irisWin: false },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", arize: "Phoenix MCP server (query traces, manage prompts)", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", arize: "Phoenix MCP server (prompts, traces, datasets, experiments, SQL); no tool runs an eval", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", arize: "Phoenix: Elastic License 2.0 (ELv2)", irisWin: true },
   { feature: "Embeddings & drift", iris: "Not included", arize: "Advanced embedding drift detection across NLP, CV, multi-modal", arizeWin: true, irisNeutral: true },
   { feature: "Dashboard", iris: "Real-time dark-mode UI", arize: "Full-featured dashboards, Prompt IDE, Alyx AI assistant", arizeWin: true },
   { feature: "Framework support", iris: "Any MCP-compatible agent", arize: "20+ frameworks (OpenAI, LangGraph, CrewAI, LlamaIndex, DSPy, etc.)", arizeWin: true },
   { feature: "Prompt management", iris: "Not included", arize: "Prompt IDE with versioning and optimization", arizeWin: true, irisNeutral: true },
   { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", arize: "RBAC, SOC 2, online evals, Alyx assistant", arizeWin: true, irisNeutral: true },
-  { feature: "Pricing", iris: "Free and open-source", arize: "Phoenix free; AX from $50/mo; Enterprise $50k–100k/yr", irisWin: true },
+  { feature: "Pricing", iris: "Free and open-source", arize: "Phoenix free; AX Free $0 / Pro $50/mo / Enterprise custom", irisWin: true },
   { feature: "Setup time", iris: "60 seconds, one config line", arize: "Minutes to hours depending on deployment", irisWin: true },
 ];
 
@@ -255,7 +255,7 @@ export default function CompareArize(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="Arize" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="Arize" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

@@ -87,7 +87,7 @@ const FEATURES = [
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", langsmith: "Async tracing via SDK in your process", irisWin: true },
   { feature: "Eval rules", iris: "13 built-in heuristic rules + 4 custom-rule types (<1ms)", langsmith: "LLM-as-Judge + human review workflows", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", langsmith: "Token + latency per trace and tool call", irisWin: false },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langsmith: "A2A & MCP protocol support for deployment", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langsmith: "LangSmith MCP server (fetch runs, projects, datasets, experiments; no tool runs an eval) plus MCP/A2A deployment support", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", langsmith: "Proprietary platform (SDK is MIT)", irisWin: true },
   { feature: "Pricing", iris: "Free + Cloud waitlist", langsmith: "Free tier (5k traces/mo), Plus $39/seat/mo, Enterprise custom", irisWin: false, irisNeutral: true },
   { feature: "Dashboard", iris: "Real-time dark-mode UI", langsmith: "Auto-clustering, pattern detection, custom dashboards", langsmithWin: true },
@@ -251,7 +251,7 @@ export default function CompareLangsmith(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="LangSmith" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="LangSmith" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">
