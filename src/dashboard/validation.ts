@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logTraceInputShape } from '../tools/log-trace.js';
+import { isoTimestamp, addTraceRangeIssues } from '../tools/get-traces.js';
 
 /*
  * Strict request-body schema for the dashboard's MUTATING routes.
@@ -55,7 +56,11 @@ export const ingestTraceSchema = strictBody(
   {
     ...logTraceInputShape,
     evaluate: z.boolean().default(false),
-    eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']).default('completeness'),
+    // Same bundle list evaluate_output accepts, "all" included — the
+    // ingest path used to stop one short and run the single-bundle engine
+    // no matter what, so an HTTP caller could not get the per-category
+    // verdict the MCP tool returns.
+    eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).default('completeness'),
   },
   {
     reserved: {
@@ -74,16 +79,28 @@ export const ingestTraceSchema = strictBody(
   }
 });
 
-export const traceQuerySchema = z.object({
-  agent_name: z.string().optional(),
-  framework: z.string().optional(),
-  since: z.string().optional(),
-  until: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-  sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp'),
-  sort_order: z.enum(['asc', 'desc']).default('desc'),
-});
+/*
+ * GET /api/v1/traces — the HTTP twin of the get_traces tool's query. The
+ * bounds are validated by the SAME helpers the tool uses (isoTimestamp,
+ * addTraceRangeIssues), so a `since` of "yesterday", a `since` later than
+ * `until`, a score outside 0..1 or a `min_score` above `max_score` is
+ * refused here with both values named — exactly as the tool refuses it —
+ * instead of returning an empty page that reads as "no such traces".
+ */
+export const traceQuerySchema = z
+  .object({
+    agent_name: z.string().optional(),
+    framework: z.string().optional(),
+    since: isoTimestamp.optional(),
+    until: isoTimestamp.optional(),
+    min_score: z.coerce.number().min(0).max(1).optional(),
+    max_score: z.coerce.number().min(0).max(1).optional(),
+    limit: z.coerce.number().int().min(1).max(1000).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+    sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp'),
+    sort_order: z.enum(['asc', 'desc']).default('desc'),
+  })
+  .superRefine(addTraceRangeIssues);
 
 export const evalQuerySchema = z.object({
   eval_type: z.string().optional(),

@@ -81,9 +81,10 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         'Error modes. Throws on missing agent_name. Throws on malformed span or tool_call objects (Zod rejects). Returns 500 on storage failure (disk full, DB locked). Never blocks on the agent — returns within ~50ms for typical payloads.',
       ].join('\n'),
       // Strict at the MCP boundary (unknown args rejected, not stripped).
-      // The dashboard's HTTP ingest builds its own schema FROM this shape
-      // (dashboard/validation.ts) and keeps default stripping there on
-      // purpose — it relies on it to discard a client-supplied trace_id.
+      // The dashboard's HTTP ingest builds its own — equally strict —
+      // schema FROM this shape (dashboard/validation.ts): a client-supplied
+      // trace_id is rejected there with a 400 whose message says the server
+      // mints it, exactly as this tool mints its own in the handler below.
       inputSchema: strictInput(logTraceInputShape),
       annotations: {
         readOnlyHint: false,     // Writes a row to storage

@@ -17,7 +17,48 @@ export function isIsoTimestamp(value: string): boolean {
   return isoInstant.safeParse(value).success || isoDate.safeParse(value).success;
 }
 const TIMESTAMP_HINT = 'must be an ISO 8601 timestamp (e.g. 2026-08-01T00:00:00Z) or date (2026-08-01)';
-const isoTimestamp = z.string().refine(isIsoTimestamp, TIMESTAMP_HINT);
+/**
+ * The `since` / `until` field schema. Shared with the dashboard's trace
+ * query (dashboard/validation.ts) so both read paths refuse the same
+ * unparseable bounds with the same hint.
+ */
+export const isoTimestamp = z.string().refine(isIsoTimestamp, TIMESTAMP_HINT);
+
+/** The cross-field bounds a trace query can carry. */
+export interface TraceRangeArgs {
+  min_score?: number;
+  max_score?: number;
+  since?: string;
+  until?: string;
+}
+
+/**
+ * Cross-field checks the per-field schema cannot express (#373). A range
+ * whose bounds cross — min_score 0.9 / max_score 0.1, or since after until
+ * — used to be accepted and return an empty page, which reads as "no such
+ * traces" when the truth is "no trace could ever match this". Refusing it
+ * with the two values named is what the argument descriptions promise.
+ *
+ * One function for both read paths: `get_traces` (MCP) and
+ * `GET /api/v1/traces` (dashboard) call it from their `superRefine`, so a
+ * bound the tool rejects is never one the HTTP query quietly accepts.
+ */
+export function addTraceRangeIssues(args: TraceRangeArgs, ctx: z.RefinementCtx): void {
+  if (args.min_score !== undefined && args.max_score !== undefined && args.min_score > args.max_score) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['min_score'],
+      message: `min_score (${args.min_score}) must be <= max_score (${args.max_score}) — the range is empty and no trace could match it`,
+    });
+  }
+  if (args.since !== undefined && args.until !== undefined && Date.parse(args.since) > Date.parse(args.until)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['since'],
+      message: `since (${args.since}) must not be later than until (${args.until}) — the window is empty and no trace could match it`,
+    });
+  }
+}
 
 const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards in v0.4)'),
@@ -36,29 +77,8 @@ const inputSchema = {
   include_summary: z.boolean().default(false).describe('Include dashboard summary stats in same response — saves a round-trip when ingesting for dashboards'),
 };
 
-/*
- * Cross-field checks the per-field schema cannot express (#373). A range
- * whose bounds cross — min_score 0.9 / max_score 0.1, or since after until
- * — used to be accepted and return an empty page, which reads as "no such
- * traces" when the truth is "no trace could ever match this". Refusing it
- * with the two values named is what the argument descriptions promise.
- */
-const inputSchemaWithRanges = strictInput(inputSchema).superRefine((args, ctx) => {
-  if (args.min_score !== undefined && args.max_score !== undefined && args.min_score > args.max_score) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['min_score'],
-      message: `min_score (${args.min_score}) must be <= max_score (${args.max_score}) — the range is empty and no trace could match it`,
-    });
-  }
-  if (args.since !== undefined && args.until !== undefined && Date.parse(args.since) > Date.parse(args.until)) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['since'],
-      message: `since (${args.since}) must not be later than until (${args.until}) — the window is empty and no trace could match it`,
-    });
-  }
-});
+// Cross-field range checks — see addTraceRangeIssues above.
+const inputSchemaWithRanges = strictInput(inputSchema).superRefine(addTraceRangeIssues);
 
 export function registerGetTracesTool(server: McpServer, storage: IStorageAdapter): void {
   server.registerTool(

@@ -45,7 +45,8 @@ export function registerTraceRoutes(
       }
 
       // Server-minted, exactly like log_trace — a client-supplied
-      // trace_id was already stripped by the schema.
+      // trace_id was already REJECTED by the strict schema above (400,
+      // with a message saying the server mints it).
       const traceId = generateTraceId();
       const timestamp = body.timestamp ?? new Date().toISOString();
 
@@ -84,12 +85,20 @@ export function registerTraceRoutes(
 
       // Deterministic engine, same context evaluate_output builds. The
       // superRefine on ingestTraceSchema guarantees output is present.
-      const evaluation = options.evalEngine.evaluate(body.eval_type, {
+      // eval_type="all" takes the same every-bundle path the MCP tool
+      // takes (evaluateAll): one pass, one regex budget, the critical veto
+      // spanning every bundle, and a per-category breakdown — stored under
+      // eval_type "all" so the dashboard reads it as the tool's rows.
+      const context = {
         output: body.output as string,
         input: body.input,
         costUsd: body.cost_usd,
         tokenUsage: body.token_usage,
-      });
+      };
+      const evaluation =
+        body.eval_type === 'all'
+          ? options.evalEngine.evaluateAll(context)
+          : options.evalEngine.evaluate(body.eval_type, context);
       evaluation.trace_id = traceId;
       await storage.insertEvalResult(tenantId, evaluation);
 
@@ -115,6 +124,14 @@ export function registerTraceRoutes(
           ...(evaluation.critical_failures?.length
             ? { critical_failures: evaluation.critical_failures }
             : {}),
+          // The other half of the veto contract, same as evaluate_output: a
+          // critical rule that SKIPPED did not judge the output and cannot
+          // veto, so a fail-closed gate needs to see it named.
+          ...(evaluation.critical_skipped?.length
+            ? { critical_skipped: evaluation.critical_skipped }
+            : {}),
+          // Per-bundle breakdown — eval_type="all" only.
+          ...(evaluation.categories ? { categories: evaluation.categories } : {}),
         },
       });
     } catch (err) {
@@ -136,6 +153,8 @@ export function registerTraceRoutes(
           framework: query.framework,
           since: query.since,
           until: query.until,
+          min_score: query.min_score,
+          max_score: query.max_score,
         },
         limit: query.limit,
         offset: query.offset,

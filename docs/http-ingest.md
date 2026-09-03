@@ -20,7 +20,10 @@ Two things to know before pointing production traffic at it:
 - **Writes are unauthenticated unless you set `--api-key` (or `IRIS_API_KEY`).** With
   no key, anything that can reach the dashboard port can store traces. The loopback
   bind and the rebinding guard are what keep that to your own machine by default; if
-  you bind beyond loopback (`--dashboard-host`), set a key.
+  you bind beyond loopback (`--dashboard-host`), set a key. With a key set, API clients
+  — this endpoint included — send `Authorization: Bearer <key>`; a browser opening the
+  dashboard UI signs in once with `?key=<api key>` on any dashboard URL instead (see
+  [api-reference.md → Dashboard API Routes](api-reference.md#dashboard-api-routes)).
 - **Stored text is verbatim.** `input` and `output` land in `iris.db` exactly as sent,
   including anything `no_pii` goes on to flag. Traces and evaluations older than
   `retention.days` (default 30, `0` disables, in `config.json`) are deleted at startup;
@@ -91,21 +94,25 @@ Plus two HTTP-only fields:
 | `spans` | array | span tree; `span_id` minted server-side when omitted |
 | `timestamp` | string | ISO 8601; defaults to now |
 | `evaluate` | boolean | HTTP-only. `true` runs the deterministic eval engine on `output` and stores the result linked to the trace. Requires `output`. |
-| `eval_type` | enum | HTTP-only. `completeness` (default) \| `relevance` \| `safety` \| `cost` \| `custom` |
+| `eval_type` | enum | HTTP-only. `completeness` (default) \| `relevance` \| `safety` \| `cost` \| `custom` \| `all`. `all` runs every bundle in one pass — the critical veto spans all of them — and adds a per-bundle `categories` map to the evaluation, exactly as the `evaluate_output` tool does; the result is stored under `eval_type: "all"` |
 
-`trace_id` is **server-minted, never client-supplied** — one in the body is ignored.
-Each POST creates a new trace (not idempotent), mirroring `log_trace`.
+`trace_id` is **server-minted, never client-supplied** — one in the body is **rejected
+with `400`**, and the message says the server mints it. Read the id from the `201`
+response. The body is strict: any unknown key (a misspelled `eval_typ`, say) is
+rejected the same way rather than silently dropped. Each POST creates a new trace
+(not idempotent), mirroring `log_trace`.
 
-Note: `relevance` needs an `expected` comparison target, which the trace shape does
-not carry — those rules report as skipped. Use `completeness`, `safety`, or `cost`
-for ingest-time evaluation; run `evaluate_output` with `expected` for relevance.
+Note: the `relevance` rules compare `output` against `input` (keyword overlap and
+topic consistency) — send `input`, or both report as skipped. The trace shape carries
+no `expected`, so the completeness bundle's `expected_coverage` rule always skips
+here; run `evaluate_output` with `expected` when you need that one.
 
 ## Responses
 
 | Status | Meaning |
 |---|---|
-| `201` | Stored. Body: `{ "trace_id": "<32-hex>", "status": "stored" }`, plus `"evaluation": { … }` when `evaluate: true` |
-| `400` | Invalid body. `{ "error": "Invalid trace payload", "details": [ …zod issues… ] }` |
+| `201` | Stored. Body: `{ "trace_id": "<32-hex>", "status": "stored" }`, plus `"evaluation": { … }` when `evaluate: true` (carrying `critical_failures` / `critical_skipped` when a critical rule failed or skipped, and `categories` when `eval_type` is `all`) |
+| `400` | Invalid body — a missing `agent_name`, a malformed span, an unknown or misspelled key, or a client-supplied `trace_id`. `{ "error": "Invalid trace payload", "details": [ …zod issues… ] }` |
 | `401` / `403` | Missing / wrong `Authorization: Bearer <key>` when the server was started with an API key. `403` is also the rebinding guard rejecting a hostile `Origin`/`Host`, and the answer in `--demo` mode, which refuses ingest |
 | `413` | Body over the configured request size limit (default `1mb`) |
 | `429` | Shared API rate limit exceeded — back off and retry |

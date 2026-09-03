@@ -38,6 +38,11 @@ describe('ingestTraceSchema', () => {
     expect(result.eval_type).toBe('completeness');
   });
 
+  it('accepts eval_type "all" — the same bundle list evaluate_output takes', () => {
+    const result = ingestTraceSchema.parse({ agent_name: 'a', output: 'x', evaluate: true, eval_type: 'all' });
+    expect(result.eval_type).toBe('all');
+  });
+
   it('rejects a misspelled eval_typ, naming the key and listing the valid ones', () => {
     const parsed = ingestTraceSchema.safeParse({
       agent_name: 'a',
@@ -126,6 +131,51 @@ describe('traceQuerySchema', () => {
     const result = traceQuerySchema.parse({ agent_name: 'test', framework: 'langchain' });
     expect(result.agent_name).toBe('test');
     expect(result.framework).toBe('langchain');
+  });
+
+  /*
+   * The ranges get_traces refuses (#373) are refused here too, with the
+   * same helpers — an HTTP caller used to get an empty page for a window
+   * that could never match, which reads as "no such traces".
+   */
+  describe('impossible ranges — mirrored from get_traces', () => {
+    const messages = (input: Record<string, string>) => {
+      const parsed = traceQuerySchema.safeParse(input);
+      expect(parsed.success).toBe(false);
+      return parsed.success ? '' : parsed.error.issues.map((i) => i.message).join('\n');
+    };
+
+    it('rejects since later than until, naming both values', () => {
+      const msg = messages({ since: '2026-08-02T00:00:00Z', until: '2026-08-01T00:00:00Z' });
+      expect(msg).toContain('since (2026-08-02T00:00:00Z) must not be later than until (2026-08-01T00:00:00Z)');
+    });
+
+    it('rejects a since/until that is not an ISO timestamp or date', () => {
+      expect(messages({ since: 'yesterday' })).toContain('ISO 8601');
+      expect(messages({ until: '08/01/2026' })).toContain('ISO 8601');
+    });
+
+    it('accepts an ISO instant with an offset and a calendar date', () => {
+      const result = traceQuerySchema.parse({ since: '2026-08-01', until: '2026-08-02T00:00:00+02:00' });
+      expect(result.since).toBe('2026-08-01');
+      expect(result.until).toBe('2026-08-02T00:00:00+02:00');
+    });
+
+    it('rejects min_score above max_score, naming both values', () => {
+      expect(messages({ min_score: '0.9', max_score: '0.1' })).toContain('min_score (0.9) must be <= max_score (0.1)');
+    });
+
+    it('rejects a score outside 0..1 and coerces a valid one', () => {
+      expect(traceQuerySchema.safeParse({ min_score: '1.5' }).success).toBe(false);
+      expect(traceQuerySchema.safeParse({ max_score: '-0.1' }).success).toBe(false);
+      const ok = traceQuerySchema.parse({ min_score: '0.25', max_score: '0.75' });
+      expect(ok.min_score).toBe(0.25);
+      expect(ok.max_score).toBe(0.75);
+    });
+
+    it('rejects a negative offset', () => {
+      expect(traceQuerySchema.safeParse({ offset: '-5' }).success).toBe(false);
+    });
   });
 });
 

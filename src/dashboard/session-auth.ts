@@ -29,9 +29,12 @@
  * in), Path=/ (this origin only), Secure when the request arrived over
  * HTTPS. Sessions die with the process; there is no persistence to leak.
  *
- * Brute force: the key exchange is throttled per client address
- * independently of the API limiter, which the Bearer path — mounted before
- * the rate-limited router — never got.
+ * Brute force: the key exchange is capped at SIGN_IN_ATTEMPTS_PER_MINUTE
+ * per client address by its own limiter below, and the whole of this
+ * layer — cookie check, Bearer check and the exchange alike — sits behind
+ * the per-address auth-gate limiter server.ts mounts directly in front of
+ * it (middleware/rate-limit.ts, createAuthGateRateLimiter), so no
+ * authorization decision runs unthrottled.
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import express, { type Request, type RequestHandler, type Response } from 'express';

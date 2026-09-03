@@ -154,7 +154,8 @@ src/
   middleware/
     auth.ts             Bearer token auth with timing-safe comparison
     cors.ts             Origin allowlist with wildcard pattern matching
-    rate-limit.ts       Separate rate limiters for API (600/min) and MCP (20/min)
+    rate-limit.ts       Separate rate limiters for API (600/min) and MCP (20/min), plus the
+                        per-address auth-gate limiter mounted ahead of the dashboard's session/Bearer layer
     error-handler.ts    Centralized error handler (Zod, HTTP, 500s)
     index.ts            Barrel exports
   resources/
@@ -163,16 +164,17 @@ src/
     index.ts              Registers all resources
   dashboard/
     server.ts           Express app for REST API + static file serving
-    validation.ts       Zod schemas for query parameter validation
+    session-auth.ts     Browser sign-in for an --api-key dashboard (?key= → HttpOnly session cookie), in front of the Bearer middleware
+    validation.ts       Zod schemas for query parameters and strict request bodies
     routes/
-      traces.ts         GET /api/v1/traces, GET /api/v1/traces/:id
+      traces.ts         POST /api/v1/traces (ingest), GET /api/v1/traces, GET /api/v1/traces/:id
       evaluations.ts    GET /api/v1/evaluations
       summary.ts        GET /api/v1/summary
       filters.ts        GET /api/v1/filters
       health.ts         GET /api/v1/health
       eval-stats.ts     GET /api/v1/eval-stats (+ /trend, /rules, /failures)
       moments.ts        GET /api/v1/moments — Decision Moment classification
-      rules.ts          GET/POST/DELETE custom rules, POST rules/custom/preview
+      rules.ts          GET/POST/PATCH/DELETE custom rules, GET rules/builtin, POST rules/custom/preview
       audit.ts          GET /api/v1/audit — read of the append-only audit log
       preferences.ts    GET/PATCH /api/v1/preferences
 
@@ -594,7 +596,7 @@ Request
 
 - **stdio mode**: No auth needed -- the transport is local IPC.
 - **HTTP mode without API key**: Iris logs a warning. All endpoints are open. Suitable for local development only.
-- **HTTP mode with API key**: Set via `--api-key`, `IRIS_API_KEY`, or config file. All requests except `/health` require `Authorization: Bearer <key>`. Comparison uses `timingSafeEqual` to prevent timing side-channels.
+- **HTTP mode with API key**: Set via `--api-key`, `IRIS_API_KEY`, or config file. All requests except `/health` require `Authorization: Bearer <key>`. Comparison uses `timingSafeEqual` to prevent timing side-channels. A browser opening the dashboard cannot send a Bearer header, so the dashboard's session layer (`src/dashboard/session-auth.ts`, in front of the Bearer middleware) lets it present the key once — `?key=<api key>` on any dashboard URL, or the sign-in form at `POST /session` — and exchanges it for a random session token in an HttpOnly, SameSite=Lax, path-scoped cookie (`Secure` over HTTPS), redirecting to the same URL with the key stripped. Sessions live in process memory (30-day TTL, capped at 256) and die with the process; the key exchange is capped at 10 attempts per client address per minute, and the whole layer sits behind the per-address auth-gate limiter. API clients keep sending Bearer; with no key configured both layers are pass-throughs.
 
 ### CORS
 
