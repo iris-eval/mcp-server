@@ -125,6 +125,23 @@ const PATTERNS = [
     fix: 'Use VERSION_MCP_SERVER from ~/lib/claims (do not hardcode JSON-LD softwareVersion)',
   },
   /*
+   * Product-name-plus-version prose: "Iris v0.4". The website's event
+   * banner carried "Iris v0.4 - ..." through 0.4.6 and 0.5.0 beside a pill
+   * that rendered the real version, and the pattern above only ever
+   * matched a JSON-LD softwareVersion literal, so nothing lit up. CODE
+   * flags always (render VERSION_MCP_SERVER); PROSE flags when the stated
+   * version is not the shipped one, in either X.Y.Z or X.Y form. Dated
+   * artifacts keep their period voice (same carve-out as
+   * retired-positioning).
+   */
+  {
+    name: 'product-version-prose',
+    re: /\bIris\s+v?(\d+\.\d+(?:\.\d+)?)\b/g,
+    expectedStrings: c => versionForms(c.version?.mcpServer),
+    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    fix: 'Render the version from the truthbase (VERSION_MCP_SERVER from ~/lib/claims; .claims.json version.mcpServer) instead of restating it.',
+  },
+  /*
    * Published rate limits. The security page told readers the dashboard API
    * allowed 100 req/min while the shipped default had been 600 for a full
    * release — wrong by 6x on the one page a reader consults BECAUSE they
@@ -166,6 +183,13 @@ const PATTERNS = [
 ];
 
 const CODE_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
+
+// The truthful spellings of a shipped version in prose: "0.5.0" and "0.5".
+function versionForms(v) {
+  if (typeof v !== 'string') return [];
+  const parts = v.split('.');
+  return parts.length === 3 ? [v, parts.slice(0, 2).join('.')] : [v];
+}
 
 const ALLOW_LIST_PATH = resolve(root, 'scripts/claims/allow-list.json');
 
@@ -215,6 +239,14 @@ const SCAN_EXTS = new Set([
 function matchFlags(pattern, m, relPath, claims) {
   const ext = relPath.slice(relPath.lastIndexOf('.'));
   const strictBecauseCode = CODE_EXTS.has(ext) && !pattern.valueCheckedInCode;
+  // String-valued claims (versions) compare the captured text against the
+  // truthful spellings; the numeric path below would read "0.5.0" as NaN.
+  if (pattern.expectedStrings) {
+    if (strictBecauseCode || !claims) return true;
+    const captured = m.slice(1).find(g => g !== undefined);
+    const truthful = pattern.expectedStrings(claims).filter(v => typeof v === 'string');
+    return truthful.length === 0 || !truthful.includes(captured);
+  }
   if (strictBecauseCode || !pattern.expected || !claims) return true;
   const captured = Number(m.slice(1).find(g => g !== undefined));
   const truthful = pattern.expected(claims).filter(v => typeof v === 'number');

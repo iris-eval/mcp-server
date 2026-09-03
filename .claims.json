@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-08-13T07:00:28.376Z",
-  "generatedFromCommit": "ba56a79",
+  "generatedAt": "2026-09-03T04:56:36.101Z",
+  "generatedFromCommit": "5fa2ed4",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -103,6 +103,7 @@
   },
   "release": {
     "currentReleaseDate": "2026-08-12",
+    "currentReleaseHeadline": "The acceptance-test release",
     "currentReleaseVersion": "0.5.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null

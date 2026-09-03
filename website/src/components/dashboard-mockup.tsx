@@ -26,21 +26,26 @@ export function DashboardMockup(): React.ReactElement {
         <span className="window-dot bg-[#ff5f57]" />
         <span className="window-dot bg-[#febc2e]" />
         <span className="window-dot bg-[#28c840]" />
-        <span className="ml-3 font-mono text-[12px] text-text-muted">
-          Iris Dashboard — localhost:3838
+        <span className="ml-3 min-w-0 truncate font-mono text-[12px] text-text-muted">
+          Iris Dashboard<span className="hidden sm:inline"> — localhost:3838</span>
         </span>
-        <div className="ml-auto flex items-center gap-4 text-[11px] text-text-muted">
+        {/* Below `sm` only the disclaimer survives: at 375px the three
+            chips pushed the bar 44px past the frame and wrapped the title
+            onto three lines. */}
+        <div className="ml-auto flex shrink-0 items-center gap-4 text-[11px] whitespace-nowrap text-text-muted">
           <span className="italic text-text-muted/80">Example data</span>
-          <span>Agents: <span className="font-semibold text-text-secondary">5</span></span>
-          <span>Traces: <span className="font-semibold text-text-secondary">1,247</span></span>
-          <span>Cost (7d): <span className="font-semibold text-eval-warn">$127.43</span></span>
+          <span className="hidden sm:inline">Agents: <span className="font-semibold text-text-secondary">5</span></span>
+          <span className="hidden sm:inline">Traces: <span className="font-semibold text-text-secondary">1,247</span></span>
+          <span className="hidden sm:inline">Cost (7d): <span className="font-semibold text-eval-warn">$127.43</span></span>
         </div>
       </div>
 
       {/* Dashboard content */}
       <div className="p-4 md:p-6">
-        {/* Top stats row */}
-        <div className="mb-6 grid grid-cols-4 gap-3">
+        {/* Top stats row - two columns below `sm`. Four fixed columns gave
+            each card 60px at 375px, a 36px value box, and "$127.43" needs
+            76px: three of the four values spilled out of their cards. */}
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "Total Traces", value: "1,247", change: "+12%", up: true },
             { label: "Avg Score", value: "0.84", change: "+0.03", up: true },
@@ -52,10 +57,10 @@ export function DashboardMockup(): React.ReactElement {
               initial={reduce ? {} : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 + i * 0.08, duration: 0.3 }}
-              className="rounded-lg border border-border-subtle bg-bg-surface p-3"
+              className="min-w-0 rounded-lg border border-border-subtle bg-bg-surface p-3"
             >
               <div className="text-[10px] font-medium text-text-muted">{s.label}</div>
-              <div className="mt-1 font-mono text-lg font-bold text-text-primary md:text-xl">{s.value}</div>
+              <div className="mt-1 truncate font-mono text-lg font-bold text-text-primary tabular-nums md:text-xl">{s.value}</div>
               <div className={`mt-0.5 text-[10px] font-semibold ${s.up ? "text-eval-pass" : "text-eval-fail"}`}>
                 {s.change}
               </div>
@@ -70,8 +75,8 @@ export function DashboardMockup(): React.ReactElement {
             <span className="text-[10px] text-text-muted">Last 24 hours</span>
           </div>
           <div className="overflow-hidden">
-            {/* Header */}
-            <div className="hidden border-b border-border-subtle bg-bg-surface px-4 py-2 md:flex">
+            {/* Header - shown from `sm`, where all six columns render. */}
+            <div className="hidden border-b border-border-subtle bg-bg-surface px-4 py-2 sm:flex">
               {["Agent", "Status", "Score", "Cost", "Latency", "Tools"].map((h) => (
                 <span key={h} className="flex-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">{h}</span>
               ))}
@@ -85,7 +90,10 @@ export function DashboardMockup(): React.ReactElement {
                 transition={{ delay: 0.7 + i * 0.06, duration: 0.25 }}
                 className="flex items-center border-b border-border-subtle px-4 py-2.5 transition-colors last:border-0 hover:bg-bg-surface/50"
               >
-                <span className="flex-1 font-mono text-[12px] font-medium text-text-primary">{t.agent}</span>
+                {/* Below `sm`: the agent column gets the extra width, the
+                    name truncates instead of colliding, and the two
+                    lowest-value columns (latency, tools) drop out. */}
+                <span className="min-w-0 flex-[2] truncate font-mono text-[11px] font-medium text-text-primary sm:flex-1 sm:text-[12px]">{t.agent}</span>
                 <span className="flex-1">
                   <span className={`inline-flex rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase ${STATUS_STYLE[t.status]}`}>
                     {t.status}
@@ -93,8 +101,8 @@ export function DashboardMockup(): React.ReactElement {
                 </span>
                 <span className="flex-1 font-mono text-[12px] text-text-secondary tabular-nums">{t.score}</span>
                 <span className="flex-1 font-mono text-[12px] text-text-secondary tabular-nums">{t.cost}</span>
-                <span className="flex-1 font-mono text-[12px] text-text-secondary tabular-nums">{t.latency}</span>
-                <span className="flex-1 font-mono text-[12px] text-text-secondary tabular-nums">{t.tools}</span>
+                <span className="hidden flex-1 font-mono text-[12px] text-text-secondary tabular-nums sm:block">{t.latency}</span>
+                <span className="hidden flex-1 font-mono text-[12px] text-text-secondary tabular-nums sm:block">{t.tools}</span>
               </motion.div>
             ))}
           </div>
