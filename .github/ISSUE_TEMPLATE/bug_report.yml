@@ -1,26 +1,45 @@
 name: Bug Report
-description: Report a bug in Iris MCP server
+description: Iris does not do what it says — server, dashboard, website or docs
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
-      value: Thanks for reporting a bug! Please fill out the form below.
+      value: |
+        Thanks for reporting. Two things first:
+
+        - **Security vulnerabilities do not go here.** Email security@iris-eval.com — see [SECURITY.md](https://github.com/iris-eval/mcp-server/blob/main/SECURITY.md).
+        - A maintainer will set priority (`P0`–`P3`), area and provenance labels at triage. The vocabulary is in [.github/LABELS.md](https://github.com/iris-eval/mcp-server/blob/main/.github/LABELS.md).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where the bug lives. Pick every one that applies.
+      multiple: true
+      options:
+        - server (MCP tools, eval engine, rules, storage, transports, CLI)
+        - dashboard (web UI or its HTTP API, including POST /api/v1/traces)
+        - website (iris-eval.com)
+        - docs (README, docs/, tool descriptions, shipped skill)
+        - dx (install, first run, error messages)
+        - not sure
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
       label: Description
-      description: A clear description of the bug
+      description: What Iris does, and what it says it does. If a tool description, README line or doc promises the behaviour you expected, quote it.
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
       label: Steps to Reproduce
-      description: Steps to reproduce the behavior
+      description: The exact calls or commands. For an MCP tool, the arguments you passed.
       placeholder: |
         1. Start server with '...'
-        2. Call tool '...'
-        3. See error
+        2. Call tool '...' with '...'
+        3. See error / see wrong verdict
     validations:
       required: true
   - type: textarea
@@ -34,38 +53,47 @@ body:
     id: actual
     attributes:
       label: Actual Behavior
-      description: What actually happened
+      description: What actually happened. For an eval verdict, paste the full response (`passed`, `score`, `rule_results`, `critical_failures`).
     validations:
       required: true
   - type: input
     id: version
     attributes:
       label: Iris Version
-      placeholder: "0.1.0"
+      description: "`npm ls @iris-eval/mcp-server`, the Docker tag, or the version in `server.json`"
+      placeholder: "X.Y.Z"
     validations:
       required: true
   - type: dropdown
     id: transport
     attributes:
-      label: Transport
+      label: How Iris is running
       options:
-        - stdio
-        - http
+        - stdio (Claude Desktop, Cursor, Claude Code, another MCP client)
+        - http (--transport http)
+        - http + --dashboard
+        - docker (ghcr.io/iris-eval/mcp-server)
     validations:
       required: true
   - type: input
     id: node-version
     attributes:
       label: Node.js Version
-      placeholder: "20.x"
+      placeholder: "22.x"
   - type: input
     id: os
     attributes:
       label: Operating System
-      placeholder: "macOS 14, Ubuntu 22.04, Windows 11"
+      placeholder: "macOS 15, Ubuntu 24.04, Windows 11"
+  - type: textarea
+    id: self-test
+    attributes:
+      label: Output of `npx @iris-eval/mcp-server --self-test`
+      description: An offline diagnostic that proves the install works. Paste it as-is; it tells us which side of the install the problem is on.
+      render: shell
   - type: textarea
     id: logs
     attributes:
       label: Relevant Logs
-      description: Paste any relevant log output
+      description: Paste any relevant log output (Iris logs to stderr)
       render: shell

@@ -1,22 +1,46 @@
 name: Feature Request
 description: Suggest a new feature or improvement
-labels: ["enhancement"]
+labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
     attributes:
-      value: Thanks for suggesting a feature! Please describe what you'd like.
+      value: |
+        Thanks for suggesting a feature. The public roadmap is organised as three tracks — **proof** (measure our own evaluators), **coverage** (rules aimed at the failures that actually occur), **reach** (capture that does not depend on the model choosing to call a tool) — see [docs/roadmap.md](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md). Saying where a request fits helps it get scheduled; it is fine to say "not sure".
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - server (MCP tools, eval engine, rules, storage, transports, CLI)
+        - dashboard (web UI or its HTTP API)
+        - website (iris-eval.com)
+        - docs
+        - dx (install, first run, error messages)
+        - not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: track
+    attributes:
+      label: Roadmap track
+      options:
+        - proof — measuring the evaluators themselves
+        - coverage — a failure Iris should catch and does not
+        - reach — using Iris from somewhere it cannot be used today
+        - none of these / not sure
   - type: textarea
     id: problem
     attributes:
       label: Problem
-      description: What problem does this feature solve?
+      description: What problem does this feature solve? What did you try to do with Iris that did not work or did not exist?
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
       label: Proposed Solution
-      description: How would you like this to work?
+      description: How would you like this to work? For a new rule, an example output that should fail and one that should pass.
     validations:
       required: true
   - type: textarea
