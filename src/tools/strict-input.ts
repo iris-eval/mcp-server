@@ -35,3 +35,30 @@ export function strictInput<T extends z.ZodRawShape>(shape: T) {
         : undefined,
   });
 }
+
+/*
+ * The same contract ONE LEVEL DOWN, for structured nested objects — a
+ * custom_rules[] entry, deploy_rule's `definition`. Top-level strictness
+ * shipped in 0.5.0 and stopped there, so `custom_rules: [{ name, type,
+ * config, wieght: 5 }]` still parsed cleanly with `wieght` discarded: the
+ * rule ran at the default weight and the score moved for a reason nothing
+ * in the response could show (#376). Free-form record fields (a rule's
+ * `config`, trace `metadata`, span `attributes`) are deliberately NOT
+ * strict — arbitrary keys there are the documented contract.
+ *
+ * `container` names the object in the message ("a custom_rules entry");
+ * the SDK appends the path (`at custom_rules.0`) so the caller sees
+ * exactly which entry to fix.
+ */
+export function strictNested<T extends z.ZodRawShape>(shape: T, container: string) {
+  const validKeys = Object.keys(shape).join(', ');
+  return z.strictObject(shape, {
+    error: (issue) =>
+      issue.code === 'unrecognized_keys'
+        ? `Unknown key(s) in ${container}: ${issue.keys.map((k) => `"${k}"`).join(', ')}. ` +
+          `Valid keys: ${validKeys}. ` +
+          'Unknown keys are rejected rather than silently dropped, so a misspelled key ' +
+          'cannot change how the rule scores — check the spelling and retry.'
+        : undefined,
+  });
+}

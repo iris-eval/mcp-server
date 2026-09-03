@@ -11,10 +11,20 @@
  *
  * Isolation is the load-bearing property. The diagnostic creates its own
  * scratch IRIS_HOME and scrubs every IRIS_* env var that feeds
- * loadConfig(), so it NEVER opens (or migrates!) the user's real iris.db,
- * never reads their config.json, and never honours an IRIS_API_KEY that
- * would 401 its own probes. The scratch home is removed and the env
- * restored before returning — pass or fail.
+ * loadConfig(), so it never MIGRATES or writes rows into the user's real
+ * iris.db, never reads their config.json, and never honours an
+ * IRIS_API_KEY that would 401 its own probes. The scratch home is removed
+ * and the env restored before returning — pass or fail.
+ *
+ * Isolation is not the same as ignorance, though. The first check runs
+ * BEFORE the scrub, against the CONFIGURED home: it creates the directory
+ * the server would create, proves it can write there, and — when the real
+ * database already exists — opens it and takes (then releases) a write
+ * lock without changing a byte. #371: the diagnostic used to print PASS
+ * against an IRIS_HOME the server could not write, because every check
+ * ran in the temp home; the real server then died on startup with a raw
+ * EPERM stack. A diagnostic that cannot fail the way the product fails is
+ * not a diagnostic.
  *
  * Budget: everything is in-process or loopback. No LLM calls, no network
  * beyond 127.0.0.1, and the whole sequence completes in well under the
@@ -24,12 +34,14 @@
  * runs this BEFORE loadConfig() so the normal boot path never executes.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import type { Server } from 'node:http';
-import { loadConfig } from './config/index.js';
+import Database from 'better-sqlite3';
+import { ensureIrisDirectory, loadConfig } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
 import { createStorage } from './storage/index.js';
 import { createDashboardServer } from './dashboard/server.js';
@@ -51,6 +63,7 @@ const CROSS = '✗';
  * files, per the usual drift rule.
  */
 export const SELF_TEST_STEPS = {
+  configuredHome: 'configured IRIS_HOME is writable',
   tempHome: 'create isolated temp home',
   storage: 'initialize storage',
   trace: 'log a trace',
@@ -136,6 +149,69 @@ export type WriteLine = (line: string) => void;
 
 const stdoutLine: WriteLine = (line) => process.stdout.write(`${line}\n`);
 
+function errorCode(err: unknown): string {
+  const code = (err as NodeJS.ErrnoException)?.code;
+  return typeof code === 'string' ? code : err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * The configured-home probe (#371). Exercises the exact calls the real
+ * server makes at startup, in order: create IRIS_HOME (same helper and
+ * mode as loadConfig), create the database directory when IRIS_DB_PATH
+ * points elsewhere, write-and-unlink a probe file in each, and — only if
+ * the real database already exists — open it and take a write lock
+ * (BEGIN IMMEDIATE … ROLLBACK), which fails on a read-only file or a
+ * non-database exactly as the first INSERT would, without migrating or
+ * changing anything. A missing database is not created: the server
+ * creates it on first run, and the writable-directory probe is what
+ * proves that it can.
+ */
+export function probeConfiguredHome(home: string, dbPath: string): string {
+  ensureIrisDirectory(home, 'IRIS_HOME');
+  probeWritable(home, 'IRIS_HOME');
+  const dbDir = dirname(dbPath);
+  if (dbDir !== home) {
+    ensureIrisDirectory(dbDir, 'the database directory (IRIS_DB_PATH / --db-path)');
+    probeWritable(dbDir, 'the database directory');
+  }
+  if (!existsSync(dbPath)) {
+    return `${home} (database ${dbPath} will be created on first run)`;
+  }
+  let db: Database.Database | undefined;
+  try {
+    db = new Database(dbPath, { fileMustExist: true });
+    db.exec('BEGIN IMMEDIATE');
+    db.exec('ROLLBACK');
+  } catch (err) {
+    throw new Error(
+      `database "${dbPath}" exists but cannot be opened for writing (${errorCode(err)}) — the server would fail ` +
+        'at startup with the same error. Fix the file permissions, or point IRIS_DB_PATH / --db-path at a writable location.',
+    );
+  } finally {
+    db?.close();
+  }
+  return `${home} (database ${dbPath} opens for writing)`;
+}
+
+function probeWritable(dir: string, what: string): void {
+  const probeFile = join(dir, `.iris-self-test-${randomBytes(4).toString('hex')}`);
+  try {
+    writeFileSync(probeFile, 'iris self-test write probe\n', { mode: 0o600 });
+  } catch (err) {
+    throw new Error(
+      `${what} "${dir}" is not writable (${errorCode(err)}) — the server would fail at startup with the same error. ` +
+        'Point IRIS_HOME at a directory this user can write, or fix the permissions on that path.',
+    );
+  }
+  try {
+    unlinkSync(probeFile);
+  } catch {
+    // Written but not removable: unusual (sticky bit, AV lock). Not a
+    // startup blocker, so not a failure; the file is tiny and named for
+    // what it is.
+  }
+}
+
 export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number> {
   write(`Iris self-test v${PKG_VERSION}`);
   write('');
@@ -143,10 +219,11 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   /*
    * Resolved BEFORE the env scrub: this is where a normal (non-self-test)
    * run of this install would keep its data, which is the line the user
-   * actually wants from a diagnostic. The self-test itself never touches
-   * this path.
+   * actually wants from a diagnostic — and the target of the configured-
+   * home probe below. The isolated checks never touch these paths.
    */
-  const userStoragePath = process.env.IRIS_DB_PATH ?? join(irisHome(), 'iris.db');
+  const userHome = irisHome();
+  const userStoragePath = process.env.IRIS_DB_PATH ?? join(userHome, 'iris.db');
 
   const savedEnv: Record<string, string | undefined> = {};
   for (const key of SCRUBBED_ENV_VARS) {
@@ -162,23 +239,36 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   let traceId = '';
   const insertedIds: string[] = [];
   const failedSteps: string[] = [];
+  let halted = false;
 
   /*
    * Steps run strictly in order and stop at the first failure — each one
    * depends on the state the previous one built, so a cascade of
    * follow-on crosses would only bury the real cause. Cleanup runs
-   * unconditionally afterwards.
+   * unconditionally afterwards. A step marked `independent` still fails
+   * the run but does not halt it: the configured-home probe has no
+   * successors that depend on it, and the user is better served by ALSO
+   * learning whether the install itself works.
    */
-  const step = async (label: string, fn: () => Promise<string | void> | string | void): Promise<void> => {
-    if (failedSteps.length > 0) return;
+  const step = async (
+    label: string,
+    fn: () => Promise<string | void> | string | void,
+    opts?: { independent?: boolean },
+  ): Promise<void> => {
+    if (halted) return;
     try {
       const detail = await fn();
       write(`${CHECK} ${label}${detail ? ` — ${detail}` : ''}`);
     } catch (err) {
       failedSteps.push(label);
+      if (!opts?.independent) halted = true;
       write(`${CROSS} ${label} — ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+
+  await step(SELF_TEST_STEPS.configuredHome, () => probeConfiguredHome(userHome, userStoragePath), {
+    independent: true,
+  });
 
   await step(SELF_TEST_STEPS.tempHome, () => {
     tempHome = mkdtempSync(join(tmpdir(), 'iris-self-test-'));
@@ -376,6 +466,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
 
   write('');
   write(`version   ${PKG_VERSION}`);
+  write(`home      ${userHome}`);
   write(`storage   ${userStoragePath}`);
   write(
     failedSteps.length === 0

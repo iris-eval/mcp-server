@@ -78,6 +78,16 @@ The dev server proxies API requests to `http://localhost:6920`.
 - **Squash-merge** is the default. Your branch is deleted automatically on merge; the squash commit message is what lands in `main` history, so write the PR title carefully.
 - **Conventional Commits** for the PR title: `fix(scope):`, `feat(scope):`, `chore(scope):`, `docs(scope):`, `test(scope):`. Scope examples: `claims`, `security`, `website`, `dashboard`, `cors`, `tests`.
 
+## Issues, labels and milestones
+
+Every issue carries a kind (`bug` / `enhancement`), exactly one priority (`P0`–`P3`), at least one area (`server`, `dashboard`, `website`, `docs`, `security`, `dx`), and — when we know it — a provenance (`acceptance-testing`, `review`, `user-report`). The templates apply the kind and `needs-triage`; a maintainer sets the rest at triage and removes `needs-triage`. Open `P0`/`P1` issues always have a milestone, and a milestone is closed the day its version ships. The full vocabulary, what each label means, and the milestone rules are in [.github/LABELS.md](.github/LABELS.md).
+
+If you are picking something up: `good first issue` is scoped for a newcomer, and the priority label tells you how much it matters — a `P0` is a shipped surface reporting success while failing.
+
+### Dependabot PRs
+
+Dependabot opens dependency PRs weekly (config: [.github/dependabot.yml](.github/dependabot.yml)). If one required check is red on *every* Dependabot PR at once, the cause is on `main`, not in the PRs — typically a regenerated file (`.claims.json`) the branches were cut before. Fix `main` first, then comment `@dependabot rebase` on each PR; Dependabot rebuilds the branch on the repaired base. Never merge a Dependabot PR by bypassing the red check, and never "fix" one by pushing to its branch (Dependabot will overwrite it).
+
 ## Coding Standards
 
 - TypeScript strict mode

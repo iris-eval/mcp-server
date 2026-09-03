@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
@@ -106,6 +106,26 @@ describe('iris-mcp --self-test (CLI)', () => {
     expect(stdout).toContain(SELF_TEST_FAIL_VERDICT);
     expect(stdout).not.toContain(SELF_TEST_PASS_VERDICT);
     // A failed run still cleans up its scratch home.
+    expect(stdout).toContain(`✓ ${SELF_TEST_STEPS.cleanup}`);
+  }, 60000);
+
+  it('exits 1 when the CONFIGURED IRIS_HOME cannot be created — the case that used to print PASS (#371)', async () => {
+    // A file where a parent directory must go: a real mkdir failure on
+    // every platform, through the real CLI and the real child env.
+    const blocker = join(decoyHome, 'blocker-file');
+    writeFileSync(blocker, 'not a directory');
+    const unusableHome = join(blocker, '.iris');
+
+    const { code, stdout } = await runSelfTestCli({ IRIS_HOME: unusableHome });
+
+    expect(code).toBe(1);
+    expect(stdout).toContain(`✗ ${SELF_TEST_STEPS.configuredHome}`);
+    expect(stdout).toContain('Cannot create IRIS_HOME');
+    expect(stdout).toContain(unusableHome);
+    expect(stdout).toContain(SELF_TEST_FAIL_VERDICT);
+    expect(stdout).not.toContain(SELF_TEST_PASS_VERDICT);
+    // The isolated checks still ran and passed — the install is fine, the home is not.
+    expect(stdout).toContain(`✓ ${SELF_TEST_STEPS.cleanEval}`);
     expect(stdout).toContain(`✓ ${SELF_TEST_STEPS.cleanup}`);
   }, 60000);
 });

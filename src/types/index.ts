@@ -10,10 +10,12 @@ export type {
 
 export type {
   EvalType,
+  EvalResultType,
   EvalRule,
   EvalContext,
   EvalRuleResult,
   EvalResult,
+  EvalCategoryResult,
   CustomRuleType,
   CustomRuleDefinition,
 } from './eval.js';
