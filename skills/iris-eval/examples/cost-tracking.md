@@ -45,7 +45,7 @@ Call `log_trace` first to record the execution, then `evaluate_output` to score 
 }
 ```
 
-Actual response (Iris v0.5.1):
+Actual response (captured 2026-09-03 against the shipped server):
 
 ```json
 { "trace_id": "becb5935791b352b551ffec747a2199a", "status": "stored" }
@@ -65,7 +65,7 @@ Actual response (Iris v0.5.1):
 }
 ```
 
-Actual response (Iris v0.5.1):
+Actual response (captured 2026-09-03 against the shipped server):
 
 ```json
 {

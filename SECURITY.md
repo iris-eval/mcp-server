@@ -23,12 +23,12 @@ For every open Dependabot advisory on this repo, [`SECURITY-EXPOSURE.md`](./SECU
 
 ## Supported Versions
 
-Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.5.x` line.
+Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.6.x` line.
 
 | Version          | Supported |
 |------------------|-----------|
-| 0.5.x            | Yes       |
-| 0.4.x and lower  | No        |
+| 0.6.x            | Yes       |
+| 0.5.x and lower  | No        |
 
 <!--
   This table is release-gated: it must name the CURRENT minor, which is

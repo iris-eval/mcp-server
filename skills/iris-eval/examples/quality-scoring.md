@@ -38,7 +38,7 @@ Request for Prompt A, completeness bundle (Prompt B is identical except for `out
 }
 ```
 
-## Actual Results (Iris v0.5.1)
+## Actual Results (captured 2026-09-03 against the shipped server)
 
 ### Prompt A — `completeness`
 ```json

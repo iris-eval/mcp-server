@@ -27,7 +27,7 @@ Request (`input` is optional here; it grounds the hallucination signals):
 }
 ```
 
-## Actual Result (Iris v0.5.1)
+## Actual Result (captured 2026-09-03 against the shipped server)
 
 ```json
 {

@@ -45,7 +45,7 @@
 // Keep this in lockstep with the sync date in the file header.
 // Read by /api/playground/eval/route.ts so the playground response can
 // surface which iris version this vendored copy was synced from.
-export const VENDORED_FROM_VERSION = 'v0.5.0';
+export const VENDORED_FROM_VERSION = 'v0.6.0';
 
 export type EvalCategory = 'safety' | 'relevance' | 'completeness' | 'cost';
 

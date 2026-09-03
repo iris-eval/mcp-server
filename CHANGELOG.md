@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-03
+
+**The correctness release.** Every open server, dashboard, docs and release-process item from the v0.5.0 acceptance pass (#369–#377) and the post-release backlog, plus a cloud review of the eval engine and all nine tool handlers, landed as five PRs (#398, #399, #400, #401 and the follow-up) with a regression test behind each code change. New in one call: `evaluate_output` runs every bundle with `eval_type: "all"`; deployed rules can be paused and resumed without deleting them; a browser can sign in to an `--api-key` dashboard; `--version` and `--purge` exist; the release workflow publishes to the Official MCP Registry and verifies npm, GHCR, the GitHub release and the registry from outside before it reports green. Three behaviour changes are called out in bold below: retention now sweeps stored evaluations, a same-name `deploy_rule` errors unless `replace: true`, and a client-supplied `trace_id` on HTTP ingest is rejected instead of silently replaced.
+
 **The server-correctness batch.** Closes the open server-side items from the 0.5.0 acceptance pass (#370 items 2–3, #371, #372, #373 items 3–5, #374, #376 items 1 and 3, #377 items 3–4) and the "Accuracy" and "Developer experience" rows of the post-release backlog: places where a stranger who installed from npm saw the product contradict its own description, lose their data, or get a wrong verdict. Every item below has a regression test that fails on the previous code; root suite **1017 → 1095**.
 
 ### Security
