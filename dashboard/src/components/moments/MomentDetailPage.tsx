@@ -335,7 +335,7 @@ export function MomentDetailPage() {
           >
             Make this a rule
           </button>
-          <span style={styles.ctaHint}>workflow inversion · v0.4</span>
+          <span style={styles.ctaHint}>born from this moment · source recorded for audit</span>
         </div>
       </section>
 

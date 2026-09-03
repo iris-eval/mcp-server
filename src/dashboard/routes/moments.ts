@@ -62,7 +62,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
       });
 
       // Hydrate moments by fetching evals per trace. Acceptable for limit ≤ 200;
-      // batching is a v0.4.1 optimization once we have moment-volume data.
+      // batching is a later optimization once we have moment-volume data.
       const moments: DecisionMoment[] = [];
       for (const trace of traceResult.traces) {
         const evals = await storage.getEvalsByTraceId(tenantId, trace.trace_id);

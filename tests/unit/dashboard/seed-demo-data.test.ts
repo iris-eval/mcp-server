@@ -100,6 +100,31 @@ describe('seedDemoData', () => {
     }
   });
 
+  it('never dates a demo trace in the future', async () => {
+    // The last seeded day is today and the hour is drawn from the whole
+    // day, so without the clamp a morning seed carried traces stamped for
+    // tonight — rendered as "just now" and re-counted as "new" forever.
+    const seededAt = Date.now();
+    const summary = await seedDemoData({ count: 60 });
+    const adapter = new SqliteAdapter(summary.dbPath);
+    await adapter.initialize();
+    try {
+      const { traces } = await adapter.queryTraces(LOCAL_TENANT, {
+        limit: 1000,
+        sort_by: 'timestamp',
+        sort_order: 'desc',
+      });
+      expect(traces.length).toBe(summary.traceCount);
+      const future = traces.filter((t) => new Date(t.timestamp).getTime() > seededAt + 1000);
+      expect(future.map((t) => t.timestamp)).toEqual([]);
+      // Today's traces still exist — the clamp moves them, it does not drop them.
+      const today = traces.filter((t) => seededAt - new Date(t.timestamp).getTime() < 24 * 3_600_000);
+      expect(today.length).toBeGreaterThan(0);
+    } finally {
+      await adapter.close();
+    }
+  });
+
   it('is idempotent — a second seed leaves the database untouched', async () => {
     const first = await seedDemoData({ count: 30 });
     expect(first.alreadySeeded).toBe(false);

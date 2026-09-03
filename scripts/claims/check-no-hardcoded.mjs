@@ -142,6 +142,23 @@ const PATTERNS = [
     fix: 'Render the version from the truthbase (VERSION_MCP_SERVER from ~/lib/claims; .claims.json version.mcpServer) instead of restating it.',
   },
   /*
+   * Version captions inside the dashboard UI. The moment detail carried
+   * "workflow inversion · v0.4" under its call to action and the sidebar
+   * promised "Settings (coming v0.5)" two releases after 0.5 shipped —
+   * a stranger reads both against the version in the footer and concludes
+   * the product is stale. Any `v0.x` string in dashboard/src that is not
+   * the shipping version is flagged; the footer renders its version from
+   * the API, so nothing there needs a literal.
+   */
+  {
+    name: 'dashboard-version-caption',
+    re: /\bv(\d+\.\d+(?:\.\d+)?)\b/g,
+    expectedStrings: c => versionForms(c.version?.mcpServer),
+    onlyPrefixes: ['dashboard/src/'],
+    skipComments: true, // historical notes in comments ('since v0.5.0') are not UI copy
+    fix: 'Drop the version from the caption, or render it from the API/truthbase — never restate a release number in UI copy.',
+  },
+  /*
    * Published rate limits. The security page told readers the dashboard API
    * allowed 100 req/min while the shipped default had been 600 for a full
    * release — wrong by 6x on the one page a reader consults BECAUSE they
@@ -295,17 +312,25 @@ async function main() {
     for (const pattern of PATTERNS) {
       const cov = coverage.get(pattern.name);
       const skippedByPrefix = (pattern.skipPrefixes ?? []).some(p => rel.startsWith(p));
+      const outsideOnly = pattern.onlyPrefixes ? !pattern.onlyPrefixes.some(p => rel.startsWith(p)) : false;
       pattern.re.lastIndex = 0;
       let m;
       while ((m = pattern.re.exec(text)) !== null) {
         cov.seen++;
-        if (skippedByPrefix) {
+        if (skippedByPrefix || outsideOnly) {
           cov.skipped++;
           continue;
         }
         if (!matchFlags(pattern, m, rel, claims)) {
           cov.ok++;
           continue;
+        }
+        if (pattern.skipComments) {
+          const lt = text.slice(text.lastIndexOf('\n', m.index) + 1, m.index).trimStart();
+          if (lt.startsWith('//') || lt.startsWith('*') || lt.startsWith('/*')) {
+            cov.ok++;
+            continue;
+          }
         }
         const line = lineNumber(text, m.index);
         const lineText = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index)).trim();

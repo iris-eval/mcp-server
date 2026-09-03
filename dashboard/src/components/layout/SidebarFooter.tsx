@@ -2,7 +2,6 @@
  * SidebarFooter — anchored to the bottom of the sidebar.
  *
  * Contains:
- *   - Settings link (placeholder for future /settings page)
  *   - Shortcuts trigger (opens KeyboardShortcutsOverlay)
  *   - Version + env strip
  *   - Collapse toggle
@@ -11,7 +10,7 @@
  * Version + env give ops engineers the at-a-glance status they expect
  * from enterprise dashboards.
  */
-import { Settings, HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Icon } from '../shared/Icon';
 import { Tooltip } from '../shared/Tooltip';
 
@@ -78,7 +77,6 @@ export interface SidebarFooterProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onOpenShortcuts: () => void;
-  onOpenSettings?: () => void;
   /** Hostname or environment marker, e.g. "localhost:6920". */
   env?: string;
 }
@@ -87,25 +85,10 @@ export function SidebarFooter({
   collapsed,
   onToggleCollapse,
   onOpenShortcuts,
-  onOpenSettings,
   env,
 }: SidebarFooterProps) {
   return (
     <div style={styles.footer}>
-      {onOpenSettings && (
-        <Tooltip content="Settings (coming v0.5)" placement="top" disabled={!collapsed}>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            style={{ ...styles.iconButton, ...(collapsed ? styles.iconButtonCollapsed : {}) }}
-            aria-label="Settings"
-          >
-            <Icon as={Settings} size={20} />
-            {!collapsed && <span style={styles.label}>Settings</span>}
-          </button>
-        </Tooltip>
-      )}
-
       <Tooltip content="Keyboard shortcuts (?)" placement="top" disabled={!collapsed}>
         <button
           type="button"
