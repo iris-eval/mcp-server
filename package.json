@@ -78,7 +78,7 @@
   },
   "overrides": {
     "brace-expansion": "^5.0.7",
-    "fast-uri": "^3.1.5",
+    "fast-uri": "^3.1.7",
     "ip-address": "^10.4.0",
     "postcss": "^8.5.25",
     "@hono/node-server": "^2.1.0"
