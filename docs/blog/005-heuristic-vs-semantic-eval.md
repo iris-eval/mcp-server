@@ -2,9 +2,10 @@
 title: "Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge"
 description: "When sub-millisecond heuristic eval rules outperform LLM-as-Judge for PII detection, prompt injection, and cost threshold enforcement."
 date: 2026-03-15
+updated: 2026-08-13
 author: Ian Parent
 tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
-relatedPosts: [how-to-evaluate-agent-output-without-llm, the-ai-eval-tax, eval-driven-development]
+relatedPosts: [how-to-evaluate-agent-output-without-llm, iris-v0-4-release-notes, eval-driven-development]
 ---
 
 > **Editor's note (2026-07):** Updated to reflect the current rule library — Iris ships **13** built-in rules (v0.3.1 added `no_stub_output`, making Safety a four-rule category), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.

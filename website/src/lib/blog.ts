@@ -5,6 +5,8 @@ export interface BlogPost {
   slug: string;
   title: string;
   date: string;
+  /** Last content edit (ISO day). Equals `date` for a post never revised. */
+  updated: string;
   author: string;
   tags: string[];
   description: string;
@@ -44,15 +46,32 @@ function parseFrontmatter(raw: string): {
     meta[key] = value;
   }
 
-  // Remove the H1 title if it duplicates the frontmatter title
-  let content = match[2].trim();
-  const firstLine = content.split("\n")[0];
-  if (firstLine.startsWith("# ") && meta.title && firstLine.slice(2).trim() === (meta.title as string).replace(/"/g, "")) {
-    content = content.slice(firstLine.length).trim();
-  }
-
-  return { meta, content };
+  return { meta, content: stripBodyH1(match[2]) };
 }
+
+// The page renders its own <h1> from the frontmatter title, so the body's
+// `# ` heading has to go. It is not always the first line: six posts open
+// with an editor's-note blockquote above it, and a first-line-only check let
+// every one of those render two H1s. Remove the first ATX H1 wherever it
+// sits — but never inside a fenced code block, where `# ` is a shell
+// comment (post 001 has `# Open http://localhost:6920` in a ```bash block).
+function stripBodyH1(body: string): string {
+  const lines = body.split("\n");
+  let inFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) {
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence && /^# /.test(lines[i])) {
+      lines.splice(i, 1);
+      break;
+    }
+  }
+  return lines.join("\n").trim();
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function extractDescription(content: string): string {
   // First non-empty paragraph
@@ -86,11 +105,17 @@ export function getAllPosts(): BlogPost[] {
     .map((filename) => {
       const raw = readFileSync(join(BLOG_DIR, filename), "utf8");
       const { meta, content } = parseFrontmatter(raw);
+      const date = (meta.date as string) || "2026-03-17";
+      // `updated:` is the author's record of the last content edit. It feeds
+      // JSON-LD dateModified, the sitemap and the feed; without it every
+      // post claimed to be untouched since the day it was published.
+      const updated = String(meta.updated ?? "").trim();
 
       return {
         slug: filenameToSlug(filename),
         title: (meta.title as string) || filename,
-        date: (meta.date as string) || "2026-03-17",
+        date,
+        updated: ISO_DAY.test(updated) && updated > date ? updated : date,
         author: (meta.author as string) || "Ian Parent",
         tags: (meta.tags as string[]) || [],
         description: (meta.description as string) || extractDescription(content),

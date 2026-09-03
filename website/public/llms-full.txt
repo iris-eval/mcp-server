@@ -2,6 +2,8 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
+Current release: v0.5.0 (2026-08-12)
+
 ## What Iris is
 
 Iris is an open-source MCP (Model Context Protocol) server for agent evaluation. It scores output quality, catches safety failures, and enforces cost budgets across AI agents. Because it speaks MCP natively, any MCP-compatible agent or client discovers and uses it automatically — no SDK, no code changes, no instrumentation.

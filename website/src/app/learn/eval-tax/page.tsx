@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -65,7 +66,7 @@ const jsonLd = {
       description: s("The compounding cost of every unscored agent output — in trust, engineering hours, and liability."),
       url: "https://iris-eval.com/learn/eval-tax",
       datePublished: "2026-03-30",
-      dateModified: "2026-03-30",
+      dateModified: PAGE_LAST_MODIFIED["/learn/eval-tax"],
       author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" },
       publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" },
       mainEntityOfPage: "https://iris-eval.com/learn/eval-tax",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -8,7 +9,7 @@ import { FaqSection } from "@/components/learn/faq-section";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 
 export const metadata: Metadata = {
-  title: "Eval Coverage: The Metric Your AI Agents Are Missing — Iris",
+  title: "What is Eval Coverage? Why 100% Is the Target — Iris",
   description: "What is eval coverage? The percentage of agent executions that receive evaluation. Most teams are at 0%. Here's why 100% is the only target.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-coverage" },
   openGraph: { title: "Eval Coverage: The Metric Your AI Agents Are Missing", description: "The percentage of agent executions that receive evaluation.", url: "https://iris-eval.com/learn/eval-coverage", type: "article", images: [OG_IMAGE_URL] },
@@ -33,7 +34,7 @@ const TOC_ITEMS = [
 ];
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Article", headline: s("Eval Coverage: The Metric Your AI Agents Are Missing"), description: s("The percentage of agent executions that receive evaluation. Most teams are at 0%."), url: "https://iris-eval.com/learn/eval-coverage", datePublished: "2026-03-30", dateModified: "2026-03-30", author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/eval-coverage" },
+  { "@type": "Article", headline: s("Eval Coverage: The Metric Your AI Agents Are Missing"), description: s("The percentage of agent executions that receive evaluation. Most teams are at 0%."), url: "https://iris-eval.com/learn/eval-coverage", datePublished: "2026-03-30", dateModified: PAGE_LAST_MODIFIED["/learn/eval-coverage"], author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/eval-coverage" },
   { "@type": "FAQPage", mainEntity: FAQ_ITEMS.map((item) => ({ "@type": "Question", name: s(item.question), acceptedAnswer: { "@type": "Answer", text: s(item.answer) } })) },
   { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: "https://iris-eval.com" }, { "@type": "ListItem", position: 2, name: "Learn", item: "https://iris-eval.com/learn" }, { "@type": "ListItem", position: 3, name: "Eval Coverage" }] },
 ]};

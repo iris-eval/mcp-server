@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -33,7 +34,7 @@ const TOC_ITEMS = [
 ];
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Article", headline: s("Output Quality Score (OQS): The Single Number for Agent Quality"), description: s("A composite metric that rolls completeness, relevance, safety, and cost into one number."), url: "https://iris-eval.com/learn/output-quality-score", datePublished: "2026-03-30", dateModified: "2026-03-30", author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/output-quality-score" },
+  { "@type": "Article", headline: s("Output Quality Score (OQS): The Single Number for Agent Quality"), description: s("A composite metric that rolls completeness, relevance, safety, and cost into one number."), url: "https://iris-eval.com/learn/output-quality-score", datePublished: "2026-03-30", dateModified: PAGE_LAST_MODIFIED["/learn/output-quality-score"], author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/output-quality-score" },
   { "@type": "FAQPage", mainEntity: FAQ_ITEMS.map((item) => ({ "@type": "Question", name: s(item.question), acceptedAnswer: { "@type": "Answer", text: s(item.answer) } })) },
   { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: "https://iris-eval.com" }, { "@type": "ListItem", position: 2, name: "Learn", item: "https://iris-eval.com/learn" }, { "@type": "ListItem", position: 3, name: "Output Quality Score" }] },
 ]};
