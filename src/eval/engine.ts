@@ -1,6 +1,37 @@
-import type { EvalRule, EvalContext, EvalRuleResult, EvalResult, EvalType, CustomRuleDefinition } from '../types/eval.js';
+import type {
+  EvalRule,
+  EvalContext,
+  EvalRuleResult,
+  EvalResult,
+  EvalResultType,
+  EvalType,
+  EvalCategoryResult,
+  CustomRuleDefinition,
+} from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { generateEvalId } from '../utils/ids.js';
+
+/**
+ * Every bundle eval_type="all" walks, in the order their categories are
+ * reported. 'custom' is last: it holds only deployed rules registered under
+ * evalType "custom" plus the call's inline custom_rules, so it is absent
+ * from the breakdown when neither exists.
+ */
+export const ALL_EVAL_TYPES: readonly EvalType[] = ['completeness', 'relevance', 'safety', 'cost', 'custom'];
+
+/**
+ * The verdict arithmetic, shared by a single bundle, the overall
+ * eval_type="all" result, and each per-category entry inside it. One
+ * function so the three can never disagree about what `passed` means.
+ */
+interface Verdict {
+  score: number;
+  passed: boolean;
+  rulesEvaluated: number;
+  rulesSkipped: number;
+  criticalFailures: string[];
+  criticalSkipped: string[];
+}
 
 export class EvalEngine {
   private additionalRules: Map<EvalType, EvalRule[]> = new Map();
@@ -11,6 +42,11 @@ export class EvalEngine {
    * share a name with different definitions.
    */
   private rulesById: Map<string, { evalType: EvalType; rule: EvalRule }> = new Map();
+  /**
+   * Reverse index, so each rule's result can carry its deployed id
+   * (EvalRuleResult.ruleId) without mutating the rule object itself.
+   */
+  private idByRule: Map<EvalRule, string> = new Map();
   private threshold: number;
   private ruleThresholds?: Record<string, unknown>;
 
@@ -19,12 +55,23 @@ export class EvalEngine {
     this.ruleThresholds = ruleThresholds;
   }
 
+  /**
+   * Register a rule under a bundle. When `ruleId` is given the registration
+   * is IDEMPOTENT by id: registering an id that is already live replaces the
+   * earlier instance instead of adding a second one. That is what re-enable
+   * (delete_rule enabled:true) and a reload after edit need — without it,
+   * every toggle stacked another copy that fired alongside the first.
+   */
   registerRule(evalType: EvalType, rule: EvalRule, ruleId?: string): void {
+    if (ruleId !== undefined && this.rulesById.has(ruleId)) {
+      this.unregisterRule(ruleId);
+    }
     const existing = this.additionalRules.get(evalType) ?? [];
     existing.push(rule);
     this.additionalRules.set(evalType, existing);
     if (ruleId !== undefined) {
       this.rulesById.set(ruleId, { evalType, rule });
+      this.idByRule.set(rule, ruleId);
     }
   }
 
@@ -38,6 +85,7 @@ export class EvalEngine {
     const entry = this.rulesById.get(ruleId);
     if (!entry) return false;
     this.rulesById.delete(ruleId);
+    this.idByRule.delete(entry.rule);
     const rules = this.additionalRules.get(entry.evalType);
     if (rules) {
       const idx = rules.indexOf(entry.rule);
@@ -46,19 +94,16 @@ export class EvalEngine {
     return true;
   }
 
+  /** Whether a deployed rule id is currently registered (and therefore firing). */
+  hasRule(ruleId: string): boolean {
+    return this.rulesById.has(ruleId);
+  }
+
   evaluate(
     evalType: EvalType,
     context: EvalContext,
     customRules?: CustomRuleDefinition[],
   ): EvalResult {
-    // Merge system-level thresholds into customConfig (user-provided values take precedence)
-    if (this.ruleThresholds) {
-      context = {
-        ...context,
-        customConfig: { ...this.ruleThresholds, ...context.customConfig },
-      };
-    }
-
     /*
      * Inline custom_rules are ADDITIVE, which is what evaluate_output's
      * description promises in two places: "fires REGARDLESS of eval_type"
@@ -84,6 +129,47 @@ export class EvalEngine {
       ...(this.additionalRules.get(evalType) ?? []),
       ...(customRules ?? []).map((def) => createCustomRule(def)),
     ];
+    return this.run(evalType, rules, undefined, context);
+  }
+
+  /**
+   * eval_type="all" (#370): every built-in bundle, each with the deployed
+   * rules registered under it, plus the rules deployed under "custom" and
+   * the call's inline custom_rules — in ONE pass, sharing one regex budget,
+   * so the whole call is bounded exactly like a single bundle. The overall
+   * verdict is the same arithmetic as a single bundle applied to every rule
+   * that ran (weighted score against the threshold, critical veto across
+   * all bundles); `categories` carries the same arithmetic per bundle.
+   */
+  evaluateAll(context: EvalContext, customRules?: CustomRuleDefinition[]): EvalResult {
+    const rules: EvalRule[] = [];
+    const categories: EvalType[] = [];
+    for (const type of ALL_EVAL_TYPES) {
+      for (const rule of [...getRulesForType(type), ...(this.additionalRules.get(type) ?? [])]) {
+        rules.push(rule);
+        categories.push(type);
+      }
+    }
+    for (const def of customRules ?? []) {
+      rules.push(createCustomRule(def));
+      categories.push('custom');
+    }
+    return this.run('all', rules, categories, context);
+  }
+
+  private run(
+    evalType: EvalResultType,
+    rules: EvalRule[],
+    categories: EvalType[] | undefined,
+    context: EvalContext,
+  ): EvalResult {
+    // Merge system-level thresholds into customConfig (user-provided values take precedence)
+    if (this.ruleThresholds) {
+      context = {
+        ...context,
+        customConfig: { ...this.ruleThresholds, ...context.customConfig },
+      };
+    }
 
     if (rules.length === 0) {
       return {
@@ -110,24 +196,27 @@ export class EvalEngine {
      * rule it carries.
      */
     const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 } };
-    const ruleResults: EvalRuleResult[] = rules.map((rule) => rule.evaluate(evalContext));
+    const ruleResults: EvalRuleResult[] = rules.map((rule, i) => {
+      const raw = rule.evaluate(evalContext);
+      const ruleId = this.idByRule.get(rule);
+      const category = categories?.[i];
+      if (ruleId === undefined && category === undefined) return raw;
+      // ruleId / category sit right after the name so a reader scanning
+      // rule_results sees WHICH deployed rule (and which bundle) spoke.
+      const { ruleName, ...rest } = raw;
+      return {
+        ruleName,
+        ...(ruleId !== undefined ? { ruleId } : {}),
+        ...(category !== undefined ? { category } : {}),
+        ...rest,
+      };
+    });
 
-    // Partition into evaluated vs skipped
-    const evaluatedIndices: number[] = [];
-    const skippedIndices: number[] = [];
-    for (let i = 0; i < ruleResults.length; i++) {
-      if (ruleResults[i].skipped) {
-        skippedIndices.push(i);
-      } else {
-        evaluatedIndices.push(i);
-      }
-    }
-
-    const rulesEvaluated = evaluatedIndices.length;
-    const rulesSkipped = skippedIndices.length;
+    const overall = this.summarize(rules, ruleResults);
+    const perCategory = categories ? this.categorize(rules, ruleResults, categories) : undefined;
 
     // Handle "all rules skipped" — insufficient data
-    if (rulesEvaluated === 0) {
+    if (overall.rulesEvaluated === 0) {
       const skipMessages = ruleResults
         .filter((r) => r.skipped)
         .map((r) => `[${r.ruleName}] ${r.skipReason ?? r.message}`);
@@ -135,10 +224,6 @@ export class EvalEngine {
       // that EVERY critical rule that skipped is named here, and a caller
       // whose only rules were critical ones should not have to infer that
       // from insufficient_data alone.
-      const criticalSkippedAll = skippedIndices
-        .filter((i) => rules[i].critical === true)
-        .map((i) => ruleResults[i].ruleName);
-
       return {
         id: generateEvalId(),
         eval_type: evalType,
@@ -152,58 +237,12 @@ export class EvalEngine {
           ...skipMessages,
         ],
         rules_evaluated: 0,
-        rules_skipped: rulesSkipped,
+        rules_skipped: overall.rulesSkipped,
         insufficient_data: true,
-        ...(criticalSkippedAll.length > 0 ? { critical_skipped: criticalSkippedAll } : {}),
+        ...(overall.criticalSkipped.length > 0 ? { critical_skipped: overall.criticalSkipped } : {}),
+        ...(perCategory ? { categories: perCategory } : {}),
       };
     }
-
-    // Weighted average across evaluated rules only (exclude skipped)
-    const totalWeight = evaluatedIndices.reduce((sum, i) => sum + rules[i].weight, 0);
-    const weightedScore = evaluatedIndices.reduce((sum, i) => {
-      const ruleScore = Number.isFinite(ruleResults[i].score) ? ruleResults[i].score : 0;
-      return sum + ruleScore * rules[i].weight;
-    }, 0);
-    const rawScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
-    const score = Number.isFinite(rawScore) ? rawScore : 0;
-
-    /*
-     * Critical rules hard-fail. Before this existed, the weighted average
-     * routinely outvoted a genuine violation: an output containing a real
-     * SSN failed no_pii while the other safety rules passed, landing at
-     * ~0.765 — over the 0.7 threshold — so `passed`, the one field every
-     * automated gate keys on, said true about the product's flagship
-     * failure scenario. A detection that reports an all-clear is worse
-     * than no detection.
-     *
-     * Only EVALUATED failures count: a critical rule that skipped (missing
-     * context, broken config) has not judged the output and must not veto
-     * it. The score is left as-is — it stays a quality gradient; `passed`
-     * is the verdict, and the two answer different questions.
-     */
-    const criticalFailures = evaluatedIndices
-      .filter((i) => rules[i].critical === true && !ruleResults[i].passed)
-      .map((i) => ruleResults[i].ruleName);
-
-    /*
-     * The other half of that sentence, surfaced as a field.
-     *
-     * A critical rule that SKIPPED is the fail-open seam between this
-     * release's two headline features: an adversary who knows a deployed
-     * critical regex can craft output that stalls it past the sandbox
-     * budget, and the rule then neither judges nor vetoes — so the eval
-     * returns passed=true with an EMPTY critical_failures on output that
-     * nobody actually cleared. The trade-off is deliberate (failing closed
-     * would let the same adversary force false violations on benign
-     * output), but before this field the only trace of it was a suggestions
-     * line — prose. A gate that must fail closed should not have to walk
-     * rule_results[].budgetExceeded to discover it was defeated.
-     */
-    const criticalSkipped = skippedIndices
-      .filter((i) => rules[i].critical === true)
-      .map((i) => ruleResults[i].ruleName);
-
-    const passed = score >= this.threshold && criticalFailures.length === 0;
 
     const suggestions: string[] = [];
     for (const result of ruleResults) {
@@ -211,12 +250,12 @@ export class EvalEngine {
         suggestions.push(`[${result.ruleName}] ${result.message}`);
       }
     }
-    if (criticalFailures.length > 0 && score >= this.threshold) {
+    if (overall.criticalFailures.length > 0 && overall.score >= this.threshold) {
       suggestions.push(
-        `Critical rule(s) failed (${criticalFailures.join(', ')}) — passed=false regardless of the weighted score`,
+        `Critical rule(s) failed (${overall.criticalFailures.join(', ')}) — passed=false regardless of the weighted score`,
       );
     }
-    if (rulesSkipped > 0) {
+    if (overall.rulesSkipped > 0) {
       /*
        * Say WHY each rule skipped. The old line hardcoded "(missing
        * context)" — but a rule whose regex was killed at the sandbox budget
@@ -229,12 +268,12 @@ export class EvalEngine {
         .filter((r) => r.skipped)
         .map((r) => `${r.ruleName} (${r.skipReason ?? 'missing context'})`);
       suggestions.push(
-        `${rulesSkipped} rule(s) skipped — excluded from the weighted score: ${skippedParts.join('; ')}`,
+        `${overall.rulesSkipped} rule(s) skipped — excluded from the weighted score: ${skippedParts.join('; ')}`,
       );
     }
-    if (criticalSkipped.length > 0) {
+    if (overall.criticalSkipped.length > 0) {
       suggestions.push(
-        `Critical rule(s) did NOT judge this output (${criticalSkipped.join(', ')}) — ` +
+        `Critical rule(s) did NOT judge this output (${overall.criticalSkipped.join(', ')}) — ` +
           'they skipped, so they could not veto. This evaluation is "unknown" on those ' +
           'checks, not "clean"; a gate that must fail closed should treat critical_skipped ' +
           'as a failure.',
@@ -246,15 +285,119 @@ export class EvalEngine {
       eval_type: evalType,
       output_text: context.output,
       expected_text: context.expected,
-      score: Math.round(score * 1000) / 1000,
-      passed,
+      score: Math.round(overall.score * 1000) / 1000,
+      passed: overall.passed,
       rule_results: ruleResults,
       suggestions,
-      rules_evaluated: rulesEvaluated,
-      rules_skipped: rulesSkipped,
+      rules_evaluated: overall.rulesEvaluated,
+      rules_skipped: overall.rulesSkipped,
       insufficient_data: false,
-      ...(criticalFailures.length > 0 ? { critical_failures: criticalFailures } : {}),
-      ...(criticalSkipped.length > 0 ? { critical_skipped: criticalSkipped } : {}),
+      ...(overall.criticalFailures.length > 0 ? { critical_failures: overall.criticalFailures } : {}),
+      ...(overall.criticalSkipped.length > 0 ? { critical_skipped: overall.criticalSkipped } : {}),
+      ...(perCategory ? { categories: perCategory } : {}),
     };
+  }
+
+  /**
+   * Weighted average over the rules that ran, plus the critical veto.
+   *
+   * Critical rules hard-fail. Before this existed, the weighted average
+   * routinely outvoted a genuine violation: an output containing a real
+   * SSN failed no_pii while the other safety rules passed, landing at
+   * ~0.765 — over the 0.7 threshold — so `passed`, the one field every
+   * automated gate keys on, said true about the product's flagship
+   * failure scenario. A detection that reports an all-clear is worse
+   * than no detection.
+   *
+   * Only EVALUATED failures count: a critical rule that skipped (missing
+   * context, broken config) has not judged the output and must not veto
+   * it. The score is left as-is — it stays a quality gradient; `passed`
+   * is the verdict, and the two answer different questions.
+   *
+   * A critical rule that SKIPPED is the fail-open seam between the
+   * release's two headline features: an adversary who knows a deployed
+   * critical regex can craft output that stalls it past the sandbox
+   * budget, and the rule then neither judges nor vetoes — so the eval
+   * returns passed=true with an EMPTY critical_failures on output that
+   * nobody actually cleared. The trade-off is deliberate (failing closed
+   * would let the same adversary force false violations on benign
+   * output), but before `criticalSkipped` the only trace of it was a
+   * suggestions line — prose. A gate that must fail closed should not
+   * have to walk rule_results[].budgetExceeded to discover it was defeated.
+   */
+  private summarize(rules: EvalRule[], ruleResults: EvalRuleResult[]): Verdict {
+    const evaluatedIndices: number[] = [];
+    const skippedIndices: number[] = [];
+    for (let i = 0; i < ruleResults.length; i++) {
+      if (ruleResults[i].skipped) {
+        skippedIndices.push(i);
+      } else {
+        evaluatedIndices.push(i);
+      }
+    }
+
+    const criticalSkipped = skippedIndices
+      .filter((i) => rules[i].critical === true)
+      .map((i) => ruleResults[i].ruleName);
+
+    if (evaluatedIndices.length === 0) {
+      return {
+        score: 0,
+        passed: false,
+        rulesEvaluated: 0,
+        rulesSkipped: skippedIndices.length,
+        criticalFailures: [],
+        criticalSkipped,
+      };
+    }
+
+    // Weighted average across evaluated rules only (exclude skipped)
+    const totalWeight = evaluatedIndices.reduce((sum, i) => sum + rules[i].weight, 0);
+    const weightedScore = evaluatedIndices.reduce((sum, i) => {
+      const ruleScore = Number.isFinite(ruleResults[i].score) ? ruleResults[i].score : 0;
+      return sum + ruleScore * rules[i].weight;
+    }, 0);
+    const rawScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
+    const score = Number.isFinite(rawScore) ? rawScore : 0;
+
+    const criticalFailures = evaluatedIndices
+      .filter((i) => rules[i].critical === true && !ruleResults[i].passed)
+      .map((i) => ruleResults[i].ruleName);
+
+    return {
+      score,
+      passed: score >= this.threshold && criticalFailures.length === 0,
+      rulesEvaluated: evaluatedIndices.length,
+      rulesSkipped: skippedIndices.length,
+      criticalFailures,
+      criticalSkipped,
+    };
+  }
+
+  /** The per-bundle breakdown for eval_type="all": summarize() over each bundle's slice. */
+  private categorize(
+    rules: EvalRule[],
+    ruleResults: EvalRuleResult[],
+    categories: EvalType[],
+  ): Partial<Record<EvalType, EvalCategoryResult>> {
+    const breakdown: Partial<Record<EvalType, EvalCategoryResult>> = {};
+    for (const type of ALL_EVAL_TYPES) {
+      const indices = categories.flatMap((c, i) => (c === type ? [i] : []));
+      if (indices.length === 0) continue;
+      const verdict = this.summarize(
+        indices.map((i) => rules[i]),
+        indices.map((i) => ruleResults[i]),
+      );
+      breakdown[type] = {
+        score: Math.round(verdict.score * 1000) / 1000,
+        passed: verdict.passed,
+        rules_evaluated: verdict.rulesEvaluated,
+        rules_skipped: verdict.rulesSkipped,
+        insufficient_data: verdict.rulesEvaluated === 0,
+        ...(verdict.criticalFailures.length > 0 ? { critical_failures: verdict.criticalFailures } : {}),
+        ...(verdict.criticalSkipped.length > 0 ? { critical_skipped: verdict.criticalSkipped } : {}),
+      };
+    }
+    return breakdown;
   }
 }

@@ -14,12 +14,21 @@
  *     "context_servers" with a nested { command: { path, args } } object.
  *     Zed settings allow comments; if the file fails strict JSON parsing we
  *     refuse with instructions rather than risk corrupting user settings.
- *   - codex-toml: ~/.codex/config.toml — appends an [mcp_servers.iris]
+ *   - codex-toml: ~/.codex/config.toml — appends an [mcp_servers.iris-eval]
  *     section. No TOML dependency: presence is detected by section header,
  *     removal deletes the exact section we write.
  *
  * All strategies are idempotent. Re-running with the same value is a no-op.
- * Re-running with --uninstall removes only the iris entry; other servers stay.
+ * Re-running with --uninstall removes only the Iris entry; other servers stay.
+ *
+ * The entry KEY is `iris-eval` — the same name every other Iris install
+ * surface uses (the README's paste-in configs, .well-known/mcp.json, the
+ * Cursor deeplink, the Claude Code plugin). Earlier releases wrote
+ * `iris` here instead, so a user who installed both ways ended up with
+ * TWO live entries spawning two servers and duplicate tool names in the
+ * agent's tool list, and --uninstall removed only one of them. Install now
+ * migrates a legacy `iris` entry to `iris-eval` (one entry, not two), and
+ * uninstall removes both keys.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -29,6 +38,11 @@ interface IrisServerEntry {
   command: string;
   args: string[];
 }
+
+/** The canonical server key, shared with every other Iris install surface. */
+export const IRIS_SERVER_KEY = 'iris-eval';
+/** The key earlier releases of this installer wrote. Migrated on install, removed on uninstall. */
+export const LEGACY_IRIS_SERVER_KEY = 'iris';
 
 const IRIS_ENTRY: IrisServerEntry = {
   command: 'npx',
@@ -43,7 +57,8 @@ const IRIS_ZED_ENTRY = {
   },
 };
 
-const CODEX_SECTION_HEADER = '[mcp_servers.iris]';
+const CODEX_SECTION_HEADER = `[mcp_servers.${IRIS_SERVER_KEY}]`;
+const CODEX_LEGACY_SECTION_HEADER = `[mcp_servers.${LEGACY_IRIS_SERVER_KEY}]`;
 const CODEX_SECTION = `${CODEX_SECTION_HEADER}
 command = "${IRIS_ENTRY.command}"
 args = [${IRIS_ENTRY.args.map((a) => `"${a}"`).join(', ')}]
@@ -93,6 +108,14 @@ function sameEntry(a: IrisServerEntry | undefined, b: IrisServerEntry): boolean 
   );
 }
 
+/** A copy of `map` without either Iris key. */
+function withoutIris<T>(map: Record<string, T>): Record<string, T> {
+  const { [IRIS_SERVER_KEY]: _current, [LEGACY_IRIS_SERVER_KEY]: _legacy, ...rest } = map;
+  void _current;
+  void _legacy;
+  return rest;
+}
+
 /* ---------------- JSON-map strategies (mcpServers / servers) ---------------- */
 
 function installJsonMap(
@@ -101,13 +124,15 @@ function installJsonMap(
 ): InstallResult {
   const existing = readConfig(profile.configPath);
   const map = (existing[key] as Record<string, IrisServerEntry> | undefined) ?? {};
-  const wasPresent = Boolean(map.iris);
+  const hasLegacy = Boolean(map[LEGACY_IRIS_SERVER_KEY]);
+  const wasPresent = Boolean(map[IRIS_SERVER_KEY]) || hasLegacy;
 
-  if (wasPresent && sameEntry(map.iris, IRIS_ENTRY)) {
+  // Already exactly right, and no legacy duplicate to fold away.
+  if (!hasLegacy && sameEntry(map[IRIS_SERVER_KEY], IRIS_ENTRY)) {
     return { configPath: profile.configPath, action: 'no-change' };
   }
 
-  const next: ConfigShape = { ...existing, [key]: { ...map, iris: IRIS_ENTRY } };
+  const next: ConfigShape = { ...existing, [key]: { ...withoutIris(map), [IRIS_SERVER_KEY]: IRIS_ENTRY } };
   writeConfig(profile.configPath, next);
   return {
     configPath: profile.configPath,
@@ -124,12 +149,10 @@ function uninstallJsonMap(
   }
   const existing = readConfig(profile.configPath);
   const map = (existing[key] as Record<string, IrisServerEntry> | undefined) ?? {};
-  if (!map.iris) {
+  if (!map[IRIS_SERVER_KEY] && !map[LEGACY_IRIS_SERVER_KEY]) {
     return { configPath: profile.configPath, action: 'not-present' };
   }
-  const { iris: _removed, ...rest } = map;
-  void _removed;
-  writeConfig(profile.configPath, { ...existing, [key]: rest });
+  writeConfig(profile.configPath, { ...existing, [key]: withoutIris(map) });
   return { configPath: profile.configPath, action: 'removed' };
 }
 
@@ -144,22 +167,24 @@ function installZed(profile: ClientProfile): InstallResult {
     throw new Error(
       `${(err as Error).message}\nZed settings may contain comments, which this ` +
         `installer does not rewrite. Add this to ${profile.configPath} manually:\n` +
-        `"context_servers": { "iris": ${JSON.stringify(IRIS_ZED_ENTRY)} }`,
+        `"context_servers": { "${IRIS_SERVER_KEY}": ${JSON.stringify(IRIS_ZED_ENTRY)} }`,
     );
   }
   const map = existing.context_servers ?? {};
-  const current = map.iris;
+  const current = map[IRIS_SERVER_KEY];
+  const hasLegacy = Boolean(map[LEGACY_IRIS_SERVER_KEY]);
   if (
+    !hasLegacy &&
     current &&
     current.command?.path === IRIS_ZED_ENTRY.command.path &&
     JSON.stringify(current.command?.args) === JSON.stringify(IRIS_ZED_ENTRY.command.args)
   ) {
     return { configPath: profile.configPath, action: 'no-change' };
   }
-  const wasPresent = Boolean(current);
+  const wasPresent = Boolean(current) || hasLegacy;
   writeConfig(profile.configPath, {
     ...existing,
-    context_servers: { ...map, iris: IRIS_ZED_ENTRY },
+    context_servers: { ...withoutIris(map), [IRIS_SERVER_KEY]: IRIS_ZED_ENTRY },
   });
   return {
     configPath: profile.configPath,
@@ -173,32 +198,46 @@ function uninstallZed(profile: ClientProfile): UninstallResult {
   }
   const existing = readConfig(profile.configPath);
   const map = existing.context_servers ?? {};
-  if (!map.iris) {
+  if (!map[IRIS_SERVER_KEY] && !map[LEGACY_IRIS_SERVER_KEY]) {
     return { configPath: profile.configPath, action: 'not-present' };
   }
-  const { iris: _removed, ...rest } = map;
-  void _removed;
-  writeConfig(profile.configPath, { ...existing, context_servers: rest });
+  writeConfig(profile.configPath, { ...existing, context_servers: withoutIris(map) });
   return { configPath: profile.configPath, action: 'removed' };
 }
 
 /* ---------------- Codex strategy (TOML section append/remove) ---------------- */
 
+/**
+ * Remove one `[mcp_servers.<key>]` section: from its header up to (not
+ * including) the next section header or end-of-file. Returns the text
+ * unchanged when the header is absent.
+ */
+function removeCodexSection(raw: string, header: string): string {
+  const start = raw.indexOf(header);
+  if (start === -1) return raw;
+  const afterHeader = start + header.length;
+  const nextSection = raw.indexOf('\n[', afterHeader);
+  const end = nextSection === -1 ? raw.length : nextSection + 1;
+  return (raw.slice(0, start) + raw.slice(end)).replace(/\n{3,}/g, '\n\n');
+}
+
 function installCodex(profile: ClientProfile): InstallResult {
   const exists = existsSync(profile.configPath);
-  const raw = exists ? readFileSync(profile.configPath, 'utf-8') : '';
+  let raw = exists ? readFileSync(profile.configPath, 'utf-8') : '';
+  const hadLegacy = raw.includes(CODEX_LEGACY_SECTION_HEADER);
 
-  if (raw.includes(CODEX_SECTION_HEADER)) {
+  if (raw.includes(CODEX_SECTION_HEADER) && !hadLegacy) {
     // Section present. If it matches exactly what we write, no-op; otherwise
     // leave the user's customized section alone (do not clobber).
-    if (raw.includes(CODEX_SECTION.trim())) {
-      return { configPath: profile.configPath, action: 'no-change' };
-    }
     return { configPath: profile.configPath, action: 'no-change' };
   }
 
-  const next =
-    raw.length === 0 || raw.endsWith('\n\n')
+  // Fold a legacy [mcp_servers.iris] section away so the two never coexist.
+  raw = removeCodexSection(raw, CODEX_LEGACY_SECTION_HEADER);
+
+  const next = raw.includes(CODEX_SECTION_HEADER)
+    ? raw
+    : raw.length === 0 || raw.endsWith('\n\n')
       ? raw + CODEX_SECTION
       : raw.endsWith('\n')
         ? raw + '\n' + CODEX_SECTION
@@ -214,16 +253,11 @@ function uninstallCodex(profile: ClientProfile): UninstallResult {
     return { configPath: profile.configPath, action: 'not-present' };
   }
   const raw = readFileSync(profile.configPath, 'utf-8');
-  if (!raw.includes(CODEX_SECTION_HEADER)) {
+  if (!raw.includes(CODEX_SECTION_HEADER) && !raw.includes(CODEX_LEGACY_SECTION_HEADER)) {
     return { configPath: profile.configPath, action: 'not-present' };
   }
-  // Remove from our section header up to (not including) the next section
-  // header or end-of-file. Only removes the iris section.
-  const start = raw.indexOf(CODEX_SECTION_HEADER);
-  const afterHeader = start + CODEX_SECTION_HEADER.length;
-  const nextSection = raw.indexOf('\n[', afterHeader);
-  const end = nextSection === -1 ? raw.length : nextSection + 1;
-  const next = (raw.slice(0, start) + raw.slice(end)).replace(/\n{3,}/g, '\n\n');
+  // Only the Iris section(s) are removed — current key and legacy key.
+  const next = removeCodexSection(removeCodexSection(raw, CODEX_SECTION_HEADER), CODEX_LEGACY_SECTION_HEADER);
   writeFileSync(profile.configPath, next, 'utf-8');
   return { configPath: profile.configPath, action: 'removed' };
 }

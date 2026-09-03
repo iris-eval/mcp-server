@@ -157,6 +157,58 @@ describe('--demo', () => {
     expect(existsSync(join(home, 'iris.db'))).toBe(false);
   }, 60_000);
 
+  it('refuses trace ingest into demo.db with a clear 403 — --demo-clear would have deleted it (#372 / backlog)', async () => {
+    const dashboardPort = await freePort();
+    const proc = spawnCli(['--demo', '--dashboard-port', String(dashboardPort)]);
+
+    let stderr = '';
+    const port = await new Promise<number>((resolvePromise, rejectPromise) => {
+      const timer = setTimeout(
+        () => rejectPromise(new Error(`Dashboard never came up. stderr so far:\n${stderr}`)),
+        50_000,
+      );
+      proc.stderr!.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+        const m = stderr.match(/Dashboard available at http:\/\/localhost:(\d+)/);
+        if (m) {
+          clearTimeout(timer);
+          resolvePromise(Number(m[1]));
+        }
+      });
+      proc.on('exit', (code) => {
+        clearTimeout(timer);
+        rejectPromise(new Error(`CLI exited early with code ${code}. stderr:\n${stderr}`));
+      });
+    });
+
+    const before = JSON.parse((await get(port, '/api/v1/summary?hours=720', `127.0.0.1:${port}`)).body) as { total_traces: number };
+    expect(before.total_traces).toBeGreaterThan(0);
+
+    const res = await fetch(`http://127.0.0.1:${port}/api/v1/traces`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ agent_name: 'real-agent', output: 'a real trace that must not land in demo.db' }),
+    });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain('Demo mode does not accept trace ingest');
+    expect(body.error).toContain('--demo-clear');
+    expect(body.error).toContain('iris-mcp --dashboard');
+
+    // Nothing landed: the demo database holds exactly what it held before.
+    const after = JSON.parse((await get(port, '/api/v1/summary?hours=720', `127.0.0.1:${port}`)).body) as { total_traces: number };
+    expect(after.total_traces).toBe(before.total_traces);
+    const listed = JSON.parse((await get(port, '/api/v1/traces?agent_name=real-agent', `127.0.0.1:${port}`)).body) as { total: number };
+    expect(listed.total).toBe(0);
+
+    // The banner says so up front.
+    await new Promise<void>((resolvePromise) => {
+      const check = () => (stderr.includes('--demo-clear') ? resolvePromise() : setTimeout(check, 100));
+      check();
+    });
+    expect(stderr).toContain('Trace ingest (POST /api/v1/traces) is refused in demo mode');
+  }, 60_000);
+
   it('refuses --demo combined with --db-path', async () => {
     const proc = spawnCli(['--demo', '--db-path', join(home, 'other.db')]);
     const { code, stderr } = await collectUntilExit(proc);
