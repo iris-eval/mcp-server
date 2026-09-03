@@ -65,5 +65,9 @@ export const DEFAULT_BIND_HOST_DASHBOARD = claimsRaw.security.defaultBindHost.da
 // Release
 export const CURRENT_RELEASE_VERSION = claimsRaw.release.currentReleaseVersion as string | null;
 export const CURRENT_RELEASE_DATE = claimsRaw.release.currentReleaseDate as string | null;
+// The CHANGELOG's bold lead line for the current release - the release's own
+// title, e.g. "The acceptance-test release". Null when a release has no lead
+// line; consumers must fall back rather than restate one.
+export const CURRENT_RELEASE_HEADLINE = claimsRaw.release.currentReleaseHeadline as string | null;
 export const NEXT_PLANNED_VERSION = claimsRaw.release.nextPlannedVersion as string | null;
 export const NEXT_PLANNED_SCOPE = claimsRaw.release.nextPlannedScope as string | null;

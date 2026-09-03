@@ -11,6 +11,26 @@ const root = resolve(here, '..', '..', '..');
 // Matches `## [X.Y.Z] - YYYY-MM-DD` (the first such header is the current release).
 const RELEASE_HEADER_RE = /^##\s*\[(\d+\.\d+\.\d+)\]\s*-\s*(\d{4}-\d{2}-\d{2})/m;
 
+// The release's own one-line title: the bold lead sentence directly under
+// its header (`**The acceptance-test release.** Seven simulated...`). Every
+// release since 0.4.5 opens this way. It feeds the website's event banner,
+// which used to restate the PREVIOUS release's feature list as prose and
+// read "v0.5.0 Iris v0.4" for two releases beside a pill that rendered the
+// live version. Bounded to the current release's section so a release
+// without a lead line yields null (the banner falls back) rather than
+// borrowing the next section's.
+const NEXT_HEADER_RE = /^##\s*\[/m;
+const HEADLINE_RE = /^\*\*([^*\n]+?)\*\*/m;
+
+function headlineFor(changelog, headerMatch) {
+  const afterHeader = changelog.slice(headerMatch.index + headerMatch[0].length);
+  const end = afterHeader.search(NEXT_HEADER_RE);
+  const section = end === -1 ? afterHeader : afterHeader.slice(0, end);
+  const h = section.match(HEADLINE_RE);
+  if (!h) return null;
+  return h[1].trim().replace(/[.:]+$/, '') || null;
+}
+
 export async function generate() {
   const changelog = await readFile(resolve(root, 'CHANGELOG.md'), 'utf-8');
   const m = changelog.match(RELEASE_HEADER_RE);
@@ -18,6 +38,7 @@ export async function generate() {
     return {
       currentReleaseVersion: null,
       currentReleaseDate: null,
+      currentReleaseHeadline: null,
       nextPlannedVersion: null,
       nextPlannedScope: null,
     };
@@ -41,6 +62,7 @@ export async function generate() {
   return {
     currentReleaseVersion: m[1],
     currentReleaseDate: m[2],
+    currentReleaseHeadline: headlineFor(changelog, m),
     nextPlannedVersion: null,
     nextPlannedScope: null,
   };
