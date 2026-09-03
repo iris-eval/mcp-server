@@ -22,8 +22,12 @@ Two things to know before pointing production traffic at it:
   bind and the rebinding guard are what keep that to your own machine by default; if
   you bind beyond loopback (`--dashboard-host`), set a key.
 - **Stored text is verbatim.** `input` and `output` land in `iris.db` exactly as sent,
-  including anything `no_pii` goes on to flag. Traces older than `retention.days`
-  (default 30, in `config.json`) are deleted at startup; there is no other redaction.
+  including anything `no_pii` goes on to flag. Traces and evaluations older than
+  `retention.days` (default 30, `0` disables, in `config.json`) are deleted at startup;
+  `--purge` removes everything stored and compacts the file. There is no other redaction.
+- **Demo mode refuses ingest.** A server started with `--demo` answers `403` here, so
+  demo data never mixes with yours — start the real server (`--dashboard`) to store
+  your own traces.
 
 ---
 
@@ -102,7 +106,7 @@ for ingest-time evaluation; run `evaluate_output` with `expected` for relevance.
 |---|---|
 | `201` | Stored. Body: `{ "trace_id": "<32-hex>", "status": "stored" }`, plus `"evaluation": { … }` when `evaluate: true` |
 | `400` | Invalid body. `{ "error": "Invalid trace payload", "details": [ …zod issues… ] }` |
-| `401` / `403` | Missing / wrong `Authorization: Bearer <key>` when the server was started with an API key. `403` is also the rebinding guard rejecting a hostile `Origin`/`Host` |
+| `401` / `403` | Missing / wrong `Authorization: Bearer <key>` when the server was started with an API key. `403` is also the rebinding guard rejecting a hostile `Origin`/`Host`, and the answer in `--demo` mode, which refuses ingest |
 | `413` | Body over the configured request size limit (default `1mb`) |
 | `429` | Shared API rate limit exceeded — back off and retry |
 | `501` | `evaluate: true` on a server with no eval engine wired (embedders). The trace is **not** stored — retry without `evaluate` |

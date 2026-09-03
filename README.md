@@ -74,16 +74,16 @@ curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
   }'
 ```
 
-Returns `201` with the stored `trace_id` and the evaluation result. The endpoint accepts the same body as the `log_trace` tool and sits behind the same middleware stack as the rest of the dashboard: loopback bind and the DNS-rebinding guard by default, plus Bearer auth when you set one. **Two plain facts about it:** it accepts unauthenticated writes unless Iris was started with `--api-key` (or `IRIS_API_KEY`) — the loopback bind is what keeps it to your machine by default, so set a key before binding beyond loopback; and what it stores is verbatim — `input` and `output` land in `iris.db` exactly as sent, including any text `no_pii` goes on to flag. Full contract, field reference, and error semantics: [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md).
+Returns `201` with the stored `trace_id` and the evaluation result (in `--demo` mode the endpoint refuses writes with `403`, so demo data never mixes with yours). The endpoint accepts the same body as the `log_trace` tool and sits behind the same middleware stack as the rest of the dashboard: loopback bind and the DNS-rebinding guard by default, plus Bearer auth when you set one. **Two plain facts about it:** it accepts unauthenticated writes unless Iris was started with `--api-key` (or `IRIS_API_KEY`) — the loopback bind is what keeps it to your machine by default, so set a key before binding beyond loopback; and what it stores is verbatim — `input` and `output` land in `iris.db` exactly as sent, including any text `no_pii` goes on to flag. Full contract, field reference, and error semantics: [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md).
 
 ### Verify your install
 
 ```bash
 npx @iris-eval/mcp-server --self-test   # offline diagnostic; exit 0 = healthy, 1 = a check failed
-npx @iris-eval/mcp-server --version     # prints the installed version
+npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 0.5.1
 ```
 
-`--self-test` runs 12 checks — storage round-trip, a planted SSN and a planted injection caught by the safety rules, dashboard boot, the DNS-rebinding guard — inside an isolated temp home, so your real database is never opened. Everything Iris writes lives under one directory, your **Iris home**: `~/.iris` by default (`%USERPROFILE%\.iris` on Windows), or wherever `IRIS_HOME` points. That is where `iris.db`, `config.json`, `custom-rules.json`, `audit.log`, `preferences.json` and the demo files live; point `IRIS_HOME` at a scratch directory to try Iris without touching your real data.
+`--self-test` first creates your Iris home if it is missing and checks that it is writable (exit 1, naming the path, if it is not), then runs its checks — storage round-trip, a planted SSN and a planted injection caught by the safety rules, dashboard boot, the DNS-rebinding guard — inside an isolated temp home, so your real database is never opened. Everything Iris writes lives under one directory, your **Iris home**: `~/.iris` by default (`%USERPROFILE%\.iris` on Windows), or wherever `IRIS_HOME` points. That is where `iris.db`, `config.json`, `custom-rules.json`, `audit.log`, `preferences.json` and the demo files live; point `IRIS_HOME` at a scratch directory to try Iris without touching your real data.
 
 <details>
 <summary><strong>Setup by tool</strong></summary>
@@ -299,8 +299,8 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
 | `--demo-clear` | `false` | Delete the demo database and exit |
 | `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
-| `--purge` | `false` | Delete the data Iris has stored under your Iris home and exit — the way to remove traces whose text you no longer want on disk. Prints each file it removes; `--help` lists exactly which files it covers |
-| `--version` | — | Print the installed version and exit |
+| `--purge` | `false` | Delete **every** stored trace, span and evaluation from the configured database, compact the file and truncate the write-ahead log so the deleted text does not linger on disk, then exit. Deployed rules, the audit log and preferences are kept. Not reversible. Stop any running Iris server first — the file is compacted in place. Refuses to combine with `--demo`, `--demo-clear` or `--self-test` |
+| `--version` | — | Print the bare version (e.g. `0.5.1`) to stdout and exit 0. Reads nothing under your Iris home |
 
 ### Environment Variables
 
@@ -350,7 +350,7 @@ iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dash
 
 ### Your data on disk
 
-Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact. Traces older than `retention.days` (default `30`, set in `config.json`) are deleted at startup. To remove stored data yourself, run `--purge`, or delete `iris.db` while Iris is stopped.
+Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact. At startup, traces and evaluations older than `retention.days` (default `30`, `0` disables, set in `config.json`) are deleted and the write-ahead log is checkpointed. To remove everything now, stop the server and run `--purge`: it deletes every stored trace, span and evaluation, compacts the database and truncates the write-ahead log so the text is gone from disk, and keeps your deployed rules, audit log and preferences.
 
 </details>
 
