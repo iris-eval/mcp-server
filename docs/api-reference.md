@@ -180,7 +180,7 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `output` | `string` | Yes | -- | The output text to evaluate |
-| `eval_type` | `enum` | No | `"completeness"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom` |
+| `eval_type` | `enum` | No | `"completeness"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom`, `all` (every bundle in one pass, with a per-category breakdown) |
 | `expected` | `string` | No | -- | Expected output for comparison (used by completeness rules) |
 | `input` | `string` | No | -- | Original input for context (used by relevance rules) |
 | `trace_id` | `string` | No | -- | Link this evaluation to an existing trace |

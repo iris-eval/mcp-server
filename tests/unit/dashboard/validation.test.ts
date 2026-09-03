@@ -152,7 +152,9 @@ describe('traceQuerySchema', () => {
 
     it('rejects a since/until that is not an ISO timestamp or date', () => {
       expect(messages({ since: 'yesterday' })).toContain('ISO 8601');
+      expect(messages({ since: 'yesterday' })).toContain('"yesterday"');
       expect(messages({ until: '08/01/2026' })).toContain('ISO 8601');
+      expect(messages({ until: '08/01/2026' })).toContain('"08/01/2026"');
     });
 
     it('accepts an ISO instant with an offset and a calendar date', () => {

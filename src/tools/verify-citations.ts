@@ -63,6 +63,30 @@ function resolveDomainAllowlist(paramValue?: string[]): readonly string[] | unde
   return fromEnv.length > 0 ? fromEnv : undefined;
 }
 
+/**
+ * `passed: true` with `overall_score: null` is the honest answer when there
+ * was nothing to judge (no citations, none resolved). It is NOT the honest
+ * answer when citations resolved and the judge then failed on every one —
+ * a wrong API key, a model the provider refused, a parse failure — because
+ * the caller reads "passed" and ships. That case is an error naming the
+ * cause; nothing is stored. (v0.6.0 acceptance pass, observation 3.)
+ */
+export function assertJudgeRan(result: {
+  totalResolved: number;
+  totalJudged: number;
+  citations: ReadonlyArray<{ resolveStatus: string; resolveError?: { kind: string; message: string } }>;
+}): void {
+  if (result.totalResolved === 0 || result.totalJudged > 0) return;
+  const judgeFailures = result.citations.filter((c) => c.resolveStatus === 'ok' && c.resolveError);
+  if (judgeFailures.length === 0) return;
+  const kinds = [...new Set(judgeFailures.map((c) => c.resolveError!.kind))].join(', ');
+  const first = judgeFailures[0].resolveError!.message;
+  throw new Error(
+    `verify_citations could not judge any of the ${result.totalResolved} resolved citation(s): the judge failed on every one (${kinds}). ` +
+      `Nothing was verified and nothing was stored, so there is no verdict. First error: ${first}`,
+  );
+}
+
 export function registerVerifyCitationsTool(server: McpServer, storage: IStorageAdapter): void {
   server.registerTool(
     'verify_citations',
@@ -116,6 +140,8 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         perSourceTimeoutMs: args.per_source_timeout_ms,
         perSourceMaxBytes: args.per_source_max_bytes,
       });
+
+      assertJudgeRan(result);
 
       const evalId = generateEvalId();
       const score = result.overallScore ?? 0;
