@@ -2,9 +2,10 @@
 title: "MCP Meets OpenTelemetry: Bridging Agent Observability and Infrastructure Monitoring"
 description: "How Iris bridges agent observability and infrastructure monitoring by exporting MCP traces as OpenTelemetry spans to Datadog and Grafana."
 date: 2026-03-17
+updated: 2026-07-07
 author: Ian Parent
 tags: [opentelemetry, observability, mcp, infrastructure, datadog, grafana, agents, tracing]
-relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, state-of-mcp-agent-observability-2026]
+relatedPosts: [mcp-observability-specification, iris-v0-4-release-notes, state-of-mcp-agent-observability-2026]
 ---
 
 > **Editor's note (2026-07):** Written before v0.4 shipped. The OpenTelemetry export described below as roadmap **shipped in v0.4** (2026-04-24) — set `IRIS_OTEL_ENDPOINT` and traces flow to any OTLP collector today. Wording updated from future to present tense where it described the export.

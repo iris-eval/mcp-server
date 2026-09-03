@@ -2,6 +2,7 @@
 title: "Why Every MCP Agent Needs an Independent Observer"
 description: "Why self-reported agent logs are structurally untrustworthy and how MCP enables architecturally independent observability for AI agents."
 date: 2026-03-15
+updated: 2026-07-07
 author: Ian Parent
 tags: [observability, agents, mcp, architecture, trust]
 relatedPosts: [why-your-ai-agents-need-observability, mcp-observability-is-the-new-apm, the-eval-gap]

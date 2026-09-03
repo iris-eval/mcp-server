@@ -2,6 +2,7 @@
 title: "MCP Observability is the New APM"
 description: "MCP observability is following the same adoption curve as APM — and teams without agent-native monitoring will face the same reckoning."
 date: 2026-03-16
+updated: 2026-04-16
 author: Ian Parent
 tags: [observability, apm, mcp, agents, category-creation, market]
 relatedPosts: [why-your-ai-agents-need-observability, mcp-observability-specification, mcp-meets-opentelemetry]

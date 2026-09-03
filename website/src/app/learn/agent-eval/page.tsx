@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -108,7 +109,7 @@ const jsonLd = {
       ),
       url: "https://iris-eval.com/learn/agent-eval",
       datePublished: "2026-03-28",
-      dateModified: "2026-03-28",
+      dateModified: PAGE_LAST_MODIFIED["/learn/agent-eval"],
       author: {
         "@type": "Person",
         name: "Ian Parent",

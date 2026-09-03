@@ -2,6 +2,7 @@
 title: "What changed in Iris v0.4.0"
 description: "Iris v0.4.0 ships LLM-as-Judge (5 templates, cost-capped), semantic citation verification (SSRF-guarded fetch + per-claim LLM verdict), OpenTelemetry export, and a 9-tool MCP surface. Three vectors of the same thesis."
 date: 2026-05-02
+updated: 2026-08-11
 author: Ian Parent
 tags: [release-notes, llm-as-judge, citation-verification, opentelemetry, mcp, agent-eval]
 relatedPosts: [closing-the-eval-gap, output-quality-score, the-eval-gap]

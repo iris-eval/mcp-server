@@ -2,6 +2,7 @@
 title: "The State of MCP Agent Observability (March 2026)"
 description: "A comprehensive analysis of the MCP agent observability landscape in 2026, covering market trends, security gaps, and eval approaches."
 date: 2026-03-14
+updated: 2026-08-11
 author: Ian Parent
 tags: [observability, mcp, agents, report, evaluation, cost-tracking]
 relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, closing-the-eval-gap]
