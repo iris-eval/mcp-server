@@ -63,7 +63,7 @@ Keys are read at call time, not server start. A missing key fails only the speci
 export IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL=0.02
 ```
 
-The cap is **pre-checked pessimistically** — Iris estimates worst-case cost (entire `max_output_tokens` billable at output rate) and refuses the call if that would exceed the cap. You never get a surprise bill.
+The cap is **pre-checked pessimistically** — Iris estimates worst-case cost (entire `max_output_tokens` billable at output rate, plus the one retry that fires if the judge's first reply is not valid JSON) and refuses the call if that would exceed the cap. You never get a surprise bill.
 
 ---
 
@@ -110,9 +110,9 @@ To add a new model: edit `src/eval/llm-judge/pricing.ts`, add a CHANGELOG note.
 
 Three layers, checked in order:
 
-1. **Pre-call pessimistic estimate** — input chars ÷ 4 for tokens, full `max_output_tokens` billable. If this exceeds the cap, the call never fires.
+1. **Pre-call pessimistic estimate** — input chars ÷ 4 for tokens, full `max_output_tokens` billable, and the malformed-JSON retry (same prompt plus a short suffix, output capped at 256) priced on top. If the two-attempt worst case exceeds the cap, the call never fires.
 2. **Provider-side limits** — rate limits (429) are retried once respecting `Retry-After`; a second 429 is a hard fail.
-3. **Post-call actual cost** — returned in every response as `cost_usd`, computed from provider-reported `input_tokens` + `output_tokens` × pricing table. Stored on the eval result so the dashboard can show it.
+3. **Post-call actual cost** — returned in every response as `cost_usd`, computed from provider-reported `input_tokens` + `output_tokens` × pricing table, summed across both attempts when a retry ran. Stored on the eval result so the dashboard can show it.
 
 Typical cost per call on a ~500-token output with haiku: **$0.0003–$0.0005**.
 Same output with opus: **$0.015–$0.025**.

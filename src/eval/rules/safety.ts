@@ -108,8 +108,20 @@ export const PII_PATTERNS: Array<{ name: string; pattern: RegExp; placeholders?:
   // v0.3.1 additions
   // IBAN: 2 letters + 2 digits + 1-30 alphanumeric (international bank account number)
   { name: 'IBAN', pattern: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/ },
-  // US passport: 9 digits, optionally prefixed with letter (modern format C12345678)
-  { name: 'Passport', pattern: /\b[A-Z]?\d{9}\b/ },
+  /*
+   * US passport — CONTEXT-ANCHORED, like DOB and MRN below. A legacy
+   * passport number is nine bare digits and the modern (2021+) format is
+   * one letter + eight digits; neither shape has internal structure to
+   * anchor on. The old `\b[A-Z]?\d{9}\b` fired on ANY nine-digit run —
+   * order IDs, EINs, routing numbers, nine-digit Unix timestamps — and
+   * because no_pii is critical, "Order ID: 123456789" vetoed the whole
+   * evaluation. It also never matched the modern C12345678 shape its own
+   * comment promised: the optional letter still demanded nine digits after
+   * it. Now the number must follow the word "passport" within a short
+   * window, which is what docs/api-reference.md has described all along.
+   * The window is bounded ({0,40}) so the scan stays linear in the input.
+   */
+  { name: 'Passport', pattern: /\bpassports?\b[\s\S]{0,40}?\b(?:[A-Z]\d{8}|\d{9})\b/i },
   // Date of birth contextual — DOB or "Born:" / "Birthday:" + date
   { name: 'DOB', pattern: /\b(?:DOB|D\.O\.B\.|Date of Birth|Born|Birthday)\s{0,8}[:.]?\s{0,8}\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})\b/i },
   // Medical record number — MRN: + alphanumeric (common format)

@@ -71,7 +71,9 @@ const PII_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   { name: 'Phone', pattern: /\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/ },
   { name: 'Email', pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/i },
   { name: 'IBAN', pattern: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/ },
-  { name: 'Passport', pattern: /\b[A-Z]?\d{9}\b/ },
+  // Context-anchored (synced with src/eval/rules/safety.ts): a bare
+  // nine-digit number is an order ID far more often than a passport.
+  { name: 'Passport', pattern: /\bpassports?\b[\s\S]{0,40}?\b(?:[A-Z]\d{8}|\d{9})\b/i },
   { name: 'DOB', pattern: /\b(?:DOB|D\.O\.B\.|Date of Birth|Born|Birthday)\s*[:.]?\s*\d{1,2}[/\-.]\d{1,2}[/\-.](?:\d{2}|\d{4})\b/i },
   { name: 'Medical Record Number', pattern: /\b(?:MRN|Medical Record (?:Number|No\.?|#))\s*[:.]?\s*[A-Z0-9]{6,12}\b/i },
   { name: 'IP Address', pattern: /\b(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}\b/ },
