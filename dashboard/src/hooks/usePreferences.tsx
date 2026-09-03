@@ -31,6 +31,12 @@ import type { Preferences, PreferencesPatch } from '../api/types';
 
 interface PreferencesContextValue {
   preferences: Preferences | null;
+  /**
+   * Where the server keeps the preferences file, spelled without the OS
+   * username (`~/.iris/preferences.json`, `$IRIS_HOME/demo-preferences.json`).
+   * Null until the first load; the banner falls back to a generic phrase.
+   */
+  displayPath: string | null;
   loading: boolean;
   error: string | null;
   patch: (input: PreferencesPatch) => Promise<Preferences | null>;
@@ -41,6 +47,7 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [displayPath, setDisplayPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const inflight = useRef<Promise<Preferences | null> | null>(null);
@@ -49,6 +56,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     try {
       const result = await api.getPreferences();
       setPreferences(result.preferences);
+      setDisplayPath(result.displayPath ?? null);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load preferences');
@@ -96,8 +104,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ preferences, loading, error, patch, refetch }),
-    [preferences, loading, error, patch, refetch],
+    () => ({ preferences, displayPath, loading, error, patch, refetch }),
+    [preferences, displayPath, loading, error, patch, refetch],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

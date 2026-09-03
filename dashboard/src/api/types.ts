@@ -276,6 +276,8 @@ export interface RulePreviewRequest {
   evalType?: DeployedCustomRule['evalType'];
   windowDays?: number;
   maxTraces?: number;
+  /** Dry-run text: when present the rule is also judged against exactly this output (`sample` in the result). */
+  sampleOutput?: string;
 }
 
 export interface RulePreviewResult {
@@ -290,6 +292,28 @@ export interface RulePreviewResult {
     outputPreview: string;
   }>;
   windowSinceIso: string;
+  /** Verdict against `sampleOutput`; absent when no sample was sent. */
+  sample?: {
+    passed: boolean;
+    score: number;
+    message: string;
+    skipped: boolean;
+    skipReason?: string;
+  };
+}
+
+/**
+ * A built-in rule as the engine registers it — served by
+ * GET /api/v1/rules/builtin so the dashboard never has to restate the
+ * name → category map by hand.
+ */
+export interface BuiltInRuleMeta {
+  name: string;
+  category: DeployedCustomRule['evalType'];
+  description: string;
+  weight: number;
+  /** A failing critical rule forces passed=false regardless of the weighted score. */
+  critical: boolean;
 }
 
 /* ── Preferences (B8.2 — server-mediated user preferences) ── */
@@ -315,6 +339,12 @@ export interface Preferences {
 
 export interface PreferencesEnvelope {
   preferences: Preferences;
+  /**
+   * Where the preferences file lives, spelled without the OS username:
+   * `~/.iris/preferences.json`, `$IRIS_HOME/demo-preferences.json`, … The
+   * server never sends the absolute path (install-path disclosure).
+   */
+  displayPath?: string;
 }
 
 export type PreferencesPatch = Partial<Preferences>;

@@ -163,17 +163,51 @@ describe('POST /api/v1/traces — store', () => {
     expect(detail.evals).toHaveLength(0);
   });
 
-  it('ignores a client-supplied trace_id — the server mints its own', async () => {
-    const { base } = await bootServer();
+  it('REJECTS a client-supplied trace_id — the server mints its own, and says so', async () => {
+    /*
+     * This used to be "ignores": the schema relied on zod's default
+     * unknown-key stripping to drop trace_id, which also dropped every
+     * misspelled field. The body is strict now, and trace_id gets a
+     * pointed rejection instead of a silent replacement.
+     */
+    const { base, storage } = await bootServer();
     const { status, json } = await postTrace(base, {
       agent_name: 'minting-test',
       trace_id: 'attacker-chosen-id',
     });
-    expect(status).toBe(201);
-    expect(json.trace_id).not.toBe('attacker-chosen-id');
+    expect(status).toBe(400);
+    expect(json.error).toBe('Invalid trace payload');
+    const details = JSON.stringify(json.details);
+    expect(details).toContain('"trace_id"');
+    expect(details).toMatch(/minted by the server/);
 
+    const { total } = await storage.queryTraces(LOCAL_TENANT, {});
+    expect(total).toBe(0);
     const res = await fetch(`${base}/api/v1/traces/attacker-chosen-id`);
     expect(res.status).toBe(404);
+  });
+
+  it('REJECTS a misspelled eval_typ instead of silently running the completeness bundle', async () => {
+    /*
+     * The HTTP twin of the strict-tool-args fix (#376 item 2). Before:
+     * eval_typ was dropped, the default completeness bundle ran on
+     * PII-laden output, and the caller got passed:true with no hint that
+     * a field had been ignored.
+     */
+    const { base, storage } = await bootServer();
+    const { status, json } = await postTrace(base, {
+      agent_name: 'typo-test',
+      output: 'Customer SSN is 536-22-8145.',
+      evaluate: true,
+      eval_typ: 'safety',
+    });
+    expect(status).toBe(400);
+    const details = JSON.stringify(json.details);
+    expect(details).toContain('"eval_typ"');
+    expect(details).toContain('eval_type');
+    // Nothing stored, nothing evaluated.
+    const { total } = await storage.queryTraces(LOCAL_TENANT, {});
+    expect(total).toBe(0);
   });
 
   it('rejects a payload without agent_name with 400 and a pointed zod issue', async () => {

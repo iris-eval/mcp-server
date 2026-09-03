@@ -17,14 +17,16 @@
  *     final state.
  *   - ESC: same as Skip.
  *
- * Persistence: preferences.dismissedTours is server-mediated, so dismissal
- * survives across browser reloads AND iris-mcp restarts.
+ * Persistence: dismissal is written to BOTH localStorage (this browser,
+ * every Iris server it opens — demo or real) and preferences.dismissedTours
+ * (this install, every browser). Either one suppresses the auto-open.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useCommandPalette } from '../command/CommandPaletteProvider';
 import { useFocusTrap } from '../shared/useFocusTrap';
+import { writeTourDismissed } from './tourDismissal';
 
 const TOUR_ID = 'tour-welcome';
 
@@ -305,6 +307,7 @@ export function WelcomeTour({
   const isLast = stepIndex === steps.length - 1;
 
   const persistDismissal = () => {
+    writeTourDismissed();
     // Best-effort — don't block close on a network failure
     patch({ dismissedTours: [TOUR_ID] }).catch(() => undefined);
   };

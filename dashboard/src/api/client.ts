@@ -19,6 +19,7 @@ import type {
   PreferencesEnvelope,
   PreferencesPatch,
   AuditQueryResult,
+  BuiltInRuleMeta,
 } from './types';
 
 /**
@@ -63,6 +64,25 @@ function parseRetryAfter(res: Response): number {
   return 30_000; // conservative 30s fallback
 }
 
+/*
+ * A 401 from the API means the server has an --api-key and this browser
+ * has no session for it (never signed in, or the server restarted and
+ * dropped its in-memory sessions). The server renders a sign-in page for
+ * any HTML navigation in that state, so the honest recovery is to reload:
+ * the user lands on the sign-in form instead of a wall of "API error:
+ * 401" tiles. Guarded because jsdom does not implement navigation.
+ */
+function handleUnauthorized(res: Response): void {
+  if (res.status !== 401) return;
+  try {
+    if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+      window.location.reload();
+    }
+  } catch {
+    // Non-browser environment — the thrown API error below still surfaces.
+  }
+}
+
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(path, window.location.origin);
   if (params) {
@@ -73,6 +93,7 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
     }
   }
   const res = await fetch(url.toString());
+  handleUnauthorized(res);
   if (res.status === 429) {
     throw new RateLimitError(
       parseRetryAfter(res),
@@ -146,6 +167,15 @@ export const api = {
     return deleteRequest(`${API_BASE_URL}/rules/custom/${id}`);
   },
 
+  /** Enable/disable a deployed rule in place — it stops (or resumes) firing on the next evaluation. */
+  setCustomRuleEnabled(id: string, enabled: boolean): Promise<{ rule: DeployedCustomRule }> {
+    return patchJson<{ rule: DeployedCustomRule }>(`${API_BASE_URL}/rules/custom/${id}`, { enabled });
+  },
+
+  getBuiltInRules(): Promise<{ rules: BuiltInRuleMeta[] }> {
+    return fetchJson<{ rules: BuiltInRuleMeta[] }>(`${API_BASE_URL}/rules/builtin`);
+  },
+
   previewCustomRule(req: RulePreviewRequest): Promise<RulePreviewResult> {
     return postJson<RulePreviewResult>(`${API_BASE_URL}/rules/custom/preview`, req);
   },
@@ -170,6 +200,7 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  handleUnauthorized(res);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`API error: ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
@@ -184,6 +215,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  handleUnauthorized(res);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`API error: ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
@@ -194,6 +226,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 async function deleteRequest(path: string): Promise<void> {
   const url = new URL(path, window.location.origin);
   const res = await fetch(url.toString(), { method: 'DELETE' });
+  handleUnauthorized(res);
   if (!res.ok && res.status !== 204) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }

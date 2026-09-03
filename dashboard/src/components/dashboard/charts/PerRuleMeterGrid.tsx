@@ -23,6 +23,8 @@ import {
   CATEGORY_META,
   CATEGORY_ORDER,
   BUILT_IN_RULE_CATEGORY,
+  ruleToSignificanceKind,
+  type RuleCategory,
 } from '../ruleCategories';
 import type { DecisionMoment } from '../../../api/types';
 
@@ -148,13 +150,6 @@ function thresholdAccent(rate: number): string {
   return 'var(--eval-fail)';
 }
 
-function ruleToKind(rule: string): string {
-  const r = rule.toLowerCase();
-  if (r.includes('pii') || r.includes('injection') || r.includes('blocklist') || r.includes('stub')) return 'safety-violation';
-  if (r.includes('cost')) return 'cost-spike';
-  return 'normal-fail';
-}
-
 function bucketPassByRule(moments: DecisionMoment[], rule: string, buckets: number): number[] {
   if (moments.length === 0) return [];
   const sorted = [...moments].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
@@ -219,6 +214,11 @@ export interface PerRuleMeterGridProps {
   priorMoments?: DecisionMoment[];
   periodStartIso: string;
   periodLabel: string;
+  /**
+   * Rule → category, ideally from useRuleCategoryMap() (the engine's own
+   * registry). Defaults to the vendored table so the chart stays I/O-free.
+   */
+  ruleCategories?: Record<string, RuleCategory>;
 }
 
 export function PerRuleMeterGrid({
@@ -226,6 +226,7 @@ export function PerRuleMeterGrid({
   priorMoments,
   periodStartIso,
   periodLabel,
+  ruleCategories = BUILT_IN_RULE_CATEGORY,
 }: PerRuleMeterGridProps) {
   const ruleStats = useMemo(
     () => computeRuleStats(currentMoments ?? [], priorMoments ?? []),
@@ -253,7 +254,7 @@ export function PerRuleMeterGrid({
       ) : (
         CATEGORY_ORDER.filter((c) => c !== 'custom').map((catId) => {
           const cat = CATEGORY_META[catId];
-          const rulesInCat = BUILT_IN_RULES.filter((r) => BUILT_IN_RULE_CATEGORY[r.name] === catId);
+          const rulesInCat = BUILT_IN_RULES.filter((r) => (ruleCategories[r.name] ?? r.category) === catId);
           return (
             <div key={catId} style={styles.categoryBlock}>
               <p style={{ ...styles.catLabel, color: cat.color }}>
@@ -279,7 +280,7 @@ export function PerRuleMeterGrid({
                   return (
                     <Link
                       key={r.name}
-                      to={drillToMoments({ kind: ruleToKind(r.name) as never, since: periodStartIso })}
+                      to={drillToMoments({ kind: ruleToSignificanceKind(r.name, ruleCategories), since: periodStartIso })}
                       style={styles.ruleRow}
                       title={`${r.name}: ${stat.total} firings, ${ratePct}% pass`}
                     >

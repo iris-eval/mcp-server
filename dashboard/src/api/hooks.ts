@@ -16,6 +16,7 @@ import type {
   FailureQueryResult,
   DeployedCustomRule,
   AuditQueryResult,
+  BuiltInRuleMeta,
 } from './types';
 
 /**
@@ -226,6 +227,12 @@ export function useFailures(params?: Record<string, string>) {
 export function useCustomRules() {
   const fetcher = useCallback(() => api.getCustomRules().then((r) => r.rules), []);
   return useApiData<DeployedCustomRule[]>(fetcher, CADENCE.SLOW);
+}
+
+/** The engine's built-in rule roster — fixed for the process lifetime, so a one-shot fetch. */
+export function useBuiltInRules() {
+  const fetcher = useCallback(() => api.getBuiltInRules().then((r) => r.rules), []);
+  return useApiData<BuiltInRuleMeta[]>(fetcher);
 }
 
 export function useAuditLog(params?: Record<string, string>) {

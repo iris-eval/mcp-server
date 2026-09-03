@@ -67,6 +67,7 @@ function makeApp() {
 
 async function preview(
   definition: Record<string, unknown>,
+  extra: Record<string, unknown> = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const app = makeApp();
   const server = app.listen(0);
@@ -75,13 +76,73 @@ async function preview(
     const res = await fetch(`http://localhost:${addr.port}/api/v1/rules/custom/preview`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ definition }),
+      body: JSON.stringify({ definition, ...extra }),
     });
     return { status: res.status, body: (await res.json()) as Record<string, unknown> };
   } finally {
     server.close();
   }
 }
+
+/*
+ * deploy_rule's description has always said to use this endpoint "for
+ * dry-run validation against sample output". The endpoint accepted
+ * `sampleOutput` and ignored it (#373 item 2) — a caller got the
+ * historical replay only, with no sign their sample was never read.
+ */
+describe('POST /rules/custom/preview — sampleOutput', () => {
+  it('judges the sample and reports the verdict alongside the replay', async () => {
+    const def = { name: 'find-errors', type: 'regex_match', config: { pattern: 'ERROR' } };
+    const miss = await preview(def, { sampleOutput: 'all good here' });
+    expect(miss.status).toBe(200);
+    expect(miss.body.sample).toMatchObject({ passed: false, skipped: false });
+    // The replay still ran — the sample is in addition to it, not instead.
+    expect(miss.body.tracesEvaluated).toBe(3);
+
+    const hit = await preview(def, { sampleOutput: 'ERROR: disk full' });
+    expect(hit.body.sample).toMatchObject({ passed: true, skipped: false });
+  });
+
+  it('reports a skip (with the reason) when the sample cannot be judged', async () => {
+    const res = await preview(
+      { name: 'cap', type: 'cost_threshold', config: { max_cost: 0.5 } },
+      { sampleOutput: 'no cost travels with a bare sample' },
+    );
+    expect(res.status).toBe(200);
+    const sample = res.body.sample as { skipped: boolean; skipReason?: string };
+    expect(sample.skipped).toBe(true);
+    expect(sample.skipReason).toBeTruthy();
+  });
+
+  it('omits `sample` entirely when no sample was sent', async () => {
+    const res = await preview({ name: 'find-errors', type: 'regex_match', config: { pattern: 'ERROR' } });
+    expect(res.status).toBe(200);
+    expect(res.body).not.toHaveProperty('sample');
+  });
+
+  it('rejects a misspelled key instead of silently ignoring it, listing the valid ones', async () => {
+    const res = await preview(
+      { name: 'find-errors', type: 'regex_match', config: { pattern: 'ERROR' } },
+      { sampleOutpt: 'typo' },
+    );
+    expect(res.status).toBe(400);
+    const details = JSON.stringify(res.body.details);
+    expect(details).toContain('"sampleOutpt"');
+    expect(details).toContain('sampleOutput');
+  });
+
+  it('rejects a misspelled key one level down, inside definition', async () => {
+    const res = await preview({ name: 'x', type: 'min_length', config: { min_length: 5 }, wieght: 2 });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body.details)).toContain('"wieght"');
+  });
+
+  it('accepts a definition without a name — the server names it on deploy anyway', async () => {
+    const res = await preview({ type: 'regex_match', config: { pattern: 'ERROR' } });
+    expect(res.status).toBe(200);
+    expect(res.body.wouldFail).toBe(1);
+  });
+});
 
 describe('POST /rules/custom/preview — definition rejection', () => {
   it('422s an invalid regex instead of 200 "wouldSkip: N"', async () => {

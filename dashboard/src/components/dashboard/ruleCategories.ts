@@ -1,16 +1,40 @@
 /*
- * ruleCategories — vendored mapping of built-in rule names → category.
+ * ruleCategories — built-in rule names → category.
  *
- * Mirrors iris/src/eval/rules/{safety,relevance,completeness,cost}.ts as
- * of v0.5.0. Keep in sync when the rule library expands. The mapping
- * lives client-side because the eval-stats endpoint returns rule names
- * but not categories.
- *
- * Synced: 2026-08-11 (v0.5.0 — 13 rules; no_hallucination_markers moved
- * relevance → safety with the context-grounded rewrite)
+ * The LIVE map comes from the server: GET /api/v1/rules/builtin is derived
+ * from the engine's own rule registry (useRuleCategoryMap). The table
+ * below is the FALLBACK used until that request resolves (and in tests),
+ * and it is pinned to the engine by a root-level test
+ * (tests/unit/dashboard/rule-categories-sync.test.ts) that fails the build
+ * the moment a rule is added, removed, or moved between bundles without
+ * updating this file. Two charts used to classify "safety" by name
+ * substring and missed no_hallucination_markers for a whole release — the
+ * sync test plus the server-derived map is what closes that class.
  */
+import type { MomentSignificanceKind } from '../../api/types';
 
 export type RuleCategory = 'safety' | 'relevance' | 'completeness' | 'cost' | 'custom';
+
+/**
+ * The significance kind a failed rule drills through to. Mirrors the
+ * server's classifier (src/eval/decision-moment.ts): a failed rule from
+ * the safety bundle is a safety-violation, the cost bundle maps to
+ * cost-spike, everything else — including rules the map does not know —
+ * lands on normal-fail.
+ */
+export function ruleToSignificanceKind(
+  rule: string,
+  categories: Record<string, RuleCategory>,
+): MomentSignificanceKind {
+  switch (categories[rule]) {
+    case 'safety':
+      return 'safety-violation';
+    case 'cost':
+      return 'cost-spike';
+    default:
+      return 'normal-fail';
+  }
+}
 
 export interface CategoryMeta {
   id: RuleCategory;

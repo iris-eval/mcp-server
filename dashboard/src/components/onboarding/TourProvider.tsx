@@ -2,6 +2,8 @@
  * TourProvider — global state + auto-open logic for the welcome tour.
  *
  * Auto-opens once when:
+ *   - this browser has not dismissed the tour (localStorage — see
+ *     tourDismissal.ts for why the server preference alone was not enough)
  *   - Preferences finish loading
  *   - WELCOME_TOUR_ID is NOT in preferences.dismissedTours
  *
@@ -23,6 +25,7 @@ import {
 } from 'react';
 import { usePreferences } from '../../hooks/usePreferences';
 import { WELCOME_TOUR_ID } from './WelcomeTour';
+import { readTourDismissed } from './tourDismissal';
 
 interface TourContextValue {
   tourOpen: boolean;
@@ -39,6 +42,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (autoOpened) return;
+    // This browser already saw it — regardless of which server (demo or
+    // real) is behind the page. Decided before preferences even load.
+    if (readTourDismissed()) {
+      setAutoOpened(true);
+      return;
+    }
     if (!preferences) return;
     const dismissed = preferences.dismissedTours?.includes(WELCOME_TOUR_ID) ?? false;
     if (!dismissed) {

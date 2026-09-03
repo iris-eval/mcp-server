@@ -7,12 +7,13 @@
  * against historical traces, requires explicit confirmation before
  * deploying.
  *
- * The composer is intentionally narrow in scope for v0.4: it covers the
- * 5 most common rule types that map cleanly from observed-moment patterns.
- * Authoring full json_schema or arbitrary cost_threshold rules is deferred
- * to v0.4.1 (the dedicated /rules editor surface).
+ * The composer is intentionally narrow in scope: it covers the rule types
+ * that map cleanly from observed-moment patterns (regex, keywords, length,
+ * per-trace cost). Authoring json_schema rules is left to deploy_rule /
+ * the dedicated editor surface.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import type {
   CustomRuleType,
   DecisionMomentDetail,
@@ -22,6 +23,7 @@ import type {
 } from '../../api/types';
 import { api } from '../../api/client';
 import { useFocusTrap } from '../shared/useFocusTrap';
+import { SEVERITY_HARD_FAIL, SEVERITY_WEIGHT_ONLY, TT } from '../shared/tooltipText';
 
 const RULE_TYPE_OPTIONS: Array<{
   value: CustomRuleType;
@@ -36,9 +38,34 @@ const RULE_TYPE_OPTIONS: Array<{
   { value: 'contains_keywords', label: 'Output must contain keywords', hint: 'Comma-separated list of required words/phrases', configKey: 'keywords', defaultEvalType: 'completeness' },
   { value: 'min_length', label: 'Output must be at least N chars', hint: 'Numeric character minimum', configKey: 'min_length', defaultEvalType: 'completeness' },
   { value: 'max_length', label: 'Output must be at most N chars', hint: 'Numeric character maximum', configKey: 'max_length', defaultEvalType: 'completeness' },
+  // config key is the canonical one from src/eval/rules/config-keys.ts (max_cost).
+  { value: 'cost_threshold', label: 'Trace cost must be at most $N', hint: 'USD ceiling per trace (e.g. 0.05). Fails when the trace reports cost_usd above it; skips when the trace reports no cost.', configKey: 'max_cost', defaultEvalType: 'cost' },
 ];
 
-const SEVERITY_OPTIONS: RuleSeverity[] = ['low', 'medium', 'high', 'critical'];
+/*
+ * Severity is the field that changed meaning in v0.5.0: it used to be a
+ * sort key, it is now a gate. The option label says which side of that
+ * line each value sits on, and the hint below the select spells the
+ * consequence out in the same words deploy_rule uses (tooltipText.ts
+ * keeps the two in lockstep).
+ */
+const SEVERITY_OPTIONS: Array<{ value: RuleSeverity; label: string }> = [
+  { value: 'low', label: 'low — score only' },
+  { value: 'medium', label: 'medium — score only' },
+  { value: 'high', label: 'high — hard-fail (veto)' },
+  { value: 'critical', label: 'critical — hard-fail (veto)' },
+];
+
+const SEVERITY_TOOLTIP: Record<RuleSeverity, string> = {
+  low: TT.ruleSeverityLow,
+  medium: TT.ruleSeverityMedium,
+  high: TT.ruleSeverityHigh,
+  critical: TT.ruleSeverityCritical,
+};
+
+export function isHardFailSeverity(severity: RuleSeverity): boolean {
+  return severity === 'high' || severity === 'critical';
+}
 
 const styles = {
   backdrop: {
@@ -207,11 +234,12 @@ interface RuleFormState {
   configValue: string;
 }
 
-function suggestInitialState(moment: DecisionMomentDetail): RuleFormState {
+export function suggestInitialState(moment: DecisionMomentDetail): RuleFormState {
   // Workflow inversion provenance: if a safety rule failed, suggest a
   // regex_no_match rule (most common safety extension). If a length rule
-  // failed, suggest the matching length rule. Else fall back to
-  // regex_no_match in safety.
+  // failed, suggest the matching length rule. If the cost rule failed,
+  // suggest a per-trace cost cap. Else fall back to regex_no_match in
+  // safety.
   const failed = moment.ruleSnapshot.failed;
   if (failed.includes('no_pii') || failed.includes('no_blocklist_words') || failed.includes('no_injection_patterns') || failed.includes('no_stub_output')) {
     return {
@@ -234,12 +262,16 @@ function suggestInitialState(moment: DecisionMomentDetail): RuleFormState {
     };
   }
   if (failed.includes('cost_under_threshold')) {
+    // This used to pre-fill `max_length` with 0.05 — "output must be at most
+    // 0.05 characters" under a name and description that said cost cap. The
+    // check type has to be the cost one. Severity stays score-only: a budget
+    // overrun becomes a hard gate only when the author chooses high/critical.
     return {
       name: 'my_cost_cap',
       description: 'Per-trace cost cap.',
-      severity: 'high',
+      severity: 'medium',
       evalType: 'cost',
-      ruleType: 'max_length',
+      ruleType: 'cost_threshold',
       configValue: '0.05',
     };
   }
@@ -253,7 +285,7 @@ function suggestInitialState(moment: DecisionMomentDetail): RuleFormState {
   };
 }
 
-function buildDefinition(form: RuleFormState): DeployRuleRequest['definition'] | null {
+export function buildDefinition(form: RuleFormState): DeployRuleRequest['definition'] | null {
   const meta = RULE_TYPE_OPTIONS.find((o) => o.value === form.ruleType);
   if (!meta) return null;
 
@@ -261,6 +293,11 @@ function buildDefinition(form: RuleFormState): DeployRuleRequest['definition'] |
   if (form.ruleType === 'min_length' || form.ruleType === 'max_length') {
     const n = Number(form.configValue);
     if (!Number.isFinite(n) || n <= 0) return null;
+    configValue = n;
+  } else if (form.ruleType === 'cost_threshold') {
+    // 0 is a legitimate ceiling ("must be free"); negative is not.
+    const n = Number(form.configValue);
+    if (form.configValue.trim() === '' || !Number.isFinite(n) || n < 0) return null;
     configValue = n;
   } else if (form.ruleType === 'contains_keywords' || form.ruleType === 'excludes_keywords') {
     const list = form.configValue
@@ -389,17 +426,30 @@ export function MakeRuleModal({ moment, onClose, onDeployed }: Props) {
               <span style={styles.hint}>Letters, digits, dot, dash, underscore.</span>
             </div>
             <div style={styles.field}>
-              <label style={styles.label} htmlFor="rule-severity">Severity</label>
+              <label style={styles.label} htmlFor="rule-severity">Severity — what a failure does</label>
               <select
                 id="rule-severity"
                 style={styles.input}
                 value={form.severity}
                 onChange={(e) => setForm({ ...form, severity: e.target.value as RuleSeverity })}
+                aria-describedby="rule-severity-hint"
+                title={SEVERITY_TOOLTIP[form.severity]}
               >
                 {SEVERITY_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s.value} value={s.value} title={SEVERITY_TOOLTIP[s.value]}>{s.label}</option>
                 ))}
               </select>
+              <span
+                id="rule-severity-hint"
+                style={{
+                  ...styles.hint,
+                  ...(isHardFailSeverity(form.severity) ? { color: 'var(--accent-error)' } : {}),
+                }}
+              >
+                {isHardFailSeverity(form.severity)
+                  ? `Hard-fail: ${SEVERITY_HARD_FAIL}. The rule is named in critical_failures.`
+                  : `Informational: ${SEVERITY_WEIGHT_ONLY}. Does not block an evaluation.`}
+              </span>
             </div>
           </div>
 
@@ -465,7 +515,9 @@ export function MakeRuleModal({ moment, onClose, onDeployed }: Props) {
                   ? 'e.g. \\$\\d+ or (?i)password'
                   : form.ruleType === 'min_length' || form.ruleType === 'max_length'
                     ? 'e.g. 200'
-                    : 'e.g. apology, sorry, regret'
+                    : form.ruleType === 'cost_threshold'
+                      ? 'e.g. 0.05'
+                      : 'e.g. apology, sorry, regret'
               }
             />
             <span style={styles.hint}>{meta.hint}</span>
@@ -501,8 +553,16 @@ export function MakeRuleModal({ moment, onClose, onDeployed }: Props) {
               <span>
                 Deploying <code>{form.name}</code> will mean this rule fires on every future
                 evaluation of category <code>{form.evalType}</code>. Based on the last 7 days,
-                <strong> {preview.wouldFail}</strong> traces would have failed it. Audit log
-                entry will be written to <code>~/.iris/audit.log</code>.
+                <strong> {preview.wouldFail}</strong> traces would have failed it.
+                {isHardFailSeverity(form.severity) && (
+                  <>
+                    {' '}
+                    <strong>Severity {form.severity} is a hard-fail:</strong> every evaluation this rule
+                    fails reports <code>passed=false</code> regardless of its score.
+                  </>
+                )}{' '}
+                The deploy is recorded in the{' '}
+                <Link to="/audit" style={{ textDecoration: 'underline' }}>audit log</Link>.
               </span>
             </div>
           )}

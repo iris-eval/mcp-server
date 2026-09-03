@@ -25,6 +25,7 @@ import { registerFailureRoutes } from './routes/failures.js';
 import { registerRuleRoutes } from './routes/rules.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
+import { createSessionAuth } from './session-auth.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
@@ -87,8 +88,15 @@ export function createDashboardServer(
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));
 
-  // Authentication
-  app.use(createAuthMiddleware(config));
+  /*
+   * Authentication. The Bearer middleware is the contract for MCP clients
+   * and capture SDKs; the session layer in front of it is what lets a
+   * BROWSER present the same key once (`?key=` or the sign-in form) and
+   * then ride an HttpOnly cookie — without it, `--api-key` made the
+   * dashboard UI 401 on every page load (#373 item 6). With no key
+   * configured both are pass-throughs.
+   */
+  app.use(createSessionAuth({ apiKey: config.security.apiKey, bearerAuth: createAuthMiddleware(config) }));
 
   // Tenant resolution — attaches req.tenantId to every request.
   // OSS: always resolves to LOCAL_TENANT. Cloud: swaps for an auth-aware

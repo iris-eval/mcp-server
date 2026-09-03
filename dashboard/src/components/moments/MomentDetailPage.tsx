@@ -281,7 +281,16 @@ export function MomentDetailPage() {
   if (!data) return null;
 
   const sig = getSignificanceVisual(data.significance.kind);
-  const verdict = getVerdictVisual(data.verdict);
+  // The detail carries each eval's critical_failures, so a veto by a
+  // deployed high/critical rule — which the significance classifier does
+  // not see, it only knows the built-in safety bundle — still turns the
+  // chip red here instead of leaving an amber PARTIAL beside "Vetoed by".
+  const vetoingEvals = data.evals.filter((e) => e.criticalFailures && e.criticalFailures.length > 0);
+  const verdict = getVerdictVisual(data.verdict, {
+    significanceKind: data.significance.kind,
+    vetoed: vetoingEvals.length > 0,
+    vetoedBySafety: vetoingEvals.some((e) => e.evalType === 'safety'),
+  });
   const toolCalls = data.toolCalls ?? [];
   const visibleTools = toolsExpanded ? toolCalls : toolCalls.slice(0, 3);
 
@@ -300,7 +309,9 @@ export function MomentDetailPage() {
           <h2 id="moment-sig-label" style={styles.significanceLabel}>{data.significance.label}</h2>
           <p style={styles.significanceReason}>{data.significance.reason}</p>
           <div style={styles.metaRow}>
-            <span style={{ color: verdict.color, fontWeight: 700 }}>{verdict.label}</span>
+            <Tooltip content={verdict.tooltip}>
+              <span style={{ color: verdict.color, fontWeight: 700 }} tabIndex={0}>{verdict.label}</span>
+            </Tooltip>
             <span>{data.agentName}</span>
             <span>{formatTimestamp(data.timestamp)}</span>
             {data.costUsd != null && (
@@ -336,8 +347,8 @@ export function MomentDetailPage() {
         >
           <strong style={{ color: 'var(--eval-pass)' }}>✓ {deployedToast} deployed</strong>
           <span style={{ ...styles.ctaHint, color: 'var(--text-secondary)' }}>
-            The rule is live and will fire on every future evaluation of its category. Audit
-            entry written to <code>~/.iris/audit.log</code>.
+            The rule is live and will fire on every future evaluation of its category. The deploy
+            was recorded in the <Link to="/audit" style={{ textDecoration: 'underline' }}>audit log</Link>.
           </span>
         </div>
       )}

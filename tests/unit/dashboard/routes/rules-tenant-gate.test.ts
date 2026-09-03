@@ -41,7 +41,7 @@ function makeAppWithoutTenant() {
 
 async function request(
   app: express.Express,
-  method: 'GET' | 'POST' | 'DELETE',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<{ status: number }> {
@@ -79,6 +79,12 @@ describe('/rules/custom — tenant gate', () => {
   it('DELETE refuses when tenant middleware is not mounted', async () => {
     const app = makeAppWithoutTenant();
     const res = await request(app, 'DELETE', '/api/v1/rules/custom/anything');
+    expect(res.status).toBe(500);
+  });
+
+  it('PATCH (enable/disable) refuses when tenant middleware is not mounted', async () => {
+    const app = makeAppWithoutTenant();
+    const res = await request(app, 'PATCH', '/api/v1/rules/custom/anything', { enabled: false });
     expect(res.status).toBe(500);
   });
 });
