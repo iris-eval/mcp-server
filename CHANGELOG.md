@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-03
+
 **The verdict-integrity patch.** A deep review of the eval engine and the nine MCP tool handlers, run against the question "does this do what Iris says it does, for a stranger who installed it from npm today", confirmed nine defects. Three of them let a caller see `passed: true` on output that a critical rule never actually cleared; one let a harmless order number fail a whole safety evaluation. Every item below has a regression test that fails on the previous code.
 
 ### Security
