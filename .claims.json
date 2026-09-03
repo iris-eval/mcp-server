@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-03T19:37:35.685Z",
-  "generatedFromCommit": "317f6ef",
+  "generatedAt": "2026-09-03T19:54:43.011Z",
+  "generatedFromCommit": "4e16e7d",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -103,8 +103,8 @@
   },
   "release": {
     "currentReleaseDate": "2026-09-03",
-    "currentReleaseHeadline": "The verdict-integrity patch",
-    "currentReleaseVersion": "0.5.1",
+    "currentReleaseHeadline": "The correctness release",
+    "currentReleaseVersion": "0.6.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -151,7 +151,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.5.1",
+    "mcpServer": "0.6.0",
     "websitePackage": "0.1.0"
   }
 }
