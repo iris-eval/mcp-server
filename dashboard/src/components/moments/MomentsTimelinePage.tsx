@@ -371,7 +371,7 @@ export function MomentsTimelinePage() {
       // Fetch the first selected moment's full detail (composer needs eval results).
       // Compose a multi-moment description noting how many other moments share the
       // pattern. Full multi-moment composer (deduping rule chips, intersect failed
-      // sets) is queued for v0.4.1.
+      // sets) is a later optimization.
       const first = selectedMoments[0];
       const detail = await api.getMomentDetail(first.id);
       const annotated: DecisionMomentDetail = {
@@ -405,7 +405,7 @@ export function MomentsTimelinePage() {
   return (
     <div style={styles.page}>
       <PageHeader
-        subtitle="Every trace, classified by what makes it noteworthy. Safety violations and cost spikes surface to the top; happy-path passes recede. Click a moment to see why it was flagged and turn the observed pattern into a deployable rule."
+        subtitle="Every trace, newest first, classified by what makes it noteworthy. Use the significance filter to surface safety violations and cost spikes; the Failures view on the dashboard already leads with them. Click a moment to see why it was flagged and turn the observed pattern into a deployable rule."
         meta={
           data && (
             <span

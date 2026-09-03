@@ -462,6 +462,17 @@ function generateTimestamp(dayIndex: number): string {
   const second = randomInt(0, 59);
 
   dayStart.setHours(hour, minute, second, randomInt(0, 999));
+  /*
+   * The last day is TODAY, and the hour above is drawn from the whole day
+   * — so before this clamp a demo seeded at 09:00 carried traces stamped
+   * 22:00 tonight, which the timeline rendered as "just now" and the
+   * "new since you last looked" counter kept re-counting. A demo trace
+   * is never in the future: anything past the seed moment lands inside
+   * the hour before it (still seeded-random, still deterministic).
+   */
+  if (dayStart.getTime() > now.getTime()) {
+    return new Date(now.getTime() - randomInt(1, 3_600_000)).toISOString();
+  }
   return dayStart.toISOString();
 }
 
