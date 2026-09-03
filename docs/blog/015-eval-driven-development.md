@@ -2,7 +2,8 @@
 title: "Eval-Driven Development: Write the Rules Before the Prompt"
 description: "Eval-Driven Development applies TDD principles to AI agents: define eval rules before prompts, iterate on scores, ship when rules pass."
 date: 2026-03-28
-updated: 2026-04-22
+updated: 2026-09-03
+seoTitle: "Eval-Driven Development for AI Agents"
 author: Ian Parent
 tags: [edd, eval-driven-development, agent-eval, tdd, mcp, vocabulary]
 relatedPosts: [eval-coverage-the-metric-your-agents-are-missing, the-eval-loop, the-eval-gap]

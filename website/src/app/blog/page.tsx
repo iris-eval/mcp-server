@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     description:
       "Research and insights on MCP agent observability and evaluation.",
     url: "https://iris-eval.com/blog",
+    type: "website",
     images: [OG_IMAGE_URL],
   },
   twitter: {

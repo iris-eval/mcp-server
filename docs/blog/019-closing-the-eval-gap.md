@@ -2,7 +2,9 @@
 title: "Closing the Eval Gap: From Lenient Defaults to Signal That Matters"
 description: "Default eval thresholds are designed to catch catastrophe, not degradation. Here's how configurable thresholds and smarter rule exclusion turn your evals from rubber stamps into real quality gates."
 date: 2026-04-14
-updated: 2026-04-22
+updated: 2026-09-03
+seoTitle: "Closing the Eval Gap: Signal That Matters"
+seoDescription: "Default eval thresholds catch catastrophe, not degradation. Configurable thresholds and smarter rule exclusion turn evals from rubber stamps into real gates."
 author: Ian Parent
 tags: [eval-gap, agent-eval, thresholds, quality, mcp, configuration]
 relatedPosts: [the-eval-gap, self-calibrating-eval, output-quality-score]

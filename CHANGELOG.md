@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`iris-eval.com/docs` now resolves.** The dashboard's command palette ("Open Iris docs") and older directory listings link there, and the site had no such route — the entry landed on a 404. `/docs` and `/docs/<path>` now redirect (temporarily, until a hosted docs site exists) to the `docs/` directory on GitHub. The `$schema` URL `.claims.json` has carried since the truthbase was introduced, `https://iris-eval.com/claims-schema-v1.json`, also resolves now instead of 404ing.
+
 ## [0.5.1] - 2026-09-03
 
 **The verdict-integrity patch.** A deep review of the eval engine and the nine MCP tool handlers, run against the question "does this do what Iris says it does, for a stranger who installed it from npm today", confirmed nine defects. Three of them let a caller see `passed: true` on output that a critical rule never actually cleared; one let a harmless order number fail a whole safety evaluation. Every item below has a regression test that fails on the previous code.

@@ -3,12 +3,29 @@ import Link from "next/link";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { RATE_LIMIT_API, RATE_LIMIT_MCP } from "@/lib/claims";
+import { OG_IMAGE_URL } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Security — Iris",
   description:
     "How Iris protects your data: local-by-default storage, tenant isolation, signed releases, SBOMs, and supply-chain transparency.",
   alternates: { canonical: "https://iris-eval.com/security" },
+  openGraph: {
+    title: "Security — Iris",
+    description:
+      "Local-by-default storage, tenant isolation, signed releases, SBOMs, and supply-chain transparency.",
+    url: "https://iris-eval.com/security",
+    type: "website",
+    images: [OG_IMAGE_URL],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Security — Iris",
+    description:
+      "Local-by-default storage, tenant isolation, signed releases, SBOMs, and supply-chain transparency.",
+    images: [OG_IMAGE_URL],
+    site: "@iris_eval",
+  },
 };
 
 export default function Security(): React.ReactElement {

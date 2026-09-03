@@ -9,7 +9,7 @@ import { FaqSection } from "@/components/learn/faq-section";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 
 export const metadata: Metadata = {
-  title: "The Eval Loop: Evals as the Loss Function for Agent Quality — Iris",
+  title: "The Eval Loop: Evals as Your Agent's Loss Function — Iris",
   description: "What is the eval loop? The continuous cycle of score, diagnose, calibrate, re-score that drives agent quality improvement over time.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-loop" },
   openGraph: { title: "The Eval Loop: Evals as the Loss Function for Agent Quality", description: "The continuous cycle that drives agent quality improvement.", url: "https://iris-eval.com/learn/eval-loop", type: "article", images: [OG_IMAGE_URL] },
@@ -94,7 +94,7 @@ export default function LearnEvalLoop(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris provides the scoring layer for the eval loop. Every output is scored automatically — the &quot;Score&quot; stage runs with zero effort. The dashboard provides the &quot;Diagnose&quot; stage — see which rules fail, when, and at what rate. Calibration and re-scoring happen as you adjust rules and watch the impact in real-time.
+          Iris provides the scoring layer for the eval loop. Every output the agent sends to Iris is scored in under a millisecond — the &quot;Score&quot; stage is one tool call, or one HTTP POST from your code. The dashboard provides the &quot;Diagnose&quot; stage — see which rules fail, when, and at what rate. Calibration and re-scoring happen as you adjust rules and watch the impact in real-time.
         </p>
         <p className="mt-6 text-text-secondary"><Link href="/blog/the-eval-loop" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: The Eval Loop &rarr;</Link></p>
 

@@ -42,6 +42,19 @@ const nextConfig: NextConfig = {
       destination: "/#waitlist",
       permanent: true,
     },
+    // The dashboard's command palette ("Open Iris docs") and older listings
+    // link to iris-eval.com/docs. The docs live in the repo; send readers
+    // there until a hosted docs site exists. Temporary on purpose.
+    {
+      source: "/docs",
+      destination: "https://github.com/iris-eval/mcp-server/tree/main/docs",
+      permanent: false,
+    },
+    {
+      source: "/docs/:path*",
+      destination: "https://github.com/iris-eval/mcp-server/blob/main/docs/:path*",
+      permanent: false,
+    },
   ],
 };
 

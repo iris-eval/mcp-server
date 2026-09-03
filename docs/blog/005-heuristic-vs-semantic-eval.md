@@ -2,7 +2,8 @@
 title: "Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge"
 description: "When sub-millisecond heuristic eval rules outperform LLM-as-Judge for PII detection, prompt injection, and cost threshold enforcement."
 date: 2026-03-15
-updated: 2026-08-13
+updated: 2026-09-03
+seoTitle: "Heuristic vs Semantic Eval for AI Agents"
 author: Ian Parent
 tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
 relatedPosts: [how-to-evaluate-agent-output-without-llm, iris-v0-4-release-notes, eval-driven-development]

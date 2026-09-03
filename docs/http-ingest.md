@@ -4,10 +4,26 @@
 The MCP `log_trace` tool only fires when the model *chooses* to call it; this endpoint
 fires when **your code** calls it. Same body, same storage row, same dashboard.
 
-The endpoint lives on the dashboard server, so it sits behind the full middleware
-stack: loopback bind (`127.0.0.1` by default), the DNS-rebinding guard (hostile
-`Origin`/`Host` headers are rejected with `403` before anything is written), optional
-Bearer auth, and the shared API rate limiter.
+The endpoint lives on the **dashboard server** (default port `6920`), not on the MCP
+transport port, so it sits behind the full middleware stack: loopback bind (`127.0.0.1`
+by default), the DNS-rebinding guard (hostile `Origin`/`Host` headers are rejected with
+`403` before anything is written), optional Bearer auth, and the shared API rate limiter.
+
+**It exists only while the dashboard is running.** Pass `--dashboard`, set
+`IRIS_DASHBOARD=true`, or set `dashboard.enabled: true` in `config.json`. Since v0.5.0
+the dashboard does **not** start implicitly with `--transport http` — a server started
+with `--transport http` alone serves `/mcp` on port `3000` and logs a line saying how
+to turn the dashboard on; `POST /api/v1/traces` is not there until you do.
+
+Two things to know before pointing production traffic at it:
+
+- **Writes are unauthenticated unless you set `--api-key` (or `IRIS_API_KEY`).** With
+  no key, anything that can reach the dashboard port can store traces. The loopback
+  bind and the rebinding guard are what keep that to your own machine by default; if
+  you bind beyond loopback (`--dashboard-host`), set a key.
+- **Stored text is verbatim.** `input` and `output` land in `iris.db` exactly as sent,
+  including anything `no_pii` goes on to flag. Traces older than `retention.days`
+  (default 30, in `config.json`) are deleted at startup; there is no other redaction.
 
 ---
 

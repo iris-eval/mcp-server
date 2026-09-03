@@ -138,7 +138,7 @@ export default function LearnEvalDrift(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris scores every output inline, making drift visible as a trend in the dashboard. When scores drop over time, you see it immediately — not weeks later from user complaints. The &quot;All Time&quot; period view lets you compare current performance against historical baselines.
+          Iris scores every output inline, making drift visible as a trend in the dashboard. When scores drop over time, you see it immediately — not weeks later from user complaints. The period selector (24h, 7d, 30d or 90d) lets you compare the current window against the one before it.
         </p>
         <p className="mt-6 text-text-secondary leading-relaxed">
           <Link href="/blog/eval-drift-the-silent-quality-killer" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: Eval Drift &rarr;</Link>

@@ -8,7 +8,7 @@
 [![CI](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/iris-eval/mcp-server/badge)](https://securityscorecards.dev/viewer/?uri=github.com/iris-eval/mcp-server)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12849/badge)](https://www.bestpractices.dev/projects/12849)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/iris-eval/mcp-server/pkgs/container/mcp-server)
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
 [![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/server/iris/iris-eval)
@@ -56,11 +56,11 @@ Your agent discovers Iris's nine tools on connect, and the dashboard serves at *
 
 The trace lands on the dashboard with its scores. Prefer the MCP server headless? Drop `--dashboard` from the args — you can open the same dashboard any time with `npx @iris-eval/mcp-server --dashboard`.
 
-**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](docs/http-ingest.md)). The CLI and SDKs on the [roadmap](docs/roadmap.md) will be thin clients over the same endpoint.
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md)). The CLI and SDKs on the [roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md) will be thin clients over the same endpoint.
 
 ### Capture over HTTP (no model in the loop)
 
-With the dashboard running, anything that can send an HTTP request can log a trace — and optionally run the deterministic evals in the same request:
+The ingest endpoint lives on the **dashboard port** — `6920` by default, not the MCP transport port — and it exists only while the dashboard is running. Pass `--dashboard` (or set `IRIS_DASHBOARD=true`); `--transport http` on its own does **not** start it, and a request to the transport port returns `404`. With the dashboard up, anything that can send an HTTP request can log a trace — and optionally run the deterministic evals in the same request:
 
 ```bash
 curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
@@ -74,15 +74,16 @@ curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
   }'
 ```
 
-Returns `201` with the stored `trace_id` and the evaluation result. The endpoint accepts the same body as the `log_trace` tool and sits behind the same loopback-only middleware stack as the rest of the dashboard. Full contract, field reference, and error semantics: [docs/http-ingest.md](docs/http-ingest.md).
+Returns `201` with the stored `trace_id` and the evaluation result. The endpoint accepts the same body as the `log_trace` tool and sits behind the same middleware stack as the rest of the dashboard: loopback bind and the DNS-rebinding guard by default, plus Bearer auth when you set one. **Two plain facts about it:** it accepts unauthenticated writes unless Iris was started with `--api-key` (or `IRIS_API_KEY`) — the loopback bind is what keeps it to your machine by default, so set a key before binding beyond loopback; and what it stores is verbatim — `input` and `output` land in `iris.db` exactly as sent, including any text `no_pii` goes on to flag. Full contract, field reference, and error semantics: [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md).
 
-### Check the install
+### Verify your install
 
 ```bash
-npx @iris-eval/mcp-server --self-test
+npx @iris-eval/mcp-server --self-test   # offline diagnostic; exit 0 = healthy, 1 = a check failed
+npx @iris-eval/mcp-server --version     # prints the installed version
 ```
 
-An offline install diagnostic: storage round-trip, deterministic evals, dashboard + DNS-rebinding guard — all inside an isolated temp home, so your real database is never opened. Exit code 0 = healthy, 1 = a check failed.
+`--self-test` runs 12 checks — storage round-trip, a planted SSN and a planted injection caught by the safety rules, dashboard boot, the DNS-rebinding guard — inside an isolated temp home, so your real database is never opened. Everything Iris writes lives under one directory, your **Iris home**: `~/.iris` by default (`%USERPROFILE%\.iris` on Windows), or wherever `IRIS_HOME` points. That is where `iris.db`, `config.json`, `custom-rules.json`, `audit.log`, `preferences.json` and the demo files live; point `IRIS_HOME` at a scratch directory to try Iris without touching your real data.
 
 <details>
 <summary><strong>Setup by tool</strong></summary>
@@ -190,7 +191,7 @@ docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data ghcr.io/iris-eval/mcp-se
 | **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
 | **Local-first** | Everything lives in SQLite on your disk. No account, no sign-up, no telemetry. Outbound HTTP happens only where you opt in: your own LLM-judge key, citation fetching, or an OTel exporter you configure. |
 
-Where this is going next: [the roadmap](docs/roadmap.md).
+Where this is going next: [the roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md).
 
 ## MCP Tools
 
@@ -206,7 +207,7 @@ Iris registers nine tools that any MCP-compatible agent can invoke — full rule
 - **`evaluate_with_llm_judge`** — Semantic eval via LLM (Anthropic or OpenAI). Five templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, per-eval pricing disclosed. **Bring your own API key** (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris doesn't proxy or relay LLM calls.
 - **`verify_citations`** — Extract citations from output (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded + domain-allowlisted resolver, and use an LLM judge to check whether each source actually supports the cited claim. Opt-in outbound HTTP. Same BYOK requirement as `evaluate_with_llm_judge`.
 
-When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effort OTLP/HTTP JSON export to any OpenTelemetry collector (Jaeger, Grafana Tempo, Datadog OTLP, Honeycomb, etc). See [docs/otel-integration.md](docs/otel-integration.md).
+When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effort OTLP/HTTP JSON export to any OpenTelemetry collector (Jaeger, Grafana Tempo, Datadog OTLP, Honeycomb, etc). See [docs/otel-integration.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-integration.md).
 
 ### How `passed` is decided
 
@@ -215,9 +216,44 @@ When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effo
 - **`score`** (0..1) is the weighted average across the rules that ran — a quality gradient.
 - **`passed`** is the ship/no-ship verdict: `true` only when the score clears the pass threshold (default **0.7**) **and no critical rule failed**.
 
-Genuine safety violations hard-fail. `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know: a critical rule that **skipped** (missing context, or any other cause of a skip) has not judged the output and does not veto — `rule_results` shows every skip and its reason, so a gate that must fail closed on non-verdicts can.
+Genuine safety violations hard-fail. `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know: a critical rule that **skipped** (missing context, or any other cause of a skip) has not judged the output and does not veto — it is listed in `critical_skipped`, and `rule_results` shows every skip and its reason, so a gate that must fail closed on non-verdicts can.
 
 One gotcha for CI gates: if you omit `eval_type`, the default `completeness` bundle runs — **safety rules don't**. The response echoes `eval_type` (plus a `note` when it was defaulted) so your gate can verify which bundle actually ran. Key on `passed` for the verdict and `eval_type: "safety"` for coverage.
+
+### Authoring a custom rule
+
+Two ways to add a rule. **Inline** rules ride along on one `evaluate_output` call (`custom_rules`, up to 10 per call); they fire alongside whatever `eval_type` bundle you chose, or alone with `eval_type: "custom"`. **Deployed** rules are registered once with `deploy_rule`, persist in `custom-rules.json` under your Iris home, and fire on every future `evaluate_output` of their `evalType`. The definition is the same shape either way:
+
+| Field | Required | What it is |
+|---|---|---|
+| `name` | yes | 1–80 characters; appears as `ruleName` in results |
+| `type` | yes | one of `regex_match` · `regex_no_match` · `min_length` · `max_length` · `contains_keywords` · `excludes_keywords` · `json_schema` · `cost_threshold` |
+| `config` | yes | the keys for that type: `pattern` (+ optional `flags`) for the two regex types · `min_length` / `max_length` (a character count) · `keywords` (+ optional `threshold`, 0–1, default `1` = all must appear) for the two keyword types · `{}` for `json_schema` · `max_cost` in USD for `cost_threshold` |
+| `weight` | no | weight in the score; default `1` |
+
+`deploy_rule` wraps the definition with `name`, an optional `description`, `evalType` (`completeness` · `relevance` · `safety` · `cost` · `custom`) and `severity`. Severity says what a **failure** means: `low`/`medium` only lower the score; `high`/`critical` hard-fail the evaluation — `passed: false`, the rule named in `critical_failures` — whatever the weighted score says. A rule that skips (a `cost_threshold` rule with no `cost_usd`, or a regex killed at the 100 ms sandbox budget) has not judged the output and is listed in `critical_skipped` instead. Deploy a critical rule that forbids internal hostnames in anything the agent says:
+
+```json
+{
+  "name": "no_internal_hostnames",
+  "description": "Output must not mention internal hostnames.",
+  "evalType": "safety",
+  "severity": "critical",
+  "definition": {
+    "name": "no_internal_hostnames",
+    "type": "regex_no_match",
+    "config": { "pattern": "\\b[a-z0-9-]+\\.internal\\.example\\b", "flags": "i" }
+  }
+}
+```
+
+The response is the persisted rule — keep the `id` for `delete_rule`:
+
+```json
+{ "rule": { "id": "rule-588823d0", "name": "no_internal_hostnames", "evalType": "safety", "severity": "critical", "enabled": true, "version": 1, "definition": { "…": "…" } } }
+```
+
+From the very next `evaluate_output` with `eval_type: "safety"`, an output that mentions `db-primary.internal.example` comes back `passed: false` with `critical_failures: ["no_internal_hostnames"]` — even though all five built-in safety rules passed and the weighted score is 0.895. Regex patterns must pass a ReDoS check at deploy time and always run in a sandbox worker under a hard 100 ms deadline. `list_rules` shows what is deployed; the dashboard's rule composer builds the same shape from a failure you clicked on. Full reference, scoring per type, and worked examples: [docs/custom-rules.md](https://github.com/iris-eval/mcp-server/blob/main/docs/custom-rules.md).
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
@@ -231,19 +267,19 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 
 ## Examples
 
-- [Claude Desktop setup](examples/claude-desktop/) — MCP config for stdio and HTTP modes
-- [TypeScript — MCP SDK client](examples/typescript/basic-usage.ts) — connect and invoke tools
-- [HTTP transport (TS + Python)](examples/http-transport/) — full client code for REST-style integration
-- [LangChain instrumentation (Python, conceptual)](examples/langchain/observe-agent.py) — scaffold showing the shape; needs your agent code to be runnable
-- [CrewAI instrumentation (Python, conceptual)](examples/crewai/observe-crew.py) — scaffold; same caveat
+- [Claude Desktop setup](https://github.com/iris-eval/mcp-server/tree/main/examples/claude-desktop) — MCP config for stdio and HTTP modes
+- [TypeScript — MCP SDK client](https://github.com/iris-eval/mcp-server/blob/main/examples/typescript/basic-usage.ts) — connect and invoke tools
+- [HTTP transport (TS + Python)](https://github.com/iris-eval/mcp-server/tree/main/examples/http-transport) — full client code for REST-style integration
+- [LangChain instrumentation (Python, conceptual)](https://github.com/iris-eval/mcp-server/blob/main/examples/langchain/observe-agent.py) — scaffold showing the shape; needs your agent code to be runnable
+- [CrewAI instrumentation (Python, conceptual)](https://github.com/iris-eval/mcp-server/blob/main/examples/crewai/observe-crew.py) — scaffold; same caveat
 
 ## Community
 
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
-- [Contributing Guide](CONTRIBUTING.md) — How to contribute
-- [HTTP Ingest](docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
-- [Roadmap](docs/roadmap.md) — What's coming next
+- [Contributing Guide](https://github.com/iris-eval/mcp-server/blob/main/CONTRIBUTING.md) — How to contribute
+- [HTTP Ingest](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
+- [Roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md) — What's coming next
 
 <details>
 <summary><strong>Configuration & Security</strong></summary>
@@ -256,31 +292,44 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--port` | `3000` | HTTP transport port |
 | `--db-path` | `~/.iris/iris.db` | SQLite database path |
 | `--config` | `~/.iris/config.json` | Config file path |
-| `--api-key` | — | API key for HTTP authentication |
-| `--dashboard` | `false` | Enable web dashboard |
+| `--api-key` | — | API key for HTTP authentication (transport and dashboard, including `POST /api/v1/traces`) |
+| `--dashboard` | `false` | Enable web dashboard. Also the only way the `POST /api/v1/traces` ingest endpoint starts — it never starts implicitly with `--transport http` |
 | `--dashboard-port` | `6920` | Dashboard port |
 | `--dashboard-host` | `127.0.0.1` | Dashboard bind address. Loopback by default — the dashboard is unauthenticated unless `--api-key` is set, so binding beyond loopback exposes your full trace history |
 | `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
 | `--demo-clear` | `false` | Delete the demo database and exit |
 | `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
+| `--purge` | `false` | Delete the data Iris has stored under your Iris home and exit — the way to remove traces whose text you no longer want on disk. Prints each file it removes; `--help` lists exactly which files it covers |
+| `--version` | — | Print the installed version and exit |
 
 ### Environment Variables
+
+Every variable `--help` documents. CLI flags take precedence over environment variables when both are set.
 
 | Variable | Description |
 |----------|-------------|
 | `IRIS_TRANSPORT` | Transport type (`stdio` or `http`) |
-| `IRIS_PORT` | HTTP transport port |
-| `IRIS_HOST` | HTTP transport host (default `127.0.0.1`) |
+| `IRIS_HOST` | HTTP transport bind address (default `127.0.0.1`) |
+| `IRIS_PORT` | HTTP transport port (1-65535, default `3000`) |
 | `IRIS_HOME` | Directory for all per-user files: `config.json`, `iris.db`, `custom-rules.json`, `audit.log`, `preferences.json` (default `~/.iris`) |
 | `IRIS_DB_PATH` | SQLite database path (overrides `IRIS_HOME` for the DB only) |
 | `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
-| `IRIS_DASHBOARD` | Enable web dashboard (`true`/`false`; `false` also overrides `dashboard.enabled` in config.json) |
-| `IRIS_DASHBOARD_PORT` | Dashboard port (default `6920`) |
+| `IRIS_DASHBOARD` | `true`/`1`/`yes`/`on` enables the web dashboard; `false`/`0`/`no`/`off` disables it (also overrides `dashboard.enabled` in `config.json`) |
+| `IRIS_DASHBOARD_PORT` | Dashboard port (1-65535, default `6920`) |
 | `IRIS_DASHBOARD_HOST` | Dashboard bind address (default `127.0.0.1`) |
 | `IRIS_API_KEY` | API key for HTTP authentication |
-| `IRIS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
-
-CLI flags take precedence over environment variables when both are set.
+| `IRIS_ALLOWED_ORIGINS` | Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. `http://localhost:*`). HTTP transport: exact-match `Origin` allowlist for DNS-rebinding protection (globs ignored; the server's own loopback origins are always allowed) |
+| `IRIS_NO_AUTO_LAUNCH` | Set to `1` to disable the first-run dashboard auto-launch |
+| `IRIS_ANTHROPIC_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=anthropic` |
+| `IRIS_OPENAI_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=openai` |
+| `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` | Hard cost cap per LLM judge call (default `0.25`) |
+| `IRIS_CITATION_ALLOW_FETCH` | Set to `1` to permit outbound HTTP in `verify_citations` (off by default) |
+| `IRIS_CITATION_DOMAINS` | Comma-separated hostname allowlist for `verify_citations` (suffix match) |
+| `IRIS_OTEL_ENDPOINT` | Enable best-effort OTLP/HTTP JSON trace export to this collector URL |
+| `IRIS_OTEL_SERVICE_NAME` | `service.name` resource attribute for OTel export (default `iris-mcp`) |
+| `IRIS_OTEL_HEADERS` | Comma-separated `k=v` headers for OTel export (e.g. `authorization=Bearer abc`) |
+| `IRIS_OTEL_TIMEOUT_MS` | Per-export timeout (default `15000`) |
+| `RATE_LIMIT_SALT` | Website waitlist API only — required when the iris-eval.com site is deployed; the server never reads it |
 
 ### Security
 
@@ -298,6 +347,10 @@ When using HTTP transport, Iris includes:
 # Production deployment
 iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
 ```
+
+### Your data on disk
+
+Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact. Traces older than `retention.days` (default `30`, set in `config.json`) are deleted at startup. To remove stored data yourself, run `--purge`, or delete `iris.db` while Iris is stopped.
 
 </details>
 
@@ -326,20 +379,27 @@ Or install globally to avoid cache issues entirely:
 npm install -g @iris-eval/mcp-server@latest
 ```
 
+### `npm install --ignore-scripts` broke the SQLite binding
+
+Iris stores traces with `better-sqlite3`, a native module that fetches or compiles its binding in an install script. If that script was skipped — `--ignore-scripts` on the command line, `ignore-scripts=true` in an `.npmrc` (common on corporate machines), or a registry mirror that strips postinstall — startup fails with a long "Could not locate the bindings file" dump listing a dozen paths it tried. Rebuild that one module:
+
+```bash
+npm rebuild better-sqlite3
+# for a global install:
+npm rebuild -g better-sqlite3
+```
+
 ### Tools not showing up in Claude Code
 
 MCP tools only load at session start. After adding iris-eval, restart the session with `/clear` or relaunch the terminal.
 
 ### Version check
 
-Iris logs its version on the first startup line:
-
 ```bash
-npx @iris-eval/mcp-server --dashboard
-# First log line: "Starting Iris MCP server vX.Y.Z"
+npx @iris-eval/mcp-server --version
 ```
 
-For a global install, `npm ls -g @iris-eval/mcp-server` shows the installed version.
+The first startup log line also carries it (`Starting Iris MCP server vX.Y.Z`), and `--self-test` prints it in its summary. For a global install, `npm ls -g @iris-eval/mcp-server` shows the installed version.
 
 ### Updating
 

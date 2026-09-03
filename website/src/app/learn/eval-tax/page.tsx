@@ -44,7 +44,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "How do you eliminate the eval tax?",
-    answer: "By evaluating every agent output automatically with inline scoring rules. When eval runs on 100% of outputs with zero manual effort, the tax drops to near zero. The key is making eval effortless — if it requires setup, pipelines, or manual review, teams skip it and the tax compounds.",
+    answer: "By scoring every agent output inline, with deterministic rules that run in under a millisecond, so nothing stands between you and full coverage. Iris exposes scoring as an MCP tool the agent calls; traffic that must be scored regardless of what the model chooses goes through POST /api/v1/traces from your own code. When eval runs on 100% of outputs, the tax drops to near zero. The key is making eval effortless — if it requires pipelines or manual review, teams skip it and the tax compounds.",
   },
 ];
 
@@ -150,12 +150,12 @@ export default function LearnEvalTax(): React.ReactElement {
         {/* How Iris helps */}
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris eliminates the eval tax by scoring every agent output automatically — inline, at the protocol layer. No SDK, no pipeline to build, no manual review. Add one line to your MCP config and every output gets evaluated for quality, safety, and cost.
+          Iris removes the setup cost that keeps teams paying the eval tax: scoring is an MCP tool the agent calls inline, at the protocol layer. No SDK, no pipeline to build, no manual review. Add one line to your MCP config and the agent can score any output for quality, safety, and cost — and for traffic that must be scored whether or not the model chooses to, your code can send it to <code>POST /api/v1/traces</code> instead.
         </p>
         <div className="mt-6 rounded-lg border border-border-default bg-[#0d1117] p-5 font-mono text-sm text-text-secondary overflow-x-auto">
           <pre>{`npx @iris-eval/mcp-server
 
-# Every agent output is now scored for:
+# Ask the agent to evaluate an output, and Iris scores it for:
 # - Completeness (response length, structure)
 # - Relevance (topic consistency)
 # - Safety (PII detection, prompt injection)

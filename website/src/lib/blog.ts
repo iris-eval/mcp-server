@@ -10,6 +10,15 @@ export interface BlogPost {
   author: string;
   tags: string[];
   description: string;
+  /**
+   * Optional search-snippet overrides. The on-page H1 and the OG card keep
+   * `title` / `description`; these feed only the <title> tag and the meta
+   * description, so a long editorial title can stay long while the tag a
+   * search engine truncates at ~60 chars gets a short form (see
+   * app/blog/[slug]/page.tsx).
+   */
+  seoTitle?: string;
+  seoDescription?: string;
   content: string;
   filename: string;
   published: boolean;
@@ -18,10 +27,15 @@ export interface BlogPost {
 
 const BLOG_DIR = join(process.cwd(), "..", "docs", "blog");
 
-function parseFrontmatter(raw: string): {
+function parseFrontmatter(input: string): {
   meta: Record<string, unknown>;
   content: string;
 } {
+  // A Windows checkout (core.autocrlf) hands us CRLF files; the delimiter
+  // regex below is LF-only, and a miss here silently turns the post's title
+  // into its filename and renders the body H1 twice. Normalise first so a
+  // local build on Windows produces the same pages as the Linux deploy.
+  const raw = input.replace(/\r\n/g, "\n");
   const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) return { meta: {}, content: raw };
 
@@ -73,6 +87,11 @@ function stripBodyH1(body: string): string {
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+function optionalString(value: unknown): string | undefined {
+  const s = typeof value === "string" ? value.trim() : "";
+  return s.length > 0 ? s : undefined;
+}
+
 function extractDescription(content: string): string {
   // First non-empty paragraph
   const lines = content.split("\n\n");
@@ -119,6 +138,8 @@ export function getAllPosts(): BlogPost[] {
         author: (meta.author as string) || "Ian Parent",
         tags: (meta.tags as string[]) || [],
         description: (meta.description as string) || extractDescription(content),
+        seoTitle: optionalString(meta.seoTitle),
+        seoDescription: optionalString(meta.seoDescription),
         content,
         filename,
         // parseFrontmatter yields STRINGS, so `meta.published` is the string

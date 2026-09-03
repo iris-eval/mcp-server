@@ -154,7 +154,7 @@ src/
   middleware/
     auth.ts             Bearer token auth with timing-safe comparison
     cors.ts             Origin allowlist with wildcard pattern matching
-    rate-limit.ts       Separate rate limiters for API (100/min) and MCP (20/min)
+    rate-limit.ts       Separate rate limiters for API (600/min) and MCP (20/min)
     error-handler.ts    Centralized error handler (Zod, HTTP, 500s)
     index.ts            Barrel exports
   resources/

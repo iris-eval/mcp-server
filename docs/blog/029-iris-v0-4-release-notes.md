@@ -2,7 +2,8 @@
 title: "What changed in Iris v0.4.0"
 description: "Iris v0.4.0 ships LLM-as-Judge (5 templates, cost-capped), semantic citation verification (SSRF-guarded fetch + per-claim LLM verdict), OpenTelemetry export, and a 9-tool MCP surface. Three vectors of the same thesis."
 date: 2026-05-02
-updated: 2026-08-11
+updated: 2026-09-03
+seoDescription: "Iris v0.4.0 ships LLM-as-Judge (5 templates, cost-capped), semantic citation verification, OpenTelemetry export, and a 9-tool MCP surface."
 author: Ian Parent
 tags: [release-notes, llm-as-judge, citation-verification, opentelemetry, mcp, agent-eval]
 relatedPosts: [closing-the-eval-gap, output-quality-score, the-eval-gap]
@@ -16,6 +17,8 @@ devto_tags: [ai, agenteval, opensource, programming]
 Iris v0.4.0 ships today. It's the release where protocol-native eval crosses from "deterministic rules" into "semantic scoring" — without giving up any of what made the deterministic layer work.
 
 Three headline features plus a lot of infrastructure work that quietly compounds. I'll go through each, why it matters, and how it fits the thesis.
+
+> **Editor's note (2026-09-03):** This section says "seven supported models". The pricing table in the repo has seven rows, but two of them are the same model under two IDs (`claude-haiku-4-5` and its dated alias), so the judge supports **six** models across Anthropic and OpenAI — the count the project's claims file records. The text below is left as written.
 
 ## 1 — LLM-as-Judge, as a real MCP tool
 
