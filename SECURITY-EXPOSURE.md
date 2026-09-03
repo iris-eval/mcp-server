@@ -214,6 +214,24 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 ---
 
+### 2026-09-03 — ten advisories patched by lockfile bump (Linux-regenerated)
+
+**Why this batch exists.** Main had not moved since 2026-08-13. In the three weeks between, the advisory database gained ten entries at ≥moderate against packages already in our lockfiles, and `check-exposure-coverage.mjs` fired on the first pull request to run CI afterwards (#391, a website fix that touched no dependency). That is the gate working as designed: it is deadlock-free, both exits live inside a pull request, and every one of the ten had an upstream fix, so the dependency PR took the bump exit for all of them rather than documenting them as open.
+
+**Remediated (no longer reported by `npm audit`):**
+
+| Advisory(ies) | Package | Was → Now | Load path | Decision |
+|---|---|---|---|---|
+| [GHSA-5jgf-p345-68v8](https://github.com/advisories/GHSA-5jgf-p345-68v8), [GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc), [GHSA-fph4-wmhf-6fwf](https://github.com/advisories/GHSA-fph4-wmhf-6fwf), [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp) (HIGH — host confusion via skipped IDN canonicalization / percent-encoded scheme normalization; SSRF via malformed IPv6 normalization / repeated hostname percent-decoding) | `fast-uri` | 3.1.5 → 3.1.7 | root ← `ajv@8.18.0` ← `@modelcontextprotocol/sdk@1.30.0` — runtime; same reachability as the 2026-05-08 fast-uri rows above (ajv `format: "uri"` validation only; iris's own outbound URL handling has its own scheme allowlist and SSRF guard) | **Patch** — lockfile bump; the existing `overrides.fast-uri = "^3.1.2"` pin admits 3.1.7 |
+| [GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8) (HIGH — custom generators can loop indefinitely when size is zero) | `nanoid` | 3.3.17 → 3.3.18 | root ← `postcss` ← `vite` ← `vitest`; website / dashboard / packages/init ← `postcss` — dev tooling only, never in the shipped package's runtime graph | **Patch** — lockfile bump |
+| [GHSA-c83g-rgw3-j3cx](https://github.com/advisories/GHSA-c83g-rgw3-j3cx), [GHSA-73wf-gq98-2v4g](https://github.com/advisories/GHSA-73wf-gq98-2v4g) (HIGH — unbounded cache growth via distinct query results; crash / prototype write via untrusted `browserslist-stats.json`) | `browserslist` | 4.28.4 → 4.28.8 | website, dashboard ← `@babel/helper-compilation-targets` — build-time only; no untrusted stats file exists in either tree | **Patch** — lockfile bump |
+| [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx), [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) (moderate — array-limit bypass via bracket-key comma parsing; DoS via attacker-controlled `isBuffer`) | `qs` | 6.15.2 → 6.16.0 | root ← `express@5.2.1` (+ `body-parser`) — runtime on the dashboard HTTP server; query strings are untrusted input | **Patch** — lockfile bump |
+| [GHSA-p498-v437-472g](https://github.com/advisories/GHSA-p498-v437-472g) (moderate — recursive copy follows symlinked files outside the source tree) | `@humanfs/node` | 0.16.7 → 0.16.8 (pulls in new dep `@humanfs/types@0.15.0`) | root, website ← `eslint` — dev tooling only | **Patch** — lockfile bump |
+
+**Lockfile provenance, again the platform trap.** The first attempt ran `npm update` on Windows: the root and website lockfiles came out clean, but the dashboard and packages/init lockfiles lost their `@emnapi/core` and `@emnapi/runtime` top-level entries — the rolldown trap this file's 2026-08-06 provenance note records. Reverted and regenerated under **WSL Linux** with `npm update <pkg> --package-lock-only --no-audit --no-fund --ignore-scripts` in each workspace. Verified per lockfile after the Linux run: zero package entries removed (`git diff main -- <lockfile> | grep -cE '^-\s+"node_modules/'` = 0 ×4), `@emnapi` line counts unchanged (root 0, website 24, dashboard 20, init 11), integrity-hash counts intact (+1 at root and website for the one genuinely new dep), and only the packages named above plus their own subdependencies moved.
+
+**Gate after:** `npm audit reports 0 advisory(ies) at >=moderate severity`. The Dependabot PR for the fast-uri bump (#390) is superseded by this batch.
+
 ## Operational notes
 
 - **When a new Dependabot alert opens:** add a section here within one PR cycle. The CI gate (`scripts/security/check-exposure-coverage.mjs`) will fail PRs that introduce or surface a new ≥medium alert without a corresponding row.
