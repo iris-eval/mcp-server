@@ -4,6 +4,39 @@ import type { IrisConfig } from '../types/index.js';
 import { defaultConfig } from './defaults.js';
 import { irisHome } from '../utils/iris-home.js';
 
+/*
+ * Owner-only (0700) for the iris home directory, matching the 0600 the data
+ * FILES inside it already get (write-atomic.ts, sqlite-adapter.ts). iris.db
+ * holds agent inputs and outputs verbatim — a PII detector necessarily
+ * stores the PII it found — and a 0755 directory beside 0600 files still
+ * lets every local account list what is there and read anything a library
+ * happens to create with the default umask (#372). The mode applies only
+ * when THIS process creates the directory; a pre-existing IRIS_HOME keeps
+ * whatever permissions its owner chose. No-op on Windows (ACLs govern).
+ */
+export const IRIS_HOME_DIR_MODE = 0o700;
+
+/**
+ * Create a directory Iris needs, or fail with ONE line that names the path
+ * and the permission problem (#371). Before this, an unwritable IRIS_HOME
+ * surfaced as a raw EPERM stack trace from deep inside mkdirSync — the
+ * first thing a new user saw, with nothing telling them which variable to
+ * change. Exported so --self-test probes the configured home through the
+ * exact same call the server will make.
+ */
+export function ensureIrisDirectory(path: string, what: string): void {
+  if (existsSync(path)) return;
+  try {
+    mkdirSync(path, { recursive: true, mode: IRIS_HOME_DIR_MODE });
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code ?? (err instanceof Error ? err.message : String(err));
+    throw new Error(
+      `Cannot create ${what} "${path}" (${code}). Iris keeps its database, config and rule files there. ` +
+        'Point IRIS_HOME at a directory this user can write, or fix the permissions on that path.',
+    );
+  }
+}
+
 function deepMerge(target: any, source: any): any {
   const result = { ...target };
   for (const key of Object.keys(source)) {
@@ -154,9 +187,7 @@ function cliArgsToConfig(args: CliArgs): Partial<IrisConfig> {
 
 export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   const home = irisHome();
-  if (!existsSync(home)) {
-    mkdirSync(home, { recursive: true });
-  }
+  ensureIrisDirectory(home, 'IRIS_HOME');
 
   const configPath = cliArgs?.config ?? join(home, 'config.json');
   const fileConfig = loadConfigFile(configPath);
@@ -167,10 +198,7 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   config = deepMerge(config, envConfig);
   config = deepMerge(config, argsConfig);
 
-  const dbDir = dirname(config.storage.path);
-  if (!existsSync(dbDir)) {
-    mkdirSync(dbDir, { recursive: true });
-  }
+  ensureIrisDirectory(dirname(config.storage.path), 'the database directory (IRIS_DB_PATH / --db-path)');
 
   return config;
 }

@@ -4,7 +4,9 @@ import type { Server } from 'node:http';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { loadConfig } from './config/index.js';
+import { PKG_VERSION } from './config/defaults.js';
 import { createStorage } from './storage/index.js';
+import { withDemoIngestGuard } from './storage/demo-guard.js';
 import { createIrisServer } from './server.js';
 import { createStdioTransport } from './transport/stdio.js';
 import { createHttpTransport } from './transport/http.js';
@@ -47,6 +49,8 @@ const CliSchema = z
     demo: z.boolean().optional(),
     'demo-clear': z.boolean().optional(),
     'self-test': z.boolean().optional(),
+    purge: z.boolean().optional(),
+    version: z.boolean().optional(),
     help: z.boolean().optional(),
   })
   .strict();
@@ -78,6 +82,8 @@ try {
       demo: { type: 'boolean', default: false },
       'demo-clear': { type: 'boolean', default: false },
       'self-test': { type: 'boolean', default: false },
+      purge: { type: 'boolean', default: false },
+      version: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
     strict: true,
@@ -85,6 +91,17 @@ try {
 } catch (err) {
   process.stderr.write(`iris-mcp: ${(err as Error).message}\nRun \`iris-mcp --help\` for usage.\n`);
   process.exit(2);
+}
+
+/*
+ * --version answers on stdout, bare, before anything else: the README's
+ * "check your version" recipe pointed at a flag that did not exist and a
+ * --help banner that printed no version (#369). Bare so `iris-mcp
+ * --version` composes in scripts the way `npm --version` does.
+ */
+if (parsed.values.version) {
+  process.stdout.write(`${PKG_VERSION}\n`);
+  process.exit(0);
 }
 
 const validation = CliSchema.safeParse(parsed.values);
@@ -99,7 +116,7 @@ const values = validation.data;
 
 if (values.help) {
   process.stderr.write(`
-Iris — MCP-Native Agent Eval Server
+Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
 Usage: iris-mcp [options]
 
@@ -121,9 +138,16 @@ Options:
                            transport). Idempotent: re-running reuses the seeded data.
   --demo-clear             Delete the demo database (and its sidecar files), then exit.
                            Your real traces are not touched.
-  --self-test              Run the offline install diagnostic and exit: storage round-trip,
-                           deterministic evals, dashboard + rebinding guard — all inside an
+  --self-test              Run the offline install diagnostic and exit: the configured IRIS_HOME
+                           is created and probed for writability, then storage round-trip,
+                           deterministic evals, dashboard + rebinding guard run inside an
                            isolated temp home. Exit code 0 = healthy, 1 = a check failed.
+  --purge                  Delete EVERY stored trace, span and evaluation from the configured
+                           database, compact the file and truncate the write-ahead log so the
+                           deleted text does not linger on disk, then exit. Deployed rules, the
+                           audit log and preferences are kept. Not reversible. Stop any running
+                           Iris server first — the file is compacted in place.
+  --version                Print the version and exit
   -h, --help               Show this help message
 
 Environment variables (CLI flags take precedence):
@@ -160,6 +184,19 @@ Dashboard preferences (~/.iris/preferences.json):
 }
 
 /*
+ * The mode flags are mutually exclusive, and the check runs before any of
+ * them so a refused combination exits without touching the filesystem —
+ * `--self-test --purge` must not quietly run only the first one it sees.
+ */
+const modeFlags = (['demo', 'demo-clear', 'self-test', 'purge'] as const).filter((flag) => values[flag]);
+if (modeFlags.length > 1) {
+  process.stderr.write(
+    `iris-mcp: ${modeFlags.map((flag) => `--${flag}`).join(' and ')} cannot be combined.\nRun \`iris-mcp --help\` for usage.\n`,
+  );
+  process.exit(2);
+}
+
+/*
  * --self-test exits BEFORE loadConfig() runs at module scope below —
  * deliberately. The diagnostic builds its own isolated IRIS_HOME and
  * scrubs the IRIS_* env layer (src/self-test.ts), so the normal boot
@@ -170,14 +207,6 @@ if (values['self-test']) {
   process.exit(await runSelfTest());
 }
 
-/*
- * Demo-mode flag validation happens before loadConfig so a refused
- * combination exits without touching the filesystem.
- */
-if (values.demo && values['demo-clear']) {
-  process.stderr.write('iris-mcp: --demo and --demo-clear cannot be combined.\nRun `iris-mcp --help` for usage.\n');
-  process.exit(2);
-}
 if (values.demo && values['db-path']) {
   process.stderr.write(
     'iris-mcp: --demo always serves its own database (demo.db under your iris home) and cannot be combined with --db-path.\n' +
@@ -213,6 +242,41 @@ const config = loadConfig({
 });
 
 const logger = createLogger(config);
+
+/*
+ * --purge (#372): the retention sweep only ever trimmed by age, and
+ * deleting iris.db by hand left every row readable in iris.db-wal. This
+ * is the one-command answer to "remove everything Iris stored about my
+ * agents" — every trace, span and evaluation for the local tenant,
+ * followed by VACUUM + a TRUNCATE checkpoint so the text is gone from the
+ * main file and the write-ahead log alike. Rules, audit log and
+ * preferences are not storage rows and stay. Prints what it removed and
+ * exits 0; runs against the configured database, never the demo one
+ * (--demo-clear handles that).
+ */
+async function runPurge(): Promise<void> {
+  const storage = createStorage(config);
+  await storage.initialize();
+  try {
+    const { traces, evalResults } = await storage.purge(LOCAL_TENANT);
+    process.stderr.write(
+      `iris-mcp: purged ${traces} trace(s) and ${evalResults} evaluation(s) from "${config.storage.path}" ` +
+        '(database compacted, write-ahead log truncated). Deployed rules, audit log and preferences were kept.\n',
+    );
+  } finally {
+    await storage.close();
+  }
+}
+
+if (values.purge) {
+  try {
+    await runPurge();
+    process.exit(0);
+  } catch (err) {
+    process.stderr.write(`iris-mcp: purge failed: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  }
+}
 
 async function main(): Promise<void> {
   logger.info(`Starting Iris MCP server v${config.server.version}`);
@@ -261,9 +325,21 @@ async function main(): Promise<void> {
   // cleanly.
   if (config.retention.days > 0) {
     try {
-      const deleted = await storage.deleteTracesOlderThan(LOCAL_TENANT, config.retention.days);
-      if (deleted > 0) {
-        logger.info(`Retention cleanup: deleted ${deleted} trace(s) older than ${config.retention.days} days`);
+      const deletedTraces = await storage.deleteTracesOlderThan(LOCAL_TENANT, config.retention.days);
+      /*
+       * Evaluations too (#372). Deleting a trace only NULLs trace_id on
+       * its evaluations, so every eval row — output_text verbatim,
+       * including whatever no_pii flagged — used to outlive the retention
+       * window indefinitely while the traces around it were swept.
+       */
+      const deletedEvals = await storage.deleteEvalResultsOlderThan(LOCAL_TENANT, config.retention.days);
+      if (deletedTraces + deletedEvals > 0) {
+        // Fold the WAL into the main file and truncate it, so the swept
+        // rows do not survive as readable text in iris.db-wal.
+        await storage.checkpoint();
+        logger.info(
+          `Retention cleanup: deleted ${deletedTraces} trace(s) and ${deletedEvals} evaluation(s) older than ${config.retention.days} days`,
+        );
       }
     } catch (err) {
       logger.warn(`Retention cleanup skipped: ${err instanceof Error ? err.message : String(err)}`);
@@ -375,6 +451,8 @@ ${line}
 ${counts}
   Demo database: "${summary.dbPath}"
   Your real trace database is untouched — demo data never mixes with it.
+  Trace ingest (POST /api/v1/traces) is refused in demo mode: start the
+  real server (iris-mcp --dashboard) to store your own traces.
 
   Worth clicking into:
     - a PII leak (a synthetic SSN in an agent reply) caught by the safety rules
@@ -412,7 +490,13 @@ async function runDemo(): Promise<void> {
     logger.info(`Seeded demo database with ${seedSummary.traceCount} traces at ${seedSummary.dbPath}`);
   }
 
-  const storage = createStorage(config);
+  /*
+   * Ingest is refused in demo mode: demo.db is disposable by design and
+   * --demo-clear deletes it wholesale, so a capture client pointed at the
+   * demo dashboard's port would have its real traces silently stored next
+   * to the fake ones and later destroyed (storage/demo-guard.ts).
+   */
+  const storage = withDemoIngestGuard(createStorage(config));
   await storage.initialize();
 
   const customRuleStore = createCustomRuleStore({

@@ -7,6 +7,7 @@ import { findPricing } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import { generateEvalId } from '../utils/ids.js';
 import { strictInput } from './strict-input.js';
+import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output containing citations to verify'),
@@ -25,7 +26,7 @@ const inputSchema = {
   max_citations: z.number().int().positive().max(50).optional().describe('Max citations to verify (extras skipped); default 20'),
   per_source_timeout_ms: z.number().int().positive().optional().describe('Per-URL fetch timeout; default 10_000'),
   per_source_max_bytes: z.number().int().positive().optional().describe('Per-URL body cap; default 5MB'),
-  trace_id: z.string().optional().describe('Link verification result to a trace'),
+  trace_id: z.string().optional().describe('Link verification result to a stored trace (id from log_trace / get_traces); an unknown id is rejected before any fetch or judge call'),
 };
 
 function inferProvider(model: string): LLMProvider {
@@ -82,7 +83,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         '',
         'Parameters. model is required; provider auto-detected from model name (override only for ambiguous IDs). allow_fetch=false by default — outbound HTTP is REFUSED unless explicitly true OR IRIS_CITATION_ALLOW_FETCH=1 env. domain_allowlist suffix-matches hostnames (e.g., "wikipedia.org" allows en.wikipedia.org); merged with IRIS_CITATION_DOMAINS env (UNION — either source permits). max_citations defaults 20, hard cap 50 (extras are skipped silently, NOT errored — check total_citations_found in the response if precise). max_cost_usd_total defaults $1.00 — the pipeline stops mid-citation when the next judge call would exceed the cap (returns partial verdicts). per_source_timeout_ms defaults 10000 (10s); per_source_max_bytes defaults 5MB (truncates at boundary, judges still run on truncated content); independently of that, the judge reads at most the first 12,000 characters of each fetched source, and the per-citation cost estimate is taken on that truncated prompt, not on the full body. trace_id optional but recommended. Defaults: max_citations=20, max_cost_usd_total=$1.00, per_source_timeout_ms=10000, per_source_max_bytes=5242880, allow_fetch=false.',
         '',
-        'Error modes. Throws when the API key env var is missing. Throws "Unknown model" on unsupported model IDs. Per-citation errors are collected (resolve_error.kind = bad_scheme / ssrf / not_allowed_domain / timeout / too_large / bad_status / redirect_loop / not_text / fetch_disabled / malformed_judge_response / cost_cap_reached / unresolvable_kind) and returned in the response rather than thrown. An empty output or output with zero extractable citations returns overall_score=null + passed=true (nothing to fail).',
+        'Error modes. Throws when the API key env var is missing. Throws "Unknown model" on unsupported model IDs. Throws when trace_id does not match a stored trace (checked before any fetch or judge call; nothing is written). Per-citation errors are collected (resolve_error.kind = bad_scheme / ssrf / not_allowed_domain / timeout / too_large / bad_status / redirect_loop / not_text / fetch_disabled / malformed_judge_response / cost_cap_reached / unresolvable_kind) and returned in the response rather than thrown. An empty output or output with zero extractable citations returns overall_score=null + passed=true (nothing to fail).',
       ].join('\n'),
       inputSchema: strictInput(inputSchema),
       annotations: {
@@ -97,6 +98,11 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
       const apiKey = resolveApiKey(provider);
       const allowFetch = resolveAllowFetch(args.allow_fetch);
       const domainAllowlist = resolveDomainAllowlist(args.domain_allowlist);
+
+      // Refused before any fetch or judge call spends anything (#376).
+      if (args.trace_id) {
+        await assertTraceExists(storage, LOCAL_TENANT, args.trace_id);
+      }
 
       const result = await verifyCitations({
         output: args.output,
@@ -117,7 +123,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
       // Persist so dashboard can surface. eval_type='custom' — same
       // rationale as evaluate_with_llm_judge (spans all 4 heuristic
       // categories). rule_results[0] carries per-citation summary.
-      await storage.insertEvalResult(LOCAL_TENANT, {
+      await insertLinkedEvalResult(storage, LOCAL_TENANT, {
         id: evalId,
         trace_id: args.trace_id,
         eval_type: 'custom',
@@ -164,7 +170,19 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
                 },
                 resolve_status: c.resolveStatus,
                 resolve_error: c.resolveError,
-                source: c.source,
+                // Mapped to the documented snake_case keys. The verifier's
+                // internal shape is camelCase (contentType, bytesFetched) and
+                // used to be passed through verbatim, so a client parsing
+                // `source.content_type` per the description read undefined.
+                source: c.source
+                  ? {
+                      url: c.source.url,
+                      status: c.source.status,
+                      content_type: c.source.contentType,
+                      bytes_fetched: c.source.bytesFetched,
+                      truncated: c.source.truncated,
+                    }
+                  : undefined,
                 judge: c.judge
                   ? {
                       supported: c.judge.supported,

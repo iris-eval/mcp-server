@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -69,11 +69,16 @@ describe('runSelfTest', () => {
     expect(out).toContain(SELF_TEST_PASS_VERDICT);
     expect(out).toContain(`Iris self-test v${PKG_VERSION}`);
     expect(out).toContain(`version   ${PKG_VERSION}`);
-    // The storage line reports where a NORMAL run of this install keeps
-    // its data — the ambient IRIS_DB_PATH, captured before the scrub.
+    // The home + storage lines report where a NORMAL run of this install
+    // keeps its data — the ambient IRIS_HOME / IRIS_DB_PATH, captured
+    // before the scrub.
+    expect(out).toContain(`home      ${decoyHome}`);
     expect(out).toContain(`storage   ${join(decoyHome, 'decoy.db')}`);
+    // The configured home was probed (not merely reported) and found writable.
+    expect(out).toContain(`✓ ${SELF_TEST_STEPS.configuredHome} — ${decoyHome} (database ${join(decoyHome, 'decoy.db')} will be created on first run)`);
 
-    // Isolation: nothing may be created under the ambient home/db path.
+    // Isolation: nothing may be LEFT under the ambient home/db path — the
+    // write probe unlinks its file, and a missing database is not created.
     expect(readdirSync(decoyHome)).toEqual([]);
 
     // Cleanup: the scratch home the report names must be gone.
@@ -111,5 +116,77 @@ describe('runSelfTest', () => {
     // First failure stops the run — no follow-on crosses burying the cause.
     expect(out).not.toContain(`✓ ${SELF_TEST_STEPS.storage}`);
     expect(out).not.toContain(`✗ ${SELF_TEST_STEPS.storage}`);
+  });
+
+  /*
+   * #371 — the configured home is PROBED, not just printed. The diagnostic
+   * used to pass on its temp home while the server died on startup with a
+   * raw EPERM against the real IRIS_HOME.
+   */
+  it('fails — naming IRIS_HOME and the path — when the configured home cannot be created, and still runs the isolated checks', async () => {
+    // A FILE where a parent directory must go, so mkdir fails on every
+    // platform with a real errno rather than a mocked one.
+    const blocker = join(decoyHome, 'blocker');
+    writeFileSync(blocker, 'not a directory');
+    const unusableHome = join(blocker, '.iris');
+    process.env.IRIS_HOME = unusableHome;
+    delete process.env.IRIS_DB_PATH;
+
+    const lines: string[] = [];
+    const code = await runSelfTest((line) => lines.push(line));
+    const out = lines.join('\n');
+
+    expect(code).toBe(1);
+    const cross = lines.find((l) => l.startsWith(`✗ ${SELF_TEST_STEPS.configuredHome}`));
+    expect(cross).toBeDefined();
+    expect(cross).toContain('Cannot create IRIS_HOME');
+    expect(cross).toContain(unusableHome);
+    expect(cross).toContain('Point IRIS_HOME at a directory this user can write');
+    expect(out).toContain(`${SELF_TEST_FAIL_VERDICT} — failed at: ${SELF_TEST_STEPS.configuredHome}`);
+    // The configured-home failure does not halt the isolated sequence: the
+    // user still learns whether the install itself works.
+    expect(out).toContain(`✓ ${SELF_TEST_STEPS.tempHome}`);
+    expect(out).toContain(`✓ ${SELF_TEST_STEPS.cleanEval}`);
+    expect(out).toContain(`✓ ${SELF_TEST_STEPS.cleanup}`);
+    expect(out).not.toContain(SELF_TEST_PASS_VERDICT);
+    expect(out).toContain(`home      ${unusableHome}`);
+  });
+
+  it('opens an existing configured database for writing and reports it (no migration, no rows)', async () => {
+    process.env.IRIS_HOME = decoyHome;
+    delete process.env.IRIS_DB_PATH;
+    // An existing (empty) database file — the shape a previous run leaves.
+    const dbPath = join(decoyHome, 'iris.db');
+    writeFileSync(dbPath, '');
+
+    const lines: string[] = [];
+    const code = await runSelfTest((line) => lines.push(line));
+    const out = lines.join('\n');
+
+    expect(code).toBe(0);
+    expect(out).toContain(`✓ ${SELF_TEST_STEPS.configuredHome} — ${decoyHome} (database ${dbPath} opens for writing)`);
+    // Opening for a lock probe must not have migrated or grown the file:
+    // it is still the zero-byte file we wrote (SQLite creates nothing on
+    // an immediately rolled-back transaction).
+    expect(statSync(dbPath).size).toBe(0);
+    // Only the database (and possibly its transient sidecars) exist — the
+    // probe file was unlinked and nothing else was created.
+    expect(readdirSync(decoyHome).filter((f) => !f.startsWith('iris.db'))).toEqual([]);
+  });
+
+  it('fails when the configured database exists but is not a database the server could open', async () => {
+    process.env.IRIS_HOME = decoyHome;
+    delete process.env.IRIS_DB_PATH;
+    const dbPath = join(decoyHome, 'iris.db');
+    writeFileSync(dbPath, 'this is not an sqlite file, just enough bytes to be rejected as one\n'.repeat(4));
+
+    const lines: string[] = [];
+    const code = await runSelfTest((line) => lines.push(line));
+
+    expect(code).toBe(1);
+    const cross = lines.find((l) => l.startsWith(`✗ ${SELF_TEST_STEPS.configuredHome}`));
+    expect(cross).toBeDefined();
+    expect(cross).toContain(`database "${dbPath}" exists but cannot be opened for writing`);
+    expect(cross).toContain('IRIS_DB_PATH');
   });
 });
