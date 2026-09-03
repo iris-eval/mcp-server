@@ -6,14 +6,6 @@ import { getSignificanceVisual, getVerdictVisual } from './significance';
 import { Tooltip } from '../shared/Tooltip';
 import { TT } from '../shared/tooltipText';
 
-/* Map verdict → tooltip text. Keeps the card lean. */
-const VERDICT_TOOLTIP: Record<string, string> = {
-  PASS: TT.verdictPass,
-  FAIL: TT.verdictFail,
-  PARTIAL: TT.verdictPartial,
-  UNEVALUATED: TT.verdictUnevaluated,
-};
-
 /* Map significance kind → tooltip text. */
 const SIG_TOOLTIP: Record<string, string> = {
   'safety-violation': TT.sigSafetyViolation,
@@ -53,7 +45,10 @@ export function MomentCard({
   onOpen,
 }: Props) {
   const sig = getSignificanceVisual(moment.significance.kind);
-  const verdict = getVerdictVisual(moment.verdict);
+  // The list row only carries the significance kind (veto detail lives on
+  // the moment detail); a safety violation is enough to make the chip
+  // read SAFETY FAIL instead of the count-based PARTIAL.
+  const verdict = getVerdictVisual(moment.verdict, { significanceKind: moment.significance.kind });
   const outputPreview = moment.output?.slice(0, 140) ?? '';
   const selectable = onToggleSelected !== undefined;
 
@@ -106,7 +101,7 @@ export function MomentCard({
         <div className="moment-card__header">
           {unseen && <span className="moment-card__tag moment-card__tag--new">NEW</span>}
           <span className="moment-card__agent">{moment.agentName}</span>
-          <Tooltip content={VERDICT_TOOLTIP[verdict.label] ?? ''}>
+          <Tooltip content={verdict.tooltip}>
             <span className="moment-card__verdict" style={{ color: verdict.color }} tabIndex={0}>
               {verdict.label}
             </span>

@@ -4,7 +4,92 @@ import {
   evalQuerySchema,
   summaryQuerySchema,
   failuresQuerySchema,
+  ingestTraceSchema,
+  strictBody,
 } from '../../../src/dashboard/validation.js';
+import { z } from 'zod';
+
+/*
+ * POST /api/v1/traces body — the HTTP twin of the strict MCP tool args.
+ * Before this schema was strict, `eval_typ: "safety"` was silently
+ * dropped, the completeness bundle ran, and PII-laden output came back
+ * green (#376 item 2). The schema also used to RELY on stripping to
+ * discard a client-supplied trace_id; that field is now rejected
+ * explicitly, with a message saying the server mints it.
+ */
+describe('ingestTraceSchema', () => {
+  it('accepts the full log_trace body plus the evaluate opt-in', () => {
+    const result = ingestTraceSchema.parse({
+      agent_name: 'a',
+      output: 'hello',
+      evaluate: true,
+      eval_type: 'safety',
+      metadata: { anything: 'goes' },
+      spans: [{ name: 's', start_time: '2026-08-11T12:00:00.000Z' }],
+    });
+    expect(result.eval_type).toBe('safety');
+    expect(result.evaluate).toBe(true);
+    expect(result.metadata).toEqual({ anything: 'goes' });
+  });
+
+  it('defaults evaluate=false and eval_type=completeness', () => {
+    const result = ingestTraceSchema.parse({ agent_name: 'a' });
+    expect(result.evaluate).toBe(false);
+    expect(result.eval_type).toBe('completeness');
+  });
+
+  it('rejects a misspelled eval_typ, naming the key and listing the valid ones', () => {
+    const parsed = ingestTraceSchema.safeParse({
+      agent_name: 'a',
+      output: 'SSN 536-22-8145',
+      evaluate: true,
+      eval_typ: 'safety',
+    });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    const messages = parsed.error.issues.map((i) => i.message).join('\n');
+    expect(messages).toContain('"eval_typ"');
+    expect(messages).toContain('eval_type');
+    expect(messages).toContain('agent_name');
+    expect(messages).toMatch(/rejected rather than silently dropped/);
+  });
+
+  it('rejects a client-supplied trace_id and says the server mints it', () => {
+    const parsed = ingestTraceSchema.safeParse({ agent_name: 'a', trace_id: 'attacker-chosen' });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    const messages = parsed.error.issues.map((i) => i.message).join('\n');
+    expect(messages).toContain('"trace_id"');
+    expect(messages).toMatch(/minted by the server/);
+  });
+
+  it('still requires output when evaluate is true', () => {
+    const parsed = ingestTraceSchema.safeParse({ agent_name: 'a', evaluate: true });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    expect(parsed.error.issues.some((i) => i.path.includes('output'))).toBe(true);
+  });
+});
+
+describe('strictBody', () => {
+  it('lists every valid key in the rejection', () => {
+    const schema = strictBody({ a: z.string(), b: z.number().optional() });
+    const parsed = schema.safeParse({ a: 'x', c: 1 });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    expect(parsed.error.issues[0].message).toContain('Valid keys: a, b');
+  });
+
+  it('appends the reserved-key note only for reserved keys', () => {
+    const schema = strictBody({ a: z.string() }, { reserved: { id: 'id is server-owned.' } });
+    const reserved = schema.safeParse({ a: 'x', id: '1' });
+    expect(reserved.success).toBe(false);
+    if (!reserved.success) expect(reserved.error.issues[0].message).toContain('id is server-owned.');
+    const plain = schema.safeParse({ a: 'x', typo: '1' });
+    expect(plain.success).toBe(false);
+    if (!plain.success) expect(plain.error.issues[0].message).not.toContain('server-owned');
+  });
+});
 
 describe('traceQuerySchema', () => {
   it('should parse valid query with defaults', () => {

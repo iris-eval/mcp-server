@@ -46,6 +46,7 @@ import { Donut } from './charts/Donut';
 import type { DonutSlice } from './charts/Donut';
 import { TopFailingRulesBars } from './charts/TopFailingRulesBars';
 import { BiggestMoversTable } from './charts/BiggestMoversTable';
+import { useRuleCategoryMap } from '../../hooks/useRuleCategoryMap';
 import { RecentMomentsRow } from './RecentMomentsRow';
 import { RateLimitBanner } from '../shared/RateLimitBanner';
 import {
@@ -104,6 +105,7 @@ export function HealthView() {
   });
   const priorPeriodKey = `${days * 2}d`;
   const priorStatsRes = useEvalStats(priorPeriodKey);
+  const ruleCategories = useRuleCategoryMap();
 
   const { data: stats } = statsRes;
   const { data: trend } = trendRes;
@@ -333,6 +335,7 @@ export function HealthView() {
           moments={currentMoments?.moments}
           periodStartIso={periodStartIso}
           periodLabel={period}
+          ruleCategories={ruleCategories}
         />
         <BiggestMoversTable
           currentMoments={currentMoments?.moments}

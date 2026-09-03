@@ -21,6 +21,7 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMoments } from '../../api/hooks';
+import { useRuleCategoryMap } from '../../hooks/useRuleCategoryMap';
 import {
   resolvePeriod,
   periodToDays,
@@ -74,6 +75,7 @@ export function DriftView() {
     since: priorPeriodStartIso,
     until: periodStartIso,
   });
+  const ruleCategories = useRuleCategoryMap();
 
   const costBars = useMemo(() => {
     const sums = new Map<string, number>();
@@ -162,6 +164,7 @@ export function DriftView() {
         priorMoments={priorMoments?.moments}
         periodStartIso={periodStartIso}
         periodLabel={period}
+        ruleCategories={ruleCategories}
       />
     </div>
   );

@@ -6,6 +6,7 @@
  * glyph together (not color alone) so the encoding is colorblind-safe.
  */
 import type { MomentSignificanceKind, MomentVerdict } from '../../api/types';
+import { TT } from '../shared/tooltipText';
 
 export interface SignificanceVisual {
   /** OKLCH color token (one of the --accent-* tokens). */
@@ -27,7 +28,7 @@ const VISUALS: Record<MomentSignificanceKind, SignificanceVisual> = {
     glyph: '!',
     name: 'Safety violation',
     description:
-      'A safety rule failed (PII, prompt injection, blocklist, stub-output). Highest priority — review before this pattern becomes load-bearing.',
+      'A safety rule failed (PII, prompt injection, blocklist, stub-output, hallucination markers). Highest priority — review before this pattern becomes load-bearing.',
   },
   'cost-spike': {
     color: 'var(--accent-warning)',
@@ -80,19 +81,51 @@ export function getSignificanceVisual(kind: MomentSignificanceKind): Significanc
   return VISUALS[kind] ?? VISUALS['normal-pass'];
 }
 
-export function getVerdictVisual(verdict: MomentVerdict): {
+export interface VerdictVisual {
   label: string;
   color: string;
-} {
+  /** Plain-language meaning of the chip — the same sentence everywhere it renders. */
+  tooltip: string;
+}
+
+export interface VerdictVisualOptions {
+  /** The moment's significance kind. A safety violation outranks the pass/partial arithmetic. */
+  significanceKind?: MomentSignificanceKind;
+  /** True when a high/critical rule vetoed at least one of the moment's evaluations. */
+  vetoed?: boolean;
+  /** True when the vetoing evaluation is in the safety category. */
+  vetoedBySafety?: boolean;
+}
+
+/*
+ * The verdict chip.
+ *
+ * `verdict` is arithmetic over rule counts (all passed → pass, none passed →
+ * fail, otherwise partial). That arithmetic is honest about counts and
+ * wrong about severity: an output that leaked an SSN while every other
+ * rule passed is "partial" by the count, so the chip beside a red SAFETY
+ * VIOLATION banner used to read amber PARTIAL with a tooltip about "a mix
+ * of failures and passes" (#377 item 1). Since v0.5.0 a failing critical
+ * rule forces passed=false regardless of the score — the chip has to say
+ * so. Safety violations and vetoes therefore render in danger colour
+ * before the count-based cases are consulted.
+ */
+export function getVerdictVisual(verdict: MomentVerdict, opts: VerdictVisualOptions = {}): VerdictVisual {
+  if (opts.significanceKind === 'safety-violation' || (opts.vetoed && opts.vetoedBySafety)) {
+    return { label: 'SAFETY FAIL', color: 'var(--accent-error)', tooltip: TT.verdictSafetyFail };
+  }
+  if (opts.vetoed) {
+    return { label: 'FAIL', color: 'var(--accent-error)', tooltip: TT.verdictVetoed };
+  }
   switch (verdict) {
     case 'pass':
-      return { label: 'PASS', color: 'var(--accent-success)' };
+      return { label: 'PASS', color: 'var(--accent-success)', tooltip: TT.verdictPass };
     case 'fail':
-      return { label: 'FAIL', color: 'var(--accent-error)' };
+      return { label: 'FAIL', color: 'var(--accent-error)', tooltip: TT.verdictFail };
     case 'partial':
-      return { label: 'PARTIAL', color: 'var(--accent-warning)' };
+      return { label: 'PARTIAL', color: 'var(--accent-warning)', tooltip: TT.verdictPartial };
     case 'unevaluated':
-      return { label: 'UNEVALUATED', color: 'var(--text-muted)' };
+      return { label: 'UNEVALUATED', color: 'var(--text-muted)', tooltip: TT.verdictUnevaluated };
   }
 }
 

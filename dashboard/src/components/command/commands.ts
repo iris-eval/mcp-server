@@ -14,6 +14,13 @@
  */
 import type { NavigateFunction } from 'react-router';
 
+/*
+ * The docs live in the repo. This used to open iris-eval.com/docs, which
+ * has never been a route on the website — the product's only in-app docs
+ * entry point was a 404 in every shipped release.
+ */
+export const IRIS_DOCS_URL = 'https://github.com/iris-eval/mcp-server/tree/main/docs';
+
 /* 'Rules' | 'Traces' | 'Evals' are DATA sections — populated from the
  * user's own data by useCommandSearch, not from this static registry. */
 export type CommandSection =
@@ -193,10 +200,10 @@ export function buildCommands(ctx: CommandContext): Command[] {
     {
       id: 'help.docs',
       title: 'Open Iris docs',
-      subtitle: 'iris-eval.com/docs',
+      subtitle: 'github.com/iris-eval/mcp-server/docs',
       keywords: ['help', 'documentation'],
       section: 'Help',
-      run: () => window.open('https://iris-eval.com/docs', '_blank', 'noopener'),
+      run: () => window.open(IRIS_DOCS_URL, '_blank', 'noopener'),
     },
   ];
 }

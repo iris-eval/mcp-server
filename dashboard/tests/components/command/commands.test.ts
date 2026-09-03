@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   buildCommands,
   scoreCommand,
@@ -6,6 +6,7 @@ import {
   readRecentCommands,
   RECENT_COMMANDS_KEY,
   RECENT_COMMANDS_MAX,
+  IRIS_DOCS_URL,
 } from '../../../src/components/command/commands';
 
 const noop = () => undefined;
@@ -42,6 +43,21 @@ describe('buildCommands', () => {
     expect(navIds).toContain('nav.audit');
     expect(navIds).toContain('nav.traces');
     expect(navIds).toContain('nav.evals');
+  });
+});
+
+describe('help.docs', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('opens the repository docs, not the website /docs route that never existed', () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const docs = buildCommands(ctx).find((c) => c.id === 'help.docs')!;
+    expect(IRIS_DOCS_URL).toBe('https://github.com/iris-eval/mcp-server/tree/main/docs');
+    expect(docs.subtitle).toBe('github.com/iris-eval/mcp-server/docs');
+    docs.run();
+    expect(open).toHaveBeenCalledWith(IRIS_DOCS_URL, '_blank', 'noopener');
   });
 });
 

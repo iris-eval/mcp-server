@@ -29,10 +29,14 @@ export const TT = {
   verdictFail: 'Every fired rule failed for this trace.',
   verdictPartial: 'A mix of failures and passes — some rules failed but others passed.',
   verdictUnevaluated: 'No evaluation was recorded for this trace, or every applicable rule was skipped.',
+  verdictSafetyFail:
+    'A safety rule failed. This is a hard fail: passed=false regardless of the weighted score — the other rules passing does not offset it.',
+  verdictVetoed:
+    `A high/critical rule failed, so this evaluation is a hard fail — ${SEVERITY_HARD_FAIL}. Passing rules do not offset a veto.`,
 
   // Significance kinds (Decision Moments)
   sigSafetyViolation:
-    'A safety rule (PII, prompt injection, blocklist, or stub-output) failed. Highest priority — review before this pattern becomes load-bearing.',
+    'A safety rule (PII, prompt injection, blocklist, stub-output, or hallucination markers) failed. Highest priority — review before this pattern becomes load-bearing.',
   sigCostSpike: 'Trace cost crossed the per-trace cost-spike threshold. Investigate prompt size and model tier.',
   sigRuleCollision: 'Failures span multiple eval categories — output failed in more than one dimension.',
   sigNormalFail: 'A rule failed; the failure does not elevate to a higher significance category.',

@@ -2,16 +2,20 @@
  * WelcomeBanner — first-visit dashboard banner (B7).
  *
  * Pairs with the server-side first-run auto-launch (iris/src/preferences.ts).
- * Stored in localStorage so it persists across browser sessions on the
- * same machine. Independent of the server-side ~/.iris/preferences.json.
+ * Dismissal is stored in localStorage so it persists across browser
+ * sessions on the same machine, independent of the server-side
+ * preferences file.
  *
  * The banner explains:
  *   - what the user is looking at (Decision Moment Timeline is new)
- *   - how to disable auto-launch on subsequent runs
+ *   - how to disable auto-launch on subsequent runs — naming the REAL
+ *     preferences file the server reports (it used to hardcode
+ *     `~/.iris/preferences.json`, wrong under IRIS_HOME and in --demo)
  *   - where to go next
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { usePreferences } from '../../hooks/usePreferences';
 
 const STORAGE_KEY = 'iris-welcome-banner-dismissed';
 
@@ -76,6 +80,7 @@ function readDismissed(): boolean {
 
 export function WelcomeBanner() {
   const [dismissed, setDismissed] = useState<boolean>(true);
+  const { displayPath } = usePreferences();
 
   // Read on mount only — avoids SSR hydration mismatch (we always render
   // dismissed=true on first render and then update in effect).
@@ -107,7 +112,8 @@ export function WelcomeBanner() {
         </span>
         <span style={styles.hint}>
           (To disable auto-launch: set <code>IRIS_NO_AUTO_LAUNCH=1</code>{' '}
-          or edit <code>~/.iris/preferences.json</code>)
+          or set <code>autoLaunch: false</code> in{' '}
+          {displayPath ? <code>{displayPath}</code> : 'your Iris preferences file'})
         </span>
       </div>
       <button

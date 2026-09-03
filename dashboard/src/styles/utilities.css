@@ -879,3 +879,82 @@
   font-family: var(--font-mono);
   text-decoration: underline;
 }
+
+/* Right column: the enable switch + its state label above the delete button. */
+.rule-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.rule-card__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rule-card__state {
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.rule-card__state--on {
+  color: var(--eval-pass);
+}
+
+.rule-card__toggle-error {
+  font-size: var(--text-caption);
+  color: var(--eval-fail);
+  max-width: 260px;
+  text-align: right;
+}
+
+/* ── Switch (role="switch") ─────────────────────────────────────────
+ * On/off control for reversible state — deployed rule enabled/disabled.
+ * Not a checkbox: a switch takes effect immediately, no submit step.
+ */
+.iris-switch {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-instant),
+    border-color var(--transition-instant);
+}
+
+.iris-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform var(--transition-instant),
+    background-color var(--transition-instant);
+}
+
+.iris-switch--on {
+  background: var(--iris-600);
+  border-color: var(--iris-600);
+}
+
+.iris-switch--on .iris-switch__knob {
+  transform: translateX(16px);
+  background: #ffffff;
+}
+
+.iris-switch:disabled,
+.iris-switch[aria-busy='true'] {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -12,40 +12,37 @@
  * Bars are sorted descending by fail count. Each row drills through to
  * /moments?kind={k}&since={periodStart} (best approximation — no rule
  * filter on Moments yet, so we land on the closest significance kind).
+ *
+ * The rule → kind mapping comes from the rule's CATEGORY (server-derived
+ * via useRuleCategoryMap, vendored fallback otherwise), never from name
+ * substrings: the old `includes('pii') || includes('injection') …` test
+ * did not know no_hallucination_markers had joined the safety bundle, so
+ * its failures drilled to the wrong filter for a whole release.
  */
 import { useMemo } from 'react';
 import { HorizontalBarChart } from './HorizontalBarChart';
 import { drillToMoments } from '../../../utils/drillThrough';
-import type {
-  DecisionMoment,
-  MomentSignificanceKind,
-} from '../../../api/types';
-
-/**
- * Heuristic: map a rule name to its likely significance kind so the
- * drill-through lands on a useful filter.
- *   PII / injection / blocklist / stub-output → safety-violation
- *   Anything cost-related                     → cost-spike
- *   Default                                   → normal-fail
- */
-function ruleToKind(rule: string): MomentSignificanceKind {
-  const r = rule.toLowerCase();
-  if (r.includes('pii') || r.includes('injection') || r.includes('blocklist') || r.includes('stub')) {
-    return 'safety-violation';
-  }
-  if (r.includes('cost') || r.includes('budget')) {
-    return 'cost-spike';
-  }
-  return 'normal-fail';
-}
+import {
+  BUILT_IN_RULE_CATEGORY,
+  ruleToSignificanceKind,
+  type RuleCategory,
+} from '../ruleCategories';
+import type { DecisionMoment } from '../../../api/types';
 
 export interface TopFailingRulesBarsProps {
   moments?: DecisionMoment[];
   periodStartIso: string;
   periodLabel: string;
+  /** Rule → category, ideally from useRuleCategoryMap(). Defaults to the vendored table. */
+  ruleCategories?: Record<string, RuleCategory>;
 }
 
-export function TopFailingRulesBars({ moments, periodStartIso, periodLabel }: TopFailingRulesBarsProps) {
+export function TopFailingRulesBars({
+  moments,
+  periodStartIso,
+  periodLabel,
+  ruleCategories = BUILT_IN_RULE_CATEGORY,
+}: TopFailingRulesBarsProps) {
   const bars = useMemo(() => {
     const fails = new Map<string, number>();
     for (const m of moments ?? []) {
@@ -57,9 +54,9 @@ export function TopFailingRulesBars({ moments, periodStartIso, periodLabel }: To
       id: rule,
       label: rule,
       value: count,
-      href: drillToMoments({ kind: ruleToKind(rule), since: periodStartIso }),
+      href: drillToMoments({ kind: ruleToSignificanceKind(rule, ruleCategories), since: periodStartIso }),
     }));
-  }, [moments, periodStartIso]);
+  }, [moments, periodStartIso, ruleCategories]);
 
   return (
     <HorizontalBarChart
