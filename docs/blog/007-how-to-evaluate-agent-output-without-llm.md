@@ -2,6 +2,7 @@
 title: "How to Evaluate AI Agent Output Without Calling Another LLM"
 description: "A step-by-step tutorial for evaluating AI agent output using deterministic heuristic rules — no LLM-as-Judge, no added cost, sub-millisecond."
 date: 2026-03-16
+updated: 2026-09-02
 author: Ian Parent
 tags: [eval, agents, mcp, tutorial, heuristics, observability]
 relatedPosts: [heuristic-vs-semantic-eval, eval-driven-development, output-quality-score]

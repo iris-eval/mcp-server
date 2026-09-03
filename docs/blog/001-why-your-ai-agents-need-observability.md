@@ -2,6 +2,7 @@
 title: "Why Your AI Agents Need Observability"
 description: "Learn why traditional APM fails for AI agents and how MCP-native observability with Iris provides the tracing and evaluation agents need."
 date: 2026-03-13
+updated: 2026-08-13
 author: Ian Parent
 tags: [observability, agents, mcp, evaluation]
 relatedPosts: [mcp-observability-is-the-new-apm, why-every-mcp-agent-needs-an-independent-observer, the-eval-gap]

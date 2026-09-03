@@ -90,13 +90,13 @@ const FEATURES = [
   { feature: "Built-in metrics", iris: "13 deterministic rules + 5 LLM-judge templates (accuracy, helpfulness, safety, correctness, faithfulness) + semantic citation verification", deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", irisWin: true },
   { feature: "Citation verification", iris: "SSRF-guarded source fetch + per-claim LLM verdict (v0.4)", deepeval: "Not included", irisWin: true },
   { feature: "Custom metrics", iris: "Zod schema custom rules + programmatic MCP deploy_rule", deepeval: "Python custom metrics class", irisNeutral: true },
-  { feature: "Cost tracking", iris: "Per-trace USD cost + per-LLM-judge-eval cost + aggregate visibility", deepeval: "Not included", irisWin: true },
+  { feature: "Cost tracking", iris: "Per-trace USD cost + per-LLM-judge-eval cost + aggregate visibility", deepeval: "Token cost fields on traced spans" },
   { feature: "Dashboard", iris: "Real-time dark-mode UI with Decision Moments + drift detection", deepeval: "Confident AI cloud dashboard (separate product)", irisWin: true },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server; 9 tools)", deepeval: "Not MCP-aware", irisWin: true },
-  { feature: "OpenTelemetry export", iris: "OTLP/HTTP JSON to Jaeger/Tempo/Datadog (v0.4)", deepeval: "Not included", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server; 9 tools)", deepeval: "Evaluates MCP tool use (MCPUseMetric, multi-turn); MCP server configs in test cases since v4.2.0; not an MCP server itself" },
+  { feature: "OpenTelemetry export", iris: "OTLP/HTTP JSON to Jaeger/Tempo/Datadog (v0.4)", deepeval: "OTLP tracing via run_otel" },
   { feature: "Supply-chain integrity", iris: "SBOM + cosign + SLSA build-provenance (v0.4)", deepeval: "Standard pip", irisWin: true },
   { feature: "License", iris: "MIT", deepeval: "Apache 2.0", irisWin: false },
-  { feature: "Maturity", iris: `Early stage (v${VERSION_MCP_SERVER})`, deepeval: "Established (14K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
+  { feature: "Maturity", iris: `Early stage (v${VERSION_MCP_SERVER})`, deepeval: "Established (18K+ GitHub stars)", deepevalWin: true, irisNeutral: true },
 ];
 
 const IRIS_REASONS = [
@@ -248,7 +248,7 @@ export default function CompareDeepeval(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="DeepEval" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="DeepEval" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

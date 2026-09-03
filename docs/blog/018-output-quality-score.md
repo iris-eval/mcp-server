@@ -2,6 +2,7 @@
 title: "Output Quality Score: The Single Number That Tells You If Your Agent Is Good Enough"
 description: "Output Quality Score (OQS) is a composite metric that rolls completeness, relevance, safety, and cost into one number — giving teams a single quality signal for every agent output."
 date: 2026-04-03
+updated: 2026-08-13
 author: Ian Parent
 tags: [output-quality-score, oqs, agent-eval, quality, mcp, vocabulary]
 relatedPosts: [self-calibrating-eval, eval-coverage-the-metric-your-agents-are-missing, the-ai-eval-tax]

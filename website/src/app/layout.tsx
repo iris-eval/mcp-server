@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Manrope, JetBrains_Mono } from "next/font/google";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { FEED_TITLE, FEED_URL } from "@/lib/feed";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -79,6 +80,13 @@ export default function RootLayout({
             }),
           }}
         />
+        {/* Feed autodiscovery on every page. This is a rendered <link>, not
+            `metadata.alternates.types`, because every page here sets its own
+            `alternates` (canonical) and Next resolves a child's alternates
+            wholesale instead of merging (next/dist/lib/metadata/resolve-metadata.js,
+            case "alternates") — a layout-level types entry would reach no
+            page. React hoists a <link> into <head> wherever it renders. */}
+        <link rel="alternate" type="application/rss+xml" title={FEED_TITLE} href={FEED_URL} />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

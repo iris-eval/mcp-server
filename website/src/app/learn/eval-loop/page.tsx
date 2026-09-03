@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -33,7 +34,7 @@ const TOC_ITEMS = [
 ];
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Article", headline: s("The Eval Loop: Evals as the Loss Function for Agent Quality"), description: s("The continuous cycle of score, diagnose, calibrate, re-score."), url: "https://iris-eval.com/learn/eval-loop", datePublished: "2026-03-30", dateModified: "2026-03-30", author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/eval-loop" },
+  { "@type": "Article", headline: s("The Eval Loop: Evals as the Loss Function for Agent Quality"), description: s("The continuous cycle of score, diagnose, calibrate, re-score."), url: "https://iris-eval.com/learn/eval-loop", datePublished: "2026-03-30", dateModified: PAGE_LAST_MODIFIED["/learn/eval-loop"], author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/eval-loop" },
   { "@type": "FAQPage", mainEntity: FAQ_ITEMS.map((item) => ({ "@type": "Question", name: s(item.question), acceptedAnswer: { "@type": "Answer", text: s(item.answer) } })) },
   { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: "https://iris-eval.com" }, { "@type": "ListItem", position: 2, name: "Learn", item: "https://iris-eval.com/learn" }, { "@type": "ListItem", position: 3, name: "The Eval Loop" }] },
 ]};

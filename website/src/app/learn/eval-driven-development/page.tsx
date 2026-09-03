@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -8,7 +9,7 @@ import { FaqSection } from "@/components/learn/faq-section";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 
 export const metadata: Metadata = {
-  title: "Eval-Driven Development: Write the Rules Before the Prompt — Iris",
+  title: "What is Eval-Driven Development? TDD for AI Agents — Iris",
   description: "What is Eval-Driven Development (EDD)? The practice of defining evaluation rules before writing agent prompts — TDD for AI agents.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-driven-development" },
   openGraph: { title: "Eval-Driven Development: Write the Rules Before the Prompt", description: "TDD for AI agents — define eval rules before prompts.", url: "https://iris-eval.com/learn/eval-driven-development", type: "article", images: [OG_IMAGE_URL] },
@@ -33,7 +34,7 @@ const TOC_ITEMS = [
 ];
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Article", headline: s("Eval-Driven Development: Write the Rules Before the Prompt"), description: s("The practice of defining evaluation rules before writing agent prompts — TDD for AI agents."), url: "https://iris-eval.com/learn/eval-driven-development", datePublished: "2026-03-30", dateModified: "2026-03-30", author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/eval-driven-development" },
+  { "@type": "Article", headline: s("Eval-Driven Development: Write the Rules Before the Prompt"), description: s("The practice of defining evaluation rules before writing agent prompts — TDD for AI agents."), url: "https://iris-eval.com/learn/eval-driven-development", datePublished: "2026-03-30", dateModified: PAGE_LAST_MODIFIED["/learn/eval-driven-development"], author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/eval-driven-development" },
   { "@type": "FAQPage", mainEntity: FAQ_ITEMS.map((item) => ({ "@type": "Question", name: s(item.question), acceptedAnswer: { "@type": "Answer", text: s(item.answer) } })) },
   { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: "https://iris-eval.com" }, { "@type": "ListItem", position: 2, name: "Learn", item: "https://iris-eval.com/learn" }, { "@type": "ListItem", position: 3, name: "Eval-Driven Development" }] },
 ]};

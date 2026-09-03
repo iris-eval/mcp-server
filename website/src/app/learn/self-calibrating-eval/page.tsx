@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -8,7 +9,7 @@ import { FaqSection } from "@/components/learn/faq-section";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 
 export const metadata: Metadata = {
-  title: "Self-Calibrating Eval: The End of Manual Threshold Tuning — Iris",
+  title: "What is Self-Calibrating Eval? Adaptive Thresholds — Iris",
   description: "What is self-calibrating eval? Eval rules that monitor their own scoring distribution and recommend threshold adjustments — always human-approved.",
   alternates: { canonical: "https://iris-eval.com/learn/self-calibrating-eval" },
   openGraph: { title: "Self-Calibrating Eval: The End of Manual Threshold Tuning", description: "Eval rules that adapt thresholds based on observed distributions.", url: "https://iris-eval.com/learn/self-calibrating-eval", type: "article", images: [OG_IMAGE_URL] },
@@ -33,7 +34,7 @@ const TOC_ITEMS = [
 ];
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Article", headline: s("Self-Calibrating Eval: The End of Manual Threshold Tuning"), description: s("Eval rules that monitor their own scoring distribution and recommend adjustments."), url: "https://iris-eval.com/learn/self-calibrating-eval", datePublished: "2026-03-30", dateModified: "2026-03-30", author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/self-calibrating-eval" },
+  { "@type": "Article", headline: s("Self-Calibrating Eval: The End of Manual Threshold Tuning"), description: s("Eval rules that monitor their own scoring distribution and recommend adjustments."), url: "https://iris-eval.com/learn/self-calibrating-eval", datePublished: "2026-03-30", dateModified: PAGE_LAST_MODIFIED["/learn/self-calibrating-eval"], author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" }, publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" }, mainEntityOfPage: "https://iris-eval.com/learn/self-calibrating-eval" },
   { "@type": "FAQPage", mainEntity: FAQ_ITEMS.map((item) => ({ "@type": "Question", name: s(item.question), acceptedAnswer: { "@type": "Answer", text: s(item.answer) } })) },
   { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: "https://iris-eval.com" }, { "@type": "ListItem", position: 2, name: "Learn", item: "https://iris-eval.com/learn" }, { "@type": "ListItem", position: 3, name: "Self-Calibrating Eval" }] },
 ]};

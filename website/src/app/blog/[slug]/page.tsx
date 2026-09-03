@@ -44,6 +44,7 @@ export async function generateMetadata({
       url: `https://iris-eval.com/blog/${post.slug}`,
       type: "article",
       publishedTime: String(post.date),
+      modifiedTime: String(post.updated),
       authors: [post.author],
       images: [OG_IMAGE_URL],
     },
@@ -71,7 +72,7 @@ export default async function BlogPost({
     "@type": "BlogPosting",
     headline: sanitizeText(post.title),
     datePublished: sanitizeText(post.date),
-    dateModified: sanitizeText(post.date),
+    dateModified: sanitizeText(post.updated),
     author: {
       "@type": "Person",
       name: sanitizeText(post.author),

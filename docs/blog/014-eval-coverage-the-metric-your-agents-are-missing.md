@@ -2,6 +2,7 @@
 title: "Eval Coverage: The Metric Your AI Agents Are Missing"
 description: "Eval coverage measures the percentage of agent executions that receive evaluation. Most teams are at 0%. Here's why 100% is the only target."
 date: 2026-03-26
+updated: 2026-08-13
 author: Ian Parent
 tags: [eval-coverage, agent-eval, testing, mcp, vocabulary]
 relatedPosts: [the-ai-eval-tax, eval-driven-development, the-eval-loop]

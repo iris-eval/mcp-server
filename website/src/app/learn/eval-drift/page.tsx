@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 import { SectionHeading } from "@/components/learn/section-heading";
 import { CalloutBox } from "@/components/learn/callout-box";
 import { VocabularyCard } from "@/components/learn/vocabulary-card";
@@ -8,7 +9,7 @@ import { FaqSection } from "@/components/learn/faq-section";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 
 export const metadata: Metadata = {
-  title: "Eval Drift: The Silent Quality Killer for AI Agents — Iris",
+  title: "What is Eval Drift? Detection and Prevention — Iris",
   description:
     "What is eval drift? The silent degradation of agent quality caused by upstream model changes you can't control. Learn how to detect and prevent it.",
   alternates: { canonical: "https://iris-eval.com/learn/eval-drift" },
@@ -65,7 +66,7 @@ const jsonLd = {
       description: s("The silent degradation of agent quality caused by upstream model changes you can't control."),
       url: "https://iris-eval.com/learn/eval-drift",
       datePublished: "2026-03-30",
-      dateModified: "2026-03-30",
+      dateModified: PAGE_LAST_MODIFIED["/learn/eval-drift"],
       author: { "@type": "Person", name: "Ian Parent", url: "https://x.com/iparentx" },
       publisher: { "@type": "Organization", name: "Iris", url: "https://iris-eval.com" },
       mainEntityOfPage: "https://iris-eval.com/learn/eval-drift",
