@@ -20,7 +20,15 @@ on:
 # long-lived NPM_TOKEN was removed after it silently expired and a swallowed
 # 404 caused v0.4.3 to never reach npm (see PR #176 + the 2026-06-12 incident).
 # Trusted Publishing requires npm >= 11.5.1 (upgraded in the publish-npm job;
-# Node 22 ships npm 10.x). cosign also uses this OIDC token for keyless signing.
+# Node 22 ships npm 10.x). cosign also uses this OIDC token for keyless signing,
+# and so does mcp-publisher (`login github-oidc`) in publish-registry — one
+# identity, zero long-lived secrets in this file.
+#
+# Job graph: validate → publish-npm + publish-docker → github-release;
+# publish-npm → publish-registry (production tags only); everything →
+# verify-release, which reads npm, GHCR, the release page and the MCP
+# Registry back from outside and is the only job whose green means
+# "the release happened".
 #
 # Least-privilege: top-level is contents:read (default for all jobs).
 # Each publishing / release job declares its specific writes at job level.
@@ -62,9 +70,19 @@ jobs:
           fi
       # And every other file carrying the version — server.json (both the
       # top level and each packages[] entry the registry hands to installers),
-      # the lockfile, .well-known/mcp.json, the Claude Code plugin manifest.
+      # the lockfile, .well-known/mcp.json, BOTH Claude Code plugin manifests
+      # (the root one and the one the marketplace serves), the langchain
+      # adapter's dependency range, and SECURITY.md's supported line.
       - name: Verify all version-carrying files agree
         run: bash scripts/check-version.sh
+      # The GitHub release body is assembled from this version's CHANGELOG.md
+      # section (github-release job). A production tag with no section fails
+      # HERE, before anything is published: v0.5.0's release page went out
+      # without its two breaking changes because nothing tied the page to
+      # the changelog. Pre-release tags are exempt (they get a stub body).
+      - name: Verify CHANGELOG.md carries a section for this version
+        if: ${{ !contains(github.ref_name, '-') }}
+        run: node scripts/changelog-section.mjs "${GITHUB_REF_NAME#v}" > /dev/null
 
   publish-npm:
     needs: validate
@@ -335,6 +353,56 @@ jobs:
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The release body, in order: this version's CHANGELOG.md section
+      # (where "Check before upgrading" and every BREAKING entry live), the
+      # supply-chain block, then the auto-generated PR list (which
+      # generate_release_notes appends after body_path). v0.5.0's page
+      # carried only the last two — a reader upgrading from it could not
+      # learn that `passed` had changed meaning. The changelog IS the notes;
+      # there is no second copy here to drift.
+      - name: Compose release body from CHANGELOG.md
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ steps.release-type.outputs.prerelease }}
+        run: |
+          VERSION="${TAG#v}"
+          if node scripts/changelog-section.mjs "$VERSION" > notes.md; then
+            echo "Using CHANGELOG.md section for ${VERSION}"
+          elif [ "$PRERELEASE" = "true" ]; then
+            printf '## %s\n\nPre-release build. What is queued for the next version is listed under [Unreleased] in CHANGELOG.md.\n' "$TAG" > notes.md
+          else
+            echo "FATAL: CHANGELOG.md has no section for ${VERSION} (the validate job should have caught this)" && exit 1
+          fi
+          # Quoted heredoc: the block contains backticks, which an unquoted
+          # heredoc would run as command substitution. Placeholders are
+          # substituted afterwards.
+          cat > supply-chain.md <<'EOF'
+          ## Supply-chain transparency
+
+          - **SBOMs**: `iris-npm-sbom.spdx.json` + `iris-docker-sbom.spdx.json` (attached below). Both are SPDX 2.3 JSON, cover direct + transitive dependencies.
+          - **SBOM signatures**: each SBOM has a companion `.cosign.bundle` (Sigstore bundle — signature + cert + Rekor entry) attached to this release. Verify with:
+            ```
+            cosign verify-blob \
+              --bundle iris-npm-sbom.spdx.json.cosign.bundle \
+              --certificate-identity-regexp='https://github.com/__REPO__' \
+              --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+              iris-npm-sbom.spdx.json
+            ```
+          - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page).
+          - **Docker signature**: image signed with cosign keyless (Sigstore). Verify with:
+            ```
+            cosign verify ghcr.io/__REPO__:__TAG__ \
+              --certificate-identity-regexp='https://github.com/__REPO__' \
+              --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
+            ```
+          - **Build attestation**: both the npm SBOM and Docker image manifest carry GitHub-signed build-provenance attestations. Inspect with `gh attestation verify` or `cosign verify-attestation`.
+          EOF
+          sed -i "s|__REPO__|${REPO}|g; s|__TAG__|${TAG}|g" supply-chain.md
+          { cat notes.md; echo; cat supply-chain.md; } > release-body.md
+          echo "----- release body -----"
+          cat release-body.md
+
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3.0.1
         with:
           generate_release_notes: true
@@ -345,23 +413,233 @@ jobs:
             ./release-assets/iris-npm-sbom.spdx.json.cosign.bundle
             ./release-assets/iris-docker-sbom.spdx.json
             ./release-assets/iris-docker-sbom.spdx.json.cosign.bundle
-          body: |
-            ## Supply-chain transparency
+          body_path: release-body.md
 
-            - **SBOMs**: `iris-npm-sbom.spdx.json` + `iris-docker-sbom.spdx.json` (attached below). Both are SPDX 2.3 JSON, cover direct + transitive dependencies.
-            - **SBOM signatures**: each SBOM has a companion `.cosign.bundle` (Sigstore bundle — signature + cert + Rekor entry) attached to this release. Verify with:
-              ```
-              cosign verify-blob \
-                --bundle iris-npm-sbom.spdx.json.cosign.bundle \
-                --certificate-identity-regexp='https://github.com/${{ github.repository }}' \
-                --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-                iris-npm-sbom.spdx.json
-              ```
-            - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page).
-            - **Docker signature**: image signed with cosign keyless (Sigstore). Verify with:
-              ```
-              cosign verify ghcr.io/${{ github.repository }}:${{ github.ref_name }} \
-                --certificate-identity-regexp='https://github.com/${{ github.repository }}' \
-                --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
-              ```
-            - **Build attestation**: both the npm SBOM and Docker image manifest carry GitHub-signed build-provenance attestations. Inspect with `gh attestation verify` or `cosign verify-attestation`.
+  publish-registry:
+    # The Official MCP Registry (registry.modelcontextprotocol.io) is the
+    # upstream feed for PulseMCP, mcp.so and the other directories: whatever
+    # it says is what the ecosystem sees. Until now it was a manual checkbox
+    # on docs/launch/release-checklist.md, and the checkbox was missed on
+    # 0.4.6 AND 0.5.0 — the registry advertised 0.4.5 (pre-veto,
+    # pre-sandbox) for three weeks while npm said 0.5.0. Every
+    # version-carrying FILE was gated at release time; the live ENDPOINT was
+    # not. This job is that gate. It authenticates with the workflow's own
+    # GitHub OIDC identity (no secret to rotate or leak — the registry
+    # grants the io.github.<owner>/* namespace to workflows running in that
+    # owner's repos), publishes server.json, then reads the registry back
+    # and FAILS unless `latest` is this tag.
+    needs: publish-npm
+    # Production tags only. The registry has one "latest" per server and no
+    # dist-tag concept, so an RC published here would become the version
+    # every downstream directory advertises. RCs stay on npm's `next`.
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read         # checkout (server.json)
+      id-token: write        # mcp-publisher login github-oidc
+    env:
+      REGISTRY_API: https://registry.modelcontextprotocol.io/v0.1
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # Pinned and checksummed — NOT the `releases/latest/download` one-liner
+      # the registry's own guide shows. An unpinned binary fetched at tag
+      # time, inside the one job that holds a publishing identity, is the
+      # same supply-chain hole publish-npm closed by refusing `npm install -g`.
+      # Bump version + sha256 together; the sha256 is the linux_amd64 line of
+      # registry_<version>_checksums.txt on the registry's release page. If
+      # login ever fails with "invalid audience", the pin has fallen behind
+      # the registry deployment — bump it (release-checklist quarterly item).
+      - name: Install mcp-publisher (pinned)
+        env:
+          MCP_PUBLISHER_VERSION: 1.8.1
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  # mcp-publisher_linux_amd64.tar.gz
+        run: |
+          curl -fsSL -o mcp-publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          ./mcp-publisher --version
+
+      - name: Resolve server name + version from server.json
+        id: server
+        run: |
+          NAME="$(jq -r '.name' server.json)"
+          VERSION="$(jq -r '.version' server.json)"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$VERSION" != "$TAG_VERSION" ]; then
+            echo "FATAL: server.json version $VERSION != tag $TAG_VERSION" && exit 1
+          fi
+          {
+            echo "name=$NAME"
+            echo "version=$VERSION"
+            echo "encoded=$(jq -rn --arg s "$NAME" '$s | @uri')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate server.json
+        run: ./mcp-publisher validate server.json
+
+      # The registry verifies the npm package exists (and carries `mcpName`)
+      # before it accepts a version. npm's read replicas can lag the publish
+      # by a few seconds — wait for the exact version instead of racing it.
+      - name: Wait for npm to serve this version
+        run: |
+          for i in $(seq 1 18); do
+            if curl -fsSL "https://registry.npmjs.org/@iris-eval%2Fmcp-server/${{ steps.server.outputs.version }}" > /dev/null; then
+              echo "npm serves @iris-eval/mcp-server@${{ steps.server.outputs.version }}" && exit 0
+            fi
+            echo "npm does not serve ${{ steps.server.outputs.version }} yet ($i/18) — waiting 10s" && sleep 10
+          done
+          echo "FATAL: npm never served the version the registry must validate against" && exit 1
+
+      # Idempotent re-runs (workflow_dispatch on a tag whose earlier run
+      # failed after this point): a version already on the registry is not
+      # republished — the registry rejects duplicate versions, and that
+      # rejection must not read as "publish failed". Any other answer from
+      # the registry is a real failure.
+      - name: Check whether this version is already on the registry
+        id: existing
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            "${REGISTRY_API}/servers/${{ steps.server.outputs.encoded }}/versions/${{ steps.server.outputs.version }}")
+          case "$code" in
+            200) echo "published=true" >> "$GITHUB_OUTPUT"
+                 echo "Already on the registry — skipping publish (idempotent re-run)" ;;
+            404) echo "published=false" >> "$GITHUB_OUTPUT" ;;
+            *)   echo "FATAL: registry answered HTTP $code for the version lookup" && exit 1 ;;
+          esac
+
+      - name: Authenticate to the MCP Registry (GitHub OIDC)
+        if: steps.existing.outputs.published == 'false'
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json to the MCP Registry
+        if: steps.existing.outputs.published == 'false'
+        run: ./mcp-publisher publish server.json
+
+      # The gate. Not "publish exited 0" — the registry's own answer to
+      # "what is latest?" must be this tag, with isLatest set by the
+      # registry, not inferred by us.
+      - name: Verify the registry's latest IS this version
+        run: |
+          WANT="${{ steps.server.outputs.version }}"
+          URL="${REGISTRY_API}/servers/${{ steps.server.outputs.encoded }}/versions/latest"
+          for i in $(seq 1 12); do
+            body=$(curl -fsSL "$URL" || true)
+            got=$(printf '%s' "$body" | jq -r '.server.version // empty')
+            is_latest=$(printf '%s' "$body" | jq -r '._meta["io.modelcontextprotocol.registry/official"].isLatest // empty')
+            if [ "$got" = "$WANT" ] && [ "$is_latest" = "true" ]; then
+              echo "✓ registry latest = $got (isLatest=$is_latest)" && exit 0
+            fi
+            echo "registry latest = '${got:-?}' isLatest='${is_latest:-?}' ($i/12) — waiting 10s" && sleep 10
+          done
+          echo "✗ FATAL: the registry's latest never became $WANT — downstream directories will keep advertising the previous version" && exit 1
+
+  verify-release:
+    # The end-to-end gate. Each job above verifies its own step; this one
+    # reads every external surface a release is supposed to move and
+    # compares it with the tag. In this repo's history "the workflow was
+    # green" has meant an npm 404 swallowed as success (0.4.3), a registry
+    # two versions stale (0.4.6, 0.5.0) and a `:latest` image that exited
+    # on start (0.5.0). A red verify-release is a release that did not
+    # happen, whatever the earlier jobs said.
+    needs: [publish-npm, publish-docker, github-release, publish-registry]
+    # publish-registry is skipped on pre-release tags, which under the
+    # default success() rule would skip this job too — so the condition is
+    # spelled out: run unless cancelled, and only when every publishing
+    # job succeeded or (registry, pre-release only) was skipped.
+    if: ${{ !cancelled() && needs.publish-npm.result == 'success' && needs.publish-docker.result == 'success' && needs.github-release.result == 'success' && (needs.publish-registry.result == 'success' || needs.publish-registry.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read         # checkout (server.json) + gh release view
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Determine release type
+        id: rt
+        run: |
+          {
+            echo "version=${GITHUB_REF_NAME#v}"
+            if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "prerelease=false"
+              echo "dist_tag=latest"
+            else
+              echo "prerelease=true"
+              echo "dist_tag=next"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
+      - name: npm — the dist-tag resolves to this version
+        run: |
+          WANT="${{ steps.rt.outputs.version }}"
+          TAG="${{ steps.rt.outputs.dist_tag }}"
+          for i in $(seq 1 12); do
+            got=$(curl -fsSL "https://registry.npmjs.org/-/package/@iris-eval%2Fmcp-server/dist-tags" | jq -r --arg t "$TAG" '.[$t] // empty')
+            if [ "$got" = "$WANT" ]; then
+              echo "✓ npm dist-tag '$TAG' = $got" && exit 0
+            fi
+            echo "npm dist-tag '$TAG' = '${got:-?}' ($i/12) — waiting 10s" && sleep 10
+          done
+          echo "✗ FATAL: npm dist-tag '$TAG' is not $WANT" && exit 1
+
+      # Anonymous pull token + a HEAD on the manifest: no docker daemon, no
+      # login. The digest must be the one publish-docker pushed, for the
+      # version tag AND (production only) for :latest.
+      - name: GHCR — the version tag and :latest resolve to the pushed digest
+        env:
+          EXPECTED: ${{ needs.publish-docker.outputs.image-digest }}
+          IMAGE_PATH: ${{ github.repository }}
+        run: |
+          [ -n "$EXPECTED" ] || { echo "✗ FATAL: publish-docker exposed no image digest" && exit 1; }
+          TOKEN=$(curl -fsSL "https://ghcr.io/token?scope=repository:${IMAGE_PATH}:pull" | jq -r '.token')
+          check() {
+            got=$(curl -fsSL -I -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+              "https://ghcr.io/v2/${IMAGE_PATH}/manifests/$1" | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
+            if [ "$got" = "$EXPECTED" ]; then
+              echo "✓ ghcr.io/${IMAGE_PATH}:$1 = $got"
+            else
+              echo "✗ ghcr.io/${IMAGE_PATH}:$1 = '${got:-missing}', expected $EXPECTED" && return 1
+            fi
+          }
+          check "${GITHUB_REF_NAME}"
+          if [ "${{ steps.rt.outputs.prerelease }}" = "false" ]; then
+            check latest
+          fi
+
+      - name: GitHub release — published, right type, SBOMs and notes attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ steps.rt.outputs.prerelease }}
+          VERSION: ${{ steps.rt.outputs.version }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,isPrerelease,assets,body > release.json
+          jq -e '.isDraft == false' release.json > /dev/null || { echo "✗ release is still a draft" && exit 1; }
+          jq -e --argjson p "$PRERELEASE" '.isPrerelease == $p' release.json > /dev/null || { echo "✗ prerelease flag does not match the tag" && exit 1; }
+          for a in iris-npm-sbom.spdx.json iris-npm-sbom.spdx.json.cosign.bundle \
+                   iris-docker-sbom.spdx.json iris-docker-sbom.spdx.json.cosign.bundle; do
+            jq -e --arg a "$a" '.assets[] | select(.name == $a)' release.json > /dev/null || { echo "✗ release asset $a is missing" && exit 1; }
+          done
+          if [ "$PRERELEASE" = "false" ]; then
+            jq -e --arg v "$VERSION" '.body | contains("[" + $v + "]")' release.json > /dev/null \
+              || { echo "✗ release body does not carry the CHANGELOG section for $VERSION" && exit 1; }
+          fi
+          echo "✓ GitHub release $GITHUB_REF_NAME: published, assets + notes present"
+
+      - name: MCP Registry — latest is this version
+        if: steps.rt.outputs.prerelease == 'false'
+        env:
+          WANT: ${{ steps.rt.outputs.version }}
+        run: |
+          ENCODED=$(jq -r '.name' server.json | jq -rR '. | @uri')
+          body=$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED}/versions/latest")
+          got=$(printf '%s' "$body" | jq -r '.server.version // empty')
+          is_latest=$(printf '%s' "$body" | jq -r '._meta["io.modelcontextprotocol.registry/official"].isLatest // empty')
+          if [ "$got" = "$WANT" ] && [ "$is_latest" = "true" ]; then
+            echo "✓ registry latest = $got"
+          else
+            echo "✗ registry latest = '${got:-?}' (isLatest='${is_latest:-?}'), expected $WANT" && exit 1
+          fi
+          echo
+          echo "All external surfaces agree with $GITHUB_REF_NAME. Human follow-ups: docs/launch/release-checklist.md → Post-release."
