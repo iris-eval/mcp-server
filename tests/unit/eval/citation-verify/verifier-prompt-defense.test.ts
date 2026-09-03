@@ -127,7 +127,7 @@ describe('citation judge prompt — injection defense', () => {
   it('the request that leaves the process carries the wrapping and the notice', async () => {
     const bodies: Array<Record<string, unknown>> = [];
     global.fetch = vi.fn(async (url: string, init: RequestInit = {}) => {
-      if (String(url).includes('api.anthropic.com')) {
+      if (new URL(String(url)).hostname === 'api.anthropic.com') {
         bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
         return anthropicJudgeReply('{"supported":false,"confidence":0.9,"rationale":"source instructs the judge"}');
       }
@@ -172,7 +172,7 @@ describe('citation judge cost estimate — priced on the prompt actually sent', 
 
     let sentUserPrompt = '';
     global.fetch = vi.fn(async (url: string, init: RequestInit = {}) => {
-      if (String(url).includes('api.anthropic.com')) {
+      if (new URL(String(url)).hostname === 'api.anthropic.com') {
         const body = JSON.parse(String(init.body)) as { messages: Array<{ content: string }> };
         sentUserPrompt = body.messages[0].content;
         return anthropicJudgeReply('{"supported":true,"confidence":0.8,"rationale":"x"}');
