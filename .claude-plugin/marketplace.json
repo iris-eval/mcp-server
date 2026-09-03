@@ -9,7 +9,7 @@
     {
       "name": "iris-eval",
       "source": "./claude-plugin",
-      "description": "Agent eval for any MCP workflow — score output quality, catch PII and prompt injection, verify citations, and enforce cost budgets. 9 MCP tools + an agent-eval skill."
+      "description": "Stop shipping agents on vibes — agent eval for any MCP workflow. Score output quality, catch PII and prompt injection, verify citations, and enforce cost budgets. 9 MCP tools + an agent-eval skill."
     }
   ]
 }
