@@ -1,5 +1,14 @@
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
+/**
+ * What an EvalResult can be tagged as: a single bundle (EvalType), or
+ * 'all' — evaluate_output's eval_type="all", which runs every bundle in one
+ * pass and reports a per-category breakdown beside the overall verdict.
+ * Kept apart from EvalType on purpose: rules are deployed and registered
+ * under a real bundle, never under 'all'.
+ */
+export type EvalResultType = EvalType | 'all';
+
 export interface EvalRule {
   name: string;
   description: string;
@@ -42,6 +51,20 @@ export interface EvalContext {
 
 export interface EvalRuleResult {
   ruleName: string;
+  /**
+   * Deployed rule id (rule-<hex>) when the rule came from the custom-rule
+   * store. Absent for built-in rules and for inline custom_rules. Names are
+   * not unique — a same-name redeploy with replace:true mints a new id, and
+   * stores written before the same-name guard may hold duplicates — so this
+   * is the field that tells two same-named results apart (#373).
+   */
+  ruleId?: string;
+  /**
+   * The bundle this rule belongs to. Present only on eval_type="all"
+   * results, where rule_results spans every bundle and a reader needs to
+   * regroup them.
+   */
+  category?: EvalType;
   passed: boolean;
   score: number;
   message: string;
@@ -62,10 +85,25 @@ export interface EvalRuleResult {
   budgetExceeded?: boolean;
 }
 
+/**
+ * Per-bundle verdict inside an eval_type="all" result. Same semantics as a
+ * single-bundle EvalResult (threshold + critical veto), computed over that
+ * bundle's rules only.
+ */
+export interface EvalCategoryResult {
+  score: number;
+  passed: boolean;
+  rules_evaluated: number;
+  rules_skipped: number;
+  insufficient_data: boolean;
+  critical_failures?: string[];
+  critical_skipped?: string[];
+}
+
 export interface EvalResult {
   id: string;
   trace_id?: string;
-  eval_type: EvalType;
+  eval_type: EvalResultType;
   output_text: string;
   expected_text?: string;
   score: number;
@@ -98,6 +136,14 @@ export interface EvalResult {
    * non-empty `critical_skipped` as "unknown", not as "clean".
    */
   critical_skipped?: string[];
+  /**
+   * Per-bundle breakdown, present only when eval_type is 'all'. Keyed by
+   * bundle; a bundle with no rules at all (nothing deployed under "custom"
+   * and no inline custom_rules) is absent rather than reported as
+   * insufficient. Response-only — not persisted as a column; the stored
+   * rule_results carry a `category` per rule so a reader can regroup.
+   */
+  categories?: Partial<Record<EvalType, EvalCategoryResult>>;
 }
 
 export type CustomRuleType =

@@ -1,0 +1,53 @@
+import type { IStorageAdapter } from '../types/query.js';
+import type { EvalResult } from '../types/eval.js';
+import type { TenantId } from '../types/tenant.js';
+
+/*
+ * Linking an evaluation to a trace that does not exist.
+ *
+ * eval_results.trace_id is a foreign key. Passing an unknown trace_id to
+ * evaluate_output used to run the whole evaluation and then fail at the
+ * INSERT with SQLite's own words — "FOREIGN KEY constraint failed" — which
+ * names no field, no value and no fix (#376). Worse for the paid tools:
+ * evaluate_with_llm_judge had already spent the provider call by the time
+ * the insert refused it.
+ *
+ * Two layers, because a check-then-insert has a gap: the pre-check refuses
+ * BEFORE any work (and before any money) with the trace_id named; the
+ * insert wrapper translates the constraint error for the race where the
+ * trace is deleted between the check and the write.
+ */
+export function unknownTraceMessage(traceId: string): string {
+  return (
+    `trace_id "${traceId}" does not match any stored trace, so the evaluation cannot be linked to it. ` +
+    'Nothing was evaluated or written. Pass the trace_id returned by log_trace (or listed by get_traces), ' +
+    'or omit trace_id to store an unlinked evaluation.'
+  );
+}
+
+export async function assertTraceExists(
+  storage: IStorageAdapter,
+  tenantId: TenantId,
+  traceId: string,
+): Promise<void> {
+  const trace = await storage.getTrace(tenantId, traceId);
+  if (!trace) throw new Error(unknownTraceMessage(traceId));
+}
+
+/** insertEvalResult with the foreign-key race translated into the same clear message. */
+export async function insertLinkedEvalResult(
+  storage: IStorageAdapter,
+  tenantId: TenantId,
+  result: EvalResult,
+): Promise<void> {
+  try {
+    await storage.insertEvalResult(tenantId, result);
+  } catch (err) {
+    const code = (err as { code?: unknown }).code;
+    const message = err instanceof Error ? err.message : String(err);
+    if (result.trace_id && (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || /FOREIGN KEY constraint failed/i.test(message))) {
+      throw new Error(unknownTraceMessage(result.trace_id));
+    }
+    throw err;
+  }
+}

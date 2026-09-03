@@ -8,6 +8,7 @@ import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
 import { strictInput } from './strict-input.js';
+import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output text to evaluate'),
@@ -25,7 +26,7 @@ const inputSchema = {
   input: z.string().optional().describe('User question / prompt that produced the output (improves accuracy for helpfulness/safety)'),
   expected: z.string().optional().describe('Reference answer (required for correctness template)'),
   source_material: z.string().optional().describe('Provided RAG sources (required for faithfulness template)'),
-  trace_id: z.string().optional().describe('Link this evaluation to a trace'),
+  trace_id: z.string().optional().describe('Link this evaluation to a stored trace (id from log_trace / get_traces); an unknown id is rejected BEFORE the judge is called'),
   max_cost_usd: z.number().positive().optional().describe('Cost cap in USD; defaults to IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL or 0.25'),
   max_output_tokens: z.number().int().positive().max(4096).optional().describe('Judge output token cap; default 512'),
   temperature: z.number().min(0).max(2).optional().describe('Sampling temperature; default 0 (deterministic)'),
@@ -94,7 +95,7 @@ export function registerEvaluateWithLLMJudgeTool(
         '',
         'Parameters. model is required (no default — pick consciously since cost varies 100x across models). provider is auto-detected from the model name; override only for ambiguous IDs. expected is REQUIRED when template="correctness" (the reference answer to compare against); ignored for other templates. source_material is REQUIRED when template="faithfulness" (the RAG sources to ground against); ignored otherwise. input is optional but improves scoring on helpfulness/safety templates (gives the judge the user prompt that produced the output). max_cost_usd defaults to env var IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL or $0.25 — the worst-case cost is computed BEFORE the call (input_tokens × prompt_price + max_output_tokens × completion_price, PLUS the same for the one retry that fires if the judge\'s first reply is not valid JSON); call refused upfront if that two-attempt worst case would exceed. When a retry does run, the reported input_tokens / output_tokens / cost_usd / latency_ms are totals across both attempts. max_output_tokens caps the judge response (default 512, max 4096); higher = more rationale detail + more cost. temperature default 0 (deterministic). timeout_ms default 60000. trace_id optional but recommended (links eval to trace in dashboard). Defaults: temperature=0, max_output_tokens=512, max_cost_usd=$0.25, timeout_ms=60000.',
         '',
-        'Error modes. Throws when the required API key env var is missing. Throws when the estimated worst-case cost exceeds max_cost_usd (raise the cap or trim prompts). Throws LLMJudgeError on provider errors — kind=`auth` on 401/403, `rate_limit` on 429 (auto-retried once), `server_error` on 5xx, `timeout` on abort, `malformed_response` when the judge fails to emit valid JSON on both attempts. Throws "Unknown model" for unsupported model IDs — update src/eval/llm-judge/pricing.ts first.',
+        'Error modes. Throws when the required API key env var is missing. Throws when trace_id does not match a stored trace — checked before the provider call, so no money is spent and nothing is written. Throws when the estimated worst-case cost exceeds max_cost_usd (raise the cap or trim prompts). Throws LLMJudgeError on provider errors — kind=`auth` on 401/403, `rate_limit` on 429 (auto-retried once), `server_error` on 5xx, `timeout` on abort, `malformed_response` when the judge fails to emit valid JSON on both attempts. Throws "Unknown model" for unsupported model IDs — update src/eval/llm-judge/pricing.ts first.',
       ].join('\n'),
       inputSchema: strictInput(inputSchema),
       annotations: {
@@ -108,6 +109,13 @@ export function registerEvaluateWithLLMJudgeTool(
       const provider = (args.provider as LLMProvider | undefined) ?? inferProvider(args.model);
       const apiKey = resolveApiKey(provider);
       const maxCostUsd = resolveMaxCost(args.max_cost_usd);
+
+      // An unknown trace_id is refused BEFORE the provider call — the old
+      // path spent the judge's money and then failed the INSERT with a raw
+      // "FOREIGN KEY constraint failed" (#376).
+      if (args.trace_id) {
+        await assertTraceExists(storage, LOCAL_TENANT, args.trace_id);
+      }
 
       const result = await evaluateWithLLMJudge({
         output: args.output,
@@ -131,7 +139,7 @@ export function registerEvaluateWithLLMJudgeTool(
       // judge doesn't fit completeness/relevance/safety/cost taxonomy
       // cleanly — it spans all four. The rule_results payload carries
       // the full judge provenance.
-      await storage.insertEvalResult(LOCAL_TENANT, {
+      await insertLinkedEvalResult(storage, LOCAL_TENANT, {
         id: evalId,
         trace_id: args.trace_id,
         eval_type: 'custom',

@@ -20,7 +20,7 @@ After install, **restart your client**. The next agent call gets scored by Iris.
 ```bash
 npx @iris-eval/init --list                       # show detected MCP clients on this machine
 npx @iris-eval/init --help                       # full help
-npx @iris-eval/init <client> --uninstall         # remove the iris entry from <client>
+npx @iris-eval/init <client> --uninstall         # remove the iris-eval entry from <client>
 ```
 
 ## Supported clients (all ten)
@@ -39,16 +39,16 @@ For each client, the installer:
 
 1. Computes the correct config path for your OS.
 2. Reads the existing config (if any).
-3. Adds an `iris` entry under `mcpServers` without touching any other entries.
+3. Adds an `iris-eval` entry under `mcpServers` without touching any other entries — the same key every other Iris install path uses, so installing twice by different routes never leaves two servers running.
 4. Writes the file back, preserving formatting where possible.
 
-The operation is **idempotent** — re-running with the same client is a no-op if Iris is already configured.
+The operation is **idempotent** — re-running with the same client is a no-op if Iris is already configured. Earlier versions of this installer wrote the entry under the key `iris`; installing again migrates that entry to `iris-eval`, and `--uninstall` removes both keys.
 
 ## What it doesn't do
 
 - Doesn't restart your client (you do).
 - Doesn't install Iris's MCP server itself — that's `npx @iris-eval/mcp-server` (or `npm install -g @iris-eval/mcp-server` if you prefer).
-- Doesn't change `mcpServers` entries you've added for other tools.
+- Doesn't change `mcpServers` entries you've added for other tools (only `iris-eval`, and the legacy `iris` key, are ever written or removed).
 - Doesn't write outside your home directory.
 
 ## Programmatic use

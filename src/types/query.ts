@@ -136,6 +136,28 @@ export interface IStorageAdapter {
   getDashboardSummary(tenantId: TenantId, sinceHours?: number): Promise<DashboardSummary>;
   deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number>;
   /**
+   * Retention twin of deleteTracesOlderThan for eval_results (#372).
+   * Deleting a trace only NULLs the trace_id on its evaluations (FK ON
+   * DELETE SET NULL), so every eval row — output_text verbatim, including
+   * whatever no_pii flagged — outlived the retention window until this
+   * existed. Cutoff is on created_at.
+   */
+  deleteEvalResultsOlderThan(tenantId: TenantId, days: number): Promise<number>;
+  /**
+   * Delete EVERY trace, span and eval result for the tenant, then compact
+   * the database so the deleted text does not linger in free pages or in
+   * the write-ahead log. Returns what was removed. Deployed rules, the
+   * audit log and preferences are not storage rows and are untouched.
+   */
+  purge(tenantId: TenantId): Promise<{ traces: number; evalResults: number }>;
+  /**
+   * Fold the write-ahead log into the main file and truncate it
+   * (wal_checkpoint TRUNCATE). Best-effort; called after a retention sweep
+   * so rows deleted at startup do not survive as readable text in
+   * iris.db-wal.
+   */
+  checkpoint(): Promise<void>;
+  /**
    * Delete a single trace by id. Cascades to spans via FK ON DELETE
    * CASCADE; eval_results get their trace_id set to NULL (so score
    * history survives even after the trace is deleted).

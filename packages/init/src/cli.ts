@@ -23,7 +23,7 @@ import {
   detectInstalledClients,
   profileFor,
 } from './detect.js';
-import { installIris, uninstallIris } from './config-writer.js';
+import { installIris, uninstallIris, IRIS_SERVER_KEY } from './config-writer.js';
 
 /*
  * The per-client docs link, in ONE place.
@@ -57,11 +57,12 @@ function printHelp(): void {
 Usage:
   npx @iris-eval/init                       # no args: show detected clients + usage
   npx @iris-eval/init <client>              # install for the named client
-  npx @iris-eval/init <client> --uninstall  # remove the iris entry
+  npx @iris-eval/init <client> --uninstall  # remove the iris-eval entry
   npx @iris-eval/init --list                # show detected clients
   npx @iris-eval/init --help                # show this message
 
 Supported clients: ${SUPPORTED.join(', ')}
+Server entry key: "${IRIS_SERVER_KEY}" (a legacy "iris" entry from an older installer is migrated on install and removed on uninstall)
 
 Examples:
   npx @iris-eval/init claude-code
@@ -161,11 +162,11 @@ export async function run(argv: string[] = process.argv.slice(2)): Promise<numbe
     const result = uninstallIris(profile);
     if (result.action === 'removed') {
       process.stdout.write(
-        `✓ Removed iris from ${profile.displayName} config.\n  ${result.configPath}\n`,
+        `✓ Removed ${IRIS_SERVER_KEY} from ${profile.displayName} config.\n  ${result.configPath}\n`,
       );
     } else {
       process.stdout.write(
-        `(no change) iris was not present in ${profile.displayName} config.\n  ${result.configPath}\n`,
+        `(no change) ${IRIS_SERVER_KEY} was not present in ${profile.displayName} config.\n  ${result.configPath}\n`,
       );
     }
     return 0;
@@ -179,7 +180,7 @@ export async function run(argv: string[] = process.argv.slice(2)): Promise<numbe
         ? 'Updated'
         : '(no change)';
   process.stdout.write(
-    `${verb} iris entry in ${profile.displayName} config.\n  ${result.configPath}\n\n`,
+    `${verb} ${IRIS_SERVER_KEY} entry in ${profile.displayName} config.\n  ${result.configPath}\n\n`,
   );
   process.stdout.write(
     `Restart ${profile.displayName} to pick up the new MCP server.\n` +

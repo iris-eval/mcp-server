@@ -66,6 +66,16 @@ export class SqliteAdapter implements IStorageAdapter {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('busy_timeout = 5000');
     this.db.pragma('foreign_keys = ON');
+    /*
+     * secure_delete overwrites freed content with zeros instead of leaving
+     * it in place until the page is reused. Without it, a DELETE — the
+     * retention sweep, delete_trace, --purge — removed the row from every
+     * query while the text stayed byte-for-byte readable in the file with
+     * `strings iris.db`. Deletes are rare here (startup sweep, explicit
+     * deletes), so the write cost is negligible; the privacy cost of the
+     * alternative is the whole point of #372.
+     */
+    this.db.pragma('secure_delete = ON');
     runMigrations(this.db);
     /*
      * iris.db holds agent inputs and outputs verbatim, and a tool that
@@ -474,11 +484,18 @@ export class SqliteAdapter implements IStorageAdapter {
      * skips rules that passed, so scanning every safety eval in the window
      * is both correct and sufficient.
      */
+    /*
+     * eval_type IN ('safety', 'all'): an eval_type="all" run carries the
+     * whole safety bundle inside its rule_results, and a PII leak caught
+     * there is exactly as real as one caught by a safety-only run. The
+     * per-rule loop below keys on rule NAMES, so the wider filter cannot
+     * over-count.
+     */
     const safetyRows = this.db.prepare(`
       SELECT rule_results
       FROM eval_results
       WHERE tenant_id = ? AND created_at >= ?
-        AND eval_type = 'safety'
+        AND eval_type IN ('safety', 'all')
     `).all(tenantId, since) as Array<{ rule_results: string }>;
 
     const violations = { pii: 0, injection: 0, hallucination: 0 };
@@ -637,6 +654,56 @@ export class SqliteAdapter implements IStorageAdapter {
     return result.changes;
   }
 
+  async deleteEvalResultsOlderThan(tenantId: TenantId, days: number): Promise<number> {
+    assertTenant(tenantId);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    /*
+     * created_at, not the linked trace's timestamp: an unlinked eval has
+     * no trace, and a linked one whose trace was already swept has a NULL
+     * trace_id — either way the eval's own age is the only age it has.
+     * Rows are ISO-8601 here (write path + migration 005), so the string
+     * comparison against an ISO cutoff is exact.
+     */
+    const result = this.db
+      .prepare('DELETE FROM eval_results WHERE tenant_id = ? AND created_at < ?')
+      .run(tenantId, cutoff);
+    return result.changes;
+  }
+
+  async purge(tenantId: TenantId): Promise<{ traces: number; evalResults: number }> {
+    assertTenant(tenantId);
+    const deleteAll = this.db.transaction(() => {
+      const evalResults = this.db.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(tenantId).changes;
+      // spans cascade (FK ON DELETE CASCADE).
+      const traces = this.db.prepare('DELETE FROM traces WHERE tenant_id = ?').run(tenantId).changes;
+      return { traces, evalResults };
+    });
+    const counts = deleteAll();
+    /*
+     * VACUUM rebuilds the file from the live rows only — the freed pages
+     * (already zeroed by secure_delete) are dropped rather than kept as
+     * free-list slack — and the TRUNCATE checkpoint then folds the WAL into
+     * the main file and cuts it to zero bytes, so neither iris.db nor
+     * iris.db-wal keeps a copy of what was just deleted. Skipped for
+     * :memory: (nothing on disk to clean).
+     */
+    if (this.dbPath !== ':memory:') {
+      this.db.exec('VACUUM');
+    }
+    await this.checkpoint();
+    return counts;
+  }
+
+  async checkpoint(): Promise<void> {
+    if (this.dbPath === ':memory:') return;
+    try {
+      this.db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch {
+      // Best effort: a checkpoint can be refused while another connection
+      // holds a read transaction. The next one will pick the pages up.
+    }
+  }
+
   async deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean> {
     assertTenant(tenantId);
     // Tenant-scoped: a trace id owned by a different tenant is
@@ -702,6 +769,11 @@ export class SqliteAdapter implements IStorageAdapter {
       id: row.id as string,
       trace_id: row.trace_id as string | undefined,
       eval_type: row.eval_type as EvalResult['eval_type'],
+      /*
+       * `categories` is not a column: an eval_type="all" row carries a
+       * `category` on every rule_results entry instead, so a reader can
+       * regroup the per-bundle breakdown from what IS stored.
+       */
       output_text: row.output_text as string,
       expected_text: row.expected_text as string | undefined,
       score: row.score as number,
