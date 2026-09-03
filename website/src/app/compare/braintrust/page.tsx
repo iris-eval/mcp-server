@@ -89,9 +89,9 @@ const FEATURES = [
   { feature: "Prompt playground", iris: "Not included", braintrust: "Full playground with side-by-side comparison", braintrustWin: true, irisNeutral: true },
   { feature: "Datasets & experiments", iris: "Not included", braintrust: "Production traces to datasets, experiment tracking, CI integration", braintrustWin: true, irisNeutral: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost", braintrust: "Per-trace cost, per-user/feature/model breakdowns", braintrustWin: true },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", braintrust: "MCP server for querying Braintrust data", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", braintrust: "MCP server that creates scorers and evaluators, runs evals, and edits datasets (Aug 2026)" },
   { feature: "License", iris: "MIT (fully permissive)", braintrust: "Proprietary (proxy is MIT)", irisWin: true },
-  { feature: "Pricing", iris: "Free & open-source", braintrust: "Free tier (1M spans) / Pro $249/mo / Enterprise custom", irisWin: true },
+  { feature: "Pricing", iris: "Free & open-source", braintrust: "Free (1 GB processed data/mo, 10K scores) / Pro $249/mo / Enterprise custom", irisWin: true },
   { feature: "Tracing depth", iris: "MCP tool calls and agent traces", braintrust: "Full trace trees with token-level detail, visual timeline", braintrustWin: true },
   { feature: "Enterprise features", iris: "Not offered — self-hosted; no compliance certification claimed before it is held", braintrust: "SOC 2, SSO, hybrid deployment, dedicated support", braintrustWin: true, irisNeutral: true },
 ];
@@ -252,7 +252,7 @@ export default function CompareBraintrust(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="Braintrust" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="Braintrust" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">

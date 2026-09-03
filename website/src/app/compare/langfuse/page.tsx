@@ -84,10 +84,10 @@ const jsonLd = {
 const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", langfuse: "SDK imports + @observe decorators", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", langfuse: "PostgreSQL + ClickHouse + Redis + S3 + 2 containers", irisWin: true },
-  { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", langfuse: "0.1 – multiple seconds latency reported", langfuseNote: "https://github.com/langfuse/langfuse/issues/6331", irisWin: true },
+  { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", langfuse: "Async SDK tracing in your process", irisWin: true },
   { feature: "Eval rules", iris: "13 built-in heuristic rules + 4 custom-rule types (<1ms)", langfuse: "LLM-as-Judge (powerful but slow / costly)", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", langfuse: "Token / cost per user, session, model", irisWin: false },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langfuse: "MCP server for prompt management only", irisWin: true },
+  { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langfuse: "Hosted MCP server: create scores, evaluators and evaluation rules; query observations and datasets" },
   { feature: "License", iris: "MIT (fully permissive)", langfuse: "MIT core + commercial enterprise modules", irisWin: true },
   { feature: "Independence", iris: "Independent, founder-led", langfuse: "Acquired by ClickHouse (Jan 2026)", irisWin: true },
   { feature: "Dashboard", iris: "Real-time dark-mode UI", langfuse: "Customizable multi-dimension dashboards", irisWin: false },
@@ -191,19 +191,6 @@ export default function CompareLangfuse(): React.ReactElement {
                     </td>
                     <td className={`px-6 py-4 ${row.langfuseWin ? "font-medium text-eval-pass" : "text-text-secondary"}`}>
                       {row.langfuse}
-                      {row.langfuseNote && (
-                        <>
-                          {" "}
-                          <a
-                            href={row.langfuseNote}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-text-muted underline"
-                          >
-                            #6331
-                          </a>
-                        </>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -261,7 +248,7 @@ export default function CompareLangfuse(): React.ReactElement {
         </div>
       </section>
 
-      <CompareDisclaimer lastVerified="March 2026" competitor="Langfuse" />
+      <CompareDisclaimer lastVerified="September 2026" competitor="Langfuse" />
 
       {/* CTA */}
       <section className="bg-bg-base pb-20">
