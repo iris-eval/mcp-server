@@ -22,7 +22,11 @@ const TIMESTAMP_HINT = 'must be an ISO 8601 timestamp (e.g. 2026-08-01T00:00:00Z
  * query (dashboard/validation.ts) so both read paths refuse the same
  * unparseable bounds with the same hint.
  */
-export const isoTimestamp = z.string().refine(isIsoTimestamp, TIMESTAMP_HINT);
+export const isoTimestamp = z.string().refine(isIsoTimestamp, {
+  // The rejected value is echoed so the error names what was sent, as the
+  // crossed-bound errors already do (v0.6.0 acceptance pass, B8/C9).
+  error: (issue) => `${JSON.stringify(issue.input)} ${TIMESTAMP_HINT}`,
+});
 
 /** The cross-field bounds a trace query can carry. */
 export interface TraceRangeArgs {

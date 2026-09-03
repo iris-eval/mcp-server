@@ -96,6 +96,8 @@ describe('tool contracts (MCP surface)', () => {
         const r = await client.callTool({ name: 'get_traces', arguments: args });
         expect(r.isError, JSON.stringify(args)).toBe(true);
         expect(text(r)).toContain('must be an ISO 8601 timestamp (e.g. 2026-08-01T00:00:00Z) or date (2026-08-01)');
+        // The rejected value is named, as the crossed-bound errors name theirs.
+        expect(text(r)).toContain(JSON.stringify(Object.values(args)[0]));
       }
     });
 

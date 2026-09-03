@@ -134,4 +134,13 @@ describe('mode flags are mutually exclusive', () => {
     expect(existsSync(join(home, 'iris.db'))).toBe(false);
     expect(existsSync(join(home, 'demo.db'))).toBe(false);
   }, 30_000);
+
+  it('--purge with --dashboard exits 2 instead of purging and silently dropping the dashboard flag', async () => {
+    const { code, stderr } = await runCli(['--purge', '--dashboard']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('--purge');
+    expect(stderr).toContain('--dashboard');
+    expect(stderr).toContain('cannot be combined');
+    expect(existsSync(join(home, 'iris.db'))).toBe(false);
+  }, 30_000);
 });

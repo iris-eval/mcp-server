@@ -177,7 +177,7 @@ Environment variables (CLI flags take precedence):
   IRIS_OTEL_TIMEOUT_MS                 Per-export timeout (default: 15000)
   RATE_LIMIT_SALT                      (waitlist API only — required when website is deployed)
 
-Dashboard preferences (~/.iris/preferences.json):
+Dashboard preferences ($IRIS_HOME/preferences.json, default ~/.iris/preferences.json):
   Edit autoLaunch: false to permanently disable first-run dashboard auto-launch.
 `);
   process.exit(0);
@@ -192,6 +192,18 @@ const modeFlags = (['demo', 'demo-clear', 'self-test', 'purge'] as const).filter
 if (modeFlags.length > 1) {
   process.stderr.write(
     `iris-mcp: ${modeFlags.map((flag) => `--${flag}`).join(' and ')} cannot be combined.\nRun \`iris-mcp --help\` for usage.\n`,
+  );
+  process.exit(2);
+}
+/*
+ * `--purge --dashboard` used to run the purge and drop the dashboard flag
+ * on the floor. A flag that changes nothing is the same fault as a
+ * misspelled tool argument: the caller asked for something and got no
+ * sign it was ignored. (v0.6.0 acceptance pass.)
+ */
+if (values.purge && values.dashboard) {
+  process.stderr.write(
+    'iris-mcp: --purge exits as soon as the purge finishes and cannot be combined with --dashboard (nothing would be served).\nRun `iris-mcp --help` for usage.\n',
   );
   process.exit(2);
 }
