@@ -131,6 +131,13 @@ export class EvalEngine {
       const skipMessages = ruleResults
         .filter((r) => r.skipped)
         .map((r) => `[${r.ruleName}] ${r.skipReason ?? r.message}`);
+      // Same field as the main path below: the tool description promises
+      // that EVERY critical rule that skipped is named here, and a caller
+      // whose only rules were critical ones should not have to infer that
+      // from insufficient_data alone.
+      const criticalSkippedAll = skippedIndices
+        .filter((i) => rules[i].critical === true)
+        .map((i) => ruleResults[i].ruleName);
 
       return {
         id: generateEvalId(),
@@ -147,6 +154,7 @@ export class EvalEngine {
         rules_evaluated: 0,
         rules_skipped: rulesSkipped,
         insufficient_data: true,
+        ...(criticalSkippedAll.length > 0 ? { critical_skipped: criticalSkippedAll } : {}),
       };
     }
 

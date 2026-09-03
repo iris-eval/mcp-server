@@ -21,6 +21,7 @@ import type {
   MomentSignificance,
   MomentRuleSnapshot,
 } from '../types/decision-moment.js';
+import { safetyRules } from './rules/safety.js';
 
 /* Cost-spike threshold in USD per single trace. Crossing this triggers
  * cost-spike classification regardless of agent baseline. The bound was
@@ -29,14 +30,14 @@ import type {
 const COST_SPIKE_USD_THRESHOLD = 0.10;
 
 /* Rule names that, if failed, escalate the moment to safety-violation
- * regardless of the rest of the verdict. Keeps in sync with v0.3.1's
- * safety category. */
-const SAFETY_RULE_NAMES = new Set([
-  'no_pii',
-  'no_blocklist_words',
-  'no_injection_patterns',
-  'no_stub_output',
-]);
+ * regardless of the rest of the verdict. Derived from the safety bundle
+ * itself so the two cannot drift: this used to be a hand-copied list of
+ * v0.3.1's four names, and when v0.5.0 moved no_hallucination_markers into
+ * the safety bundle the classifier kept ranking a fabricated citation as a
+ * plain fail (significance 0.5 instead of 1.0) on the failure-first
+ * landing page. Any rule added to `safetyRules` now classifies correctly
+ * without a second edit here. */
+const SAFETY_RULE_NAMES = new Set(safetyRules.map((rule) => rule.name));
 
 export function deriveMoment(trace: Trace, evals: EvalResult[]): DecisionMoment {
   const ruleSnapshot = computeRuleSnapshot(evals);
@@ -165,7 +166,7 @@ function classifySignificance({
       kind: 'safety-violation',
       score: 1.0,
       label: `Safety: ${safetyFailed.join(', ')}`,
-      reason: `${safetyFailed.length} safety rule(s) failed: ${safetyFailed.join(', ')}. Output may contain PII, prompt injection compliance, blocklisted content, or stub markers — review before this pattern becomes load-bearing.`,
+      reason: `${safetyFailed.length} safety rule(s) failed: ${safetyFailed.join(', ')}. Output may contain PII, prompt injection compliance, blocklisted content, stub markers, or fabricated/contradicted claims — review before this pattern becomes load-bearing.`,
     };
   }
 

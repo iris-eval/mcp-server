@@ -40,6 +40,19 @@ function safeRegexResult(definition: CustomRuleDefinition, message: string): Eva
 }
 
 /**
+ * `config.keywords` as a non-empty array of strings, or undefined when it
+ * is anything else. Element types are checked at runtime because the
+ * inline schema accepts any config value: `keywords: [1, 2]` passed the
+ * old Array.isArray check and then threw from `.toLowerCase()` mid-eval.
+ */
+function readKeywordList(config: Record<string, unknown>): string[] | undefined {
+  const value = config.keywords;
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  if (!value.every((k): k is string => typeof k === 'string')) return undefined;
+  return value;
+}
+
+/**
  * Converts a leading inline flag group like `(?i)` or `(?im)` into a real
  * flags argument. Node's RegExp engine does not support inline flag groups,
  * and a user pasting `(?i)foo` from a regex tutorial would otherwise hit
@@ -77,10 +90,26 @@ export function normalizeRegexSource(
 function validateRegex(
   definition: CustomRuleDefinition,
 ): { pattern: string; flags: string } | EvalRuleResult {
-  const { pattern: patternStr, flags } = normalizeRegexSource(
-    definition.config.pattern as string,
-    (definition.config.flags as string) ?? '',
-  );
+  /*
+   * Runtime shape check, not just a compile-time cast. evaluate_output's
+   * inline custom_rules schema accepts any config record, so
+   * `{type: "regex_match", config: {}}` (or a null / numeric pattern)
+   * reaches this point; the old `as string` cast was a no-op at runtime
+   * and normalizeRegexSource threw a TypeError out of the engine — the
+   * whole evaluate_output call failed, contradicting its own description
+   * ("the eval itself never throws"). Deploy-time validation already
+   * rejects these; this is the same configError contract for the inline
+   * path and for rules persisted before that validation existed.
+   */
+  const rawPattern = definition.config.pattern;
+  if (typeof rawPattern !== 'string' || rawPattern.length === 0) {
+    return safeRegexResult(definition, `${definition.type} rule requires config.pattern (non-empty string)`);
+  }
+  const rawFlags = definition.config.flags;
+  if (rawFlags !== undefined && rawFlags !== null && typeof rawFlags !== 'string') {
+    return safeRegexResult(definition, `${definition.type} rule config.flags must be a string when present`);
+  }
+  const { pattern: patternStr, flags } = normalizeRegexSource(rawPattern, rawFlags ?? '');
 
   if (patternStr.length > MAX_PATTERN_LENGTH) {
     return safeRegexResult(definition, `Regex pattern too long (${patternStr.length} > ${MAX_PATTERN_LENGTH})`);
@@ -257,8 +286,8 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           return { ruleName: definition.name, passed, score: passed ? 1 : max / context.output.length, message: passed ? `Length (${context.output.length}) within maximum (${max})` : `Length (${context.output.length}) exceeds maximum (${max})` };
         }
         case 'contains_keywords': {
-          const keywords = definition.config.keywords as string[] | undefined;
-          if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+          const keywords = readKeywordList(definition.config);
+          if (!keywords) {
             return configError(definition, 'contains_keywords rule requires config.keywords (non-empty string array)');
           }
           const lower = context.output.toLowerCase();
@@ -268,8 +297,8 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           return { ruleName: definition.name, passed, score: ratio, message: `Found ${found.length}/${keywords.length} required keywords` };
         }
         case 'excludes_keywords': {
-          const keywords = definition.config.keywords as string[] | undefined;
-          if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+          const keywords = readKeywordList(definition.config);
+          if (!keywords) {
             return configError(definition, 'excludes_keywords rule requires config.keywords (non-empty string array)');
           }
           const lower = context.output.toLowerCase();
@@ -290,7 +319,27 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           if (max == null || max < 0) {
             return configError(definition, `cost_threshold rule requires ${describeKeys('cost_threshold')} (non-negative number)`);
           }
-          const cost = context.costUsd ?? 0;
+          /*
+           * No cost data → SKIP, exactly like the built-in
+           * cost_under_threshold (cost.ts). The old `context.costUsd ?? 0`
+           * read a missing cost as free, so a rule deployed at severity
+           * critical to hard-fail evaluations over $0.50 reported
+           * passed:true, score:1 on every evaluate_output call that simply
+           * omitted cost_usd — the veto never fired on evidence it never
+           * had. A skipped critical rule is reported in critical_skipped
+           * instead, so a fail-closed gate can see the rule did not run.
+           */
+          if (context.costUsd === undefined || context.costUsd === null) {
+            return {
+              ruleName: definition.name,
+              passed: false,
+              score: 0,
+              message: 'Cost data not provided',
+              skipped: true,
+              skipReason: 'context.costUsd not provided',
+            };
+          }
+          const cost = context.costUsd;
           const passed = cost <= max;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? `Cost ($${cost}) within threshold ($${max})` : `Cost ($${cost}) exceeds threshold ($${max})` };
         }

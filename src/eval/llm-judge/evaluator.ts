@@ -1,4 +1,4 @@
-import { callLLMJudge, LLMJudgeError, type LLMProvider } from './client.js';
+import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
 import { estimateCostUsd, findPricing } from './pricing.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
@@ -132,64 +132,90 @@ export async function evaluateWithLLMJudge(
     sourceMaterial: params.sourceMaterial,
   });
 
-  // Estimate worst-case cost (treat all output as billable at full
-  // maxOutputTokens) and reject before the network call if it would
-  // exceed the cap. This is intentionally pessimistic — real usage is
-  // usually half, but we want the cap to be a hard ceiling, not a soft
-  // hope.
-  const estimatedCost = estimateCostUsd(
+  // The retry prompt is fixed up front so the pre-flight estimate can
+  // price it: a malformed first reply triggers ONE more call with this
+  // stricter system prompt and a smaller output cap.
+  const strictSystem =
+    systemPrompt +
+    '\n\nIMPORTANT: your previous response was not valid JSON. Respond with ONLY the JSON object, no prefatory text, no code fences.';
+  const retryMaxOutputTokens = Math.min(maxOutputTokens, 256);
+
+  /*
+   * Estimate worst-case cost and reject before the network call if it
+   * would exceed the cap. Intentionally pessimistic — every input
+   * character billed, the full output cap billed, AND the malformed-JSON
+   * retry billed on top — because the cap is meant to be a hard ceiling,
+   * not a soft hope. The estimate used to price a single call, so an eval
+   * that fit just under the cap could bill nearly twice the cap whenever
+   * the judge misformatted its first reply.
+   */
+  const firstAttemptCost = estimateCostUsd(
     params.model,
-    Math.ceil((systemPrompt.length + userPrompt.length) / 4),
+    estimateInputTokens(systemPrompt, userPrompt),
     maxOutputTokens,
   );
+  const retryCost = estimateCostUsd(
+    params.model,
+    estimateInputTokens(strictSystem, userPrompt),
+    retryMaxOutputTokens,
+  );
+  const estimatedCost =
+    firstAttemptCost === null || retryCost === null ? null : firstAttemptCost + retryCost;
   if (estimatedCost !== null && estimatedCost > maxCost) {
     throw new Error(
-      `Estimated max cost ${estimatedCost.toFixed(4)} USD exceeds cap ${maxCost.toFixed(4)} USD — refusing to call. Raise IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL or trim prompts/maxOutputTokens.`,
+      `Estimated max cost ${estimatedCost.toFixed(4)} USD (including one retry on a malformed judge reply) exceeds cap ${maxCost.toFixed(4)} USD — refusing to call. Raise IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL or trim prompts/maxOutputTokens.`,
     );
   }
 
   // First attempt
-  let raw;
-  try {
-    raw = await callLLMJudge({
-      provider: params.provider,
-      model: params.model,
-      systemPrompt,
-      userPrompt,
-      maxOutputTokens,
-      temperature,
-      apiKey: params.apiKey,
-      timeoutMs: params.timeoutMs,
-      maxInputTokensEstimate: params.maxInputTokensEstimate,
-    });
-  } catch (err) {
-    throw err;
-  }
+  let raw = await callLLMJudge({
+    provider: params.provider,
+    model: params.model,
+    systemPrompt,
+    userPrompt,
+    maxOutputTokens,
+    temperature,
+    apiKey: params.apiKey,
+    timeoutMs: params.timeoutMs,
+    maxInputTokensEstimate: params.maxInputTokensEstimate,
+  });
+
+  /*
+   * Running totals across BOTH attempts. A first call whose reply failed
+   * to parse still completed at the provider and was billed; the retry's
+   * usage used to overwrite it, so `cost_usd` (surfaced by
+   * evaluate_with_llm_judge and stored on the eval result) understated the
+   * real charge by roughly half whenever a retry ran.
+   */
+  let inputTokens = raw.inputTokens;
+  let outputTokens = raw.outputTokens;
+  let latencyMs = raw.latencyMs;
 
   let parsed;
   try {
     parsed = parseJudgeResponse(raw.content);
   } catch (err) {
     if (!(err instanceof LLMJudgeError) || err.kind !== 'malformed_response') throw err;
-    // Retry once with a stricter prompt. The second retry also counts
-    // against the cost cap — we use a smaller maxOutputTokens.
-    const strictSystem = systemPrompt + '\n\nIMPORTANT: your previous response was not valid JSON. Respond with ONLY the JSON object, no prefatory text, no code fences.';
+    // Retry once with the stricter prompt priced above.
     raw = await callLLMJudge({
       provider: params.provider,
       model: params.model,
       systemPrompt: strictSystem,
       userPrompt,
-      maxOutputTokens: Math.min(maxOutputTokens, 256),
+      maxOutputTokens: retryMaxOutputTokens,
       temperature,
       apiKey: params.apiKey,
       timeoutMs: params.timeoutMs,
       maxInputTokensEstimate: params.maxInputTokensEstimate,
     });
+    inputTokens += raw.inputTokens;
+    outputTokens += raw.outputTokens;
+    latencyMs += raw.latencyMs;
     parsed = parseJudgeResponse(raw.content);
   }
 
   const passed = parsed.passed ?? parsed.score >= template.passThreshold;
-  const costUsd = estimateCostUsd(params.model, raw.inputTokens, raw.outputTokens);
+  const costUsd = estimateCostUsd(params.model, inputTokens, outputTokens);
 
   return {
     passed,
@@ -199,10 +225,10 @@ export async function evaluateWithLLMJudge(
     model: params.model,
     provider: params.provider,
     template: params.template,
-    inputTokens: raw.inputTokens,
-    outputTokens: raw.outputTokens,
+    inputTokens,
+    outputTokens,
     costUsd,
-    latencyMs: raw.latencyMs,
+    latencyMs,
     rawResponseId: raw.rawProviderResponseId,
   };
 }
