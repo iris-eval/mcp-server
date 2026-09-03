@@ -275,7 +275,7 @@ export function Pricing(): React.ReactElement {
             </div>
           ) : (
             <>
-              <form onSubmit={handleSubmit} className="flex gap-3">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
                 <label htmlFor="pricing-waitlist-email" className="sr-only">Email</label>
                 <input
                   id="pricing-waitlist-email"
@@ -285,7 +285,7 @@ export function Pricing(): React.ReactElement {
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 rounded-xl border border-border-default bg-bg-base px-5 py-3.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-iris-500 focus:outline-none focus:ring-2 focus:ring-iris-500/20 disabled:opacity-50"
+                  className="min-w-0 flex-1 rounded-xl border border-border-default bg-bg-base px-5 py-3.5 text-[14px] text-text-primary placeholder:text-text-muted focus:border-iris-500 focus:outline-none focus:ring-2 focus:ring-iris-500/20 disabled:opacity-50"
                 />
                 <button type="submit" disabled={loading} className="shrink-0 rounded-xl bg-iris-600 px-6 py-3.5 text-[14px] font-semibold text-white shadow-sm shadow-iris-600/20 transition-all hover:bg-iris-500 disabled:opacity-50">
                   {loading ? "Joining..." : "Join Waitlist"}
