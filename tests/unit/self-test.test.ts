@@ -25,7 +25,15 @@ import { PKG_VERSION } from '../../src/config/defaults.js';
 
 const MUTATED_ENV_VARS = ['IRIS_DB_PATH', 'IRIS_API_KEY', 'IRIS_HOME', 'TMPDIR', 'TEMP', 'TMP'] as const;
 
-describe('runSelfTest', () => {
+/*
+ * Every test here runs the REAL self-test sequence — spawning the regex
+ * sandbox worker, opening SQLite, probing the configured home — which takes
+ * 5–30 s under coverage on a busy CI runner. Vitest's 5 s default timed two
+ * of them out on main (not on the PR) the day 0.6.0 was cut; the budget is
+ * now explicit and generous, because a timeout here says nothing about the
+ * product.
+ */
+describe('runSelfTest', { timeout: 90_000 }, () => {
   let decoyHome: string;
   let savedEnv: Record<string, string | undefined>;
 
