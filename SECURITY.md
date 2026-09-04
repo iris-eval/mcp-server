@@ -65,7 +65,7 @@ We follow coordinated disclosure. We will:
 5. Credit the reporter (unless they prefer anonymity)
 
 We ask that you:
-- Allow us reasonable time to address the issue before public disclosure
+- Allow us 90 days by default before public disclosure — negotiable for high-severity or actively exploited issues, where a shorter window is in everyone's interest
 - Make a good-faith effort to avoid privacy violations and data destruction
 - Do not exploit the vulnerability beyond what is necessary to demonstrate it
 

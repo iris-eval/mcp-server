@@ -878,7 +878,7 @@ A financial reporting agent must produce exact numbers, proper currency formatti
 **What this catches:**
 - Malformed JSON output (weight 3)
 - Missing dollar sign or decimal places in currency (weight 2)
-- Hedging language that undermines financial precision (weight 2)
+- Hedging language that undermines a precise financial answer (weight 2)
 - Missing required financial fields (weight 2)
 - "Data may be outdated" disclaimers that shouldn't appear in production reports (weight 1.5)
 - Runaway costs per call (weight 2)

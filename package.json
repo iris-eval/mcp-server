@@ -28,8 +28,13 @@
     "version:sync": "node scripts/sync-versions.mjs",
     "claims:capture-tests": "node scripts/claims/capture-tests.mjs",
     "claims:generate": "node scripts/claims/generate.mjs",
+    "claims:generate:live": "node scripts/claims/generate.mjs --live",
     "claims:check": "node scripts/claims/generate.mjs --check",
     "claims:check-hardcoded": "node scripts/claims/check-no-hardcoded.mjs",
+    "llms:render": "node scripts/claims/render-llms.mjs",
+    "llms:check": "node scripts/claims/render-llms.mjs --check",
+    "proof:judge": "tsx proof/judge/run.ts",
+    "proof:judge:typecheck": "tsc -p proof/judge/tsconfig.json",
     "clean": "rm -rf dist coverage",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "demo": "tsx scripts/demo.ts"

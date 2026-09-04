@@ -9,6 +9,7 @@ import { CURRENT_RELEASE_HEADLINE, PUBLIC_REPO_URL, VERSION_MCP_SERVER } from "@
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
   { label: "Playground", href: "/playground" },
+  { label: "Proof", href: "/proof" },
   { label: "Learn", href: "/learn" },
   { label: "Compare", href: "/compare" },
   { label: "Pricing", href: "/pricing" },

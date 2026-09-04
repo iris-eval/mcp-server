@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "status": "pending",
+  "note": "run npm run proof:judge with a judge API key, or dispatch the proof-judge workflow"
+}

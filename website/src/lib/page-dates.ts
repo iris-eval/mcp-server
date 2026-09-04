@@ -36,6 +36,7 @@ export const PAGE_LAST_MODIFIED = {
   "/playground/live": "2026-04-22",
   "/pricing": "2026-09-03",
   "/privacy": "2026-09-03",
+  "/proof": "2026-09-03",
   "/security": "2026-09-03",
   "/terms": "2026-09-03",
 } as const;

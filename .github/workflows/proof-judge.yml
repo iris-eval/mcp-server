@@ -1,0 +1,104 @@
+name: Proof — LLM judge + citation measurement
+
+# Measures the LLM-as-judge and the citation verifier against the committed
+# adversarial/clean sets (proof/judge/cases/*, proof/citations/cases.json) and
+# writes the numbers the docs cite in place of "calibrated".
+#
+# Manual only. Each run spends real provider money, bounded by max_cost (a hard
+# ceiling the runner enforces per eval AND run-wide). It is NOT a PR gate — it
+# produces an artifact the lead commits back as proof/judge-results.json.
+#
+# Credential: the SAME secret the nightly real-LLM smoke uses, OPENAI_API_KEY,
+# mapped to IRIS_OPENAI_API_KEY (the env var the shipped tool reads). The
+# anthropic path reads IRIS_ANTHROPIC_API_KEY, wired here from an optional
+# same-named secret so provider=anthropic works the moment that secret exists;
+# until then, dispatch with provider=openai to run on the configured key. No
+# new secret is required to run today. The key is never printed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'Judge provider (anthropic needs an IRIS_ANTHROPIC_API_KEY secret; openai runs on the existing OPENAI_API_KEY secret)'
+        required: false
+        default: anthropic
+        type: choice
+        options:
+          - anthropic
+          - openai
+      max_cost:
+        description: 'Run-wide cost ceiling in USD (default 2.00)'
+        required: false
+        default: '2.00'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  proof-judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # Map secret presence for the CHOSEN provider to an output. Secrets can't
+      # be read in a step `if:`, so resolve it here. Absent key → skip the run
+      # (neutral, with a notice) rather than fail red on a missing credential,
+      # matching nightly-real-llm-smoke.yml.
+      - name: Check for the provider key
+        id: keycheck
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          IRIS_ANTHROPIC_API_KEY: ${{ secrets.IRIS_ANTHROPIC_API_KEY }}
+          IRIS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ "$PROVIDER" = "anthropic" ]; then
+            KEY="$IRIS_ANTHROPIC_API_KEY"; VAR="IRIS_ANTHROPIC_API_KEY (secret of the same name)"
+          else
+            KEY="$IRIS_OPENAI_API_KEY"; VAR="OPENAI_API_KEY"
+          fi
+          if [ -n "$KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No key for provider '$PROVIDER' ($VAR is unset). Skipping. Dispatch with provider=openai to run on the configured OPENAI_API_KEY secret, or add an IRIS_ANTHROPIC_API_KEY secret for the anthropic path."
+          fi
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        if: steps.keycheck.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - if: steps.keycheck.outputs.present == 'true'
+        run: npm ci
+
+      - name: Run the judge + citation measurement
+        if: steps.keycheck.outputs.present == 'true'
+        env:
+          PROOF_JUDGE_PROVIDER: ${{ inputs.provider }}
+          PROOF_JUDGE_MAX_COST_USD: ${{ inputs.max_cost }}
+          IRIS_ANTHROPIC_API_KEY: ${{ secrets.IRIS_ANTHROPIC_API_KEY }}
+          IRIS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run proof:judge
+
+      - name: Write the summary table to the job summary
+        if: steps.keycheck.outputs.present == 'true'
+        run: |
+          if [ -f proof/judge/RESULTS.md ]; then
+            cat proof/judge/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No RESULTS.md was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the measurement artifacts
+        if: steps.keycheck.outputs.present == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: proof-judge-results
+          path: |
+            proof/judge-results.json
+            proof/judge/RESULTS.md
+          if-no-files-found: warn
+          retention-days: 90

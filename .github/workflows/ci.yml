@@ -25,6 +25,9 @@ jobs:
       - run: npm ci
       - run: bash scripts/check-version.sh
       - run: bash scripts/check-product-claims.sh
+      # The LLM-facing surface (website/public/llms*.txt) must be the render
+      # of its template + .claims.json — see scripts/claims/render-llms.mjs.
+      - run: npm run llms:check
       # NOTE: `npm audit --audit-level=high` used to run here. It was removed
       # 2026-08-06 because it could deadlock the repo against itself.
       #

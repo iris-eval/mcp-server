@@ -4,8 +4,13 @@ Iris ships deterministic, rule-based evaluation by default — it's fast, free, 
 Some quality questions don't reduce to regex or keyword overlap, though. "Does this answer address
 the question?" "Is this claim factually correct?" "Does this RAG output stay grounded in the
 sources we gave the agent?" For those, Iris supports **LLM-as-Judge**: a single MCP tool
-(`evaluate_with_llm_judge`) that calls an LLM to score the output and returns a calibrated 0..1
-score with rationale, per-dimension breakdown, and exact cost.
+(`evaluate_with_llm_judge`) that calls an LLM to score the output and returns a 0..1
+score with rationale, per-dimension breakdown, and exact cost. The score is a rubric-guided model
+judgment, not a probability checked against labelled outcomes. How accurately it tracks ground-truth
+labels — on an adversarial, clean and prompt-injection set — is measured by `npm run proof:judge`;
+until a keyed run replaces the committed placeholder the number is pending. See
+[`proof/judge/README.md`](../proof/judge/README.md), `proof/judge-results.json`, and the judge status
+on https://iris-eval.com/proof beside the deterministic rules' numbers.
 
 > **Bring your own key.** Iris doesn't proxy LLM calls, doesn't bundle credits, and doesn't have a hosted-judge tier. To use LLM-as-judge you set `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` in your environment, and Iris calls the provider directly with your key. No third party in the loop. The deterministic eval rules (`evaluate_output`) need no key and stay free forever.
 

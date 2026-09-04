@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Written by `next dev` / `next build` (Next 16 "nextjs-agent-rules" scaffold) on every run.
+# Vendor agent instructions are never committed here — see the repo rule on third-party agent skills.
+/AGENTS.md
+/CLAUDE.md
