@@ -41,6 +41,7 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [Relevance Rules](#relevance-rules)
   - [Safety Rules](#safety-rules)
   - [Cost Rules](#cost-rules)
+  - [Trajectory rules](#trajectory-rules)
 - [Custom Rules](#custom-rules)
   - [regex_match](#regex_match)
   - [regex_no_match](#regex_no_match)
