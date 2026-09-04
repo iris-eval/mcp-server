@@ -144,6 +144,14 @@ function score(answerPath) {
     if (human === c.label) agree++;
     else disagreements.push({ id: a.id, rule: c.rule, gold: c.label, human, notes: c.notes });
   }
+  // The annotator's own opinion of the rule, kept separate from the verdict on
+  // purpose. A flagged case is NOT a disagreement: the annotator judged the
+  // rule as written, agreed with the corpus, and then said the rule is written
+  // wrong. That is the most actionable thing this exercise produces, so it is
+  // reported even when agreement is 100%.
+  const flagged = (answers.answers ?? answers)
+    .filter((a) => a.ruleWrong)
+    .map((a) => ({ id: a.id, rule: byId.get(a.id)?.rule ?? '?', verdict: a.verdict }));
   const n = rows.length;
   const pct = n ? ((agree / n) * 100).toFixed(1) : '0.0';
   console.log(
@@ -151,7 +159,8 @@ function score(answerPath) {
   );
   console.log(`  answered   ${n}${unsure ? `  (${unsure} marked unsure, excluded)` : ''}`);
   console.log(`  agree      ${agree}`);
-  console.log(`  agreement  ${pct}%\n`);
+  console.log(`  agreement  ${pct}%`);
+  console.log(`  rule flagged as wrong  ${flagged.length}\n`);
   if (disagreements.length) {
     console.log(
       'Disagreements — each one is either a mislabelled case or a definition that needs rewriting:\n',
@@ -162,7 +171,18 @@ function score(answerPath) {
     }
     console.log('');
   }
-  return { n, agree, disagreements };
+  if (flagged.length) {
+    const byRule = new Map();
+    for (const f of flagged) byRule.set(f.rule, [...(byRule.get(f.rule) ?? []), f.id]);
+    console.log(
+      'Rules the annotator says are written wrong. These are product decisions, not label errors:\n',
+    );
+    for (const [rule, ids] of [...byRule].sort((a, b) => b[1].length - a[1].length)) {
+      console.log(`  ${rule}  (${ids.length}): ${ids.join(', ')}`);
+    }
+    console.log('');
+  }
+  return { n, agree, disagreements, flagged };
 }
 
 // CLI only. The test suite imports drawSample/loadCorpus, and an import that
