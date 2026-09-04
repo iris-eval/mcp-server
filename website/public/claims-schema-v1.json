@@ -20,8 +20,13 @@
     "version"
   ],
   "properties": {
-    "$schema": { "type": "string", "format": "uri" },
-    "schemaVersion": { "const": 1 },
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
     "generatedAt": {
       "type": "string",
       "format": "date-time",
@@ -32,186 +37,552 @@
       "pattern": "^[0-9a-f]{7,40}$",
       "description": "Short or full SHA of the commit the values were read from."
     },
-    "generatorVersion": { "$ref": "#/$defs/semver" },
+    "generatorVersion": {
+      "$ref": "#/$defs/semver"
+    },
     "proof": {
       "type": "object",
       "description": "Evaluator accuracy: proof/results.json copied verbatim by scripts/claims/generators/proof.mjs (per built-in rule: confusion matrix, precision/recall/F1, 95% intervals), plus proof/judge-results.json as `judge`. Optional: absent until the first measurement lands.",
-      "required": ["schemaVersion", "corpusVersion", "generatedAt", "commit", "method", "rules", "humanAgreement", "judge"],
+      "required": [
+        "schemaVersion",
+        "corpusVersion",
+        "generatedAt",
+        "commit",
+        "method",
+        "rules",
+        "humanAgreement",
+        "judge"
+      ],
       "properties": {
-        "schemaVersion": { "const": 1 },
-        "corpusVersion": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
-        "generatedAt": { "type": "string", "format": "date-time" },
-        "commit": { "type": "string" },
-        "method": { "type": "object" },
+        "schemaVersion": {
+          "const": 1
+        },
+        "corpusVersion": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}$"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "method": {
+          "type": "object"
+        },
         "rules": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["name", "category", "n", "positives", "negatives", "skipped", "tp", "fp", "fn", "tn", "precision", "recall", "f1", "ci95"],
+            "required": [
+              "name",
+              "category",
+              "n",
+              "positives",
+              "negatives",
+              "skipped",
+              "tp",
+              "fp",
+              "fn",
+              "tn",
+              "precision",
+              "recall",
+              "f1",
+              "ci95"
+            ],
             "properties": {
-              "name": { "type": "string" },
-              "category": { "type": "string" },
-              "n": { "type": "integer" },
-              "positives": { "type": "integer" },
-              "negatives": { "type": "integer" },
-              "skipped": { "type": "integer" },
-              "tp": { "type": "integer" },
-              "fp": { "type": "integer" },
-              "fn": { "type": "integer" },
-              "tn": { "type": "integer" },
-              "precision": { "type": ["number", "null"] },
-              "recall": { "type": ["number", "null"] },
-              "f1": { "type": ["number", "null"] },
-              "ci95": { "type": "object" }
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "n": {
+                "type": "integer"
+              },
+              "positives": {
+                "type": "integer"
+              },
+              "negatives": {
+                "type": "integer"
+              },
+              "skipped": {
+                "type": "integer"
+              },
+              "tp": {
+                "type": "integer"
+              },
+              "fp": {
+                "type": "integer"
+              },
+              "fn": {
+                "type": "integer"
+              },
+              "tn": {
+                "type": "integer"
+              },
+              "precision": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "recall": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "f1": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ci95": {
+                "type": "object"
+              }
             }
           }
         },
-        "humanAgreement": { "type": "object" },
-        "judge": { "type": "object" }
+        "humanAgreement": {
+          "type": "object"
+        },
+        "judge": {
+          "type": "object"
+        }
       }
     },
     "brand": {
       "type": "object",
-      "required": ["categoryName", "coinedTerms", "npmPackage", "publicRepoUrl", "securityEmail", "supportEmail", "tagline", "websiteUrl"],
+      "required": [
+        "categoryName",
+        "coinedTerms",
+        "npmPackage",
+        "publicRepoUrl",
+        "securityEmail",
+        "supportEmail",
+        "tagline",
+        "websiteUrl"
+      ],
       "properties": {
-        "categoryName": { "type": "string" },
-        "coinedTerms": { "type": "array", "items": { "type": "string" } },
-        "npmPackage": { "type": "string" },
-        "publicRepoUrl": { "type": "string", "format": "uri" },
-        "securityEmail": { "type": "string", "format": "email" },
-        "supportEmail": { "type": "string", "format": "email" },
-        "tagline": { "type": "string" },
-        "websiteUrl": { "type": "string", "format": "uri" }
+        "categoryName": {
+          "type": "string"
+        },
+        "coinedTerms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "npmPackage": {
+          "type": "string"
+        },
+        "publicRepoUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "securityEmail": {
+          "type": "string",
+          "format": "email"
+        },
+        "supportEmail": {
+          "type": "string",
+          "format": "email"
+        },
+        "tagline": {
+          "type": "string"
+        },
+        "websiteUrl": {
+          "type": "string",
+          "format": "uri"
+        }
       },
       "additionalProperties": false
     },
     "evalRules": {
       "type": "object",
-      "required": ["builtInCount", "categories", "categoryCount", "hallucinationMarkers", "injectionPatterns", "names", "piiPatterns", "stubMarkers"],
+      "required": [
+        "builtInCount",
+        "categories",
+        "categoryCount",
+        "hallucinationMarkers",
+        "injectionPatterns",
+        "names",
+        "piiPatterns",
+        "stubMarkers",
+        "defaultEvalType"
+      ],
       "properties": {
-        "builtInCount": { "$ref": "#/$defs/count", "description": "Number of built-in deterministic rules; equals names.length." },
-        "categories": { "type": "array", "items": { "type": "string" }, "description": "Rule categories (the eval_type bundles)." },
-        "categoryCount": { "$ref": "#/$defs/count" },
-        "hallucinationMarkers": { "$ref": "#/$defs/nullableCount", "description": "Context-grounded signals in no_hallucination_markers." },
-        "injectionPatterns": { "$ref": "#/$defs/nullableCount", "description": "Patterns in no_injection_patterns." },
-        "names": { "type": "array", "items": { "type": "string" }, "description": "Built-in rule identifiers, camelCase as exported from src/eval/rules." },
-        "piiPatterns": { "$ref": "#/$defs/nullableCount", "description": "Patterns in no_pii." },
-        "stubMarkers": { "type": "array", "items": { "type": "string" }, "description": "Placeholder markers no_stub_output looks for." }
+        "builtInCount": {
+          "$ref": "#/$defs/count",
+          "description": "Number of built-in deterministic rules; equals names.length."
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Rule categories (the eval_type bundles)."
+        },
+        "categoryCount": {
+          "$ref": "#/$defs/count"
+        },
+        "hallucinationMarkers": {
+          "$ref": "#/$defs/nullableCount",
+          "description": "Context-grounded signals in no_hallucination_markers."
+        },
+        "injectionPatterns": {
+          "$ref": "#/$defs/nullableCount",
+          "description": "Patterns in no_injection_patterns."
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Built-in rule identifiers, camelCase as exported from src/eval/rules."
+        },
+        "piiPatterns": {
+          "$ref": "#/$defs/nullableCount",
+          "description": "Patterns in no_pii."
+        },
+        "stubMarkers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Placeholder markers no_stub_output looks for."
+        },
+        "defaultEvalType": {
+          "type": "string",
+          "enum": [
+            "completeness",
+            "relevance",
+            "safety",
+            "cost",
+            "custom",
+            "all"
+          ],
+          "description": "What evaluate_output evaluates when the caller omits eval_type (DEFAULT_EVAL_TYPE in src/eval/engine.ts)."
+        }
       },
       "additionalProperties": false
     },
     "llmJudgeTemplates": {
       "type": "object",
-      "required": ["count", "names", "supportedModels", "supportedProviders"],
+      "required": [
+        "count",
+        "names",
+        "supportedModels",
+        "supportedProviders"
+      ],
       "properties": {
-        "count": { "$ref": "#/$defs/count" },
-        "names": { "type": "array", "items": { "type": "string" } },
-        "supportedModels": { "type": "array", "items": { "type": "string" }, "description": "Model IDs the judge has pricing for. Aliases of one model are listed once." },
-        "supportedProviders": { "type": "array", "items": { "type": "string", "enum": ["anthropic", "openai"] } }
+        "count": {
+          "$ref": "#/$defs/count"
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supportedModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Model IDs the judge has pricing for. Aliases of one model are listed once."
+        },
+        "supportedProviders": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai"
+            ]
+          }
+        }
       },
       "additionalProperties": false
     },
     "maintenance": {
       "type": "object",
       "description": "MEASURED issue-close latency from the public GitHub issues API (pull requests excluded), sampled on demand by scripts/claims/generators/issues.mjs. The only block in the file that is a measurement rather than a value read from source; `sampledAt` says when, `source` says whether the sample came from the API ('live') or was kept from the previous commit because the API was unreachable ('cached').",
-      "required": ["issues", "method", "repo", "sampledAt", "source", "windowDays"],
+      "required": [
+        "issues",
+        "method",
+        "repo",
+        "sampledAt",
+        "source",
+        "windowDays"
+      ],
       "properties": {
         "issues": {
           "type": "object",
-          "required": ["closedAsCompleted", "closedAsNotPlanned", "closedInWindow", "medianHoursToClose", "openNow", "p75HoursToClose"],
+          "required": [
+            "closedAsCompleted",
+            "closedAsNotPlanned",
+            "closedInWindow",
+            "medianHoursToClose",
+            "openNow",
+            "p75HoursToClose"
+          ],
           "properties": {
-            "closedAsCompleted": { "$ref": "#/$defs/count" },
-            "closedAsNotPlanned": { "$ref": "#/$defs/count" },
-            "closedInWindow": { "$ref": "#/$defs/count", "description": "Issues whose closed_at falls inside the last windowDays days; the n behind the two percentiles." },
-            "medianHoursToClose": { "type": ["number", "null"], "minimum": 0, "description": "Median of closed_at minus created_at in hours; null when closedInWindow is 0." },
-            "openNow": { "$ref": "#/$defs/count" },
-            "p75HoursToClose": { "type": ["number", "null"], "minimum": 0 }
+            "closedAsCompleted": {
+              "$ref": "#/$defs/count"
+            },
+            "closedAsNotPlanned": {
+              "$ref": "#/$defs/count"
+            },
+            "closedInWindow": {
+              "$ref": "#/$defs/count",
+              "description": "Issues whose closed_at falls inside the last windowDays days; the n behind the two percentiles."
+            },
+            "medianHoursToClose": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "Median of closed_at minus created_at in hours; null when closedInWindow is 0."
+            },
+            "openNow": {
+              "$ref": "#/$defs/count"
+            },
+            "p75HoursToClose": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            }
           },
           "additionalProperties": false
         },
-        "method": { "type": "string" },
-        "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
-        "sampledAt": { "type": "string", "format": "date-time" },
-        "source": { "type": "string", "enum": ["live", "cached"] },
-        "windowDays": { "$ref": "#/$defs/count" }
+        "method": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+/[^/]+$"
+        },
+        "sampledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "live",
+            "cached"
+          ]
+        },
+        "windowDays": {
+          "$ref": "#/$defs/count"
+        }
       },
       "additionalProperties": false
     },
     "mcpTools": {
       "type": "object",
-      "required": ["annotations", "count", "names"],
+      "required": [
+        "annotations",
+        "count",
+        "names"
+      ],
       "properties": {
         "annotations": {
           "type": "object",
-          "required": ["destructiveHintCount", "openWorldHintCount", "readOnlyHintCount"],
+          "required": [
+            "destructiveHintCount",
+            "openWorldHintCount",
+            "readOnlyHintCount"
+          ],
           "properties": {
-            "destructiveHintCount": { "$ref": "#/$defs/count" },
-            "openWorldHintCount": { "$ref": "#/$defs/count" },
-            "readOnlyHintCount": { "$ref": "#/$defs/count" }
+            "destructiveHintCount": {
+              "$ref": "#/$defs/count"
+            },
+            "openWorldHintCount": {
+              "$ref": "#/$defs/count"
+            },
+            "readOnlyHintCount": {
+              "$ref": "#/$defs/count"
+            }
           },
           "additionalProperties": false
         },
-        "count": { "$ref": "#/$defs/count", "description": "Registered MCP tools; equals names.length." },
-        "names": { "type": "array", "items": { "type": "string" } }
+        "count": {
+          "$ref": "#/$defs/count",
+          "description": "Registered MCP tools; equals names.length."
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       },
       "additionalProperties": false
     },
     "release": {
       "type": "object",
-      "required": ["currentReleaseDate", "currentReleaseHeadline", "currentReleaseVersion", "nextPlannedScope", "nextPlannedVersion"],
+      "required": [
+        "currentReleaseDate",
+        "currentReleaseHeadline",
+        "currentReleaseVersion",
+        "nextPlannedScope",
+        "nextPlannedVersion"
+      ],
       "properties": {
-        "currentReleaseDate": { "oneOf": [{ "type": "string", "format": "date" }, { "type": "null" }] },
-        "currentReleaseHeadline": { "type": ["string", "null"], "description": "The CHANGELOG's bold lead line for the current release, or null when it has none." },
-        "currentReleaseVersion": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
-        "nextPlannedScope": { "type": ["string", "null"] },
-        "nextPlannedVersion": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] }
+        "currentReleaseDate": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentReleaseHeadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The CHANGELOG's bold lead line for the current release, or null when it has none."
+        },
+        "currentReleaseVersion": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nextPlannedScope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nextPlannedVersion": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
       },
       "additionalProperties": false
     },
     "security": {
       "type": "object",
-      "required": ["apiKeyRequiredByDefault", "defaultBindHost", "disclosure", "limits", "rateLimit"],
+      "required": [
+        "apiKeyRequiredByDefault",
+        "defaultBindHost",
+        "disclosure",
+        "limits",
+        "rateLimit"
+      ],
       "properties": {
-        "apiKeyRequiredByDefault": { "type": "boolean" },
+        "apiKeyRequiredByDefault": {
+          "type": "boolean"
+        },
         "disclosure": {
           "type": "object",
           "description": "The vulnerability-disclosure SLA, parsed out of SECURITY.md by scripts/claims/generators/security-policy.mjs so the policy file and the website cannot state two different promises.",
-          "required": ["acknowledgeWithinHours", "detailedResponseWithinBusinessDays", "publicDisclosureWindowDays", "source"],
+          "required": [
+            "acknowledgeWithinHours",
+            "detailedResponseWithinBusinessDays",
+            "publicDisclosureWindowDays",
+            "source"
+          ],
           "properties": {
-            "acknowledgeWithinHours": { "$ref": "#/$defs/count" },
-            "detailedResponseWithinBusinessDays": { "$ref": "#/$defs/count" },
-            "publicDisclosureWindowDays": { "$ref": "#/$defs/count", "description": "Default coordinated-disclosure window asked of reporters, in days." },
-            "source": { "const": "SECURITY.md" }
+            "acknowledgeWithinHours": {
+              "$ref": "#/$defs/count"
+            },
+            "detailedResponseWithinBusinessDays": {
+              "$ref": "#/$defs/count"
+            },
+            "publicDisclosureWindowDays": {
+              "$ref": "#/$defs/count",
+              "description": "Default coordinated-disclosure window asked of reporters, in days."
+            },
+            "source": {
+              "const": "SECURITY.md"
+            }
           },
           "additionalProperties": false
         },
         "limits": {
           "type": "object",
           "description": "Shipped configuration defaults, each read from the line of source that enforces it. Configuration, not measurement.",
-          "required": ["customRegexMaxLength", "regexBreachesPerEvaluation", "regexMatchBudgetMs", "requestSizeLimit"],
+          "required": [
+            "customRegexMaxLength",
+            "regexBreachesPerEvaluation",
+            "regexMatchBudgetMs",
+            "requestSizeLimit"
+          ],
           "properties": {
-            "customRegexMaxLength": { "$ref": "#/$defs/count", "description": "Longest custom regex source accepted (characters)." },
-            "regexBreachesPerEvaluation": { "$ref": "#/$defs/count", "description": "Sandbox budget breaches after which the remaining regex rules in one evaluation skip." },
-            "regexMatchBudgetMs": { "$ref": "#/$defs/count", "description": "Hard per-match deadline for a user-supplied regex, in milliseconds." },
-            "requestSizeLimit": { "type": "string", "description": "express.json body limit on the dashboard API and the HTTP transport, e.g. '1mb'." }
+            "customRegexMaxLength": {
+              "$ref": "#/$defs/count",
+              "description": "Longest custom regex source accepted (characters)."
+            },
+            "regexBreachesPerEvaluation": {
+              "$ref": "#/$defs/count",
+              "description": "Sandbox budget breaches after which the remaining regex rules in one evaluation skip."
+            },
+            "regexMatchBudgetMs": {
+              "$ref": "#/$defs/count",
+              "description": "Hard per-match deadline for a user-supplied regex, in milliseconds."
+            },
+            "requestSizeLimit": {
+              "type": "string",
+              "description": "express.json body limit on the dashboard API and the HTTP transport, e.g. '1mb'."
+            }
           },
           "additionalProperties": false
         },
         "defaultBindHost": {
           "type": "object",
-          "required": ["dashboard", "transport"],
+          "required": [
+            "dashboard",
+            "transport"
+          ],
           "properties": {
-            "dashboard": { "type": "string" },
-            "transport": { "type": "string" }
+            "dashboard": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            }
           },
           "additionalProperties": false
         },
         "rateLimit": {
           "type": "object",
-          "required": ["api", "mcp"],
+          "required": [
+            "api",
+            "mcp"
+          ],
           "properties": {
-            "api": { "$ref": "#/$defs/count", "description": "Requests per minute on the dashboard REST API (/api/v1/*)." },
-            "mcp": { "$ref": "#/$defs/count", "description": "Requests per minute on the HTTP MCP endpoint (POST/DELETE /mcp)." }
+            "api": {
+              "$ref": "#/$defs/count",
+              "description": "Requests per minute on the dashboard REST API (/api/v1/*)."
+            },
+            "mcp": {
+              "$ref": "#/$defs/count",
+              "description": "Requests per minute on the HTTP MCP endpoint (POST/DELETE /mcp)."
+            }
           },
           "additionalProperties": false
         }
@@ -220,61 +591,166 @@
     },
     "tests": {
       "type": "object",
-      "required": ["integration", "playwrightE2E", "totalCombined", "vitestDashboard", "vitestRoot"],
+      "required": [
+        "integration",
+        "playwrightE2E",
+        "totalCombined",
+        "vitestDashboard",
+        "vitestRoot"
+      ],
       "properties": {
-        "integration": { "$ref": "#/$defs/testSuite" },
+        "integration": {
+          "$ref": "#/$defs/testSuite"
+        },
         "playwrightE2E": {
           "allOf": [
-            { "$ref": "#/$defs/testSuite" },
+            {
+              "$ref": "#/$defs/testSuite"
+            },
             {
               "type": "object",
-              "properties": { "browsers": { "type": "array", "items": { "type": "string" } } }
+              "properties": {
+                "browsers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           ]
         },
-        "totalCombined": { "$ref": "#/$defs/nullableCount" },
-        "vitestDashboard": { "$ref": "#/$defs/testSuite" },
-        "vitestRoot": { "$ref": "#/$defs/testSuite" }
+        "totalCombined": {
+          "$ref": "#/$defs/nullableCount"
+        },
+        "vitestDashboard": {
+          "$ref": "#/$defs/testSuite"
+        },
+        "vitestRoot": {
+          "$ref": "#/$defs/testSuite"
+        }
       },
       "additionalProperties": false
     },
     "version": {
       "type": "object",
-      "required": ["dashboardPackage", "initPackage", "langchainPackage", "mcpServer", "published", "websitePackage"],
+      "required": [
+        "dashboardPackage",
+        "initPackage",
+        "langchainPackage",
+        "mcpServer",
+        "published",
+        "websitePackage"
+      ],
       "properties": {
-        "dashboardPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
-        "initPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
-        "langchainPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
+        "dashboardPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "langchainPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "published": {
           "type": "object",
           "description": "Whether each npm-facing package is on the npm registry. Recorded in the generator, not probed: a false entry means the package is in-repo only and no surface may present it as installable.",
-          "required": ["initPackage", "langchainPackage", "mcpServer"],
+          "required": [
+            "initPackage",
+            "langchainPackage",
+            "mcpServer"
+          ],
           "properties": {
-            "initPackage": { "type": "boolean" },
-            "langchainPackage": { "type": "boolean" },
-            "mcpServer": { "type": "boolean" }
+            "initPackage": {
+              "type": "boolean"
+            },
+            "langchainPackage": {
+              "type": "boolean"
+            },
+            "mcpServer": {
+              "type": "boolean"
+            }
           },
           "additionalProperties": false
         },
-        "mcpServer": { "$ref": "#/$defs/semver" },
-        "websitePackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] }
+        "mcpServer": {
+          "$ref": "#/$defs/semver"
+        },
+        "websitePackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
       },
       "additionalProperties": false
     }
   },
   "additionalProperties": false,
   "$defs": {
-    "count": { "type": "integer", "minimum": 0 },
-    "nullableCount": { "type": ["integer", "null"], "minimum": 0 },
-    "semver": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$" },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nullableCount": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
     "testSuite": {
       "type": "object",
-      "required": ["failed", "passed", "total"],
+      "required": [
+        "failed",
+        "passed",
+        "total"
+      ],
       "properties": {
-        "failed": { "$ref": "#/$defs/nullableCount" },
-        "passed": { "$ref": "#/$defs/nullableCount" },
-        "total": { "$ref": "#/$defs/nullableCount" },
-        "browsers": { "type": "array", "items": { "type": "string" } }
+        "failed": {
+          "$ref": "#/$defs/nullableCount"
+        },
+        "passed": {
+          "$ref": "#/$defs/nullableCount"
+        },
+        "total": {
+          "$ref": "#/$defs/nullableCount"
+        },
+        "browsers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     }
   }

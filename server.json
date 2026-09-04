@@ -36,6 +36,55 @@
           "format": "string",
           "isSecret": false,
           "name": "IRIS_LOG_LEVEL"
+        },
+        {
+          "description": "Directory for the database, custom rules and preferences (default ~/.iris)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_HOME"
+        },
+        {
+          "description": "Enables evaluate_with_llm_judge and verify_citations with an Anthropic model. Optional: the deterministic rules never need a key",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "IRIS_ANTHROPIC_API_KEY"
+        },
+        {
+          "description": "Enables evaluate_with_llm_judge and verify_citations with an OpenAI model. Optional: the deterministic rules never need a key",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "IRIS_OPENAI_API_KEY"
+        },
+        {
+          "description": "Hard cap on the worst-case cost of one judge or citation call (default 0.25)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL"
+        },
+        {
+          "description": "Let verify_citations fetch URLs (off by default)",
+          "isRequired": false,
+          "format": "boolean",
+          "isSecret": false,
+          "name": "IRIS_CITATION_ALLOW_FETCH"
+        },
+        {
+          "description": "Start the dashboard alongside the server (same as --dashboard)",
+          "isRequired": false,
+          "format": "boolean",
+          "isSecret": false,
+          "name": "IRIS_DASHBOARD"
+        },
+        {
+          "description": "Dashboard port (default 6920); IRIS_PORT is the MCP HTTP transport port (default 3000)",
+          "isRequired": false,
+          "format": "number",
+          "isSecret": false,
+          "name": "IRIS_DASHBOARD_PORT"
         }
       ]
     }

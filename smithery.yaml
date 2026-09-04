@@ -28,7 +28,7 @@ startCommand:
         default: false
       irisPort:
         type: number
-        description: Port for the HTTP transport or dashboard.
+        description: Port for the MCP HTTP transport (IRIS_PORT). The dashboard listens on IRIS_DASHBOARD_PORT, 6920 by default.
         default: 3000
   commandFunction:
     |-

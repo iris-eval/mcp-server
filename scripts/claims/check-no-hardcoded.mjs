@@ -198,6 +198,34 @@ const PATTERNS = [
     fix: 'Use the current tagline (.claims.json brand.tagline / TAGLINE from ~/lib/claims). If this is a dated artifact, it belongs under docs/blog/ or docs/launch/.',
   },
   /*
+   * The default of `eval_type`. Both skill files told an agent that
+   * evaluate_output "Defaults to `completeness`, so safety rules do NOT run
+   * unless you ask for them" — thirty lines above a paragraph in the same
+   * file saying it defaults to `all`, which is what the engine does
+   * (DEFAULT_EVAL_TYPE, src/eval/engine.ts). No pattern tracked a default,
+   * so the contradiction survived a release. Value-checked in code because
+   * the tool description states the default as part of the contract an
+   * agent reads; the lock is "the stated default must be the shipped one".
+   */
+  {
+    name: 'default-eval-type-claim',
+    re: /\b(?:eval_type|evaluate_output)\b[^\n]{0,160}?\b[Dd]efaults?\s+to\s+`?(completeness|relevance|safety|cost|custom|all)`?/g,
+    expectedStrings: c => [c.evalRules?.defaultEvalType].filter(v => typeof v === 'string'),
+    valueCheckedInCode: true,
+    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    fix: 'State the shipped default from .claims.json evalRules.defaultEvalType (DEFAULT_EVAL_TYPE in src/eval/engine.ts), or drop the claim.',
+  },
+  /*
+   * The retired sentence itself, value-free: it must not appear on any live
+   * surface, whatever number sits near it.
+   */
+  {
+    name: 'retired-default-claim',
+    re: /safety rules do NOT run unless/gi,
+    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    fix: 'Retired claim: evaluate_output runs every bundle when eval_type is omitted. Delete the sentence.',
+  },
+  /*
    * A measurement claim with nothing to point at. The roadmap and a live
    * blog post said the safety rules were "measured against a labeled
    * corpus", the LLM-judge docs called its score "calibrated", and no

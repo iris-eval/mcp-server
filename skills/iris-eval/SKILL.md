@@ -46,7 +46,7 @@ Or add to your MCP config:
 | Tool | What it does |
 |------|--------------|
 | `log_trace` | Record an agent execution — spans, tool calls, token usage, cost. Optional OTLP export via `IRIS_OTEL_ENDPOINT`. |
-| `evaluate_output` | Score output against ONE bundle chosen by `eval_type` (completeness \| relevance \| safety \| cost \| custom). Defaults to `completeness`, so safety rules do NOT run unless you ask for them. Heuristic, deterministic, free. |
+| `evaluate_output` | Score output against the built-in rules. `eval_type` defaults to `all` — every bundle runs (completeness \| relevance \| safety \| cost \| custom); pass one bundle name to score only that bundle. Heuristic, deterministic, free. |
 | `get_traces` | Query stored traces with filters, pagination, time ranges. |
 | `list_rules` | Enumerate deployed custom eval rules. |
 | `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |

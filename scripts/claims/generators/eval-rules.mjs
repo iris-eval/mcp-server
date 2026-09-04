@@ -19,6 +19,13 @@ const CATEGORIES = ['completeness', 'relevance', 'safety', 'cost'];
 
 const RULE_DEF_RE = /export\s+const\s+(\w+)\s*:\s*EvalRule\s*=\s*\{/g;
 
+// The shipped default for `eval_type` when a caller omits it. Both skill files
+// said "defaults to completeness, so safety rules do NOT run" for a full release
+// after the engine moved to `all` — nothing in the truthbase carried the default,
+// so no scanner pattern could disagree with the prose. Read it from the engine.
+const ENGINE_FILE = 'src/eval/engine.ts';
+const DEFAULT_EVAL_TYPE_RE = /export\s+const\s+DEFAULT_EVAL_TYPE\s*:\s*\w+\s*=\s*'(\w+)'/;
+
 export async function generate() {
   const allNames = [];
   const sources = {};
@@ -40,10 +47,16 @@ export async function generate() {
   const hallucinationMarkers = countArrayElements(sources, /(?:const|let|var)\s+HALLUCINATION_MARKERS[^=]*=\s*\[([\s\S]*?)\];/);
   const stubMarkers = extractStubMarkers(sources);
 
+  const engineSrc = await readFile(resolve(root, ENGINE_FILE), 'utf-8');
+  const dm = engineSrc.match(DEFAULT_EVAL_TYPE_RE);
+  if (!dm) throw new Error(`eval-rules generator: DEFAULT_EVAL_TYPE not found in ${ENGINE_FILE}`);
+  const defaultEvalType = dm[1];
+
   return {
     builtInCount: names.length,
     categories: CATEGORIES,
     categoryCount: CATEGORIES.length,
+    defaultEvalType,
     names,
     piiPatterns,
     injectionPatterns,

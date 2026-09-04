@@ -26,6 +26,7 @@
       "cost"
     ],
     "categoryCount": 4,
+    "defaultEvalType": "all",
     "hallucinationMarkers": 25,
     "injectionPatterns": 37,
     "names": [
@@ -59,8 +60,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-04T18:20:53.709Z",
-  "generatedFromCommit": "4082989",
+  "generatedAt": "2026-09-04T22:41:28.023Z",
+  "generatedFromCommit": "7448f40",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -623,16 +624,16 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 1909,
+    "totalCombined": 1918,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 182,
-      "total": 182
+      "passed": 185,
+      "total": 185
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1713,
-      "total": 1713
+      "passed": 1719,
+      "total": 1719
     }
   },
   "version": {
