@@ -670,8 +670,9 @@ function noStubOutput(ctx: EvalContext): EvalRuleResult {
  * Context-grounded: when ctx.input carries the ask + source material, the
  * output's specific claims are cross-checked against it. Refusal
  * boilerplate ("as an AI…") is deliberately no longer treated as
- * hallucination — measured against a 90-case gold corpus the old marker
- * list caught 0/46 real hallucinations. Kept in exact sync with
+ * hallucination — on the 90-case corpus now published at iris-eval.com/proof
+ * (proof/corpus/hallucination.json) the old marker list caught 0 of 46 real
+ * hallucinations. Kept in exact sync with
  * iris/src/eval/rules/safety.ts (the HALLUCINATION_MARKERS roster there).
  */
 
