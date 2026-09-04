@@ -55,7 +55,7 @@ export function proofSummary(claims) {
   return (
     `Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 ` +
     `with 95% confidence intervals for ${measured} built-in rules, corpus ${proof.corpusVersion}, ` +
-    `generated ${date} at commit ${proof.commit}; reproduce with \`npm run proof\`.`
+    `generated ${date} for v${proof.version ?? claims.version.mcpServer}; reproduce with \`npm run proof\`.`
   );
 }
 

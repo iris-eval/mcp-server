@@ -13,6 +13,11 @@ import {
 } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
 
+/* The truthbase lists rule names in camelCase (`noPii`); the proof runner keys them by their
+ * registry name (`no_pii`). Compare through one spelling so the page never calls a measured rule
+ * unmeasured (the v0.6.0 → 0.7.0 acceptance pass caught exactly that). */
+const toSnake = (s: string): string => s.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());
+
 /*
  * The proof page renders `.claims.json` `proof` — per-rule precision, recall
  * and F1 with 95% confidence intervals, written by the proof generator from
@@ -201,7 +206,7 @@ function Results(): React.ReactElement {
   const proof = PROOF!;
   const corpusSize = proof.rules.reduce((sum, r) => sum + r.n, 0);
   const groups = groupByCategory(proof.rules);
-  const unmeasured = RULE_NAMES.filter((n) => !proof.rules.some((r) => r.name === n));
+  const unmeasured = RULE_NAMES.filter((n) => !proof.rules.some((r) => r.name === n || r.name === toSnake(n)));
   return (
     <>
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -268,7 +273,7 @@ function InProgress(): React.ReactElement {
       <p className="mt-3 flex flex-wrap gap-1.5">
         {RULE_NAMES.map((n) => (
           <code key={n} className={code}>
-            {n}
+            {toSnake(n)}
           </code>
         ))}
       </p>
@@ -296,9 +301,14 @@ export default function Proof(): React.ReactElement {
         </p>
         {measured && (
           <p className="mt-3 text-[13px] text-text-muted">
-            Generated {longDate(proof!.generatedAt)} at commit{" "}
-            <a href={`${PUBLIC_REPO_URL}/commit/${proof!.commit}`} className={`${link} font-mono`} rel="noopener noreferrer" target="_blank">
-              {proof!.commit}
+            Generated {longDate(proof!.generatedAt)} for{" "}
+            <a
+              href={`${PUBLIC_REPO_URL}/releases/tag/v${proof!.version ?? VERSION_MCP_SERVER}`}
+              className={`${link} font-mono`}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              v{proof!.version ?? VERSION_MCP_SERVER}
             </a>{" "}
             · corpus <span className="font-mono">{proof!.corpusVersion}</span> · schema v
             {proof!.schemaVersion}
@@ -324,6 +334,16 @@ export default function Proof(): React.ReactElement {
               ) : null}
               ; a wide bar means a small sample, not a bad rule, and a rule whose interval reaches
               low is one whose verdict you should not gate a deploy on alone.
+            </p>
+            <p className="mt-4">
+              Two kinds of rule, two kinds of number. Where a rule&rsquo;s documented definition is a
+              formula (an output length, a coverage count, a keyword overlap, a cost, a token ratio),
+              the corpus checks that the implementation matches its definition, so a precision and
+              recall near 1.0 there mean &ldquo;implemented as documented&rdquo;, not &ldquo;catches
+              what goes wrong in the wild&rdquo;. Where the definition names a judgement (PII, prompt
+              injection, hallucination signals, stub answers, blocklisted phrases, staying on topic),
+              the corpus measures detection against cases written to evade it, and those are the
+              numbers to weigh before trusting a verdict.
             </p>
           </section>
 

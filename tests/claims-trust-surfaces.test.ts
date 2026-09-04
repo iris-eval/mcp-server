@@ -231,9 +231,12 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
     expect(proofSummary({ ...claims, proof: { rules: [] } })).toMatch(/being measured/);
     const after = proofSummary({
       ...claims,
-      proof: { rules: [{}, {}], corpusVersion: 'c1', generatedAt: '2026-09-05T12:00:00Z', commit: 'abc1234' },
+      proof: { rules: [{}, {}], corpusVersion: 'c1', generatedAt: '2026-09-05T12:00:00Z', commit: 'abc1234', version: '9.9.9' },
     });
-    expect(after).toMatch(/for 2 built-in rules, corpus c1, generated 2026-09-05 at commit abc1234/);
+    // The summary cites the release version, not the generating commit: branch commits are
+    // squashed on merge, so a hash here is one no reader can resolve.
+    expect(after).toMatch(/for 2 built-in rules, corpus c1, generated 2026-09-05 for v9\.9\.9/);
+    expect(after).not.toMatch(/abc1234/);
   });
 
   it('neither template carries a literal version or a literal count', () => {
