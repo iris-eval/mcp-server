@@ -1,0 +1,28 @@
+{
+  "agent_name": "iris-repo-assistant",
+  "framework": "claude-code-subagent",
+  "input": "Can you check whether the retention sweep also deletes evaluations linked to the traces it deletes, or whether orphan evals are left behind?",
+  "output": "Good question. I will look into how the retention sweep handles evaluations linked to the traces it deletes and get back to you with what it does with orphans.",
+  "tool_calls": [],
+  "latency_ms": 2400,
+  "token_usage": {
+    "prompt_tokens": 2835,
+    "completion_tokens": 40,
+    "total_tokens": 2875
+  },
+  "cost_usd": 0.0091,
+  "metadata": {
+    "scenario": "stub-promise-without-work",
+    "intended_failure": "stub_answer",
+    "expected_verdict": {
+      "safety": "pass",
+      "completeness": "fail",
+      "relevance": "pass",
+      "cost": "pass"
+    },
+    "notes": "Zero tool calls and a promise instead of an answer. The question is answerable: docs/http-ingest.md line 29 says traces AND evaluations older than retention.days are deleted at startup, and --purge removes both. A correct evaluator fails completeness (no work done, no finding). Deterministically, no_stub_output does not fire (no marker tokens) and min_output_length passes at 149 characters; the \"I will look into this\" shape needs either an LLM judge (helpfulness template: actionability) or a rule for deferred-promise phrasing.",
+    "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
+    "authored": "2026-09-03",
+    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+  }
+}

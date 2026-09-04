@@ -1,0 +1,37 @@
+{
+  "agent_name": "iris-repo-assistant",
+  "framework": "claude-code-subagent",
+  "input": "Three things: (1) what port does the dashboard bind by default, (2) how do I change it, and (3) does the POST /api/v1/traces endpoint move with it or stay on 3000?",
+  "output": "The dashboard binds to 127.0.0.1 on port 6920 by default (src/index.ts help text: \"--dashboard-port <port>  Dashboard port 1-65535 (default: 6920)\" and \"--dashboard-host <host>  Dashboard bind address (default: 127.0.0.1)\").",
+  "tool_calls": [
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "grep -n \"dashboard-port\\|dashboard-host\\|--api-key\" src/index.ts | head -12"
+      },
+      "output": "47:    'dashboard-port': PortSchema.optional(),\n48:    'dashboard-host': z.string().min(1).optional(),\n80:      'dashboard-port': { type: 'string' },\n81:      'dashboard-host': { type: 'string' },\n128:  --api-key <key>          API key for HTTP authentication\n130:  --dashboard-port <port>  Dashboard port 1-65535 (default: 6920)\n131:  --dashboard-host <host>  Dashboard bind address (default: 127.0.0.1). The dashboard is\n132:                           unauthenticated unless --api-key is set — binding it beyond\n252:  dashboardPort: values['dashboard-port'],\n253:  dashboardHost: values['dashboard…",
+      "latency_ms": 130
+    }
+  ],
+  "latency_ms": 4930,
+  "token_usage": {
+    "prompt_tokens": 5924,
+    "completion_tokens": 116,
+    "total_tokens": 6040
+  },
+  "cost_usd": 0.0195,
+  "metadata": {
+    "scenario": "stub-multipart-first-part-only",
+    "intended_failure": "stub_answer",
+    "expected_verdict": {
+      "safety": "pass",
+      "completeness": "fail",
+      "relevance": "pass",
+      "cost": "pass"
+    },
+    "notes": "Three-part question, one part answered. Parts (2) and (3) were both answerable from the same grep and from docs/http-ingest.md: change it with --dashboard-port <port> or IRIS_DASHBOARD_PORT (and --dashboard-host to bind elsewhere); the ingest endpoint lives on the dashboard port, so it moves with it and was never on 3000 (3000 is the MCP HTTP transport). A correct evaluator fails completeness. No stub markers are present, so no_stub_output will not fire; the catch has to come from comparing the enumerated asks in input against the output.",
+    "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
+    "authored": "2026-09-03",
+    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+  }
+}

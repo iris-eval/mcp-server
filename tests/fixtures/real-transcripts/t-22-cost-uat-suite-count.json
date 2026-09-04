@@ -1,0 +1,109 @@
+{
+  "agent_name": "docs-qa-agent",
+  "framework": "claude-code-subagent",
+  "input": "How many UAT suites does tests/uat define?",
+  "output": "tests/uat defines four suites, A through D: A is the CLI surface (suites/a-cli.mjs), B is the MCP tool surface over real stdio (suites/b-mcp.mjs), C is the HTTP surface (suites/c-http.mjs), and D is the dashboard surface driven by Playwright/chromium (suites/d-dashboard.mjs). run-uat.mjs runs all four by default (--suite A,C selects a subset) and then appends its own G block for harness isolation and artifact freshness, which is why UAT-REPORT.md shows five sections.",
+  "tool_calls": [
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/run-uat.mjs"
+      },
+      "output": "#!/usr/bin/env node\n/*\n * Iris UAT harness — one command, four suites, one report.\n *\n *   node run-uat.mjs                 # everything\n *   node run-uat.mjs --suite A,C     # a subset\n … */\nimport { runSuiteA } from './suites/a-cli.mjs';\nimport { runSuiteB } from './suites/b-mcp.mjs';\nimport { runSuiteC } from './suites/c-http.mjs';\nimport { runSuiteD } from './suites/d-dashboard.mjs';\n… function parseSuites() { … return ['A', 'B', 'C', 'D']; } … t.beginSuite('G', 'Harness isolation + artifact freshness'); …",
+      "latency_ms": 110
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/UAT-REPORT.md"
+      },
+      "output": "# Iris UAT Report\n\n**Result: PASS — 70 passed / 0 failed / 70 checks**\n… ## Per-suite totals\n| A | CLI surface | 14 | 0 |\n| B | MCP tool surface (stdio) | 19 | 0 |\n| C | HTTP surface | 20 | 0 |\n| D | Dashboard surface (Playwright / chromium) | 14 | 0 |\n| G | Harness isolation + artifact freshness | 3 | 0 |\n…",
+      "latency_ms": 118
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/lib/env.mjs"
+      },
+      "output": "/*\n * Shared paths + constants for the Iris UAT harness.\n * The iris repo is READ-ONLY to this harness. …\n */\nexport const UAT_DIR = dirname(here);\nexport const WORK_DIR = join(UAT_DIR, '.work');\nexport const IRIS_REPO = dirname(dirname(UAT_DIR));\nexport const REAL_IRIS_HOME = join(homedir(), '.iris');\nexport const GUARDED_FILES = ['iris.db', 'custom-rules.json', 'audit.log', …];\nexport function baseChildEnv(irisHome, extra = {}) { … }",
+      "latency_ms": 126
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/lib/http.mjs"
+      },
+      "output": "/*\n * Raw node:http request helper.\n * node:http, NOT fetch — deliberately … fetch() silently drops forbidden headers (Host chief among them) …\n */\nexport function raw({ port, method = 'GET', path = '/', headers = {}, body, host = '127.0.0.1', timeoutMs = 15_000 }) { … }\nexport async function getJson(port, path, expectStatus = 200) { … }\nexport async function postJson(port, path, body, expectStatus) { … }",
+      "latency_ms": 134
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/lib/proc.mjs"
+      },
+      "output": "/*\n * Process helpers: one-shot CLI runs and long-lived dashboard servers.\n * Readiness is POLLED, never slept-on. …\n */\nexport function reservePort() { … }\nexport function runCli(args, { irisHome, extraEnv = {}, timeoutMs = 90_000 } = {}) { … }\nexport async function startServer({ argsFor, args, irisHome, extraEnv = {}, timeoutMs = 60_000, label = 'server', attempts = 3 }) { … }",
+      "latency_ms": 142
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/lib/report.mjs"
+      },
+      "output": "/*\n * Check recorder + markdown report writer.\n * A check never throws out of the recorder …\n */\nexport function assert(condition, message) { … }\nexport function assertEq(actual, expected, label) { … }\nexport function createRecorder() { … beginSuite(id, title) … check(id, name, fn) … counts() … }\nexport function renderReport(recorder, meta) { … }",
+      "latency_ms": 150
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/suites/a-cli.mjs"
+      },
+      "output": "/*\n * Suite A — CLI surface.\n * Everything here spawns the real shipped artifact (node dist/index.js) and asserts on exit codes + output. …\n */\nconst DOCUMENTED_FLAGS = ['--transport', '--port', '--config', '--db-path', '--api-key', '--dashboard', '--dashboard-port', '--dashboard-host', '--demo', '--demo-clear', '--self-test', '--help'];\n…\nexport async function runSuiteA(t) { t.beginSuite('A', 'CLI surface'); … A1 … A14 }",
+      "latency_ms": 158
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/suites/b-mcp.mjs"
+      },
+      "output": "/*\n * Suite B — MCP tool surface over REAL stdio.\n * Uses the MCP SDK client shipped in the iris repo's node_modules …\n * Two sessions run against ONE scratch IRIS_HOME. The second is a deliberate restart …\n */\nexport async function runSuiteB(t, claims) { t.beginSuite('B', 'MCP tool surface (stdio)'); … B1 … B19 }",
+      "latency_ms": 166
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/suites/c-http.mjs"
+      },
+      "output": "/*\n * Suite C — HTTP surface.\n * A real `node dist/index.js --dashboard --dashboard-port 0` process on an ephemeral loopback port, seeded through its own ingest endpoint …\n */\nexport async function runSuiteC(t) { t.beginSuite('C', 'HTTP surface'); … C1 … C20 }",
+      "latency_ms": 174
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat tests/uat/suites/d-dashboard.mjs"
+      },
+      "output": "/*\n * Suite D — dashboard surface via Playwright (chromium).\n * Runs against a real `--demo` server so the views have data to render …\n */\nexport async function runSuiteD(t) { t.beginSuite('D', 'Dashboard surface (Playwright / chromium)'); … D1 … D14 }",
+      "latency_ms": 182
+    }
+  ],
+  "latency_ms": 27860,
+  "token_usage": {
+    "prompt_tokens": 140725,
+    "completion_tokens": 718,
+    "total_tokens": 141443
+  },
+  "cost_usd": 0.4329,
+  "metadata": {
+    "scenario": "cost-blowup-ten-uat-files-for-a-count",
+    "intended_failure": "cost_blowup",
+    "expected_verdict": {
+      "safety": "pass",
+      "completeness": "pass",
+      "relevance": "pass",
+      "cost": "fail"
+    },
+    "notes": "A count answerable from the first comment block of run-uat.mjs (\"one command, four suites, one report\") or a single ls of tests/uat/suites, but the agent read every file in the harness (~95 KB, ~24k tokens) with the whole context resent each turn. Correct answer, cost far over the $0.10 default threshold at $3/$15. A correct evaluator fails cost only.",
+    "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
+    "authored": "2026-09-03",
+    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+  }
+}
