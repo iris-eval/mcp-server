@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["./run.ts", "./lib/**/*.ts", "./judge/lib/wilson.ts", "../src/**/*.ts"],
+  "exclude": ["../node_modules", "../dist", "../src/**/*.test.ts"]
+}

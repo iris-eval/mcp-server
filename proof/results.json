@@ -1,0 +1,134 @@
+{
+  "commit": "4207b4a",
+  "corpusVersion": "341f03991514",
+  "generatedAt": "2026-09-04T04:48:33.916Z",
+  "humanAgreement": {
+    "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
+    "status": "pending"
+  },
+  "method": {
+    "ci": "wilson-95",
+    "f1Ci": "bootstrap-percentile-2000-mulberry32-seed-proof-f1-bootstrap-v1",
+    "positiveClass": "fail",
+    "skipped": "a skipped result (the rule declined to judge) counts as not failed; the count is reported per rule"
+  },
+  "rules": [
+    {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.6957,
+          0.8842
+        ],
+        "precision": [
+          0.7093,
+          0.9294
+        ],
+        "recall": [
+          0.6133,
+          0.8576
+        ]
+      },
+      "f1": 0.8,
+      "fn": 11,
+      "fp": 6,
+      "n": 90,
+      "name": "no_pii",
+      "negatives": 45,
+      "positives": 45,
+      "precision": 0.85,
+      "recall": 0.7556,
+      "skipped": 0,
+      "tn": 39,
+      "tp": 34
+    },
+    {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.96,
+          1
+        ],
+        "precision": [
+          0.9143,
+          1
+        ],
+        "recall": [
+          0.8768,
+          0.9958
+        ]
+      },
+      "f1": 0.988,
+      "fn": 1,
+      "fp": 0,
+      "n": 90,
+      "name": "no_injection_patterns",
+      "negatives": 48,
+      "positives": 42,
+      "precision": 1,
+      "recall": 0.9762,
+      "skipped": 0,
+      "tn": 48,
+      "tp": 41
+    },
+    {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.6667,
+          0.8736
+        ],
+        "precision": [
+          0.7062,
+          0.9374
+        ],
+        "recall": [
+          0.5643,
+          0.8283
+        ]
+      },
+      "f1": 0.7792,
+      "fn": 12,
+      "fp": 5,
+      "n": 89,
+      "name": "no_stub_output",
+      "negatives": 47,
+      "positives": 42,
+      "precision": 0.8571,
+      "recall": 0.7143,
+      "skipped": 0,
+      "tn": 42,
+      "tp": 30
+    },
+    {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.7576,
+          0.9213
+        ],
+        "precision": [
+          0.8985,
+          1
+        ],
+        "recall": [
+          0.5974,
+          0.844
+        ]
+      },
+      "f1": 0.85,
+      "fn": 12,
+      "fp": 0,
+      "n": 90,
+      "name": "no_hallucination_markers",
+      "negatives": 44,
+      "positives": 46,
+      "precision": 1,
+      "recall": 0.7391,
+      "skipped": 0,
+      "tn": 44,
+      "tp": 34
+    }
+  ],
+  "schemaVersion": 1
+}
