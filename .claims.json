@@ -59,8 +59,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-04T15:58:47.242Z",
-  "generatedFromCommit": "ea122d7",
+  "generatedAt": "2026-09-04T16:12:56.034Z",
+  "generatedFromCommit": "38f7389",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -119,9 +119,9 @@
     ]
   },
   "proof": {
-    "commit": "e4cf6bf",
+    "commit": "38f7389",
     "corpusVersion": "1251d242916c",
-    "generatedAt": "2026-09-04T15:14:51.889Z",
+    "generatedAt": "2026-09-04T16:10:20.084Z",
     "humanAgreement": {
       "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -575,12 +575,12 @@
       }
     ],
     "schemaVersion": 1,
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "release": {
     "currentReleaseDate": "2026-09-04",
-    "currentReleaseHeadline": "The proof release",
-    "currentReleaseVersion": "0.7.0",
+    "currentReleaseHeadline": "The trajectory release",
+    "currentReleaseVersion": "0.8.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -639,7 +639,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.7.0",
+    "mcpServer": "0.8.0",
     "published": {
       "initPackage": false,
       "langchainPackage": false,

@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-04T15:14:51.889Z for v0.7.0 (local generating commit `e4cf6bf` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-04T16:10:20.084Z for v0.8.0 (local generating commit `38f7389` — branch commits are squashed on merge, so cite the version).
 Corpus version `1251d242916c` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1. A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
