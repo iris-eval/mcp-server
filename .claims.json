@@ -60,8 +60,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-04T22:41:28.023Z",
-  "generatedFromCommit": "7448f40",
+  "generatedAt": "2026-09-04T22:50:44.969Z",
+  "generatedFromCommit": "1e6de44",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -120,9 +120,9 @@
     ]
   },
   "proof": {
-    "commit": "38f7389",
+    "commit": "1e6de44",
     "corpusVersion": "1251d242916c",
-    "generatedAt": "2026-09-04T16:10:20.084Z",
+    "generatedAt": "2026-09-04T22:48:23.449Z",
     "humanAgreement": {
       "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -576,12 +576,12 @@
       }
     ],
     "schemaVersion": 1,
-    "version": "0.8.0"
+    "version": "0.8.1"
   },
   "release": {
     "currentReleaseDate": "2026-09-04",
-    "currentReleaseHeadline": "The trajectory release",
-    "currentReleaseVersion": "0.8.0",
+    "currentReleaseHeadline": "The honest-surfaces patch",
+    "currentReleaseVersion": "0.8.1",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -640,7 +640,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.8.0",
+    "mcpServer": "0.8.1",
     "published": {
       "initPackage": false,
       "langchainPackage": false,

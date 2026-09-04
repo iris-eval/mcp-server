@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-04
+
+**The honest-surfaces patch.** Nothing the evaluator does changes in this release; what the surfaces around it say does. A published versioning policy so a reader can predict what an upgrade will do; a reproducible blind-label sample with a review mode a stranger can fill in without reading the code; a nightly that fails when it cannot run instead of reporting a green that meant nothing; a registry publish that waits for npm as long as npm actually takes; and three surfaces that told an agent the wrong thing, corrected together with the lock that stops each from recurring.
+
 **Saying what a green means.**
 
 - **A published versioning policy.** [`VERSIONING.md`](VERSIONING.md) states what each number promises, so a reader can predict what an upgrade does before running it: while the version starts with `0.`, the minor is the compatibility lever, and anything an existing caller can observe changing is written here as a bold **Behaviour change:** sentence. It also names, in public, the two things we got wrong — `0.5.1` shipped two behaviour changes as a patch, and three minors went out inside two days when they were one body of work — and the four conditions that have to hold before 1.0 is declared. `CONTRIBUTING.md` points at it from the pull-request process.
