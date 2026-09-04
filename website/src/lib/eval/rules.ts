@@ -66,7 +66,7 @@
 // Named by the route (/api/playground/eval/route.ts) so the response can
 // say which Iris release these rules come from. Keep it in lockstep with
 // the sync note in the file header.
-export const VENDORED_FROM_VERSION = 'v0.7.0';
+export const VENDORED_FROM_VERSION = 'v0.8.0';
 
 /**
  * The shipped rule thresholds — src/config/defaults.ts `eval.ruleThresholds`,

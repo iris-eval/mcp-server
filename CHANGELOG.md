@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-04
+
 **The trajectory release.** Arc two of the September 2026 plan: make the evaluator see what the agent DID, not only what it wrote. The arc-one acceptance pass pushed twenty-four transcripts from an agent genuinely working against this repository through the shipped product, and the same cause sat under a group of the wrong verdicts — no rule read the tool calls. Three transcripts answer confidently after their only tool call failed (a `grep` that exited 1, an `ls` on a directory that does not exist, a `node -e` that threw) and state results the tool never returned; a fourth makes five identical `ls` calls before answering, billing $0.0621 — under the $0.10 cost threshold — for four wasted turns. None of that is in the output text, so no string rule could reach it. `EvalContext.toolCalls` had existed the whole time with nothing populating it and no `error` field on it.
 
 ### Added
