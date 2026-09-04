@@ -136,6 +136,8 @@ export interface ProofClaims {
   corpusVersion: string;
   generatedAt: string;
   commit: string;
+  /** package.json version the numbers were generated for; the page cites this, not the squashed commit. */
+  version?: string;
   method: { ci: string; f1Ci: string };
   rules: ProofRule[];
   humanAgreement: { status: string; note: string };

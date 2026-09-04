@@ -112,14 +112,18 @@ describe('proof runner', () => {
     const one = await measure(repoRoot);
     const two = await measure(repoRoot);
     expect(one.missing).toEqual([]);
-    const j1 = stableJson(toResults(one.rows, one.corpusVersion, 'T', 'C'));
-    const j2 = stableJson(toResults(two.rows, two.corpusVersion, 'T', 'C'));
+    // The runner stamps the package version so a public surface can cite something a reader
+    // can resolve (a squash-merge erases the branch commit); the committed file carries it, so
+    // the comparison has to use the same value rather than a placeholder.
+    const version = (JSON.parse(await readFile(resolve(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
+    const j1 = stableJson(toResults(one.rows, one.corpusVersion, 'T', 'C', version));
+    const j2 = stableJson(toResults(two.rows, two.corpusVersion, 'T', 'C', version));
     expect(j1).toBe(j2);
     expect(one.rows.length).toBe(registryRules().length);
 
     const committed = await readFile(resolve(repoRoot, 'proof/results.json'), 'utf-8');
     const md = await readFile(resolve(repoRoot, 'proof/RESULTS.md'), 'utf-8');
-    const fresh = normaliseForCheck(j1, renderMarkdown(one.rows, one.corpusVersion, 'T', 'C', one.missing));
+    const fresh = normaliseForCheck(j1, renderMarkdown(one.rows, one.corpusVersion, 'T', 'C', one.missing, version));
     const onDisk = normaliseForCheck(committed, md);
     expect(fresh.json).toBe(onDisk.json);
     expect(fresh.md).toBe(onDisk.md);

@@ -58,6 +58,8 @@ export interface ProofResults {
   corpusVersion: string;
   generatedAt: string;
   commit: string;
+  /** package.json version the numbers were generated for — the public surfaces cite this, because a squash-merge erases branch commits. */
+  version: string;
   method: { ci: 'wilson-95'; f1Ci: string; positiveClass: 'fail'; skipped: string };
   rules: Array<{
     name: string;
@@ -158,12 +160,13 @@ function gitCommit(root: string): string {
   }
 }
 
-export function toResults(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string): ProofResults {
+export function toResults(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, version: string): ProofResults {
   return {
     schemaVersion: 1,
     corpusVersion,
     generatedAt,
     commit,
+    version,
     method: {
       ci: 'wilson-95',
       f1Ci: F1_CI_METHOD,
@@ -215,11 +218,11 @@ function ci(i: [number, number] | null): string {
   return i === null ? '—' : `[${(i[0] * 100).toFixed(1)}, ${(i[1] * 100).toFixed(1)}]`;
 }
 
-export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, missing: string[]): string {
+export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, missing: string[], version: string): string {
   const L: string[] = [];
   L.push('# Iris built-in rules — measured on the proof corpus');
   L.push('');
-  L.push(`Generated ${generatedAt} at commit \`${commit}\`.`);
+  L.push(`Generated ${generatedAt} for v${version} (local generating commit \`${commit}\` — branch commits are squashed on merge, so cite the version).`);
   L.push(`Corpus version \`${corpusVersion}\` (sha256 of proof/corpus/*.json). Reproduce with \`npm run proof\`; CI runs \`npm run proof -- --check\`.`);
   L.push('');
   L.push('The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1. A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.');
@@ -269,8 +272,9 @@ async function main(): Promise<void> {
   const { rows, corpusVersion, missing } = await measure(repoRoot);
   const generatedAt = new Date().toISOString();
   const commit = gitCommit(repoRoot);
-  const json = stableJson(toResults(rows, corpusVersion, generatedAt, commit));
-  const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing);
+  const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
+  const json = stableJson(toResults(rows, corpusVersion, generatedAt, commit, version));
+  const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version);
 
   for (const r of rows) {
     process.stdout.write(

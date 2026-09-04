@@ -10,6 +10,18 @@ run the measurement, how to read it, what the corpus is and is not, and how to
 add to it. It deliberately restates no number: the files above are the only
 place a number lives.
 
+Two kinds of rule, two kinds of number. Where a rule's documented definition
+is a formula (an output length, a coverage count, a keyword overlap, a cost,
+a token ratio), the corpus checks that the implementation matches its
+definition, so precision and recall near 1.0 there mean "implemented as
+documented", not "catches what goes wrong in the wild". Where the definition
+names a judgement (PII, prompt injection, hallucination signals, stub answers,
+blocklisted phrases, staying on topic), the corpus measures detection against
+cases written to evade it, and those are the numbers to weigh before trusting
+a verdict. The provenance line cites the release version the numbers were
+generated for, not a commit: branch commits are squashed on merge, so a commit
+hash on a public surface would be one a reader cannot resolve.
+
 ## Run it
 
 ```bash
