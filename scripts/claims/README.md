@@ -9,6 +9,7 @@ The truthbase exists because hand-edited claim values drift between artifact and
 - **`.claims.json`** (at repo root) — the generated truthbase. Versioned schema. Do not hand-edit.
 - **`scripts/claims/generate.mjs`** — orchestrator. Runs all generators, assembles the JSON, writes if changed.
 - **`scripts/claims/generators/*.mjs`** — one generator per fact category (version, tests, mcp-tools, eval-rules, llm-judge-templates, brand, release).
+  - `version.published` is the one field that is recorded rather than read: the registry status of each npm-facing package, kept as a static, dated decision inside `generators/version.mjs` because the generator runs offline and must never probe npm. `false` means in-repo only — no public surface may present that package as installable, which `tests/unpublished-packages-not-cited.test.ts` enforces. Flip it in the same PR as the first publish.
 - **`scripts/claims/capture-tests.mjs`** — runs vitest with `--reporter=json` and writes `.claims-cache/tests.json` for the test generator to read. CI runs this before `generate.mjs`.
 - **`scripts/claims/check-no-hardcoded.mjs`** — regex scanner. Fails if any source file outside the allow-list contains a hardcoded claim that should come from the truthbase.
 - **`scripts/claims/allow-list.json`** — explicit exemptions. Each entry justifies why a literal stays uncovered (historical CHANGELOG entries, generator regex sources, etc.). Entries are removed as surfaces migrate to the reader.

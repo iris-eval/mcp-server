@@ -152,11 +152,22 @@
     },
     "version": {
       "type": "object",
-      "required": ["dashboardPackage", "initPackage", "langchainPackage", "mcpServer", "websitePackage"],
+      "required": ["dashboardPackage", "initPackage", "langchainPackage", "mcpServer", "published", "websitePackage"],
       "properties": {
         "dashboardPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
         "initPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
         "langchainPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
+        "published": {
+          "type": "object",
+          "description": "Whether each npm-facing package is on the npm registry. Recorded in the generator, not probed: a false entry means the package is in-repo only and no surface may present it as installable.",
+          "required": ["initPackage", "langchainPackage", "mcpServer"],
+          "properties": {
+            "initPackage": { "type": "boolean" },
+            "langchainPackage": { "type": "boolean" },
+            "mcpServer": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
         "mcpServer": { "$ref": "#/$defs/semver" },
         "websitePackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] }
       },

@@ -6,6 +6,7 @@ import { requireTenant } from '../../middleware/tenant.js';
 import { generateTraceId, generateSpanId } from '../../utils/ids.js';
 import { bestEffortExport } from '../../otel/lazy.js';
 import { traceQuerySchema, ingestTraceSchema } from '../validation.js';
+import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../../eval/engine.js';
 
 export interface TraceRouteOptions {
   /**
@@ -95,10 +96,14 @@ export function registerTraceRoutes(
         costUsd: body.cost_usd,
         tokenUsage: body.token_usage,
       };
+      // An omitted eval_type runs every bundle — the same default, from the
+      // same constant, as the MCP tool — and says so in the response.
+      const evalTypeOmitted = body.eval_type === undefined;
+      const evalType = body.eval_type ?? DEFAULT_EVAL_TYPE;
       const evaluation =
-        body.eval_type === 'all'
+        evalType === 'all'
           ? options.evalEngine.evaluateAll(context)
-          : options.evalEngine.evaluate(body.eval_type, context);
+          : options.evalEngine.evaluate(evalType, context);
       evaluation.trace_id = traceId;
       await storage.insertEvalResult(tenantId, evaluation);
 
@@ -132,6 +137,7 @@ export function registerTraceRoutes(
             : {}),
           // Per-bundle breakdown — eval_type="all" only.
           ...(evaluation.categories ? { categories: evaluation.categories } : {}),
+          ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}),
         },
       });
     } catch (err) {

@@ -76,9 +76,12 @@ output containing a real SSN scores about **0.765** — squarely in what a
 score-only reading would call "good" — and still returns `passed: false`. Any
 deployed custom rule with severity `high` or `critical` behaves the same way.
 
-**`eval_type` defaults to `completeness`.** Omit it and the safety rules **do
-not run at all** — no PII check, no injection check — though the response
-carries a `note` saying so. Ask for safety explicitly:
+**`eval_type` defaults to `all`.** Omit it and every bundle runs — completeness,
+relevance, safety, cost and any custom rules — with a per-bundle `categories`
+map, and the response carries a `note` saying the default ran. A bundle with
+nothing to judge (cost without `cost_usd`, relevance without `input`) reports
+`passed: null` there — not evaluated, not failing. Name a bundle to narrow the
+run, for example safety only:
 
 ```json
 { "output": "<agent text>", "eval_type": "safety", "input": "<the original ask>" }
@@ -105,7 +108,7 @@ carry the judge's reasoning.
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
 | Safety | no_pii | No PII leaked (19 patterns) — **critical: a failure hard-fails the whole eval** |
-| Safety | no_injection_patterns | No prompt-injection attempts (37 patterns) — **critical: a failure hard-fails the whole eval** |
+| Safety | no_injection_patterns | No prompt-injection attempts in the output (37 patterns) — **critical: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
 | Safety | no_blocklist_words | No prohibited terms — **critical: a failure hard-fails the whole eval** |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |
 | Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |

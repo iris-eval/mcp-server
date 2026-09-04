@@ -32,10 +32,13 @@ describe('ingestTraceSchema', () => {
     expect(result.metadata).toEqual({ anything: 'goes' });
   });
 
-  it('defaults evaluate=false and eval_type=completeness', () => {
+  it('defaults evaluate=false and leaves an omitted eval_type undefined for the route to default', () => {
+    // The schema no longer bakes in a bundle: the route resolves an omitted
+    // eval_type to DEFAULT_EVAL_TYPE (every bundle) and says so in the
+    // response, which it can only do if the schema keeps "omitted" visible.
     const result = ingestTraceSchema.parse({ agent_name: 'a' });
     expect(result.evaluate).toBe(false);
-    expect(result.eval_type).toBe('completeness');
+    expect(result.eval_type).toBeUndefined();
   });
 
   it('accepts eval_type "all" — the same bundle list evaluate_output takes', () => {

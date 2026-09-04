@@ -104,11 +104,12 @@ jobs:
       - run: cd website && npm run lint
       - run: cd website && npx tsc --noEmit
 
-  # packages/init is a PUBLISHED npm package (@iris-eval/init) that had NO
-  # PR gate at all — breaks landed invisibly and first surfaced inside the
-  # tag-triggered release-init.yml job, which holds the OIDC publishing
-  # identity (issue #335). This job runs the same typecheck + test + build
-  # that release-init.yml depends on, on every PR.
+  # packages/init is an in-repo npm package (@iris-eval/init — NOT yet on the
+  # npm registry; `npm view` 404s as of 2026-09-03, see .claims.json
+  # version.published) that had NO PR gate at all — breaks landed invisibly
+  # and first surfaced inside the tag-triggered release-init.yml job, which
+  # holds the OIDC publishing identity (issue #335). This job runs the same
+  # typecheck + test + build that release-init.yml depends on, on every PR.
   init-typecheck-test-build:
     runs-on: ubuntu-latest
     steps:
