@@ -180,8 +180,31 @@ Every disagreement is worth something either way. It means the case is
 mislabelled, or the rule is defined loosely enough that two careful readers land
 in different places. Both are defects, and both get fixed in the open.
 
-**The verdict and the opinion are different answers, and the sheet keeps them
-apart.** The verdict is about the rule *as written*: read the definition,
+### Two reviewers, two questions
+
+A reviewer who has read the code and one who has not are useful for different
+things, and asking them the same question wastes one of them.
+
+| | The question | Scored with |
+|---|---|---|
+| **Reviewed the code** | Is this case labelled correctly against the rule's written definition? | `node proof/blind-sample.mjs --score <sheet>` |
+| **Has not** | Would you want to be told about this output, or is it fine? | `npm run proof:review <sheet>` |
+
+The second question is the one that can tell us the rules are wrong. Its scorer
+runs every answered case through the real registry and classifies the
+disagreements as the **product's**, never the reviewer's:
+
+- **A miss** is an output the reviewer wanted flagged that Iris passed. It is the
+  expensive kind, because nothing in production reports an alarm that never rang.
+- **A false alarm** is an output Iris flagged that the reviewer would have waved
+  through. Each one is a person dismissing a warning, and enough of them teach
+  people to dismiss all of them.
+
+There is no answer key in that mode. A reviewer cannot be wrong, only surprised,
+and every surprise is ours to fix.
+
+**In the definition-conformance mode, the verdict and the opinion are different
+answers, and the sheet keeps them apart.** The verdict is about the rule *as written*: read the definition,
 including any threshold it names, and say whether this output matches it. That
 is what the corpus labels mean, so it is what agreement is computed against. The
 separate `ruleWrong` flag is the annotator saying the definition itself should
