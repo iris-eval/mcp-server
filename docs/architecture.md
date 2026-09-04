@@ -238,6 +238,8 @@ dashboard/              React SPA (separate Vite build)
 | `cost`          | `cost_under_threshold`, `token_efficiency`, `no_tool_loop`   | 1, 0.5, 1 |
 | `custom`        | Dynamically built from `CustomRuleDefinition` array          | User-defined |
 
+Which of these rules VETO the verdict is per-deployment: `config.eval.criticalRules` promotes built-in rules to critical and `config.eval.nonCriticalRules` demotes them, both validated against the registry at load. `src/eval/criticality.ts` resolves the effective value and every surface that reports criticality reads it from there, so a roster can never disagree with the verdicts the same process produces. See `docs/api-reference.md` § Rule criticality.
+
 ### Scoring algorithm
 
 ```

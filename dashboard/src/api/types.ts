@@ -335,8 +335,18 @@ export interface BuiltInRuleMeta {
   category: DeployedCustomRule['evalType'];
   description: string;
   weight: number;
-  /** A failing critical rule forces passed=false regardless of the weighted score. */
+  /**
+   * A failing critical rule forces passed=false regardless of the weighted
+   * score. This is the EFFECTIVE value — what this server will apply after
+   * eval.criticalRules / eval.nonCriticalRules — not the rule's declaration.
+   */
   critical: boolean;
+  /**
+   * Who decided it: 'default' is the rule's own declaration, 'config' means
+   * this deployment promoted or demoted it. Rendering `critical` without
+   * this would show a promotion as though it shipped that way.
+   */
+  criticalSource: 'default' | 'config';
 }
 
 /* ── Preferences (B8.2 — server-mediated user preferences) ── */

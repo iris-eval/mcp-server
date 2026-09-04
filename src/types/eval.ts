@@ -79,6 +79,22 @@ export interface EvalRuleResult {
    * regroup them.
    */
   category?: EvalType;
+  /**
+   * Whether this rule VETOES the verdict — its EFFECTIVE criticality, after
+   * `eval.criticalRules` / `eval.nonCriticalRules` are applied, not the
+   * value on the rule's definition. A reader holding a failed evaluation
+   * could otherwise not tell a hard violation from a low score without
+   * knowing the rule library by heart.
+   */
+  critical?: boolean;
+  /**
+   * Who decided that: 'default' is the rule's own declaration (for a
+   * deployed custom rule, the severity it was deployed with); 'config' means
+   * one of the two override lists named it. The distinction is the point of
+   * making criticality configurable — an operator reading a verdict must be
+   * able to see that their own promotion caused it.
+   */
+  criticalSource?: 'default' | 'config';
   passed: boolean;
   score: number;
   message: string;

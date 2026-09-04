@@ -2,6 +2,7 @@ import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { IrisConfig } from '../types/index.js';
 import { defaultConfig } from './defaults.js';
+import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
 
 /*
@@ -199,6 +200,14 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   config = deepMerge(config, argsConfig);
 
   ensureIrisDirectory(dirname(config.storage.path), 'the database directory (IRIS_DB_PATH / --db-path)');
+
+  /*
+   * Fail at STARTUP on a bad rule name, before a single evaluation runs.
+   * A typo in eval.criticalRules that quietly did nothing would leave an
+   * operator believing their deploy gate exists when it does not — the same
+   * "detection that reports an all-clear" failure the veto exists to stop.
+   */
+  assertValidCriticality(config.eval);
 
   return config;
 }

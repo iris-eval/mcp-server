@@ -42,6 +42,7 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [Safety Rules](#safety-rules)
   - [Cost Rules](#cost-rules)
   - [Trajectory rules](#trajectory-rules)
+  - [Rule criticality — which rules gate](#rule-criticality--which-rules-gate)
 - [Custom Rules](#custom-rules)
   - [regex_match](#regex_match)
   - [regex_no_match](#regex_no_match)
@@ -235,24 +236,32 @@ The response echoes the `eval_type` that ran. When `eval_type` is omitted, every
   "rule_results": [
     {
       "ruleName": "min_output_length",
+      "critical": false,
+      "criticalSource": "default",
       "passed": true,
       "score": 1,
       "message": "Output length (156) meets minimum (50)"
     },
     {
       "ruleName": "non_empty_output",
+      "critical": false,
+      "criticalSource": "default",
       "passed": true,
       "score": 1,
       "message": "Output is non-empty"
     },
     {
       "ruleName": "sentence_count",
+      "critical": false,
+      "criticalSource": "default",
       "passed": true,
       "score": 1,
       "message": "Sentence count (2) meets minimum (2)"
     },
     {
       "ruleName": "expected_coverage",
+      "critical": false,
+      "criticalSource": "default",
       "passed": true,
       "score": 0.8,
       "message": "Covered 8/10 expected terms (80%)"
@@ -1191,6 +1200,45 @@ A call counts as FAILED when its `error` is a non-empty string, or its `output` 
 The output ACKNOWLEDGES a failure when it contains any failure-acknowledging phrase (`failed`, `could not`, `no matches`, `does not exist`, `threw`, …) as a case-insensitive substring. Bare negations are deliberately excluded: "nothing else references it" is a claim about a search, not an admission that it failed.
 
 Both rules are **non-critical**: they degrade the weighted score and are listed in `suggestions`, but they do not veto `passed`. Read `rule_results` when you need the trajectory verdict on its own.
+
+---
+
+### Rule criticality — which rules gate
+
+A **critical** rule hard-fails: when it fails, `passed` is `false` regardless of the weighted score, and the rule is named in `critical_failures`. A non-critical rule only moves the score. Three built-in rules ship critical — `no_pii`, `no_injection_patterns`, `no_blocklist_words` — and every other built-in rule ships non-critical.
+
+That default is a judgement about acceptable error, and it is configurable, because the right answer differs by deployment. Two optional arrays in `config.eval`:
+
+| Key | Type | Default | Effect |
+|-----|------|---------|--------|
+| `criticalRules` | `string[]` | `[]` | Built-in rules **promoted** to critical — they veto `passed`. |
+| `nonCriticalRules` | `string[]` | `[]` | Built-in rules **demoted** — they still fail and still score, but stop vetoing. |
+
+Both name **built-in** rules. A deployed custom rule's severity is set on the rule itself (`deploy_rule`'s `severity`), and overrides here never reach one — matching is by rule identity, not name, so a custom rule that happens to be called `no_pii` is unaffected.
+
+**Validation is loud.** Every name is checked against the rule registry when the config loads and again when the engine is constructed. An unknown name aborts startup with a message naming the key, the offending entry and the full valid list; a name appearing in both arrays is refused, because the config does not then say what you want. A typo that silently did nothing would leave you trusting a gate that never fired — the same all-clear failure the critical veto exists to prevent.
+
+**Worked example — gating deploys on fabricated tool results.** A team runs Iris in CI and blocks a deploy when `passed` is `false`. They want an agent that answers over a tool call that errored to block the deploy, not merely to score lower. `no_silent_tool_failure` detects exactly that, and ships non-critical:
+
+```json
+{
+  "eval": {
+    "criticalRules": ["no_silent_tool_failure"]
+  }
+}
+```
+
+After this, a trace whose `tool_calls` carry a failed call that the output never acknowledges returns `passed: false` with `critical_failures: ["no_silent_tool_failure"]`, and the rule's own result reads `"critical": true, "criticalSource": "config"`.
+
+**Decide with the error rate in front of you.** `no_silent_tool_failure` measures 100.0% precision on a 30-case family — but the 95% confidence interval runs `[77.2, 100.0]`, so as many as roughly one in four of its failures could be false at the low end of that interval. That is why it does not ship as a veto: the trade is reasonable for a team that wants to block on fabricated tool results and unreasonable to impose on everyone. Read the current numbers, and the interval, at [/proof](https://iris-eval.com/proof) or in `proof/RESULTS.md` before promoting any rule. The same applies in reverse: `nonCriticalRules` is how you stop a rule gating when its false positives cost you more than its misses.
+
+**Reading the effective value.** Never infer criticality from the rule name or from these docs — the running server is the authority, and it reports itself:
+
+- Each entry in `rule_results[]` carries `critical` (the effective value) and `criticalSource` (`default` or `config`).
+- `list_rules` returns a `built_in` array with `name`, `category`, `weight`, `critical` and `criticalSource` for every shipped rule.
+- `GET /api/v1/rules/builtin` returns the same, resolved through the running engine.
+
+A `passed: true` from a server that demoted a rule is not the same claim as a `passed: true` from a default one, and `criticalSource` is how you tell them apart.
 
 ---
 

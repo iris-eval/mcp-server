@@ -9,6 +9,7 @@ import type {
   CustomRuleDefinition,
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
+import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
 import { generateEvalId } from '../utils/ids.js';
 
 /**
@@ -68,10 +69,32 @@ export class EvalEngine {
   private idByRule: Map<EvalRule, string> = new Map();
   private threshold: number;
   private ruleThresholds?: Record<string, unknown>;
+  /**
+   * Effective criticality per rule, bound to this engine's config overrides.
+   * Every veto decision reads THIS, never `rule.critical` directly, so a
+   * promotion or demotion cannot apply on one code path and not another.
+   */
+  private criticality: (rule: EvalRule) => EffectiveCriticality;
 
-  constructor(threshold = 0.7, ruleThresholds?: Record<string, unknown>) {
+  /**
+   * `criticalityOverrides` are `config.eval` — the criticalRules /
+   * nonCriticalRules lists. Validated here as well as in loadConfig, so an
+   * engine built directly (a test, an embedder) cannot silently ignore a
+   * misspelled rule name.
+   */
+  constructor(
+    threshold = 0.7,
+    ruleThresholds?: Record<string, unknown>,
+    criticalityOverrides?: CriticalityOverrides,
+  ) {
     this.threshold = threshold;
     this.ruleThresholds = ruleThresholds;
+    this.criticality = criticalityResolver(criticalityOverrides);
+  }
+
+  /** The effective criticality of one rule under this engine's config. Read by the rule roster surfaces. */
+  effectiveCriticality(rule: EvalRule): EffectiveCriticality {
+    return this.criticality(rule);
   }
 
   /**
@@ -219,7 +242,16 @@ export class EvalEngine {
       const raw = rule.evaluate(evalContext);
       const ruleId = this.idByRule.get(rule);
       const category = categories?.[i];
-      if (ruleId === undefined && category === undefined) return raw;
+      /*
+       * Every result says whether THIS rule vetoes and who decided that.
+       * Without it, a reader holding a failed evaluation cannot tell a
+       * hard violation from a merely low score without knowing the rule
+       * library by heart — and once eval.criticalRules exists, cannot tell
+       * a shipped default from their own promotion at all. Stamped here, on
+       * the one path every evaluation takes, so a surface cannot render the
+       * declared criticality where the engine applied a configured one.
+       */
+      const { critical, source } = this.criticality(rule);
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
       const { ruleName, ...rest } = raw;
@@ -227,6 +259,8 @@ export class EvalEngine {
         ruleName,
         ...(ruleId !== undefined ? { ruleId } : {}),
         ...(category !== undefined ? { category } : {}),
+        critical,
+        criticalSource: source,
         ...rest,
       };
     });
@@ -356,7 +390,7 @@ export class EvalEngine {
     }
 
     const criticalSkipped = skippedIndices
-      .filter((i) => rules[i].critical === true)
+      .filter((i) => this.criticality(rules[i]).critical)
       .map((i) => ruleResults[i].ruleName);
 
     if (evaluatedIndices.length === 0) {
@@ -380,7 +414,7 @@ export class EvalEngine {
     const score = Number.isFinite(rawScore) ? rawScore : 0;
 
     const criticalFailures = evaluatedIndices
-      .filter((i) => rules[i].critical === true && !ruleResults[i].passed)
+      .filter((i) => this.criticality(rules[i]).critical && !ruleResults[i].passed)
       .map((i) => ruleResults[i].ruleName);
 
     return {

@@ -34,6 +34,19 @@ export interface IrisConfig {
       max_token_ratio?: number;
       max_tool_repeats?: number;
     };
+    /**
+     * Built-in rule names promoted to CRITICAL — a failure vetoes `passed`
+     * regardless of the weighted score. Validated against the rule registry
+     * when the config loads; an unknown name is a startup error naming the
+     * valid list, never a silent no-op.
+     */
+    criticalRules?: string[];
+    /**
+     * Built-in rule names demoted from critical — they still score and still
+     * report a failure, but they stop vetoing `passed`. Same validation. A
+     * name in both lists is a config error: it does not say what you want.
+     */
+    nonCriticalRules?: string[];
   };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
