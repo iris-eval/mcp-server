@@ -1,7 +1,7 @@
 {
-  "commit": "4207b4a",
-  "corpusVersion": "341f03991514",
-  "generatedAt": "2026-09-04T04:48:33.916Z",
+  "commit": "64eb5f6",
+  "corpusVersion": "68d1736ae22a",
+  "generatedAt": "2026-09-04T04:57:46.511Z",
   "humanAgreement": {
     "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -13,6 +13,180 @@
     "skipped": "a skipped result (the rule declined to judge) counts as not failed; the count is reported per rule"
   },
   "rules": [
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7719,
+          1
+        ],
+        "recall": [
+          0.7719,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 29,
+      "name": "min_output_length",
+      "negatives": 16,
+      "positives": 13,
+      "precision": 1,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 16,
+      "tp": 13
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          0.7368,
+          1
+        ],
+        "precision": [
+          0.7225,
+          1
+        ],
+        "recall": [
+          0.552,
+          0.953
+        ]
+      },
+      "f1": 0.9091,
+      "fn": 2,
+      "fp": 0,
+      "n": 29,
+      "name": "non_empty_output",
+      "negatives": 17,
+      "positives": 12,
+      "precision": 1,
+      "recall": 0.8333,
+      "skipped": 0,
+      "tn": 17,
+      "tp": 10
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          0.4706,
+          0.9091
+        ],
+        "precision": [
+          0.6756,
+          1
+        ],
+        "recall": [
+          0.3259,
+          0.7862
+        ]
+      },
+      "f1": 0.7273,
+      "fn": 6,
+      "fp": 0,
+      "n": 30,
+      "name": "sentence_count",
+      "negatives": 16,
+      "positives": 14,
+      "precision": 1,
+      "recall": 0.5714,
+      "skipped": 0,
+      "tn": 16,
+      "tp": 8
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7847,
+          1
+        ],
+        "recall": [
+          0.7847,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 29,
+      "name": "expected_coverage",
+      "negatives": 15,
+      "positives": 14,
+      "precision": 1,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 15,
+      "tp": 14
+    },
+    {
+      "category": "relevance",
+      "ci95": {
+        "f1": [
+          0.5882,
+          0.9444
+        ],
+        "precision": [
+          0.4171,
+          0.8482
+        ],
+        "recall": [
+          0.7225,
+          1
+        ]
+      },
+      "f1": 0.8,
+      "fn": 0,
+      "fp": 5,
+      "n": 29,
+      "name": "keyword_overlap",
+      "negatives": 19,
+      "positives": 10,
+      "precision": 0.6667,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 14,
+      "tp": 10
+    },
+    {
+      "category": "relevance",
+      "ci95": {
+        "f1": [
+          0.3478,
+          0.7826
+        ],
+        "precision": [
+          0.3096,
+          0.7383
+        ],
+        "recall": [
+          0.4237,
+          0.8732
+        ]
+      },
+      "f1": 0.6,
+      "fn": 4,
+      "fp": 8,
+      "n": 31,
+      "name": "topic_consistency",
+      "negatives": 18,
+      "positives": 13,
+      "precision": 0.5294,
+      "recall": 0.6923,
+      "skipped": 1,
+      "tn": 10,
+      "tp": 9
+    },
     {
       "category": "safety",
       "ci95": {
@@ -41,6 +215,35 @@
       "skipped": 0,
       "tn": 39,
       "tp": 34
+    },
+    {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.6087,
+          0.9524
+        ],
+        "precision": [
+          0.6461,
+          0.9851
+        ],
+        "recall": [
+          0.4805,
+          0.891
+        ]
+      },
+      "f1": 0.8148,
+      "fn": 4,
+      "fp": 1,
+      "n": 32,
+      "name": "no_blocklist_words",
+      "negatives": 17,
+      "positives": 15,
+      "precision": 0.9167,
+      "recall": 0.7333,
+      "skipped": 0,
+      "tn": 16,
+      "tp": 11
     },
     {
       "category": "safety",
@@ -128,6 +331,64 @@
       "skipped": 0,
       "tn": 44,
       "tp": 34
+    },
+    {
+      "category": "cost",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7225,
+          1
+        ],
+        "recall": [
+          0.7225,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 26,
+      "name": "cost_under_threshold",
+      "negatives": 16,
+      "positives": 10,
+      "precision": 1,
+      "recall": 1,
+      "skipped": 2,
+      "tn": 16,
+      "tp": 10
+    },
+    {
+      "category": "cost",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7009,
+          1
+        ],
+        "recall": [
+          0.7009,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 25,
+      "name": "token_efficiency",
+      "negatives": 16,
+      "positives": 9,
+      "precision": 1,
+      "recall": 1,
+      "skipped": 1,
+      "tn": 16,
+      "tp": 9
     }
   ],
   "schemaVersion": 1

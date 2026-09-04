@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "rule": "sentence_count",
+  "category": "completeness",
+  "family": "sentences",
+  "positiveClass": "fail",
+  "definition": "sentence_count — the output must contain at least min_sentences sentences, default 2 (config key min_sentences); the documented mechanism splits on \".!?\" and counts non-empty segments. docs/api-reference.md §Completeness Rules. Positive = fewer than two sentences as a reader counts them (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-04; cases marked \"real transcript t-NN\" carry the real input/output pair (and token/cost figures where used) from a 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition on 2026-09-04. Sentences are counted as a reader counts them; cases where the documented \".!?\" split would count differently (decimals, URLs, filenames, abbreviations, ellipses) are included as boundaries and say so in notes.",
+  "authored": "2026-09-04",
+  "counts": {
+    "n": 30,
+    "positive": 14,
+    "negative": 16
+  },
+  "cases": [
+    {
+      "id": "sentences-001",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "The default port is 4748.",
+      "notes": "One sentence"
+    },
+    {
+      "id": "sentences-002",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "Yes",
+      "notes": "One word, no terminal punctuation"
+    },
+    {
+      "id": "sentences-003",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "",
+      "notes": "No sentences at all"
+    },
+    {
+      "id": "sentences-004",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "Restart the server and try again",
+      "notes": "One sentence without terminal punctuation"
+    },
+    {
+      "id": "sentences-005",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "Version 2.0 is out.",
+      "notes": "One sentence; the documented split on \".!?\" would cut it at the decimal point into two segments — a disclosed boundary"
+    },
+    {
+      "id": "sentences-006",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "See https://iris-eval.com/docs for details.",
+      "notes": "One sentence; the dots in the URL are not sentence ends"
+    },
+    {
+      "id": "sentences-007",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "The file is at src/index.ts.",
+      "notes": "One sentence; the dot in the filename is not a sentence end"
+    },
+    {
+      "id": "sentences-008",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "It costs $0.10 per call.",
+      "notes": "One sentence containing a decimal"
+    },
+    {
+      "id": "sentences-009",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "Dr. Anantharaman approved it.",
+      "notes": "One sentence; the abbreviation dot is not a sentence end"
+    },
+    {
+      "id": "sentences-010",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "OK!",
+      "notes": "One exclamation"
+    },
+    {
+      "id": "sentences-011",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "Why?",
+      "notes": "One question"
+    },
+    {
+      "id": "sentences-012",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "Done — the branch is pushed and CI is green.",
+      "notes": "One sentence with a dash clause"
+    },
+    {
+      "id": "sentences-013",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "I checked the repo, the docs and the changelog",
+      "notes": "One sentence, no terminal punctuation"
+    },
+    {
+      "id": "sentences-014",
+      "rule": "sentence_count",
+      "label": "positive",
+      "output": "One sentence with an ellipsis... and it continues.",
+      "notes": "One sentence; an ellipsis is a pause, not an end"
+    },
+    {
+      "id": "sentences-015",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "The port is 4748. Change it with --port.",
+      "notes": "Two sentences"
+    },
+    {
+      "id": "sentences-016",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "Yes. Restart.",
+      "notes": "Two short sentences"
+    },
+    {
+      "id": "sentences-017",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "Run the tests! They pass.",
+      "notes": "Exclamation then statement"
+    },
+    {
+      "id": "sentences-018",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "Is it running? It is.",
+      "notes": "Question then answer"
+    },
+    {
+      "id": "sentences-019",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "First, install. Then, run.",
+      "notes": "Two imperative sentences"
+    },
+    {
+      "id": "sentences-020",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "Iris stores traces in SQLite. The dashboard reads the same file. Nothing leaves the machine.",
+      "notes": "Three sentences"
+    },
+    {
+      "id": "sentences-021",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "- Install with npm.\n- Run the self-test.",
+      "notes": "Two list items, each a sentence"
+    },
+    {
+      "id": "sentences-022",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "Wait... what? No!",
+      "notes": "Two or three sentences depending on how the ellipsis is read; at least two either way"
+    },
+    {
+      "id": "sentences-023",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "Two sentences without a space.Second one here.",
+      "notes": "Two sentences with a missing space"
+    },
+    {
+      "id": "sentences-024",
+      "rule": "sentence_count",
+      "label": "negative",
+      "output": "The sweep runs at startup and deletes old rows; it then truncates the WAL. Set retention.days to 0 to keep everything.",
+      "notes": "Two sentences, one with a semicolon clause"
+    },
+    {
+      "id": "sentences-025",
+      "rule": "sentence_count",
+      "label": "negative",
+      "input": "How many built-in rules does Iris ship and what are they? Start from src/eval/rules/index.ts.",
+      "output": "13 built-in rules. src/eval/rules/index.ts maps each eval type to a bundle (custom is an empty bundle by design, it only ever holds deployed rules), and the four bundles export:\n\n- completeness (4): min_output_length, non_empty_output, sentence_count, expected_coverage\n- relevance (2): keyword_overlap, topic_consistency\n- safety (5): no_pii, no_blocklist_words, no_injection_patterns, no_stub_output, no_hallucination_markers\n- cost (2): cost_under_threshold, token_efficiency\n\n4 + 2 + 5 + 2 = 13. Three of the safety rules (no_pii, no_blocklist_words, no_injection_patterns) are marked critical, so a failure on any of them forces the overall evaluation to passed=false regardless of the weighted score; no_stub_output and no_hallucination_markers deliberately are not.",
+      "notes": "real transcript t-04: four sentences"
+    },
+    {
+      "id": "sentences-026",
+      "rule": "sentence_count",
+      "label": "negative",
+      "input": "Does Iris send any telemetry home? Check for an IRIS_TELEMETRY env var or similar in src/.",
+      "output": "Yes, there is a switch. I searched src/ for IRIS_TELEMETRY and the variable is read at startup as an opt-out: it defaults to enabled, so set IRIS_TELEMETRY=0 (or false) in the environment before launching to stop the outbound calls. Nothing else in src/ references it, so that one variable is the whole surface.",
+      "notes": "real transcript t-13: three sentences"
+    },
+    {
+      "id": "sentences-027",
+      "rule": "sentence_count",
+      "label": "negative",
+      "input": "How many MCP tools does package.json declare? Use node to read it.",
+      "output": "package.json declares 9 MCP tools: log_trace, evaluate_output, get_traces, list_rules, deploy_rule, delete_rule, delete_trace, evaluate_with_llm_judge, verify_citations.",
+      "notes": "real transcript t-15: two sentences"
+    },
+    {
+      "id": "sentences-028",
+      "rule": "sentence_count",
+      "label": "negative",
+      "input": "What does src/eval/failure-rank.ts export?",
+      "output": "src/eval/failure-rank.ts arrived in commit 7ce2245, \"feat(dashboard): land on the failure + elite-feel pass (#345)\", and has not changed since. It exports the failure-ranking logic the dashboard's failure view (the \"What failed\" landing page) uses to order failed evaluations, so the exports are the ranker function and its supporting types.",
+      "notes": "real transcript t-18: three sentences"
+    },
+    {
+      "id": "sentences-029",
+      "rule": "sentence_count",
+      "label": "negative",
+      "input": "Three things: (1) what port does the dashboard bind by default, (2) how do I change it, and (3) does the POST /api/v1/traces endpoint move with it or stay on 3000?",
+      "output": "The dashboard binds to 127.0.0.1 on port 6920 by default (src/index.ts help text: \"--dashboard-port <port>  Dashboard port 1-65535 (default: 6920)\" and \"--dashboard-host <host>  Dashboard bind address (default: 127.0.0.1)\").",
+      "notes": "real transcript t-19: several sentences, although two of three parts are missing — sentence count is not completeness"
+    },
+    {
+      "id": "sentences-030",
+      "rule": "sentence_count",
+      "label": "negative",
+      "input": "Can you check whether the retention sweep also deletes evaluations linked to the traces it deletes, or whether orphan evals are left behind?",
+      "output": "Good question. I will look into how the retention sweep handles evaluations linked to the traces it deletes and get back to you with what it does with orphans.",
+      "notes": "real transcript t-20: two sentences that promise instead of answer"
+    }
+  ]
+}

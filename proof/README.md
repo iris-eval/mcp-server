@@ -93,13 +93,42 @@ every rule regex sees the same character class at every position. The
 converter's `--verify` mode re-evaluates every case on the original text and on
 the materialised text and refuses to write if any verdict moves.
 
-## The nine other families
+## The nine other families (authored 2026-09-04)
 
 The remaining built-in rules (`min_output_length`, `non_empty_output`,
 `sentence_count`, `expected_coverage`, `keyword_overlap`, `topic_consistency`,
 `no_blocklist_words`, `cost_under_threshold`, `token_efficiency`) had no
-labelled cases before this directory existed. Their families are described in
-each file's header and in the section below once authored.
+labelled cases before this directory existed. Their families
+(`corpus/<rule>.json`) were **LLM-authored and LLM-labelled against each
+rule's documented definition on 2026-09-04** — the definition in
+`docs/api-reference.md` and the rule's own description, quoted in each file's
+`definition` header — not by running the rule. The labeller is the same model
+family that wrote the cases; no human has checked these labels. Specifically:
+
+- Where the documented definition is a formula (character count, term
+  coverage, keyword overlap, cost, token ratio), the label is that formula
+  applied by an independent script, and every case's `notes` states the
+  count that decided it.
+- Where the definition is a reader's judgement (sentence count, presence of a
+  blocklisted phrase, "stays on topic"), the label is what a reader would
+  say, and the notes disclose where the documented *mechanism* is expected to
+  disagree (a decimal point read as a sentence end; a zero-width space inside
+  a banned phrase; an on-topic answer that avoids the question's words). Those
+  cases are boundaries on purpose: the misses they produce are the rule's
+  documented limits, made visible.
+- Two documented thresholds differ from the shipped defaults on the day of
+  authoring: `docs/api-reference.md` states 20% for `keyword_overlap` and 5%
+  for `topic_consistency`; `src/eval/rules/relevance.ts` defaults to 0.35 and
+  0.10. Labels follow the documentation; cases inside the band say so in
+  their notes, and the false positives they produce are that gap.
+
+Every family holds at least six cases derived from **real agent transcripts**:
+the input/output pairs (and, for the cost family, the token and dollar
+figures) of an agent that genuinely performed 24 tasks against this repository
+on 2026-09-03, including its real failures (a fabricated file name, an answer
+to only one of three parts, a promise instead of work, ten document reads for
+one fact). They are marked `real transcript t-NN` in `notes`. The transcripts
+themselves are not published; the pairs are reproduced verbatim in the cases.
 
 ## How to read the intervals
 
