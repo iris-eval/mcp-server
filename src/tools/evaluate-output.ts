@@ -7,7 +7,8 @@ import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
 import { INJECTION_SCOPE_SENTENCE } from '../eval/rules/safety.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
-import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
+import { toolCallSchema } from './log-trace.js';
+import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 
 /*
  * Strict one level down (#376): `{ name, type, config, wieght: 5 }` used to
@@ -52,6 +53,10 @@ const inputSchema = {
     completion_tokens: z.number().optional(),
     total_tokens: z.number().optional(),
   }).optional().describe('Token usage breakdown — only consulted by the cost bundle (eval_type="cost" or "all"; used for token-budget rules)'),
+  // Same schema log_trace validates tool_calls with, imported rather than
+  // restated: the trajectory rules read `error`, and a second declaration
+  // is how that field goes missing on one path and not the other.
+  tool_calls: z.array(toolCallSchema).optional().describe('What the agent DID — the tool calls it made, in order, each { tool_name, input?, output?, latency_ms?, error? } exactly as log_trace records them. Read by the trajectory rules — the rules that judge what the agent DID rather than what it wrote. Omit it and those rules SKIP rather than pass — an evaluation with no trajectory data reports "not judged", never "clean". When trace_id names a stored trace and this argument is omitted, the tool_calls stored on that trace are loaded and used, so a caller who already logged them need not resend them'),
 };
 
 export function registerEvaluateOutputTool(
@@ -80,9 +85,9 @@ export function registerEvaluateOutputTool(
         '',
         'Don\'t use when the output is empty or has no applicable rules — the eval_type decides which rules apply, and invalid combinations return score=0 + insufficient_data=true (not an error, but not actionable). Don\'t use to VALIDATE JSON schemas directly (use your language\'s JSON Schema validator — Iris\'s `json_schema` custom rule type is for output-shape assertions, not arbitrary validation).',
         '',
-        'Parameters. input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it; without it both rules skip and the response reports insufficient_data=true) AND grounds the safety bundle\'s hallucination signals (without it those signals stay silent rather than guess); ignored otherwise. expected is consulted only by the completeness bundle\'s expected_coverage rule; ignored for other eval_types — it is NOT the relevance target. cost_usd is consulted by the cost bundle AND by any cost_threshold custom rule regardless of eval_type — omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped); token_usage is ONLY consulted by the cost bundle. custom_rules ALWAYS fires regardless of eval_type — pass eval_type="custom" if you want ONLY your rules to run (otherwise both your rules AND the eval_type bundle run together); each entry takes exactly name, type, config and weight. trace_id is optional but recommended (linking the eval to its trace surfaces it in the dashboard\'s drill-through) and must name a stored trace. Defaults: eval_type="all" — every bundle runs, safety included, and when you rely on that default the response carries a `note` saying so; pass a single bundle name to narrow the run.',
+        'Parameters. input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it; without it both rules skip and the response reports insufficient_data=true) AND grounds the safety bundle\'s hallucination signals (without it those signals stay silent rather than guess); ignored otherwise. expected is consulted only by the completeness bundle\'s expected_coverage rule; ignored for other eval_types — it is NOT the relevance target. cost_usd is consulted by the cost bundle AND by any cost_threshold custom rule regardless of eval_type — omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped); token_usage is ONLY consulted by the cost bundle. tool_calls is what the agent DID (the trajectory) and is read only by the trajectory rules; omit it and those rules SKIP rather than pass, so an evaluation with no trajectory data reports "not judged" instead of "clean", and when trace_id names a stored trace the tool_calls stored on it are used unless this argument overrides them. custom_rules ALWAYS fires regardless of eval_type — pass eval_type="custom" if you want ONLY your rules to run (otherwise both your rules AND the eval_type bundle run together); each entry takes exactly name, type, config and weight. trace_id is optional but recommended (linking the eval to its trace surfaces it in the dashboard\'s drill-through) and must name a stored trace. Defaults: eval_type="all" — every bundle runs, safety included, and when you rely on that default the response carries a `note` saying so; pass a single bundle name to narrow the run.',
         '',
-        'Error modes. Throws on unknown argument names (strict schema — a misspelled argument is rejected with the valid argument list, never silently dropped), and likewise on an unknown key inside a custom_rules entry (e.g. `wieght`) — the valid keys are listed; a rule\'s `config` keys are free-form and are not checked here. Throws on malformed custom_rules (Zod rejects the shape: missing name/type, unknown type, non-object config, non-positive weight) and on more than 10 custom_rules in one call (use deploy_rule for persistent rule sets). Throws when trace_id does not match a stored trace — checked BEFORE evaluating, so nothing is scored or written; the message names the trace_id. An inline rule whose CONFIG is unusable — a regex that fails the safe-regex2 ReDoS check or exceeds the 1000-char limit, a missing or non-string config.pattern, non-string keywords — does NOT error: that rule reports skipped with configInvalid=true and a skipReason naming the field, and the other rules still run (deploy_rule rejects the same configs with a 400 at deploy time). Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions. A regex that exceeds the 100ms sandbox matching budget on a given output reports skipped with budgetExceeded=true instead of hanging the server (fail-open per rule — gate on that flag if you must fail closed).',
+        'Error modes. Throws on unknown argument names (strict schema — a misspelled argument is rejected with the valid argument list, never silently dropped), and likewise on an unknown key inside a custom_rules entry (e.g. `wieght`) or inside a tool_calls entry (e.g. `err` for `error`) — the valid keys are listed; a rule\'s `config` keys are free-form and are not checked here. Throws on malformed custom_rules (Zod rejects the shape: missing name/type, unknown type, non-object config, non-positive weight) and on more than 10 custom_rules in one call (use deploy_rule for persistent rule sets). Throws when trace_id does not match a stored trace — checked BEFORE evaluating, so nothing is scored or written; the message names the trace_id. An inline rule whose CONFIG is unusable — a regex that fails the safe-regex2 ReDoS check or exceeds the 1000-char limit, a missing or non-string config.pattern, non-string keywords — does NOT error: that rule reports skipped with configInvalid=true and a skipReason naming the field, and the other rules still run (deploy_rule rejects the same configs with a 400 at deploy time). Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions. A regex that exceeds the 100ms sandbox matching budget on a given output reports skipped with budgetExceeded=true instead of hanging the server (fail-open per rule — gate on that flag if you must fail closed).',
       ].join('\n'),
       inputSchema: strictInput(inputSchema),
       annotations: {
@@ -96,9 +101,16 @@ export function registerEvaluateOutputTool(
       // Refuse an unknown trace_id up front (#376): the old path ran the
       // evaluation and then surfaced SQLite's "FOREIGN KEY constraint
       // failed", which names neither the field nor the fix.
-      if (args.trace_id) {
-        await assertTraceExists(storage, LOCAL_TENANT, args.trace_id);
-      }
+      //
+      // The same read also supplies the trajectory when the caller did not
+      // pass one: log_trace already stored what the agent did, so making
+      // them resend it to get the trajectory rules is a trap — they would
+      // skip silently and the response would look clean. An explicit
+      // tool_calls argument always wins; the trace is the fallback.
+      const trace = args.trace_id
+        ? await getTraceOrThrow(storage, LOCAL_TENANT, args.trace_id)
+        : undefined;
+      const toolCalls = args.tool_calls ?? trace?.tool_calls;
 
       // Track omission explicitly: a caller who never chose a bundle gets
       // every bundle (DEFAULT_EVAL_TYPE) AND a note saying so. The default
@@ -112,6 +124,7 @@ export function registerEvaluateOutputTool(
         input: args.input,
         costUsd: args.cost_usd,
         tokenUsage: args.token_usage,
+        toolCalls,
       };
       const customRules = args.custom_rules as CustomRuleDefinition[] | undefined;
 

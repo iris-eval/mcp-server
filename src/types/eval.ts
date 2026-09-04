@@ -1,3 +1,5 @@
+import type { ToolCallRecord } from './trace.js';
+
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
 /**
@@ -33,7 +35,19 @@ export interface EvalContext {
   output: string;
   expected?: string;
   input?: string;
-  toolCalls?: Array<{ tool_name: string; input?: unknown; output?: unknown }>;
+  /**
+   * The agent's trajectory — what it actually DID, in call order.
+   *
+   * Deliberately the SAME record the capture path stores (ToolCallRecord =
+   * log_trace's `tool_calls[]`), not a narrower local shape. It used to be
+   * a three-field inline type without `error`, so a rule could see that a
+   * tool was called but never that it FAILED: the acceptance pass found
+   * three real transcripts that answered confidently after a grep exited 1,
+   * an ls hit a missing directory and a node -e threw, and no rule could
+   * reach the fact. Re-declaring a subset here would reintroduce exactly
+   * that gap the next time a field is added to the capture shape.
+   */
+  toolCalls?: ToolCallRecord[];
   tokenUsage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   costUsd?: number;
   metadata?: Record<string, unknown>;

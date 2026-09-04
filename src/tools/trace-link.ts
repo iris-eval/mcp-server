@@ -1,5 +1,6 @@
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalResult } from '../types/eval.js';
+import type { Trace } from '../types/trace.js';
 import type { TenantId } from '../types/tenant.js';
 
 /*
@@ -25,13 +26,30 @@ export function unknownTraceMessage(traceId: string): string {
   );
 }
 
+/**
+ * The same refuse-before-any-work check, returning the row it already read.
+ *
+ * evaluate_output needs the trace itself (its `tool_calls`, so a caller who
+ * has already logged the trajectory does not have to resend it), and the
+ * existence check had to load the row anyway. Fetching it twice would be
+ * two reads for one fact — and two chances for them to disagree.
+ */
+export async function getTraceOrThrow(
+  storage: IStorageAdapter,
+  tenantId: TenantId,
+  traceId: string,
+): Promise<Trace> {
+  const trace = await storage.getTrace(tenantId, traceId);
+  if (!trace) throw new Error(unknownTraceMessage(traceId));
+  return trace;
+}
+
 export async function assertTraceExists(
   storage: IStorageAdapter,
   tenantId: TenantId,
   traceId: string,
 ): Promise<void> {
-  const trace = await storage.getTrace(tenantId, traceId);
-  if (!trace) throw new Error(unknownTraceMessage(traceId));
+  await getTraceOrThrow(storage, tenantId, traceId);
 }
 
 /** insertEvalResult with the foreign-key race translated into the same clear message. */
