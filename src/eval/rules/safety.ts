@@ -1274,7 +1274,7 @@ const ASSERTED_STATUS =
  * contrast by construction.
  */
 const STATUS_EXPLANATION_CONTEXT =
-  /\b(?:when|whenever|if|unless|only|whereas|while|versus|vs\.?|instead of|rather than|in contrast|as opposed to|either|would|could|typically|usually|normally|always)\b|\b[1-5]\d{2}\s+(?:means|indicates|signals|says|is returned|is sent|is what)\b|\bmeans\s+(?:a |an |the )?(?:HTTP )?[1-5]\d{2}\b/i;
+  /\b(?:when|whenever|if|unless|only|whereas|while|versus|vs\.?|instead of|rather than|in contrast|as opposed to|either|would|could|typically|usually|normally|always|on success|on failure|by default|otherwise|in that case)\b|\b[1-5]\d{2}\s+(?:means|indicates|signals|says|is returned|is sent|is what)\b|\bmeans\s+(?:a |an |the )?(?:HTTP )?[1-5]\d{2}\b/i;
 
 /**
  * The output asserts that a request came back with a status different from

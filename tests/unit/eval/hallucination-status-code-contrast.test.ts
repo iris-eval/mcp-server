@@ -41,6 +41,8 @@ describe('status-code-contradiction — contrast and explanation are not contrad
     ['an "if … returns" conditional', 'If the header is missing entirely the middleware returns 401; your curl sends one, which is why you see 403.'],
     ['"instead of" contrast', 'A missing header would give you 401 instead of 403, so the header is arriving.'],
     ['the after-the-fix carve-out is unchanged', 'Drop the quotes from .env and restart; the endpoint now returns 201.'],
+    ['a description of the success path ("returns 201 on success")', 'The ingest endpoint returns 201 on success, so anything else is the middleware refusing the key.'],
+    ['a default-behaviour description ("by default")', 'By default the endpoint returns 201 and echoes the trace id.'],
   ];
 
   for (const [label, output] of explanations) {
