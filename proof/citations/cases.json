@@ -1,0 +1,247 @@
+{
+  "definitions": {
+    "positiveClass": "A citation is a POSITIVE when the verifier rates it supported=true. Support precision/recall are measured against that class.",
+    "resolve": "Expected resolveStatus from src/eval/citation-verify/verifier.ts: 'ok' = fetched and eligible to be judged; 'error' = resolveSource threw (e.g. bad_status on a real domain with a dead path); 'skipped' = the extractor's kind is neither url nor doi, so there is nothing to fetch (unresolvable_kind).",
+    "supported": "Expected judge verdict when resolve='ok', per SYSTEM in verifier.ts: true only when the fetched source actually contains the assertion in the citation's context window; false when the source contradicts it or does not mention it. null when the citation does not resolve, so no judge verdict is expected.",
+    "sources": "All cited pages are stable public documents: RFC pages at rfc-editor.org, MDN HTTP status pages, the IANA example-domains page, example.com itself, and raw GitHub READMEs for Node.js and Express. Every supporting phrase was confirmed to fall inside the first 12,000 characters the verifier sends to the judge (MAX_SOURCE_CHARS).",
+    "fabricated": "The 'error' cases point real domains at paths that return 404, and one made-up DOI, so the resolver fails them rather than the judge. This is the fabricated-citation class: a URL that looks plausible but resolves to nothing."
+  },
+  "positiveClass": "supported",
+  "cases": [
+    {
+      "id": "cite-support-rfc2119",
+      "output": "RFC 2119 defines the key words MUST, SHOULD, and MAY that RFCs use to indicate requirement levels; see https://www.rfc-editor.org/rfc/rfc2119.txt for the exact definitions.",
+      "citations": [
+        {
+          "identifier": "https://www.rfc-editor.org/rfc/rfc2119.txt",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": true,
+          "why": "The RFC's plain text defines MUST/SHOULD/MAY as requirement-level key words; the claim is grounded."
+        }
+      ]
+    },
+    {
+      "id": "cite-support-express",
+      "output": "Express bills itself as a fast, unopinionated, minimalist web framework for Node.js, as stated in its README at https://raw.githubusercontent.com/expressjs/express/master/Readme.md and it is MIT licensed.",
+      "citations": [
+        {
+          "identifier": "https://raw.githubusercontent.com/expressjs/express/master/Readme.md",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": true,
+          "why": "The README's first line calls Express a minimalist web framework for Node.js; the window carries the MIT note too."
+        }
+      ]
+    },
+    {
+      "id": "cite-support-iana-example",
+      "output": "The example.com and example.org domains are reserved for use in documentation and are not available for registration, per the IANA guidance at https://www.iana.org/help/example-domains which cites RFC 2606.",
+      "citations": [
+        {
+          "identifier": "https://www.iana.org/help/example-domains",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": true,
+          "why": "The IANA page says these domains are maintained for documentation and not available for registration or transfer, citing RFC 2606."
+        }
+      ]
+    },
+    {
+      "id": "cite-support-mdn-404",
+      "output": "An HTTP 404 status means the server cannot find the requested resource, a client error, as documented at https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404 in the MDN reference.",
+      "citations": [
+        {
+          "identifier": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": true,
+          "why": "MDN's 404 page states the server cannot find the resource and classes it a client error."
+        }
+      ]
+    },
+    {
+      "id": "cite-support-node",
+      "output": "Node.js is described as an open-source, cross-platform JavaScript runtime environment in its own README at https://raw.githubusercontent.com/nodejs/node/main/README.md so it runs JavaScript outside the browser.",
+      "citations": [
+        {
+          "identifier": "https://raw.githubusercontent.com/nodejs/node/main/README.md",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": true,
+          "why": "The README's opening sentence is exactly that description."
+        }
+      ]
+    },
+    {
+      "id": "cite-support-rfc8259",
+      "output": "RFC 8259 specifies JSON, the JavaScript Object Notation, as a lightweight text-based data interchange format, published at https://www.rfc-editor.org/rfc/rfc8259.txt for reference.",
+      "citations": [
+        {
+          "identifier": "https://www.rfc-editor.org/rfc/rfc8259.txt",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": true,
+          "why": "The RFC's abstract calls JSON a lightweight, text-based, language-independent data interchange format."
+        }
+      ]
+    },
+    {
+      "id": "cite-unsupported-express-ml",
+      "output": "Express is primarily a machine-learning library for training deep neural networks on GPUs, according to its README at https://raw.githubusercontent.com/expressjs/express/master/Readme.md so teams use it for model training.",
+      "citations": [
+        {
+          "identifier": "https://raw.githubusercontent.com/expressjs/express/master/Readme.md",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": false,
+          "why": "The README describes a web framework, not a machine-learning library; the source contradicts the claim."
+        }
+      ]
+    },
+    {
+      "id": "cite-unsupported-rfc2119-tls",
+      "output": "RFC 2119 mandates that every HTTP response be encrypted with TLS 1.3 and rotated hourly, as set out at https://www.rfc-editor.org/rfc/rfc2119.txt in its normative requirements.",
+      "citations": [
+        {
+          "identifier": "https://www.rfc-editor.org/rfc/rfc2119.txt",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": false,
+          "why": "RFC 2119 only defines requirement-level key words; it says nothing about TLS or encryption, so the source does not support the claim."
+        }
+      ]
+    },
+    {
+      "id": "cite-unsupported-iana-commercial",
+      "output": "The example.com domain is available for commercial registration and can be purchased by any business, as confirmed on the IANA page at https://www.iana.org/help/example-domains for buyers.",
+      "citations": [
+        {
+          "identifier": "https://www.iana.org/help/example-domains",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": false,
+          "why": "The IANA page states the opposite: these domains are not available for registration or transfer."
+        }
+      ]
+    },
+    {
+      "id": "cite-unsupported-mdn-404-success",
+      "output": "An HTTP 404 response indicates that the request succeeded and the resource was returned to the client, as the MDN reference explains at https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404 for developers.",
+      "citations": [
+        {
+          "identifier": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+          "kind": "url",
+          "resolve": "ok",
+          "supported": false,
+          "why": "MDN says 404 means the resource was not found, contradicting 'the request succeeded'."
+        }
+      ]
+    },
+    {
+      "id": "cite-error-rfc-deadpath",
+      "output": "The requirement levels are extended in RFC 99999, available at https://www.rfc-editor.org/rfc/rfc99999 for the full text.",
+      "citations": [
+        {
+          "identifier": "https://www.rfc-editor.org/rfc/rfc99999",
+          "kind": "url",
+          "resolve": "error",
+          "supported": null,
+          "why": "rfc-editor.org returns 404 for this non-existent RFC number; resolveSource throws bad_status before any judge call."
+        }
+      ]
+    },
+    {
+      "id": "cite-error-github-deadpath",
+      "output": "The deployment steps are documented in the project's guide at https://raw.githubusercontent.com/nodejs/node/main/docs/NONEXISTENT-GUIDE.md for operators.",
+      "citations": [
+        {
+          "identifier": "https://raw.githubusercontent.com/nodejs/node/main/docs/NONEXISTENT-GUIDE.md",
+          "kind": "url",
+          "resolve": "error",
+          "supported": null,
+          "why": "The path does not exist on a real domain; raw.githubusercontent.com returns 404."
+        }
+      ]
+    },
+    {
+      "id": "cite-error-mdn-deadpath",
+      "output": "Status code 799 is defined in the MDN HTTP reference at https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/799 as a new client hint.",
+      "citations": [
+        {
+          "identifier": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/799",
+          "kind": "url",
+          "resolve": "error",
+          "supported": null,
+          "why": "No such status page exists; MDN returns 404."
+        }
+      ]
+    },
+    {
+      "id": "cite-error-iana-deadpath",
+      "output": "The full history of the reservation is on the IANA site at https://www.iana.org/help/example-domains/history-of-reservation with the dates.",
+      "citations": [
+        {
+          "identifier": "https://www.iana.org/help/example-domains/history-of-reservation",
+          "kind": "url",
+          "resolve": "error",
+          "supported": null,
+          "why": "A fabricated sub-path on a real domain; IANA returns 404."
+        }
+      ]
+    },
+    {
+      "id": "cite-error-doi",
+      "output": "The methodology is described in the paper doi 10.99999/made.up.2024 which reports the full dataset.",
+      "citations": [
+        {
+          "identifier": "10.99999/made.up.2024",
+          "kind": "doi",
+          "resolve": "error",
+          "supported": null,
+          "why": "doi.org has no such DOI and returns 404; the resolver fails it before judging."
+        }
+      ]
+    },
+    {
+      "id": "cite-skipped-numbered",
+      "output": "The framework outperforms the baseline on every benchmark we ran [1], and the gains hold across model sizes [2].",
+      "citations": [
+        {
+          "identifier": "1",
+          "kind": "numbered",
+          "resolve": "skipped",
+          "supported": null,
+          "why": "A bare numbered citation has no footnote to fetch; the verifier marks it skipped (unresolvable_kind)."
+        },
+        {
+          "identifier": "2",
+          "kind": "numbered",
+          "resolve": "skipped",
+          "supported": null,
+          "why": "Same: nothing to resolve for a bare [2]."
+        }
+      ]
+    },
+    {
+      "id": "cite-skipped-author-year",
+      "output": "The effect was first reported decades ago (Halvorsen, 1998) and replicated more recently (Ndiaye et al., 2021) under controlled conditions.",
+      "citations": [
+        {
+          "identifier": "Halvorsen, 1998",
+          "kind": "author_year",
+          "resolve": "skipped",
+          "supported": null,
+          "why": "An author-year parenthetical has no URL or DOI to fetch; the verifier marks it skipped."
+        },
+        {
+          "identifier": "Ndiaye et al., 2021",
+          "kind": "author_year",
+          "resolve": "skipped",
+          "supported": null,
+          "why": "Same: nothing to resolve for a bibliography-style reference."
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**The proof release.** Arc one of the September 2026 plan: the product stops contradicting a builder who trusts the verdict. The four honest-default fixes below close the "silent partial run" class — an omitted `eval_type` used to skip every safety rule, `eval_type: "all"` reported categories nobody judged as failing (#406), the injection rule was described more broadly than it works, and two npm packages that return 404 were presented as installable. One behaviour change, in bold.
+**The proof release.** Arc one of the September 2026 plan: turn the claims Iris already makes in public into numbers reproducible from the repo, and stop the product contradicting a builder who trusts the verdict. The measurement below turns "calibrated" into an accuracy figure or nothing; the honest-default fixes close the "silent partial run" class — an omitted `eval_type` used to skip every safety rule, `eval_type: "all"` reported categories nobody judged as failing (#406), the injection rule was described more broadly than it works, and two npm packages that return 404 were presented as installable. One behaviour change, in bold.
+
+### Added
+
+- **The LLM judge and the citation verifier are now measured against labelled adversarial sets.** `evaluate_with_llm_judge` (five templates) and `verify_citations` carry the semantic verdicts the deterministic rules delegate to, and neither had an accuracy number while `docs/llm-as-judge.md` called the judge "calibrated". `proof/judge/` adds 30–40 labelled cases per template — clean, adversarial-clean (hedged-but-grounded, long-but-complete, blunt-but-safe), real violations, and prompt-injection attempts aimed at the judge itself — plus a citation set spanning supported, unsupported, fabricated and unresolvable references. `npm run proof:judge` runs every case through the real judge and verifier under a cost cap and writes per-template precision/recall/F1 with Wilson 95% intervals, the injection-induced score drift, resolve accuracy and support precision/recall to `proof/judge-results.json` and `proof/judge/RESULTS.md`. A dispatchable workflow (`.github/workflows/proof-judge.yml`) produces the same artifact in CI. Without a key the runner exits 2 and writes nothing; a committed `status: "pending"` placeholder keeps the docs and website honest until a keyed run replaces it. `docs/llm-as-judge.md` no longer calls the score "calibrated" — it points at the measurement.
 
 ### Changed
 

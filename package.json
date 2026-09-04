@@ -30,6 +30,8 @@
     "claims:generate": "node scripts/claims/generate.mjs",
     "claims:check": "node scripts/claims/generate.mjs --check",
     "claims:check-hardcoded": "node scripts/claims/check-no-hardcoded.mjs",
+    "proof:judge": "tsx proof/judge/run.ts",
+    "proof:judge:typecheck": "tsc -p proof/judge/tsconfig.json",
     "clean": "rm -rf dist coverage",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "demo": "tsx scripts/demo.ts"
