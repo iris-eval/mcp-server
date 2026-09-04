@@ -31,6 +31,8 @@
     "claims:generate:live": "node scripts/claims/generate.mjs --live",
     "claims:check": "node scripts/claims/generate.mjs --check",
     "claims:check-hardcoded": "node scripts/claims/check-no-hardcoded.mjs",
+    "proof": "tsx proof/run.ts",
+    "proof:typecheck": "tsc -p proof/tsconfig.json",
     "llms:render": "node scripts/claims/render-llms.mjs",
     "llms:check": "node scripts/claims/render-llms.mjs --check",
     "proof:judge": "tsx proof/judge/run.ts",

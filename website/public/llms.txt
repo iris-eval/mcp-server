@@ -6,7 +6,7 @@ Current release: v0.6.0 (2026-09-03) — The correctness release.
 
 Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 13 built-in eval rules across completeness, relevance, safety, and cost. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
 
-Evaluator accuracy is being measured; https://iris-eval.com/proof explains the method (precision, recall and F1 per rule with 95% confidence intervals, one command to reproduce) and will carry the numbers when they land.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 13 built-in rules, corpus 81bf5c888edd, generated 2026-09-04 at commit 6f91e1f; reproduce with `npm run proof`.
 
 ## Getting Started
 
