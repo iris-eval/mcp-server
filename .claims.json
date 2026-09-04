@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-04T03:19:21.290Z",
-  "generatedFromCommit": "0b19b8f",
+  "generatedAt": "2026-09-04T03:45:17.461Z",
+  "generatedFromCommit": "1c78357",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -162,7 +162,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 1374,
+    "totalCombined": 1386,
     "vitestDashboard": {
       "failed": 0,
       "passed": 182,
@@ -170,8 +170,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1178,
-      "total": 1178
+      "passed": 1190,
+      "total": 1190
     }
   },
   "version": {
@@ -179,6 +179,11 @@
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
     "mcpServer": "0.6.0",
+    "published": {
+      "initPackage": false,
+      "langchainPackage": false,
+      "mcpServer": true
+    },
     "websitePackage": "0.1.0"
   }
 }

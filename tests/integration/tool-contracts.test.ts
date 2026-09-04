@@ -240,10 +240,35 @@ describe('tool contracts (MCP surface)', () => {
       expect((await storage.getEvalStats(LOCAL_TENANT, '24h')).safetyViolations.pii).toBe(1);
     });
 
-    it('the omitted-eval_type note now points at "all" as well as "safety"', async () => {
+    it('an omitted eval_type IS "all": every bundle ran, and the note says the default ran', async () => {
       const body = parse(await client.callTool({ name: 'evaluate_output', arguments: { output: CLEAN_OUTPUT } }));
-      expect(body.note).toContain('eval_type="safety"');
+      expect(body.eval_type).toBe('all');
+      expect(body.note).toContain('eval_type was omitted');
       expect(body.note).toContain('eval_type="all"');
+      expect(Object.keys(body.categories)).toEqual(['completeness', 'relevance', 'safety', 'cost']);
+    });
+
+    it('a bundle with nothing to judge is passed:null / score:null, and never counts toward the verdict (#406)', async () => {
+      // No cost_usd, no token_usage → every cost rule skips; no input →
+      // every relevance rule skips. Before: `categories.cost` read
+      // passed:false, score:0 beside insufficient_data:true — "failing".
+      const body = parse(
+        await client.callTool({ name: 'evaluate_output', arguments: { output: CLEAN_OUTPUT, eval_type: 'all' } }),
+      );
+      expect(body.categories.cost).toEqual({
+        score: null,
+        passed: null,
+        rules_evaluated: 0,
+        rules_skipped: 2,
+        insufficient_data: true,
+      });
+      expect(body.categories.relevance).toMatchObject({ passed: null, score: null, insufficient_data: true });
+      // The judged bundles keep booleans and the overall verdict ignores
+      // the unjudged ones — clean output passes.
+      expect(body.categories.completeness.passed).toBe(true);
+      expect(body.categories.safety.passed).toBe(true);
+      expect(body.passed).toBe(true);
+      expect(body.insufficient_data).toBe(false);
     });
 
     it('the description documents the "all" bundle and the categories field', async () => {

@@ -12,6 +12,7 @@
     "brand",
     "evalRules",
     "llmJudgeTemplates",
+    "maintenance",
     "mcpTools",
     "release",
     "security",
@@ -73,6 +74,32 @@
       },
       "additionalProperties": false
     },
+    "maintenance": {
+      "type": "object",
+      "description": "MEASURED issue-close latency from the public GitHub issues API (pull requests excluded), sampled on demand by scripts/claims/generators/issues.mjs. The only block in the file that is a measurement rather than a value read from source; `sampledAt` says when, `source` says whether the sample came from the API ('live') or was kept from the previous commit because the API was unreachable ('cached').",
+      "required": ["issues", "method", "repo", "sampledAt", "source", "windowDays"],
+      "properties": {
+        "issues": {
+          "type": "object",
+          "required": ["closedAsCompleted", "closedAsNotPlanned", "closedInWindow", "medianHoursToClose", "openNow", "p75HoursToClose"],
+          "properties": {
+            "closedAsCompleted": { "$ref": "#/$defs/count" },
+            "closedAsNotPlanned": { "$ref": "#/$defs/count" },
+            "closedInWindow": { "$ref": "#/$defs/count", "description": "Issues whose closed_at falls inside the last windowDays days; the n behind the two percentiles." },
+            "medianHoursToClose": { "type": ["number", "null"], "minimum": 0, "description": "Median of closed_at minus created_at in hours; null when closedInWindow is 0." },
+            "openNow": { "$ref": "#/$defs/count" },
+            "p75HoursToClose": { "type": ["number", "null"], "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "method": { "type": "string" },
+        "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+        "sampledAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string", "enum": ["live", "cached"] },
+        "windowDays": { "$ref": "#/$defs/count" }
+      },
+      "additionalProperties": false
+    },
     "mcpTools": {
       "type": "object",
       "required": ["annotations", "count", "names"],
@@ -106,9 +133,33 @@
     },
     "security": {
       "type": "object",
-      "required": ["apiKeyRequiredByDefault", "defaultBindHost", "rateLimit"],
+      "required": ["apiKeyRequiredByDefault", "defaultBindHost", "disclosure", "limits", "rateLimit"],
       "properties": {
         "apiKeyRequiredByDefault": { "type": "boolean" },
+        "disclosure": {
+          "type": "object",
+          "description": "The vulnerability-disclosure SLA, parsed out of SECURITY.md by scripts/claims/generators/security-policy.mjs so the policy file and the website cannot state two different promises.",
+          "required": ["acknowledgeWithinHours", "detailedResponseWithinBusinessDays", "publicDisclosureWindowDays", "source"],
+          "properties": {
+            "acknowledgeWithinHours": { "$ref": "#/$defs/count" },
+            "detailedResponseWithinBusinessDays": { "$ref": "#/$defs/count" },
+            "publicDisclosureWindowDays": { "$ref": "#/$defs/count", "description": "Default coordinated-disclosure window asked of reporters, in days." },
+            "source": { "const": "SECURITY.md" }
+          },
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "object",
+          "description": "Shipped configuration defaults, each read from the line of source that enforces it. Configuration, not measurement.",
+          "required": ["customRegexMaxLength", "regexBreachesPerEvaluation", "regexMatchBudgetMs", "requestSizeLimit"],
+          "properties": {
+            "customRegexMaxLength": { "$ref": "#/$defs/count", "description": "Longest custom regex source accepted (characters)." },
+            "regexBreachesPerEvaluation": { "$ref": "#/$defs/count", "description": "Sandbox budget breaches after which the remaining regex rules in one evaluation skip." },
+            "regexMatchBudgetMs": { "$ref": "#/$defs/count", "description": "Hard per-match deadline for a user-supplied regex, in milliseconds." },
+            "requestSizeLimit": { "type": "string", "description": "express.json body limit on the dashboard API and the HTTP transport, e.g. '1mb'." }
+          },
+          "additionalProperties": false
+        },
         "defaultBindHost": {
           "type": "object",
           "required": ["dashboard", "transport"],
@@ -152,11 +203,22 @@
     },
     "version": {
       "type": "object",
-      "required": ["dashboardPackage", "initPackage", "langchainPackage", "mcpServer", "websitePackage"],
+      "required": ["dashboardPackage", "initPackage", "langchainPackage", "mcpServer", "published", "websitePackage"],
       "properties": {
         "dashboardPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
         "initPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
         "langchainPackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] },
+        "published": {
+          "type": "object",
+          "description": "Whether each npm-facing package is on the npm registry. Recorded in the generator, not probed: a false entry means the package is in-repo only and no surface may present it as installable.",
+          "required": ["initPackage", "langchainPackage", "mcpServer"],
+          "properties": {
+            "initPackage": { "type": "boolean" },
+            "langchainPackage": { "type": "boolean" },
+            "mcpServer": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
         "mcpServer": { "$ref": "#/$defs/semver" },
         "websitePackage": { "oneOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }] }
       },

@@ -190,7 +190,7 @@ describe('POST /api/v1/traces — store', () => {
   it('REJECTS a misspelled eval_typ instead of silently running the completeness bundle', async () => {
     /*
      * The HTTP twin of the strict-tool-args fix (#376 item 2). Before:
-     * eval_typ was dropped, the default completeness bundle ran on
+     * eval_typ was dropped, the then-default completeness bundle ran on
      * PII-laden output, and the caller got passed:true with no hint that
      * a field had been ignored.
      */
@@ -336,7 +336,7 @@ describe('POST /api/v1/traces — evaluate: true', () => {
       passed: boolean;
       rule_results: EvalRuleResult[];
       critical_failures?: string[];
-      categories?: Record<string, { passed: boolean; rules_evaluated: number }>;
+      categories?: Record<string, { passed: boolean | null; rules_evaluated: number }>;
     };
     expect(evaluation.eval_type).toBe('all');
     expect(evaluation.categories).toBeDefined();
@@ -360,6 +360,54 @@ describe('POST /api/v1/traces — evaluate: true', () => {
     expect(detail.evals).toHaveLength(1);
     expect(detail.evals[0].eval_type).toBe('all');
     expect(detail.evals[0].passed).toBe(false);
+  });
+
+  it('an omitted eval_type runs every bundle (the same default as the tool) and the response says so', async () => {
+    /*
+     * The HTTP twin of the tool's default. `evaluate: true` with no
+     * eval_type used to run the completeness bundle only, so a capture
+     * client that never learned the field shipped PII-laden output with
+     * passed:true. Same constant as evaluate_output now: every bundle, a
+     * note naming the default, stored under "all".
+     */
+    const { base } = await bootServer();
+    const { status, json } = await postTrace(base, {
+      agent_name: 'omitted-eval-type',
+      output: 'Customer SSN is 536-22-8145.',
+      evaluate: true,
+    });
+    expect(status).toBe(201);
+    const evaluation = json.evaluation as {
+      eval_type: string;
+      passed: boolean;
+      critical_failures?: string[];
+      categories?: Record<string, { passed: boolean | null; score: number | null; insufficient_data: boolean }>;
+      note?: string;
+    };
+    expect(evaluation.eval_type).toBe('all');
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.critical_failures).toContain('no_pii');
+    expect(evaluation.note).toContain('eval_type was omitted');
+    expect(evaluation.note).toContain('every bundle');
+    // No cost data on this trace: the cost bundle was not judged, and says
+    // so as null rather than as a failure (#406).
+    expect(evaluation.categories!.cost).toMatchObject({ passed: null, score: null, insufficient_data: true });
+
+    const res = await fetch(`${base}/api/v1/traces/${json.trace_id as string}`);
+    const detail = (await res.json()) as { evals: Array<{ eval_type: string; passed: boolean }> };
+    expect(detail.evals).toHaveLength(1);
+    expect(detail.evals[0].eval_type).toBe('all');
+
+    // An explicit choice gets no note — the field was read, not defaulted.
+    const explicit = await postTrace(base, {
+      agent_name: 'explicit-eval-type',
+      output: 'A perfectly ordinary two-sentence answer. It says nothing sensitive at all.',
+      evaluate: true,
+      eval_type: 'safety',
+    });
+    expect(explicit.status).toBe(201);
+    expect((explicit.json.evaluation as { eval_type: string; note?: string }).eval_type).toBe('safety');
+    expect((explicit.json.evaluation as { note?: string }).note).toBeUndefined();
   });
 
   it('rejects evaluate:true without output — nothing to score', async () => {

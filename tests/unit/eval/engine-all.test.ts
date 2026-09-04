@@ -58,19 +58,45 @@ describe('EvalEngine.evaluateAll', () => {
     expect(result.categories!.completeness!.critical_failures).toBeUndefined();
   });
 
-  it('marks a bundle with no usable context as insufficient without dragging the overall verdict down', () => {
+  it('reports a bundle with no usable context as NOT judged (passed: null), not as failing (#406)', () => {
     const engine = new EvalEngine(0.7);
     // No input → both relevance rules skip; no cost → both cost rules skip.
     const result = engine.evaluateAll({ output: CLEAN_OUTPUT });
-    expect(result.categories!.relevance).toEqual(
-      expect.objectContaining({ rules_evaluated: 0, rules_skipped: 2, insufficient_data: true, passed: false }),
-    );
-    expect(result.categories!.cost).toEqual(
-      expect.objectContaining({ rules_evaluated: 0, rules_skipped: 2, insufficient_data: true, passed: false }),
-    );
-    // Skipped rules are excluded from the weighted score, as in a single bundle.
+    // Before: passed:false, score:0 — a reader regrouping by category saw
+    // cost "failing" on a call that carried no cost data. Null is the
+    // honest value: neither passing nor failing.
+    expect(result.categories!.relevance).toEqual({
+      score: null,
+      passed: null,
+      rules_evaluated: 0,
+      rules_skipped: 2,
+      insufficient_data: true,
+    });
+    expect(result.categories!.cost).toEqual({
+      score: null,
+      passed: null,
+      rules_evaluated: 0,
+      rules_skipped: 2,
+      insufficient_data: true,
+    });
+    // A judged bundle keeps its boolean/number, unchanged.
+    expect(typeof result.categories!.completeness!.passed).toBe('boolean');
+    expect(typeof result.categories!.completeness!.score).toBe('number');
+    // Skipped rules are excluded from the weighted score, as in a single
+    // bundle — the unjudged bundles do not count toward the overall verdict.
     expect(result.insufficient_data).toBe(false);
     expect(result.passed).toBe(true);
+  });
+
+  it('keeps the TOP-LEVEL verdict boolean and fails closed when nothing at all was judged', () => {
+    const engine = new EvalEngine(0.7);
+    // Only a cost bundle and no cost data: every rule skips. Inside the
+    // breakdown that is passed:null; at the top level a gate keyed on
+    // `passed` must fail closed, with insufficient_data as the "unknown"
+    // marker — the same shape a single-bundle evaluate() reports.
+    const single = engine.evaluate('cost', { output: CLEAN_OUTPUT });
+    expect(single).toMatchObject({ passed: false, score: 0, insufficient_data: true, rules_evaluated: 0 });
+    expect(single.categories).toBeUndefined();
   });
 
   it('includes rules deployed under "custom" and inline custom_rules in a "custom" category, and stamps ruleId', () => {

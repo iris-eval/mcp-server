@@ -59,8 +59,12 @@ export const ingestTraceSchema = strictBody(
     // Same bundle list evaluate_output accepts, "all" included — the
     // ingest path used to stop one short and run the single-bundle engine
     // no matter what, so an HTTP caller could not get the per-category
-    // verdict the MCP tool returns.
-    eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).default('completeness'),
+    // verdict the MCP tool returns. Optional rather than defaulted HERE so
+    // the route can tell "chose all" from "never chose": the effective
+    // default is every bundle (DEFAULT_EVAL_TYPE in eval/engine.ts, the
+    // same constant evaluate_output reads), and an omitted eval_type gets a
+    // note in the response saying the default ran.
+    eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional(),
   },
   {
     reserved: {

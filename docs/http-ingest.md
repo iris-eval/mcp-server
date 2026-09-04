@@ -94,7 +94,7 @@ Plus two HTTP-only fields:
 | `spans` | array | span tree; `span_id` minted server-side when omitted |
 | `timestamp` | string | ISO 8601; defaults to now |
 | `evaluate` | boolean | HTTP-only. `true` runs the deterministic eval engine on `output` and stores the result linked to the trace. Requires `output`. |
-| `eval_type` | enum | HTTP-only. `completeness` (default) \| `relevance` \| `safety` \| `cost` \| `custom` \| `all`. `all` runs every bundle in one pass — the critical veto spans all of them — and adds a per-bundle `categories` map to the evaluation, exactly as the `evaluate_output` tool does; the result is stored under `eval_type: "all"` |
+| `eval_type` | enum | HTTP-only. `all` (default) \| `completeness` \| `relevance` \| `safety` \| `cost` \| `custom`. `all` runs every bundle in one pass — the critical veto spans all of them — and adds a per-bundle `categories` map to the evaluation, exactly as the `evaluate_output` tool does; the result is stored under `eval_type: "all"`. Omit it and every bundle runs, with a `note` on the evaluation saying the default ran; a bundle with nothing to judge reports `passed: null` in `categories`, not a failure |
 
 `trace_id` is **server-minted, never client-supplied** — one in the body is **rejected
 with `400`**, and the message says the server mints it. Read the id from the `201`

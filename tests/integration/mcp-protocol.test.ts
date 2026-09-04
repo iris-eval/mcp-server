@@ -8,6 +8,7 @@ import {
   __clearCitationCacheForTests,
   __setDnsLookupForTests,
 } from '../../src/eval/citation-verify/resolve.js';
+import { LOCAL_TENANT } from '../../src/types/tenant.js';
 
 describe('MCP Protocol Integration', () => {
   let client: Client;
@@ -593,8 +594,9 @@ describe('MCP Protocol Integration', () => {
    * Six of seven UAT personas read `passed: true` on PII-laden text with
    * nothing in the payload hinting that the safety bundle had never run —
    * they had omitted eval_type and silently got the completeness default.
-   * The response now names the bundle that ran, and says so out loud when
-   * the caller never chose one.
+   * The response names the bundle that ran and says so out loud when the
+   * caller never chose one; since the proof release the default itself is
+   * every bundle, so an omitted eval_type can no longer skip safety.
    */
   const callEvaluate = async (args: Record<string, unknown>) => {
     const result = await client.callTool({ name: 'evaluate_output', arguments: args });
@@ -617,22 +619,51 @@ describe('MCP Protocol Integration', () => {
     expect(completeness.eval_type).toBe('completeness');
   });
 
-  it('adds the defaulted-bundle note ONLY when eval_type was omitted', async () => {
+  it('an omitted eval_type runs EVERY bundle and the note says so; an explicit choice gets no note', async () => {
     const omitted = await callEvaluate({
       output: 'This is a complete and good response with multiple sentences. It answers the question well.',
     });
-    expect(omitted.eval_type).toBe('completeness');
+    expect(omitted.eval_type).toBe('all');
     expect(omitted.note).toContain('eval_type was omitted');
-    expect(omitted.note).toContain('Safety rules');
+    expect(omitted.note).toContain('every bundle');
+    // Safety rules were part of the run — the whole point of the default.
+    const ranRules = new Set(omitted.rule_results.map((r: { ruleName: string }) => r.ruleName));
+    expect(ranRules.has('no_pii')).toBe(true);
+    expect(ranRules.has('no_injection_patterns')).toBe(true);
+    expect(omitted.categories.safety).toBeDefined();
 
-    // Explicitly choosing completeness is a decision, not an oversight —
-    // annotating it would train callers to ignore the field.
+    // Explicitly choosing a bundle — or "all" — is a decision, not an
+    // oversight; annotating it would train callers to ignore the field.
     const explicit = await callEvaluate({
       output: 'This is a complete and good response with multiple sentences. It answers the question well.',
       eval_type: 'completeness',
     });
     expect(explicit.eval_type).toBe('completeness');
     expect(explicit.note).toBeUndefined();
+    const explicitAll = await callEvaluate({
+      output: 'This is a complete and good response with multiple sentences. It answers the question well.',
+      eval_type: 'all',
+    });
+    expect(explicitAll.eval_type).toBe('all');
+    expect(explicitAll.note).toBeUndefined();
+  });
+
+  it('NO SILENT PARTIAL RUN: an SSN leak fails the eval even when the caller never chose a bundle', async () => {
+    // The exact call six of seven UAT personas made — output only. Under
+    // the old completeness default this returned passed:true.
+    const parsed = await callEvaluate({ output: 'Your SSN is 536-22-8145' });
+    expect(parsed.eval_type).toBe('all');
+    expect(parsed.passed).toBe(false);
+    expect(parsed.critical_failures).toContain('no_pii');
+    expect(parsed.categories.safety.passed).toBe(false);
+    expect(parsed.note).toContain('eval_type was omitted');
+
+    // The stored row says what ran, so a later reader cannot mistake it
+    // for a single-bundle eval.
+    const stored = await storage.queryEvalResults(LOCAL_TENANT, {});
+    expect(stored.total).toBe(1);
+    expect(stored.results[0].eval_type).toBe('all');
+    expect(stored.results[0].passed).toBe(false);
   });
 
   it('THE FLAGSHIP: an SSN-laden output fails a safety eval, with critical_failures in the payload', async () => {
