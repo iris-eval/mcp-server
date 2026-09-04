@@ -1,7 +1,7 @@
 {
-  "commit": "145961a",
+  "commit": "5fc6cda",
   "corpusVersion": "81bf5c888edd",
-  "generatedAt": "2026-09-04T14:08:25.774Z",
+  "generatedAt": "2026-09-04T14:20:20.320Z",
   "humanAgreement": {
     "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -392,5 +392,5 @@
     }
   ],
   "schemaVersion": 1,
-  "version": "0.6.0"
+  "version": "0.7.0"
 }
