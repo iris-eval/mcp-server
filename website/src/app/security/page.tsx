@@ -19,6 +19,18 @@ import {
 import { OG_IMAGE_URL } from "@/lib/og";
 import { PAGE_LAST_MODIFIED } from "@/lib/page-dates";
 
+/*
+ * The page's own file may be older than the data it renders: the fix-latency block is sampled
+ * when the truthbase is generated, which is later than the last edit to this file more often
+ * than not. Showing the file's date made the header claim the page was last updated the day
+ * before the figures it displays were sampled (found by the v0.7.0 acceptance pass), so the
+ * header takes whichever is later.
+ */
+const lastUpdated: string = [
+  PAGE_LAST_MODIFIED["/security"],
+  String(MAINTENANCE.sampledAt).slice(0, 10),
+].sort()[1];
+
 export const metadata: Metadata = {
   title: "Security — Iris",
   description:
@@ -81,7 +93,7 @@ export default function Security(): React.ReactElement {
           Security
         </h1>
         <p className="mt-2 text-[13px] text-text-muted">
-          Last updated: {longDate(PAGE_LAST_MODIFIED["/security"])}
+          Last updated: {longDate(lastUpdated)}
         </p>
 
         <p className="mt-6 text-[15px] leading-relaxed text-text-secondary">
