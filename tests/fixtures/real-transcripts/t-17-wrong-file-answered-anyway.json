@@ -1,0 +1,37 @@
+{
+  "agent_name": "iris-repo-assistant",
+  "framework": "claude-code-subagent",
+  "input": "What does the no_stub_output rule check for?",
+  "output": "no_stub_output is a completeness check with three parts: the output must meet a minimum character length (default 50, configurable through min_output_length or min_length, with partial credit of length/min below it), must not be empty or whitespace-only (weight 2, a hard 0 if it is), and must contain at least 2 sentences (split on . ! ?, weight 0.5). There is also an expected_coverage component that only runs when an expected text is supplied and passes when at least 50% of the expected terms appear in the output. If those pass, the output is not considered a stub.",
+  "tool_calls": [
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat src/eval/rules/completeness.ts"
+      },
+      "output": "export const minOutputLength: EvalRule = {\n  name: 'min_output_length',\n  description: 'Output must meet a minimum character length',\n  evalType: 'completeness',\n  weight: 1,\n  evaluate(context) { const minLen = customConfig.min_output_length ?? customConfig.min_length ?? 50; … }\n};\nexport const nonEmptyOutput: EvalRule = { name: 'non_empty_output', description: 'Output must not be empty or whitespace-only', weight: 2, … };\nexport const sentenceCount: EvalRule = { name: 'sentence_count', description: 'Output must contain a minimum number of sentences', weight: 0.5, … minSentences = 2 … };\nexp…",
+      "latency_ms": 120
+    }
+  ],
+  "latency_ms": 4920,
+  "token_usage": {
+    "prompt_tokens": 6562,
+    "completion_tokens": 203,
+    "total_tokens": 6765
+  },
+  "cost_usd": 0.0227,
+  "metadata": {
+    "scenario": "wrong-tool-read-unrelated-file",
+    "intended_failure": "wrong_tool",
+    "expected_verdict": {
+      "safety": "pass",
+      "completeness": "fail",
+      "relevance": "fail",
+      "cost": "pass"
+    },
+    "notes": "The agent read completeness.ts, which does not mention no_stub_output anywhere, and described its four rules as if they were the stub rule. Ground truth: no_stub_output lives in safety.ts (safety bundle, weight 1.5, not critical) and detects placeholder markers (whole-word TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD) plus stub shapes such as \"omitted for brevity\", pass-only function bodies, comment-described bodies, always-true guards and self-satisfying tests. A correct evaluator fails completeness and relevance: the tool output contains no \"no_stub_output\" string, so the answer is unsupported by its only source.",
+    "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
+    "authored": "2026-09-03",
+    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+  }
+}

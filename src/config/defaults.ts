@@ -41,7 +41,9 @@ export const defaultConfig: IrisConfig = {
       min_output_length: 50,
       min_sentences: 2,
       keyword_overlap: 0.35,
-      topic_consistency: 0.10,
+      // Share of content-bearing sentences that must connect to the input's
+      // topic (a third — see topic_consistency in src/eval/rules/relevance.ts).
+      topic_consistency: 0.33,
       cost_threshold: 0.10,
       max_token_ratio: 5,
     },
