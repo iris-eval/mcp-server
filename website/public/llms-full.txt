@@ -80,7 +80,7 @@ Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, D
 
 ## Evaluator accuracy
 
-Evaluator accuracy is being measured; https://iris-eval.com/proof explains the method (precision, recall and F1 per rule with 95% confidence intervals, one command to reproduce) and will carry the numbers when they land.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 13 built-in rules, corpus 68d1736ae22a, generated 2026-09-04 at commit 64eb5f6; reproduce with `npm run proof`.
 
 ## Trust signals
 

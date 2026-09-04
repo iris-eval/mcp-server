@@ -217,7 +217,10 @@ const PATTERNS = [
     onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/'],
     // website/src/lib/claims.ts is the truthbase reader: it TYPES the proof
     // schema (`precision: number`), which is an identifier, not a claim.
-    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/proof.md', 'website/src/app/proof/', 'website/src/lib/claims.ts'],
+    // website/public/claims-schema-v1.json is the published JSON Schema of
+    // the same truthbase: its `proof.rules[].precision` property NAMES the
+    // field the measurement fills, so the word is a key, not a claim.
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/proof.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json'],
     skipComments: true,
     exemptIf: (text, index) => {
       const lineStart = text.lastIndexOf('\n', index - 1) + 1;

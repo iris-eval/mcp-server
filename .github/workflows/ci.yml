@@ -275,3 +275,30 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+  # proof/results.json and proof/RESULTS.md carry every built-in rule's
+  # precision / recall / F1 on the labelled corpus in proof/corpus/. This
+  # job regenerates both from the code in the PR and fails on any byte of
+  # difference (generation time and commit hash excluded), so a rule change
+  # cannot land without the published numbers changing with it, and the
+  # numbers on the website (via .claims.json → proof) are always the ones
+  # this commit produces. Offline, deterministic, no key. Same shape as the
+  # "Truthbase regen vs committed" job in claims-alignment.yml.
+  proof:
+    name: Proof — rule accuracy regen vs committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Typecheck the runner
+        run: npm run proof:typecheck
+      - name: Regenerate the measurement and compare with the committed files
+        run: npm run proof -- --check
+      - name: Publish the table to the job summary
+        if: always()
+        run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
