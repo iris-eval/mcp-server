@@ -58,13 +58,17 @@ describe('playground presets', () => {
    * to demonstrate — otherwise the "this is what good looks like" sample
    * undercuts the four "this is what bad looks like" samples beside it.
    *
-   * Scoped to those rules on purpose. Measured 2026-08-12, the clean sample
-   * does currently fail `keyword_overlap` and `topic_consistency`: the input
-   * is a one-line complaint and the output is a longer resolution, so
-   * lexical overlap is genuinely low. That is a known coarseness of the two
-   * relevance heuristics (both are documented as coarse), not a safety
-   * claim, and rewriting the sample to game them would make a worse demo.
-   * Asserting it here keeps the fact visible instead of hidden.
+   * Scoped to those rules on purpose, and the full failure list is pinned
+   * beneath so a rule change shows up here rather than silently altering
+   * the public demo. Measured 2026-08-12 under the old relevance measures,
+   * the clean sample failed `keyword_overlap` and `topic_consistency`: a
+   * one-line complaint answered by a longer resolution had low lexical
+   * overlap, and the test recorded that coarseness rather than gaming the
+   * sample. Since the relevance redesign (#416, vendored 2026-09-03) the
+   * measures read the same answer as on topic — three of the ask's four
+   * content terms recur, and both content sentences connect — so the clean
+   * sample now passes every rule, as a "this is what good looks like"
+   * sample should.
    */
   it('the clean-response preset trips none of the rules the other presets demonstrate', () => {
     const clean = PRESETS.find((p) => !p.expectFailure);
@@ -80,8 +84,6 @@ describe('playground presets', () => {
       .filter((r) => !r.passed)
       .map((r) => r.ruleName);
     expect(failures.filter((n) => demonstrated.has(n))).toEqual([]);
-    // Pin the known coarse-heuristic failures so a change to either rule
-    // shows up here rather than silently altering the public demo.
-    expect(failures).toEqual(['keyword_overlap', 'topic_consistency']);
+    expect(failures).toEqual([]);
   });
 });
