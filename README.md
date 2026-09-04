@@ -195,7 +195,7 @@ Where this is going next: [the roadmap](https://github.com/iris-eval/mcp-server/
 
 ### Measured, not claimed
 
-Every built-in rule has a published precision, recall and F1 with 95% confidence intervals, measured on a labelled corpus that lives in this repository (`proof/corpus/`) and regenerates with one command — `npm run proof` — offline, with no key and no model in the loop. CI re-runs the measurement on every pull request and fails if the committed numbers differ from what the code produces, so a rule cannot change without its numbers changing with it. The numbers are on [iris-eval.com/proof](https://iris-eval.com/proof) and in [`proof/RESULTS.md`](https://github.com/iris-eval/mcp-server/blob/main/proof/RESULTS.md); how the corpus was made, what it is not, and how to read an interval are in [docs/proof.md](https://github.com/iris-eval/mcp-server/blob/main/docs/proof.md). The corpus is synthetic and model-labelled — a human blind label is pending, and the page says so.
+Every built-in rule has a published precision, recall and F1 with 95% confidence intervals, measured on a labelled corpus that lives in this repository (`proof/corpus/`) and regenerates with one command — `npm run proof` — offline, with no key and no model in the loop. CI re-runs the measurement on every pull request and fails if the committed numbers differ from what the code produces, so a rule cannot change without its numbers changing with it. The numbers are on [iris-eval.com/proof](https://iris-eval.com/proof) and in [`proof/RESULTS.md`](https://github.com/iris-eval/mcp-server/blob/main/proof/RESULTS.md); how the corpus was made, what it is not, and how to read an interval are in [docs/proof.md](https://github.com/iris-eval/mcp-server/blob/main/docs/proof.md). The corpus is synthetic and model-labelled — a human blind label is pending, and the page says so; `node proof/blind-sample.mjs` draws the reproducible sample that will settle it.
 
 ## MCP Tools
 
@@ -284,6 +284,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 - [Contributing Guide](https://github.com/iris-eval/mcp-server/blob/main/CONTRIBUTING.md) — How to contribute
 - [HTTP Ingest](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
 - [Roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md) — What's coming next
+- [Versioning policy](https://github.com/iris-eval/mcp-server/blob/main/VERSIONING.md) — What each version number promises, and what has to be true before 1.0
 
 <details>
 <summary><strong>Configuration & Security</strong></summary>

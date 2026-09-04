@@ -155,9 +155,33 @@ have not been shown to differ.
 
 ## Human agreement
 
-`results.json → humanAgreement.status` is `pending` until the founder's blind
-label of a 40-case stratified sample exists. When it does, the runner reports
-human-vs-corpus agreement beside the model-internal figure above.
+The corpus is LLM-authored and LLM-labelled, which is the biggest caveat on
+every number above: a model can agree with itself and still be wrong about what
+a rule means. Human agreement on a sample is what tells those two apart.
+
+`node proof/blind-sample.mjs` draws a reproducible 40-case stratified sample
+into `proof/blind-sample.json` — case ids in a fixed shuffled order, no labels,
+so the manifest is safe to hand to an annotator. `--check` proves the committed
+manifest is what the seed produces; `--score <answers.json>` scores a returned
+answer sheet against the corpus and prints every disagreement with the corpus's
+own reasoning beside it.
+
+The sample covers the **seven judgment families only** (`no_pii`,
+`no_injection_patterns`, `no_hallucination_markers`, `no_stub_output`,
+`no_blocklist_words`, `no_silent_tool_failure`, `no_tool_loop`). The other eight
+rules are arithmetic — a character count, a token ratio, a cost against a
+threshold, a share of overlapping terms — and asking a person to eyeball
+"is at least 35% of this input's vocabulary present in the output" is asking
+them to do long division. A disagreement there would mean the annotator
+miscounted, which says nothing about whether the rule is right; those
+definitions are verified by the test suite instead.
+
+Every disagreement is worth something either way. It means the case is
+mislabelled, or the rule is defined loosely enough that two careful readers land
+in different places. Both are defects, and both get fixed in the open.
+
+`results.json → humanAgreement.status` stays `pending` until a scored answer
+sheet exists.
 
 ## Adding cases
 

@@ -14,11 +14,18 @@ name: Nightly Real-LLM Smoke
 #
 # Failure handling: when OPENAI_API_KEY is configured, the workflow fails if
 # the smoke script exits non-zero — a red schedule + notification, which the
-# founder triages (usually a provider wire-shape change needing a code update).
-# When the secret is ABSENT, the job skips the smoke and succeeds with a notice
-# rather than hard-failing every night on a missing credential (a perpetual
-# red that trains reviewers to ignore the check). Set the OPENAI_API_KEY repo
-# secret to enable real coverage.
+# maintainer triages (usually a provider wire-shape change needing a code
+# update).
+#
+# When the secret is ABSENT the job used to skip AND REPORT SUCCESS, on the
+# reasoning that a perpetual red trains reviewers to ignore the check. That
+# reasoning was wrong in exactly the way this project spent 2026-09-04
+# removing from the product itself: a green that means "did not run" is
+# indistinguishable from a green that means "passed", and this one reported
+# success every night for months while calling no provider at all. A scheduled
+# run with no credential now FAILS, loudly, naming the one setting that fixes
+# it. No pull request is blocked by a nightly, so the only thing the red costs
+# is the accurate knowledge that this coverage is switched off.
 
 on:
   schedule:
@@ -54,7 +61,8 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::OPENAI_API_KEY repo secret not configured — skipping the real-LLM smoke. Set it to enable nightly provider wire-shape coverage."
+            echo "::error::OPENAI_API_KEY repo secret is not configured, so the real-LLM smoke did not run and this nightly proves nothing about the provider path. Set the secret under Settings -> Secrets and variables -> Actions (the smoke spends under 5 cents a night), or delete this workflow and stop claiming the coverage."
+            exit 1
           fi
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
