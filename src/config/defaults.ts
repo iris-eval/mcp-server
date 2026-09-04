@@ -46,6 +46,9 @@ export const defaultConfig: IrisConfig = {
       topic_consistency: 0.33,
       cost_threshold: 0.10,
       max_token_ratio: 5,
+      // Identical tool calls tolerated before no_tool_loop fires. Three
+      // allows a legitimate retry-with-backoff; the fourth is a loop.
+      max_tool_repeats: 3,
     },
   },
   logging: {

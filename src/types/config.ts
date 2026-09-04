@@ -32,6 +32,7 @@ export interface IrisConfig {
       topic_consistency?: number;
       cost_threshold?: number;
       max_token_ratio?: number;
+      max_tool_repeats?: number;
     };
   };
   logging: {

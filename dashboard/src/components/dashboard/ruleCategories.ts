@@ -50,7 +50,7 @@ export const CATEGORY_META: Record<RuleCategory, CategoryMeta> = {
     id: 'safety',
     label: 'Safety',
     color: 'var(--eval-fail)',
-    description: 'PII, prompt injection, hallucination, blocklist, stub-output detection',
+    description: 'PII, prompt injection, hallucination, blocklist, stub-output and silent-tool-failure detection',
   },
   relevance: {
     id: 'relevance',
@@ -68,7 +68,7 @@ export const CATEGORY_META: Record<RuleCategory, CategoryMeta> = {
     id: 'cost',
     label: 'Cost',
     color: 'var(--iris-400)',
-    description: 'Per-trace USD threshold + token efficiency',
+    description: 'Per-trace USD threshold, token efficiency, repeated tool calls',
   },
   custom: {
     id: 'custom',
@@ -87,16 +87,17 @@ export const CATEGORY_ORDER: RuleCategory[] = [
 ];
 
 /**
- * v0.5.0 built-in rule → category map.
- * Total: 13 rules (5 safety + 2 relevance + 4 completeness + 2 cost).
+ * Built-in rule → category map.
+ * Total: 15 rules (6 safety + 2 relevance + 4 completeness + 3 cost).
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
-  // safety (5)
+  // safety (6)
   no_pii: 'safety',
   no_blocklist_words: 'safety',
   no_injection_patterns: 'safety',
   no_stub_output: 'safety',
   no_hallucination_markers: 'safety',
+  no_silent_tool_failure: 'safety',
   // relevance (2)
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
@@ -105,9 +106,10 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   non_empty_output: 'completeness',
   sentence_count: 'completeness',
   expected_coverage: 'completeness',
-  // cost (2)
+  // cost (3)
   cost_under_threshold: 'cost',
   token_efficiency: 'cost',
+  no_tool_loop: 'cost',
 };
 
 /** Authoritative roster of built-in rules in canonical display order. */
@@ -117,6 +119,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'no_injection_patterns', category: 'safety' },
   { name: 'no_stub_output', category: 'safety' },
   { name: 'no_hallucination_markers', category: 'safety' },
+  { name: 'no_silent_tool_failure', category: 'safety' },
   { name: 'keyword_overlap', category: 'relevance' },
   { name: 'topic_consistency', category: 'relevance' },
   { name: 'min_output_length', category: 'completeness' },
@@ -125,4 +128,5 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'expected_coverage', category: 'completeness' },
   { name: 'cost_under_threshold', category: 'cost' },
   { name: 'token_efficiency', category: 'cost' },
+  { name: 'no_tool_loop', category: 'cost' },
 ];

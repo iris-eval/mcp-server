@@ -76,7 +76,7 @@ describe('EvalEngine.evaluateAll', () => {
       score: null,
       passed: null,
       rules_evaluated: 0,
-      rules_skipped: 2,
+      rules_skipped: 3,
       insufficient_data: true,
     });
     // A judged bundle keeps its boolean/number, unchanged.
