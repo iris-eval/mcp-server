@@ -574,7 +574,7 @@ export default function AgentEvalGuide(): React.ReactElement {
                 <Link href="/blog/the-eval-loop" className="text-iris-400 hover:text-iris-300 transition-colors font-medium">
                   eval loop
                 </Link>{" "}
-                is the continuous cycle that keeps evaluation calibrated:
+                is the continuous cycle that keeps evaluation in step with reality:
               </p>
 
               <div className="my-8 flex flex-wrap items-center justify-center gap-3 text-[14px] font-medium">

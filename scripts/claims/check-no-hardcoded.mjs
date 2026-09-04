@@ -197,7 +197,44 @@ const PATTERNS = [
     skipPrefixes: ['docs/blog/', 'docs/launch/'],
     fix: 'Use the current tagline (.claims.json brand.tagline / TAGLINE from ~/lib/claims). If this is a dated artifact, it belongs under docs/blog/ or docs/launch/.',
   },
+  /*
+   * A measurement claim with nothing to point at. The roadmap and a live
+   * blog post said the safety rules were "measured against a labeled
+   * corpus", the LLM-judge docs called its score "calibrated", and no
+   * public number existed for any of it — the measurement was private,
+   * in-sample, at an older commit. This is value-free: the vocabulary of
+   * measurement (measured against, labeled corpus, calibrated, precision,
+   * recall, F1) may appear on a public surface only where the same line or
+   * the line before it links to the measurement — the /proof page,
+   * docs/proof.md or proof/results.json. Scope is the public prose
+   * surfaces (README, docs/, website); dated artifacts keep their period
+   * voice, the proof page IS the measurement, and code comments are
+   * engineering notes rather than claims a stranger reads.
+   */
+  {
+    name: 'measurement-claim-without-link',
+    re: /\bmeasured against\b|\blabell?ed corpus\b|\bcalibrated\b|\bprecision\b|\brecall\b|\bF1\b/g,
+    onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/'],
+    // website/src/lib/claims.ts is the truthbase reader: it TYPES the proof
+    // schema (`precision: number`), which is an identifier, not a claim.
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/proof.md', 'website/src/app/proof/', 'website/src/lib/claims.ts'],
+    skipComments: true,
+    exemptIf: (text, index) => {
+      const lineStart = text.lastIndexOf('\n', index - 1) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const line = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      const prevStart = lineStart === 0 ? 0 : text.lastIndexOf('\n', lineStart - 2) + 1;
+      const prev = lineStart === 0 ? '' : text.slice(prevStart, lineStart - 1);
+      return MEASUREMENT_LINK_RE.test(line) || MEASUREMENT_LINK_RE.test(prev);
+    },
+    fix: 'Link the claim to the measurement on the same line or the line before (https://iris-eval.com/proof, docs/proof.md or proof/results.json) — or drop the measurement word if nothing was measured.',
+  },
 ];
+
+// What counts as "a link to the measurement": the proof page as a path or
+// URL, the proof doc, or the results file. `\/proof\b` also matches
+// `href="/proof"` and `https://iris-eval.com/proof`.
+const MEASUREMENT_LINK_RE = /\/proof\b|docs\/proof\.md|proof\/results\.json/;
 
 const CODE_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
@@ -322,6 +359,12 @@ async function main() {
           continue;
         }
         if (!matchFlags(pattern, m, rel, claims)) {
+          cov.ok++;
+          continue;
+        }
+        // Pattern-specific clearance that needs the surrounding text (e.g.
+        // "the same line or the previous line carries a link").
+        if (pattern.exemptIf && pattern.exemptIf(text, m.index)) {
           cov.ok++;
           continue;
         }

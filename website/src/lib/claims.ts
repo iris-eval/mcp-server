@@ -62,6 +62,81 @@ export const RATE_LIMIT_MCP = claimsRaw.security.rateLimit.mcp as number;
 export const DEFAULT_BIND_HOST_TRANSPORT = claimsRaw.security.defaultBindHost.transport as string;
 export const DEFAULT_BIND_HOST_DASHBOARD = claimsRaw.security.defaultBindHost.dashboard as string;
 
+// Shipped limits — configuration defaults read from the line of source that
+// enforces each one (generators/security.mjs). Not measurements; the page
+// that renders them says so.
+export const REQUEST_SIZE_LIMIT = claimsRaw.security.limits.requestSizeLimit as string;
+export const REGEX_MATCH_BUDGET_MS = claimsRaw.security.limits.regexMatchBudgetMs as number;
+export const REGEX_BREACHES_PER_EVALUATION = claimsRaw.security.limits.regexBreachesPerEvaluation as number;
+export const CUSTOM_REGEX_MAX_LENGTH = claimsRaw.security.limits.customRegexMaxLength as number;
+
+// Disclosure SLA — parsed out of SECURITY.md (generators/security-policy.mjs).
+// The website used to promise 2 business days / 7 days while the policy
+// file promised 48 hours / 5 business days. One policy, one set of numbers.
+export const DISCLOSURE_ACK_HOURS = claimsRaw.security.disclosure.acknowledgeWithinHours as number;
+export const DISCLOSURE_RESPONSE_BUSINESS_DAYS = claimsRaw.security.disclosure
+  .detailedResponseWithinBusinessDays as number;
+export const DISCLOSURE_WINDOW_DAYS = claimsRaw.security.disclosure.publicDisclosureWindowDays as number;
+
+// Maintenance — the one MEASURED block on the security page: issue-close
+// latency sampled from the public GitHub API (generators/issues.mjs).
+// `source` is "live" when the numbers came from the API at `sampledAt`, and
+// "cached" when a refresh was attempted, the API was unreachable, and the
+// previous sample was kept. The page renders the date either way.
+export interface MaintenanceClaims {
+  repo: string;
+  windowDays: number;
+  sampledAt: string;
+  source: 'live' | 'cached';
+  issues: {
+    closedInWindow: number;
+    closedAsCompleted: number;
+    closedAsNotPlanned: number;
+    medianHoursToClose: number | null;
+    p75HoursToClose: number | null;
+    openNow: number;
+  };
+  method: string;
+}
+export const MAINTENANCE = claimsRaw.maintenance as MaintenanceClaims;
+
+// Proof — per-rule evaluator accuracy. Written by scripts/claims/generators/
+// proof.mjs from proof/results.json; ABSENT until that generator lands, and
+// the /proof page must render an honest in-progress state rather than a
+// placeholder number when it is.
+export interface ProofInterval {
+  precision: [number, number];
+  recall: [number, number];
+  f1: [number, number];
+}
+export interface ProofRule {
+  name: string;
+  category: string;
+  n: number;
+  positives: number;
+  negatives: number;
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  ci95: ProofInterval;
+}
+export interface ProofClaims {
+  schemaVersion: number;
+  corpusVersion: string;
+  generatedAt: string;
+  commit: string;
+  method: { ci: string; f1Ci: string };
+  rules: ProofRule[];
+  humanAgreement: { status: string; note: string };
+  judge?: { status: 'pending' | 'measured'; note?: string; [key: string]: unknown };
+}
+export const PROOF: ProofClaims | null =
+  (claimsRaw as unknown as { proof?: ProofClaims }).proof ?? null;
+
 // Release
 export const CURRENT_RELEASE_VERSION = claimsRaw.release.currentReleaseVersion as string | null;
 export const CURRENT_RELEASE_DATE = claimsRaw.release.currentReleaseDate as string | null;

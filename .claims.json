@@ -57,8 +57,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-03T19:54:43.011Z",
-  "generatedFromCommit": "4e16e7d",
+  "generatedAt": "2026-09-04T03:19:21.290Z",
+  "generatedFromCommit": "0b19b8f",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -81,6 +81,21 @@
       "anthropic",
       "openai"
     ]
+  },
+  "maintenance": {
+    "issues": {
+      "closedAsCompleted": 8,
+      "closedAsNotPlanned": 0,
+      "closedInWindow": 8,
+      "medianHoursToClose": 54.8,
+      "openNow": 16,
+      "p75HoursToClose": 520.6
+    },
+    "method": "GitHub REST /repos/iris-eval/mcp-server/issues, unauthenticated; pull requests excluded; hours = closed_at minus created_at; median and p75 by linear interpolation between order statistics; window = issues whose closed_at falls in the last 90 days.",
+    "repo": "iris-eval/mcp-server",
+    "sampledAt": "2026-09-04T03:08:56.327Z",
+    "source": "live",
+    "windowDays": 90
   },
   "mcpTools": {
     "annotations": {
@@ -115,6 +130,18 @@
       "dashboard": "127.0.0.1",
       "transport": "127.0.0.1"
     },
+    "disclosure": {
+      "acknowledgeWithinHours": 48,
+      "detailedResponseWithinBusinessDays": 5,
+      "publicDisclosureWindowDays": 90,
+      "source": "SECURITY.md"
+    },
+    "limits": {
+      "customRegexMaxLength": 1000,
+      "regexBreachesPerEvaluation": 3,
+      "regexMatchBudgetMs": 100,
+      "requestSizeLimit": "1mb"
+    },
     "rateLimit": {
       "api": 600,
       "mcp": 20
@@ -135,7 +162,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 1357,
+    "totalCombined": 1374,
     "vitestDashboard": {
       "failed": 0,
       "passed": 182,
@@ -143,8 +170,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1161,
-      "total": 1161
+      "passed": 1178,
+      "total": 1178
     }
   },
   "version": {

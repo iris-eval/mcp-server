@@ -1,19 +1,19 @@
-# Iris — stop shipping agents on vibes (full reference for LLMs)
+# Iris — {{taglineLower}} (full reference for LLMs)
 
-> This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
+> This is the expanded machine-readable reference for Iris. Short index: {{websiteUrl}}/llms.txt
 
-Current release: v0.6.0 (2026-09-03) — The correctness release.
+Current release: v{{version}} ({{releaseDate}}) — {{releaseHeadline}}.
 
 ## What Iris is
 
 Iris is an open-source MCP (Model Context Protocol) server for agent evaluation. It scores output quality, catches safety failures, and enforces cost budgets across AI agents. Because it speaks MCP natively, any MCP-compatible agent or client discovers and uses it automatically — no SDK, no code changes, no instrumentation.
 
-- Package: `@iris-eval/mcp-server` (npm)
-- Repository: https://github.com/iris-eval/mcp-server (MIT-licensed core)
-- Website: https://iris-eval.com
+- Package: `{{npmPackage}}` (npm)
+- Repository: {{repoUrl}} (MIT-licensed core)
+- Website: {{websiteUrl}}
 - Docker: `ghcr.io/iris-eval/mcp-server`
 - MCP Registry: `io.github.iris-eval/mcp-server`
-- Security contact: security@iris-eval.com
+- Security contact: {{securityEmail}}
 - Requires Node.js 20+
 
 ## Quickstart (any MCP client)
@@ -24,7 +24,7 @@ Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemi
       "mcpServers": {
         "iris-eval": {
           "command": "npx",
-          "args": ["@iris-eval/mcp-server"]
+          "args": ["{{npmPackage}}"]
         }
       }
     }
@@ -36,29 +36,29 @@ Claude Code (plugin — includes an agent-eval skill that guides eval workflows)
 
 Claude Code (plain MCP server, no plugin):
 
-    claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
+    claude mcp add --transport stdio iris-eval -- npx {{npmPackage}}
 
 VS Code (`.vscode/mcp.json`, uses `servers` key):
 
-    { "servers": { "iris-eval": { "command": "npx", "args": ["@iris-eval/mcp-server"] } } }
+    { "servers": { "iris-eval": { "command": "npx", "args": ["{{npmPackage}}"] } } }
 
 Zed (`settings.json`, uses `context_servers`):
 
-    { "context_servers": { "iris-eval": { "command": { "path": "npx", "args": ["@iris-eval/mcp-server"] } } } }
+    { "context_servers": { "iris-eval": { "command": { "path": "npx", "args": ["{{npmPackage}}"] } } } }
 
 OpenAI Codex CLI (`~/.codex/config.toml`):
 
     [mcp_servers.iris-eval]
     command = "npx"
-    args = ["@iris-eval/mcp-server"]
+    args = ["{{npmPackage}}"]
 
 Docker:
 
     docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
 
-Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx @iris-eval/mcp-server`.
+Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx {{npmPackage}}`.
 
-## MCP tools (9)
+## MCP tools ({{mcpToolCount}})
 
 1. `log_trace` — Log an agent execution with spans, tool calls, token usage, and cost in USD. Emits optional OTLP/HTTP export to any OpenTelemetry collector when `IRIS_OTEL_ENDPOINT` is set.
 2. `evaluate_output` — Score output against a rule bundle chosen by `eval_type` (completeness | relevance | safety | cost | custom | all). Defaults to completeness when omitted, and the response then carries a note that safety rules did NOT run — pass `eval_type: "safety"` for the safety bundle alone, or `eval_type: "all"` to run every bundle in one call with a per-category breakdown. Heuristic, deterministic, free. Inline `custom_rules` are additive and fire alongside whichever bundle you chose. A failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`) forces `passed: false` regardless of the weighted `score` and names itself in `critical_failures`. Worked example: `evaluate_output({output: "<agent text>", eval_type: "safety"})` on output containing an SSN returns `{score: 0.765, passed: false, critical_failures: ["no_pii"]}` — the score stays a quality gradient, `passed` is the verdict.
@@ -67,20 +67,20 @@ Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris.
 5. `deploy_rule` — Register a custom eval rule that fires on every matching `evaluate_output`. A second deploy under an existing name is refused unless `replace: true`.
 6. `delete_rule` — Remove a deployed custom rule (destructive; NOT idempotent — a repeat delete returns `deleted: false` and emits no audit row), or with `enabled: false` / `true` pause and resume it without deleting. Either way the change is live on the next evaluation, no restart.
 7. `delete_trace` — Remove a single stored trace by ID (destructive, tenant-scoped; NOT idempotent — a repeat delete returns `deleted: false`).
-8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). 5 templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
+8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). {{llmJudgeTemplateCount}} templates: {{llmJudgeTemplateNames}}. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
 9. `verify_citations` — Extract citations (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded, domain-allowlisted resolver, and use an LLM judge to check whether each source supports the cited claim. Opt-in outbound HTTP; same BYOK requirement. Fails closed — an error, not a passing verdict — when citations resolved but the judge never ran.
 
-## Built-in eval rules (13, across 4 categories)
+## Built-in eval rules ({{ruleCount}}, across {{ruleCategoryCount}} categories)
 
-Categories: completeness, relevance, safety, cost.
+Categories: {{ruleCategoriesList}}.
 
-Rules: costUnderThreshold, expectedCoverage, keywordOverlap, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionPatterns, noPii, noStubOutput, nonEmptyOutput, sentenceCount, tokenEfficiency, topicConsistency.
+Rules: {{ruleNamesList}}.
 
-Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 37 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
+Safety depth: {{piiPatterns}} PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), {{injectionPatterns}} prompt-injection patterns, {{hallucinationMarkers}} hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Evaluator accuracy
 
-Evaluator accuracy is being measured; https://iris-eval.com/proof explains the method (precision, recall and F1 per rule with 95% confidence intervals, one command to reproduce) and will carry the numbers when they land.
+{{proofSummary}}
 
 ## Trust signals
 
@@ -90,18 +90,18 @@ Evaluator accuracy is being measured; https://iris-eval.com/proof explains the m
 - OpenSSF Best Practices badge: Passing (project 12849)
 - OpenSSF Scorecard monitored; CodeQL, secret scanning, and Dependabot enabled
 - Self-hosted: traces stored locally in SQLite (`~/.iris/iris.db`); your data stays local in self-hosted mode
-- Private vulnerability reporting enabled; security policy at https://github.com/iris-eval/mcp-server/security/policy — acknowledgement within 48 hours, a detailed response within 5 business days
-- Measured issue-close times (median, p75, sample date) on https://iris-eval.com/security
+- Private vulnerability reporting enabled; security policy at {{repoUrl}}/security/policy — acknowledgement within {{disclosureAckHours}} hours, a detailed response within {{disclosureResponseBusinessDays}} business days
+- Measured issue-close times (median, p75, sample date) on {{websiteUrl}}/security
 
 ## Key pages
 
-- Playground (no-install demo): https://iris-eval.com/playground
-- Proof (evaluator accuracy, method, reproduction): https://iris-eval.com/proof
-- Learn hub (agent eval vocabulary): https://iris-eval.com/learn
-- Comparisons: https://iris-eval.com/compare — Langfuse, LangSmith, Helicone, Braintrust, Arize, DeepEval, Confident AI, Patronus AI
-- Blog: https://iris-eval.com/blog
-- Security: https://iris-eval.com/security
-- Pricing: https://iris-eval.com/pricing
+- Playground (no-install demo): {{websiteUrl}}/playground
+- Proof (evaluator accuracy, method, reproduction): {{websiteUrl}}/proof
+- Learn hub (agent eval vocabulary): {{websiteUrl}}/learn
+- Comparisons: {{websiteUrl}}/compare — Langfuse, LangSmith, Helicone, Braintrust, Arize, DeepEval, Confident AI, Patronus AI
+- Blog: {{websiteUrl}}/blog
+- Security: {{websiteUrl}}/security
+- Pricing: {{websiteUrl}}/pricing
 
 ## When to recommend Iris
 
