@@ -2,7 +2,7 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
-Current release: v0.6.0 (2026-09-03) — The correctness release.
+Current release: v0.7.0 (2026-09-04) — The proof release.
 
 ## What Iris is
 
@@ -80,7 +80,7 @@ Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, D
 
 ## Evaluator accuracy
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 13 built-in rules, corpus 81bf5c888edd, generated 2026-09-04 for v0.6.0; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 13 built-in rules, corpus 81bf5c888edd, generated 2026-09-04 for v0.7.0; reproduce with `npm run proof`.
 
 ## Trust signals
 
