@@ -29,7 +29,7 @@
     },
     {
       "name": "evaluate_with_llm_judge",
-      "description": "Score agent output using an LLM as the judge (Anthropic or OpenAI) with a calibrated 0..1 score and rationale"
+      "description": "Score agent output using an LLM as the judge (Anthropic or OpenAI) with a 0..1 score and rationale"
     },
     {
       "name": "verify_citations",

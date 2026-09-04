@@ -97,7 +97,7 @@ export default function LearnSelfCalibratingEval(): React.ReactElement {
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <VocabularyCard term="Eval Drift" definition="Self-calibrating eval is the solution to threshold-level drift." href="/learn/eval-drift" />
           <VocabularyCard term="The Eval Loop" definition="Self-calibration is the 'Calibrate' stage of the eval loop, automated." href="/learn/eval-loop" />
-          <VocabularyCard term="Output Quality Score" definition="A composite metric that benefits from calibrated individual rules." href="/learn/output-quality-score" />
+          <VocabularyCard term="Output Quality Score" definition="A composite metric that is only as good as the individual rules it combines." href="/learn/output-quality-score" />
           <VocabularyCard term="Agent Eval" definition="The complete guide to evaluating AI agent outputs." href="/learn/agent-eval" />
         </div>
 

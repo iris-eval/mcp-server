@@ -35,3 +35,10 @@ jobs:
         run: node scripts/claims/capture-tests.mjs
       - name: Regenerate truthbase and compare
         run: node scripts/claims/generate.mjs --check
+      # llms.txt / llms-full.txt are rendered from website/*.template.txt +
+      # .claims.json. A hand edit to the rendered files, or a truthbase
+      # change without a re-render, fails here — the surface written for
+      # LLMs said v0.5.0 was current on v0.6.0's release day because
+      # nothing read it.
+      - name: llms.txt matches templates + truthbase
+        run: npm run llms:check

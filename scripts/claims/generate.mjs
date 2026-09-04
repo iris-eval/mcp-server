@@ -11,6 +11,10 @@
 //   node scripts/claims/generate.mjs              # regen and write if changed
 //   node scripts/claims/generate.mjs --check      # regen and exit non-zero if disk diff
 //   node scripts/claims/generate.mjs --print      # regen and print to stdout (no write)
+//   node scripts/claims/generate.mjs --live       # also re-sample the `maintenance` block
+//                                                 # from the GitHub API (the only generator
+//                                                 # that touches the network; see
+//                                                 # generators/issues.mjs for why it is opt-in)
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -23,6 +27,7 @@ import { generate as llmJudgeTemplates } from './generators/llm-judge-templates.
 import { generate as brand } from './generators/brand.mjs';
 import { generate as release } from './generators/release.mjs';
 import { generate as security } from './generators/security.mjs';
+import { generate as maintenance } from './generators/issues.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -43,6 +48,7 @@ async function main() {
     ['brand', brand],
     ['release', release],
     ['security', security],
+    ['maintenance', maintenance],
   ];
 
   const results = await Promise.allSettled(

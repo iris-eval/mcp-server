@@ -8,8 +8,10 @@ The truthbase exists because hand-edited claim values drift between artifact and
 
 - **`.claims.json`** (at repo root) — the generated truthbase. Versioned schema. Do not hand-edit.
 - **`scripts/claims/generate.mjs`** — orchestrator. Runs all generators, assembles the JSON, writes if changed.
-- **`scripts/claims/generators/*.mjs`** — one generator per fact category (version, tests, mcp-tools, eval-rules, llm-judge-templates, brand, release).
+- **`scripts/claims/generators/*.mjs`** — one generator per fact category (version, tests, mcp-tools, eval-rules, llm-judge-templates, brand, release, security, issues). `security.mjs` folds in `security-policy.mjs`, which parses the disclosure SLA out of `SECURITY.md` and throws if a sentence changes shape or the file disagrees with itself.
   - `version.published` is the one field that is recorded rather than read: the registry status of each npm-facing package, kept as a static, dated decision inside `generators/version.mjs` because the generator runs offline and must never probe npm. `false` means in-repo only — no public surface may present that package as installable, which `tests/unpublished-packages-not-cited.test.ts` enforces. Flip it in the same PR as the first publish.
+- **`scripts/claims/generators/issues.mjs`** — the `maintenance` block: issue-close latency measured from the public GitHub API (pull requests excluded). **It is the only generator that can touch the network, and it does so only when asked.** By default, and always under `--check`, it returns the block already committed in `.claims.json`, verbatim — a generator that fetched on every run would move the numbers on any day an issue closed and turn an unrelated PR red. `npm run claims:generate:live` (or `IRIS_CLAIMS_LIVE=1`) re-samples and stamps `source: "live"` + `sampledAt`; if the API is unreachable the committed sample is kept with `source: "cached"` and a warning names the error. The security page renders `sampledAt`, so a stale sample reads as stale; the generator also warns when the committed sample is older than 45 days.
+- **`scripts/claims/render-llms.mjs`** — renders `website/public/llms.txt` and `llms-full.txt` from `website/llms.template.txt` and `llms-full.template.txt` (`{{slot}}` placeholders, no logic; an unknown or valueless slot throws). `--check` fails when the committed files differ from the render; CI runs it in both `ci.yml` and the truthbase-regen job. Add a slot in `slotsFrom()`, never a literal in a template.
 - **`scripts/claims/capture-tests.mjs`** — runs vitest with `--reporter=json` and writes `.claims-cache/tests.json` for the test generator to read. CI runs this before `generate.mjs`.
 - **`scripts/claims/check-no-hardcoded.mjs`** — regex scanner. Fails if any source file outside the allow-list contains a hardcoded claim that should come from the truthbase.
 - **`scripts/claims/allow-list.json`** — explicit exemptions. Each entry justifies why a literal stays uncovered (historical CHANGELOG entries, generator regex sources, etc.). Entries are removed as surfaces migrate to the reader.
@@ -24,6 +26,9 @@ npm run claims:capture-tests   # runs vitest, writes .claims-cache/tests.json
 npm run claims:generate         # regenerates .claims.json
 npm run claims:check            # fails if .claims.json doesn't match the regenerator output
 npm run claims:check-hardcoded  # fails if any unguarded hardcoded claim is found
+npm run claims:generate:live    # as claims:generate, plus a fresh `maintenance` sample from the GitHub API
+npm run llms:render             # renders website/public/llms.txt + llms-full.txt from the templates + .claims.json
+npm run llms:check              # fails if the committed llms files differ from the render
 ```
 
 ## How a fact gets added
