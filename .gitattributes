@@ -1,0 +1,5 @@
+# Proof corpus, results and report are byte-compared in CI (npm run proof -- --check):
+# keep them LF on every platform so the corpus hash and the diff are the same on Windows and Linux.
+proof/corpus/*.json text eol=lf
+proof/results.json text eol=lf
+proof/RESULTS.md text eol=lf

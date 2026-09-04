@@ -193,6 +193,10 @@ docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data ghcr.io/iris-eval/mcp-se
 
 Where this is going next: [the roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md).
 
+### Measured, not claimed
+
+Every built-in rule has a published precision, recall and F1 with 95% confidence intervals, measured on a labelled corpus that lives in this repository (`proof/corpus/`) and regenerates with one command — `npm run proof` — offline, with no key and no model in the loop. CI re-runs the measurement on every pull request and fails if the committed numbers differ from what the code produces, so a rule cannot change without its numbers changing with it. The numbers are on [iris-eval.com/proof](https://iris-eval.com/proof) and in [`proof/RESULTS.md`](https://github.com/iris-eval/mcp-server/blob/main/proof/RESULTS.md); how the corpus was made, what it is not, and how to read an interval are in [docs/proof.md](https://github.com/iris-eval/mcp-server/blob/main/docs/proof.md). The corpus is synthetic and model-labelled — a human blind label is pending, and the page says so.
+
 ## MCP Tools
 
 Iris registers nine tools that any MCP-compatible agent can invoke — full rule + trace lifecycle + LLM-as-judge + semantic citation verification:

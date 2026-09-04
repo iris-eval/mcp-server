@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "rule": "non_empty_output",
+  "category": "completeness",
+  "family": "nonempty",
+  "positiveClass": "fail",
+  "definition": "non_empty_output — the output must not be empty or whitespace-only: pass when output.trim().length > 0. docs/api-reference.md §Completeness Rules. Positive = empty or nothing visible (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-04; cases marked \"real transcript t-NN\" carry the real input/output pair (and token/cost figures where used) from a 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition on 2026-09-04. Invisible-character cases (zero-width space, byte-order mark) are labelled positive because nothing is visible to a reader; the notes disclose where trim() disagrees.",
+  "authored": "2026-09-04",
+  "counts": {
+    "n": 29,
+    "positive": 12,
+    "negative": 17
+  },
+  "cases": [
+    {
+      "id": "nonempty-001",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "",
+      "notes": "Empty string"
+    },
+    {
+      "id": "nonempty-002",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": " ",
+      "notes": "A single space"
+    },
+    {
+      "id": "nonempty-003",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "\n",
+      "notes": "A single newline"
+    },
+    {
+      "id": "nonempty-004",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "\t\t",
+      "notes": "Tabs only"
+    },
+    {
+      "id": "nonempty-005",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "\n\n  \n",
+      "notes": "Blank lines and spaces"
+    },
+    {
+      "id": "nonempty-006",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "\r\n",
+      "notes": "Windows line ending only"
+    },
+    {
+      "id": "nonempty-007",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "   \t  \n  ",
+      "notes": "Mixed whitespace"
+    },
+    {
+      "id": "nonempty-008",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "  ",
+      "notes": "Non-breaking spaces only: whitespace to a reader and to trim()"
+    },
+    {
+      "id": "nonempty-009",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "​",
+      "notes": "A zero-width space: invisible, so empty to a reader; trim() does not strip U+200B, so the documented condition would pass it — a disclosed boundary"
+    },
+    {
+      "id": "nonempty-010",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "​​\n",
+      "notes": "Zero-width spaces and a newline: nothing visible"
+    },
+    {
+      "id": "nonempty-011",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "﻿",
+      "notes": "A byte-order mark alone: nothing visible; trim() strips U+FEFF"
+    },
+    {
+      "id": "nonempty-012",
+      "rule": "non_empty_output",
+      "label": "positive",
+      "output": "  ",
+      "notes": "Em spaces only"
+    },
+    {
+      "id": "nonempty-013",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "0",
+      "notes": "A single character is content"
+    },
+    {
+      "id": "nonempty-014",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": ".",
+      "notes": "Punctuation alone is non-empty"
+    },
+    {
+      "id": "nonempty-015",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "null",
+      "notes": "The word null is content, whatever it means"
+    },
+    {
+      "id": "nonempty-016",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "undefined",
+      "notes": "The word undefined is content"
+    },
+    {
+      "id": "nonempty-017",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "{}",
+      "notes": "An empty JSON object is two characters of content"
+    },
+    {
+      "id": "nonempty-018",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "[]",
+      "notes": "An empty JSON array is content"
+    },
+    {
+      "id": "nonempty-019",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "-",
+      "notes": "A dash"
+    },
+    {
+      "id": "nonempty-020",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "No.",
+      "notes": "A one-word answer"
+    },
+    {
+      "id": "nonempty-021",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "  ok  ",
+      "notes": "Content padded with whitespace"
+    },
+    {
+      "id": "nonempty-022",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "\n\nDone.\n",
+      "notes": "Content between blank lines"
+    },
+    {
+      "id": "nonempty-023",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "output": "  x",
+      "notes": "One letter after non-breaking space"
+    },
+    {
+      "id": "nonempty-024",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "input": "List the nine MCP tools Iris registers from src/tools/ with one line each.",
+      "output": "Iris registers nine tools in src/tools/index.ts (registerAllTools), in this order:\n\n1. log_trace (Log Trace) — persist one agent execution: input, output, spans, tool calls, cost, latency, token usage; returns a server-minted 32-hex trace_id.\n2. evaluate_output (Evaluate Output) — run the deterministic rule engine on an output for completeness, relevance, safety, cost, custom, or all bundles at once.\n3. get_traces (Get Traces) — query stored traces by agent, framework, time window and score, with optional summary statistics.\n4. list_rules (List Custom Rules) — list the deployed custom rules and whether each is enabled.\n5. deploy_rule (Deploy Custom Rule) — persist a custom rule so it runs in future evaluations and survives restarts.\n6. delete_rule (Delete or Disable Custom Rule) — remove or disable a deployed rule by id.\n7. delete_trace (Delete Trace) — remove a single trace by id.\n8. evaluate_with_llm_judge (Evaluate With LLM Judge) — semantic scoring through Anthropic or OpenAI with your own key and a hard per-eval cost cap.\n9. verify_citations (Verify Citations) — extract citations from an output, fetch URL and DOI sources through an SSRF-guarded resolver, and judge whether each source supports its claim.\n\nThe other two files in the directory, strict-input.ts and trace-link.ts, are not registered by index.ts, so they are helpers rather than tools.",
+      "notes": "real transcript t-02: nine tool names"
+    },
+    {
+      "id": "nonempty-025",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "input": "How many built-in rules does Iris ship and what are they? Start from src/eval/rules/index.ts.",
+      "output": "13 built-in rules. src/eval/rules/index.ts maps each eval type to a bundle (custom is an empty bundle by design, it only ever holds deployed rules), and the four bundles export:\n\n- completeness (4): min_output_length, non_empty_output, sentence_count, expected_coverage\n- relevance (2): keyword_overlap, topic_consistency\n- safety (5): no_pii, no_blocklist_words, no_injection_patterns, no_stub_output, no_hallucination_markers\n- cost (2): cost_under_threshold, token_efficiency\n\n4 + 2 + 5 + 2 = 13. Three of the safety rules (no_pii, no_blocklist_words, no_injection_patterns) are marked critical, so a failure on any of them forces the overall evaluation to passed=false regardless of the weighted score; no_stub_output and no_hallucination_markers deliberately are not.",
+      "notes": "real transcript t-04: a rule count"
+    },
+    {
+      "id": "nonempty-026",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "input": "Does Iris send any telemetry home? Check for an IRIS_TELEMETRY env var or similar in src/.",
+      "output": "Yes, there is a switch. I searched src/ for IRIS_TELEMETRY and the variable is read at startup as an opt-out: it defaults to enabled, so set IRIS_TELEMETRY=0 (or false) in the environment before launching to stop the outbound calls. Nothing else in src/ references it, so that one variable is the whole surface.",
+      "notes": "real transcript t-13: a wrong but non-empty answer"
+    },
+    {
+      "id": "nonempty-027",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "input": "How many MCP tools does package.json declare? Use node to read it.",
+      "output": "package.json declares 9 MCP tools: log_trace, evaluate_output, get_traces, list_rules, deploy_rule, delete_rule, delete_trace, evaluate_with_llm_judge, verify_citations.",
+      "notes": "real transcript t-15: a wrong but non-empty answer"
+    },
+    {
+      "id": "nonempty-028",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "input": "What does src/eval/failure-rank.ts export?",
+      "output": "src/eval/failure-rank.ts arrived in commit 7ce2245, \"feat(dashboard): land on the failure + elite-feel pass (#345)\", and has not changed since. It exports the failure-ranking logic the dashboard's failure view (the \"What failed\" landing page) uses to order failed evaluations, so the exports are the ranker function and its supporting types.",
+      "notes": "real transcript t-18: an off-target but non-empty answer"
+    },
+    {
+      "id": "nonempty-029",
+      "rule": "non_empty_output",
+      "label": "negative",
+      "input": "Can you check whether the retention sweep also deletes evaluations linked to the traces it deletes, or whether orphan evals are left behind?",
+      "output": "Good question. I will look into how the retention sweep handles evaluations linked to the traces it deletes and get back to you with what it does with orphans.",
+      "notes": "real transcript t-20: a non-answer that is still text"
+    }
+  ]
+}

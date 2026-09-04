@@ -28,6 +28,7 @@ import { generate as brand } from './generators/brand.mjs';
 import { generate as release } from './generators/release.mjs';
 import { generate as security } from './generators/security.mjs';
 import { generate as maintenance } from './generators/issues.mjs';
+import { generate as proof } from './generators/proof.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -49,6 +50,7 @@ async function main() {
     ['release', release],
     ['security', security],
     ['maintenance', maintenance],
+    ['proof', proof],
   ];
 
   const results = await Promise.allSettled(

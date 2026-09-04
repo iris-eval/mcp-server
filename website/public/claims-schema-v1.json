@@ -33,6 +33,43 @@
       "description": "Short or full SHA of the commit the values were read from."
     },
     "generatorVersion": { "$ref": "#/$defs/semver" },
+    "proof": {
+      "type": "object",
+      "description": "Evaluator accuracy: proof/results.json copied verbatim by scripts/claims/generators/proof.mjs (per built-in rule: confusion matrix, precision/recall/F1, 95% intervals), plus proof/judge-results.json as `judge`. Optional: absent until the first measurement lands.",
+      "required": ["schemaVersion", "corpusVersion", "generatedAt", "commit", "method", "rules", "humanAgreement", "judge"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "corpusVersion": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "commit": { "type": "string" },
+        "method": { "type": "object" },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "category", "n", "positives", "negatives", "skipped", "tp", "fp", "fn", "tn", "precision", "recall", "f1", "ci95"],
+            "properties": {
+              "name": { "type": "string" },
+              "category": { "type": "string" },
+              "n": { "type": "integer" },
+              "positives": { "type": "integer" },
+              "negatives": { "type": "integer" },
+              "skipped": { "type": "integer" },
+              "tp": { "type": "integer" },
+              "fp": { "type": "integer" },
+              "fn": { "type": "integer" },
+              "tn": { "type": "integer" },
+              "precision": { "type": ["number", "null"] },
+              "recall": { "type": ["number", "null"] },
+              "f1": { "type": ["number", "null"] },
+              "ci95": { "type": "object" }
+            }
+          }
+        },
+        "humanAgreement": { "type": "object" },
+        "judge": { "type": "object" }
+      }
+    },
     "brand": {
       "type": "object",
       "required": ["categoryName", "coinedTerms", "npmPackage", "publicRepoUrl", "securityEmail", "supportEmail", "tagline", "websiteUrl"],
