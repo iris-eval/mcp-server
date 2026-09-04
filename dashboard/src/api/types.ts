@@ -46,6 +46,22 @@ export interface EvalRuleResult {
   passed: boolean;
   score: number;
   message: string;
+  /**
+   * The server sets `skipped` when a rule did not judge (no input for a
+   * relevance rule, no cost for a cost rule, no trajectory for a trajectory
+   * rule, an invalid custom config, a regex budget breach). A skipped rule
+   * carries `passed: false, score: 0` as placeholders — it is NOT a failure
+   * and must never render as one. Mirrors `EvalRuleResult` in
+   * src/types/eval.ts.
+   */
+  skipped?: boolean;
+  skipReason?: string;
+  ruleId?: string;
+  category?: string;
+  critical?: boolean;
+  criticalSource?: 'default' | 'config';
+  configInvalid?: boolean;
+  budgetExceeded?: boolean;
 }
 
 /**
