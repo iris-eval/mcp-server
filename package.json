@@ -33,6 +33,7 @@
     "claims:check-hardcoded": "node scripts/claims/check-no-hardcoded.mjs",
     "proof": "tsx proof/run.ts",
     "proof:typecheck": "tsc -p proof/tsconfig.json",
+    "proof:review": "tsx proof/human-review.ts",
     "llms:render": "node scripts/claims/render-llms.mjs",
     "llms:check": "node scripts/claims/render-llms.mjs --check",
     "proof:judge": "tsx proof/judge/run.ts",
