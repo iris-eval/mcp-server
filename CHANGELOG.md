@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Release plumbing.**
+
+- **The registry publish waits fifteen minutes for npm, not three.** On v0.8.0 npm's read replicas took longer than three minutes to serve the freshly published version, so the registry job failed, `verify-release` was skipped, and a released version sat off the Official MCP Registry until the job was re-run by hand. The package publish had succeeded the whole time. The window is now fifteen minutes, the poll says how long it waited, and a timeout prints the one command that recovers it. A slow content-delivery network is not a release failure; a wrong verdict about one is.
+
 ## [0.8.0] - 2026-09-04
 
 **The trajectory release.** Arc two of the September 2026 plan: make the evaluator see what the agent DID, not only what it wrote. The arc-one acceptance pass pushed twenty-four transcripts from an agent genuinely working against this repository through the shipped product, and the same cause sat under a group of the wrong verdicts — no rule read the tool calls. Three transcripts answer confidently after their only tool call failed (a `grep` that exited 1, an `ls` on a directory that does not exist, a `node -e` that threw) and state results the tool never returned; a fourth makes five identical `ls` calls before answering, billing $0.0621 — under the $0.10 cost threshold — for four wasted turns. None of that is in the output text, so no string rule could reach it. `EvalContext.toolCalls` had existed the whole time with nothing populating it and no `error` field on it.

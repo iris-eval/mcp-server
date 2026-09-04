@@ -480,17 +480,26 @@ jobs:
         run: ./mcp-publisher validate server.json
 
       # The registry verifies the npm package exists (and carries `mcpName`)
-      # before it accepts a version. npm's read replicas can lag the publish
-      # by a few seconds — wait for the exact version instead of racing it.
+      # before it accepts a version, so this waits for npm's read replicas to
+      # serve the exact version rather than racing them.
+      #
+      # The window is 15 minutes, not the 3 it started as: on v0.8.0 npm took
+      # longer than 3 minutes and the job failed, which skipped verify-release
+      # and left a released version off the registry until a human re-ran it.
+      # A slow CDN is not a release failure; a wrong verdict about one is.
       - name: Wait for npm to serve this version
         run: |
-          for i in $(seq 1 18); do
+          attempts=45
+          for i in $(seq 1 "$attempts"); do
             if curl -fsSL "https://registry.npmjs.org/@iris-eval%2Fmcp-server/${{ steps.server.outputs.version }}" > /dev/null; then
-              echo "npm serves @iris-eval/mcp-server@${{ steps.server.outputs.version }}" && exit 0
+              echo "npm serves @iris-eval/mcp-server@${{ steps.server.outputs.version }} (after $(( (i - 1) * 20 ))s)" && exit 0
             fi
-            echo "npm does not serve ${{ steps.server.outputs.version }} yet ($i/18) — waiting 10s" && sleep 10
+            echo "npm does not serve ${{ steps.server.outputs.version }} yet ($i/$attempts) — waiting 20s" && sleep 20
           done
-          echo "FATAL: npm never served the version the registry must validate against" && exit 1
+          echo "FATAL: npm never served ${{ steps.server.outputs.version }} within 15 minutes." >&2
+          echo "The package publish succeeded; only the registry step is blocked. Re-run this job" >&2
+          echo "once npm serves the version: gh run rerun <run-id> --failed" >&2
+          exit 1
 
       # Idempotent re-runs (workflow_dispatch on a tag whose earlier run
       # failed after this point): a version already on the registry is not
