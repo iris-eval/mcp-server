@@ -48,6 +48,22 @@ export interface EvalRuleResult {
   message: string;
 }
 
+/**
+ * Per-bundle verdict inside an `eval_type: "all"` response. `score` and
+ * `passed` are null when that bundle evaluated no rule (every rule skipped
+ * for missing context): it was not judged, so a renderer shows it as
+ * "not evaluated" — never as failing, never red (#406).
+ */
+export interface EvalCategoryResult {
+  score: number | null;
+  passed: boolean | null;
+  rules_evaluated: number;
+  rules_skipped: number;
+  insufficient_data: boolean;
+  critical_failures?: string[];
+  critical_skipped?: string[];
+}
+
 export interface EvalResult {
   id: string;
   trace_id?: string;
@@ -66,6 +82,13 @@ export interface EvalResult {
    * predates migration 006.
    */
   critical_failures?: string[];
+  /**
+   * Per-bundle breakdown, present only on an `eval_type: "all"` evaluation
+   * as the tool and the ingest route return it (response-only today —
+   * stored rows carry `category` per rule instead, and the API does not
+   * serve this map yet). A null `passed` means "not evaluated".
+   */
+  categories?: Partial<Record<'completeness' | 'relevance' | 'safety' | 'cost' | 'custom', EvalCategoryResult>>;
   created_at?: string;
 }
 

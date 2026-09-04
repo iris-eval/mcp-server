@@ -1,8 +1,20 @@
 # @iris-eval/langchain
 
+> **Not yet published to npm.** `@iris-eval/langchain` lives in this repository and is built in CI, but it is not on the npm registry, so `npm install @iris-eval/langchain` does not resolve yet. To use it today, build from source and install it by path:
+>
+> ```bash
+> git clone https://github.com/iris-eval/mcp-server && cd mcp-server/packages/langchain
+> npm ci && npm run build
+> cd /path/to/your-project && npm install /path/to/mcp-server/packages/langchain
+> ```
+>
+> Whether this package is published or retired is an open decision; this note is removed with the first publish.
+
 Evaluate LangChain agent output with [Iris](https://iris-eval.com) — stop shipping agents on vibes. Auto-trace runs, score output quality, catch safety failures.
 
 ## Install
+
+Once published:
 
 ```bash
 npm install @iris-eval/langchain
