@@ -10,8 +10,8 @@ import { z } from 'zod';
  * guessing an argument name is the normal case, not an edge case. Before
  * this wrapper, `evaluate_output({ criteria: ["safety"], ... })` (a
  * plausible guess) and `eval_typ: "safety"` (a one-character typo) both
- * "succeeded": the arguments were dropped, the DEFAULT completeness bundle
- * ran instead of the safety rules, and the response said passed:true on
+ * "succeeded": the arguments were dropped, the then-default completeness
+ * bundle ran instead of the safety rules, and the response said passed:true on
  * text containing real PII — with nothing indicating the arguments were
  * ignored. Meanwhile a missing REQUIRED field produced a precise Zod
  * error, so the failure mode was inconsistent as well as unsafe.

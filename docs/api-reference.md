@@ -180,7 +180,7 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `output` | `string` | Yes | -- | The output text to evaluate |
-| `eval_type` | `enum` | No | `"completeness"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom`, `all` (every bundle in one pass, with a per-category breakdown) |
+| `eval_type` | `enum` | No | `"all"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom`, `all` (every bundle in one pass, with a per-category breakdown). Omitted → every bundle runs and the response carries a `note` saying the default ran |
 | `expected` | `string` | No | -- | Expected output for comparison (used by completeness rules) |
 | `input` | `string` | No | -- | Original input for context (used by relevance rules) |
 | `trace_id` | `string` | No | -- | Link this evaluation to an existing trace |
@@ -209,7 +209,7 @@ An evaluation passes when the score meets or exceeds the configured threshold (d
 
 **Critical rules hard-fail.** `score` is a quality gradient; `passed` is the verdict. A failing (non-skipped) critical rule forces `passed: false` regardless of the weighted score, and the response lists the culprits in `critical_failures`. The critical rules are `no_pii`, `no_injection_patterns`, and `no_blocklist_words`, plus any deployed custom rule with severity `high` or `critical` — a leaked SSN cannot be averaged away by the other rules passing.
 
-The response echoes the `eval_type` that ran. When `eval_type` was omitted, the response also carries a `note` naming the defaulted `completeness` bundle and stating that safety rules were not part of the evaluation.
+The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
 
 #### Example Request
 
@@ -696,7 +696,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `evaluate` | `boolean` | `false` | Run the deterministic eval engine on `output` and store the result linked to the trace. Requires `output`. |
-| `eval_type` | `string` | `"completeness"` | `completeness`, `relevance`, `safety`, `cost`, `custom`, `all`. `all` runs every bundle in one pass — the critical veto spans all of them — and adds a per-bundle `categories` map, exactly as the [`evaluate_output`](#evaluate_output) tool does; the result is stored under `eval_type: "all"` |
+| `eval_type` | `string` | `"all"` | `completeness`, `relevance`, `safety`, `cost`, `custom`, `all`. `all` runs every bundle in one pass — the critical veto spans all of them — and adds a per-bundle `categories` map, exactly as the [`evaluate_output`](#evaluate_output) tool does; the result is stored under `eval_type: "all"`. Omitted → `all`, and the evaluation carries a `note` saying the default ran |
 
 `trace_id` is server-minted, never client-supplied — one in the body is **rejected with `400`**, and the message says the server mints it; read the id from the `201` response. Each POST creates a new trace (not idempotent), mirroring `log_trace`.
 
@@ -710,7 +710,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 }
 ```
 
-`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `suggestions`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, and `categories` when `eval_type` is `all`.
+`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `suggestions`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, `categories` when `eval_type` is `all` (a bundle nothing judged is `passed: null` / `score: null` there), and `note` when `eval_type` was omitted.
 
 #### Error Responses
 
@@ -1103,7 +1103,7 @@ Used when `eval_type` is `"safety"`. These rules check for PII leakage, blocked 
 |------|--------|----------------|----------------------|----------------|
 | `no_pii` | 2.0 | Regex patterns for 19 PII types | None | Zero PII patterns matched |
 | `no_blocklist_words` | 2.0 | Presence of blocklisted phrases | `blocklist` (custom word list) | Zero blocklisted phrases found |
-| `no_injection_patterns` | 2.0 | Regex patterns for 37 prompt injection attempts (phrase + structural) | None | Zero injection patterns matched |
+| `no_injection_patterns` | 2.0 | Regex patterns for 37 prompt injection attempts (phrase + structural). no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. | None | Zero injection patterns matched |
 | `no_stub_output` | 1.5 | Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, etc.), marker-free stub shapes, and **deferred work** — an output that is mostly a promise ("I'll look into it and get back to you") instead of the work: the deferral is at least 60% of the text, or the output has at most two sentences and ends on the promise | `stub_markers` (custom marker list) | Zero stub markers, shapes or deferrals detected |
 | `no_hallucination_markers` | 1.0 | Context-grounded fabrication/contradiction signals (v0.5.0 rewrite; moved from relevance) | None | Zero hallucination signals detected |
 

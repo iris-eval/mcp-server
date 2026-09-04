@@ -218,7 +218,7 @@ When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effo
 
 Genuine safety violations hard-fail. `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know: a critical rule that **skipped** (missing context, or any other cause of a skip) has not judged the output and does not veto — it is listed in `critical_skipped`, and `rule_results` shows every skip and its reason, so a gate that must fail closed on non-verdicts can.
 
-One gotcha for CI gates: if you omit `eval_type`, the default `completeness` bundle runs — **safety rules don't**. The response echoes `eval_type` (plus a `note` when it was defaulted) so your gate can verify which bundle actually ran. Key on `passed` for the verdict and `eval_type: "safety"` for coverage.
+For CI gates: if you omit `eval_type`, **every bundle runs** — completeness, relevance, safety, cost and any custom rules — and the response says `eval_type: "all"` with a `note` that the default ran, plus a per-bundle `categories` map. A bundle with nothing to judge (cost without `cost_usd`, relevance without `input`) reports `passed: null` there — not evaluated, not failing — and never counts toward the verdict. The response always echoes the `eval_type` that ran, so your gate can verify coverage; key on `passed` for the verdict and name a bundle only when you want a narrower run.
 
 ### Authoring a custom rule
 

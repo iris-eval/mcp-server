@@ -89,10 +89,17 @@ export interface EvalRuleResult {
  * Per-bundle verdict inside an eval_type="all" result. Same semantics as a
  * single-bundle EvalResult (threshold + critical veto), computed over that
  * bundle's rules only.
+ *
+ * `score` and `passed` are null when the bundle evaluated no rule (every
+ * rule skipped for missing context — cost without cost_usd, relevance
+ * without input). Such a bundle was not judged: it is neither passing nor
+ * failing, `insufficient_data` is true, and it never counted toward the
+ * overall verdict (#406). The top-level EvalResult keeps a boolean
+ * `passed` on purpose — a gate keyed on it must fail closed.
  */
 export interface EvalCategoryResult {
-  score: number;
-  passed: boolean;
+  score: number | null;
+  passed: boolean | null;
   rules_evaluated: number;
   rules_skipped: number;
   insufficient_data: boolean;

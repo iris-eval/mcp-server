@@ -20,6 +20,25 @@ import { generateEvalId } from '../utils/ids.js';
 export const ALL_EVAL_TYPES: readonly EvalType[] = ['completeness', 'relevance', 'safety', 'cost', 'custom'];
 
 /**
+ * What runs when a caller never chose a bundle. It used to be
+ * 'completeness', so a CI gate keyed on `passed` skipped PII and injection
+ * unless the caller knew to set eval_type — six of seven UAT personas read
+ * passed:true on PII-laden text with nothing in the payload saying the
+ * safety bundle had not run. Every bundle is the only default under which
+ * an omitted argument cannot silently narrow the verdict. The MCP tool and
+ * the HTTP ingest route both read this constant, so the two surfaces
+ * cannot default differently.
+ */
+export const DEFAULT_EVAL_TYPE: EvalResultType = 'all';
+
+/**
+ * The one-line note both surfaces attach when the default ran, so a reader
+ * of the response knows the bundle was chosen for them and how to narrow it.
+ */
+export const DEFAULT_EVAL_TYPE_NOTE =
+  'eval_type was omitted, so the default ran every bundle — completeness, relevance, safety, cost and any custom rules — the same as eval_type="all"; pass a single bundle name to narrow the run.';
+
+/**
  * The verdict arithmetic, shared by a single bundle, the overall
  * eval_type="all" result, and each per-category entry inside it. One
  * function so the three can never disagree about what `passed` means.
@@ -388,12 +407,24 @@ export class EvalEngine {
         indices.map((i) => rules[i]),
         indices.map((i) => ruleResults[i]),
       );
+      /*
+       * A bundle whose every rule skipped was not judged (#406). Reporting
+       * it as passed:false / score:0 read as "failing" to anyone regrouping
+       * by category — cost "failed" on a call that carried no cost data.
+       * Inside the breakdown, null is the honest value: neither passing
+       * nor failing, and it never counted toward the overall verdict
+       * (summarize() already excludes skipped rules). The TOP-LEVEL
+       * `passed` is deliberately not made nullable — it is the verdict a
+       * gate keys on, and a gate must fail closed when nothing was judged;
+       * `insufficient_data: true` is the "unknown" marker at that level.
+       */
+      const judged = verdict.rulesEvaluated > 0;
       breakdown[type] = {
-        score: Math.round(verdict.score * 1000) / 1000,
-        passed: verdict.passed,
+        score: judged ? Math.round(verdict.score * 1000) / 1000 : null,
+        passed: judged ? verdict.passed : null,
         rules_evaluated: verdict.rulesEvaluated,
         rules_skipped: verdict.rulesSkipped,
-        insufficient_data: verdict.rulesEvaluated === 0,
+        insufficient_data: !judged,
         ...(verdict.criticalFailures.length > 0 ? { critical_failures: verdict.criticalFailures } : {}),
         ...(verdict.criticalSkipped.length > 0 ? { critical_skipped: verdict.criticalSkipped } : {}),
       };
