@@ -30,7 +30,7 @@ interface EvalSummary {
 }
 
 const CATEGORY_OPTIONS: Array<{ value: EvalCategory; label: string }> = [
-  { value: "all", label: "All categories (13 rules)" },
+  { value: "all", label: "All categories" },
   { value: "safety", label: "Safety only (4 rules)" },
   { value: "relevance", label: "Relevance only (3 rules)" },
   { value: "completeness", label: "Completeness only (4 rules)" },
@@ -96,7 +96,7 @@ export function LivePlayground(): React.ReactElement {
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-text-secondary">
           Runs the same Iris rule library that ships in the npm package — server-side,
-          no install, instant. 13 rules across safety, relevance, completeness, and cost.
+          no install, instant. 15 rules across safety, relevance, completeness, and cost — the two that read an agent’s tool calls skip here, because this page takes text only.
         </p>
       </div>
 

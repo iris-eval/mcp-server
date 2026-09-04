@@ -4,9 +4,15 @@
 // No API calls. Everything the playground needs lives here.
 // ---------------------------------------------------------------------------
 
-// ---- Rule definitions (the 13 built-in Iris eval rules) ------------------
+// ---- Rule definitions (the rules this static demo scores) ----------------
 // Names mirror src/eval/rules exactly — the playground must never show a
-// rule the product doesn't ship.
+// rule the product doesn't ship. The two trajectory rules
+// (no_silent_tool_failure, no_tool_loop) are deliberately absent: they read
+// an agent's tool calls, these canned scenarios carry none, and the server
+// SKIPS them without a trajectory. Listing them here would show two rules
+// passing on data that was never supplied — which is the exact claim those
+// rules exist to catch. The LIVE playground runs the real vendored library
+// and shows both, skipped and labelled.
 
 export interface RuleResult {
   name: string;

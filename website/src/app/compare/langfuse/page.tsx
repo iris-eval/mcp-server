@@ -85,7 +85,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", langfuse: "SDK imports + @observe decorators", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", langfuse: "PostgreSQL + ClickHouse + Redis + S3 + 2 containers", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", langfuse: "Async SDK tracing in your process", irisWin: true },
-  { feature: "Eval rules", iris: "13 built-in heuristic rules + 4 custom-rule types (<1ms)", langfuse: "LLM-as-Judge (powerful but slow / costly)", irisWin: false },
+  { feature: "Eval rules", iris: "15 built-in heuristic rules + 4 custom-rule types (<1ms)", langfuse: "LLM-as-Judge (powerful but slow / costly)", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", langfuse: "Token / cost per user, session, model", irisWin: false },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langfuse: "Hosted MCP server: create scores, evaluators and evaluation rules; query observations and datasets" },
   { feature: "License", iris: "MIT (fully permissive)", langfuse: "MIT core + commercial enterprise modules", irisWin: true },

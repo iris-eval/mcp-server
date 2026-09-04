@@ -6,7 +6,7 @@ import { LivePlayground } from "../../../components/playground/live-playground";
 export const metadata: Metadata = {
   title: "Iris Live Playground — Run real eval rules against your output",
   description:
-    "Paste any agent output, pick an eval category, and see the real Iris rule library score it in your browser. 13 rules, instant results, no signup.",
+    "Paste any agent output, pick an eval category, and see the real Iris rule library score it in your browser. Instant results, no signup.",
   alternates: { canonical: "https://iris-eval.com/playground/live" },
   openGraph: {
     title: "Iris Live Playground — Run real eval rules against your output",

@@ -11,6 +11,8 @@ relatedPosts: [how-to-evaluate-agent-output-without-llm, iris-v0-4-release-notes
 
 > **Editor's note (2026-07):** Updated to reflect the current rule library — Iris ships **13** built-in rules (v0.3.1 added `no_stub_output`, making Safety a four-rule category), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.
 >
+> **Editor's note (2026-09):** Iris now ships **15** built-in rules. The trajectory release added `no_silent_tool_failure` (safety) and `no_tool_loop` (cost), which read the agent's `tool_calls` rather than its text — the first rules here that judge what an agent DID. The category lists below are also corrected: `no_hallucination_markers` moved from relevance to safety in v0.5.0 when its context-grounded rewrite made it a content-safety check, and this post still listed it under relevance.
+>
 > **Editor's note (2026-08):** Pattern counts and two completeness defaults refreshed for v0.5.0. `no_pii` now runs **19** patterns and `no_injection_patterns` **37** — both were measured against a labeled corpus and rebuilt, so the earlier 10/13 figures understate coverage by a wide margin. `min_output_length` defaults to 50 characters and `sentence_count` to 2 sentences (both configurable via `config.eval.ruleThresholds`); this post previously quoted the pre-0.4 defaults of 10 and 1.
 
 # Heuristic vs Semantic Eval: When <1ms Matters More Than LLM-as-Judge
@@ -103,9 +105,9 @@ The 20% (semantic): factual accuracy against source documents, nuanced quality s
 
 Iris implements both sides today: the heuristic rules below run on every evaluation, and LLM-as-Judge (shipped in v0.4 as `evaluate_with_llm_judge`) slots in alongside them as a complementary layer -- not a replacement.
 
-## The 13 Built-in Rules
+## The 15 Built-in Rules
 
-Iris ships with 13 heuristic eval rules across 4 categories. Here is what each category covers and why it does not need an LLM.
+Iris ships with 15 heuristic eval rules across 4 categories. Here is what each category covers and why it does not need an LLM.
 
 ### Completeness (4 rules)
 
@@ -116,25 +118,27 @@ Iris ships with 13 heuristic eval rules across 4 categories. Here is what each c
 
 These are structural checks. An empty response is not a nuance problem. It is a boolean.
 
-### Relevance (3 rules)
+### Relevance (2 rules)
 
 - **keyword_overlap** -- Measures word overlap between input and output. If you asked about "password reset" and the response is about "billing," that is detectable without an LLM. Weight: 1.
-- **no_hallucination_markers** -- Cross-checks the output's specific claims (attributed numbers, quotes, section citations, table bindings, dates, times, statuses) against the provided input; stays silent without input rather than guess. Deterministic string comparison, no LLM. Weight: 1.
 - **topic_consistency** -- Measures whether output words relate to input words. A coarse but fast check for topic drift. Weight: 1.
 
-### Safety (4 rules)
+### Safety (6 rules)
 
 - **no_pii** -- 19 regex patterns: SSN (`\d{3}-\d{2}-\d{4}`), credit card, phone, email, IBAN, passport, date-of-birth, medical record number, IP address, and the vendor-credential family (AWS, Slack, GitHub, Google, npm, SendGrid, DigitalOcean keys, PEM private keys, wallet seed phrases). Documentation placeholders are suppressed per match. Weight: 2.
 - **no_blocklist_words** -- Configurable phrase blocklist. Default includes harmful content patterns. Weight: 2.
 - **no_injection_patterns** -- 37 regex patterns matching prompt-injection attempts, in two tiers: a phrase tier (13) and 24 structural detectors (directives hidden in HTML comments, forged `system:` lines, smuggled JSON directive keys), matched after obfuscation normalization. Weight: 2.
-- **no_stub_output** -- Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, [INSERT) that mean the agent shipped scaffolding instead of an answer. Weight: 2.
+- **no_stub_output** -- Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, [INSERT) that mean the agent shipped scaffolding instead of an answer. Weight: 1.5.
+- **no_hallucination_markers** -- Cross-checks the output's specific claims (attributed numbers, quotes, section citations, table bindings, dates, times, statuses) against the provided input; stays silent without input rather than guess. Deterministic string comparison, no LLM. Weight: 1.
+- **no_silent_tool_failure** -- Reads the agent's `tool_calls`. Fails when one of them errored and the answer never says so — an answer built on a tool that returned nothing is a fabrication, whatever it reads like. Skips when no tool calls are supplied, rather than passing on data it was never shown. Weight: 1.5.
 
 Safety rules have the highest weights because a safety failure matters more than a completeness failure.
 
-### Cost (2 rules)
+### Cost (3 rules)
 
 - **cost_under_threshold** -- Total trace cost must be under a configurable USD threshold (default: $0.10). Weight: 1.
 - **token_efficiency** -- Completion-to-prompt token ratio must be under a configurable maximum (default: 5x). Catches cases where the agent generates disproportionately long responses. Weight: 0.5.
+- **no_tool_loop** -- Reads the agent's `tool_calls`. Fails when one call is repeated with the same input more than three times, or two calls alternate for more than two cycles. This is the waste a USD threshold cannot see: five identical directory listings still bill under ten cents. Weight: 1.
 
 ### Running an evaluation
 
@@ -173,7 +177,7 @@ If you can express the check as a pattern, a threshold, or a string comparison, 
 
 The question of how to standardize these evaluation interfaces across the ecosystem is one we explore in [Toward an MCP Observability Specification](/blog/toward-an-mcp-observability-specification).
 
-Iris is open-source and MIT licensed. The 13 built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
+Iris is open-source and MIT licensed. The 15 built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
 
 ```bash
 npx @iris-eval/mcp-server --dashboard
