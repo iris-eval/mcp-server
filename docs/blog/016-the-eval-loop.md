@@ -13,7 +13,7 @@ devto_tags: [ai, testing, agenteval, programming]
 
 # The Eval Loop: Why Evals Are the Loss Function for Agent Quality
 
-> **Editor's note (2026-08):** rule count updated — Iris ships 13 built-in rules; v0.3.1 added `no_stub_output`. The post originally said 12.
+> **Editor's note (2026-09):** rule count updated — Iris ships 15 built-in rules. v0.3.1 added `no_stub_output`; the trajectory release added `no_silent_tool_failure` and `no_tool_loop`, which read the agent's tool calls rather than its text. The post originally said 12.
 
 If you've trained a model, you know the loss function. You feed data in, measure how wrong the output is, adjust the weights, and measure again. The model never "passes" the loss function and graduates. The loss function runs on every batch, forever, because the goal is not to pass — it's to converge.
 

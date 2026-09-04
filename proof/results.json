@@ -1,7 +1,7 @@
 {
-  "commit": "5fc6cda",
-  "corpusVersion": "81bf5c888edd",
-  "generatedAt": "2026-09-04T14:20:20.320Z",
+  "commit": "e4cf6bf",
+  "corpusVersion": "1251d242916c",
+  "generatedAt": "2026-09-04T15:14:51.889Z",
   "humanAgreement": {
     "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -333,6 +333,35 @@
       "tp": 34
     },
     {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.8667,
+          1
+        ],
+        "precision": [
+          0.7719,
+          1
+        ],
+        "recall": [
+          0.6853,
+          0.9873
+        ]
+      },
+      "f1": 0.963,
+      "fn": 1,
+      "fp": 0,
+      "n": 30,
+      "name": "no_silent_tool_failure",
+      "negatives": 16,
+      "positives": 14,
+      "precision": 1,
+      "recall": 0.9286,
+      "skipped": 0,
+      "tn": 16,
+      "tp": 13
+    },
+    {
       "category": "cost",
       "ci95": {
         "f1": [
@@ -389,6 +418,35 @@
       "skipped": 1,
       "tn": 16,
       "tp": 9
+    },
+    {
+      "category": "cost",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7575,
+          1
+        ],
+        "recall": [
+          0.7575,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 28,
+      "name": "no_tool_loop",
+      "negatives": 16,
+      "positives": 12,
+      "precision": 1,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 16,
+      "tp": 12
     }
   ],
   "schemaVersion": 1,

@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-04T14:20:20.320Z for v0.7.0 (local generating commit `5fc6cda` — branch commits are squashed on merge, so cite the version).
-Corpus version `81bf5c888edd` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-04T15:14:51.889Z for v0.7.0 (local generating commit `e4cf6bf` — branch commits are squashed on merge, so cite the version).
+Corpus version `1251d242916c` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1. A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -18,8 +18,10 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] |
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] |
 | `no_hallucination_markers` | safety | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] |
+| `no_silent_tool_failure` | safety | 30 | 14 | 0 | 13 | 0 | 1 | 16 | 100.0% [77.2, 100.0] | 92.9% [68.5, 98.7] | 0.963 [86.7, 100.0] |
 | `cost_under_threshold` | cost | 26 | 10 | 2 | 10 | 0 | 0 | 16 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] |
 | `token_efficiency` | cost | 25 | 9 | 1 | 9 | 0 | 0 | 16 | 100.0% [70.1, 100.0] | 100.0% [70.1, 100.0] | 1.000 [100.0, 100.0] |
+| `no_tool_loop` | cost | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] |
 
 ## Misses, by case id
 
@@ -36,7 +38,9 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_injection_patterns` — FP: none · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
+- `no_silent_tool_failure` — FP: none · FN: silent-012
 - `cost_under_threshold` — FP: none · FN: none
 - `token_efficiency` — FP: none · FN: none
+- `no_tool_loop` — FP: none · FN: none
 
 Human agreement: pending (founder blind label of a 40-case stratified sample).

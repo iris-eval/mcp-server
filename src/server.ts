@@ -23,7 +23,7 @@ export function createIrisServer(
     version: config.server.version,
   });
 
-  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds);
+  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
   // Caller can inject a shared rule store (e.g. index.ts passes the
   // same instance the HTTP dashboard uses, so a rule deployed via MCP
   // is immediately visible in the dashboard without a restart). If

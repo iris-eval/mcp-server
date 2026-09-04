@@ -4,11 +4,11 @@ import type { IStorageAdapter } from '../../types/query.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
-import { rulesByType } from '../../eval/rules/index.js';
+import { builtInRuleRoster, type BuiltInRuleMeta } from '../../eval/criticality.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import type { TenantId } from '../../types/tenant.js';
 import type { RulePreviewResult } from '../../types/custom-rule.js';
-import type { CustomRuleDefinition, EvalType } from '../../types/eval.js';
+import type { CustomRuleDefinition } from '../../types/eval.js';
 import { DuplicateRuleNameError, replacedRulesWarning, retireSameNamedRules } from '../../tools/deploy-rule.js';
 import { strictBody } from '../validation.js';
 
@@ -96,29 +96,15 @@ interface RoutesOptions {
   evalEngine: EvalEngine;
 }
 
-/** Built-in rule metadata as the dashboard sees it — derived from the engine, never restated. */
-export interface BuiltInRuleMeta {
-  name: string;
-  category: EvalType;
-  description: string;
-  weight: number;
-  critical: boolean;
-}
+export type { BuiltInRuleMeta };
 
-export function listBuiltInRules(): BuiltInRuleMeta[] {
-  const out: BuiltInRuleMeta[] = [];
-  for (const [category, rules] of Object.entries(rulesByType) as Array<[EvalType, typeof rulesByType.safety]>) {
-    for (const rule of rules) {
-      out.push({
-        name: rule.name,
-        category,
-        description: rule.description,
-        weight: rule.weight,
-        critical: rule.critical === true,
-      });
-    }
-  }
-  return out;
+/**
+ * The roster as the dashboard asks for it. Passing the engine is what makes
+ * `critical` the value this server will actually apply; omitting it returns
+ * the rules' own declarations, reported as source 'default'.
+ */
+export function listBuiltInRules(engine?: EvalEngine): BuiltInRuleMeta[] {
+  return builtInRuleRoster(engine ? (rule) => engine.effectiveCriticality(rule) : undefined);
 }
 
 export function registerRuleRoutes(
@@ -146,7 +132,7 @@ export function registerRuleRoutes(
    * are process-global.
    */
   router.get('/rules/builtin', (_req, res) => {
-    res.json({ rules: listBuiltInRules() });
+    res.json({ rules: listBuiltInRules(opts.evalEngine) });
   });
 
   router.get('/rules/custom', (req, res) => {

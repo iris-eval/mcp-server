@@ -292,7 +292,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     storage = createStorage(config);
     await storage.initialize();
     // One engine for all three evals, exactly as createIrisServer builds it.
-    evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds);
+    evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
     return config.storage.path;
   });
 

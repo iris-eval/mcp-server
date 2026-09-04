@@ -46,7 +46,21 @@ export const defaultConfig: IrisConfig = {
       topic_consistency: 0.33,
       cost_threshold: 0.10,
       max_token_ratio: 5,
+      // Identical tool calls tolerated before no_tool_loop fires. Three
+      // allows a legitimate retry-with-backoff; the fourth is a loop.
+      max_tool_repeats: 3,
     },
+    /*
+     * Which built-in rules veto is a deployment's call, and the shipped
+     * answer is "the three the rules themselves declare" — no_pii,
+     * no_injection_patterns, no_blocklist_words. Both lists start empty so
+     * the default behaviour is exactly the rules' own declarations; a
+     * config.json that sets either one REPLACES the empty list (arrays are
+     * not deep-merged). See src/eval/criticality.ts for why this is
+     * configurable at all, and /proof for the error rates to decide with.
+     */
+    criticalRules: [],
+    nonCriticalRules: [],
   },
   logging: {
     level: 'info',

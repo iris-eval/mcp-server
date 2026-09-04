@@ -226,7 +226,9 @@ describe('tool contracts (MCP surface)', () => {
       expect(Object.keys(body.categories)).toEqual(['completeness', 'relevance', 'safety', 'cost']);
       expect(body.categories.safety).toMatchObject({ passed: false, critical_failures: ['no_pii'] });
       expect(body.categories.completeness).toMatchObject({ passed: true });
-      expect(body.categories.cost).toMatchObject({ rules_evaluated: 1, rules_skipped: 1 });
+      // cost_usd is given, token_usage and tool_calls are not: cost_under_threshold
+      // runs, token_efficiency and no_tool_loop skip.
+      expect(body.categories.cost).toMatchObject({ rules_evaluated: 1, rules_skipped: 2 });
       const pii = body.rule_results.find((x: { ruleName: string }) => x.ruleName === 'no_pii');
       expect(pii.category).toBe('safety');
       expect(body.note).toBeUndefined();
@@ -249,9 +251,10 @@ describe('tool contracts (MCP surface)', () => {
     });
 
     it('a bundle with nothing to judge is passed:null / score:null, and never counts toward the verdict (#406)', async () => {
-      // No cost_usd, no token_usage → every cost rule skips; no input →
-      // every relevance rule skips. Before: `categories.cost` read
-      // passed:false, score:0 beside insufficient_data:true — "failing".
+      // No cost_usd, no token_usage, no tool_calls → every cost rule skips;
+      // no input → every relevance rule skips. Before: `categories.cost`
+      // read passed:false, score:0 beside insufficient_data:true —
+      // "failing".
       const body = parse(
         await client.callTool({ name: 'evaluate_output', arguments: { output: CLEAN_OUTPUT, eval_type: 'all' } }),
       );
@@ -259,7 +262,7 @@ describe('tool contracts (MCP surface)', () => {
         score: null,
         passed: null,
         rules_evaluated: 0,
-        rules_skipped: 2,
+        rules_skipped: 3,
         insufficient_data: true,
       });
       expect(body.categories.relevance).toMatchObject({ passed: null, score: null, insufficient_data: true });

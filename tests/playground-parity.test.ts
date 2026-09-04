@@ -26,7 +26,8 @@
  *      server edit to a shared block fails here until it is carried over.
  *      The DOB pattern keeps its byte-for-byte pin from the drift test this
  *      file absorbs (tests/playground-pii-dob.test.ts).
- *   3. SHAPE — the same thirteen rule names per category, and the vendored
+ *   3. SHAPE — the same rule names per category as the server registry,
+ *      and the vendored
  *      thresholds equal to src/config/defaults.ts.
  *
  * Read a failure here as "the playground now judges an output differently
@@ -62,6 +63,7 @@ const FIXTURES = resolve(ROOT, 'tests', 'fixtures', 'real-transcripts');
 const VENDORED_FILE = 'website/src/lib/eval/rules.ts';
 const SERVER_SAFETY_FILE = 'src/eval/rules/safety.ts';
 const SERVER_RELEVANCE_FILE = 'src/eval/rules/relevance.ts';
+const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
 
 const CATEGORIES: EvalCategory[] = ['safety', 'relevance', 'completeness', 'cost'];
 const RULE_NAMES = CATEGORIES.flatMap((category) => rulesByType[category].map((rule) => rule.name));
@@ -379,6 +381,35 @@ const SHARED_SAFETY_BLOCKS = [
 
 const SHARED_RELEVANCE_BLOCKS = ['STOPWORDS', 'stemTerm', 'FENCED_CODE', 'CAMEL_BOUNDARY', 'WORD', 'contentTerms', 'LIST_ITEM', 'SENTENCE_BREAK'];
 
+/*
+ * The trajectory vocabulary — the definitions no_silent_tool_failure and
+ * no_tool_loop are judged by, and the ones the proof families were labelled
+ * against. The playground cannot collect tool calls today, so these rules
+ * always skip there; pinning the source anyway is what stops the two
+ * libraries from drifting before it can.
+ */
+const SHARED_TRAJECTORY_BLOCKS = [
+  'OUTPUT_SCAN_CHARS',
+  'ACK_SCAN_CHARS',
+  'INPUT_KEY_CHARS',
+  'ERROR_LINE_PREFIXES',
+  'ERROR_LINE_PHRASES',
+  'ERROR_OBJECT_KEYS',
+  'ACKNOWLEDGEMENT_PHRASES',
+  'firstNonEmptyLine',
+  'firstNonEmptyLineFolded',
+  'headTokenIsThrowable',
+  'stringOutputLooksFailed',
+  'objectOutputLooksFailed',
+  'isFailedCall',
+  'failureReason',
+  'acknowledgesFailure',
+  'stableStringify',
+  'normaliseInput',
+  'describeInput',
+  'truncate',
+];
+
 describe('playground parity — shared source blocks are identical (comments and whitespace aside)', () => {
   const vendored = source(VENDORED_FILE);
   const safety = source(SERVER_SAFETY_FILE);
@@ -391,6 +422,12 @@ describe('playground parity — shared source blocks are identical (comments and
   for (const name of SHARED_RELEVANCE_BLOCKS) {
     it(`${name} (relevance.ts)`, () => {
       expect(normalize(block(vendored, name, VENDORED_FILE))).toBe(normalize(block(relevance, name, SERVER_RELEVANCE_FILE)));
+    });
+  }
+  const trajectory = source(SERVER_TRAJECTORY_FILE);
+  for (const name of SHARED_TRAJECTORY_BLOCKS) {
+    it(`${name} (trajectory.ts)`, () => {
+      expect(normalize(block(vendored, name, VENDORED_FILE))).toBe(normalize(block(trajectory, name, SERVER_TRAJECTORY_FILE)));
     });
   }
 });
@@ -459,7 +496,7 @@ describe('playground parity — the relevance tokenizer', () => {
 /* ── 3. Shape ────────────────────────────────────────────────────── */
 
 describe('playground parity — shape', () => {
-  it('runs the same thirteen rules, per category', () => {
+  it('runs the same rules as the server registry, per category', () => {
     expect(VENDORED_RULE_COUNT).toBe(RULE_NAMES.length);
     for (const category of CATEGORIES) {
       const vendored = evaluateOutput({ output: 'x' }, category).ruleResults.map((r) => r.ruleName).sort();

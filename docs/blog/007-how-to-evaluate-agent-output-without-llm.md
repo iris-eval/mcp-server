@@ -136,7 +136,7 @@ No LLM call. No latency spike. And two details worth noticing. The eval caught a
 
 ## The Eval Categories
 
-Iris ships with 13 built-in eval rules across four categories. Each one is a deterministic check — regex, heuristics, or arithmetic. No LLM involved.
+Iris ships with 15 built-in eval rules across four categories. Each one is a deterministic check — regex, heuristics, or arithmetic. No LLM involved.
 
 ### Completeness
 

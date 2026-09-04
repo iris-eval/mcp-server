@@ -21,7 +21,7 @@ export function registerAllTools(
   registerLogTraceTool(server, storage);
   registerEvaluateOutputTool(server, storage, evalEngine);
   registerGetTracesTool(server, storage);
-  registerListRulesTool(server, customRuleStore);
+  registerListRulesTool(server, customRuleStore, evalEngine);
   registerDeployRuleTool(server, customRuleStore, evalEngine);
   registerDeleteRuleTool(server, customRuleStore, evalEngine);
   registerDeleteTraceTool(server, storage);

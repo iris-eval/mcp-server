@@ -4,15 +4,33 @@ import type { IStorageAdapter } from '../types/query.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { bestEffortExport } from '../otel/lazy.js';
-import { strictInput } from './strict-input.js';
+import { strictInput, strictNested } from './strict-input.js';
 
-const ToolCallSchema = z.object({
-  tool_name: z.string(),
-  input: z.unknown().optional(),
-  output: z.unknown().optional(),
-  latency_ms: z.number().optional(),
-  error: z.string().optional(),
-});
+/*
+ * The tool-call record — one entry of `tool_calls[]`.
+ *
+ * Exported because it is now read on THREE paths, not one: log_trace and
+ * the HTTP ingest capture it, and evaluate_output accepts it directly so
+ * the trajectory rules (no_silent_tool_failure, no_tool_loop) can judge
+ * what the agent DID. All three must agree on the field names, so they all
+ * derive from this one schema rather than restating it.
+ *
+ * Strict for the same reason custom_rules entries are (#376): a dropped
+ * key here is silent AND load-bearing. `{ tool_name, output, err: "..." }`
+ * used to parse with `err` discarded, and a trajectory rule reading
+ * `error` would then score a failed call as a clean one — the exact
+ * failure mode the rules exist to catch, reintroduced by a typo.
+ */
+export const toolCallSchema = strictNested(
+  {
+    tool_name: z.string(),
+    input: z.unknown().optional(),
+    output: z.unknown().optional(),
+    latency_ms: z.number().optional(),
+    error: z.string().optional(),
+  },
+  'a tool_calls entry',
+);
 
 const SpanSchema = z.object({
   span_id: z.string().optional(),
@@ -49,7 +67,7 @@ export const logTraceInputShape = {
   framework: z.string().optional().describe('Agent framework identifier (e.g., langchain, autogen, custom)'),
   input: z.string().optional().describe('Agent input text — the user prompt or upstream input that produced this output'),
   output: z.string().optional().describe('Agent output text — what the agent produced (pass to evaluate_output for scoring)'),
-  tool_calls: z.array(ToolCallSchema).optional().describe('Tool calls made during execution (per-call latency, errors, input/output)'),
+  tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made during execution (per-call latency, errors, input/output)'),
   latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
   token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
   cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),

@@ -95,6 +95,12 @@ export function registerTraceRoutes(
         input: body.input,
         costUsd: body.cost_usd,
         tokenUsage: body.token_usage,
+        // The trajectory the SAME request just stored. This body already
+        // carries what the agent did; not forwarding it made every
+        // trajectory rule skip on the one path where the data was
+        // guaranteed present — an ingest that captured a failed tool call
+        // and then evaluated as though it had never been told.
+        toolCalls: body.tool_calls,
       };
       // An omitted eval_type runs every bundle — the same default, from the
       // same constant, as the MCP tool — and says so in the response.

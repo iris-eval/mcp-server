@@ -515,7 +515,7 @@ async function runDemo(): Promise<void> {
     pathFor: () => demoCustomRulesPath(),
     auditPath: demoAuditLogPath(),
   });
-  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds);
+  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
     evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }

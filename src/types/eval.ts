@@ -1,3 +1,5 @@
+import type { ToolCallRecord } from './trace.js';
+
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
 /**
@@ -33,7 +35,19 @@ export interface EvalContext {
   output: string;
   expected?: string;
   input?: string;
-  toolCalls?: Array<{ tool_name: string; input?: unknown; output?: unknown }>;
+  /**
+   * The agent's trajectory — what it actually DID, in call order.
+   *
+   * Deliberately the SAME record the capture path stores (ToolCallRecord =
+   * log_trace's `tool_calls[]`), not a narrower local shape. It used to be
+   * a three-field inline type without `error`, so a rule could see that a
+   * tool was called but never that it FAILED: the acceptance pass found
+   * three real transcripts that answered confidently after a grep exited 1,
+   * an ls hit a missing directory and a node -e threw, and no rule could
+   * reach the fact. Re-declaring a subset here would reintroduce exactly
+   * that gap the next time a field is added to the capture shape.
+   */
+  toolCalls?: ToolCallRecord[];
   tokenUsage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   costUsd?: number;
   metadata?: Record<string, unknown>;
@@ -65,6 +79,22 @@ export interface EvalRuleResult {
    * regroup them.
    */
   category?: EvalType;
+  /**
+   * Whether this rule VETOES the verdict — its EFFECTIVE criticality, after
+   * `eval.criticalRules` / `eval.nonCriticalRules` are applied, not the
+   * value on the rule's definition. A reader holding a failed evaluation
+   * could otherwise not tell a hard violation from a low score without
+   * knowing the rule library by heart.
+   */
+  critical?: boolean;
+  /**
+   * Who decided that: 'default' is the rule's own declaration (for a
+   * deployed custom rule, the severity it was deployed with); 'config' means
+   * one of the two override lists named it. The distinction is the point of
+   * making criticality configurable — an operator reading a verdict must be
+   * able to see that their own promotion caused it.
+   */
+  criticalSource?: 'default' | 'config';
   passed: boolean;
   score: number;
   message: string;
