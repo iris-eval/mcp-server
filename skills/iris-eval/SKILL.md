@@ -16,7 +16,7 @@ deterministic rules, optional LLM-as-judge (BYOK). No SDK. No code changes.
 ## When to Use
 
 - An agent returned output and you want to verify its quality
-- You need to check agent responses for PII leaks (19 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
+- You need to check agent responses for PII leaks (19 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, public IP address (loopback, private and documentation ranges are ignored), API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
 - You want to track per-execution costs and flag expensive runs
 - You need to compare agent quality across different prompts or models
 - You want automated eval rules running on every agent execution
