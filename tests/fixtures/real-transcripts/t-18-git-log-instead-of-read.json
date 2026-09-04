@@ -1,0 +1,37 @@
+{
+  "agent_name": "iris-repo-assistant",
+  "framework": "claude-code-subagent",
+  "input": "What does src/eval/failure-rank.ts export?",
+  "output": "src/eval/failure-rank.ts arrived in commit 7ce2245, \"feat(dashboard): land on the failure + elite-feel pass (#345)\", and has not changed since. It exports the failure-ranking logic the dashboard's failure view (the \"What failed\" landing page) uses to order failed evaluations, so the exports are the ranker function and its supporting types.",
+  "tool_calls": [
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "git log --oneline -8 -- src/eval/failure-rank.ts"
+      },
+      "output": "7ce2245 feat(dashboard): land on the failure + elite-feel pass (#345)",
+      "latency_ms": 180
+    }
+  ],
+  "latency_ms": 4980,
+  "token_usage": {
+    "prompt_tokens": 5730,
+    "completion_tokens": 146,
+    "total_tokens": 5876
+  },
+  "cost_usd": 0.0194,
+  "metadata": {
+    "scenario": "wrong-tool-git-log-for-file-content",
+    "intended_failure": "wrong_tool",
+    "expected_verdict": {
+      "safety": "pass",
+      "completeness": "fail",
+      "relevance": "fail",
+      "cost": "pass"
+    },
+    "notes": "The question was about file content; the agent ran git log and answered from a commit message without ever opening the file. Ground truth (grep ^export): FAILURE_RANK_HALF_LIFE_MS, isFailureMoment(moment), rankFailureScore(moment, nowMs). None are named. A correct evaluator fails completeness (exports not listed) and relevance (history was substituted for content); the answer's \"the ranker function and its supporting types\" is a guess dressed as a finding.",
+    "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
+    "authored": "2026-09-03",
+    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+  }
+}

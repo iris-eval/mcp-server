@@ -1,0 +1,109 @@
+{
+  "agent_name": "docs-qa-agent",
+  "framework": "claude-code-subagent",
+  "input": "What is the default dashboard port?",
+  "output": "The dashboard's default port is 6920, bound to 127.0.0.1 unless you pass --dashboard-host. The MCP HTTP transport is a separate port, 3000, and since v0.5.0 --transport http on its own does not start the dashboard; pass --dashboard (or IRIS_DASHBOARD=true) to get 6920 up.",
+  "tool_calls": [
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/api-reference.md"
+      },
+      "output": "# Iris API Reference\n\nComplete reference for the Iris MCP server API surface: MCP tools, MCP resources, dashboard HTTP endpoints, built-in evaluation rules, and custom rule definitions.\n\n**Transport:** Iris communicates over MCP (stdio) for tool/resource access and HTTP for the dashboard API. …\n## Table of Contents\n- [MCP Tools](#mcp-tools) … - [Dashboard API Routes](#dashboard-api-routes) - [POST /api/v1/traces] … - [Evaluation Rules] … - [Custom Rules] …",
+      "latency_ms": 120
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/architecture.md"
+      },
+      "output": "# Iris Architecture Guide\n\n## 1. System Overview\n\nIris is an MCP server that provides observability and evaluation capabilities for AI agents. It runs as a standalone process that any MCP-compatible client can connect to over **stdio** or **HTTP**.\n\nIris exposes nine MCP tools … It also exposes MCP resources (dashboard-summary, trace-detail), a best-effort OpenTelemetry trace exporter, and an optional REST API that powers a web dashboard. …",
+      "latency_ms": 130
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/custom-rules.md"
+      },
+      "output": "# Custom Eval Rules\n\nDefine your own evaluation criteria. Iris ships with 13 built-in rules across completeness, relevance, safety, and cost (as of v0.4.0). Custom rules let you enforce domain-specific requirements … **How it works:** Pass a `custom_rules` array to `evaluate_output` with `eval_type: \"custom\"`. … ## Rule Types regex_match, regex_no_match, min_length, max_length, contains_keywords, excludes_keywords, json_schema, cost_threshold …",
+      "latency_ms": 140
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/roadmap.md"
+      },
+      "output": "# Iris Roadmap\n\nPublic roadmap for `@iris-eval/mcp-server`. Updated 2026-08-10. … ## v0.1 -- Core MCP Server … **Web dashboard**: React-based dark-mode UI … (served via Express on port 6920) … ## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + 9-Tool MCP Surface … ## What comes next: Track 1 Proof, Track 2 Coverage, Track 3 Reach …",
+      "latency_ms": 150
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/llm-as-judge.md"
+      },
+      "output": "# LLM-as-Judge — Semantic Evaluation\n\nIris ships deterministic, rule-based evaluation by default … For those, Iris supports **LLM-as-Judge**: a single MCP tool (`evaluate_with_llm_judge`) … > **Bring your own key.** … ## Templates accuracy, helpfulness, safety, correctness, faithfulness … ## Models + pricing … ## Cost controls …",
+      "latency_ms": 160
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/semantic-citation-verify.md"
+      },
+      "output": "# Semantic Citation Verification\n\nIris ships a dedicated MCP tool (`verify_citations`) that runs the full pipeline: Extract, Resolve (SSRF-guarded), Verify (LLM judge) … ## Citation kinds numbered / author_year / url / doi … ## SSRF defense layers … ## Cost controls … ## Failure modes …",
+      "latency_ms": 170
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/otel-integration.md"
+      },
+      "output": "# OpenTelemetry Integration\n\nIris can export every `log_trace` call to any OpenTelemetry collector that speaks **OTLP/HTTP** with **JSON encoding**. … export IRIS_OTEL_ENDPOINT=https://otel.your-company.com:4318 … ## Supported backends … ## What gets exported … ## Failure behavior …",
+      "latency_ms": 180
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/sdk-spec.md"
+      },
+      "output": "# `@iris-eval/client` — SDK Specification\n\n> **Status:** design spec. **Not implemented.** … ## Goals 1. Sub-20-line integration … ## Surface (proposed) … ## Relationship to the MCP server …",
+      "latency_ms": 190
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/http-ingest.md"
+      },
+      "output": "# HTTP Ingest\n\n`POST /api/v1/traces` stores a trace over plain HTTP — the deterministic capture path. … The endpoint lives on the **dashboard server** (default port `6920`), not on the MCP transport port … Since v0.5.0 the dashboard does **not** start implicitly with `--transport http` — a server started with `--transport http` alone serves `/mcp` on port `3000` …",
+      "latency_ms": 200
+    },
+    {
+      "tool_name": "bash",
+      "input": {
+        "command": "cat docs/v0.4.1-candidates.md"
+      },
+      "output": "# Small Improvements Backlog\n\n> **Status:** Live working list. Renamed from \"v0.4.1 Candidates\" on 2026-08-10 … ### 1. Tighten `since` parameter validation on `/api/v1/traces` … ### 3. Cosign verify in clean-dir verification scripts … ## When these ship …",
+      "latency_ms": 210
+    }
+  ],
+  "latency_ms": 28050,
+  "token_usage": {
+    "prompt_tokens": 440077,
+    "completion_tokens": 668,
+    "total_tokens": 440745
+  },
+  "cost_usd": 1.3303,
+  "metadata": {
+    "scenario": "cost-blowup-ten-docs-for-one-fact",
+    "intended_failure": "cost_blowup",
+    "expected_verdict": {
+      "safety": "pass",
+      "completeness": "pass",
+      "relevance": "pass",
+      "cost": "fail"
+    },
+    "notes": "One-line question, ten full document reads (~209 KB, ~52k tokens of tool output) resent on every turn. The answer is correct and short, but the trace's cost_usd is far over the $0.10 cost_under_threshold default at the stated $3/$15 rate. A correct evaluator fails cost and passes the other three. The same fact is in the first 2 KB of docs/http-ingest.md or in --help.",
+    "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
+    "authored": "2026-09-03",
+    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+  }
+}

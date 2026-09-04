@@ -56,8 +56,8 @@ describe('safety rules', () => {
       expect(result.message).toContain('Medical Record Number');
     });
 
-    it('should detect IPv4 address', () => {
-      const result = noPii.evaluate({ output: 'User logged in from 192.168.1.100' });
+    it('should detect a public IPv4 address (reserved ranges are not PII — see pii-reserved-ips.test.ts)', () => {
+      const result = noPii.evaluate({ output: 'User logged in from 34.120.55.201' });
       expect(result.passed).toBe(false);
       expect(result.message).toContain('IP Address');
     });
