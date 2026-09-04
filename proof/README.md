@@ -116,11 +116,25 @@ family that wrote the cases; no human has checked these labels. Specifically:
   a banned phrase; an on-topic answer that avoids the question's words). Those
   cases are boundaries on purpose: the misses they produce are the rule's
   documented limits, made visible.
-- Two documented thresholds differ from the shipped defaults on the day of
-  authoring: `docs/api-reference.md` states 20% for `keyword_overlap` and 5%
-  for `topic_consistency`; `src/eval/rules/relevance.ts` defaults to 0.35 and
-  0.10. Labels follow the documentation; cases inside the band say so in
-  their notes, and the false positives they produce are that gap.
+- The two relevance rules were redesigned the same day (#416, `9d9fd50`),
+  and their documented definitions changed with them: `keyword_overlap`
+  became recall of the input's *content terms* at 35% (stopwords and request
+  verbs excluded, identifiers split, inflections folded) instead of 20% of
+  all words, and `topic_consistency` became *continuity* — the share of the
+  output's content sentences that connect to the input, at one third —
+  instead of the share of output words found in the input. Both families
+  were re-labelled on 2026-09-04 against the new documented definitions by
+  an independent reading of them (its own stopword list, sentence splitting
+  and inflection folding, not the rule's), and each file's header names the
+  definition version it is labelled against. Cases undecidable from the
+  documentation alone were dropped rather than guessed: five real-transcript
+  cases in the keyword family (within seven points of the threshold) and,
+  in the topic family, four authored cases whose point was that a shared
+  word is not topical relevance — a distinction the new definition
+  explicitly does not make. The topic header spells out the two
+  consequences a reader should know: an off-target answer that reuses the
+  question's vocabulary connects, and an on-topic answer in fresh words does
+  not.
 
 Every family holds at least six cases derived from **real agent transcripts**:
 the input/output pairs (and, for the cost family, the token and dollar

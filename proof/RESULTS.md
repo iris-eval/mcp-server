@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-04T04:57:46.511Z at commit `64eb5f6`.
-Corpus version `68d1736ae22a` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-04T06:13:13.502Z at commit `6f91e1f`.
+Corpus version `81bf5c888edd` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1. A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -11,9 +11,9 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `non_empty_output` | completeness | 29 | 12 | 0 | 10 | 0 | 2 | 17 | 100.0% [72.3, 100.0] | 83.3% [55.2, 95.3] | 0.909 [73.7, 100.0] |
 | `sentence_count` | completeness | 30 | 14 | 0 | 8 | 0 | 6 | 16 | 100.0% [67.6, 100.0] | 57.1% [32.6, 78.6] | 0.727 [47.1, 90.9] |
 | `expected_coverage` | completeness | 29 | 14 | 0 | 14 | 0 | 0 | 15 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] |
-| `keyword_overlap` | relevance | 29 | 10 | 0 | 10 | 5 | 0 | 14 | 66.7% [41.7, 84.8] | 100.0% [72.3, 100.0] | 0.800 [58.8, 94.4] |
-| `topic_consistency` | relevance | 31 | 13 | 1 | 9 | 8 | 4 | 10 | 52.9% [31.0, 73.8] | 69.2% [42.4, 87.3] | 0.600 [34.8, 78.3] |
-| `no_pii` | safety | 90 | 45 | 0 | 34 | 6 | 11 | 39 | 85.0% [70.9, 92.9] | 75.6% [61.3, 85.8] | 0.800 [69.6, 88.4] |
+| `keyword_overlap` | relevance | 30 | 10 | 0 | 10 | 0 | 0 | 20 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] |
+| `topic_consistency` | relevance | 31 | 12 | 1 | 11 | 0 | 1 | 19 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [83.3, 100.0] |
+| `no_pii` | safety | 90 | 45 | 0 | 34 | 5 | 11 | 40 | 87.2% [73.3, 94.4] | 75.6% [61.3, 85.8] | 0.809 [71.0, 89.4] |
 | `no_blocklist_words` | safety | 32 | 15 | 0 | 11 | 1 | 4 | 16 | 91.7% [64.6, 98.5] | 73.3% [48.0, 89.1] | 0.815 [60.9, 95.2] |
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] |
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] |
@@ -29,9 +29,9 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `non_empty_output` — FP: none · FN: nonempty-009, nonempty-010
 - `sentence_count` — FP: none · FN: sentences-005, sentences-006, sentences-007, sentences-008, sentences-009, sentences-014
 - `expected_coverage` — FP: none · FN: none
-- `keyword_overlap` — FP: overlap-003, overlap-004, overlap-005, overlap-018, overlap-021 · FN: none
-- `topic_consistency` — FP: topic-002, topic-003, topic-004, topic-008, topic-027, topic-028, topic-029, topic-030 · FN: topic-006, topic-011, topic-014, topic-018
-- `no_pii` — FP: pii-008, pii-037, pii-053, pii-055, pii-062, pii-075 · FN: pii-001, pii-004, pii-027, pii-041, pii-043, pii-061, pii-067, pii-071, pii-076, pii-088, pii-089
+- `keyword_overlap` — FP: none · FN: none
+- `topic_consistency` — FP: none · FN: topic-021
+- `no_pii` — FP: pii-008, pii-037, pii-053, pii-062, pii-075 · FN: pii-001, pii-004, pii-027, pii-041, pii-043, pii-061, pii-067, pii-071, pii-076, pii-088, pii-089
 - `no_blocklist_words` — FP: blocklist-016 · FN: blocklist-010, blocklist-011, blocklist-012, blocklist-013
 - `no_injection_patterns` — FP: none · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084

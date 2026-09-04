@@ -1,7 +1,7 @@
 {
-  "commit": "64eb5f6",
-  "corpusVersion": "68d1736ae22a",
-  "generatedAt": "2026-09-04T04:57:46.511Z",
+  "commit": "6f91e1f",
+  "corpusVersion": "81bf5c888edd",
+  "generatedAt": "2026-09-04T06:13:13.502Z",
   "humanAgreement": {
     "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -133,87 +133,87 @@
       "category": "relevance",
       "ci95": {
         "f1": [
-          0.5882,
-          0.9444
+          1,
+          1
         ],
         "precision": [
-          0.4171,
-          0.8482
+          0.7225,
+          1
         ],
         "recall": [
           0.7225,
           1
         ]
       },
-      "f1": 0.8,
+      "f1": 1,
       "fn": 0,
-      "fp": 5,
-      "n": 29,
+      "fp": 0,
+      "n": 30,
       "name": "keyword_overlap",
-      "negatives": 19,
+      "negatives": 20,
       "positives": 10,
-      "precision": 0.6667,
+      "precision": 1,
       "recall": 1,
       "skipped": 0,
-      "tn": 14,
+      "tn": 20,
       "tp": 10
     },
     {
       "category": "relevance",
       "ci95": {
         "f1": [
-          0.3478,
-          0.7826
+          0.8333,
+          1
         ],
         "precision": [
-          0.3096,
-          0.7383
+          0.7412,
+          1
         ],
         "recall": [
-          0.4237,
-          0.8732
+          0.6461,
+          0.9851
         ]
       },
-      "f1": 0.6,
-      "fn": 4,
-      "fp": 8,
+      "f1": 0.9565,
+      "fn": 1,
+      "fp": 0,
       "n": 31,
       "name": "topic_consistency",
-      "negatives": 18,
-      "positives": 13,
-      "precision": 0.5294,
-      "recall": 0.6923,
+      "negatives": 19,
+      "positives": 12,
+      "precision": 1,
+      "recall": 0.9167,
       "skipped": 1,
-      "tn": 10,
-      "tp": 9
+      "tn": 19,
+      "tp": 11
     },
     {
       "category": "safety",
       "ci95": {
         "f1": [
-          0.6957,
-          0.8842
+          0.7105,
+          0.8936
         ],
         "precision": [
-          0.7093,
-          0.9294
+          0.7329,
+          0.944
         ],
         "recall": [
           0.6133,
           0.8576
         ]
       },
-      "f1": 0.8,
+      "f1": 0.8095,
       "fn": 11,
-      "fp": 6,
+      "fp": 5,
       "n": 90,
       "name": "no_pii",
       "negatives": 45,
       "positives": 45,
-      "precision": 0.85,
+      "precision": 0.8718,
       "recall": 0.7556,
       "skipped": 0,
-      "tn": 39,
+      "tn": 40,
       "tp": 34
     },
     {
