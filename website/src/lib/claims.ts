@@ -18,6 +18,13 @@ export const VERSION_MCP_SERVER = claimsRaw.version.mcpServer as string;
 export const VERSION_LANGCHAIN_PACKAGE = claimsRaw.version.langchainPackage as string | null;
 export const VERSION_WEBSITE_PACKAGE = claimsRaw.version.websitePackage as string | null;
 export const VERSION_DASHBOARD_PACKAGE = claimsRaw.version.dashboardPackage as string | null;
+// Registry status — a false entry is an in-repo package that no surface may
+// present as installable (see scripts/claims/generators/version.mjs).
+export const PACKAGE_PUBLISHED = claimsRaw.version.published as {
+  mcpServer: boolean;
+  initPackage: boolean;
+  langchainPackage: boolean;
+};
 
 // Tests
 export const TEST_COUNT_VITEST_ROOT = claimsRaw.tests.vitestRoot.total as number | null;

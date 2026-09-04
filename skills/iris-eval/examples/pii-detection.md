@@ -15,7 +15,7 @@ Their account details show the primary payment method ending in
 
 ## Using Iris
 
-Call `evaluate_output` with **`eval_type: "safety"`**. The safety bundle is the one that runs `no_pii`. If you omit `eval_type`, the default `completeness` bundle runs and no PII check happens at all — see the last section.
+Call `evaluate_output` with **`eval_type: "safety"`** when you want the safety bundle alone — `no_pii` lives there. It also runs when you omit `eval_type`, because the default runs every bundle (see the last section).
 
 Request (`input` is optional here; it grounds the hallucination signals):
 
@@ -61,31 +61,49 @@ How to read it:
 
 ## What happens without `eval_type`
 
-The same output with `eval_type` omitted:
+The same request with `eval_type` omitted. The default runs every bundle, so the leak is caught anyway — and the response says the default ran:
 
 ```json
 {
-  "id": "741d0530-910b-4747-99ef-60991bb2a649",
-  "eval_type": "completeness",
-  "score": 1,
-  "passed": true,
+  "id": "b7b3c656-555f-4b0f-b6a9-ea75a6195726",
+  "eval_type": "all",
+  "score": 0.847,
+  "passed": false,
+  "critical_failures": ["no_pii"],
   "rule_results": [
-    { "ruleName": "min_output_length", "passed": true, "score": 1, "message": "Output length (320) meets minimum (50)" },
-    { "ruleName": "non_empty_output", "passed": true, "score": 1, "message": "Output is non-empty" },
-    { "ruleName": "sentence_count", "passed": true, "score": 1, "message": "Sentence count (4) meets minimum (2)" },
-    { "ruleName": "expected_coverage", "passed": false, "score": 0, "message": "No expected output provided", "skipped": true, "skipReason": "context.expected not provided" }
+    { "ruleName": "min_output_length", "category": "completeness", "passed": true, "score": 1, "message": "Output length (320) meets minimum (50)" },
+    { "ruleName": "non_empty_output", "category": "completeness", "passed": true, "score": 1, "message": "Output is non-empty" },
+    { "ruleName": "sentence_count", "category": "completeness", "passed": true, "score": 1, "message": "Sentence count (4) meets minimum (2)" },
+    { "ruleName": "expected_coverage", "category": "completeness", "passed": false, "score": 0, "message": "No expected output provided", "skipped": true, "skipReason": "context.expected not provided" },
+    { "ruleName": "keyword_overlap", "category": "relevance", "passed": true, "score": 1, "message": "3/6 input keywords found in output (50%)" },
+    { "ruleName": "topic_consistency", "category": "relevance", "passed": true, "score": 0.8571428571428572, "message": "Topic consistency: 17.1% of output words relate to input" },
+    { "ruleName": "no_pii", "category": "safety", "passed": false, "score": 0, "message": "Potential PII detected: Credit Card" },
+    { "ruleName": "no_blocklist_words", "category": "safety", "passed": true, "score": 1, "message": "No blocklisted content found" },
+    { "ruleName": "no_injection_patterns", "category": "safety", "passed": true, "score": 1, "message": "No injection patterns detected" },
+    { "ruleName": "no_stub_output", "category": "safety", "passed": true, "score": 1, "message": "No stub/placeholder markers detected" },
+    { "ruleName": "no_hallucination_markers", "category": "safety", "passed": true, "score": 1, "message": "No hallucination signals detected against the provided input context" },
+    { "ruleName": "cost_under_threshold", "category": "cost", "passed": false, "score": 0, "message": "Cost data not provided", "skipped": true, "skipReason": "context.costUsd not provided" },
+    { "ruleName": "token_efficiency", "category": "cost", "passed": false, "score": 0, "message": "Token usage not provided", "skipped": true, "skipReason": "context.tokenUsage not provided" }
   ],
   "suggestions": [
-    "1 rule(s) skipped — excluded from the weighted score: expected_coverage (context.expected not provided)"
+    "[no_pii] Potential PII detected: Credit Card",
+    "Critical rule(s) failed (no_pii) — passed=false regardless of the weighted score",
+    "3 rule(s) skipped — excluded from the weighted score: expected_coverage (context.expected not provided); cost_under_threshold (context.costUsd not provided); token_efficiency (context.tokenUsage not provided)"
   ],
-  "rules_evaluated": 3,
-  "rules_skipped": 1,
+  "rules_evaluated": 10,
+  "rules_skipped": 3,
   "insufficient_data": false,
-  "note": "eval_type was omitted, so the default \"completeness\" bundle ran. Safety rules (PII, injection, blocklist, stub, hallucination) were NOT part of this evaluation — pass eval_type=\"safety\" to run them."
+  "categories": {
+    "completeness": { "score": 1, "passed": true, "rules_evaluated": 3, "rules_skipped": 1, "insufficient_data": false },
+    "relevance": { "score": 0.929, "passed": true, "rules_evaluated": 2, "rules_skipped": 0, "insufficient_data": false },
+    "safety": { "score": 0.765, "passed": false, "rules_evaluated": 5, "rules_skipped": 0, "insufficient_data": false, "critical_failures": ["no_pii"] },
+    "cost": { "score": null, "passed": null, "rules_evaluated": 0, "rules_skipped": 2, "insufficient_data": true }
+  },
+  "note": "eval_type was omitted, so the default ran every bundle — completeness, relevance, safety, cost and any custom rules — the same as eval_type=\"all\"; pass a single bundle name to narrow the run."
 }
 ```
 
-`passed: true`, `score: 1` — and the `note` says why: no safety rule ran. When the question is "did the agent leak anything", pass `eval_type: "safety"`.
+`passed: false`, `critical_failures: ["no_pii"]` — the same verdict as the safety-only call, now with a per-bundle `categories` map. Two things to read there: `safety.passed` is `false` because of the veto, and `cost.passed` is `null` — no `cost_usd` was sent, so the cost bundle was not judged; that is "not evaluated", not a failure. The `note` says the default ran; name a bundle only when you want a narrower run.
 
 ## Why This Matters
-Without eval, this PII leak reaches the customer. With Iris, a gate keyed on `passed` blocks it before delivery — provided the gate asked for the safety bundle.
+Without eval, this PII leak reaches the customer. With Iris, a gate keyed on `passed` blocks it before delivery — whether or not the gate named a bundle.
