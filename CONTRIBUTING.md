@@ -45,6 +45,15 @@ npm run dev    # Starts Vite dev server with HMR
 
 The dev server proxies API requests to `http://localhost:6920`.
 
+## Versioning
+
+Iris follows [Semantic Versioning](https://semver.org/). While the version
+starts with `0.`, the minor is the compatibility lever: anything an existing
+caller can observe changing bumps the minor and is written in `CHANGELOG.md` as
+a bold **Behaviour change:** sentence. The full policy, including what has to be
+true before 1.0, is in [VERSIONING.md](VERSIONING.md). If your change alters
+what a caller sees, say so in the PR description and write that sentence.
+
 ## PR Process
 
 1. Fork the repo and create a feature branch
