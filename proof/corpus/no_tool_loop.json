@@ -1,0 +1,1494 @@
+{
+  "schemaVersion": 1,
+  "rule": "no_tool_loop",
+  "category": "cost",
+  "family": "no_tool_loop",
+  "positiveClass": "fail",
+  "definition": "no_tool_loop — the agent must not repeat itself. Two calls are the SAME call when their tool_name is equal and their inputs normalise to the same string: object keys sorted and undefined values dropped, strings taken as written, then whitespace runs collapsed to single spaces, trimmed, and capped at 500 characters (longer values keep their length as a discriminator). An absent input is its own key, so two argument-less calls to one tool are repeats of each other. The rule FAILS when (a) any one call is made more than max_tool_repeats times (default 3, config key `max_tool_repeats`), or (b) two DISTINCT calls alternate consecutively (A,B,A,B,…) for more than two complete cycles. It SKIPS when context.toolCalls is absent or empty. Definitions: src/eval/rules/trajectory.ts; rule: src/eval/rules/cost.ts. Positive = a loop under that definition (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-04. Cases marked \"real transcript t-NN\" carry the real input, output and tool_calls from the 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0 (tests/fixtures/real-transcripts). The rest are authored around the boundaries the definition draws: three repeats versus four, two alternating cycles versus three, key order, whitespace, absent inputs, and long trajectories that are merely long.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-04, by counting each trajectory against the definition rather than by running the rule. Each note states the count and the clause that decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled.",
+  "authored": "2026-09-04",
+  "counts": {
+    "n": 28,
+    "positive": 12,
+    "negative": 16
+  },
+  "cases": [
+    {
+      "id": "loop-001",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "What files are in src/tools/?",
+      "output": "src/tools/ contains 12 files: delete-rule.ts, delete-trace.ts, deploy-rule.ts, evaluate-output.ts, evaluate-with-llm-judge.ts, get-traces.ts, index.ts, list-rules.ts, log-trace.ts, strict-input.ts, trace-link.ts, verify-citations.ts.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "delete-rule.ts\ndelete-trace.ts\ndeploy-rule.ts\nevaluate-output.ts\nevaluate-with-llm-judge.ts\nget-traces.ts\nindex.ts\nlist-rules.ts\nlog-trace.ts\nstrict-input.ts\ntrace-link.ts\nverify-citations.ts",
+            "latency_ms": 95
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "delete-rule.ts\ndelete-trace.ts\ndeploy-rule.ts\nevaluate-output.ts\nevaluate-with-llm-judge.ts\nget-traces.ts\nindex.ts\nlist-rules.ts\nlog-trace.ts\nstrict-input.ts\ntrace-link.ts\nverify-citations.ts",
+            "latency_ms": 90
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "delete-rule.ts\ndelete-trace.ts\ndeploy-rule.ts\nevaluate-output.ts\nevaluate-with-llm-judge.ts\nget-traces.ts\nindex.ts\nlist-rules.ts\nlog-trace.ts\nstrict-input.ts\ntrace-link.ts\nverify-citations.ts",
+            "latency_ms": 100
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "delete-rule.ts\ndelete-trace.ts\ndeploy-rule.ts\nevaluate-output.ts\nevaluate-with-llm-judge.ts\nget-traces.ts\nindex.ts\nlist-rules.ts\nlog-trace.ts\nstrict-input.ts\ntrace-link.ts\nverify-citations.ts",
+            "latency_ms": 90
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "delete-rule.ts\ndelete-trace.ts\ndeploy-rule.ts\nevaluate-output.ts\nevaluate-with-llm-judge.ts\nget-traces.ts\nindex.ts\nlist-rules.ts\nlog-trace.ts\nstrict-input.ts\ntrace-link.ts\nverify-citations.ts",
+            "latency_ms": 95
+          }
+        ]
+      },
+      "notes": "real transcript t-16: five identical `ls src/tools` calls with identical results. Five is more than the default max_tool_repeats of 3. The final answer is correct and the bill is $0.0621 — under the $0.10 cost threshold — which is exactly why the cost rule alone cannot see this."
+    },
+    {
+      "id": "loop-002",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "What is in the config directory?",
+      "output": "src/config holds defaults.ts, loader.ts and schema.ts.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/config"
+            },
+            "output": "defaults.ts\nloader.ts\nschema.ts"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/config"
+            },
+            "output": "defaults.ts\nloader.ts\nschema.ts"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/config"
+            },
+            "output": "defaults.ts\nloader.ts\nschema.ts"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/config"
+            },
+            "output": "defaults.ts\nloader.ts\nschema.ts"
+          }
+        ]
+      },
+      "notes": "four identical calls, one more than the default max of 3 — the boundary case just over the line."
+    },
+    {
+      "id": "loop-003",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Read the tenant migration and summarise it.",
+      "output": "The tenant migration adds a tenant_id column to traces and eval_results and backfills the local tenant.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/002.sql",
+              "encoding": "utf8"
+            },
+            "output": "ALTER TABLE traces …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "encoding": "utf8",
+              "path": "migrations/002.sql"
+            },
+            "output": "ALTER TABLE traces …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/002.sql",
+              "encoding": "utf8"
+            },
+            "output": "ALTER TABLE traces …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "encoding": "utf8",
+              "path": "migrations/002.sql"
+            },
+            "output": "ALTER TABLE traces …"
+          }
+        ]
+      },
+      "notes": "the same call four times with the object keys in two different orders. Key order is a serialisation artifact, so the normalised input is identical and this is a loop."
+    },
+    {
+      "id": "loop-004",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "How many test files are there?",
+      "output": "There are 114 test files under tests/.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": "find tests -name \"*.test.ts\" | wc -l",
+            "output": "114"
+          },
+          {
+            "tool_name": "bash",
+            "input": "find  tests -name \"*.test.ts\" | wc -l",
+            "output": "114"
+          },
+          {
+            "tool_name": "bash",
+            "input": "find tests -name \"*.test.ts\"  | wc -l",
+            "output": "114"
+          },
+          {
+            "tool_name": "bash",
+            "input": "find tests   -name \"*.test.ts\" | wc -l",
+            "output": "114"
+          }
+        ]
+      },
+      "notes": "four string inputs differing only in whitespace runs, which the normalisation collapses. Four > 3."
+    },
+    {
+      "id": "loop-005",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Compare the two adapters.",
+      "output": "The SQLite adapter is synchronous and file-backed; the Postgres adapter is pooled and async.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/sqlite-adapter.ts"
+            },
+            "output": "class SqliteAdapter …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/postgres-adapter.ts"
+            },
+            "output": "class PostgresAdapter …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/sqlite-adapter.ts"
+            },
+            "output": "class SqliteAdapter …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/postgres-adapter.ts"
+            },
+            "output": "class PostgresAdapter …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/sqlite-adapter.ts"
+            },
+            "output": "class SqliteAdapter …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/postgres-adapter.ts"
+            },
+            "output": "class PostgresAdapter …"
+          }
+        ]
+      },
+      "notes": "A,B,A,B,A,B — three complete cycles, more than the two the definition allows. Neither call on its own reaches four repeats, so only the cycle clause catches this."
+    },
+    {
+      "id": "loop-006",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Is the port constant the same in both files?",
+      "output": "Yes: both name 6920.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "src/config/defaults.ts"
+            },
+            "output": "port: 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "dashboard/src/constants.ts"
+            },
+            "output": "PORT = 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "src/config/defaults.ts"
+            },
+            "output": "port: 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "dashboard/src/constants.ts"
+            },
+            "output": "PORT = 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "src/config/defaults.ts"
+            },
+            "output": "port: 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "dashboard/src/constants.ts"
+            },
+            "output": "PORT = 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "src/config/defaults.ts"
+            },
+            "output": "port: 6920"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "6920",
+              "path": "dashboard/src/constants.ts"
+            },
+            "output": "PORT = 6920"
+          }
+        ]
+      },
+      "notes": "four complete alternating cycles — eight calls that between them asked two questions. Each key also appears four times, so the repeat clause fires first; either way the rule fails."
+    },
+    {
+      "id": "loop-007",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Which rules are deployed?",
+      "output": "No custom rules are deployed; only the built-ins are active.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_rules",
+            "output": "[]"
+          },
+          {
+            "tool_name": "list_rules",
+            "output": "[]"
+          },
+          {
+            "tool_name": "list_rules",
+            "output": "[]"
+          },
+          {
+            "tool_name": "list_rules",
+            "output": "[]"
+          },
+          {
+            "tool_name": "list_rules",
+            "output": "[]"
+          }
+        ]
+      },
+      "notes": "five calls to a tool with no input at all. An absent input is its own comparison key, so two argument-less calls to the same tool are repeats of each other; five > 3."
+    },
+    {
+      "id": "loop-008",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Is the service up?",
+      "output": "Yes, the service is up and reporting version 0.7.0.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "http://127.0.0.1:6920/api/v1/health"
+            },
+            "output": "{\"status\":\"ok\"}"
+          }
+        ]
+      },
+      "notes": "seven identical health checks for one yes/no answer — more than double the allowance."
+    },
+    {
+      "id": "loop-009",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Which files changed in the last commit, and what does the largest one do?",
+      "output": "Nine files changed; the largest is src/eval/rules/safety.ts, which holds the safety bundle.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "git show --stat HEAD"
+            },
+            "output": "9 files changed"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "git show --stat HEAD"
+            },
+            "output": "9 files changed"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "git show --stat HEAD"
+            },
+            "output": "9 files changed"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "git show --stat HEAD"
+            },
+            "output": "9 files changed"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/safety.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/cost.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/engine.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/types/eval.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "…"
+          }
+        ]
+      },
+      "notes": "nine calls in total, five of them distinct and legitimate; the git show is repeated four times, which is over the allowance. The rule judges the worst repeat, not the ratio."
+    },
+    {
+      "id": "loop-010",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "What does the purge flag do?",
+      "output": "The --purge flag deletes every stored trace and eval result before the server starts.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": "grep -n \"purge\" src/index.ts",
+            "output": "  if (argv.purge) …"
+          },
+          {
+            "tool_name": "bash",
+            "input": "grep -n \"purge\" src/index.ts",
+            "output": "  if (argv.purge) …"
+          },
+          {
+            "tool_name": "bash",
+            "input": "grep -n \"purge\" src/index.ts",
+            "output": "  if (argv.purge) …"
+          },
+          {
+            "tool_name": "bash",
+            "input": "grep -n \"purge\" src/index.ts",
+            "output": "  if (argv.purge) …"
+          }
+        ]
+      },
+      "notes": "four identical string-input calls; the normalised key for a string input is the trimmed, whitespace-collapsed command itself."
+    },
+    {
+      "id": "loop-011",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Summarise the README installation section.",
+      "output": "Install with npx @iris-eval/mcp-server, or add it to your MCP client config.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "# Iris\n\n## Installation…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "# Iris\n\n## Installation…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "# Iris\n\n## Installation…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "# Iris\n\n## Installation…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "# Iris\n\n## Installation…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "# Iris\n\n## Installation…"
+          }
+        ]
+      },
+      "notes": "six reads of the same file, unchanged between reads. Twice the allowance."
+    },
+    {
+      "id": "loop-012",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Wait for the export job to finish and tell me the row count.",
+      "output": "The export finished with 4,210 rows.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "job_status",
+            "input": {
+              "id": "exp-91"
+            },
+            "output": {
+              "state": "running"
+            }
+          },
+          {
+            "tool_name": "job_status",
+            "input": {
+              "id": "exp-91"
+            },
+            "output": {
+              "state": "running"
+            }
+          },
+          {
+            "tool_name": "job_status",
+            "input": {
+              "id": "exp-91"
+            },
+            "output": {
+              "state": "running"
+            }
+          },
+          {
+            "tool_name": "job_status",
+            "input": {
+              "id": "exp-91"
+            },
+            "output": {
+              "state": "done",
+              "rows": 4210
+            }
+          }
+        ]
+      },
+      "notes": "polling: identical inputs, DIFFERENT outputs, and a legitimate reason to repeat. The documented definition compares inputs only, so this is a positive — and it is the known false-positive class of that definition, recorded here rather than hidden by leaving it out."
+    },
+    {
+      "id": "loop-013",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Summarise the install section of README.md for me — what are the ways to install Iris and what is the one-liner?",
+      "output": "Iris installs as an MCP server; there is no separate install step beyond pointing your MCP client at it. From README.md (\"Hook up your own agent\" through \"Other Install Methods\"):\n\n1. One-block MCP config (the one-liner). Add this to your client's MCP config:\n```json\n{ \"mcpServers\": { \"iris-eval\": { \"command\": \"npx\", \"args\": [\"@iris-eval/mcp-server\", \"--dashboard\"] } } }\n```\nThe agent discovers nine tools on connect and the dashboard serves at http://localhost:6920. Drop --dashboard from the args to run headless; you can open the dashboard any time with `npx @iris-eval/mcp-server --dashboard`.\n\n2. Per-client recipes for the same block: Claude Desktop (edit claude_desktop_config.json, restart), Claude Code (`claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server`, then restart the session; on Windows do not wrap it in cmd /c), Cursor/Windsurf (.cursor/mcp.json), VS Code (.vscode/mcp.json, which uses \"servers\" not \"mcpServers\"), Cline (MCP Servers panel), Zed (context_servers in settings.json), OpenAI Codex CLI (~/.codex/config.toml), Gemini CLI (~/.gemini/settings.json). Anything else that speaks MCP works with the same npx command.\n\n3. Global install: `npm install -g @iris-eval/mcp-server` then `iris-mcp --dashboard`. Recommended for persistent data and faster startup; traces live at ~/.iris/iris.db either way, npx is just slower to start.\n\n4. Docker: `docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data ghcr.io/iris-eval/mcp-server`. Port 3000 is the MCP HTTP transport, 6920 is the dashboard, which also serves the POST /api/v1/traces ingest endpoint.\n\nVerify with `npx @iris-eval/mcp-server --self-test` (exit 0 = healthy, runs in an isolated temp home) and `--version`. Everything Iris writes lives under ~/.iris, or wherever IRIS_HOME points.\n\nTwo caveats the section calls out: MCP tools only fire when the model decides to call them, so use POST /api/v1/traces when capture must not depend on the model; and that endpoint exists only while the dashboard is running, and accepts unauthenticated writes unless you start Iris with --api-key.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "grep -n \"^#\" README.md | head -40"
+            },
+            "output": "1:# Iris — stop shipping agents on vibes\n22:## A failure on screen in 60 seconds\n38:## Hook up your own agent\n61:### Capture over HTTP (no model in the loop)\n79:### Verify your install\n91:#### Claude Desktop\n99:#### Claude Code\n109:#### Cursor / Windsurf\n113:#### VS Code (native MCP)\n128:#### Cline\n132:#### Zed\n149:#### OpenAI Codex CLI\n159:#### Gemini CLI\n163:#### Anything else that speaks MCP\n169:### Other Install Methods\n183:## What You Get\n196:## MCP Tools\n",
+            "latency_ms": 140
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "sed -n 38,182p README.md"
+            },
+            "output": "## Hook up your own agent\n\nAdd Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent. One block, dashboard included:\n\n```json\n{\n  \"mcpServers\": {\n    \"iris-eval\": {\n      \"command\": \"npx\",\n      \"args\": [\"@iris-eval/mcp-server\", \"--dashboard\"]\n    }\n  }\n}\n```\n\nYour agent discovers Iris's nine tools on connect, and the dashboard serves at **http://localhost:6920**. …\n### Other Install Methods\n# Global install\nnpm install -g @iris-eval/mcp-server\niris-mcp --dashboard\n# Docker\nd…",
+            "latency_ms": 120
+          }
+        ]
+      },
+      "notes": "real transcript t-01: two distinct calls, nothing repeated."
+    },
+    {
+      "id": "loop-014",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "List the nine MCP tools Iris registers from src/tools/ with one line each.",
+      "output": "Iris registers nine tools in src/tools/index.ts (registerAllTools), in this order:\n\n1. log_trace (Log Trace) — persist one agent execution: input, output, spans, tool calls, cost, latency, token usage; returns a server-minted 32-hex trace_id.\n2. evaluate_output (Evaluate Output) — run the deterministic rule engine on an output for completeness, relevance, safety, cost, custom, or all bundles at once.\n3. get_traces (Get Traces) — query stored traces by agent, framework, time window and score, with optional summary statistics.\n4. list_rules (List Custom Rules) — list the deployed custom rules and whether each is enabled.\n5. deploy_rule (Deploy Custom Rule) — persist a custom rule so it runs in future evaluations and survives restarts.\n6. delete_rule (Delete or Disable Custom Rule) — remove or disable a deployed rule by id.\n7. delete_trace (Delete Trace) — remove a single trace by id.\n8. evaluate_with_llm_judge (Evaluate With LLM Judge) — semantic scoring through Anthropic or OpenAI with your own key and a hard per-eval cost cap.\n9. verify_citations (Verify Citations) — extract citations from an output, fetch URL and DOI sources through an SSRF-guarded resolver, and judge whether each source supports its claim.\n\nThe other two files in the directory, strict-input.ts and trace-link.ts, are not registered by index.ts, so they are helpers rather than tools.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "delete-rule.ts\ndelete-trace.ts\ndeploy-rule.ts\nevaluate-output.ts\nevaluate-with-llm-judge.ts\nget-traces.ts\nindex.ts\nlist-rules.ts\nlog-trace.ts\nstrict-input.ts\ntrace-link.ts\nverify-citations.ts",
+            "latency_ms": 95
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat src/tools/index.ts"
+            },
+            "output": "import { registerLogTraceTool } from './log-trace.js';\nimport { registerEvaluateOutputTool } from './evaluate-output.js';\nimport { registerGetTracesTool } from './get-traces.js';\nimport { registerListRulesTool } from './list-rules.js';\nimport { registerDeployRuleTool } from './deploy-rule.js';\nimport { registerDeleteRuleTool } from './delete-rule.js';\nimport { registerDeleteTraceTool } from './delete-trace.js';\nimport { registerEvaluateWithLLMJudgeTool } from './evaluate-with-llm-judge.js';\nimport { registerVerifyCitationsTool } from './verify-citations.js';\n\nexport function registerAllTools(…",
+            "latency_ms": 110
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "grep -n \"title:\" src/tools/*.ts"
+            },
+            "output": "src/tools/delete-rule.ts:48:      title: 'Delete or Disable Custom Rule',\nsrc/tools/delete-trace.ts:32:      title: 'Delete Trace',\nsrc/tools/deploy-rule.ts:192:      title: 'Deploy Custom Rule',\nsrc/tools/evaluate-output.ts:62:      title: 'Evaluate Output',\nsrc/tools/evaluate-with-llm-judge.ts:82:      title: 'Evaluate With LLM Judge',\nsrc/tools/get-traces.ts:91:      title: 'Get Traces',\nsrc/tools/list-rules.ts:37:      title: 'List Custom Rules',\nsrc/tools/log-trace.ts:65:      title: 'Log Trace',\nsrc/tools/verify-citations.ts:94:      title: 'Verify Citations',",
+            "latency_ms": 130
+          }
+        ]
+      },
+      "notes": "real transcript t-02: three distinct calls."
+    },
+    {
+      "id": "loop-015",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "What is the default dashboard port?",
+      "output": "The dashboard's default port is 6920, bound to 127.0.0.1 unless you pass --dashboard-host. The MCP HTTP transport is a separate port, 3000, and since v0.5.0 --transport http on its own does not start the dashboard; pass --dashboard (or IRIS_DASHBOARD=true) to get 6920 up.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/api-reference.md"
+            },
+            "output": "# Iris API Reference\n\nComplete reference for the Iris MCP server API surface: MCP tools, MCP resources, dashboard HTTP endpoints, built-in evaluation rules, and custom rule definitions.\n\n**Transport:** Iris communicates over MCP (stdio) for tool/resource access and HTTP for the dashboard API. …\n## Table of Contents\n- [MCP Tools](#mcp-tools) … - [Dashboard API Routes](#dashboard-api-routes) - [POST /api/v1/traces] … - [Evaluation Rules] … - [Custom Rules] …",
+            "latency_ms": 120
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/architecture.md"
+            },
+            "output": "# Iris Architecture Guide\n\n## 1. System Overview\n\nIris is an MCP server that provides observability and evaluation capabilities for AI agents. It runs as a standalone process that any MCP-compatible client can connect to over **stdio** or **HTTP**.\n\nIris exposes nine MCP tools … It also exposes MCP resources (dashboard-summary, trace-detail), a best-effort OpenTelemetry trace exporter, and an optional REST API that powers a web dashboard. …",
+            "latency_ms": 130
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/custom-rules.md"
+            },
+            "output": "# Custom Eval Rules\n\nDefine your own evaluation criteria. Iris ships with 13 built-in rules across completeness, relevance, safety, and cost (as of v0.4.0). Custom rules let you enforce domain-specific requirements … **How it works:** Pass a `custom_rules` array to `evaluate_output` with `eval_type: \"custom\"`. … ## Rule Types regex_match, regex_no_match, min_length, max_length, contains_keywords, excludes_keywords, json_schema, cost_threshold …",
+            "latency_ms": 140
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/roadmap.md"
+            },
+            "output": "# Iris Roadmap\n\nPublic roadmap for `@iris-eval/mcp-server`. Updated 2026-08-10. … ## v0.1 -- Core MCP Server … **Web dashboard**: React-based dark-mode UI … (served via Express on port 6920) … ## v0.4 -- LLM-as-Judge + Semantic Citation + OTel + 9-Tool MCP Surface … ## What comes next: Track 1 Proof, Track 2 Coverage, Track 3 Reach …",
+            "latency_ms": 150
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/llm-as-judge.md"
+            },
+            "output": "# LLM-as-Judge — Semantic Evaluation\n\nIris ships deterministic, rule-based evaluation by default … For those, Iris supports **LLM-as-Judge**: a single MCP tool (`evaluate_with_llm_judge`) … > **Bring your own key.** … ## Templates accuracy, helpfulness, safety, correctness, faithfulness … ## Models + pricing … ## Cost controls …",
+            "latency_ms": 160
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/semantic-citation-verify.md"
+            },
+            "output": "# Semantic Citation Verification\n\nIris ships a dedicated MCP tool (`verify_citations`) that runs the full pipeline: Extract, Resolve (SSRF-guarded), Verify (LLM judge) … ## Citation kinds numbered / author_year / url / doi … ## SSRF defense layers … ## Cost controls … ## Failure modes …",
+            "latency_ms": 170
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/otel-integration.md"
+            },
+            "output": "# OpenTelemetry Integration\n\nIris can export every `log_trace` call to any OpenTelemetry collector that speaks **OTLP/HTTP** with **JSON encoding**. … export IRIS_OTEL_ENDPOINT=https://otel.your-company.com:4318 … ## Supported backends … ## What gets exported … ## Failure behavior …",
+            "latency_ms": 180
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/sdk-spec.md"
+            },
+            "output": "# `@iris-eval/client` — SDK Specification\n\n> **Status:** design spec. **Not implemented.** … ## Goals 1. Sub-20-line integration … ## Surface (proposed) … ## Relationship to the MCP server …",
+            "latency_ms": 190
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/http-ingest.md"
+            },
+            "output": "# HTTP Ingest\n\n`POST /api/v1/traces` stores a trace over plain HTTP — the deterministic capture path. … The endpoint lives on the **dashboard server** (default port `6920`), not on the MCP transport port … Since v0.5.0 the dashboard does **not** start implicitly with `--transport http` — a server started with `--transport http` alone serves `/mcp` on port `3000` …",
+            "latency_ms": 200
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat docs/v0.4.1-candidates.md"
+            },
+            "output": "# Small Improvements Backlog\n\n> **Status:** Live working list. Renamed from \"v0.4.1 Candidates\" on 2026-08-10 … ### 1. Tighten `since` parameter validation on `/api/v1/traces` … ### 3. Cosign verify in clean-dir verification scripts … ## When these ship …",
+            "latency_ms": 210
+          }
+        ]
+      },
+      "notes": "real transcript t-21: ten calls, every one a different document. Wasteful — cost_under_threshold fails it at $1.3303 — but not a loop, and this case pins that the two cost rules answer different questions."
+    },
+    {
+      "id": "loop-016",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "How many UAT suites does tests/uat define?",
+      "output": "tests/uat defines four suites, A through D: A is the CLI surface (suites/a-cli.mjs), B is the MCP tool surface over real stdio (suites/b-mcp.mjs), C is the HTTP surface (suites/c-http.mjs), and D is the dashboard surface driven by Playwright/chromium (suites/d-dashboard.mjs). run-uat.mjs runs all four by default (--suite A,C selects a subset) and then appends its own G block for harness isolation and artifact freshness, which is why UAT-REPORT.md shows five sections.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/run-uat.mjs"
+            },
+            "output": "#!/usr/bin/env node\n/*\n * Iris UAT harness — one command, four suites, one report.\n *\n *   node run-uat.mjs                 # everything\n *   node run-uat.mjs --suite A,C     # a subset\n … */\nimport { runSuiteA } from './suites/a-cli.mjs';\nimport { runSuiteB } from './suites/b-mcp.mjs';\nimport { runSuiteC } from './suites/c-http.mjs';\nimport { runSuiteD } from './suites/d-dashboard.mjs';\n… function parseSuites() { … return ['A', 'B', 'C', 'D']; } … t.beginSuite('G', 'Harness isolation + artifact freshness'); …",
+            "latency_ms": 110
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/UAT-REPORT.md"
+            },
+            "output": "# Iris UAT Report\n\n**Result: PASS — 70 passed / 0 failed / 70 checks**\n… ## Per-suite totals\n| A | CLI surface | 14 | 0 |\n| B | MCP tool surface (stdio) | 19 | 0 |\n| C | HTTP surface | 20 | 0 |\n| D | Dashboard surface (Playwright / chromium) | 14 | 0 |\n| G | Harness isolation + artifact freshness | 3 | 0 |\n…",
+            "latency_ms": 118
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/lib/env.mjs"
+            },
+            "output": "/*\n * Shared paths + constants for the Iris UAT harness.\n * The iris repo is READ-ONLY to this harness. …\n */\nexport const UAT_DIR = dirname(here);\nexport const WORK_DIR = join(UAT_DIR, '.work');\nexport const IRIS_REPO = dirname(dirname(UAT_DIR));\nexport const REAL_IRIS_HOME = join(homedir(), '.iris');\nexport const GUARDED_FILES = ['iris.db', 'custom-rules.json', 'audit.log', …];\nexport function baseChildEnv(irisHome, extra = {}) { … }",
+            "latency_ms": 126
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/lib/http.mjs"
+            },
+            "output": "/*\n * Raw node:http request helper.\n * node:http, NOT fetch — deliberately … fetch() silently drops forbidden headers (Host chief among them) …\n */\nexport function raw({ port, method = 'GET', path = '/', headers = {}, body, host = '127.0.0.1', timeoutMs = 15_000 }) { … }\nexport async function getJson(port, path, expectStatus = 200) { … }\nexport async function postJson(port, path, body, expectStatus) { … }",
+            "latency_ms": 134
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/lib/proc.mjs"
+            },
+            "output": "/*\n * Process helpers: one-shot CLI runs and long-lived dashboard servers.\n * Readiness is POLLED, never slept-on. …\n */\nexport function reservePort() { … }\nexport function runCli(args, { irisHome, extraEnv = {}, timeoutMs = 90_000 } = {}) { … }\nexport async function startServer({ argsFor, args, irisHome, extraEnv = {}, timeoutMs = 60_000, label = 'server', attempts = 3 }) { … }",
+            "latency_ms": 142
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/lib/report.mjs"
+            },
+            "output": "/*\n * Check recorder + markdown report writer.\n * A check never throws out of the recorder …\n */\nexport function assert(condition, message) { … }\nexport function assertEq(actual, expected, label) { … }\nexport function createRecorder() { … beginSuite(id, title) … check(id, name, fn) … counts() … }\nexport function renderReport(recorder, meta) { … }",
+            "latency_ms": 150
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/suites/a-cli.mjs"
+            },
+            "output": "/*\n * Suite A — CLI surface.\n * Everything here spawns the real shipped artifact (node dist/index.js) and asserts on exit codes + output. …\n */\nconst DOCUMENTED_FLAGS = ['--transport', '--port', '--config', '--db-path', '--api-key', '--dashboard', '--dashboard-port', '--dashboard-host', '--demo', '--demo-clear', '--self-test', '--help'];\n…\nexport async function runSuiteA(t) { t.beginSuite('A', 'CLI surface'); … A1 … A14 }",
+            "latency_ms": 158
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/suites/b-mcp.mjs"
+            },
+            "output": "/*\n * Suite B — MCP tool surface over REAL stdio.\n * Uses the MCP SDK client shipped in the iris repo's node_modules …\n * Two sessions run against ONE scratch IRIS_HOME. The second is a deliberate restart …\n */\nexport async function runSuiteB(t, claims) { t.beginSuite('B', 'MCP tool surface (stdio)'); … B1 … B19 }",
+            "latency_ms": 166
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/suites/c-http.mjs"
+            },
+            "output": "/*\n * Suite C — HTTP surface.\n * A real `node dist/index.js --dashboard --dashboard-port 0` process on an ephemeral loopback port, seeded through its own ingest endpoint …\n */\nexport async function runSuiteC(t) { t.beginSuite('C', 'HTTP surface'); … C1 … C20 }",
+            "latency_ms": 174
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "cat tests/uat/suites/d-dashboard.mjs"
+            },
+            "output": "/*\n * Suite D — dashboard surface via Playwright (chromium).\n * Runs against a real `--demo` server so the views have data to render …\n */\nexport async function runSuiteD(t) { t.beginSuite('D', 'Dashboard surface (Playwright / chromium)'); … D1 … D14 }",
+            "latency_ms": 182
+          }
+        ]
+      },
+      "notes": "real transcript t-22: ten distinct UAT files read for a count. Over the cost threshold, not repeated."
+    },
+    {
+      "id": "loop-017",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "What is in src/tools?",
+      "output": "src/tools holds twelve files, including index.ts and log-trace.ts.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "index.ts\nlog-trace.ts"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "index.ts\nlog-trace.ts"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls src/tools"
+            },
+            "output": "index.ts\nlog-trace.ts"
+          }
+        ]
+      },
+      "notes": "exactly three identical calls — the boundary. The definition allows up to max_tool_repeats, so three passes and four would not."
+    },
+    {
+      "id": "loop-018",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Do the two config files agree on the port?",
+      "output": "They agree: both name 6920.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "PORT = 6920"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "PORT = 6920"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "PORT = 6920"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "PORT = 6920"
+          }
+        ]
+      },
+      "notes": "A,B,A,B — two complete cycles, the boundary the cycle clause allows. Each key appears twice, well under the repeat allowance."
+    },
+    {
+      "id": "loop-019",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "List the rule files and their sizes.",
+      "output": "There are five: completeness, relevance, safety, cost and trajectory.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/completeness.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/relevance.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/safety.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/cost.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/rules/trajectory.ts"
+            },
+            "output": "…"
+          }
+        ]
+      },
+      "notes": "five calls to one tool, every input different. Repeating a TOOL is not repeating a CALL."
+    },
+    {
+      "id": "loop-020",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "What is the package name?",
+      "output": "The package is @iris-eval/mcp-server.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "package.json"
+            },
+            "output": "{\"name\":\"@iris-eval/mcp-server\"}"
+          }
+        ]
+      },
+      "notes": "a single call. There is a trajectory to judge, so the rule evaluates rather than skips, and one call cannot be a loop."
+    },
+    {
+      "id": "loop-021",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Confirm the version in two places.",
+      "output": "Both package.json and the server banner say 0.7.0.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "package.json"
+            },
+            "output": "{\"version\":\"0.7.0\"}"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "package.json"
+            },
+            "output": "{\"version\":\"0.7.0\"}"
+          }
+        ]
+      },
+      "notes": "two identical calls — a re-read, not a loop, and comfortably under the allowance."
+    },
+    {
+      "id": "loop-022",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Which of these four tools can see the same file?",
+      "output": "All four can read it; they differ in what they return.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "stat",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "head",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "wc",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "…"
+          }
+        ]
+      },
+      "notes": "four calls sharing an identical input but each to a DIFFERENT tool. The comparison key is tool name plus input, so these are four distinct calls."
+    },
+    {
+      "id": "loop-023",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Cross-check three files for the retention default.",
+      "output": "All three agree on 30 days.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "days: 30"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "days: 30"
+          }
+        ]
+      },
+      "notes": "A,B,C repeated three times. Each key appears three times, inside the allowance, and a three-call cycle is not the two-call alternation the cycle clause detects. The definition is deliberately narrow here, and this case records that."
+    },
+    {
+      "id": "loop-024",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Read the engine, then check three call sites.",
+      "output": "The engine exposes evaluate and evaluateAll; all three call sites use evaluateAll.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/engine.ts"
+            },
+            "output": "class EvalEngine …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/engine.ts"
+            },
+            "output": "class EvalEngine …"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/eval/engine.ts"
+            },
+            "output": "class EvalEngine …"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "evaluateAll",
+              "path": "src/tools/evaluate-output.ts"
+            },
+            "output": "evaluateAll("
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "evaluateAll",
+              "path": "src/dashboard/routes/traces.ts"
+            },
+            "output": "evaluateAll("
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "evaluateAll",
+              "path": "tests/real-transcripts.test.ts"
+            },
+            "output": "evaluateAll("
+          }
+        ]
+      },
+      "notes": "the engine read three times (allowed) plus three distinct greps. Nothing exceeds the allowance and there is no two-call alternation."
+    },
+    {
+      "id": "loop-025",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Read the first eight migrations.",
+      "output": "They run from 001_init through 008_retention, each adding one table or index.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/001.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/002.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/003.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/004.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/005.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/006.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/007.sql"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "migrations/008.sql"
+            },
+            "output": "…"
+          }
+        ]
+      },
+      "notes": "eight calls whose inputs differ only in one character. Different input, different call — the normalisation compares the whole value, not a prefix."
+    },
+    {
+      "id": "loop-026",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Check the lint and the types.",
+      "output": "Both are clean.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "shell",
+            "input": {
+              "argv": [
+                "npm",
+                "run",
+                "lint"
+              ]
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "shell",
+            "input": {
+              "argv": [
+                "npm",
+                "run",
+                "lint"
+              ]
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "shell",
+            "input": {
+              "argv": [
+                "npm",
+                "run",
+                "lint"
+              ]
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "shell",
+            "input": {
+              "argv": [
+                "npm",
+                "run",
+                "typecheck"
+              ]
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "shell",
+            "input": {
+              "argv": [
+                "npm",
+                "run",
+                "typecheck"
+              ]
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "shell",
+            "input": {
+              "argv": [
+                "npm",
+                "run",
+                "typecheck"
+              ]
+            },
+            "output": "ok"
+          }
+        ]
+      },
+      "notes": "two calls, each made three times, GROUPED rather than alternating. Neither exceeds the repeat allowance and the runs are not an A,B,A,B pattern."
+    },
+    {
+      "id": "loop-027",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Walk the release workflow and name every job.",
+      "output": "Six jobs: lint, test, build, proof, publish and release-notes.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "lint:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  lint:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "test:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  test:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "build:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  build:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "proof:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  proof:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "publish:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  publish:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "release-notes:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  release-notes:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "needs:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  needs:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "runs-on:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  runs-on:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "uses:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  uses:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "with:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  with:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "env:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  env:"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "if:",
+              "path": ".github/workflows/release.yml"
+            },
+            "output": "  if:"
+          }
+        ]
+      },
+      "notes": "twelve calls, every pattern different. A long trajectory is not a loop."
+    },
+    {
+      "id": "loop-028",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Read the same file with the keys written both ways, twice each.",
+      "output": "The file sets the default threshold to 0.7.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/config/defaults.ts",
+              "encoding": "utf8"
+            },
+            "output": "0.7"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "encoding": "utf8",
+              "path": "src/config/defaults.ts"
+            },
+            "output": "0.7"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/config/defaults.ts",
+              "encoding": "utf8"
+            },
+            "output": "0.7"
+          }
+        ]
+      },
+      "notes": "three calls that normalise to one key because key order is ignored — exactly at the allowance, so the rule passes. The companion positive (loop-003) is the same shape with a fourth call."
+    }
+  ]
+}
