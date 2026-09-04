@@ -180,6 +180,16 @@ Every disagreement is worth something either way. It means the case is
 mislabelled, or the rule is defined loosely enough that two careful readers land
 in different places. Both are defects, and both get fixed in the open.
 
+**The verdict and the opinion are different answers, and the sheet keeps them
+apart.** The verdict is about the rule *as written*: read the definition,
+including any threshold it names, and say whether this output matches it. That
+is what the corpus labels mean, so it is what agreement is computed against. The
+separate `ruleWrong` flag is the annotator saying the definition itself should
+be different. A flagged case is not a disagreement, and `--score` reports the
+flags on their own line even when agreement is perfect, because "the rule is
+written wrong" is a product decision and "the label is wrong" is a data defect.
+Collapsing them loses the more valuable of the two.
+
 `results.json → humanAgreement.status` stays `pending` until a scored answer
 sheet exists.
 
