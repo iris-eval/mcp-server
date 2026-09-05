@@ -60,6 +60,7 @@ export function Footer(): React.ReactElement {
                   { label: "Features", href: "/#product" },
                   { label: "Playground", href: "/playground" },
                   { label: "Proof", href: "/proof" },
+                  { label: "Capabilities", href: "/capabilities" },
                   { label: "Pricing", href: "/pricing" },
                   { label: "Blog", href: "/blog" },
                   { label: "Quick Start", href: "/#open-source" },

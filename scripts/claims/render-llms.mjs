@@ -58,6 +58,10 @@ description: Evaluate AI agent output quality, safety, and cost using the Iris M
 
 export const TARGETS = [
   { template: 'website/llms.template.txt', output: 'website/public/llms.txt' },
+  // The capability map as a document, from the same truthbase field the
+  // server serves inside iris://capabilities and the site renders at
+  // /capabilities. The template holds the prose; the table is the slot.
+  { template: 'docs/capabilities.template.md', output: 'docs/capabilities.md' },
   { template: 'website/llms-full.template.txt', output: 'website/public/llms-full.txt' },
   {
     template: SKILL_TEMPLATE,
@@ -107,6 +111,36 @@ export function proofSummary(claims) {
   );
 }
 
+/** One line with the counts by status, for llms.txt and the docs header. */
+export function capabilitySummary(claims) {
+  const m = claims.capabilityMap;
+  const c = m.counts;
+  return (
+    `Of ${m.total} capability cells (${m.questions.length} evaluation questions by ${m.subjects.length} subjects), ` +
+    `${c.has} are answered by a shipped, measured thing, ${c.partial} are answered with a stated limit, ${c.gap} are open gaps and ${c['n/a']} do not apply — ` +
+    'every answered cell names the rule, tool, resource, route, proof row or judge template behind it.'
+  );
+}
+
+/** The map as markdown: the status grid, then one block per cell with its summary, evidence and needs. */
+export function capabilityMapTable(claims) {
+  const m = claims.capabilityMap;
+  const byId = new Map(m.cells.map((c) => [c.id, c]));
+  const head = `| Question | ${m.subjects.map((s) => s.text).join(' | ')} |`;
+  const sep = `|---|${m.subjects.map(() => '---').join('|')}|`;
+  const rows = m.questions.map((q) => `| **${q.text}** | ${m.subjects.map((s) => byId.get(`${q.id}x${s.id}`).status).join(' | ')} |`);
+  const sections = m.questions.map((q) => {
+    const cells = m.subjects.map((s) => {
+      const c = byId.get(`${q.id}x${s.id}`);
+      const evidence = c.evidence.length ? ` Evidence: ${c.evidence.map((e) => `${e.kind} \`${e.name}\``).join(', ')}.` : '';
+      const needs = c.needs.length ? ` Needs: ${c.needs.map((n) => `\`${n}\``).join(', ')}.` : '';
+      return `- **${s.text}** — *${c.status}*. ${c.summary}${evidence}${needs}`;
+    });
+    return `### ${q.text}\n\n${cells.join('\n')}`;
+  });
+  return [head, sep, ...rows, '', ...sections].join('\n');
+}
+
 /** Everything a template may reference. Add a slot here, never a literal in a template. */
 export function slotsFrom(claims) {
   const tagline = claims.brand.tagline;
@@ -127,6 +161,8 @@ export function slotsFrom(claims) {
     hallucinationMarkers: claims.evalRules.hallucinationMarkers,
     llmJudgeTemplateCount: claims.llmJudgeTemplates.count,
     llmJudgeTemplateNames: claims.llmJudgeTemplates.names.join(', '),
+    capabilitySummary: capabilitySummary(claims),
+    capabilityMapTable: capabilityMapTable(claims),
     // The judge enable workflow, the same shape src/judge-enablement.ts renders
     // (renderJudgeEnableBlock): the title in bold, then the numbered steps.
     judgeEnableBlock: [`**${claims.llmJudgeTemplates.enable.title}**`, ...claims.llmJudgeTemplates.enable.steps.map((s, i) => `${i + 1}. ${s}`)].join('\n'),

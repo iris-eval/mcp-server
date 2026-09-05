@@ -24,6 +24,7 @@ import { generate as tests } from './generators/tests.mjs';
 import { generate as mcpTools } from './generators/mcp-tools.mjs';
 import { generate as evalRules } from './generators/eval-rules.mjs';
 import { generate as llmJudgeTemplates } from './generators/llm-judge-templates.mjs';
+import { generate as capabilityMap } from './generators/capability-map.mjs';
 import { generate as brand } from './generators/brand.mjs';
 import { generate as release } from './generators/release.mjs';
 import { generate as security } from './generators/security.mjs';
@@ -51,6 +52,7 @@ async function main() {
     ['security', security],
     ['maintenance', maintenance],
     ['proof', proof],
+    ['capabilityMap', capabilityMap],
   ];
 
   const results = await Promise.allSettled(

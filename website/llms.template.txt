@@ -8,6 +8,8 @@ Iris registers {{mcpToolCount}} MCP tools (trace logging, heuristic eval, LLM-as
 
 {{proofSummary}}
 
+{{capabilitySummary}} The full map: {{websiteUrl}}/capabilities.
+
 ## Getting Started
 
 - [GitHub repository]({{repoUrl}}): source, README with per-client setup for every major MCP client, full tool schemas
@@ -15,6 +17,7 @@ Iris registers {{mcpToolCount}} MCP tools (trace logging, heuristic eval, LLM-as
 - [npm package](https://www.npmjs.com/package/{{npmPackage}}): `{{npmPackage}}` — install via `npx {{npmPackage}}`
 - [Playground]({{websiteUrl}}/playground): try agent eval in the browser, no install
 - [Proof]({{websiteUrl}}/proof): how accurate the built-in evaluators are — method, per-rule results with confidence intervals, and the command to reproduce them
+- [Capabilities]({{websiteUrl}}/capabilities): what Iris can judge and what it cannot yet — ten questions by six subjects, each answered cell naming its evidence
 - [Security]({{websiteUrl}}/security): security posture, signed releases, disclosure policy, measured issue-close times
 
 ## Learn — Agent Eval Concepts
