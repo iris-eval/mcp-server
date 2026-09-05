@@ -62,6 +62,20 @@ export interface EvalRuleResult {
   criticalSource?: 'default' | 'config';
   configInvalid?: boolean;
   budgetExceeded?: boolean;
+  /**
+   * The stamp (server 0.9.0): what kind of claim this result makes, what the
+   * composer did with it, which question it answers, what it saw, why it
+   * skipped, and how wrong it tends to be. Absent on rows written before that
+   * release; never fabricated.
+   */
+  kind?: 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
+  role?: 'gate' | 'veto' | 'risk' | 'advisory' | 'term';
+  question?: string;
+  classes?: string[];
+  ruleVersion?: number;
+  saw?: string[];
+  skipClass?: 'not_applicable' | 'defeated' | 'config_invalid';
+  uncertainty?: { basis: string; [key: string]: unknown };
 }
 
 /**
