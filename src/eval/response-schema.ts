@@ -123,6 +123,7 @@ export const evaluateOutputResponseSchema = z.looseObject({
     verdict: verdictSchema.optional().describe('state, passed, basis (which layer decided), by (the rules), risk'),
     coverage: coverageSchema.optional().describe('per question: judged, unjudged and why, or not_applicable; plus the inputs carried'),
     provenance: provenanceSchema.optional().describe('Iris version, ruleset and config hashes, thresholds, corpus version, time'),
+    erased_at: z.string().optional().describe('set once the linked trace was deleted'),
     eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).describe('the bundle that ran'),
     score: z.number().describe('0..1 weighted quality over the rules that ran'),
     passed: z.boolean().describe('the ship verdict; false when nothing was judged'),

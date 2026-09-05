@@ -10,12 +10,15 @@
  * the drift-lock validates it against the real handlers.
  */
 import type { EvalResult } from '../types/eval.js';
+import type { DormantRule } from './dormant.js';
 
 export interface EvaluationResponseOptions {
   /** The trace the evaluation was linked to, echoed so a caller can join the two without a second read. */
   traceId?: string;
   /** Present only when `eval_type` was omitted and the default ran. */
   note?: string;
+  /** Quarantined gating rules on this server, carried as coverage.dormant (a gate reads the verdict, never list_rules). */
+  dormant?: DormantRule[];
 }
 
 /** The response body for an evaluation — what the tool returns as text and, later, as structured content. */
@@ -40,7 +43,8 @@ export function toEvaluationResponse(result: EvalResult, options: EvaluationResp
     rules_evaluated: result.rules_evaluated,
     rules_skipped: result.rules_skipped,
     insufficient_data: result.insufficient_data,
-    ...(result.coverage ? { coverage: result.coverage } : {}),
+    ...(result.coverage ? { coverage: options.dormant?.length ? { ...result.coverage, dormant: options.dormant } : result.coverage } : {}),
+    ...(result.erased_at ? { erased_at: result.erased_at } : {}),
     ...(result.provenance ? { provenance: result.provenance } : {}),
     // Per-bundle breakdown — eval_type="all" only.
     ...(result.categories ? { categories: result.categories } : {}),

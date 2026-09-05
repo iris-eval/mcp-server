@@ -33,7 +33,7 @@ import type {
   EvalStatsFailure,
 } from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
-import type { EvalResult, Provenance } from '../types/eval.js';
+import type { EvalResult, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
 import { deriveCoverage, deriveCriticalSkipped, deriveVerdict } from '../eval/verdict.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
@@ -54,12 +54,24 @@ function assertTenant(tenantId: TenantId): void {
   }
 }
 
+export type RedactMode = 'none' | 'critical_spans';
+export interface SqliteAdapterOptions {
+  /** storage.redact — replace the spans a critical detector flagged in the stored text. */
+  redact?: RedactMode;
+}
+/** What every text field of an erased evaluation reads afterwards. */
+export const ERASED_MESSAGE = 'erased with the trace';
+
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
   private readonly dbPath: string;
 
-  constructor(dbPath: string) {
+  /** storage.redact — see SqliteAdapterOptions. */
+  private readonly redact: RedactMode;
+
+  constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
+    this.redact = options?.redact ?? 'none';
     this.db = new Database(dbPath);
   }
 
@@ -299,7 +311,7 @@ export class SqliteAdapter implements IStorageAdapter {
       result.id,
       result.trace_id ?? null,
       result.eval_type,
-      result.output_text,
+      this.storedOutputText(result),
       result.expected_text ?? null,
       result.score,
       result.passed ? 1 : 0,
@@ -676,10 +688,14 @@ export class SqliteAdapter implements IStorageAdapter {
   async deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number> {
     assertTenant(tenantId);
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    const result = this.db
-      .prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?')
-      .run(tenantId, cutoff);
-    return result.changes;
+    // Same erasure as deleteTrace: an evaluation younger than the window
+    // whose trace is swept keeps its verdict and loses its text.
+    const run = this.db.transaction((tid: TenantId, cut: string): number => {
+      const ids = (this.db.prepare('SELECT trace_id FROM traces WHERE tenant_id = ? AND timestamp < ?').all(tid, cut) as Array<{ trace_id: string }>).map((r) => r.trace_id);
+      this.eraseEvaluationsOfTraces(tid, ids);
+      return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?').run(tid, cut).changes;
+    });
+    return run(tenantId, cutoff);
   }
 
   async deleteEvalResultsOlderThan(tenantId: TenantId, days: number): Promise<number> {
@@ -737,10 +753,78 @@ export class SqliteAdapter implements IStorageAdapter {
     // Tenant-scoped: a trace id owned by a different tenant is
     // untouchable from this call. Cross-tenant deletions are not just
     // denied — they're invisible (no indication the id even exists).
-    const result = this.db
-      .prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?')
-      .run(tenantId, traceId);
-    return result.changes > 0;
+    //
+    // The right-to-erasure fix: eval_results.trace_id is ON DELETE SET
+    // NULL, so the delete alone left every linked evaluation behind with
+    // output_text verbatim — including what no_pii had flagged — orphaned
+    // and readable. The text is erased in the same transaction, BEFORE the
+    // FK can orphan the rows.
+    const run = this.db.transaction((tid: TenantId, id: string): number => {
+      const exists = this.db.prepare('SELECT 1 FROM traces WHERE tenant_id = ? AND trace_id = ?').get(tid, id);
+      if (!exists) return 0;
+      this.eraseEvaluationsOfTraces(tid, [id]);
+      return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?').run(tid, id).changes;
+    });
+    return run(tenantId, traceId) > 0;
+  }
+
+  /**
+   * Blank every text field of the evaluations linked to these traces and
+   * stamp erased_at (migration 007). Verdict, scores, criticality and the
+   * evidence OFFSETS stay — they carry no text — so history and drift
+   * analytics keep working over an erased row.
+   */
+  private eraseEvaluationsOfTraces(tenantId: TenantId, traceIds: readonly string[]): number {
+    if (traceIds.length === 0) return 0;
+    const now = new Date().toISOString();
+    const select = this.db.prepare('SELECT id, rule_results FROM eval_results WHERE tenant_id = ? AND trace_id = ?');
+    const update = this.db.prepare(
+      'UPDATE eval_results SET output_text = ?, expected_text = NULL, suggestions = ?, rule_results = ?, erased_at = ? WHERE tenant_id = ? AND id = ?',
+    );
+    let erased = 0;
+    for (const traceId of traceIds) {
+      for (const row of select.all(tenantId, traceId) as Array<{ id: string; rule_results: string }>) {
+        let rules: EvalRuleResult[] = [];
+        try {
+          rules = JSON.parse(row.rule_results) as EvalRuleResult[];
+        } catch {
+          rules = [];
+        }
+        const erasedRules = rules.map((r) => ({
+          ...r,
+          message: ERASED_MESSAGE,
+          ...(r.skipReason ? { skipReason: ERASED_MESSAGE } : {}),
+        }));
+        update.run('', '[]', JSON.stringify(erasedRules), now, tenantId, row.id);
+        erased += 1;
+      }
+    }
+    return erased;
+  }
+
+  /**
+   * storage.redact = 'critical_spans': the spans a critical detector fired
+   * on are replaced in the STORED text by [REDACTED:<pattern>]. The
+   * evidence offsets are left as computed — they index the text the caller
+   * saw, which is what a reader of the evidence needs — and the option's
+   * documentation says so.
+   */
+  private storedOutputText(result: EvalResult): string | null {
+    const text = result.output_text;
+    if (this.redact !== 'critical_spans' || !text) return text ?? null;
+    const spans = result.rule_results
+      .filter((r) => r.critical === true && !r.passed && !r.skipped)
+      .flatMap((r) => (r.evidence ?? []).filter((e): e is Extract<Evidence, { type: 'span' }> => e.type === 'span' && e.source === 'output'));
+    if (spans.length === 0) return text;
+    const seen = new Set<string>();
+    let out = text;
+    for (const s of [...spans].sort((a, b) => b.start - a.start)) {
+      const key = `${s.start}:${s.end}`;
+      if (seen.has(key) || s.start >= s.end || s.end > out.length) continue;
+      seen.add(key);
+      out = `${out.slice(0, s.start)}[REDACTED:${s.label}]${out.slice(s.end)}`;
+    }
+    return out;
   }
 
   async getDistinctValues(tenantId: TenantId, column: string): Promise<string[]> {
@@ -803,7 +887,8 @@ export class SqliteAdapter implements IStorageAdapter {
        * regroup the per-bundle breakdown from what IS stored.
        */
       output_text: row.output_text as string,
-      expected_text: row.expected_text as string | undefined,
+      expected_text: (row.expected_text as string | null | undefined) ?? undefined,
+      ...(row.erased_at ? { erased_at: row.erased_at as string } : {}),
       score: row.score as number,
       passed: (row.passed as number) === 1,
       rule_results: JSON.parse(row.rule_results as string),

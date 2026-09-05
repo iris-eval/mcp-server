@@ -262,6 +262,8 @@ export interface DeployRuleInput {
   definition: CustomRuleDefinition;
   sourceMomentId?: string;
   user?: string;
+  /** With replace: true, the ids of the same-named rules retired first — recorded on the rule.deploy audit row. */
+  replaces?: string[];
 }
 
 function generateRuleId(): string {
@@ -440,9 +442,11 @@ export function createCustomRuleStore(opts?: {
         user: input.user ?? 'local',
         ruleId: id,
         ruleName: rule.name,
-        details: input.sourceMomentId
-          ? { sourceMomentId: input.sourceMomentId, severity: rule.severity }
-          : { severity: rule.severity },
+        details: {
+          severity: rule.severity,
+          ...(input.sourceMomentId ? { sourceMomentId: input.sourceMomentId } : {}),
+          ...(input.replaces?.length ? { replaces: input.replaces } : {}),
+        },
       });
       return validated;
     },

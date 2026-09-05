@@ -19,6 +19,7 @@ export const PKG_VERSION = pkgVersion;
 export const defaultConfig: IrisConfig = {
   storage: {
     type: 'sqlite',
+    redact: 'none',
     path: join(irisHome(), 'iris.db'),
   },
   server: {
@@ -67,6 +68,7 @@ export const defaultConfig: IrisConfig = {
   },
   retention: {
     days: 30,
+    sweepIntervalHours: 24,
   },
   security: {
     apiKey: undefined,

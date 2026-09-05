@@ -387,6 +387,8 @@ export interface EvalResult {
   /** What the evaluation itself cost (the judge's spend); undefined for the free rules. */
   eval_cost_usd?: number;
   eval_tokens?: number;
+  /** Set when the linked trace was deleted (delete_trace or the retention sweep) and this row's text was erased. */
+  erased_at?: string;
 }
 
 export type CustomRuleType =
