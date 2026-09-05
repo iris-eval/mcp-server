@@ -114,7 +114,7 @@ const PATTERNS = [
     name: 'latency-claim-without-measurement',
     re: /\b(?:runs?|returns?|responds?|takes|is)\s+(?:in|within)?\s*[~<]?\s*\d+(?:\s*-\s*\d+)?\s*ms\b|\(\s*<\s*\d+\s*ms\s*\)|\b\d+\s*-\s*\d+\s*(?:seconds?|s)\s+latency\b/gi,
     onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/', 'src/tools/'],
-    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/sdk-spec.md', 'docs/proof.md', 'website/src/app/proof/'],
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/sdk-spec.md', 'docs/proof.md', 'docs/evaluators.md', 'website/src/app/proof/'],
     skipComments: true,
     exemptIf: (text, index) => {
       const lineStart = text.lastIndexOf('\n', index - 1) + 1;
@@ -329,7 +329,7 @@ const PATTERNS = [
     // website/public/claims-schema-v1.json is the published JSON Schema of
     // the same truthbase: its `proof.rules[].precision` property NAMES the
     // field the measurement fills, so the word is a key, not a claim.
-    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/proof.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json'],
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/proof.md', 'docs/evaluators.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json'],
     skipComments: true,
     exemptIf: (text, index) => {
       const lineStart = text.lastIndexOf('\n', index - 1) + 1;

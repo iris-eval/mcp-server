@@ -212,6 +212,18 @@ The composed cases are built from the same synthetic, same-model-labelled
 families as the per-rule numbers, so the accuracy here is conditional on that
 corpus. The real-transcript line is the only out-of-sample one.
 
+## The evaluator of evaluators
+
+`docs/evaluators.md` asks the thirteen trust questions — does it work, when
+does it fail, what does it measure, is it calibrated, can it be gamed, can it
+produce false confidence, and seven more — of every evaluator Iris ships, and
+answers each cell from the proof files: a cell reads *measured* only when a
+number for it exists in `results.json`, `composite-results.json` or
+`judge-results.json`, and names the file and key. It is rendered from
+`.claims.json → evaluators` by `npm run llms:render`; the generator is
+`scripts/claims/generators/evaluators.mjs` and `tests/evaluators-matrix.test.ts`
+locks the count every surface quotes to what the files hold.
+
 ## Add cases
 
 1. Open the family file for the rule (`proof/corpus/<rule>.json`). Read its

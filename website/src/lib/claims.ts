@@ -148,6 +148,57 @@ export interface ProofRule {
   recall: number;
   f1: number;
   ci95: ProofInterval;
+  /** Dirichlet credible intervals (schemaVersion 2); do not collapse at zero errors. */
+  credible95?: { precision: [number, number] | null; recall: [number, number] | null; f1: [number, number] | null };
+  /** What a fire is worth at prevalences 0.01, 0.05, 0.2, 0.5 (schemaVersion 2). */
+  ppvAt?: Record<string, number | null>;
+}
+export interface ProofRate {
+  k: number;
+  n: number;
+  rate: number | null;
+  ci95: [number, number] | null;
+}
+export interface ProofComposerSlice {
+  accuracy: ProofRate;
+  falseBlock: ProofRate;
+  missedBlock: ProofRate;
+  calibration: { n: number; brier: number; ece: number } | null;
+}
+export interface ProofComposerSlices {
+  test: ProofComposerSlice;
+  dev: ProofComposerSlice;
+  realTranscripts: ProofComposerSlice;
+}
+export type ProofDifference = { delta: number; lo: number; hi: number } | null;
+export interface ProofComposite {
+  schemaVersion: number;
+  compositeVersion: string;
+  corpusVersion: string;
+  version: string;
+  method: { priorMode: string; tau: number; falsePassCost: number; prior: number; [key: string]: unknown };
+  counts: { cases: number; dev: number; test: number; realTranscripts: number; composed: number; clean: number; mustNotShip: number; unlabelled: number };
+  legacy: ProofComposerSlices;
+  risk: ProofComposerSlices;
+  riskPerClass: ProofComposerSlices;
+  difference: { risk: { test: ProofDifference; realTranscripts: ProofDifference }; riskPerClass: { test: ProofDifference; realTranscripts: ProofDifference }; reads: string };
+  perClass: Array<{ class: string; present: number; caught: number; recall: number | null; ci95: [number, number] | null }>;
+  sweep: { split: string; variant: string; argmaxUtility: number; shippedTau: number; note: string };
+}
+export interface ProofTransforms {
+  method: string;
+  transforms: Array<{ id: string; describe: string }>;
+  rules: Array<{ rule: string; positives: number; firedOriginally: number; withSpan: number }>;
+  rows: Array<{ rule: string; transform: string; n: number; caught: number; recall: number | null; ci95: [number, number] | null; dropped: string[] }>;
+}
+export interface ProofEntities {
+  rule: string;
+  method: string;
+  rows: Array<{ entity: string; present: number; caught: number; named: number; recall: number | null; ci95: [number, number] | null }>;
+}
+export interface ProofCustom {
+  method: string;
+  types: Array<{ type: string; config: Record<string, unknown>; n: number; positives: number; negatives: number; skipped: number; tp: number; fp: number; fn: number; tn: number; precision: number | null; recall: number | null; f1: number | null; ci95: ProofInterval }>;
 }
 export interface ProofClaims {
   schemaVersion: number;
@@ -156,10 +207,16 @@ export interface ProofClaims {
   commit: string;
   /** package.json version the numbers were generated for; the page cites this, not the squashed commit. */
   version?: string;
-  method: { ci: string; f1Ci: string };
+  method: { ci: string; f1Ci: string; credible?: string; ppvAt?: string };
   rules: ProofRule[];
   humanAgreement: { status: string; note: string };
   judge?: { status: 'pending' | 'measured'; note?: string; [key: string]: unknown };
+  /** schemaVersion 2 blocks; each absent until its measurement lands. */
+  customCorpusVersion?: string;
+  transforms?: ProofTransforms;
+  entities?: ProofEntities[];
+  custom?: ProofCustom;
+  composite?: ProofComposite;
 }
 export const PROOF: ProofClaims | null =
   (claimsRaw as unknown as { proof?: ProofClaims }).proof ?? null;
@@ -190,6 +247,26 @@ export interface CapabilityMapClaims {
   total: number;
 }
 export const CAPABILITY_MAP = (claimsRaw as unknown as { capabilityMap: CapabilityMapClaims }).capabilityMap;
+
+// Evaluator of evaluators — the thirteen trust questions asked of every
+// evaluator Iris ships, derived from the proof files by
+// scripts/claims/generators/evaluators.mjs (tests/evaluators-matrix.test.ts).
+export interface EvaluatorCell {
+  status: 'measured' | 'partial' | 'stated' | 'measurable' | 'n/a';
+  evidence?: string;
+  note?: string;
+}
+export interface EvaluatorsClaims {
+  version: number;
+  about: string;
+  statuses: string[];
+  questions: Array<{ id: string; n: number; text: string }>;
+  groups: Array<{ id: string; text: string }>;
+  evaluators: Array<{ id: string; group: string; name: string; cells: Record<string, EvaluatorCell>; measured: number }>;
+  counts: { evaluators: number; questions: number; measuredThreeOrMore: number; byGroup: Record<string, { evaluators: number; measuredThreeOrMore: number }>; byStatus: Record<string, number> };
+  sources: { results: { corpusVersion: string; customCorpusVersion: string | null }; composite: { compositeVersion: string } | null; judge: { status: string } };
+}
+export const EVALUATORS: EvaluatorsClaims | null = (claimsRaw as unknown as { evaluators?: EvaluatorsClaims }).evaluators ?? null;
 
 // Release
 export const CURRENT_RELEASE_VERSION = claimsRaw.release.currentReleaseVersion as string | null;

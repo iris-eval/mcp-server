@@ -30,6 +30,7 @@ import { generate as release } from './generators/release.mjs';
 import { generate as security } from './generators/security.mjs';
 import { generate as maintenance } from './generators/issues.mjs';
 import { generate as proof } from './generators/proof.mjs';
+import { generate as evaluators } from './generators/evaluators.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -52,6 +53,7 @@ async function main() {
     ['security', security],
     ['maintenance', maintenance],
     ['proof', proof],
+    ['evaluators', evaluators],
     ['capabilityMap', capabilityMap],
   ];
 

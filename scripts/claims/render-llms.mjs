@@ -62,6 +62,9 @@ export const TARGETS = [
   // server serves inside iris://capabilities and the site renders at
   // /capabilities. The template holds the prose; the table is the slot.
   { template: 'docs/capabilities.template.md', output: 'docs/capabilities.md' },
+  // The evaluator-of-evaluators matrix as a document, from .claims.json →
+  // evaluators (derived from the proof files by its generator).
+  { template: 'docs/evaluators.template.md', output: 'docs/evaluators.md' },
   { template: 'website/llms-full.template.txt', output: 'website/public/llms-full.txt' },
   {
     template: SKILL_TEMPLATE,
@@ -141,6 +144,53 @@ export function capabilityMapTable(claims) {
   return [head, sep, ...rows, '', ...sections].join('\n');
 }
 
+const STATUS_MARK = { measured: '●', partial: '◐', stated: '≡', measurable: '○', 'n/a': '—' };
+
+/** One line: how many evaluators have three or more of the thirteen questions measured, with the link. */
+export function evaluatorsSummary(claims) {
+  const m = claims.evaluators;
+  const groups = m.groups.map((g) => `${g.text} ${m.counts.byGroup[g.id].measuredThreeOrMore} of ${m.counts.byGroup[g.id].evaluators}`).join('; ');
+  return `Evaluators with three or more of the thirteen trust questions measured: ${m.counts.measuredThreeOrMore} of ${m.counts.evaluators} (${groups}) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.`;
+}
+
+/** The matrix as one table of marks per group, then the evidence per evaluator. */
+export function evaluatorsMatrixTable(claims) {
+  const m = claims.evaluators;
+  const legend = `Marks: ${Object.entries(STATUS_MARK).map(([k, v]) => `${v} ${k}`).join(' · ')}.`;
+  const head = `| Evaluator | ${m.questions.map((q) => `Q${q.n}`).join(' | ')} | measured |`;
+  const sep = `|---|${m.questions.map(() => ':-:').join('|')}|--:|`;
+  const out = [legend, ''];
+  out.push('| # | Question |');
+  out.push('|--:|---|');
+  for (const q of m.questions) out.push(`| ${q.n} | ${q.text} |`);
+  out.push('');
+  for (const g of m.groups) {
+    const members = m.evaluators.filter((e) => e.group === g.id);
+    out.push(`## ${g.text.charAt(0).toUpperCase() + g.text.slice(1)} — ${m.counts.byGroup[g.id].measuredThreeOrMore} of ${members.length} with three or more questions measured`);
+    out.push('');
+    out.push(head, sep);
+    for (const e of members) out.push(`| \`${e.name}\` | ${m.questions.map((q) => STATUS_MARK[e.cells[q.id].status]).join(' | ')} | ${e.measured} |`);
+    out.push('');
+  }
+  out.push('## Evidence, per evaluator');
+  out.push('');
+  out.push('Measured cells name the file and key; measurable cells name the harness; stated cells name where the declaration lives.');
+  out.push('');
+  for (const e of m.evaluators) {
+    out.push(`### \`${e.name}\` (${m.groups.find((g) => g.id === e.group).text})`);
+    out.push('');
+    for (const q of m.questions) {
+      const c = e.cells[q.id];
+      const parts = [`**Q${q.n}** ${c.status}`];
+      if (c.evidence) parts.push(`— ${c.evidence}`);
+      if (c.note) parts.push(`(${c.note})`);
+      out.push(`- ${parts.join(' ')}`);
+    }
+    out.push('');
+  }
+  return out.join('\n');
+}
+
 /** Everything a template may reference. Add a slot here, never a literal in a template. */
 export function slotsFrom(claims) {
   const tagline = claims.brand.tagline;
@@ -163,6 +213,8 @@ export function slotsFrom(claims) {
     llmJudgeTemplateNames: claims.llmJudgeTemplates.names.join(', '),
     capabilitySummary: capabilitySummary(claims),
     capabilityMapTable: capabilityMapTable(claims),
+    evaluatorsSummary: evaluatorsSummary(claims),
+    evaluatorsMatrixTable: evaluatorsMatrixTable(claims),
     // The judge enable workflow, the same shape src/judge-enablement.ts renders
     // (renderJudgeEnableBlock): the title in bold, then the numbered steps.
     judgeEnableBlock: [`**${claims.llmJudgeTemplates.enable.title}**`, ...claims.llmJudgeTemplates.enable.steps.map((s, i) => `${i + 1}. ${s}`)].join('\n'),

@@ -1377,8 +1377,2214 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-05T15:55:15.645Z",
-  "generatedFromCommit": "5f2e53a",
+  "evaluators": {
+    "about": "The thirteen trust questions asked of every evaluator Iris ships; every cell derived from the committed proof files by scripts/claims/generators/evaluators.mjs, never typed. A cell is measured only when a number for it exists in proof/results.json, proof/composite-results.json or proof/judge-results.json, and its evidence names where.",
+    "counts": {
+      "byGroup": {
+        "citations": {
+          "evaluators": 1,
+          "measuredThreeOrMore": 0
+        },
+        "composer": {
+          "evaluators": 1,
+          "measuredThreeOrMore": 1
+        },
+        "custom": {
+          "evaluators": 8,
+          "measuredThreeOrMore": 8
+        },
+        "judge": {
+          "evaluators": 5,
+          "measuredThreeOrMore": 0
+        },
+        "rules": {
+          "evaluators": 15,
+          "measuredThreeOrMore": 15
+        }
+      },
+      "byStatus": {
+        "measurable": 145,
+        "measured": 96,
+        "n/a": 76,
+        "partial": 12,
+        "stated": 61
+      },
+      "evaluators": 30,
+      "measuredThreeOrMore": 24,
+      "questions": 13
+    },
+    "evaluators": [
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[min_output_length]",
+            "note": "precision, recall and F1 on 29 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[min_output_length].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[format]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:min_output_length",
+        "measured": 4,
+        "name": "min_output_length"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[non_empty_output]",
+            "note": "precision, recall and F1 on 29 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[non_empty_output].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[format]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: policy, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:non_empty_output",
+        "measured": 4,
+        "name": "non_empty_output"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[sentence_count]",
+            "note": "precision, recall and F1 on 30 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[sentence_count].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[format]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:sentence_count",
+        "measured": 4,
+        "name": "sentence_count"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[expected_coverage]",
+            "note": "precision, recall and F1 on 29 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[expected_coverage].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[incomplete_ask]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:expected_coverage",
+        "measured": 4,
+        "name": "expected_coverage"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[keyword_overlap]",
+            "note": "precision, recall and F1 on 30 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[keyword_overlap].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[off_task]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:keyword_overlap",
+        "measured": 4,
+        "name": "keyword_overlap"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[topic_consistency]",
+            "note": "precision, recall and F1 on 31 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[topic_consistency].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[off_task]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:topic_consistency",
+        "measured": 4,
+        "name": "topic_consistency"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_pii]",
+            "note": "precision, recall and F1 on 90 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_pii].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[pii_leak, credential_leak]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present; per-entity recall in results.json → entities",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/results.json → transforms.rows[rule=no_pii]",
+            "note": "recall under 7 evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md",
+            "status": "measured"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: detection, mechanism: pattern; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/results.json → transforms.rows[rule=no_pii]",
+            "note": "the same transforms table: zero-width, homoglyph, fullwidth, no-break space, tab, line break, case",
+            "status": "measured"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_pii",
+        "measured": 6,
+        "name": "no_pii"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_blocklist_words]",
+            "note": "precision, recall and F1 on 32 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_blocklist_words].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "a labelled outcome the formula should track",
+            "note": "a formula's family measures conformance; correlation with an outcome needs cases labelled by the outcome",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/results.json → transforms.rows[rule=no_blocklist_words]",
+            "note": "recall under 7 evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md",
+            "status": "measured"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: policy, mechanism: pattern; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/results.json → transforms.rows[rule=no_blocklist_words]",
+            "note": "the same transforms table: zero-width, homoglyph, fullwidth, no-break space, tab, line break, case",
+            "status": "measured"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_blocklist_words",
+        "measured": 5,
+        "name": "no_blocklist_words"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_injection_patterns]",
+            "note": "precision, recall and F1 on 90 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_injection_patterns].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[injection]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/results.json → transforms.rows[rule=no_injection_patterns]",
+            "note": "recall under 7 evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md",
+            "status": "measured"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: detection, mechanism: pattern; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/results.json → transforms.rows[rule=no_injection_patterns]",
+            "note": "the same transforms table: zero-width, homoglyph, fullwidth, no-break space, tab, line break, case",
+            "status": "measured"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_injection_patterns",
+        "measured": 6,
+        "name": "no_injection_patterns"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_stub_output]",
+            "note": "precision, recall and F1 on 89 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_stub_output].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[stub]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_stub_output",
+        "measured": 4,
+        "name": "no_stub_output"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_hallucination_markers]",
+            "note": "precision, recall and F1 on 90 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_hallucination_markers].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[fabrication]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_hallucination_markers",
+        "measured": 4,
+        "name": "no_hallucination_markers"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_silent_tool_failure]",
+            "note": "precision, recall and F1 on 30 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_silent_tool_failure].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[silent_tool_failure]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_silent_tool_failure",
+        "measured": 4,
+        "name": "no_silent_tool_failure"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[cost_under_threshold]",
+            "note": "precision, recall and F1 on 26 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[cost_under_threshold].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[over_budget]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: policy, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:cost_under_threshold",
+        "measured": 4,
+        "name": "cost_under_threshold"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[token_efficiency]",
+            "note": "precision, recall and F1 on 25 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[token_efficiency].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[over_budget]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:token_efficiency",
+        "measured": 4,
+        "name": "token_efficiency"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_tool_loop]",
+            "note": "precision, recall and F1 on 28 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_tool_loop].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[tool_loop]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: detection, mechanism: formula; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_tool_loop",
+        "measured": 4,
+        "name": "no_tool_loop"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[regex_match]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[regex_match].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/regex_match.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/regex_match.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/regex_match.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic; a regex that exceeds the sandbox budget skips, which the verdict reports as unknown",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts over a pattern type's positives",
+            "note": "the same normalisation gap as the built-in pattern rules",
+            "status": "measurable"
+          }
+        },
+        "group": "custom",
+        "id": "custom:regex_match",
+        "measured": 3,
+        "name": "regex_match"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[regex_no_match]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[regex_no_match].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/regex_no_match.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/regex_no_match.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/regex_no_match.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic; a regex that exceeds the sandbox budget skips, which the verdict reports as unknown",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts over a pattern type's positives",
+            "note": "the same normalisation gap as the built-in pattern rules",
+            "status": "measurable"
+          }
+        },
+        "group": "custom",
+        "id": "custom:regex_no_match",
+        "measured": 3,
+        "name": "regex_no_match"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[min_length]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[min_length].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/min_length.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/min_length.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/min_length.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic",
+            "status": "measured"
+          },
+          "q9": {
+            "note": "arithmetic over the whole output",
+            "status": "n/a"
+          }
+        },
+        "group": "custom",
+        "id": "custom:min_length",
+        "measured": 3,
+        "name": "min_length"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[max_length]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[max_length].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/max_length.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/max_length.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/max_length.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic",
+            "status": "measured"
+          },
+          "q9": {
+            "note": "arithmetic over the whole output",
+            "status": "n/a"
+          }
+        },
+        "group": "custom",
+        "id": "custom:max_length",
+        "measured": 3,
+        "name": "max_length"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[contains_keywords]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[contains_keywords].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/contains_keywords.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/contains_keywords.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/contains_keywords.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic; a regex that exceeds the sandbox budget skips, which the verdict reports as unknown",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts over a pattern type's positives",
+            "note": "the same normalisation gap as the built-in pattern rules",
+            "status": "measurable"
+          }
+        },
+        "group": "custom",
+        "id": "custom:contains_keywords",
+        "measured": 3,
+        "name": "contains_keywords"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[excludes_keywords]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[excludes_keywords].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/excludes_keywords.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/excludes_keywords.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/excludes_keywords.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic; a regex that exceeds the sandbox budget skips, which the verdict reports as unknown",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts over a pattern type's positives",
+            "note": "the same normalisation gap as the built-in pattern rules",
+            "status": "measurable"
+          }
+        },
+        "group": "custom",
+        "id": "custom:excludes_keywords",
+        "measured": 3,
+        "name": "excludes_keywords"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[json_schema]",
+            "note": "conformance to the documented definition under a declared config on 25 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[json_schema].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/json_schema.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/json_schema.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/json_schema.json → definition",
+            "note": "the definition says the schema is not consulted in this version",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic",
+            "status": "measured"
+          },
+          "q9": {
+            "note": "arithmetic over the whole output",
+            "status": "n/a"
+          }
+        },
+        "group": "custom",
+        "id": "custom:json_schema",
+        "measured": 3,
+        "name": "json_schema"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → custom.types[cost_threshold]",
+            "note": "conformance to the documented definition under a declared config on 24 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[cost_threshold].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/cost_threshold.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/cost_threshold.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/cost_threshold.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic",
+            "status": "measured"
+          },
+          "q9": {
+            "note": "arithmetic over the whole output",
+            "status": "n/a"
+          }
+        },
+        "group": "custom",
+        "id": "custom:cost_threshold",
+        "measured": 3,
+        "name": "cost_threshold"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:accuracy",
+        "measured": 0,
+        "name": "accuracy"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:helpfulness",
+        "measured": 0,
+        "name": "helpfulness"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:safety",
+        "measured": 0,
+        "name": "safety"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:correctness",
+        "measured": 0,
+        "name": "correctness"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:faithfulness",
+        "measured": 0,
+        "name": "faithfulness"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — the citation cases",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "passed with a null score whenever nothing resolved",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on support judgements",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "citation_resolves (deterministic) beside citation_supports (judgment) on one case",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the groundedness triple: signals, judge, citations",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "verify_citations → supported / judged; resolution off by default",
+            "note": "what the tool computes is stated in its description and docs",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "a dead URL with fetch off passes; the verifier split (resolves vs supports) is the fix and the measurement",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "about a hundred judged citations are needed for bins",
+            "note": "underpowered at the current corpus size",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "paraphrased support prompts",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both providers",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeats",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "fetch off: any output with citations passes; measured once the split lands",
+            "note": "needs a judge key; the 17 citation cases run under the same runner",
+            "status": "measurable"
+          }
+        },
+        "group": "citations",
+        "id": "citations:verify_citations",
+        "measured": 0,
+        "name": "verify_citations"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/composite-results.json → legacy.test, risk.test, realTranscripts",
+            "note": "verdict accuracy against shouldShip on the test split and on the 24 real transcripts, for the legacy composer and the risk (per-output prior) composer, with Wilson intervals and the Newcombe interval on the difference",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/composite-results.json → legacy.test.calibration.ece",
+            "note": "the calibration error of the legacy score read as a probability is the false-confidence measurement",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → legacy.realTranscripts, risk.realTranscripts",
+            "note": "the 24 real transcripts are the out-of-sample line",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "a verdict field for corroboration between rule fires and judge dimensions (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "multi-run evaluation of one input; metamorphic pairs over the trace store",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/composite-results.json → legacy.test.falseBlock, legacy.test.missedBlock, sweep",
+            "note": "false blocks on clean cases and missed blocks on must-not-ship cases, separately; the threshold sweep on the dev split",
+            "status": "measured"
+          },
+          "q3": {
+            "evidence": "proof/composite-results.json → method.legacy, method.risk",
+            "note": "the legacy arithmetic and the risk model are stated in the file",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/composite-results.json → legacy.test.missedBlock",
+            "note": "the share of must-not-ship outputs the legacy verdict passes is the measurement of a score that appears to be a quality gradient",
+            "status": "measured"
+          },
+          "q5": {
+            "evidence": "proof/composite-results.json → legacy.test.calibration, risk.test.calibration, sweep",
+            "note": "Brier and expected calibration error over ten bins for the legacy score read as P(bad) and for p_bad; the utility-optimal threshold on the dev split beside the shipped one",
+            "status": "measured"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check --composite regenerates the file byte for byte in CI",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "a critical rule defeated by the output (the regex budget) reads as unknown from 0.10.0; measured by a composite case that stalls a critical pattern",
+            "status": "measurable"
+          }
+        },
+        "group": "composer",
+        "id": "composer:passed",
+        "measured": 7,
+        "name": "the verdict composer (passed)"
+      }
+    ],
+    "groups": [
+      {
+        "id": "rules",
+        "text": "the built-in rules"
+      },
+      {
+        "id": "custom",
+        "text": "the custom rule types"
+      },
+      {
+        "id": "judge",
+        "text": "the LLM-judge templates"
+      },
+      {
+        "id": "citations",
+        "text": "the citation verifier"
+      },
+      {
+        "id": "composer",
+        "text": "the verdict composer"
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "n": 1,
+        "text": "How do we know this evaluator works?"
+      },
+      {
+        "id": "q2",
+        "n": 2,
+        "text": "Under what conditions does it fail?"
+      },
+      {
+        "id": "q3",
+        "n": 3,
+        "text": "What does the metric actually measure?"
+      },
+      {
+        "id": "q4",
+        "n": 4,
+        "text": "What does it only appear to measure?"
+      },
+      {
+        "id": "q5",
+        "n": 5,
+        "text": "Is the output calibrated?"
+      },
+      {
+        "id": "q6",
+        "n": 6,
+        "text": "How sensitive is it to prompt variation?"
+      },
+      {
+        "id": "q7",
+        "n": 7,
+        "text": "How sensitive is it to model choice?"
+      },
+      {
+        "id": "q8",
+        "n": 8,
+        "text": "How stable is it across repeated runs?"
+      },
+      {
+        "id": "q9",
+        "n": 9,
+        "text": "Can it be gamed?"
+      },
+      {
+        "id": "q10",
+        "n": 10,
+        "text": "Can it produce false confidence?"
+      },
+      {
+        "id": "q11",
+        "n": 11,
+        "text": "Does it correlate with the outcome we care about?"
+      },
+      {
+        "id": "q12",
+        "n": 12,
+        "text": "Can deterministic evidence corroborate model-based judgment?"
+      },
+      {
+        "id": "q13",
+        "n": 13,
+        "text": "Can multiple independent methods triangulate the same conclusion?"
+      }
+    ],
+    "sources": {
+      "composite": {
+        "compositeVersion": "64b1c55b2bc6"
+      },
+      "judge": {
+        "status": "pending"
+      },
+      "results": {
+        "corpusVersion": "1a82d36c1644",
+        "customCorpusVersion": "950bf970c1c1"
+      }
+    },
+    "statuses": [
+      "measured",
+      "partial",
+      "stated",
+      "measurable",
+      "n/a"
+    ],
+    "version": 1
+  },
+  "generatedAt": "2026-09-05T16:07:05.048Z",
+  "generatedFromCommit": "85e41ac",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -1448,6 +3654,1356 @@
   },
   "proof": {
     "commit": "5644322",
+    "composite": {
+      "compositeVersion": "64b1c55b2bc6",
+      "corpusVersion": "1a82d36c1644",
+      "counts": {
+        "byClass": {
+          "credential_leak": 5,
+          "fabrication": 10,
+          "format": 7,
+          "incomplete_ask": 1,
+          "injection": 13,
+          "off_task": 8,
+          "over_budget": 10,
+          "pii_leak": 13,
+          "silent_tool_failure": 10,
+          "stub": 8,
+          "tool_loop": 7,
+          "ungrounded": 4
+        },
+        "cases": 111,
+        "clean": 38,
+        "composed": 87,
+        "dev": 85,
+        "mustNotShip": 73,
+        "realTranscripts": 24,
+        "test": 26,
+        "unlabelled": 0
+      },
+      "difference": {
+        "reads": "accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart",
+        "risk": {
+          "realTranscripts": {
+            "delta": 0.2083,
+            "hi": 0.4445,
+            "lo": -0.0679
+          },
+          "test": {
+            "delta": 0.1923,
+            "hi": 0.4243,
+            "lo": -0.0746
+          }
+        },
+        "riskPerClass": {
+          "realTranscripts": {
+            "delta": 0.2917,
+            "hi": 0.5132,
+            "lo": 0.0159
+          },
+          "test": {
+            "delta": 0.3077,
+            "hi": 0.5223,
+            "lo": 0.0374
+          }
+        }
+      },
+      "legacy": {
+        "dev": {
+          "accuracy": {
+            "ci95": [
+              0.482,
+              0.6868
+            ],
+            "k": 50,
+            "n": 85,
+            "rate": 0.5882
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": 0.0222,
+                "n": 48,
+                "observedRate": 0.6042,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": 0.1238,
+                "n": 33,
+                "observedRate": 0.697,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": 0.2398,
+                "n": 4,
+                "observedRate": 0.75,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 1
+              }
+            ],
+            "brier": 0.5515,
+            "ece": 0.5752,
+            "n": 85
+          },
+          "falseBlock": {
+            "ci95": [
+              0.0185,
+              0.2132
+            ],
+            "k": 2,
+            "n": 30,
+            "rate": 0.0667
+          },
+          "missedBlock": {
+            "ci95": [
+              0.4681,
+              0.7188
+            ],
+            "k": 33,
+            "n": 55,
+            "rate": 0.6
+          }
+        },
+        "realTranscripts": {
+          "accuracy": {
+            "ci95": [
+              0.2789,
+              0.6493
+            ],
+            "k": 11,
+            "n": 24,
+            "rate": 0.4583
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": 0.0208,
+                "n": 19,
+                "observedRate": 0.6842,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": 0.1172,
+                "n": 5,
+                "observedRate": 1,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 1
+              }
+            ],
+            "brier": 0.672,
+            "ece": 0.7091,
+            "n": 24
+          },
+          "falseBlock": {
+            "ci95": [
+              0,
+              0.3903
+            ],
+            "k": 0,
+            "n": 6,
+            "rate": 0
+          },
+          "missedBlock": {
+            "ci95": [
+              0.4913,
+              0.875
+            ],
+            "k": 13,
+            "n": 18,
+            "rate": 0.7222
+          }
+        },
+        "test": {
+          "accuracy": {
+            "ci95": [
+              0.2243,
+              0.5747
+            ],
+            "k": 10,
+            "n": 26,
+            "rate": 0.3846
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": 0.0312,
+                "n": 16,
+                "observedRate": 0.75,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": 0.1438,
+                "n": 9,
+                "observedRate": 0.5556,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": 0.25,
+                "n": 1,
+                "observedRate": 1,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 1
+              }
+            ],
+            "brier": 0.5963,
+            "ece": 0.6137,
+            "n": 26
+          },
+          "falseBlock": {
+            "ci95": [
+              0.0224,
+              0.4709
+            ],
+            "k": 1,
+            "n": 8,
+            "rate": 0.125
+          },
+          "missedBlock": {
+            "ci95": [
+              0.6078,
+              0.9416
+            ],
+            "k": 15,
+            "n": 18,
+            "rate": 0.8333
+          }
+        }
+      },
+      "method": {
+        "accuracyCi": "wilson-95",
+        "calibration": "Brier score and expected calibration error over ten equal-width bins; the legacy score read as P(bad) = 1 − score, the risk as p_bad",
+        "differenceCi": "newcombe-hybrid-score-95",
+        "falsePassCost": 1,
+        "legacy": "passed as the tool returns it: weighted score ≥ the default threshold and no critical failure",
+        "prior": 0.5,
+        "priorMode": "per-output",
+        "priorModes": {
+          "per-class": "π is the prior that each examined class is present (plan §4.3 as written); with K classes examined the prior that nothing is wrong is (1 − π)^K",
+          "per-output": "π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)"
+        },
+        "risk": "class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (proof/lib/risk.ts)",
+        "shouldShip": "by construction (any tier-A class present → false) unless a human label overrides; cases with shouldShip null are excluded from accuracy",
+        "split": "fnv1a(id + \"iris-composite-split-v1\") % 100 < 70 → dev, else test; never stored",
+        "tau": 0.5
+      },
+      "perClass": [
+        {
+          "caught": 10,
+          "ci95": [
+            0.4974,
+            0.9182
+          ],
+          "class": "pii_leak",
+          "present": 13,
+          "recall": 0.7692
+        },
+        {
+          "caught": 4,
+          "ci95": [
+            0.3755,
+            0.9638
+          ],
+          "class": "credential_leak",
+          "present": 5,
+          "recall": 0.8
+        },
+        {
+          "caught": 11,
+          "ci95": [
+            0.5777,
+            0.9567
+          ],
+          "class": "injection",
+          "present": 13,
+          "recall": 0.8462
+        },
+        {
+          "caught": 0,
+          "ci95": null,
+          "class": "injection_compliance",
+          "present": 0,
+          "recall": null
+        },
+        {
+          "caught": 10,
+          "ci95": [
+            0.7225,
+            1
+          ],
+          "class": "silent_tool_failure",
+          "present": 10,
+          "recall": 1
+        },
+        {
+          "caught": 7,
+          "ci95": [
+            0.6457,
+            1
+          ],
+          "class": "tool_loop",
+          "present": 7,
+          "recall": 1
+        },
+        {
+          "caught": 5,
+          "ci95": [
+            0.3057,
+            0.8632
+          ],
+          "class": "stub",
+          "present": 8,
+          "recall": 0.625
+        },
+        {
+          "caught": 4,
+          "ci95": [
+            0.1682,
+            0.6873
+          ],
+          "class": "fabrication",
+          "present": 10,
+          "recall": 0.4
+        },
+        {
+          "caught": 0,
+          "ci95": [
+            0,
+            0.4899
+          ],
+          "class": "ungrounded",
+          "present": 4,
+          "recall": 0
+        },
+        {
+          "caught": 0,
+          "ci95": [
+            0,
+            0.7935
+          ],
+          "class": "incomplete_ask",
+          "present": 1,
+          "recall": 0
+        },
+        {
+          "caught": 6,
+          "ci95": [
+            0.4093,
+            0.9285
+          ],
+          "class": "off_task",
+          "present": 8,
+          "recall": 0.75
+        },
+        {
+          "caught": 10,
+          "ci95": [
+            0.7225,
+            1
+          ],
+          "class": "over_budget",
+          "present": 10,
+          "recall": 1
+        },
+        {
+          "caught": 6,
+          "ci95": [
+            0.4869,
+            0.9743
+          ],
+          "class": "format",
+          "present": 7,
+          "recall": 0.8571
+        },
+        {
+          "caught": 0,
+          "ci95": null,
+          "class": "invalid_tool_call",
+          "present": 0,
+          "recall": null
+        }
+      ],
+      "risk": {
+        "dev": {
+          "accuracy": {
+            "ci95": [
+              0.6643,
+              0.8422
+            ],
+            "k": 65,
+            "n": 85,
+            "rate": 0.7647
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": 0.1233,
+                "n": 44,
+                "observedRate": 0.3636,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": 0.4637,
+                "n": 3,
+                "observedRate": 0.6667,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": 0.557,
+                "n": 1,
+                "observedRate": 1,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6801,
+                "n": 12,
+                "observedRate": 0.9167,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 1,
+                "n": 25,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.1794,
+            "ece": 0.1702,
+            "n": 85
+          },
+          "falseBlock": {
+            "ci95": [
+              0.0185,
+              0.2132
+            ],
+            "k": 2,
+            "n": 30,
+            "rate": 0.0667
+          },
+          "missedBlock": {
+            "ci95": [
+              0.2181,
+              0.459
+            ],
+            "k": 18,
+            "n": 55,
+            "rate": 0.3273
+          }
+        },
+        "realTranscripts": {
+          "accuracy": {
+            "ci95": [
+              0.4671,
+              0.8203
+            ],
+            "k": 16,
+            "n": 24,
+            "rate": 0.6667
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": 0.1209,
+                "n": 14,
+                "observedRate": 0.5714,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": 0.557,
+                "n": 1,
+                "observedRate": 1,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6801,
+                "n": 3,
+                "observedRate": 1,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 1,
+                "n": 6,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.281,
+            "ece": 0.3212,
+            "n": 24
+          },
+          "falseBlock": {
+            "ci95": [
+              0,
+              0.3903
+            ],
+            "k": 0,
+            "n": 6,
+            "rate": 0
+          },
+          "missedBlock": {
+            "ci95": [
+              0.2456,
+              0.6628
+            ],
+            "k": 8,
+            "n": 18,
+            "rate": 0.4444
+          }
+        },
+        "test": {
+          "accuracy": {
+            "ci95": [
+              0.3895,
+              0.7446
+            ],
+            "k": 15,
+            "n": 26,
+            "rate": 0.5769
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": 0.1256,
+                "n": 15,
+                "observedRate": 0.5333,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": 0.4637,
+                "n": 2,
+                "observedRate": 1,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6801,
+                "n": 2,
+                "observedRate": 1,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": 0.8055,
+                "n": 1,
+                "observedRate": 0,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 1,
+                "n": 6,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.2991,
+            "ece": 0.3321,
+            "n": 26
+          },
+          "falseBlock": {
+            "ci95": [
+              0.0224,
+              0.4709
+            ],
+            "k": 1,
+            "n": 8,
+            "rate": 0.125
+          },
+          "missedBlock": {
+            "ci95": [
+              0.3372,
+              0.7544
+            ],
+            "k": 10,
+            "n": 18,
+            "rate": 0.5556
+          }
+        }
+      },
+      "riskPerClass": {
+        "dev": {
+          "accuracy": {
+            "ci95": [
+              0.5411,
+              0.7403
+            ],
+            "k": 55,
+            "n": 85,
+            "rate": 0.6471
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6597,
+                "n": 44,
+                "observedRate": 0.3636,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 0.9916,
+                "n": 41,
+                "observedRate": 0.9512,
+                "to": 1
+              }
+            ],
+            "brier": 0.1878,
+            "ece": 0.1728,
+            "n": 85
+          },
+          "falseBlock": {
+            "ci95": [
+              0.8865,
+              1
+            ],
+            "k": 30,
+            "n": 30,
+            "rate": 1
+          },
+          "missedBlock": {
+            "ci95": [
+              0,
+              0.0653
+            ],
+            "k": 0,
+            "n": 55,
+            "rate": 0
+          }
+        },
+        "realTranscripts": {
+          "accuracy": {
+            "ci95": [
+              0.551,
+              0.88
+            ],
+            "k": 18,
+            "n": 24,
+            "rate": 0.75
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6613,
+                "n": 14,
+                "observedRate": 0.5714,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 0.9911,
+                "n": 10,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.1486,
+            "ece": 0.0562,
+            "n": 24
+          },
+          "falseBlock": {
+            "ci95": [
+              0.6097,
+              1
+            ],
+            "k": 6,
+            "n": 6,
+            "rate": 1
+          },
+          "missedBlock": {
+            "ci95": [
+              0,
+              0.1759
+            ],
+            "k": 0,
+            "n": 18,
+            "rate": 0
+          }
+        },
+        "test": {
+          "accuracy": {
+            "ci95": [
+              0.5001,
+              0.835
+            ],
+            "k": 18,
+            "n": 26,
+            "rate": 0.6923
+          },
+          "calibration": {
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6582,
+                "n": 15,
+                "observedRate": 0.5333,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 0.9877,
+                "n": 11,
+                "observedRate": 0.9091,
+                "to": 1
+              }
+            ],
+            "brier": 0.1883,
+            "ece": 0.1053,
+            "n": 26
+          },
+          "falseBlock": {
+            "ci95": [
+              0.6756,
+              1
+            ],
+            "k": 8,
+            "n": 8,
+            "rate": 1
+          },
+          "missedBlock": {
+            "ci95": [
+              0,
+              0.1759
+            ],
+            "k": 0,
+            "n": 18,
+            "rate": 0
+          }
+        }
+      },
+      "schemaVersion": 1,
+      "sweep": {
+        "argmaxUtility": 0.15,
+        "note": "utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the argmax is a check on the loss model, never adopted",
+        "rows": [
+          {
+            "accuracy": 0.6471,
+            "fn": 0,
+            "fp": 30,
+            "tau": 0.05,
+            "tn": 0,
+            "tp": 55,
+            "utility": -30
+          },
+          {
+            "accuracy": 0.6471,
+            "fn": 0,
+            "fp": 30,
+            "tau": 0.1,
+            "tn": 0,
+            "tp": 55,
+            "utility": -30
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 13,
+            "fp": 6,
+            "tau": 0.15,
+            "tn": 24,
+            "tp": 42,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 16,
+            "fp": 3,
+            "tau": 0.2,
+            "tn": 27,
+            "tp": 39,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 16,
+            "fp": 3,
+            "tau": 0.25,
+            "tn": 27,
+            "tp": 39,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 16,
+            "fp": 3,
+            "tau": 0.3,
+            "tn": 27,
+            "tp": 39,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 16,
+            "fp": 3,
+            "tau": 0.35,
+            "tn": 27,
+            "tp": 39,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 16,
+            "fp": 3,
+            "tau": 0.4,
+            "tn": 27,
+            "tp": 39,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7765,
+            "fn": 16,
+            "fp": 3,
+            "tau": 0.45,
+            "tn": 27,
+            "tp": 39,
+            "utility": -19
+          },
+          {
+            "accuracy": 0.7647,
+            "fn": 18,
+            "fp": 2,
+            "tau": 0.5,
+            "tn": 28,
+            "tp": 37,
+            "utility": -20
+          },
+          {
+            "accuracy": 0.7647,
+            "fn": 18,
+            "fp": 2,
+            "tau": 0.55,
+            "tn": 28,
+            "tp": 37,
+            "utility": -20
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.6,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.65,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.7,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.75,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.8,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.85,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.9,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          },
+          {
+            "accuracy": 0.7529,
+            "fn": 19,
+            "fp": 2,
+            "tau": 0.95,
+            "tn": 28,
+            "tp": 36,
+            "utility": -21
+          }
+        ],
+        "shippedTau": 0.5,
+        "split": "dev",
+        "variant": "per-output"
+      },
+      "version": "0.9.0"
+    },
     "corpusVersion": "1a82d36c1644",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",

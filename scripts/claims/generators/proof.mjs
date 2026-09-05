@@ -24,6 +24,11 @@ const root = resolve(here, '..', '..', '..');
 
 const RESULTS_PATH = resolve(root, 'proof/results.json');
 const JUDGE_PATH = resolve(root, 'proof/judge-results.json');
+// `npm run proof -- --composite` writes proof/composite-results.json: the
+// verdict a gate keys on, scored on the composite corpus under the legacy
+// composer and the risk composer. Carried without its per-case list (the
+// file holds it); absent until the first run lands.
+const COMPOSITE_PATH = resolve(root, 'proof/composite-results.json');
 
 export async function generate() {
   const results = JSON.parse(await readFile(RESULTS_PATH, 'utf-8'));
@@ -31,5 +36,14 @@ export async function generate() {
     throw new Error(`proof/results.json is not a schemaVersion-2 results file (run npm run proof)`);
   }
   const judge = JSON.parse(await readFile(JUDGE_PATH, 'utf-8'));
-  return { ...results, judge };
+  let composite = null;
+  try {
+    const raw = JSON.parse(await readFile(COMPOSITE_PATH, 'utf-8'));
+    if (raw.schemaVersion !== 1) throw new Error(`proof/composite-results.json is schemaVersion ${raw.schemaVersion}, expected 1`);
+    const { cases: _cases, generatedAt: _g, commit: _c, ...summary } = raw;
+    composite = summary;
+  } catch (err) {
+    if (err && err.code !== 'ENOENT') throw err;
+  }
+  return { ...results, judge, ...(composite ? { composite } : {}) };
 }

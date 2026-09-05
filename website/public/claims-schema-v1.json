@@ -18,7 +18,8 @@
     "security",
     "tests",
     "version",
-    "capabilityMap"
+    "capabilityMap",
+    "evaluators"
   ],
   "properties": {
     "$schema": {
@@ -179,6 +180,10 @@
         "custom": {
           "type": "object",
           "description": "Conformance of the eight custom rule types to their documented definitions under a declared config (proof/corpus/custom/<type>.json)"
+        },
+        "composite": {
+          "type": "object",
+          "description": "The verdict measured on the composite corpus: proof/composite-results.json without its per-case list (accuracy, false-block and missed-block rates, the Newcombe difference, calibration, recall by class, the threshold sweep). Absent until npm run proof -- --composite has run."
         }
       }
     },
@@ -1030,6 +1035,58 @@
         }
       },
       "additionalProperties": false
+    },
+    "evaluators": {
+      "type": "object",
+      "description": "The evaluator-of-evaluators matrix: the thirteen trust questions asked of every evaluator Iris ships, every cell derived from the committed proof files by scripts/claims/generators/evaluators.mjs (tests/evaluators-matrix.test.ts).",
+      "required": [
+        "version",
+        "about",
+        "statuses",
+        "questions",
+        "groups",
+        "evaluators",
+        "counts",
+        "sources"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer"
+        },
+        "about": {
+          "type": "string"
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "evaluators": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "counts": {
+          "type": "object"
+        },
+        "sources": {
+          "type": "object"
+        }
+      }
     }
   },
   "additionalProperties": false,
