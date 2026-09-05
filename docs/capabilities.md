@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 12 are answered by a shipped, measured thing, 20 are answered with a stated limit, 24 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 13 are answered by a shipped, measured thing, 20 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -13,8 +13,8 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **did it complete the task** | gap | gap | gap | gap | gap | gap |
 | **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | partial | gap | partial | has |
 | **what did it cost** | has | partial | partial | gap | partial | has |
-| **is it better or worse than before** | n/a | n/a | gap | gap | partial | gap |
-| **where and why does it fail** | has | has | has | gap | partial | partial |
+| **is it better or worse than before** | n/a | n/a | gap | gap | partial | partial |
+| **where and why does it fail** | has | has | has | gap | partial | has |
 | **can this verdict be trusted** | partial | partial | partial | gap | gap | has |
 
 ### is it safe
@@ -80,7 +80,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 - **trajectory (tool calls)** — *gap*. No comparison of trajectories across runs.
 - **multi-run of one input** — *gap*. Nothing evaluates several runs of one input; the only canonicalisation of an input serves the loop detector.
 - **population / dataset / baseline** — *partial*. Scores bucketed over time are served to the dashboard's drift view; no interval and no cohort key, so a change is shown, not tested. Evidence: route `/api/v1/eval-stats`.
-- **the evaluator itself** — *gap*. Nothing measures whether a rule change made the evaluator better or worse beyond the proof-number diff in CI.
+- **the evaluator itself** — *partial*. The verdict a gate keys on is measured on a composite corpus, and a candidate composer is scored beside the shipped arithmetic with an interval on the difference and a held-out split, so a change to the composer is measured before it ships; nothing yet compares one release’s evaluator with the previous release’s on the same corpus across versions. Evidence: resource `iris://proof`.
 ### where and why does it fail
 
 - **single output** — *has*. Every fired detection carries typed evidence — offsets into the raw output, never a paraphrase — and a message naming the pattern; the stored evaluation reads back the same way. Evidence: rule `no_pii`, rule `no_stub_output`, resource `iris://evaluations/{id}`. Needs: `output`.
@@ -88,7 +88,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 - **trajectory (tool calls)** — *has*. A silent tool failure names the failed call by index, why it failed and what the output claimed instead; a loop names every repeated call and the threshold. Evidence: rule `no_silent_tool_failure`, rule `no_tool_loop`, resource `iris://traces/{trace_id}`. Needs: `output`, `tool_calls`.
 - **multi-run of one input** — *gap*. No grouping over repeated runs.
 - **population / dataset / baseline** — *partial*. Top failures over a window are served to the dashboard; the out-of-sample check is a small set of real transcripts from one agent, reported without an interval. Evidence: route `/api/v1/eval-stats`, tool `get_traces`.
-- **the evaluator itself** — *partial*. Named false positives and false negatives per rule are published with the proof; known systematic misses are documented for two rules; nothing for the judge. Evidence: resource `iris://proof`.
+- **the evaluator itself** — *has*. Every false positive and false negative per rule is named by case id with the proof; the three critical rules are measured under seven evasion transforms inside their evidence span, with the cases each transform drops; the PII rule reports recall by entity, including the entities its definition does not cover; the judge templates stay unmeasured until a user-supplied key runs the judge harness. Evidence: resource `iris://proof`, proof `no_pii`, proof `no_injection_patterns`, proof `no_blocklist_words`.
 ### can this verdict be trusted
 
 - **single output** — *partial*. Every rule result carries what kind of claim it is, what it saw and its published uncertainty; the judge's result stays a separate tool, so one verdict does not yet combine both. Evidence: tool `evaluate_output`, tool `evaluate_with_llm_judge`. Needs: `output`.
@@ -96,4 +96,4 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 - **trajectory (tool calls)** — *partial*. When tool calls are absent the trajectory rules skip and coverage names the question as unjudged; both rules are non-critical by default, so their skip never vetoes. Evidence: rule `no_silent_tool_failure`, rule `no_tool_loop`. Needs: `output`, `tool_calls`.
 - **multi-run of one input** — *gap*. A verdict over repeats — vote, mean, variance — has no composer, and the judge has no repeat harness.
 - **population / dataset / baseline** — *gap*. No population-level trust statement; intervals on pass rates appear nowhere on the dashboard.
-- **the evaluator itself** — *has*. Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; the corpus is model-labelled until the blind human label lands, and every number says so. Evidence: resource `iris://proof`, tool `list_rules`, proof `no_pii`.
+- **the evaluator itself** — *has*. Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; beside them, what a fire is worth at field prevalence, a credible interval that does not collapse at zero errors, the verdict’s own accuracy on a composite corpus, conformance of every custom rule type to its definition, and a matrix that asks thirteen trust questions of every evaluator and answers each cell from the proof files; the corpus is model-labelled until the blind human label lands, and every number says so. Evidence: resource `iris://proof`, tool `list_rules`, proof `no_pii`.
