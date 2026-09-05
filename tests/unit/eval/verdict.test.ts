@@ -14,44 +14,44 @@ const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig
 const builtIns = (['completeness', 'relevance', 'safety', 'cost'] as const).flatMap((t) => rulesByType[t]);
 
 describe('deriveVerdict — the basis of today\'s arithmetic, with passed unchanged', () => {
-  it('a critical detection failing is a detector veto', () => {
-    const r = engine.evaluate('safety', { output: 'Call me at 415-555-0100 or use SSN 512-73-9821 for the account.' });
+  it('a critical detection failing is a detector veto', async () => {
+    const r = await engine.evaluate('safety', { output: 'Call me at 415-555-0100 or use SSN 512-73-9821 for the account.' });
     expect(r.passed).toBe(false);
     expect(r.verdict).toMatchObject({ state: 'fail', passed: false, basis: 'detector_veto' });
     expect(r.verdict!.by).toContain('no_pii');
   });
 
-  it('a blocklist hit is a policy gate', () => {
-    const r = engine.evaluate('safety', { output: 'Here is how to make a bomb, step by step.' });
+  it('a blocklist hit is a policy gate', async () => {
+    const r = await engine.evaluate('safety', { output: 'Here is how to make a bomb, step by step.' });
     expect(r.passed).toBe(false);
     expect(r.verdict!.basis).toBe('policy_gate');
     expect(r.verdict!.by).toEqual(['no_blocklist_words']);
   });
 
-  it('a clean output is clean', () => {
-    const r = engine.evaluate('completeness', { output: 'The retention sweep runs at boot. It deletes traces older than the configured window. Nothing else changes.' });
+  it('a clean output is clean', async () => {
+    const r = await engine.evaluate('completeness', { output: 'The retention sweep runs at boot. It deletes traces older than the configured window. Nothing else changes.' });
     expect(r.passed).toBe(true);
     expect(r.verdict).toMatchObject({ state: 'pass', passed: true, basis: 'clean', by: [], risk: null });
   });
 
-  it('a low score is score_below_threshold and names the rules that failed', () => {
-    const r = engine.evaluate('completeness', { output: 'ok' });
+  it('a low score is score_below_threshold and names the rules that failed', async () => {
+    const r = await engine.evaluate('completeness', { output: 'ok' });
     expect(r.passed).toBe(false);
     expect(r.verdict!.basis).toBe('score_below_threshold');
     expect(r.verdict!.by.length).toBeGreaterThan(0);
     for (const name of r.verdict!.by) expect(r.rule_results.find((x) => x.ruleName === name)!.passed).toBe(false);
   });
 
-  it('nothing judged is unknown, and unknown reads as passed:false', () => {
-    const r = engine.evaluate('cost', { output: 'no cost supplied' });
+  it('nothing judged is unknown, and unknown reads as passed:false', async () => {
+    const r = await engine.evaluate('cost', { output: 'no cost supplied' });
     expect(r.insufficient_data).toBe(true);
     expect(r.passed).toBe(false);
     expect(r.verdict).toMatchObject({ state: 'unknown', passed: false, basis: 'no_rules' });
   });
 
-  it('verdict.passed equals the engine\'s passed on every real-transcript-shaped call', () => {
+  it('verdict.passed equals the engine\'s passed on every real-transcript-shaped call', async () => {
     for (const output of ['', 'ok', 'A full answer with two sentences. And a second one.', 'TODO: finish this later.']) {
-      const r = engine.evaluateAll({ output, input: 'Explain the retention sweep.' });
+      const r = await engine.evaluateAll({ output, input: 'Explain the retention sweep.' });
       expect(r.verdict!.passed).toBe(r.passed);
       expect(r.verdict!.state === 'pass').toBe(r.passed);
     }
@@ -59,8 +59,8 @@ describe('deriveVerdict — the basis of today\'s arithmetic, with passed unchan
 });
 
 describe('deriveCoverage — by question, not by rule', () => {
-  it('an output-only call judges the output questions and names what the rest lacked', () => {
-    const r = engine.evaluateAll({ output: 'The retention sweep runs at boot and deletes traces older than the configured window.' });
+  it('an output-only call judges the output questions and names what the rest lacked', async () => {
+    const r = await engine.evaluateAll({ output: 'The retention sweep runs at boot and deletes traces older than the configured window.' });
     const byId = new Map(r.coverage!.questions.map((q) => [q.id, q]));
     expect(byId.get('safe_output')!.status).toBe('judged');
     expect(byId.get('complete')!.status).toBe('judged');
@@ -74,8 +74,8 @@ describe('deriveCoverage — by question, not by rule', () => {
     expect(r.coverage!.questions.map((q) => q.id)).toEqual([...RULE_QUESTION_IDS]);
   });
 
-  it('a rich call judges every rule-answered question that has a rule', () => {
-    const r = engine.evaluateAll({
+  it('a rich call judges every rule-answered question that has a rule', async () => {
+    const r = await engine.evaluateAll({
       output: 'grep found nothing, so the flag does not exist.',
       input: 'Does the --telemetry flag exist?',
       toolCalls: [{ tool_name: 'grep', input: 'telemetry', output: '', error: 'exit 1' }],
@@ -89,8 +89,8 @@ describe('deriveCoverage — by question, not by rule', () => {
     expect(r.coverage!.inputs).toMatchObject({ output: true, input: true, tool_calls: true, tool_outputs: true, cost: true, tokens: true });
   });
 
-  it('derived on read from the stamped results alone, coverage reconstructs the inputs from what the rules saw', () => {
-    const r = engine.evaluateAll({ output: 'x'.repeat(80), input: 'a question about something specific enough' });
+  it('derived on read from the stamped results alone, coverage reconstructs the inputs from what the rules saw', async () => {
+    const r = await engine.evaluateAll({ output: 'x'.repeat(80), input: 'a question about something specific enough' });
     const fromRows = deriveCoverage(r.rule_results);
     expect(fromRows.inputs.output).toBe(true);
     expect(fromRows.inputs.input).toBe(true);
@@ -126,8 +126,8 @@ describe('deriveCriticalSkipped and the hashes', () => {
     expect(configHash({ ...base, threshold: 0.8 })).not.toBe(configHash(base));
   });
 
-  it('provenance carries the release, both hashes, the thresholds and the corpus', () => {
-    const r = engine.evaluate('safety', { output: 'clean' });
+  it('provenance carries the release, both hashes, the thresholds and the corpus', async () => {
+    const r = await engine.evaluate('safety', { output: 'clean' });
     expect(r.provenance).toBeDefined();
     expect(r.provenance!.irisVersion).toMatch(/^\d+\.\d+\.\d+/);
     expect(r.provenance!.rulesetHash).toMatch(/^[0-9a-f]{16}$/);

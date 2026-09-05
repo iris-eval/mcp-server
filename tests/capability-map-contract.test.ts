@@ -135,7 +135,7 @@ describe('capability map — needs are real', () => {
   };
   const NEED_TO_CONTEXT: Record<string, keyof typeof FULL> = { input: 'input', expected: 'expected', tool_calls: 'toolCalls', cost: 'costUsd', tokens: 'tokenUsage' };
 
-  it('for every cell need beyond output, each cited rule that declares that need skips when the engine is called without it', () => {
+  it('for every cell need beyond output, each cited rule that declares that need skips when the engine is called without it', async () => {
     let checked = 0;
     for (const c of answering) {
       const rules = c.evidence.filter((e) => e.kind === 'rule').map((e) => RULE_BY_NAME.get(e.name)!);
@@ -144,7 +144,7 @@ describe('capability map — needs are real', () => {
         expect(ctxKey, `${c.id}: need "${need}" is not an input the engine takes`).toBeDefined();
         const without = { ...FULL } as Record<string, unknown>;
         delete without[ctxKey];
-        const result = engine.evaluateAll(without as typeof FULL);
+        const result = await engine.evaluateAll(without as typeof FULL);
         for (const rule of rules.filter((r) => (r.needs as readonly Need[]).includes(need as Need))) {
           const row = result.rule_results.find((x) => x.ruleName === rule.name);
           // Either the rule skipped, or it ran on less and its `saw` says it

@@ -34,24 +34,24 @@ function ranRules(result: { rule_results: Array<{ ruleName: string }> }): string
 }
 
 describe('inline custom_rules are additive', () => {
-  it('fires alongside a built-in bundle (eval_type="safety")', () => {
+  it('fires alongside a built-in bundle (eval_type="safety")', async () => {
     const engine = new EvalEngine();
-    const result = engine.evaluate('safety', ctx, [inlineRule]);
+    const result = await engine.evaluate('safety', ctx, [inlineRule]);
 
     expect(ranRules(result)).toContain('my_inline_rule');
     // …and the safety bundle still ran.
     expect(ranRules(result)).toContain('no_pii');
   });
 
-  it('fires alongside the completeness bundle too', () => {
+  it('fires alongside the completeness bundle too', async () => {
     const engine = new EvalEngine();
-    const result = engine.evaluate('completeness', ctx, [inlineRule]);
+    const result = await engine.evaluate('completeness', ctx, [inlineRule]);
 
     expect(ranRules(result)).toContain('my_inline_rule');
     expect(ranRules(result).length).toBeGreaterThan(1);
   });
 
-  it('does NOT evict deployed rules when eval_type="custom"', () => {
+  it('does NOT evict deployed rules when eval_type="custom"', async () => {
     /*
      * Deployed rules are registered at server boot (src/index.ts). Passing
      * one ad-hoc rule used to disable the entire deployed library for that
@@ -67,21 +67,21 @@ describe('inline custom_rules are additive', () => {
       }),
     );
 
-    const withInline = engine.evaluate('custom', ctx, [inlineRule]);
+    const withInline = await engine.evaluate('custom', ctx, [inlineRule]);
     expect(ranRules(withInline)).toContain('my_deployed_rule');
     expect(ranRules(withInline)).toContain('my_inline_rule');
   });
 
-  it('runs no built-in bundle for eval_type="custom" (the documented "ONLY these")', () => {
+  it('runs no built-in bundle for eval_type="custom" (the documented "ONLY these")', async () => {
     const engine = new EvalEngine();
-    const result = engine.evaluate('custom', ctx, [inlineRule]);
+    const result = await engine.evaluate('custom', ctx, [inlineRule]);
 
     expect(ranRules(result)).toEqual(['my_inline_rule']);
   });
 
-  it('still evaluates the plain bundle when no custom rules are passed', () => {
+  it('still evaluates the plain bundle when no custom rules are passed', async () => {
     const engine = new EvalEngine();
-    const result = engine.evaluate('safety', ctx);
+    const result = await engine.evaluate('safety', ctx);
 
     expect(ranRules(result)).toContain('no_pii');
     expect(ranRules(result)).not.toContain('my_inline_rule');

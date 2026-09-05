@@ -19,9 +19,9 @@ function keywordRule(name: string, keyword: string): EvalRule {
 }
 
 describe('EvalEngine.evaluateAll', () => {
-  it('runs every bundle in one pass and reports a per-category breakdown', () => {
+  it('runs every bundle in one pass and reports a per-category breakdown', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluateAll({ output: CLEAN_OUTPUT, input: 'quarterly report revenue', costUsd: 0.01 });
+    const result = await engine.evaluateAll({ output: CLEAN_OUTPUT, input: 'quarterly report revenue', costUsd: 0.01 });
 
     expect(result.eval_type).toBe('all');
     // Every built-in bundle contributed at least one rule result.
@@ -42,9 +42,9 @@ describe('EvalEngine.evaluateAll', () => {
     expect(result.critical_failures).toBeUndefined();
   });
 
-  it('applies the critical veto across bundles: a PII leak in the safety slice fails the whole verdict', () => {
+  it('applies the critical veto across bundles: a PII leak in the safety slice fails the whole verdict', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluateAll({ output: LEAKY_OUTPUT, input: 'quarterly report revenue', costUsd: 0.01 });
+    const result = await engine.evaluateAll({ output: LEAKY_OUTPUT, input: 'quarterly report revenue', costUsd: 0.01 });
 
     // The weighted average over 11+ rules clears the threshold comfortably —
     // which is exactly the situation the veto exists for.
@@ -58,10 +58,10 @@ describe('EvalEngine.evaluateAll', () => {
     expect(result.categories!.completeness!.critical_failures).toBeUndefined();
   });
 
-  it('reports a bundle with no usable context as NOT judged (passed: null), not as failing (#406)', () => {
+  it('reports a bundle with no usable context as NOT judged (passed: null), not as failing (#406)', async () => {
     const engine = new EvalEngine(0.7);
     // No input → both relevance rules skip; no cost → both cost rules skip.
-    const result = engine.evaluateAll({ output: CLEAN_OUTPUT });
+    const result = await engine.evaluateAll({ output: CLEAN_OUTPUT });
     // Before: passed:false, score:0 — a reader regrouping by category saw
     // cost "failing" on a call that carried no cost data. Null is the
     // honest value: neither passing nor failing.
@@ -88,23 +88,23 @@ describe('EvalEngine.evaluateAll', () => {
     expect(result.passed).toBe(true);
   });
 
-  it('keeps the TOP-LEVEL verdict boolean and fails closed when nothing at all was judged', () => {
+  it('keeps the TOP-LEVEL verdict boolean and fails closed when nothing at all was judged', async () => {
     const engine = new EvalEngine(0.7);
     // Only a cost bundle and no cost data: every rule skips. Inside the
     // breakdown that is passed:null; at the top level a gate keyed on
     // `passed` must fail closed, with insufficient_data as the "unknown"
     // marker — the same shape a single-bundle evaluate() reports.
-    const single = engine.evaluate('cost', { output: CLEAN_OUTPUT });
+    const single = await engine.evaluate('cost', { output: CLEAN_OUTPUT });
     expect(single).toMatchObject({ passed: false, score: 0, insufficient_data: true, rules_evaluated: 0 });
     expect(single.categories).toBeUndefined();
   });
 
-  it('includes rules deployed under "custom" and inline custom_rules in a "custom" category, and stamps ruleId', () => {
+  it('includes rules deployed under "custom" and inline custom_rules in a "custom" category, and stamps ruleId', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', keywordRule('deployed-keyword', 'quarterly'), 'rule-deadbeef');
     engine.registerRule('safety', keywordRule('deployed-safety', 'stable'), 'rule-cafebabe');
 
-    const result = engine.evaluateAll({ output: CLEAN_OUTPUT }, [
+    const result = await engine.evaluateAll({ output: CLEAN_OUTPUT }, [
       { name: 'inline-keyword', type: 'contains_keywords', config: { keywords: ['report'] } },
     ]);
 
@@ -126,10 +126,10 @@ describe('EvalEngine.evaluateAll', () => {
 });
 
 describe('EvalEngine rule identity', () => {
-  it('single-bundle evaluate stamps ruleId on deployed rules and leaves category off', () => {
+  it('single-bundle evaluate stamps ruleId on deployed rules and leaves category off', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('completeness', keywordRule('canary', 'report'), 'rule-00000001');
-    const result = engine.evaluate('completeness', { output: CLEAN_OUTPUT });
+    const result = await engine.evaluate('completeness', { output: CLEAN_OUTPUT });
     const canary = result.rule_results.find((r) => r.ruleName === 'canary')!;
     expect(canary.ruleId).toBe('rule-00000001');
     expect(canary.category).toBeUndefined();
@@ -137,11 +137,11 @@ describe('EvalEngine rule identity', () => {
     expect(Object.keys(canary).slice(0, 2)).toEqual(['ruleName', 'ruleId']);
   });
 
-  it('two rules sharing a name are distinguishable by ruleId', () => {
+  it('two rules sharing a name are distinguishable by ruleId', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('completeness', keywordRule('same-name', 'report'), 'rule-aaaaaaaa');
     engine.registerRule('completeness', keywordRule('same-name', 'zebra'), 'rule-bbbbbbbb');
-    const result = engine.evaluate('completeness', { output: CLEAN_OUTPUT });
+    const result = await engine.evaluate('completeness', { output: CLEAN_OUTPUT });
     const twins = result.rule_results.filter((r) => r.ruleName === 'same-name');
     expect(twins.map((r) => [r.ruleId, r.passed])).toEqual([
       ['rule-aaaaaaaa', true],
@@ -149,15 +149,15 @@ describe('EvalEngine rule identity', () => {
     ]);
   });
 
-  it('registerRule is idempotent by id — re-registering replaces instead of stacking', () => {
+  it('registerRule is idempotent by id — re-registering replaces instead of stacking', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('completeness', keywordRule('toggle-me', 'report'), 'rule-11111111');
     engine.registerRule('completeness', keywordRule('toggle-me', 'report'), 'rule-11111111');
-    const result = engine.evaluate('completeness', { output: CLEAN_OUTPUT });
+    const result = await engine.evaluate('completeness', { output: CLEAN_OUTPUT });
     expect(result.rule_results.filter((r) => r.ruleName === 'toggle-me')).toHaveLength(1);
     expect(engine.hasRule('rule-11111111')).toBe(true);
     expect(engine.unregisterRule('rule-11111111')).toBe(true);
     expect(engine.hasRule('rule-11111111')).toBe(false);
-    expect(engine.evaluate('completeness', { output: CLEAN_OUTPUT }).rule_results.some((r) => r.ruleName === 'toggle-me')).toBe(false);
+    expect((await engine.evaluate('completeness', { output: CLEAN_OUTPUT })).rule_results.some((r) => r.ruleName === 'toggle-me')).toBe(false);
   });
 });

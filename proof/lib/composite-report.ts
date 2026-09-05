@@ -183,12 +183,13 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
   if (issues.length > 0) throw new Error(`composite corpus validation failed:\n  ${issues.join('\n  ')}`);
   const eng = engine ?? new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
 
-  const rows: CaseRow[] = loaded.cases.map((c) => {
-    const result: EvalResult = eng.evaluateAll(compositeContext(loaded, c));
+  const rows: CaseRow[] = [];
+  for (const c of loaded.cases) {
+    const result: EvalResult = await eng.evaluateAll(compositeContext(loaded, c));
     const fired = result.rule_results.filter((r) => !r.skipped && r.passed === false);
     const caught = new Set<FailureClass>();
     for (const r of fired) for (const cls of (r.classes ?? []) as FailureClass[]) caught.add(cls);
-    return {
+    rows.push({
       id: c.id,
       split: splitOf(c.id),
       provenance: c.provenance,
@@ -198,8 +199,8 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       risk: cellOf(riskVerdict(result, DEFAULT_TAU, DEFAULT_PRIOR, 'per-output')),
       riskPerClass: cellOf(riskVerdict(result, DEFAULT_TAU, DEFAULT_PRIOR, 'per-class')),
       classesCaught: [...caught].filter((cls) => c.expected.classes.includes(cls)).sort(),
-    };
-  });
+    });
+  }
 
   const legacy = slices(rows, legacyShip, legacyProb);
   const risk = slices(rows, riskShipOf((r) => r.risk), riskProbOf((r) => r.risk));

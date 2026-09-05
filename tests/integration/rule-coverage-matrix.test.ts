@@ -505,8 +505,8 @@ describe('rule-coverage-matrix (regression gate)', () => {
   const engine = new EvalEngine(0.7);
 
   for (const tc of TABLE) {
-    it(`${tc.category}: ${tc.id}`, () => {
-      const result = engine.evaluate(tc.evalType, {
+    it(`${tc.category}: ${tc.id}`, async () => {
+      const result = await engine.evaluate(tc.evalType, {
         output: tc.output,
         input: tc.input,
         expected: tc.expected,

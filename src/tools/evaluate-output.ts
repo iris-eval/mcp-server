@@ -148,8 +148,8 @@ export function registerEvaluateOutputTool(
 
       const result =
         evalType === 'all'
-          ? evalEngine.evaluateAll(context, customRules)
-          : evalEngine.evaluate(evalType as EvalType, context, customRules);
+          ? await evalEngine.evaluateAll(context, customRules)
+          : await evalEngine.evaluate(evalType as EvalType, context, customRules);
 
       if (args.trace_id) {
         result.trace_id = args.trace_id;

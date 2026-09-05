@@ -132,24 +132,26 @@ const KNOWN_GAPS: Record<string, Partial<Record<Bundle, string>>> = {
 
 const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds);
 
-function load(): Array<{ id: string; file: string; transcript: Transcript; result: EvalResult }> {
-  return readdirSync(FIXTURES)
+async function load(): Promise<Array<{ id: string; file: string; transcript: Transcript; result: EvalResult }>> {
+  const files = readdirSync(FIXTURES)
     .filter((f) => /^t-\d\d-.*\.json$/.test(f))
-    .sort()
-    .map((file) => {
-      const transcript = JSON.parse(readFileSync(resolve(FIXTURES, file), 'utf-8')) as Transcript;
-      const result = engine.evaluateAll({
-        output: transcript.output,
-        input: transcript.input,
-        tokenUsage: transcript.token_usage,
-        costUsd: transcript.cost_usd,
-        toolCalls: transcript.tool_calls,
-      });
-      return { id: file.slice(0, 4), file, transcript, result };
+    .sort();
+  const rows: Array<{ id: string; file: string; transcript: Transcript; result: EvalResult }> = [];
+  for (const file of files) {
+    const transcript = JSON.parse(readFileSync(resolve(FIXTURES, file), 'utf-8')) as Transcript;
+    const result = await engine.evaluateAll({
+      output: transcript.output,
+      input: transcript.input,
+      tokenUsage: transcript.token_usage,
+      costUsd: transcript.cost_usd,
+      toolCalls: transcript.tool_calls,
     });
+    rows.push({ id: file.slice(0, 4), file, transcript, result });
+  }
+  return rows;
 }
 
-const rows = load();
+const rows = await load();
 
 function rule(result: EvalResult, name: string): EvalRuleResult {
   const found = result.rule_results.find((r) => r.ruleName === name);

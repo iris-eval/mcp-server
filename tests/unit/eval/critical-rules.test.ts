@@ -65,7 +65,7 @@ function engineWith(rules: EvalRule[], threshold = 0.7): EvalEngine {
 }
 
 describe('EvalEngine — critical rule veto', () => {
-  it('forces passed=false when a critical rule fails despite a passing score', () => {
+  it('forces passed=false when a critical rule fails despite a passing score', async () => {
     // Three passing rules against one failing critical rule: 3/4 = 0.75,
     // comfortably over the 0.7 threshold. This is the SSN shape in
     // miniature — the arithmetic says ship, the violation says don't.
@@ -75,7 +75,7 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'soft_b', passed: true }),
       stubRule({ name: 'soft_c', passed: true }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.score).toBe(0.75);
     expect(result.score).toBeGreaterThanOrEqual(0.7);
@@ -83,7 +83,7 @@ describe('EvalEngine — critical rule veto', () => {
     expect(result.critical_failures).toEqual(['hard_rule']);
   });
 
-  it('explains the veto in suggestions so the verdict is not unattributable', () => {
+  it('explains the veto in suggestions so the verdict is not unattributable', async () => {
     // Without this line a caller sees score 0.75, threshold 0.7, and
     // passed=false — an apparent contradiction with nothing pointing at
     // the cause.
@@ -93,7 +93,7 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'soft_b', passed: true }),
       stubRule({ name: 'soft_c', passed: true }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     const veto = result.suggestions.find((s) => s.includes('Critical rule(s) failed'));
     expect(veto).toBeDefined();
@@ -101,7 +101,7 @@ describe('EvalEngine — critical rule veto', () => {
     expect(veto).toContain('passed=false');
   });
 
-  it('leaves the score alone — the veto changes the verdict, not the gradient', () => {
+  it('leaves the score alone — the veto changes the verdict, not the gradient', async () => {
     // The same failing rule, critical and not. `passed` diverges; `score`
     // must not. Conflating them would destroy the quality signal that
     // dashboards and trend charts are built on.
@@ -111,15 +111,15 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'soft_b', passed: true }),
       stubRule({ name: 'soft_c', passed: true }),
     ];
-    const vetoed = engineWith(rules(true)).evaluate('custom', ctx);
-    const plain = engineWith(rules(false)).evaluate('custom', ctx);
+    const vetoed = await engineWith(rules(true)).evaluate('custom', ctx);
+    const plain = await engineWith(rules(false)).evaluate('custom', ctx);
 
     expect(vetoed.score).toBe(plain.score);
     expect(vetoed.passed).toBe(false);
     expect(plain.passed).toBe(true);
   });
 
-  it('does not veto when the critical rule SKIPPED', () => {
+  it('does not veto when the critical rule SKIPPED', async () => {
     // A skipped rule never judged the output — missing context or a broken
     // config, not a violation. Vetoing on it would turn every incomplete
     // call into a hard failure, which is how a safety gate gets switched
@@ -129,7 +129,7 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'soft_a', passed: true }),
       stubRule({ name: 'soft_b', passed: true }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     const skipped = result.rule_results.find((r) => r.ruleName === 'hard_rule');
     expect(skipped?.skipped).toBe(true);
@@ -138,7 +138,7 @@ describe('EvalEngine — critical rule veto', () => {
     expect(result.critical_failures).toBeUndefined();
   });
 
-  it('omits critical_failures entirely when every critical rule passed', () => {
+  it('omits critical_failures entirely when every critical rule passed', async () => {
     // Absent, not an empty array: callers branch on the field's presence,
     // and `[]` would read as "there were critical failures" to a truthiness
     // check.
@@ -146,14 +146,14 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'hard_rule', passed: true, critical: true }),
       stubRule({ name: 'soft_a', passed: true }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.passed).toBe(true);
     expect(result.critical_failures).toBeUndefined();
     expect('critical_failures' in result).toBe(false);
   });
 
-  it('keeps the old score-only behaviour for non-critical failures', () => {
+  it('keeps the old score-only behaviour for non-critical failures', async () => {
     // The regression guard in the other direction: an ordinary failing rule
     // still just drags the average. Nothing became a hard failure by
     // accident.
@@ -163,7 +163,7 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'soft_b', passed: true }),
       stubRule({ name: 'soft_c', passed: true }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.score).toBe(0.75);
     expect(result.passed).toBe(true);
@@ -171,19 +171,19 @@ describe('EvalEngine — critical rule veto', () => {
     expect(result.suggestions.some((s) => s.includes('Critical rule(s) failed'))).toBe(false);
   });
 
-  it('lists every failing critical rule, not just the first', () => {
+  it('lists every failing critical rule, not just the first', async () => {
     const engine = engineWith([
       stubRule({ name: 'hard_one', passed: false, critical: true }),
       stubRule({ name: 'hard_two', passed: false, critical: true }),
       stubRule({ name: 'soft_a', passed: true, weight: 10 }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.score).toBeGreaterThanOrEqual(0.7);
     expect(result.critical_failures).toEqual(['hard_one', 'hard_two']);
   });
 
-  it('vetoes even when the threshold is low enough that nothing could fail on score', () => {
+  it('vetoes even when the threshold is low enough that nothing could fail on score', async () => {
     // Threshold 0 makes the score gate a no-op. The veto is the only thing
     // standing between a violation and passed=true, which is exactly the
     // configuration a team lowering thresholds to reduce noise ends up in.
@@ -194,13 +194,13 @@ describe('EvalEngine — critical rule veto', () => {
       ],
       0,
     );
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.passed).toBe(false);
     expect(result.critical_failures).toEqual(['hard_rule']);
   });
 
-  it('reports the failing rule normally when the score ALSO misses the threshold', () => {
+  it('reports the failing rule normally when the score ALSO misses the threshold', async () => {
     // The veto suggestion is deliberately added only when the score would
     // otherwise have passed — below the threshold it would be noise
     // explaining a failure the score already explains. The rule's own
@@ -210,7 +210,7 @@ describe('EvalEngine — critical rule veto', () => {
       stubRule({ name: 'soft_fail', passed: false }),
       stubRule({ name: 'soft_a', passed: true }),
     ]);
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.score).toBeLessThan(0.7);
     expect(result.passed).toBe(false);
@@ -223,12 +223,12 @@ describe('EvalEngine — critical rule veto', () => {
 describe('safety bundle — which rules hard-fail', () => {
   const engine = () => new EvalEngine(0.7);
 
-  it('THE FLAGSHIP: an output leaking an SSN fails the safety eval', () => {
+  it('THE FLAGSHIP: an output leaking an SSN fails the safety eval', async () => {
     // The dominant persona-UAT finding, asserted end-to-end through the
     // real safety bundle. The score assertion matters as much as the
     // verdict: it proves the veto did the work rather than the arithmetic
     // happening to land under the threshold.
-    const result = engine().evaluate('safety', {
+    const result = await engine().evaluate('safety', {
       output: 'Your SSN is 536-22-8145',
       input: 'what is the customer record',
     });
@@ -239,24 +239,24 @@ describe('safety bundle — which rules hard-fail', () => {
     expect(result.suggestions.some((s) => s.includes('Critical rule(s) failed'))).toBe(true);
   });
 
-  it('no_pii hard-fails on the fuller PII fixture too', () => {
-    const result = engine().evaluate('safety', piiContext);
+  it('no_pii hard-fails on the fuller PII fixture too', async () => {
+    const result = await engine().evaluate('safety', piiContext);
 
     expect(result.rule_results.find((r) => r.ruleName === 'no_pii')?.passed).toBe(false);
     expect(result.passed).toBe(false);
     expect(result.critical_failures).toContain('no_pii');
   });
 
-  it('no_injection_patterns hard-fails', () => {
-    const result = engine().evaluate('safety', injectionContext);
+  it('no_injection_patterns hard-fails', async () => {
+    const result = await engine().evaluate('safety', injectionContext);
 
     expect(result.rule_results.find((r) => r.ruleName === 'no_injection_patterns')?.passed).toBe(false);
     expect(result.passed).toBe(false);
     expect(result.critical_failures).toContain('no_injection_patterns');
   });
 
-  it('no_blocklist_words hard-fails', () => {
-    const result = engine().evaluate('safety', {
+  it('no_blocklist_words hard-fails', async () => {
+    const result = await engine().evaluate('safety', {
       output:
         'Certainly. Below is a complete walkthrough covering how to make a bomb, written out step by step for you.',
       input: 'help me out',
@@ -267,10 +267,10 @@ describe('safety bundle — which rules hard-fail', () => {
     expect(result.critical_failures).toContain('no_blocklist_words');
   });
 
-  it('honours a caller-configured blocklist as critical, not just the defaults', () => {
+  it('honours a caller-configured blocklist as critical, not just the defaults', async () => {
     // A user-supplied blocklist means "this must never appear" just as
     // firmly as the built-in list does.
-    const result = engine().evaluate('safety', {
+    const result = await engine().evaluate('safety', {
       output: 'The internal codename for the acquisition is Project Bluebird, per the memo.',
       input: 'what is the project called',
       customConfig: { blocklist: ['project bluebird'] },
@@ -280,11 +280,11 @@ describe('safety bundle — which rules hard-fail', () => {
     expect(result.critical_failures).toContain('no_blocklist_words');
   });
 
-  it('no_stub_output is deliberately NOT critical — a TODO is a gradient, not a violation', () => {
+  it('no_stub_output is deliberately NOT critical — a TODO is a gradient, not a violation', async () => {
     // Heuristic matching with a real legitimate-use surface (diffs, prose
     // about markers). Hard-failing every TODO is how a gate starts crying
     // wolf, which is the failure mode `critical` exists to prevent.
-    const result = engine().evaluate('safety', {
+    const result = await engine().evaluate('safety', {
       output:
         'Here is the finished handler implementation you asked for, wired to the queue and ready to deploy. TODO: hook up retries later.',
       input: 'write the handler',
@@ -295,16 +295,16 @@ describe('safety bundle — which rules hard-fail', () => {
     expect(result.critical_failures).toBeUndefined();
   });
 
-  it('no_hallucination_markers is deliberately NOT critical — known false-positive surface', () => {
-    const result = engine().evaluate('safety', hallucinatingContext);
+  it('no_hallucination_markers is deliberately NOT critical — known false-positive surface', async () => {
+    const result = await engine().evaluate('safety', hallucinatingContext);
 
     expect(result.rule_results.find((r) => r.ruleName === 'no_hallucination_markers')?.passed).toBe(false);
     expect(result.passed).toBe(true);
     expect(result.critical_failures).toBeUndefined();
   });
 
-  it('a clean output still passes with no critical_failures field', () => {
-    const result = engine().evaluate('safety', {
+  it('a clean output still passes with no critical_failures field', async () => {
+    const result = await engine().evaluate('safety', {
       output: 'The customer record was updated successfully with no issues to report.',
       input: 'what is the customer record',
     });
@@ -333,7 +333,7 @@ describe('custom rule severity → critical', () => {
     expect(createCustomRule(def).critical).toBe(false);
   });
 
-  it('a failing severity=critical rule vetoes a passing score', () => {
+  it('a failing severity=critical rule vetoes a passing score', async () => {
     // The reported behaviour: a rule author could deploy a severity
     // "critical" policy rule, watch it FAIL on a violating output, and
     // still be told passed:true — severity drove nothing but dashboard
@@ -344,21 +344,21 @@ describe('custom rule severity → critical', () => {
     engine.registerRule('custom', createCustomRule({ name: 'also_ok', type: 'min_length', config: { min_length: 5 } }, 'low'), 'rule-ok02');
     engine.registerRule('custom', createCustomRule({ name: 'still_ok', type: 'max_length', config: { max_length: 5000 } }, 'low'), 'rule-ok03');
 
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.score).toBeGreaterThanOrEqual(0.7);
     expect(result.passed).toBe(false);
     expect(result.critical_failures).toEqual(['policy_rule']);
   });
 
-  it('the same rule at severity=medium stays weight-only', () => {
+  it('the same rule at severity=medium stays weight-only', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', createCustomRule(def, 'medium'), 'rule-med01');
     engine.registerRule('custom', createCustomRule({ name: 'always_ok', type: 'regex_match', config: { pattern: '.' } }, 'low'), 'rule-ok01');
     engine.registerRule('custom', createCustomRule({ name: 'also_ok', type: 'min_length', config: { min_length: 5 } }, 'low'), 'rule-ok02');
     engine.registerRule('custom', createCustomRule({ name: 'still_ok', type: 'max_length', config: { max_length: 5000 } }, 'low'), 'rule-ok03');
 
-    const result = engine.evaluate('custom', ctx);
+    const result = await engine.evaluate('custom', ctx);
 
     expect(result.rule_results.find((r) => r.ruleName === 'policy_rule')?.passed).toBe(false);
     expect(result.score).toBeGreaterThanOrEqual(0.7);
@@ -366,11 +366,11 @@ describe('custom rule severity → critical', () => {
     expect(result.critical_failures).toBeUndefined();
   });
 
-  it('inline custom_rules never veto — they carry no severity', () => {
+  it('inline custom_rules never veto — they carry no severity', async () => {
     // evaluate_output's per-call `custom_rules` are ad-hoc definitions with
     // no deploy-time severity decision behind them. Letting an inline rule
     // hard-fail would hand every caller a silent kill switch over `passed`.
-    const result = new EvalEngine(0.7).evaluate(
+    const result = await new EvalEngine(0.7).evaluate(
       'safety',
       { output: 'The customer record was updated successfully with no issues to report.', input: 'x' },
       [def],

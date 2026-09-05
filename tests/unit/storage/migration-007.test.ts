@@ -29,7 +29,7 @@ describe('migration 007 — provenance', () => {
     await storage.initialize();
     const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds);
     const traceId = await storage.insertTrace(LOCAL_TENANT, { trace_id: 'a'.repeat(32), agent_name: 't', input: 'q', output: 'o', timestamp: new Date().toISOString() } as never);
-    const result = engine.evaluateAll({ output: 'The sweep runs at boot. It removes old traces. That is all.', input: 'What does the sweep do?' });
+    const result = await engine.evaluateAll({ output: 'The sweep runs at boot. It removes old traces. That is all.', input: 'What does the sweep do?' });
     result.trace_id = typeof traceId === 'string' ? traceId : 'a'.repeat(32);
     await storage.insertEvalResult(LOCAL_TENANT, result);
     const [stored] = await storage.getEvalsByTraceId(LOCAL_TENANT, result.trace_id);

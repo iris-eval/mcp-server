@@ -113,8 +113,8 @@ export function registerTraceRoutes(
       const evalType = body.eval_type ?? DEFAULT_EVAL_TYPE;
       const evaluation =
         evalType === 'all'
-          ? options.evalEngine.evaluateAll(context)
-          : options.evalEngine.evaluate(evalType, context);
+          ? await options.evalEngine.evaluateAll(context)
+          : await options.evalEngine.evaluate(evalType, context);
       evaluation.trace_id = traceId;
       await storage.insertEvalResult(tenantId, evaluation);
 

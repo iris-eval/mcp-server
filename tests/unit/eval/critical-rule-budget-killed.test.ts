@@ -57,11 +57,11 @@ afterAll(() => {
 });
 
 describe('a critical rule killed by the sandbox budget', () => {
-  it('skips instead of failing — it never judged the output', () => {
+  it('skips instead of failing — it never judged the output', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', hostileCriticalRule('crafted_stall'), 'rule-stall-1');
 
-    const result = engine.evaluate('custom', { output: HOSTILE_FUEL });
+    const result = await engine.evaluate('custom', { output: HOSTILE_FUEL });
 
     const rule = result.rule_results.find((r) => r.ruleName === 'crafted_stall');
     expect(rule).toBeDefined();
@@ -69,7 +69,7 @@ describe('a critical rule killed by the sandbox budget', () => {
     expect(rule!.budgetExceeded).toBe(true);
   });
 
-  it('does NOT veto — the documented fail-open, asserted not assumed', () => {
+  it('does NOT veto — the documented fail-open, asserted not assumed', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', hostileCriticalRule('crafted_stall'), 'rule-stall-2');
     // A second, cheap rule that passes, so the evaluation is not
@@ -80,7 +80,7 @@ describe('a critical rule killed by the sandbox budget', () => {
       'rule-cheap',
     );
 
-    const result = engine.evaluate('custom', { output: HOSTILE_FUEL });
+    const result = await engine.evaluate('custom', { output: HOSTILE_FUEL });
 
     expect(result.insufficient_data).toBe(false);
     expect(result.rules_skipped).toBeGreaterThanOrEqual(1);
@@ -90,7 +90,7 @@ describe('a critical rule killed by the sandbox budget', () => {
     expect(result.passed).toBe(true);
   });
 
-  it('reports the defeated rule in critical_skipped so a gate can fail closed', () => {
+  it('reports the defeated rule in critical_skipped so a gate can fail closed', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', hostileCriticalRule('crafted_stall'), 'rule-stall-3');
     engine.registerRule(
@@ -99,14 +99,14 @@ describe('a critical rule killed by the sandbox budget', () => {
       'rule-cheap',
     );
 
-    const result = engine.evaluate('custom', { output: HOSTILE_FUEL });
+    const result = await engine.evaluate('custom', { output: HOSTILE_FUEL });
 
     expect(result.critical_skipped).toEqual(['crafted_stall']);
     // And it is stated in prose too, for the human reading suggestions.
     expect(result.suggestions.join(' ')).toContain('did NOT judge this output');
   });
 
-  it('leaves critical_skipped absent when every critical rule actually ran', () => {
+  it('leaves critical_skipped absent when every critical rule actually ran', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule(
       'custom',
@@ -117,13 +117,13 @@ describe('a critical rule killed by the sandbox budget', () => {
       'rule-linear',
     );
 
-    const result = engine.evaluate('custom', { output: 'a perfectly ordinary agent response' });
+    const result = await engine.evaluate('custom', { output: 'a perfectly ordinary agent response' });
 
     expect(result.critical_skipped).toBeUndefined();
     expect(result.passed).toBe(true);
   });
 
-  it('still vetoes when the critical rule DOES judge and fails', () => {
+  it('still vetoes when the critical rule DOES judge and fails', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule(
       'custom',
@@ -139,7 +139,7 @@ describe('a critical rule killed by the sandbox budget', () => {
       'rule-cheap-2',
     );
 
-    const result = engine.evaluate('custom', { output: 'this response contains a forbidden token' });
+    const result = await engine.evaluate('custom', { output: 'this response contains a forbidden token' });
 
     expect(result.critical_failures).toEqual(['linear_forbidden']);
     expect(result.critical_skipped).toBeUndefined();

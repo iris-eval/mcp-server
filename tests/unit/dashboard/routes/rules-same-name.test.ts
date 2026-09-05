@@ -70,8 +70,8 @@ async function deploy(
 
 const context = { output: 'A report sentence long enough to evaluate cleanly.' };
 /** rule_results for the "policy" rule on the live engine — one per registered copy. */
-const policyResults = (engine: EvalEngine) =>
-  engine.evaluate('completeness', context).rule_results.filter((r) => r.ruleName === 'policy');
+const policyResults = async (engine: EvalEngine) =>
+  (await engine.evaluate('completeness', context)).rule_results.filter((r) => r.ruleName === 'policy');
 
 const reportRule = {
   name: 'policy',
@@ -92,7 +92,7 @@ describe('POST /rules/custom — a name that is already deployed', () => {
     const first = await deploy(app, reportRule);
     expect(first.status).toBe(201);
     const firstId = (first.json as { rule: { id: string } }).rule.id;
-    expect(policyResults(engine)).toHaveLength(1);
+    expect(await policyResults(engine)).toHaveLength(1);
 
     const dup = await deploy(app, zebraRule);
     expect(dup.status).toBe(409);
@@ -107,7 +107,7 @@ describe('POST /rules/custom — a name that is already deployed', () => {
     // Still exactly one rule, still the first one firing (and passing —
     // "report" is in the output; the zebra rule never registered).
     expect(store.list(LOCAL_TENANT).map((r) => r.id)).toEqual([firstId]);
-    const results = policyResults(engine);
+    const results = await policyResults(engine);
     expect(results).toHaveLength(1);
     expect(results[0].ruleId).toBe(firstId);
     expect(results[0].passed).toBe(true);
@@ -131,7 +131,7 @@ describe('POST /rules/custom — a name that is already deployed', () => {
     // Exactly one rule named "policy" fires, and it is the new one — the
     // ruleId says which, and its verdict says the old rule is gone.
     expect(store.list(LOCAL_TENANT).map((r) => r.id)).toEqual([newId]);
-    const results = policyResults(engine);
+    const results = await policyResults(engine);
     expect(results).toHaveLength(1);
     expect(results[0].ruleId).toBe(newId);
     expect(results[0].passed).toBe(false); // 'zebra' is not in the output
@@ -172,6 +172,6 @@ describe('POST /rules/custom — definition.name', () => {
     });
     expect(divergent.status).toBe(201);
     expect((divergent.json as { rule: { definition: { name: string } } }).rule.definition.name).toBe('other-policy');
-    expect(engine.evaluate('completeness', context).rule_results.map((r) => r.ruleName)).not.toContain('inner-name');
+    expect((await engine.evaluate('completeness', context)).rule_results.map((r) => r.ruleName)).not.toContain('inner-name');
   });
 });

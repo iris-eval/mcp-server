@@ -86,7 +86,7 @@ describe('DELETE /rules/custom/:id — engine hot-removal', () => {
     const ruleId = (deployed.json as { rule: { id: string } }).rule.id;
 
     const context = { output: 'A canary sentence long enough to evaluate cleanly.' };
-    const before = engine.evaluate('completeness', context);
+    const before = await engine.evaluate('completeness', context);
     expect(
       before.rule_results.find((r) => r.ruleName === 'hot-removal-canary'),
     ).toBeDefined();
@@ -94,7 +94,7 @@ describe('DELETE /rules/custom/:id — engine hot-removal', () => {
     const removed = await request(app, 'DELETE', `/api/v1/rules/custom/${ruleId}`);
     expect(removed.status).toBe(204);
 
-    const after = engine.evaluate('completeness', context);
+    const after = await engine.evaluate('completeness', context);
     expect(
       after.rule_results.find((r) => r.ruleName === 'hot-removal-canary'),
     ).toBeUndefined();
