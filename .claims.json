@@ -753,13 +753,18 @@
         "summary": "Scores bucketed over time are served to the dashboard's drift view; no interval and no cohort key, so a change is shown, not tested."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "resource",
+            "name": "iris://proof"
+          }
+        ],
         "id": "Q8xS6",
         "needs": [],
         "question": "Q8",
-        "status": "gap",
+        "status": "partial",
         "subject": "S6",
-        "summary": "Nothing measures whether a rule change made the evaluator better or worse beyond the proof-number diff in CI."
+        "summary": "The verdict a gate keys on is measured on a composite corpus, and a candidate composer is scored beside the shipped arithmetic with an interval on the difference and a held-out split, so a change to the composer is measured before it ships; nothing yet compares one release’s evaluator with the previous release’s on the same corpus across versions."
       },
       {
         "evidence": [
@@ -863,14 +868,26 @@
           {
             "kind": "resource",
             "name": "iris://proof"
+          },
+          {
+            "kind": "proof",
+            "name": "no_pii"
+          },
+          {
+            "kind": "proof",
+            "name": "no_injection_patterns"
+          },
+          {
+            "kind": "proof",
+            "name": "no_blocklist_words"
           }
         ],
         "id": "Q9xS6",
         "needs": [],
         "question": "Q9",
-        "status": "partial",
+        "status": "has",
         "subject": "S6",
-        "summary": "Named false positives and false negatives per rule are published with the proof; known systematic misses are documented for two rules; nothing for the judge."
+        "summary": "Every false positive and false negative per rule is named by case id with the proof; the three critical rules are measured under seven evasion transforms inside their evidence span, with the cases each transform drops; the PII rule reports recall by entity, including the entities its definition does not cover; the judge templates stay unmeasured until a user-supplied key runs the judge harness."
       },
       {
         "evidence": [
@@ -980,12 +997,12 @@
         "question": "Q10",
         "status": "has",
         "subject": "S6",
-        "summary": "Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; the corpus is model-labelled until the blind human label lands, and every number says so."
+        "summary": "Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; beside them, what a fire is worth at field prevalence, a credible interval that does not collapse at zero errors, the verdict’s own accuracy on a composite corpus, conformance of every custom rule type to its definition, and a matrix that asks thirteen trust questions of every evaluator and answers each cell from the proof files; the corpus is model-labelled until the blind human label lands, and every number says so."
       }
     ],
     "counts": {
-      "gap": 24,
-      "has": 12,
+      "gap": 23,
+      "has": 13,
       "n/a": 4,
       "partial": 20
     },
@@ -3583,8 +3600,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-05T16:09:52.644Z",
-  "generatedFromCommit": "47af9ca",
+  "generatedAt": "2026-09-05T16:16:37.619Z",
+  "generatedFromCommit": "1453370",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
