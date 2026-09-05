@@ -46,3 +46,7 @@ tests/uat/UAT-REPORT.md
 # uploaded as a workflow artifact. The machine-readable proof/judge-results.json
 # IS committed (pending placeholder, then the lead commits the measured file).
 proof/judge/RESULTS.md
+
+# The stranger harness writes its records to a private directory; never commit a run here.
+tests/acceptance/stranger/records/
+stranger-records/
