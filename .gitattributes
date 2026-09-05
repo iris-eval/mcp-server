@@ -15,3 +15,15 @@ skills/iris-eval/SKILL.md text eol=lf
 claude-plugin/skills/agent-eval/SKILL.md text eol=lf
 scripts/claims/render-llms.mjs text eol=lf
 src/eval/published-accuracy.ts text eol=lf
+
+# Arc 2 additions to the same two rules: the composite corpus and its results, the conformance families,
+# the blind-sample manifest, and the rendered capability and evaluator documents with their templates.
+proof/composite/*.json text eol=lf
+proof/composite-results.json text eol=lf
+proof/COMPOSITE.md text eol=lf
+proof/corpus/custom/*.json text eol=lf
+proof/blind-sample.json text eol=lf
+docs/capabilities.template.md text eol=lf
+docs/capabilities.md text eol=lf
+docs/evaluators.template.md text eol=lf
+docs/evaluators.md text eol=lf
