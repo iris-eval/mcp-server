@@ -60,7 +60,7 @@ The trace lands on the dashboard with its scores. Prefer the MCP server headless
 
 ### Capture over HTTP (no model in the loop)
 
-The ingest endpoint lives on the **dashboard port** — `6920` by default, not the MCP transport port — and it exists only while the dashboard is running. Pass `--dashboard` (or set `IRIS_DASHBOARD=true`); `--transport http` on its own does **not** start it, and a request to the transport port returns `404`. With the dashboard up, anything that can send an HTTP request can log a trace — and optionally run the deterministic evals in the same request:
+The ingest endpoint lives on the **dashboard port** — `6920` by default, not the MCP transport port — and it exists only while the dashboard is running. Pass `--dashboard` (or set `IRIS_DASHBOARD=true`); `--transport http` on its own does **not** start it, and a request to the transport port returns `404`. With the dashboard up, anything that can send an HTTP request can log a trace — and optionally run the deterministic evals in the same request. `GET /api/v1/capabilities` on the same port says what this server can judge, what each rule needs, the judge state with the steps that enable it, and the limits — the same object the MCP resource `iris://capabilities` serves — so an HTTP caller has the frame an MCP client gets at initialize:
 
 ```bash
 curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \

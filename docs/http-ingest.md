@@ -130,6 +130,13 @@ Capture clients can read it to find the port instead of hardcoding one. The file
 go stale after an unclean exit — verify with `GET /api/v1/health` (always auth-exempt)
 before trusting it.
 
+Then read `GET /api/v1/capabilities` before the first ingest: it is the same object the
+MCP resource `iris://capabilities` serves — the rule roster with what each rule needs
+and its published accuracy, the judge state with the steps that enable it, the citation
+verifier's fetch posture, the limits a caller will hit, and the tools, resources and
+prompts registered. An HTTP caller that reads it has the frame an MCP client gets at
+initialize; one that does not is left to infer the request shape from the source.
+
 ## Notes
 
 - When `IRIS_OTEL_ENDPOINT` is set, ingested traces get the same best-effort async
