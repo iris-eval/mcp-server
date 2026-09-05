@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-05
+
+**Iris explains its verdicts.** Every rule result now says what kind of claim it makes, what it saw, where in the raw text it found what it found, and how wrong it tends to be — the published precision and recall carried as an interval on the result, not left on a page. Every evaluation carries a verdict that names which layer decided it, coverage by evaluation question that says what was not judged and why, and provenance that makes the verdict replayable. The server explains itself before an agent lists a tool, returns structured responses and structured errors with the steps that clear them, and serves what it can judge — with its gaps — as `iris://capabilities` and as the public capability map. The judge is a clear option with one workflow, stated once. And a deleted trace no longer leaves its evaluations' text behind. Two behaviour changes, each a bold sentence below; nothing about which outputs pass has changed.
+
 ### Changed
 
 - **Behaviour change: deleting a trace erases the text of every evaluation linked to it.** `eval_results.trace_id` is `ON DELETE SET NULL`, so `delete_trace` and the retention sweep used to leave every linked evaluation behind with `output_text` verbatim — including whatever `no_pii` had flagged — orphaned and readable by every query. Both paths now erase the output text, the expected text, the suggestions and the rule messages in the same transaction, before the foreign key can orphan the rows, and stamp `erased_at`; the verdict, the scores, the criticality and the evidence offsets stay, so history and drift analytics keep working over an erased row. Locked by `tests/unit/storage/erasure.test.ts`.

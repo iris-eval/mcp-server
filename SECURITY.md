@@ -27,12 +27,12 @@ Iris has one maintainer. Every change reaches `main` through a pull request that
 
 ## Supported Versions
 
-Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.8.x` line.
+Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.9.x` line.
 
 | Version          | Supported |
 |------------------|-----------|
-| 0.8.x            | Yes       |
-| 0.7.x and lower  | No        |
+| 0.9.x            | Yes       |
+| 0.8.x and lower  | No        |
 
 <!--
   This table is release-gated: it must name the CURRENT minor, which is
