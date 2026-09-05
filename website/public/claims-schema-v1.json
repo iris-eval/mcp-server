@@ -17,7 +17,8 @@
     "release",
     "security",
     "tests",
-    "version"
+    "version",
+    "capabilityMap"
   ],
   "properties": {
     "$schema": {
@@ -833,6 +834,172 @@
               "type": "null"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilityMap": {
+      "type": "object",
+      "description": "The public capability map, read verbatim from capability-map.json: ten evaluation questions by six subjects, one of four statuses per cell, evidence names that resolve to registered things (tests/capability-map-contract.test.ts).",
+      "required": [
+        "version",
+        "about",
+        "questions",
+        "subjects",
+        "cells",
+        "counts",
+        "total"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer"
+        },
+        "about": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "registryId",
+              "text"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "registryId": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "text"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "cells": {
+          "type": "array",
+          "minItems": 60,
+          "maxItems": 60,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "question",
+              "subject",
+              "status",
+              "summary",
+              "evidence",
+              "needs"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^Q(10|[1-9])xS[1-6]$"
+              },
+              "question": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "has",
+                  "partial",
+                  "gap",
+                  "n/a"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "name"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "rule",
+                        "tool",
+                        "resource",
+                        "route",
+                        "proof",
+                        "template"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "needs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "has",
+            "partial",
+            "gap",
+            "n/a"
+          ],
+          "properties": {
+            "has": {
+              "type": "integer"
+            },
+            "partial": {
+              "type": "integer"
+            },
+            "gap": {
+              "type": "integer"
+            },
+            "n/a": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "total": {
+          "type": "integer"
         }
       },
       "additionalProperties": false

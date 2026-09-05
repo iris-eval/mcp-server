@@ -84,6 +84,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page("/playground", "weekly", 0.9),
     page("/playground/live", "weekly", 0.9),
     page("/proof", "monthly", 0.85),
+    page("/capabilities", "monthly", 0.85),
     page("/pricing", "monthly", 0.85),
     page("/blog", "daily", 0.8, blogIndexModified),
     ...blogEntries,

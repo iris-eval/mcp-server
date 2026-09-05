@@ -164,6 +164,33 @@ export interface ProofClaims {
 export const PROOF: ProofClaims | null =
   (claimsRaw as unknown as { proof?: ProofClaims }).proof ?? null;
 
+// Capability map — what Iris can judge, cell by cell, read verbatim from
+// capability-map.json by scripts/claims/generators/capability-map.mjs.
+export type CapabilityStatus = 'has' | 'partial' | 'gap' | 'n/a';
+export interface CapabilityEvidence {
+  kind: 'rule' | 'tool' | 'resource' | 'route' | 'proof' | 'template';
+  name: string;
+}
+export interface CapabilityCell {
+  id: string;
+  question: string;
+  subject: string;
+  status: CapabilityStatus;
+  summary: string;
+  evidence: CapabilityEvidence[];
+  needs: string[];
+}
+export interface CapabilityMapClaims {
+  version: number;
+  about: string;
+  questions: Array<{ id: string; registryId: string; text: string }>;
+  subjects: Array<{ id: string; text: string }>;
+  cells: CapabilityCell[];
+  counts: Record<CapabilityStatus, number>;
+  total: number;
+}
+export const CAPABILITY_MAP = (claimsRaw as unknown as { capabilityMap: CapabilityMapClaims }).capabilityMap;
+
 // Release
 export const CURRENT_RELEASE_VERSION = claimsRaw.release.currentReleaseVersion as string | null;
 export const CURRENT_RELEASE_DATE = claimsRaw.release.currentReleaseDate as string | null;

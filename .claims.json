@@ -17,6 +17,1059 @@
     "tagline": "Stop shipping agents on vibes",
     "websiteUrl": "https://iris-eval.com"
   },
+  "capabilityMap": {
+    "about": "What Iris can judge, cell by cell: ten evaluation questions against six subjects. `has` means at least one shipped, measured thing answers the question for that subject; `partial` means something answers it with a stated limit; `gap` means nothing does yet; `n/a` means the question does not apply to the subject. Every `has` or `partial` cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (tests/capability-map-contract.test.ts). `needs` lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so.",
+    "cells": [
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_pii"
+          },
+          {
+            "kind": "rule",
+            "name": "no_injection_patterns"
+          },
+          {
+            "kind": "rule",
+            "name": "no_blocklist_words"
+          },
+          {
+            "kind": "tool",
+            "name": "evaluate_output"
+          },
+          {
+            "kind": "tool",
+            "name": "deploy_rule"
+          },
+          {
+            "kind": "proof",
+            "name": "no_pii"
+          }
+        ],
+        "id": "Q1xS1",
+        "needs": [
+          "output"
+        ],
+        "question": "Q1",
+        "status": "has",
+        "subject": "S1",
+        "summary": "Deterministic detectors for leaked personal data and credentials, injection-shaped output and deployment-prohibited words, each fire naming the pattern and the span; precision and recall are published per rule at https://iris-eval.com/proof, not yet per entity."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_pii"
+          },
+          {
+            "kind": "rule",
+            "name": "no_injection_patterns"
+          },
+          {
+            "kind": "template",
+            "name": "safety"
+          }
+        ],
+        "id": "Q1xS2",
+        "needs": [
+          "output"
+        ],
+        "question": "Q1",
+        "status": "has",
+        "subject": "S2",
+        "summary": "The safety detectors read the output; supplying the input changes nothing for them, so the single-output answer carries over. A keyed judge template for harm potential exists and is unmeasured."
+      },
+      {
+        "evidence": [],
+        "id": "Q1xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q1",
+        "status": "gap",
+        "subject": "S3",
+        "summary": "Tool outputs are never scanned for injected directives, and no rule relates a directive in a tool result to a later action."
+      },
+      {
+        "evidence": [],
+        "id": "Q1xS4",
+        "needs": [],
+        "question": "Q1",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs of one input exists, so nothing can say safe on nine of ten runs."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          },
+          {
+            "kind": "tool",
+            "name": "get_traces"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://dashboard/summary"
+          }
+        ],
+        "id": "Q1xS5",
+        "needs": [],
+        "question": "Q1",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Per-rule failure counts over a time window are served to the dashboard, with no interval and no cohort key."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "proof",
+            "name": "no_pii"
+          },
+          {
+            "kind": "proof",
+            "name": "no_injection_patterns"
+          },
+          {
+            "kind": "proof",
+            "name": "no_blocklist_words"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://proof"
+          }
+        ],
+        "id": "Q1xS6",
+        "needs": [],
+        "question": "Q1",
+        "status": "has",
+        "subject": "S6",
+        "summary": "The three safety detectors are measured on a labelled corpus with 95% intervals, and every fire carries its positive predictive value at the stated prior; robustness to obfuscated text is not yet measured."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_hallucination_markers"
+          }
+        ],
+        "id": "Q2xS1",
+        "needs": [
+          "output"
+        ],
+        "question": "Q2",
+        "status": "partial",
+        "subject": "S1",
+        "summary": "Without an input only two context-free fabrication signals run, and the result says so; the grounded signals need the material the agent was given."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_hallucination_markers"
+          },
+          {
+            "kind": "proof",
+            "name": "no_hallucination_markers"
+          },
+          {
+            "kind": "tool",
+            "name": "evaluate_with_llm_judge"
+          },
+          {
+            "kind": "tool",
+            "name": "verify_citations"
+          },
+          {
+            "kind": "template",
+            "name": "accuracy"
+          },
+          {
+            "kind": "template",
+            "name": "correctness"
+          },
+          {
+            "kind": "template",
+            "name": "faithfulness"
+          }
+        ],
+        "id": "Q2xS2",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "Q2",
+        "status": "has",
+        "subject": "S2",
+        "summary": "A deterministic detector with context-grounded contradiction signals, measured with intervals; keyed judge templates for accuracy, correctness against a reference and faithfulness to sources, plus a citation verifier, cover what patterns cannot — on a key the user supplies."
+      },
+      {
+        "evidence": [],
+        "id": "Q2xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q2",
+        "status": "gap",
+        "subject": "S3",
+        "summary": "Tool outputs are not yet read as grounding material, so a claim that contradicts what the agent itself read goes unjudged."
+      },
+      {
+        "evidence": [],
+        "id": "Q2xS4",
+        "needs": [],
+        "question": "Q2",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "Consistency of claims across repeated runs of one input is not evaluated."
+      },
+      {
+        "evidence": [],
+        "id": "Q2xS5",
+        "needs": [],
+        "question": "Q2",
+        "status": "gap",
+        "subject": "S5",
+        "summary": "No cohort or baseline; only per-rule failure rates over time."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "proof",
+            "name": "no_hallucination_markers"
+          }
+        ],
+        "id": "Q2xS6",
+        "needs": [],
+        "question": "Q2",
+        "status": "partial",
+        "subject": "S6",
+        "summary": "The fabrication detector is measured on its corpus; the judge templates are unmeasured until a user-supplied key runs the judge harness, and the page says pending until then."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "min_output_length"
+          },
+          {
+            "kind": "rule",
+            "name": "sentence_count"
+          },
+          {
+            "kind": "rule",
+            "name": "non_empty_output"
+          },
+          {
+            "kind": "rule",
+            "name": "no_stub_output"
+          }
+        ],
+        "id": "Q3xS1",
+        "needs": [
+          "output"
+        ],
+        "question": "Q3",
+        "status": "partial",
+        "subject": "S1",
+        "summary": "Form is measured — length, sentence count, non-empty, and stub or placeholder markers — not whether the ask was answered."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "expected_coverage"
+          }
+        ],
+        "id": "Q3xS2",
+        "needs": [
+          "output",
+          "expected"
+        ],
+        "question": "Q3",
+        "status": "partial",
+        "subject": "S2",
+        "summary": "Coverage of an expected answer's terms is measured when one is supplied; nothing yet reads the structure of the ask to see which parts were answered."
+      },
+      {
+        "evidence": [],
+        "id": "Q3xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q3",
+        "status": "gap",
+        "subject": "S3",
+        "summary": "No completeness rule reads the trajectory to see which parts of the ask were acted on."
+      },
+      {
+        "evidence": [],
+        "id": "Q3xS4",
+        "needs": [],
+        "question": "Q3",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          }
+        ],
+        "id": "Q3xS5",
+        "needs": [],
+        "question": "Q3",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Per-rule failure counts over time only."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "proof",
+            "name": "min_output_length"
+          },
+          {
+            "kind": "proof",
+            "name": "sentence_count"
+          },
+          {
+            "kind": "proof",
+            "name": "non_empty_output"
+          },
+          {
+            "kind": "proof",
+            "name": "no_stub_output"
+          }
+        ],
+        "id": "Q3xS6",
+        "needs": [],
+        "question": "Q3",
+        "status": "has",
+        "subject": "S6",
+        "summary": "The completeness rules are measured as conformance to their stated formula, and each result says so in its uncertainty basis rather than presenting the number as a detection rate."
+      },
+      {
+        "evidence": [],
+        "id": "Q4xS1",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "Q4",
+        "status": "gap",
+        "subject": "S1",
+        "summary": "Both relevance rules skip without the input; on a single output the question is unanswerable and the verdict's coverage says so."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "keyword_overlap"
+          },
+          {
+            "kind": "rule",
+            "name": "topic_consistency"
+          },
+          {
+            "kind": "template",
+            "name": "helpfulness"
+          }
+        ],
+        "id": "Q4xS2",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "Q4",
+        "status": "partial",
+        "subject": "S2",
+        "summary": "Lexical: the share of the input's content terms the output carries, and continuity of topic across sentences, with a stated tokenizer and thresholds; a keyed helpfulness judge template exists and is unmeasured."
+      },
+      {
+        "evidence": [],
+        "id": "Q4xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q4",
+        "status": "gap",
+        "subject": "S3",
+        "summary": "Nothing relates the trajectory to the ask, so a wrong tool for the question goes unjudged on every path."
+      },
+      {
+        "evidence": [],
+        "id": "Q4xS4",
+        "needs": [],
+        "question": "Q4",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          }
+        ],
+        "id": "Q4xS5",
+        "needs": [],
+        "question": "Q4",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Per-rule failure counts over time only."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "proof",
+            "name": "keyword_overlap"
+          },
+          {
+            "kind": "proof",
+            "name": "topic_consistency"
+          }
+        ],
+        "id": "Q4xS6",
+        "needs": [],
+        "question": "Q4",
+        "status": "partial",
+        "subject": "S6",
+        "summary": "The relevance rules are measured as conformance to their lexical formula; the proof does not yet include cases where the formula and a reader would disagree."
+      },
+      {
+        "evidence": [],
+        "id": "Q5xS1",
+        "needs": [
+          "output"
+        ],
+        "question": "Q5",
+        "status": "gap",
+        "subject": "S1",
+        "summary": "Task completion cannot be judged from the output alone, and no rule attempts it."
+      },
+      {
+        "evidence": [],
+        "id": "Q5xS2",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "Q5",
+        "status": "gap",
+        "subject": "S2",
+        "summary": "No rule reads the structure of the ask, so an answer that addresses one part of three and drops the rest reads as complete."
+      },
+      {
+        "evidence": [],
+        "id": "Q5xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q5",
+        "status": "gap",
+        "subject": "S3",
+        "summary": "No rule judges whether the trajectory completed the task; the real-transcript acceptance record names this as open."
+      },
+      {
+        "evidence": [],
+        "id": "Q5xS4",
+        "needs": [],
+        "question": "Q5",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs; completes the task seven of ten runs is not expressible."
+      },
+      {
+        "evidence": [],
+        "id": "Q5xS5",
+        "needs": [],
+        "question": "Q5",
+        "status": "gap",
+        "subject": "S5",
+        "summary": "No cohort or baseline."
+      },
+      {
+        "evidence": [],
+        "id": "Q5xS6",
+        "needs": [],
+        "question": "Q5",
+        "status": "gap",
+        "subject": "S6",
+        "summary": "No completion evaluator exists to measure."
+      },
+      {
+        "evidence": [],
+        "id": "Q6xS1",
+        "needs": [],
+        "question": "Q6",
+        "status": "n/a",
+        "subject": "S1",
+        "summary": "Acting well is a property of the trajectory, not of a single output."
+      },
+      {
+        "evidence": [],
+        "id": "Q6xS2",
+        "needs": [],
+        "question": "Q6",
+        "status": "n/a",
+        "subject": "S2",
+        "summary": "As for a single output."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_silent_tool_failure"
+          },
+          {
+            "kind": "rule",
+            "name": "no_tool_loop"
+          },
+          {
+            "kind": "tool",
+            "name": "log_trace"
+          }
+        ],
+        "id": "Q6xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q6",
+        "status": "partial",
+        "subject": "S3",
+        "summary": "Two deterministic trajectory rules — a failed tool call the output never acknowledges, and a repeated call with the same input — measured with intervals; tool choice and argument validity have no evaluator yet."
+      },
+      {
+        "evidence": [],
+        "id": "Q6xS4",
+        "needs": [],
+        "question": "Q6",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          }
+        ],
+        "id": "Q6xS5",
+        "needs": [],
+        "question": "Q6",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Per-rule failure counts for the two trajectory rules over time only."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "proof",
+            "name": "no_silent_tool_failure"
+          },
+          {
+            "kind": "proof",
+            "name": "no_tool_loop"
+          }
+        ],
+        "id": "Q6xS6",
+        "needs": [],
+        "question": "Q6",
+        "status": "has",
+        "subject": "S6",
+        "summary": "Both trajectory rules are measured with intervals on their corpus families, and each fire carries its positive predictive value."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "log_trace"
+          },
+          {
+            "kind": "rule",
+            "name": "cost_under_threshold"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://evaluations/{id}"
+          }
+        ],
+        "id": "Q7xS1",
+        "needs": [
+          "cost"
+        ],
+        "question": "Q7",
+        "status": "has",
+        "subject": "S1",
+        "summary": "Trace cost and token usage are captured and judged by the cost bundle, and the evaluator's own spend — the judge's tokens and cost — is stored on the evaluation."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "cost_under_threshold"
+          },
+          {
+            "kind": "rule",
+            "name": "token_efficiency"
+          }
+        ],
+        "id": "Q7xS2",
+        "needs": [
+          "cost",
+          "tokens"
+        ],
+        "question": "Q7",
+        "status": "partial",
+        "subject": "S2",
+        "summary": "A cost ceiling and a token ratio are judged from the trace totals; the ratio measures verbosity, not efficiency, and says so."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "cost_under_threshold"
+          },
+          {
+            "kind": "tool",
+            "name": "log_trace"
+          }
+        ],
+        "id": "Q7xS3",
+        "needs": [
+          "cost"
+        ],
+        "question": "Q7",
+        "status": "partial",
+        "subject": "S3",
+        "summary": "Cost is judged on the trace total; per-call latency is recorded, per-call tokens and cost are not yet."
+      },
+      {
+        "evidence": [],
+        "id": "Q7xS4",
+        "needs": [],
+        "question": "Q7",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs, and no rule reads an agent's own cost distribution."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://dashboard/summary"
+          }
+        ],
+        "id": "Q7xS5",
+        "needs": [],
+        "question": "Q7",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Aggregate cost over a time window is served to the dashboard; the cost-spike classifier uses a fixed threshold rather than the agent's own distribution."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "proof",
+            "name": "cost_under_threshold"
+          },
+          {
+            "kind": "proof",
+            "name": "token_efficiency"
+          }
+        ],
+        "id": "Q7xS6",
+        "needs": [],
+        "question": "Q7",
+        "status": "has",
+        "subject": "S6",
+        "summary": "The cost rules are measured as conformance to their formula, and the evaluator's own spend is stored per evaluation."
+      },
+      {
+        "evidence": [],
+        "id": "Q8xS1",
+        "needs": [],
+        "question": "Q8",
+        "status": "n/a",
+        "subject": "S1",
+        "summary": "Better or worse than before needs at least two things to compare."
+      },
+      {
+        "evidence": [],
+        "id": "Q8xS2",
+        "needs": [],
+        "question": "Q8",
+        "status": "n/a",
+        "subject": "S2",
+        "summary": "As for a single output."
+      },
+      {
+        "evidence": [],
+        "id": "Q8xS3",
+        "needs": [],
+        "question": "Q8",
+        "status": "gap",
+        "subject": "S3",
+        "summary": "No comparison of trajectories across runs."
+      },
+      {
+        "evidence": [],
+        "id": "Q8xS4",
+        "needs": [],
+        "question": "Q8",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "Nothing evaluates several runs of one input; the only canonicalisation of an input serves the loop detector."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          }
+        ],
+        "id": "Q8xS5",
+        "needs": [],
+        "question": "Q8",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Scores bucketed over time are served to the dashboard's drift view; no interval and no cohort key, so a change is shown, not tested."
+      },
+      {
+        "evidence": [],
+        "id": "Q8xS6",
+        "needs": [],
+        "question": "Q8",
+        "status": "gap",
+        "subject": "S6",
+        "summary": "Nothing measures whether a rule change made the evaluator better or worse beyond the proof-number diff in CI."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_pii"
+          },
+          {
+            "kind": "rule",
+            "name": "no_stub_output"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://evaluations/{id}"
+          }
+        ],
+        "id": "Q9xS1",
+        "needs": [
+          "output"
+        ],
+        "question": "Q9",
+        "status": "has",
+        "subject": "S1",
+        "summary": "Every fired detection carries typed evidence — offsets into the raw output, never a paraphrase — and a message naming the pattern; the stored evaluation reads back the same way."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_hallucination_markers"
+          },
+          {
+            "kind": "rule",
+            "name": "keyword_overlap"
+          }
+        ],
+        "id": "Q9xS2",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "Q9",
+        "status": "has",
+        "subject": "S2",
+        "summary": "The grounded signals name the contradiction they found; measurements carry their value, unit and the threshold they were held to and where it came from."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_silent_tool_failure"
+          },
+          {
+            "kind": "rule",
+            "name": "no_tool_loop"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://traces/{trace_id}"
+          }
+        ],
+        "id": "Q9xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q9",
+        "status": "has",
+        "subject": "S3",
+        "summary": "A silent tool failure names the failed call by index, why it failed and what the output claimed instead; a loop names every repeated call and the threshold."
+      },
+      {
+        "evidence": [],
+        "id": "Q9xS4",
+        "needs": [],
+        "question": "Q9",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "No grouping over repeated runs."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats"
+          },
+          {
+            "kind": "tool",
+            "name": "get_traces"
+          }
+        ],
+        "id": "Q9xS5",
+        "needs": [],
+        "question": "Q9",
+        "status": "partial",
+        "subject": "S5",
+        "summary": "Top failures over a window are served to the dashboard; the out-of-sample check is a small set of real transcripts from one agent, reported without an interval."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "resource",
+            "name": "iris://proof"
+          }
+        ],
+        "id": "Q9xS6",
+        "needs": [],
+        "question": "Q9",
+        "status": "partial",
+        "subject": "S6",
+        "summary": "Named false positives and false negatives per rule are published with the proof; known systematic misses are documented for two rules; nothing for the judge."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "evaluate_output"
+          },
+          {
+            "kind": "tool",
+            "name": "evaluate_with_llm_judge"
+          }
+        ],
+        "id": "Q10xS1",
+        "needs": [
+          "output"
+        ],
+        "question": "Q10",
+        "status": "partial",
+        "subject": "S1",
+        "summary": "Every rule result carries what kind of claim it is, what it saw and its published uncertainty; the judge's result stays a separate tool, so one verdict does not yet combine both."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "evaluate_output"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://capabilities"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/capabilities"
+          },
+          {
+            "kind": "tool",
+            "name": "list_rules"
+          }
+        ],
+        "id": "Q10xS2",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "Q10",
+        "status": "partial",
+        "subject": "S2",
+        "summary": "The verdict names which layer decided it, coverage says which questions were judged and why the others were not, a skipped critical rule reads as unknown, and the capabilities resource says what this server can judge; a risk estimate with an interval is not yet part of the verdict."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_silent_tool_failure"
+          },
+          {
+            "kind": "rule",
+            "name": "no_tool_loop"
+          }
+        ],
+        "id": "Q10xS3",
+        "needs": [
+          "output",
+          "tool_calls"
+        ],
+        "question": "Q10",
+        "status": "partial",
+        "subject": "S3",
+        "summary": "When tool calls are absent the trajectory rules skip and coverage names the question as unjudged; both rules are non-critical by default, so their skip never vetoes."
+      },
+      {
+        "evidence": [],
+        "id": "Q10xS4",
+        "needs": [],
+        "question": "Q10",
+        "status": "gap",
+        "subject": "S4",
+        "summary": "A verdict over repeats — vote, mean, variance — has no composer, and the judge has no repeat harness."
+      },
+      {
+        "evidence": [],
+        "id": "Q10xS5",
+        "needs": [],
+        "question": "Q10",
+        "status": "gap",
+        "subject": "S5",
+        "summary": "No population-level trust statement; intervals on pass rates appear nowhere on the dashboard."
+      },
+      {
+        "evidence": [
+          {
+            "kind": "resource",
+            "name": "iris://proof"
+          },
+          {
+            "kind": "tool",
+            "name": "list_rules"
+          },
+          {
+            "kind": "proof",
+            "name": "no_pii"
+          }
+        ],
+        "id": "Q10xS6",
+        "needs": [],
+        "question": "Q10",
+        "status": "has",
+        "subject": "S6",
+        "summary": "Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; the corpus is model-labelled until the blind human label lands, and every number says so."
+      }
+    ],
+    "counts": {
+      "gap": 24,
+      "has": 12,
+      "n/a": 4,
+      "partial": 20
+    },
+    "questions": [
+      {
+        "id": "Q1",
+        "registryId": "safe_output",
+        "text": "is it safe"
+      },
+      {
+        "id": "Q2",
+        "registryId": "grounded",
+        "text": "is it grounded / correct"
+      },
+      {
+        "id": "Q3",
+        "registryId": "complete",
+        "text": "is it complete"
+      },
+      {
+        "id": "Q4",
+        "registryId": "relevant",
+        "text": "is it on-task"
+      },
+      {
+        "id": "Q5",
+        "registryId": "task_completed",
+        "text": "did it complete the task"
+      },
+      {
+        "id": "Q6",
+        "registryId": "tool_use_correct",
+        "text": "did it act well (tool choice, arguments, efficiency)"
+      },
+      {
+        "id": "Q7",
+        "registryId": "within_budget",
+        "text": "what did it cost"
+      },
+      {
+        "id": "Q8",
+        "registryId": "better_or_worse",
+        "text": "is it better or worse than before"
+      },
+      {
+        "id": "Q9",
+        "registryId": "where_and_why",
+        "text": "where and why does it fail"
+      },
+      {
+        "id": "Q10",
+        "registryId": "trusted",
+        "text": "can this verdict be trusted"
+      }
+    ],
+    "subjects": [
+      {
+        "id": "S1",
+        "text": "single output"
+      },
+      {
+        "id": "S2",
+        "text": "output with input / context"
+      },
+      {
+        "id": "S3",
+        "text": "trajectory (tool calls)"
+      },
+      {
+        "id": "S4",
+        "text": "multi-run of one input"
+      },
+      {
+        "id": "S5",
+        "text": "population / dataset / baseline"
+      },
+      {
+        "id": "S6",
+        "text": "the evaluator itself"
+      }
+    ],
+    "total": 60,
+    "version": 1
+  },
   "evalRules": {
     "builtInCount": 15,
     "categories": [
@@ -324,8 +1377,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-05T09:35:48.206Z",
-  "generatedFromCommit": "e40eac3",
+  "generatedAt": "2026-09-05T09:45:38.212Z",
+  "generatedFromCommit": "16e00f1",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
