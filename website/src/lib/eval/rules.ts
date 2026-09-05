@@ -34,12 +34,13 @@
  * playground UI rather than hidden behind the version label:
  *   - No customConfig threshold overrides — the playground uses the shipped
  *     defaults
- *   - No skipped-rule mechanism — a rule the server would SKIP (no input, no
- *     cost data, no tool calls, output too brief) reports passed here with
- *     score 1 and a "Skipped: …" message
+ *   - Skips mirror the server: a rule the server would SKIP (no input, no
+ *     cost data, no tool calls, output too brief) reports skipped here too,
+ *     with the server's skipReason, and is excluded from the tally, the
+ *     score and the verdict — never counted as a pass
  *   - No trajectory input. The page collects output, input, expected, cost
  *     and tokens, not tool calls, so no_silent_tool_failure and no_tool_loop
- *     always report "Skipped: no tool calls provided" here. Their logic is
+ *     always skip here (no tool calls provided). Their logic is
  *     vendored regardless, so the two libraries agree on any context the
  *     server CAN evaluate
  *   - No weighted-score aggregation and no critical veto — raw rule results
@@ -91,6 +92,13 @@ export interface EvalRuleResult {
   passed: boolean;
   score: number;
   message: string;
+  /**
+   * The rule declined to judge (no input, no cost, no tool calls, output too
+   * brief) — the server's `skipped` / `skipReason`, mirrored. A skipped rule
+   * is excluded from the tally, the score and the verdict; it is never a pass.
+   */
+  skipped?: boolean;
+  skipReason?: string;
 }
 
 export interface EvalContext {
@@ -103,7 +111,7 @@ export interface EvalContext {
   /**
    * The agent's trajectory — the server's ToolCallRecord[], vendored.
    * The playground page has no field for it today, so the two trajectory
-   * rules report "Skipped: no tool calls provided" there. The logic is
+   * rules report a skip (no tool calls provided) there. The logic is
    * carried anyway: parity is asserted per rule, and a library that cannot
    * evaluate a context the server can is drift waiting to happen.
    */
@@ -1482,9 +1490,11 @@ function keywordOverlap(ctx: EvalContext): EvalRuleResult {
     return {
       ruleName: 'keyword_overlap',
       category: 'relevance',
-      passed: true,
-      score: 1,
-      message: 'Skipped: no input provided',
+      passed: false,
+      score: 0,
+      message: 'No input provided',
+      skipped: true,
+      skipReason: 'context.input not provided',
     };
   }
   const inputTerms = new Set(contentTerms(ctx.input));
@@ -1516,17 +1526,17 @@ function keywordOverlap(ctx: EvalContext): EvalRuleResult {
 const LIST_ITEM = /^\s*(?:[-*+•]|\d{1,3}[.)])\s+/;
 const SENTENCE_BREAK = /(?<=[.!?])\s+/;
 
-/** The server's skip results have no counterpart here: a skip is a pass. */
-function topicSkipped(message: string): EvalRuleResult {
-  return { ruleName: 'topic_consistency', category: 'relevance', passed: true, score: 1, message };
+/** The server's skipped result, mirrored: not judged, excluded from the tally and the score. */
+function topicSkipped(message: string, skipReason: string): EvalRuleResult {
+  return { ruleName: 'topic_consistency', category: 'relevance', passed: false, score: 0, message, skipped: true, skipReason };
 }
 
 function topicConsistency(ctx: EvalContext): EvalRuleResult {
-  if (!ctx.input) return topicSkipped('Skipped: no input provided');
+  if (!ctx.input) return topicSkipped('No input provided', 'context.input not provided');
   const inputWords = ctx.input.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
   const outputWords = ctx.output.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
   if (inputWords.length === 0 || outputWords.length === 0) {
-    return topicSkipped('Skipped: insufficient text for topic analysis (input or output has no words > 3 chars)');
+    return topicSkipped('Insufficient text for topic analysis', 'input or output has no words > 3 chars');
   }
   // v0.3.1: skip when the output is too brief — a handful of words cannot
   // be judged on topic or off it, and the rule used to cry wolf there.
@@ -1534,10 +1544,11 @@ function topicConsistency(ctx: EvalContext): EvalRuleResult {
   if (outputWords.length < minOutputWords) {
     return topicSkipped(
       `Output too brief for meaningful topic analysis (${outputWords.length} words ≥ 4 chars; min ${minOutputWords})`,
+      `output has < ${minOutputWords} words ≥ 4 chars`,
     );
   }
   const topic = new Set(contentTerms(ctx.input));
-  if (topic.size === 0) return topicSkipped('Skipped: insufficient text for topic analysis (input has no content terms)');
+  if (topic.size === 0) return topicSkipped('Insufficient text for topic analysis', 'input has no content terms');
 
   // Walk the output line by line so list items can be read under their
   // lead-in, and sentence by sentence within a line. `seen` is the topic
@@ -1562,7 +1573,7 @@ function topicConsistency(ctx: EvalContext): EvalRuleResult {
     }
     if (!isItem && line.trim().length > 0) leadInConnected = lineConnected;
   }
-  if (sentences === 0) return topicSkipped('Skipped: insufficient text for topic analysis (output has no content terms)');
+  if (sentences === 0) return topicSkipped('Insufficient text for topic analysis', 'output has no content terms');
   const ratio = connected / sentences;
   const passed = ratio >= VENDORED_THRESHOLDS.topic_consistency;
   return {
@@ -1621,9 +1632,11 @@ function expectedCoverage(ctx: EvalContext): EvalRuleResult {
     return {
       ruleName: 'expected_coverage',
       category: 'completeness',
-      passed: true,
-      score: 1,
-      message: 'Skipped: no expected output provided',
+      passed: false,
+      score: 0,
+      message: 'No expected output provided',
+      skipped: true,
+      skipReason: 'context.expected not provided',
     };
   }
   const expectedWords = new Set(ctx.expected.toLowerCase().split(/\W+/).filter((w) => w.length > 2));
@@ -1659,9 +1672,11 @@ function costUnderThreshold(ctx: EvalContext): EvalRuleResult {
     return {
       ruleName: 'cost_under_threshold',
       category: 'cost',
-      passed: true,
-      score: 1,
-      message: 'Skipped: no cost provided',
+      passed: false,
+      score: 0,
+      message: 'No cost provided',
+      skipped: true,
+      skipReason: 'context.costUsd not provided',
     };
   }
   const threshold = VENDORED_THRESHOLDS.cost_threshold;
@@ -1685,9 +1700,11 @@ function tokenEfficiency(ctx: EvalContext): EvalRuleResult {
     return {
       ruleName: 'token_efficiency',
       category: 'cost',
-      passed: true,
-      score: 1,
-      message: 'Skipped: token usage not provided',
+      passed: false,
+      score: 0,
+      message: 'Token usage not provided',
+      skipped: true,
+      skipReason: 'context.tokenUsage not provided',
     };
   }
   const ratio = completion / prompt;
@@ -1902,9 +1919,11 @@ function noSilentToolFailure(ctx: EvalContext): EvalRuleResult {
     return {
       ruleName: 'no_silent_tool_failure',
       category: 'safety',
-      passed: true,
-      score: 1,
-      message: 'Skipped: no tool calls provided',
+      passed: false,
+      score: 0,
+      message: 'No tool calls provided',
+      skipped: true,
+      skipReason: 'context.toolCalls not provided',
     };
   }
   const failed = calls.filter(isFailedCall);
@@ -1959,9 +1978,11 @@ function noToolLoop(ctx: EvalContext): EvalRuleResult {
     return {
       ruleName: 'no_tool_loop',
       category: 'cost',
-      passed: true,
-      score: 1,
-      message: 'Skipped: no tool calls provided',
+      passed: false,
+      score: 0,
+      message: 'No tool calls provided',
+      skipped: true,
+      skipReason: 'context.toolCalls not provided',
     };
   }
   const maxRepeats = VENDORED_THRESHOLDS.max_tool_repeats;
@@ -2022,11 +2043,14 @@ const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRu
 
 export interface EvalSummary {
   ruleResults: EvalRuleResult[];
+  /** Every judged rule passed. A skipped rule is not judged and does not count either way. */
   passed: boolean;
-  /** Average score across non-skipped rules. */
+  /** Average score across the judged (non-skipped) rules; 0 when nothing was judged. */
   score: number;
+  /** Judged rules — the skipped ones are not in this count. */
   totalRules: number;
   passedRules: number;
+  skippedRules: number;
 }
 
 export function evaluateOutput(
@@ -2038,16 +2062,27 @@ export function evaluateOutput(
       ? Object.values(RULES_BY_CATEGORY).flat()
       : RULES_BY_CATEGORY[category];
   const ruleResults = rules.map((r) => r(ctx));
-  const passedRules = ruleResults.filter((r) => r.passed).length;
-  const score =
-    ruleResults.reduce((sum, r) => sum + r.score, 0) / Math.max(ruleResults.length, 1);
+  const judged = ruleResults.filter((r) => !r.skipped);
+  const passedRules = judged.filter((r) => r.passed).length;
+  const score = judged.length === 0 ? 0 : judged.reduce((sum, r) => sum + r.score, 0) / judged.length;
   return {
     ruleResults,
-    passed: ruleResults.every((r) => r.passed),
+    passed: judged.every((r) => r.passed),
     score,
-    totalRules: ruleResults.length,
+    totalRules: judged.length,
     passedRules,
+    skippedRules: ruleResults.length - judged.length,
   };
 }
 
 export const VENDORED_RULE_COUNT = Object.values(RULES_BY_CATEGORY).flat().length;
+
+/**
+ * Rules per category — what the category picker's labels render. Derived
+ * from the vendored registry, which tests/playground-parity.test.ts pins to
+ * the server's; the labels used to be typed by hand (4/3/4/2 against a
+ * 15-rule roster) and drifted the moment a rule moved bundle.
+ */
+export const VENDORED_RULE_COUNTS_BY_CATEGORY: Record<EvalCategory, number> = Object.fromEntries(
+  Object.entries(RULES_BY_CATEGORY).map(([category, list]) => [category, list.length]),
+) as Record<EvalCategory, number>;

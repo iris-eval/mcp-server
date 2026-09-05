@@ -28,9 +28,57 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
 
+/*
+ * The two skill files are one rendered source. skills/iris-eval/SKILL.md is
+ * what the npm package ships; claude-plugin/skills/agent-eval/SKILL.md is
+ * what the Claude Code plugin marketplace serves, and the plugin manifest
+ * cannot reference a file outside claude-plugin/. They were hand-mirrored
+ * with a comment saying "edit both together", and drifted: one carried three
+ * sections and a config row the other lacked. Only three things genuinely
+ * differ per target — the front matter, one install-context paragraph, and
+ * the base of the example links — so those are per-target slots and
+ * everything else is the template. Both rendered files sit in the scanner's
+ * SCAN_DIRS, and `npm run llms:check` fails CI when either drifts.
+ */
+const SKILL_TEMPLATE = 'skills/iris-eval/SKILL.template.md';
+
+const NPM_SKILL_FRONT_MATTER = `---
+name: iris-eval
+description: Evaluate AI agent outputs for quality, safety, and cost using the Iris MCP server. Use when reviewing agent responses, checking for PII leaks, scoring output quality, or tracking execution costs.
+allowed-tools: [Read, Write, Bash, Grep, Glob]
+metadata:
+  filePattern: ["**/mcp.json", "**/.well-known/mcp.json", "**/mcp-server*"]
+  bashPattern: ["iris", "mcp-server", "evaluate", "eval"]
+---`;
+
+const PLUGIN_SKILL_FRONT_MATTER = `---
+name: agent-eval
+description: Evaluate AI agent output quality, safety, and cost using the Iris MCP server. Use when building, testing, or shipping agents and the user wants to score output quality, detect PII or prompt injection, verify citations, track cost per query, enforce cost budgets, add tracing/observability to an agent, or set up eval-driven development. Also use when the user asks "is my agent good enough to ship" or wants quality gates on agent responses.
+---`;
+
 export const TARGETS = [
   { template: 'website/llms.template.txt', output: 'website/public/llms.txt' },
   { template: 'website/llms-full.template.txt', output: 'website/public/llms-full.txt' },
+  {
+    template: SKILL_TEMPLATE,
+    output: 'skills/iris-eval/SKILL.md',
+    slots: () => ({
+      frontMatter: NPM_SKILL_FRONT_MATTER,
+      installContext:
+        'Iris runs as an MCP server: add it to your client config (Quick Start below) or start it with `npx -y @iris-eval/mcp-server`.',
+      exampleLinkBase: 'examples/',
+    }),
+  },
+  {
+    template: SKILL_TEMPLATE,
+    output: 'claude-plugin/skills/agent-eval/SKILL.md',
+    slots: (base) => ({
+      frontMatter: PLUGIN_SKILL_FRONT_MATTER,
+      installContext:
+        `If this plugin is installed, the ${base.mcpToolCount} tools are already available — no setup needed. If the tools are missing, the server starts with \`npx -y @iris-eval/mcp-server\` in any MCP client config (Quick Start below).`,
+      exampleLinkBase: 'https://github.com/iris-eval/mcp-server/blob/main/skills/iris-eval/examples/',
+    }),
+  },
 ];
 
 const SLOT_RE = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g;
@@ -110,11 +158,15 @@ export function render(template, slots, templateName = 'template') {
 
 export async function renderAll(rootDir = root) {
   const claims = JSON.parse(await readFile(resolve(rootDir, '.claims.json'), 'utf-8'));
-  const slots = slotsFrom(claims);
+  const base = slotsFrom(claims);
   const results = [];
   for (const t of TARGETS) {
     const template = await readFile(resolve(rootDir, t.template), 'utf-8');
-    results.push({ ...t, text: render(template, slots, t.template) });
+    // Per-target slots (the three facts that differ between the two skill
+    // files) layer over the shared truthbase slots; a target without them
+    // renders from the shared set alone.
+    const slots = t.slots ? { ...base, ...t.slots(base) } : base;
+    results.push({ template: t.template, output: t.output, text: render(template, slots, `${t.template} → ${t.output}`) });
   }
   return results;
 }
@@ -150,7 +202,7 @@ async function main() {
       console.error('Run `npm run llms:render` and commit the result.');
       process.exit(1);
     }
-    console.log('[llms:check] OK — llms.txt and llms-full.txt match their templates + .claims.json');
+    console.log(`[llms:check] OK — ${rendered.length} rendered files match their templates + .claims.json`);
   }
 }
 

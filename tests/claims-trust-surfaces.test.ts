@@ -212,10 +212,26 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
     for (const r of rendered) expect(read(r.output)).toBe(r.text);
   });
 
-  it('both rendered files state the shipped version and release date (v0.5.0 was live on v0.6.0 day)', async () => {
-    for (const r of (await renderAll(root)) as Array<{ text: string }>) {
+  it('both llms files state the shipped version and release date (v0.5.0 was live on v0.6.0 day)', async () => {
+    const rendered = (await renderAll(root)) as Array<{ output: string; text: string }>;
+    const llms = rendered.filter(r => r.output.startsWith('website/public/'));
+    expect(llms).toHaveLength(2);
+    for (const r of llms) {
       expect(r.text).toContain(`Current release: v${claims.version.mcpServer} (${claims.release.currentReleaseDate})`);
     }
+  });
+
+  it('the two skill files are one rendered source and differ only where the targets differ', async () => {
+    const rendered = (await renderAll(root)) as Array<{ template: string; output: string; text: string }>;
+    const skills = rendered.filter(r => r.template === 'skills/iris-eval/SKILL.template.md');
+    expect(skills.map(r => r.output).sort()).toEqual(['claude-plugin/skills/agent-eval/SKILL.md', 'skills/iris-eval/SKILL.md']);
+    for (const r of skills) expect(read(r.output)).toBe(r.text);
+    // Front matter names differ (the plugin manifest keys on agent-eval, the
+    // npm skill on iris-eval); the body below the front matter is the same
+    // template, so every section heading is present in both.
+    const headings = (text: string) => text.split('\n').filter(l => l.startsWith('## '));
+    expect(headings(skills[0].text)).toEqual(headings(skills[1].text));
+    expect(skills[0].text).not.toContain('Edit both together');
   });
 
   it('an unknown slot throws instead of rendering blank', () => {

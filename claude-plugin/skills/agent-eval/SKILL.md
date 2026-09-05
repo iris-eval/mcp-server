@@ -4,21 +4,21 @@ description: Evaluate AI agent output quality, safety, and cost using the Iris M
 ---
 
 <!--
-  This is the skill the Claude Code plugin marketplace serves. Its body
-  mirrors skills/iris-eval/SKILL.md (the maintained copy the npm package
-  and iris-eval.com/llms-full.txt derive from). Edit both together; the
-  plugin manifest cannot reference a skill outside claude-plugin/.
+  RENDERED FILE — do not edit the two SKILL.md files by hand.
+  Source: skills/iris-eval/SKILL.template.md, rendered by
+  scripts/claims/render-llms.mjs into skills/iris-eval/SKILL.md (the npm
+  package) and claude-plugin/skills/agent-eval/SKILL.md (the plugin
+  marketplace). Edit the template, run `npm run llms:render`, commit both.
+  `npm run llms:check` fails CI when either file drifts from the render.
 -->
 
 # Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
-safety failures, and enforces cost budgets. Nine MCP tools, 15 built-in
-deterministic rules, optional LLM-as-judge (BYOK). No SDK. No code changes.
+safety failures, and enforces cost budgets. 9 MCP tools, 15 built-in
+deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code changes.
 
-If this plugin is installed, the nine tools are already available — no setup
-needed. If the tools are missing, the server starts with
-`npx -y @iris-eval/mcp-server` in any MCP client config.
+If this plugin is installed, the 9 tools are already available — no setup needed. If the tools are missing, the server starts with `npx -y @iris-eval/mcp-server` in any MCP client config (Quick Start below).
 
 ## When to Use
 
@@ -29,35 +29,56 @@ needed. If the tools are missing, the server starts with
 - You want eval rules that run on every execution the agent sends to Iris
 - You need semantic judgment (LLM-as-judge) or citation verification on top of the heuristics
 
+## Quick Start
+
+```bash
+npx @iris-eval/mcp-server
+```
+
+Or add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "iris-eval": {
+      "command": "npx",
+      "args": ["-y", "@iris-eval/mcp-server"]
+    }
+  }
+}
+```
+
 ## Core workflow (the eval loop)
 
 1. **Log** the agent execution: `log_trace` with spans, tool calls, token
    usage, and cost. This builds the record everything else reads.
-2. **Score** the output: `evaluate_output` with an explicit `eval_type` (see
-   the warning below). Heuristic, deterministic, free. Pass `input` so the
-   hallucination signals can cross-check the output against the material the
-   agent was given.
+2. **Score** the output: `evaluate_output`. Omit `eval_type` and every bundle
+   runs; name one to narrow the run. Heuristic, deterministic, free. Pass
+   `input` so the hallucination signals can cross-check the output against the
+   material the agent was given, and `tool_calls` (or a `trace_id`) so the
+   trajectory rules can judge what the agent did.
 3. **Judge** semantically when heuristics aren't enough:
-   `evaluate_with_llm_judge` (templates: accuracy, helpfulness, safety,
-   correctness, faithfulness). Requires the user's own API key in
-   `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` — Iris never proxies.
+   `evaluate_with_llm_judge` (5 templates: accuracy, helpfulness, safety, correctness, faithfulness).
+   Requires the user's own API key in `IRIS_ANTHROPIC_API_KEY` or
+   `IRIS_OPENAI_API_KEY` — Iris never proxies. Without a key the tool says so
+   and names the variable; the deterministic rules never need one.
 4. **Verify citations** in research/RAG outputs: `verify_citations` extracts
    citations, fetches sources (SSRF-guarded, opt-in), and checks each claim.
 5. **Inspect** history: `get_traces` with filters; costs aggregate across
    agents and time windows.
 
-## The Nine Tools
+## The 9 tools
 
 | Tool | What it does |
 |------|--------------|
 | `log_trace` | Record an agent execution — spans, tool calls, token usage, cost. Optional OTLP export via `IRIS_OTEL_ENDPOINT`. |
 | `evaluate_output` | Score output against the built-in rules. `eval_type` defaults to `all` — every bundle runs (completeness \| relevance \| safety \| cost \| custom); pass one bundle name to score only that bundle. Heuristic, deterministic, free. |
 | `get_traces` | Query stored traces with filters, pagination, time ranges. |
-| `list_rules` | Enumerate deployed custom eval rules. |
+| `list_rules` | Enumerate deployed custom eval rules, plus the built-in roster with the criticality this server applies. |
 | `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |
-| `delete_rule` | Remove a deployed custom rule. |
+| `delete_rule` | Remove a deployed custom rule, or disable / re-enable it. |
 | `delete_trace` | Remove a single stored trace by ID. |
-| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). Five templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, BYOK — Iris never proxies. |
+| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 5 templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, bring your own key — Iris never proxies. |
 | `verify_citations` | Extract citations, fetch sources behind an SSRF-guarded resolver, judge whether each source supports the claim. |
 
 ## How to Read a Result
@@ -70,16 +91,19 @@ A result carries **two** fields that answer different questions. Read both.
 | `passed` | The **ship / no-ship verdict**: `score >= threshold` (default 0.7) **AND** no critical rule failed. | This is the field a gate branches on. |
 | `critical_failures` | Names of the critical rules that failed. Present only when non-empty. | If present, the eval failed *because of these*, not because of the score. |
 | `critical_skipped` | Critical rules that did not judge the output (e.g. a regex killed at the 100 ms sandbox budget, or a `cost_threshold` rule with no `cost_usd`). Present only when non-empty. | Treat as **unknown**, not clean, if you must fail closed. |
-| `rule_results` | Per-rule `{ ruleName, passed, score, message, skipped? }`. | Tells you exactly what tripped. |
+| `rule_results` | Per-rule `{ ruleName, passed, score, message, skipped?, skipReason?, critical, criticalSource }`. | Tells you exactly what tripped, and which rules could not judge. |
 | `eval_type` | The bundle that actually ran. | Confirm you evaluated what you meant to. |
 
-**A high score does not mean safe.** `no_pii`, `no_injection_patterns` and
-`no_blocklist_words` are **critical**: when one fails, `passed` is forced to
+**A high score does not mean safe.** By default `no_pii`, `no_injection_patterns`
+and `no_blocklist_words` are **critical**: when one fails, `passed` is forced to
 `false` no matter how high the score is, and the rule is named in
 `critical_failures`. The score is deliberately left untouched. Concretely,
 output containing a real SSN scores about **0.765** — squarely in what a
 score-only reading would call "good" — and still returns `passed: false`. Any
 deployed custom rule with severity `high` or `critical` behaves the same way.
+Which built-in rules are critical is a deployment setting; every rule result
+carries the effective `critical` flag and `criticalSource`, and `list_rules`
+reports the roster this server applies.
 
 **`eval_type` defaults to `all`.** Omit it and every bundle runs — completeness,
 relevance, safety, cost and any custom rules — with a per-bundle `categories`
@@ -96,14 +120,15 @@ Inline `custom_rules` are additive: they fire alongside whichever bundle
 `eval_type` selected, in the same call and the same score. Pass
 `eval_type: "custom"` to run only your rules.
 
-So: branch on `passed`, read `critical_failures` to explain *why*, and use
-`score` for trend and comparison.
+So: branch on `passed`, read `critical_failures` to explain *why*, treat a
+non-empty `critical_skipped` as unknown, and use `score` for trend and
+comparison.
 
 Each heuristic rule fires independently with a clear pass/fail result — every
 score is deterministic and reproducible. LLM-judge scores are semantic and
 carry the judge's reasoning.
 
-## The 15 Built-in Eval Rules
+## The 15 built-in eval rules
 
 | Category | Rule | What It Checks |
 |----------|------|---------------|
@@ -113,15 +138,18 @@ carry the judge's reasoning.
 | Completeness | expected_coverage | Key expected elements are present |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
-| Safety | no_pii | No PII leaked (19 patterns) — **critical: a failure hard-fails the whole eval** |
-| Safety | no_injection_patterns | No prompt-injection attempts in the output (37 patterns) — **critical: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
-| Safety | no_blocklist_words | No prohibited terms — **critical: a failure hard-fails the whole eval** |
+| Safety | no_pii | No PII leaked (19 patterns) — **critical by default: a failure hard-fails the whole eval** |
+| Safety | no_injection_patterns | No prompt-injection attempts in the output (37 patterns) — **critical by default: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
+| Safety | no_blocklist_words | No prohibited terms — **critical by default: a failure hard-fails the whole eval** |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |
 | Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |
 | Safety | no_silent_tool_failure | A tool call that failed is acknowledged, not answered over. Reads `tool_calls`; **skips** without them |
 | Cost | cost_under_threshold | Execution cost within budget |
 | Cost | token_efficiency | Token usage proportionate to the output |
 | Cost | no_tool_loop | No tool called with the same input more than `max_tool_repeats` times (default 3). Reads `tool_calls`; **skips** without them |
+
+How often each rule is right is measured and published, with intervals, at
+https://iris-eval.com/proof.
 
 ## Custom rules
 
@@ -158,15 +186,15 @@ length bands, a per-agent cost ceiling.
 | IRIS_API_KEY | (none) | API key for HTTP transport + dashboard auth |
 | IRIS_DB_PATH | ~/.iris/iris.db | SQLite database path (overrides IRIS_HOME for the DB only) |
 | IRIS_LOG_LEVEL | info | Logging verbosity |
-| IRIS_DASHBOARD | (off) | Set `true` to enable the web dashboard |
+| IRIS_DASHBOARD | (off) | Set `true` to enable the web dashboard (and with it `POST /api/v1/traces`) |
 | IRIS_DASHBOARD_PORT | 6920 | Dashboard port |
 | IRIS_OTEL_ENDPOINT | (none) | OTLP/HTTP collector for trace export |
-| IRIS_ANTHROPIC_API_KEY / IRIS_OPENAI_API_KEY | (none) | BYOK for the LLM judge and citation verifier |
+| IRIS_ANTHROPIC_API_KEY / IRIS_OPENAI_API_KEY | (none) | Your own key for the LLM judge and citation verifier |
 | IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL | 0.25 | Hard cost cap per LLM judge call |
 
 ## Example Workflows
 
-Detailed walkthroughs with real engine output, maintained in the repository:
+Detailed walkthroughs with real engine output:
 - [PII Detection](https://github.com/iris-eval/mcp-server/blob/main/skills/iris-eval/examples/pii-detection.md) — catch leaked personal data
 - [Quality Scoring](https://github.com/iris-eval/mcp-server/blob/main/skills/iris-eval/examples/quality-scoring.md) — score output quality
 - [Cost Tracking](https://github.com/iris-eval/mcp-server/blob/main/skills/iris-eval/examples/cost-tracking.md) — monitor per-execution costs
@@ -181,6 +209,7 @@ Detailed walkthroughs with real engine output, maintained in the repository:
 
 - Website: https://iris-eval.com
 - Playground: https://iris-eval.com/playground
+- Measured rule accuracy: https://iris-eval.com/proof
 - GitHub: https://github.com/iris-eval/mcp-server
 - npm: https://npmjs.com/package/@iris-eval/mcp-server
 - Full machine-readable reference: https://iris-eval.com/llms-full.txt

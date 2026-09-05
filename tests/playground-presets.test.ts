@@ -80,8 +80,10 @@ describe('playground presets', () => {
       { output: clean!.output, input: clean!.input, expected: clean!.expected },
       clean!.category,
     );
+    // A skipped rule (no cost, no tool calls in the preset) is not judged and
+    // is neither a pass nor a failure — the playground mirrors the server here.
     const failures = summary.ruleResults
-      .filter((r) => !r.passed)
+      .filter((r) => !r.passed && !r.skipped)
       .map((r) => r.ruleName);
     expect(failures.filter((n) => demonstrated.has(n))).toEqual([]);
     expect(failures).toEqual([]);

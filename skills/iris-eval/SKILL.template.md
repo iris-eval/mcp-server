@@ -1,11 +1,4 @@
----
-name: iris-eval
-description: Evaluate AI agent outputs for quality, safety, and cost using the Iris MCP server. Use when reviewing agent responses, checking for PII leaks, scoring output quality, or tracking execution costs.
-allowed-tools: [Read, Write, Bash, Grep, Glob]
-metadata:
-  filePattern: ["**/mcp.json", "**/.well-known/mcp.json", "**/mcp-server*"]
-  bashPattern: ["iris", "mcp-server", "evaluate", "eval"]
----
+{{frontMatter}}
 
 <!--
   RENDERED FILE — do not edit the two SKILL.md files by hand.
@@ -19,15 +12,15 @@ metadata:
 # Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
-safety failures, and enforces cost budgets. 9 MCP tools, 15 built-in
+safety failures, and enforces cost budgets. {{mcpToolCount}} MCP tools, {{ruleCount}} built-in
 deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code changes.
 
-Iris runs as an MCP server: add it to your client config (Quick Start below) or start it with `npx -y @iris-eval/mcp-server`.
+{{installContext}}
 
 ## When to Use
 
 - An agent returned output and you want to verify its quality
-- You need to check agent responses for PII leaks (19 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, public IP address (loopback, private and documentation ranges are ignored), API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
+- You need to check agent responses for PII leaks ({{piiPatterns}} patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, public IP address (loopback, private and documentation ranges are ignored), API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
 - You want to track per-execution costs and flag expensive runs
 - You need to compare agent quality across different prompts or models
 - You want eval rules that run on every execution the agent sends to Iris
@@ -62,7 +55,7 @@ Or add to your MCP config:
    material the agent was given, and `tool_calls` (or a `trace_id`) so the
    trajectory rules can judge what the agent did.
 3. **Judge** semantically when heuristics aren't enough:
-   `evaluate_with_llm_judge` (5 templates: accuracy, helpfulness, safety, correctness, faithfulness).
+   `evaluate_with_llm_judge` ({{llmJudgeTemplateCount}} templates: {{llmJudgeTemplateNames}}).
    Requires the user's own API key in `IRIS_ANTHROPIC_API_KEY` or
    `IRIS_OPENAI_API_KEY` — Iris never proxies. Without a key the tool says so
    and names the variable; the deterministic rules never need one.
@@ -71,7 +64,7 @@ Or add to your MCP config:
 5. **Inspect** history: `get_traces` with filters; costs aggregate across
    agents and time windows.
 
-## The 9 tools
+## The {{mcpToolCount}} tools
 
 | Tool | What it does |
 |------|--------------|
@@ -82,7 +75,7 @@ Or add to your MCP config:
 | `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |
 | `delete_rule` | Remove a deployed custom rule, or disable / re-enable it. |
 | `delete_trace` | Remove a single stored trace by ID. |
-| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 5 templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, bring your own key — Iris never proxies. |
+| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). {{llmJudgeTemplateCount}} templates: {{llmJudgeTemplateNames}}. Cost-capped, bring your own key — Iris never proxies. |
 | `verify_citations` | Extract citations, fetch sources behind an SSRF-guarded resolver, judge whether each source supports the claim. |
 
 ## How to Read a Result
@@ -132,7 +125,7 @@ Each heuristic rule fires independently with a clear pass/fail result — every
 score is deterministic and reproducible. LLM-judge scores are semantic and
 carry the judge's reasoning.
 
-## The 15 built-in eval rules
+## The {{ruleCount}} built-in eval rules
 
 | Category | Rule | What It Checks |
 |----------|------|---------------|
@@ -142,11 +135,11 @@ carry the judge's reasoning.
 | Completeness | expected_coverage | Key expected elements are present |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
-| Safety | no_pii | No PII leaked (19 patterns) — **critical by default: a failure hard-fails the whole eval** |
-| Safety | no_injection_patterns | No prompt-injection attempts in the output (37 patterns) — **critical by default: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
+| Safety | no_pii | No PII leaked ({{piiPatterns}} patterns) — **critical by default: a failure hard-fails the whole eval** |
+| Safety | no_injection_patterns | No prompt-injection attempts in the output ({{injectionPatterns}} patterns) — **critical by default: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
 | Safety | no_blocklist_words | No prohibited terms — **critical by default: a failure hard-fails the whole eval** |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |
-| Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |
+| Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input ({{hallucinationMarkers}} context-grounded signals) |
 | Safety | no_silent_tool_failure | A tool call that failed is acknowledged, not answered over. Reads `tool_calls`; **skips** without them |
 | Cost | cost_under_threshold | Execution cost within budget |
 | Cost | token_efficiency | Token usage proportionate to the output |
@@ -199,9 +192,9 @@ length bands, a per-agent cost ceiling.
 ## Example Workflows
 
 Detailed walkthroughs with real engine output:
-- [PII Detection](examples/pii-detection.md) — catch leaked personal data
-- [Quality Scoring](examples/quality-scoring.md) — score output quality
-- [Cost Tracking](examples/cost-tracking.md) — monitor per-execution costs
+- [PII Detection]({{exampleLinkBase}}pii-detection.md) — catch leaked personal data
+- [Quality Scoring]({{exampleLinkBase}}quality-scoring.md) — score output quality
+- [Cost Tracking]({{exampleLinkBase}}cost-tracking.md) — monitor per-execution costs
 
 ## Notes
 
