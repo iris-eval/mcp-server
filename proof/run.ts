@@ -38,6 +38,7 @@ import type { EvalContext, EvalRule, EvalType } from '../src/types/eval.js';
 import { loadCorpus, validateCorpusFile, type CorpusFile } from './lib/corpus.js';
 import { materialiseCase } from './lib/materialise.js';
 import { summarise, F1_CI_METHOD, type Observation, type RuleSummary } from './lib/metrics.js';
+import { measureComposite, renderCompositeMarkdown, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from './lib/composite-report.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -308,9 +309,62 @@ export function normaliseForCheck(json: string, md: string): { json: string; md:
   };
 }
 
+/**
+ * `--composite`: the verdict on the composite corpus (arc 2). Writes
+ * proof/composite-results.json and proof/COMPOSITE.md, or with `--check`
+ * regenerates them to a temp path and fails on any difference.
+ */
+async function composite(check: boolean): Promise<void> {
+  const { results: partial, rows } = await measureComposite(repoRoot);
+  const generatedAt = new Date().toISOString();
+  const commit = gitCommit(repoRoot);
+  const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
+  const results: CompositeResults = { ...partial, generatedAt, commit, version };
+  const json = stableJson(results);
+  const md = renderCompositeMarkdown(results);
+  for (const [name, split] of [['test', 'test'], ['real', 'realTranscripts'], ['dev', 'dev']] as const) {
+    process.stdout.write(`  ${name.padEnd(5)} legacy acc=${pct(results.legacy[split].accuracy.rate).padStart(6)} ${ci(results.legacy[split].accuracy.ci95).padEnd(14)} risk acc=${pct(results.risk[split].accuracy.rate).padStart(6)} ${ci(results.risk[split].accuracy.ci95).padEnd(14)} n=${results.legacy[split].accuracy.n}
+`);
+  }
+  const d = results.difference.risk.test;
+  const dc = results.difference.riskPerClass.test;
+  process.stdout.write(`  difference (test): per-output ${d ? `${(d.delta * 100).toFixed(1)} points [${(d.lo * 100).toFixed(1)}, ${(d.hi * 100).toFixed(1)}]` : '—'}; per-class ${dc ? `${(dc.delta * 100).toFixed(1)} points [${(dc.lo * 100).toFixed(1)}, ${(dc.hi * 100).toFixed(1)}]` : '—'}; sweep argmax τ=${results.sweep.argmaxUtility} (shipped ${results.sweep.shippedTau}); cases=${rows.length}
+`);
+  if (check) {
+    let committedJson = '';
+    let committedMd = '';
+    try {
+      committedJson = await readFile(resolve(repoRoot, COMPOSITE_RESULTS_JSON), 'utf-8');
+      committedMd = await readFile(resolve(repoRoot, COMPOSITE_MD), 'utf-8');
+    } catch {
+      process.stderr.write(`proof --check --composite — ${COMPOSITE_RESULTS_JSON} or ${COMPOSITE_MD} is missing; run npm run proof -- --composite and commit both.
+`);
+      process.exit(1);
+    }
+    const fresh = normaliseCompositeForCheck(json, md);
+    const committed = normaliseCompositeForCheck(committedJson, committedMd);
+    if (fresh.json === committed.json && fresh.md === committed.md) {
+      process.stdout.write(`proof --check --composite — OK: ${COMPOSITE_RESULTS_JSON} and ${COMPOSITE_MD} match this code on composite ${results.compositeVersion}
+`);
+      return;
+    }
+    process.stderr.write(`proof --check --composite — FAIL: ${[fresh.json !== committed.json && COMPOSITE_RESULTS_JSON, fresh.md !== committed.md && COMPOSITE_MD].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --composite and commit the result.
+`);
+    process.exit(1);
+  }
+  await writeFile(resolve(repoRoot, COMPOSITE_RESULTS_JSON), json);
+  await writeFile(resolve(repoRoot, COMPOSITE_MD), md);
+  process.stdout.write(`proof — wrote ${COMPOSITE_RESULTS_JSON} and ${COMPOSITE_MD} (composite ${results.compositeVersion}, ${rows.length} cases)
+`);
+}
+
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
   const check = args.has('--check');
+  if (args.has('--composite')) {
+    await composite(check);
+    return;
+  }
 
   const { rows, corpusVersion, missing } = await measure(repoRoot);
   const generatedAt = new Date().toISOString();

@@ -113,6 +113,59 @@ short version:
   secret scanner could mistake for a live key while every rule regex sees the
   same shape. The converter proved on the source corpus that no verdict moved.
 
+## The verdict, measured — the composite corpus
+
+The per-rule numbers above say how often each rule is right about its own
+question. A gate does not key on a rule; it keys on `passed`, the verdict the
+composer makes from every rule that ran. That verdict has its own measurement.
+
+`proof/composite/cases.json` holds a second corpus: the 24 real transcripts
+(`tests/fixtures/real-transcripts/`) promoted as they are, and composed cases
+built by splicing a case from a rule family into a clean transcript's output,
+its input or one of its tool outputs — so which failure classes are present is
+true by construction, never derived from a composer. Each case carries
+`expected.shouldShip`: `false` when a must-not-ship class is present, `true`
+for the clean bases and the lookalikes (a placeholder that is not a credential,
+a quoted discussion of an injection, a legitimately empty search), overridable
+by a human label. Cases are split `dev` / `test` by a hash of the id — the split
+is never stored, so it cannot drift.
+
+`npm run proof -- --composite` runs every case through the real engine at the
+shipped defaults and scores three composers on the same rule results: the
+**legacy** arithmetic (`passed` as the tool returns it today) and the **risk**
+composer that a future release may adopt — a class-grouped noisy-OR over the
+published positive predictive values, gates and vetoes first, then the risk
+against a loss-derived threshold — under two readings of its prior. Nothing in
+the package changes: the risk composer runs in the harness only
+(`proof/lib/risk.ts`), so the comparison exists before any behaviour does.
+
+It writes `proof/composite-results.json` and `proof/COMPOSITE.md`; CI runs
+`npm run proof -- --check --composite` and fails on any difference, so the
+committed numbers are the code's. Read there:
+
+| Block | What it says |
+|---|---|
+| accuracy vs `shouldShip` | per split and composer, with a Wilson interval; the test split is the headline, the real transcripts are the out-of-sample line |
+| false blocks on clean · missed blocks | the two ways a verdict is wrong, separately, because a gate cares about them differently |
+| difference from legacy | accuracy(risk) − accuracy(legacy) with a Newcombe hybrid-score interval; an interval that straddles zero says the corpus cannot tell them apart |
+| calibration | Brier score and expected calibration error over ten bins, for the legacy score read as P(bad) = 1 − score and for the risk's p_bad |
+| recall by failure class | class present → some rule mapped to it fired; a class with no shipped detector reads 0 and says so |
+| threshold sweep | on the dev split only; the utility-optimal τ is published as a check on the loss model, never adopted |
+
+**What the two prior readings are.** The risk composer needs a prior that an
+output is bad. Read *per class* — each of the ten examined failure classes
+present with probability one half — the prior that nothing is wrong is one in a
+thousand, and the composer blocks nearly every output; the table shows it. Read
+*per output* — one half that the output is bad at all, spread over the examined
+classes — a single fire of a detector for a rare class does not on its own
+cross the threshold; the table shows that too. Which reading ships, and at
+what default, is a decision the numbers inform; the file states both so it is
+not made by preference.
+
+The composed cases are built from the same synthetic, same-model-labelled
+families as the per-rule numbers, so the accuracy here is conditional on that
+corpus. The real-transcript line is the only out-of-sample one.
+
 ## Add cases
 
 1. Open the family file for the rule (`proof/corpus/<rule>.json`). Read its

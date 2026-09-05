@@ -299,6 +299,8 @@ jobs:
         run: npm run proof:typecheck
       - name: Regenerate the measurement and compare with the committed files
         run: npm run proof -- --check
+      - name: Proof — the verdict on the composite corpus (regen vs committed)
+        run: npm run proof -- --check --composite
       - name: Publish the table to the job summary
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"

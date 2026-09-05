@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The verdict is measured, not only the rules.** `npm run proof -- --composite` runs a second corpus — the 24 real transcripts plus cases composed by splicing a rule family's case into a clean transcript, so the failure classes present are true by construction — through the real engine and scores the verdict a gate keys on: accuracy against `shouldShip` with a Wilson interval, false blocks on clean cases and missed blocks separately, calibration (Brier, expected calibration error), recall by failure class, and a threshold sweep on the dev split only. Beside today's arithmetic it scores the risk composer a future release may adopt — gates, then vetoes, then a class-grouped noisy-OR over the published positive predictive values against a loss-derived threshold — under two readings of its prior, with the Newcombe interval on each difference. The risk composer runs in the harness only (`proof/lib/risk.ts`); nothing about which outputs pass has changed. `proof/composite-results.json` and `proof/COMPOSITE.md` are generated and byte-checked in CI (`npm run proof -- --check --composite`).
+
 ## [0.9.0] - 2026-09-05
 
 **Iris explains its verdicts.** Every rule result now says what kind of claim it makes, what it saw, where in the raw text it found what it found, and how wrong it tends to be — the published precision and recall carried as an interval on the result, not left on a page. Every evaluation carries a verdict that names which layer decided it, coverage by evaluation question that says what was not judged and why, and provenance that makes the verdict replayable. The server explains itself before an agent lists a tool, returns structured responses and structured errors with the steps that clear them, and serves what it can judge — with its gaps — as `iris://capabilities` and as the public capability map. The judge is a clear option with one workflow, stated once. And a deleted trace no longer leaves its evaluations' text behind. Two behaviour changes, each a bold sentence below; nothing about which outputs pass has changed.
