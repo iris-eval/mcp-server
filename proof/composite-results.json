@@ -16,7 +16,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -25,7 +25,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -47,7 +47,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -56,7 +56,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -78,7 +78,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -87,7 +87,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -109,7 +109,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -118,7 +118,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -140,7 +140,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -149,7 +149,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -171,7 +171,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -180,7 +180,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -210,7 +210,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -221,7 +221,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -251,7 +251,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -262,7 +262,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -292,7 +292,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -303,7 +303,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -327,7 +327,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -336,7 +336,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": false,
@@ -360,7 +360,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -369,7 +369,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -393,7 +393,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -402,7 +402,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -429,9 +429,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -442,7 +442,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -469,9 +469,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -482,7 +482,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -509,9 +509,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -522,7 +522,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -548,9 +548,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9996,
         "lo": 0.4875,
-        "pBad": 1,
+        "pBad": 0.8012,
         "state": "fail"
       },
       "riskPerClass": {
@@ -561,7 +561,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9579,
-        "pBad": 1,
+        "pBad": 0.9906,
         "state": "fail"
       },
       "shouldShip": false,
@@ -586,7 +586,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -595,7 +595,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -620,7 +620,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -629,7 +629,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -653,7 +653,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -662,7 +662,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -688,7 +688,7 @@
         "confidence": "marginal",
         "hi": 0.7513,
         "lo": 0.3971,
-        "pBad": 0.5567,
+        "pBad": 0.5412,
         "state": "fail"
       },
       "riskPerClass": {
@@ -699,7 +699,7 @@
         "confidence": "decisive",
         "hi": 0.9768,
         "lo": 0.8831,
-        "pBad": 0.938,
+        "pBad": 0.9355,
         "state": "fail"
       },
       "shouldShip": false,
@@ -725,7 +725,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -734,7 +734,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -760,7 +760,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -769,7 +769,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -797,9 +797,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -810,7 +810,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -838,9 +838,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -851,7 +851,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -875,7 +875,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -884,7 +884,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -908,7 +908,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -917,7 +917,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -947,7 +947,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -958,7 +958,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -988,7 +988,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -999,7 +999,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1029,7 +1029,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1040,7 +1040,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1070,7 +1070,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1081,7 +1081,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1111,7 +1111,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1122,7 +1122,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1152,7 +1152,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1163,7 +1163,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1193,7 +1193,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1204,7 +1204,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1234,7 +1234,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1245,7 +1245,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1275,7 +1275,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1286,7 +1286,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1316,7 +1316,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1327,7 +1327,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1355,9 +1355,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1368,7 +1368,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1396,9 +1396,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1409,7 +1409,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1437,9 +1437,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1450,7 +1450,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1474,7 +1474,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1483,7 +1483,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1511,9 +1511,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1524,7 +1524,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1552,9 +1552,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1565,7 +1565,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1597,7 +1597,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.8828,
-        "pBad": 1,
+        "pBad": 0.9703,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1609,7 +1609,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9993,
-        "pBad": 1,
+        "pBad": 0.9999,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1637,9 +1637,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1650,7 +1650,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1676,7 +1676,7 @@
         "confidence": "marginal",
         "hi": 0.6717,
         "lo": 0.3133,
-        "pBad": 0.4635,
+        "pBad": 0.4518,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1687,7 +1687,7 @@
         "confidence": "decisive",
         "hi": 0.9776,
         "lo": 0.8911,
-        "pBad": 0.9422,
+        "pBad": 0.9438,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1711,7 +1711,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1720,7 +1720,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1746,7 +1746,7 @@
         "confidence": "marginal",
         "hi": 0.6717,
         "lo": 0.3133,
-        "pBad": 0.4635,
+        "pBad": 0.4518,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1757,7 +1757,7 @@
         "confidence": "decisive",
         "hi": 0.9776,
         "lo": 0.8911,
-        "pBad": 0.9422,
+        "pBad": 0.9438,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1781,7 +1781,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1790,7 +1790,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1816,7 +1816,7 @@
         "confidence": "marginal",
         "hi": 0.6717,
         "lo": 0.3133,
-        "pBad": 0.4635,
+        "pBad": 0.4518,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1827,7 +1827,7 @@
         "confidence": "decisive",
         "hi": 0.9776,
         "lo": 0.8911,
-        "pBad": 0.9422,
+        "pBad": 0.9438,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1851,7 +1851,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1860,7 +1860,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1884,7 +1884,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1893,7 +1893,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1917,7 +1917,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -1926,7 +1926,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1952,9 +1952,9 @@
           "fabrication"
         ],
         "confidence": "decisive",
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7168,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1965,7 +1965,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.969,
-        "pBad": 1,
+        "pBad": 0.9934,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1991,9 +1991,9 @@
           "fabrication"
         ],
         "confidence": "decisive",
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7168,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2004,7 +2004,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.969,
-        "pBad": 1,
+        "pBad": 0.9934,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2030,9 +2030,9 @@
           "fabrication"
         ],
         "confidence": "decisive",
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7168,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2043,7 +2043,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.969,
-        "pBad": 1,
+        "pBad": 0.9934,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2069,9 +2069,9 @@
           "fabrication"
         ],
         "confidence": "decisive",
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7168,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2082,7 +2082,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.969,
-        "pBad": 1,
+        "pBad": 0.9934,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2108,9 +2108,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2121,7 +2121,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2147,9 +2147,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2160,7 +2160,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2186,9 +2186,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2199,7 +2199,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2225,9 +2225,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2238,7 +2238,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2264,9 +2264,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2277,7 +2277,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2303,9 +2303,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9998,
         "lo": 0.4636,
-        "pBad": 1,
+        "pBad": 0.7895,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2316,7 +2316,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9512,
-        "pBad": 1,
+        "pBad": 0.9894,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2342,9 +2342,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9996,
         "lo": 0.4875,
-        "pBad": 1,
+        "pBad": 0.8012,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2355,7 +2355,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9579,
-        "pBad": 1,
+        "pBad": 0.9906,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2381,9 +2381,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9996,
         "lo": 0.4875,
-        "pBad": 1,
+        "pBad": 0.8012,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2394,7 +2394,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9579,
-        "pBad": 1,
+        "pBad": 0.9906,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2420,9 +2420,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9996,
         "lo": 0.4875,
-        "pBad": 1,
+        "pBad": 0.8012,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2433,7 +2433,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9579,
-        "pBad": 1,
+        "pBad": 0.9906,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2459,9 +2459,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9996,
         "lo": 0.4875,
-        "pBad": 1,
+        "pBad": 0.8012,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2472,7 +2472,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9579,
-        "pBad": 1,
+        "pBad": 0.9906,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2498,9 +2498,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 1,
+        "hi": 0.9996,
         "lo": 0.4875,
-        "pBad": 1,
+        "pBad": 0.8012,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2511,7 +2511,7 @@
         "confidence": "decisive",
         "hi": 1,
         "lo": 0.9579,
-        "pBad": 1,
+        "pBad": 0.9906,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2537,7 +2537,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2546,7 +2546,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2572,7 +2572,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2581,7 +2581,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2607,7 +2607,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2616,7 +2616,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2642,7 +2642,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2651,7 +2651,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2677,7 +2677,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2686,7 +2686,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2712,7 +2712,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2721,7 +2721,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2747,7 +2747,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2756,7 +2756,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2782,7 +2782,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2791,7 +2791,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2817,7 +2817,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2826,7 +2826,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2852,7 +2852,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2861,7 +2861,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2887,7 +2887,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2896,7 +2896,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2922,7 +2922,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2931,7 +2931,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2957,7 +2957,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -2966,7 +2966,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2992,7 +2992,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3001,7 +3001,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3027,7 +3027,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3036,7 +3036,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3062,7 +3062,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3071,7 +3071,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3097,7 +3097,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3106,7 +3106,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3132,7 +3132,7 @@
         "confidence": "decisive",
         "hi": 0.2036,
         "lo": 0.1214,
-        "pBad": 0.1543,
+        "pBad": 0.1598,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3141,7 +3141,7 @@
         "confidence": "decisive",
         "hi": 0.7372,
         "lo": 0.5474,
-        "pBad": 0.6377,
+        "pBad": 0.6511,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3170,9 +3170,9 @@
           "no_injection_patterns"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7018,
-        "pBad": 1,
+        "pBad": 0.9193,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3183,7 +3183,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9844,
-        "pBad": 1,
+        "pBad": 0.9967,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3210,7 +3210,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3219,7 +3219,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3247,7 +3247,7 @@
         "confidence": "marginal",
         "hi": 0.6717,
         "lo": 0.3133,
-        "pBad": 0.4635,
+        "pBad": 0.4518,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3258,7 +3258,7 @@
         "confidence": "decisive",
         "hi": 0.9776,
         "lo": 0.8911,
-        "pBad": 0.9422,
+        "pBad": 0.9438,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3283,7 +3283,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3292,7 +3292,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3322,9 +3322,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 1,
+        "hi": 0.9999,
         "lo": 0.7673,
-        "pBad": 1,
+        "pBad": 0.9224,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3335,7 +3335,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9981,
-        "pBad": 1,
+        "pBad": 0.9997,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3367,7 +3367,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9131,
-        "pBad": 1,
+        "pBad": 0.9816,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3378,7 +3378,7 @@
         "confidence": null,
         "hi": 1,
         "lo": 0.9993,
-        "pBad": 1,
+        "pBad": 0.9999,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3400,7 +3400,7 @@
         "confidence": "marginal",
         "hi": 0.6717,
         "lo": 0.3133,
-        "pBad": 0.4635,
+        "pBad": 0.4518,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3411,7 +3411,7 @@
         "confidence": "decisive",
         "hi": 0.9776,
         "lo": 0.8911,
-        "pBad": 0.9422,
+        "pBad": 0.9438,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3433,7 +3433,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3442,7 +3442,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3464,7 +3464,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3473,7 +3473,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3495,7 +3495,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3504,7 +3504,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3530,7 +3530,7 @@
         "confidence": null,
         "hi": 0.9347,
         "lo": 0.6672,
-        "pBad": 0.8158,
+        "pBad": 0.798,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3541,7 +3541,7 @@
         "confidence": null,
         "hi": 0.9998,
         "lo": 0.9945,
-        "pBad": 0.9986,
+        "pBad": 0.9984,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3563,7 +3563,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3572,7 +3572,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3594,7 +3594,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3603,7 +3603,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3625,7 +3625,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3634,7 +3634,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3656,7 +3656,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3665,7 +3665,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3687,7 +3687,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3696,7 +3696,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3722,7 +3722,7 @@
         "confidence": null,
         "hi": 0.8907,
         "lo": 0.4988,
-        "pBad": 0.6971,
+        "pBad": 0.6788,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3733,7 +3733,7 @@
         "confidence": null,
         "hi": 0.9986,
         "lo": 0.9717,
-        "pBad": 0.992,
+        "pBad": 0.9915,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3755,7 +3755,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3764,7 +3764,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3786,7 +3786,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3795,7 +3795,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3817,7 +3817,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3826,7 +3826,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3848,7 +3848,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3857,7 +3857,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3879,7 +3879,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3888,7 +3888,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3910,7 +3910,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3919,7 +3919,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3945,7 +3945,7 @@
         "confidence": null,
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3956,7 +3956,7 @@
         "confidence": null,
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3978,7 +3978,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -3987,7 +3987,7 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
@@ -4009,7 +4009,7 @@
         "confidence": "decisive",
         "hi": 0.1665,
         "lo": 0.0957,
-        "pBad": 0.1179,
+        "pBad": 0.1284,
         "state": "pass"
       },
       "riskPerClass": {
@@ -4018,14 +4018,14 @@
         "confidence": "decisive",
         "hi": 0.7801,
         "lo": 0.5844,
-        "pBad": 0.6619,
+        "pBad": 0.6957,
         "state": "fail"
       },
       "shouldShip": true,
       "split": "dev"
     }
   ],
-  "commit": "c8c80d8",
+  "commit": "ece19ed",
   "compositeVersion": "523510356de7",
   "corpusVersion": "4951762e456d",
   "counts": {
@@ -4079,7 +4079,7 @@
       }
     }
   },
-  "generatedAt": "2026-09-05T17:56:22.262Z",
+  "generatedAt": "2026-09-05T18:21:18.800Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -4405,14 +4405,14 @@
     "calibration": "Brier score and expected calibration error over ten equal-width bins; the legacy score read as P(bad) = 1 − score, the risk as p_bad",
     "differenceCi": "newcombe-hybrid-score-95",
     "falsePassCost": 1,
-    "legacy": "passed as the tool returns it: weighted score ≥ the default threshold and no critical failure",
+    "legacy": "the pre-0.10.0 arithmetic, computed explicitly by deriveVerdict: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result",
     "prior": 0.5,
     "priorMode": "per-output",
     "priorModes": {
       "per-class": "π is the prior that each examined class is present (plan §4.3 as written); with K classes examined the prior that nothing is wrong is (1 − π)^K",
       "per-output": "π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)"
     },
-    "risk": "class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (proof/lib/risk.ts)",
+    "risk": "class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses)",
     "shouldShip": "by construction (any tier-A class present → false) unless a human label overrides; cases with shouldShip null are excluded from accuracy",
     "split": "fnv1a(id + \"iris-composite-split-v1\") % 100 < 70 → dev, else test; never stored",
     "tau": 0.5
@@ -4575,7 +4575,7 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1229,
+            "meanPredicted": 0.1327,
             "n": 44,
             "observedRate": 0.3636,
             "to": 0.2
@@ -4596,49 +4596,49 @@
           },
           {
             "from": 0.4,
-            "meanPredicted": 0.4635,
+            "meanPredicted": 0.4518,
             "n": 3,
             "observedRate": 0.6667,
             "to": 0.5
           },
           {
             "from": 0.5,
-            "meanPredicted": 0.5567,
+            "meanPredicted": 0.5412,
             "n": 1,
             "observedRate": 1,
             "to": 0.6
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6971,
+            "meanPredicted": 0.6788,
             "n": 12,
             "observedRate": 0.9167,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": null,
-            "n": 0,
-            "observedRate": null,
+            "meanPredicted": 0.7895,
+            "n": 7,
+            "observedRate": 1,
             "to": 0.8
           },
           {
             "from": 0.8,
-            "meanPredicted": null,
-            "n": 0,
-            "observedRate": null,
+            "meanPredicted": 0.8012,
+            "n": 4,
+            "observedRate": 1,
             "to": 0.9
           },
           {
             "from": 0.9,
-            "meanPredicted": 1,
-            "n": 25,
+            "meanPredicted": 0.9276,
+            "n": 14,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.1784,
-        "ece": 0.168,
+        "brier": 0.184,
+        "ece": 0.2047,
         "n": 85
       },
       "falseBlock": {
@@ -4681,7 +4681,7 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1205,
+            "meanPredicted": 0.1306,
             "n": 14,
             "observedRate": 0.5714,
             "to": 0.2
@@ -4709,42 +4709,42 @@
           },
           {
             "from": 0.5,
-            "meanPredicted": 0.5567,
+            "meanPredicted": 0.5412,
             "n": 1,
             "observedRate": 1,
             "to": 0.6
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6971,
+            "meanPredicted": 0.6788,
             "n": 3,
             "observedRate": 1,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": null,
-            "n": 0,
-            "observedRate": null,
+            "meanPredicted": 0.7895,
+            "n": 3,
+            "observedRate": 1,
             "to": 0.8
           },
           {
             "from": 0.8,
-            "meanPredicted": null,
-            "n": 0,
-            "observedRate": null,
+            "meanPredicted": 0.8012,
+            "n": 1,
+            "observedRate": 1,
             "to": 0.9
           },
           {
             "from": 0.9,
-            "meanPredicted": 1,
-            "n": 6,
+            "meanPredicted": 0.9193,
+            "n": 2,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.2799,
-        "ece": 0.3194,
+        "brier": 0.2845,
+        "ece": 0.3577,
         "n": 24
       },
       "falseBlock": {
@@ -4787,7 +4787,7 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1252,
+            "meanPredicted": 0.1347,
             "n": 15,
             "observedRate": 0.5333,
             "to": 0.2
@@ -4808,7 +4808,7 @@
           },
           {
             "from": 0.4,
-            "meanPredicted": 0.4635,
+            "meanPredicted": 0.4518,
             "n": 2,
             "observedRate": 1,
             "to": 0.5
@@ -4822,35 +4822,35 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6971,
+            "meanPredicted": 0.6788,
             "n": 2,
             "observedRate": 1,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": null,
-            "n": 0,
-            "observedRate": null,
+            "meanPredicted": 0.7923,
+            "n": 3,
+            "observedRate": 0.6667,
             "to": 0.8
           },
           {
             "from": 0.8,
-            "meanPredicted": 0.8158,
-            "n": 1,
-            "observedRate": 0,
+            "meanPredicted": 0.8012,
+            "n": 2,
+            "observedRate": 1,
             "to": 0.9
           },
           {
             "from": 0.9,
-            "meanPredicted": 1,
-            "n": 6,
+            "meanPredicted": 0.9193,
+            "n": 2,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.2991,
-        "ece": 0.3314,
+        "brier": 0.3017,
+        "ece": 0.3328,
         "n": 26
       },
       "falseBlock": {
@@ -4930,7 +4930,7 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6586,
+            "meanPredicted": 0.6896,
             "n": 44,
             "observedRate": 0.3636,
             "to": 0.7
@@ -4951,14 +4951,14 @@
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9919,
+            "meanPredicted": 0.988,
             "n": 41,
             "observedRate": 0.9512,
             "to": 1
           }
         ],
-        "brier": 0.1875,
-        "ece": 0.1723,
+        "brier": 0.198,
+        "ece": 0.1865,
         "n": 85
       },
       "falseBlock": {
@@ -5036,7 +5036,7 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6602,
+            "meanPredicted": 0.6925,
             "n": 14,
             "observedRate": 0.5714,
             "to": 0.7
@@ -5057,14 +5057,14 @@
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9914,
+            "meanPredicted": 0.9862,
             "n": 10,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.1485,
-        "ece": 0.0554,
+        "brier": 0.1533,
+        "ece": 0.0764,
         "n": 24
       },
       "falseBlock": {
@@ -5142,7 +5142,7 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6571,
+            "meanPredicted": 0.6868,
             "n": 15,
             "observedRate": 0.5333,
             "to": 0.7
@@ -5163,14 +5163,14 @@
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9879,
+            "meanPredicted": 0.9836,
             "n": 11,
             "observedRate": 0.9091,
             "to": 1
           }
         ],
-        "brier": 0.1881,
-        "ece": 0.1048,
+        "brier": 0.1905,
+        "ece": 0.1201,
         "n": 26
       },
       "falseBlock": {
@@ -5289,13 +5289,13 @@
         "utility": -20
       },
       {
-        "accuracy": 0.7647,
-        "fn": 18,
+        "accuracy": 0.7529,
+        "fn": 19,
         "fp": 2,
         "tau": 0.55,
         "tn": 28,
-        "tp": 37,
-        "utility": -20
+        "tp": 36,
+        "utility": -21
       },
       {
         "accuracy": 0.7529,
@@ -5334,40 +5334,40 @@
         "utility": -21
       },
       {
-        "accuracy": 0.7529,
-        "fn": 19,
+        "accuracy": 0.6706,
+        "fn": 26,
         "fp": 2,
         "tau": 0.8,
         "tn": 28,
-        "tp": 36,
-        "utility": -21
+        "tp": 29,
+        "utility": -28
       },
       {
-        "accuracy": 0.7529,
-        "fn": 19,
+        "accuracy": 0.6235,
+        "fn": 30,
         "fp": 2,
         "tau": 0.85,
         "tn": 28,
-        "tp": 36,
-        "utility": -21
+        "tp": 25,
+        "utility": -32
       },
       {
-        "accuracy": 0.7529,
-        "fn": 19,
+        "accuracy": 0.6235,
+        "fn": 30,
         "fp": 2,
         "tau": 0.9,
         "tn": 28,
-        "tp": 36,
-        "utility": -21
+        "tp": 25,
+        "utility": -32
       },
       {
-        "accuracy": 0.7529,
-        "fn": 19,
+        "accuracy": 0.5882,
+        "fn": 33,
         "fp": 2,
         "tau": 0.95,
         "tn": 28,
-        "tp": 36,
-        "utility": -21
+        "tp": 22,
+        "utility": -35
       }
     ],
     "shippedTau": 0.5,

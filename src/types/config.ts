@@ -54,6 +54,47 @@ export interface IrisConfig {
      * name in both lists is a config error: it does not say what you want.
      */
     nonCriticalRules?: string[];
+    /*
+     * The verdict's six defaults (0.10.0). Each is a RECOMMENDATION the AI
+     * council closed on with its failure mode stated, not a founder ruling;
+     * every surface that shows one says so until it is ruled. The record is
+     * in the arc-2 council report.
+     */
+    /** `risk` composes by kind (gates, vetoes, unknown, then the risk); `legacy` runs the pre-0.10.0 weighted mean. */
+    composer?: 'risk' | 'legacy';
+    /**
+     * How many wrongly blocked builds one shipped failure is worth. The risk
+     * threshold is 1 / (1 + this), so 1 means a false pass and a false block
+     * cost the same; a continuous-integration gate that hates flakiness sets
+     * it low, a compliance gate sets it high.
+     */
+    falsePassCost?: number;
+    /**
+     * What a critical rule that was ASKED and could not answer does to the
+     * verdict — defeated by the output, or configured invalidly. Not the
+     * same as never asked, which is coverage. Today's behaviour is `pass`,
+     * which is the fail-open seam; the default is `unknown`.
+     */
+    onCriticalSkipped?: 'unknown' | 'fail' | 'pass';
+    /** Inputs every evaluation must carry; an absent one makes the verdict unknown rather than clean. */
+    requiredEvidence?: string[];
+    /**
+     * Whether a threshold IRIS ships decides the verdict, or only advises.
+     * A default is our guess about a deployment we have never seen; a
+     * threshold you set is your decision. A policy with no number in it —
+     * "the output is empty" — gates either way.
+     */
+    defaultsGate?: boolean;
+    /** The prior that an output is bad before any rule speaks. 0.5 matches the proof corpus, not your traffic. */
+    prior?: number;
+    /**
+     * How that prior is spread over the failure classes the detectors
+     * examine. `per-output` keeps it at the stated value for the output as a
+     * whole; `per-class` applies it to each class independently, which makes
+     * installing another detector raise the prior before that detector has
+     * looked at anything.
+     */
+    priorMode?: 'per-output' | 'per-class';
   };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';

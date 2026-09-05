@@ -41,6 +41,19 @@ export interface CriticalityOverrides {
   criticalRules?: string[];
   /** Built-in rule names demoted from critical. */
   nonCriticalRules?: string[];
+  /*
+   * The engine is handed `config.eval` whole, so the verdict's six defaults
+   * (0.10.0) arrive on the same object. They are read by the composer, not
+   * by the criticality resolver; declared here so a caller that builds an
+   * engine directly passes one object and not two.
+   */
+  composer?: 'risk' | 'legacy';
+  falsePassCost?: number;
+  onCriticalSkipped?: 'unknown' | 'fail' | 'pass';
+  requiredEvidence?: string[];
+  defaultsGate?: boolean;
+  prior?: number;
+  priorMode?: 'per-output' | 'per-class';
 }
 
 export interface EffectiveCriticality {

@@ -7,7 +7,7 @@
  *   legacy            — today's arithmetic: `passed` (score ≥ threshold and
  *                       no critical failure), as the tool returns it
  *   risk (per-output) — arc 3's composer, in the harness only
- *                       (proof/lib/risk.ts): gates, then vetoes, then p_bad
+ *                       (src/eval/risk.ts, the module the product uses): gates, then vetoes, then p_bad
  *                       against τ = 1 / (1 + c), with the prior read as
  *                       "this output is bad" and spread over the classes
  *                       the detectors examine
@@ -37,7 +37,8 @@ import { FAILURE_CLASS_IDS } from '../../src/eval/failure-classes.js';
 import { wilson } from '../judge/lib/wilson.js';
 import { calibration, newcombeDifference, type Calibration } from './intervals.js';
 import { compositeContext, loadComposite, splitOf, validateComposite, type CompositeCase, type LoadedComposite, type Split } from './composite.js';
-import { riskVerdict, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from './risk.js';
+import { riskVerdict, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from '../../src/eval/risk.js';
+import { deriveVerdict } from '../../src/eval/verdict.js';
 
 export const COMPOSITE_RESULTS_JSON = 'proof/composite-results.json';
 export const COMPOSITE_MD = 'proof/COMPOSITE.md';
@@ -186,6 +187,12 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
   const rows: CaseRow[] = [];
   for (const c of loaded.cases) {
     const result: EvalResult = await eng.evaluateAll(compositeContext(loaded, c));
+    /*
+     * The pre-0.10.0 arithmetic, computed explicitly. `result.passed` is the
+     * COMPOSED verdict from 0.10.0 onward, so reading it here would compare
+     * the new composer against itself and report a difference of zero.
+     */
+    const legacyVerdict = deriveVerdict(result, defaultConfig.eval.defaultThreshold);
     const fired = result.rule_results.filter((r) => !r.skipped && r.passed === false);
     const caught = new Set<FailureClass>();
     for (const r of fired) for (const cls of (r.classes ?? []) as FailureClass[]) caught.add(cls);
@@ -195,7 +202,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       provenance: c.provenance,
       shouldShip: c.expected.shouldShip,
       classes: c.expected.classes,
-      legacy: { passed: result.passed, score: round4(result.score), criticalFailures: result.critical_failures ?? [] },
+      legacy: { passed: legacyVerdict.passed, score: round4(result.score), criticalFailures: result.critical_failures ?? [] },
       risk: cellOf(riskVerdict(result, DEFAULT_TAU, DEFAULT_PRIOR, 'per-output')),
       riskPerClass: cellOf(riskVerdict(result, DEFAULT_TAU, DEFAULT_PRIOR, 'per-class')),
       classesCaught: [...caught].filter((cls) => c.expected.classes.includes(cls)).sort(),
@@ -250,12 +257,12 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       falsePassCost: DEFAULT_FALSE_PASS_COST,
       prior: DEFAULT_PRIOR,
       priorMode: DEFAULT_PRIOR_MODE,
-      risk: 'class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (proof/lib/risk.ts)',
+      risk: 'class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses)',
       priorModes: {
         'per-output': 'π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)',
         'per-class': 'π is the prior that each examined class is present (plan §4.3 as written); with K classes examined the prior that nothing is wrong is (1 − π)^K',
       },
-      legacy: 'passed as the tool returns it: weighted score ≥ the default threshold and no critical failure',
+      legacy: 'the pre-0.10.0 arithmetic, computed explicitly by deriveVerdict: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result',
       accuracyCi: 'wilson-95',
       differenceCi: 'newcombe-hybrid-score-95',
       calibration: 'Brier score and expected calibration error over ten equal-width bins; the legacy score read as P(bad) = 1 − score, the risk as p_bad',

@@ -86,7 +86,7 @@ export function stampRuleResult(
   raw: EvalRuleResult,
   context: EvalContext,
   effective: EffectiveCriticality,
-): Pick<EvalRuleResult, 'kind' | 'role' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty'> {
+): Pick<EvalRuleResult, 'kind' | 'role' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty' | 'origin'> {
   const present = inputsPresent(context);
   const role: Role = effective.critical ? 'veto' : 'term';
   const skipClass = skipClassOf(raw);
@@ -97,6 +97,7 @@ export function stampRuleResult(
     ...(rule.question !== undefined ? { question: rule.question } : {}),
     ...(rule.classes !== undefined ? { classes: [...rule.classes] } : {}),
     ...(rule.version !== undefined ? { ruleVersion: rule.version } : {}),
+    ...(rule.origin !== undefined ? { origin: rule.origin } : {}),
     ...(rule.needs !== undefined ? { saw: rule.needs.filter((n) => present.has(n)) } : {}),
     ...(skipClass !== undefined ? { skipClass } : {}),
     ...(uncertainty !== undefined ? { uncertainty } : {}),

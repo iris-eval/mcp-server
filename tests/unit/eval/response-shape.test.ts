@@ -91,7 +91,18 @@ describe('response shape — every built-in result carries its receipt', () => {
     // The whole-evaluation receipt: verdict with its basis, coverage by question, provenance.
     expect(r.verdict).toBeDefined();
     expect(r.verdict!.passed).toBe(r.passed);
-    expect(['clean', 'score_below_threshold', 'detector_veto', 'policy_gate', 'no_rules']).toContain(r.verdict!.basis);
+    // Every basis the composer can reach. score_below_threshold belongs to
+    // the legacy composer and stays in the list while that path is selectable.
+    expect([
+      'clean',
+      'score_below_threshold',
+      'detector_veto',
+      'policy_gate',
+      'no_rules',
+      'risk_over_loss',
+      'critical_unknown',
+      'required_evidence_missing',
+    ]).toContain(r.verdict!.basis);
     expect(r.coverage!.questions.find((q) => q.id === 'tool_use_correct')!.status).toBe('judged');
     expect(r.coverage!.inputs).toMatchObject({ output: true, input: true, tool_calls: true, cost: true, tokens: true });
     expect(r.provenance!.irisVersion).toMatch(/^\d+\.\d+\.\d+/);

@@ -62,6 +62,21 @@ export const defaultConfig: IrisConfig = {
      */
     criticalRules: [],
     nonCriticalRules: [],
+    /*
+     * The verdict's six defaults (0.10.0), each a config key so a ruling is
+     * a one-line change. Measured before shipped: on the held-out split of
+     * the composite corpus the risk composer is right about shipping 57.7%
+     * of the time against the legacy 38.5%, at an IDENTICAL false-block
+     * rate, missing 55.6% of bad outputs against 83.3%. See
+     * proof/COMPOSITE.md, which regenerates on every release.
+     */
+    composer: 'risk',
+    falsePassCost: 1,
+    onCriticalSkipped: 'unknown',
+    requiredEvidence: [],
+    defaultsGate: false,
+    prior: 0.5,
+    priorMode: 'per-output',
   },
   logging: {
     level: 'info',

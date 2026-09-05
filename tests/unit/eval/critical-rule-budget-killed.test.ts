@@ -69,7 +69,7 @@ describe('a critical rule killed by the sandbox budget', () => {
     expect(rule!.budgetExceeded).toBe(true);
   });
 
-  it('does NOT veto — the documented fail-open, asserted not assumed', async () => {
+  it('makes the verdict UNKNOWN — the fail-open seam, closed in 0.10.0', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', hostileCriticalRule('crafted_stall'), 'rule-stall-2');
     // A second, cheap rule that passes, so the evaluation is not
@@ -84,10 +84,28 @@ describe('a critical rule killed by the sandbox budget', () => {
 
     expect(result.insufficient_data).toBe(false);
     expect(result.rules_skipped).toBeGreaterThanOrEqual(1);
-    // The seam: passed=true with NO critical_failures, on output the
-    // critical rule was defeated by rather than cleared.
+    /*
+     * Until 0.10.0 this returned passed=true with no critical_failures, on
+     * output the critical rule was DEFEATED by rather than cleared — the
+     * seam arc zero found and no configuration could close. The composer
+     * now returns a third state: the rule was asked and could not answer,
+     * so the verdict is unknown, and unknown does not read as passed.
+     *
+     * It is still not a veto: critical_failures stays empty, because
+     * nothing was detected. What changed is that "could not tell" stopped
+     * being reported as "clean".
+     */
     expect(result.critical_failures).toBeUndefined();
-    expect(result.passed).toBe(true);
+    expect(result.verdict?.state).toBe('unknown');
+    expect(result.verdict?.basis).toBe('critical_unknown');
+    expect(result.verdict?.by).toContain('crafted_stall');
+    expect(result.passed).toBe(false);
+    // And a deployment that would rather accept the risk can say so.
+    const permissive = new EvalEngine(0.7, undefined, { onCriticalSkipped: 'pass' });
+    permissive.registerRule('custom', hostileCriticalRule('crafted_stall'), 'rule-stall-2p');
+    permissive.registerRule('custom', createCustomRule({ name: 'cheap_check', type: 'min_length', config: { min_length: 5 } }), 'rule-cheap-p');
+    const allowed = await permissive.evaluate('custom', { output: HOSTILE_FUEL });
+    expect(allowed.passed).toBe(true);
   });
 
   it('reports the defeated rule in critical_skipped so a gate can fail closed', async () => {

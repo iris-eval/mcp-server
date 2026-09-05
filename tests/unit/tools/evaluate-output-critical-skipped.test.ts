@@ -81,11 +81,18 @@ describe('evaluate_output response carries critical_skipped', () => {
     const res = await evaluate({ output: 'an ordinary agent response', eval_type: 'custom' });
 
     expect(res.insufficient_data).toBe(false);
-    expect(res.passed).toBe(true);
     expect(res.critical_failures).toBeUndefined();
-    // The seam, now visible to the caller: passed:true AND a named critical
-    // rule that never judged the output.
+    /*
+     * 0.9.0 made the seam VISIBLE: passed:true beside a named critical rule
+     * that never judged the output. 0.10.0 closes it — a critical rule that
+     * was asked and could not answer makes the verdict unknown, and unknown
+     * does not read as passed. critical_skipped still names it, because a
+     * reader wants the rule and not only the state.
+     */
     expect(res.critical_skipped).toEqual(['policy_regex']);
+    expect(res.verdict?.state).toBe('unknown');
+    expect(res.verdict?.basis).toBe('critical_unknown');
+    expect(res.passed).toBe(false);
   });
 
   it('names a critical cost_threshold rule when the call omits cost_usd', async () => {

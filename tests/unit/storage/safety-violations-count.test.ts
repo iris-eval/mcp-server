@@ -86,7 +86,7 @@ describe('safety violation counting', () => {
     expect(stats.safetyViolations.pii).toBe(1);
   });
 
-  it('counts a violation inside a PASSING eval — non-critical rules fail softly', async () => {
+  it('counts a violation whatever the verdict — the counter is not coupled to passed', async () => {
     // The storage bug's exact shape, still reachable today.
     // no_hallucination_markers is deliberately not critical (a heuristic
     // with a documented false-positive surface), so it fails while the eval
@@ -107,8 +107,16 @@ describe('safety violation counting', () => {
     });
 
     const marker = result.rule_results.find((r) => r.ruleName === 'no_hallucination_markers');
+    /*
+     * The property under test is that the counter reads the RULE RESULTS and
+     * not the verdict: a counter re-coupled to `passed` would report zero
+     * hallucinations for this trace. Before 0.10.0 this output passed, which
+     * made the point vividly; the composer now lets a non-critical detector
+     * carry the verdict on its published accuracy, so it fails. The counter
+     * must be right either way, which is what the assertion below says.
+     */
     expect(marker?.passed).toBe(false);
-    expect(result.passed).toBe(true);
+    expect(result.critical_failures).toBeUndefined();
 
     await adapter.insertTrace(LOCAL_TENANT, hallucinating);
     await adapter.insertEvalResult(LOCAL_TENANT, { ...result, trace_id: hallucinating.trace_id });
