@@ -72,17 +72,21 @@ describe('deleteEvalResultsOlderThan', () => {
     expect(remaining.results[0].id).toBe(recent.id);
   });
 
-  it('is the gap the trace sweep leaves: sweeping traces alone keeps the eval text', async () => {
+  it('the trace sweep erases the text of the evaluations it orphans; the eval sweep removes the rows', async () => {
     await adapter.insertTrace(LOCAL_TENANT, trace('t-old', '2020-01-01T00:00:00.000Z'));
     const row = evalRow('t-old', SENTINEL);
     await adapter.insertEvalResult(LOCAL_TENANT, row);
     ageEval(adapter, row.id, '2020-01-01T00:00:00.000Z');
 
     expect(await adapter.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(1);
-    // The evaluation survived the trace sweep with its text intact (trace_id NULLed).
+    // 0.9.0: the evaluation survives the trace sweep with its verdict and
+    // WITHOUT its text (this used to be the gap: the sentinel outlived the
+    // trace verbatim, orphaned and readable). trace_id is NULLed.
     const afterTraces = await adapter.queryEvalResults(LOCAL_TENANT, {});
     expect(afterTraces.total).toBe(1);
-    expect(afterTraces.results[0].output_text).toBe(SENTINEL);
+    expect(afterTraces.results[0].output_text).toBe('');
+    expect(afterTraces.results[0].erased_at).toBeDefined();
+    expect(JSON.stringify(afterTraces.results[0])).not.toContain(SENTINEL);
     expect(afterTraces.results[0].trace_id).toBeFalsy();
 
     expect(await adapter.deleteEvalResultsOlderThan(LOCAL_TENANT, 30)).toBe(1);
