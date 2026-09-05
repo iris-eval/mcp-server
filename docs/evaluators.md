@@ -39,7 +39,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `no_hallucination_markers` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `no_silent_tool_failure` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `cost_under_threshold` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
-| `token_efficiency` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
+| `verbosity_ratio` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `no_tool_loop` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 
 ## The custom rule types — 8 of 8 with three or more questions measured
@@ -289,9 +289,9 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 - **Q12** measurable — pair rule fires with the judge's dimensions on one corpus (needs a key)
 - **Q13** measurable — run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)
 
-### `token_efficiency` (the built-in rules)
+### `verbosity_ratio` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[token_efficiency] (precision, recall and F1 on 25 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[verbosity_ratio] (precision, recall and F1 on 25 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
 - **Q3** stated — list_rules → kind: measurement, mechanism: formula; proof/corpus → definition (a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label says it is a formula, so it cannot appear to be a detector)
@@ -300,7 +300,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 - **Q7** n/a (deterministic)
 - **Q8** measured — npm run proof -- --check regenerates the file byte for byte in CI on every pull request (a pure function of its input; the committed numbers are the code's)
 - **Q9** measurable — proof/lib/transforms.ts extends to any rule that reports a span
-- **Q10** measured — proof/results.json → rules[token_efficiency].ppvAt (what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts)
+- **Q10** measured — proof/results.json → rules[verbosity_ratio].ppvAt (what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts)
 - **Q11** measured — proof/composite-results.json → perClass[over_budget] (recall on composed cases and the 24 real transcripts where the class is present)
 - **Q12** measurable — pair rule fires with the judge's dimensions on one corpus (needs a key)
 - **Q13** measurable — run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)

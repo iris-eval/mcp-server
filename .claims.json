@@ -624,7 +624,7 @@
           },
           {
             "kind": "rule",
-            "name": "token_efficiency"
+            "name": "verbosity_ratio"
           }
         ],
         "id": "Q7xS2",
@@ -692,7 +692,7 @@
           },
           {
             "kind": "proof",
-            "name": "token_efficiency"
+            "name": "verbosity_ratio"
           }
         ],
         "id": "Q7xS6",
@@ -1124,8 +1124,8 @@
       "noToolLoop",
       "nonEmptyOutput",
       "sentenceCount",
-      "tokenEfficiency",
-      "topicConsistency"
+      "topicConsistency",
+      "verbosityRatio"
     ],
     "piiPatterns": 19,
     "questions": [
@@ -1355,19 +1355,6 @@
       },
       {
         "classes": [
-          "over_budget"
-        ],
-        "kind": "measurement",
-        "mechanism": "formula",
-        "name": "token_efficiency",
-        "needs": [
-          "tokens"
-        ],
-        "question": "within_budget",
-        "version": 1
-      },
-      {
-        "classes": [
           "off_task"
         ],
         "kind": "measurement",
@@ -1378,6 +1365,19 @@
           "input"
         ],
         "question": "relevant",
+        "version": 1
+      },
+      {
+        "classes": [
+          "over_budget"
+        ],
+        "kind": "measurement",
+        "mechanism": "formula",
+        "name": "verbosity_ratio",
+        "needs": [
+          "tokens"
+        ],
+        "question": "within_budget",
         "version": 1
       }
     ],
@@ -2321,12 +2321,12 @@
       {
         "cells": {
           "q1": {
-            "evidence": "proof/results.json → rules[token_efficiency]",
+            "evidence": "proof/results.json → rules[verbosity_ratio]",
             "note": "precision, recall and F1 on 25 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
-            "evidence": "proof/results.json → rules[token_efficiency].ppvAt",
+            "evidence": "proof/results.json → rules[verbosity_ratio].ppvAt",
             "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
             "status": "measured"
           },
@@ -2382,9 +2382,9 @@
           }
         },
         "group": "rules",
-        "id": "rule:token_efficiency",
+        "id": "rule:verbosity_ratio",
         "measured": 4,
-        "name": "token_efficiency"
+        "name": "verbosity_ratio"
       },
       {
         "cells": {
@@ -3581,13 +3581,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "df01411809f9"
+        "compositeVersion": "523510356de7"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "b614cd2a4f7b",
+        "corpusVersion": "4951762e456d",
         "customCorpusVersion": "950bf970c1c1"
       }
     },
@@ -3600,8 +3600,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-05T17:48:48.232Z",
-  "generatedFromCommit": "62e9063",
+  "generatedAt": "2026-09-05T17:56:22.574Z",
+  "generatedFromCommit": "c8c80d8",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -3670,10 +3670,10 @@
     ]
   },
   "proof": {
-    "commit": "62e9063",
+    "commit": "c8c80d8",
     "composite": {
-      "compositeVersion": "df01411809f9",
-      "corpusVersion": "b614cd2a4f7b",
+      "compositeVersion": "523510356de7",
+      "corpusVersion": "4951762e456d",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -3747,7 +3747,7 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1238,
+                "meanPredicted": 0.124,
                 "n": 33,
                 "observedRate": 0.697,
                 "to": 0.2
@@ -3809,8 +3809,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.5491,
-            "ece": 0.5739,
+            "brier": 0.5489,
+            "ece": 0.5738,
             "n": 85
           },
           "falseBlock": {
@@ -5021,7 +5021,7 @@
       },
       "version": "0.9.0"
     },
-    "corpusVersion": "b614cd2a4f7b",
+    "corpusVersion": "4951762e456d",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -5534,7 +5534,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-05T17:39:41.668Z",
+    "generatedAt": "2026-09-05T17:56:05.064Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -6208,23 +6208,23 @@
         },
         "credible95": {
           "f1": [
-            0.8063,
+            0.8084,
             0.9989
           ],
           "precision": [
-            0.7643,
+            0.7576,
             0.9999
           ],
           "recall": [
-            0.7595,
-            0.9999
+            0.7736,
+            1
           ]
         },
         "f1": 1,
         "fn": 0,
         "fp": 0,
         "n": 25,
-        "name": "token_efficiency",
+        "name": "verbosity_ratio",
         "negatives": 16,
         "positives": 9,
         "ppvAt": {

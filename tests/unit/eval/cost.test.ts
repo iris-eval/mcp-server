@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { costUnderThreshold, tokenEfficiency } from '../../../src/eval/rules/cost.js';
+import { costUnderThreshold, verbosityRatio } from '../../../src/eval/rules/cost.js';
 import { passingContext, expensiveContext } from '../../fixtures/sample-evals.js';
 
 describe('cost rules', () => {
@@ -19,13 +19,13 @@ describe('cost rules', () => {
     });
   });
 
-  describe('tokenEfficiency', () => {
+  describe('verbosityRatio', () => {
     it('should pass for efficient token usage', () => {
-      expect(tokenEfficiency.evaluate(passingContext).passed).toBe(true);
+      expect(verbosityRatio.evaluate(passingContext).passed).toBe(true);
     });
 
     it('should fail for inefficient token usage', () => {
-      const result = tokenEfficiency.evaluate({
+      const result = verbosityRatio.evaluate({
         output: 'test',
         tokenUsage: { prompt_tokens: 10, completion_tokens: 100, total_tokens: 110 },
       });
@@ -33,7 +33,7 @@ describe('cost rules', () => {
     });
 
     it('should skip when no token usage', () => {
-      const result = tokenEfficiency.evaluate({ output: 'test' });
+      const result = verbosityRatio.evaluate({ output: 'test' });
       expect(result.skipped).toBe(true);
       expect(result.passed).toBe(false);
     });

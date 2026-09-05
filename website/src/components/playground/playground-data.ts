@@ -34,7 +34,7 @@ export const RULE_NAMES = [
   "no_pii",
   "no_injection_patterns",
   "cost_under_threshold",
-  "token_efficiency",
+  "verbosity_ratio",
 ] as const;
 
 export type RuleName = (typeof RULE_NAMES)[number];
@@ -238,7 +238,7 @@ export const RULE_BREAKDOWN: RuleBreakdown[] = [
   { rule: "sentence_count", passRate: 0.99 },
   { rule: "no_stub_output", passRate: 0.98 },
   { rule: "min_output_length", passRate: 0.97 },
-  { rule: "token_efficiency", passRate: 0.95 },
+  { rule: "verbosity_ratio", passRate: 0.95 },
   { rule: "no_injection_patterns", passRate: 0.94 },
   { rule: "non_empty_output", passRate: 0.91 },
   { rule: "keyword_overlap", passRate: 0.9 },

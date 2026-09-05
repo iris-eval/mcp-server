@@ -74,13 +74,13 @@ Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris.
 
 Categories: completeness, relevance, safety, cost.
 
-Rules: costUnderThreshold, expectedCoverage, keywordOverlap, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, sentenceCount, tokenEfficiency, topicConsistency.
+Rules: costUnderThreshold, expectedCoverage, keywordOverlap, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, sentenceCount, topicConsistency, verbosityRatio.
 
 Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 37 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Evaluator accuracy
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 15 built-in rules, corpus b614cd2a4f7b, generated 2026-09-05 for v0.9.0; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 15 built-in rules, corpus 4951762e456d, generated 2026-09-05 for v0.9.0; reproduce with `npm run proof`.
 
 ## Trust signals
 

@@ -229,7 +229,7 @@ describe('tool contracts (MCP surface)', () => {
       expect(body.categories.safety).toMatchObject({ passed: false, critical_failures: ['no_pii'] });
       expect(body.categories.completeness).toMatchObject({ passed: true });
       // cost_usd is given, token_usage and tool_calls are not: cost_under_threshold
-      // runs, token_efficiency and no_tool_loop skip.
+      // runs, verbosity_ratio and no_tool_loop skip.
       expect(body.categories.cost).toMatchObject({ rules_evaluated: 1, rules_skipped: 2 });
       const pii = body.rule_results.find((x: { ruleName: string }) => x.ruleName === 'no_pii');
       expect(pii.category).toBe('safety');

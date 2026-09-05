@@ -2243,12 +2243,12 @@ function costUnderThreshold(ctx: EvalContext): EvalRuleResult {
   };
 }
 
-function tokenEfficiency(ctx: EvalContext): EvalRuleResult {
+function verbosityRatio(ctx: EvalContext): EvalRuleResult {
   const prompt = ctx.promptTokens;
   const completion = ctx.completionTokens;
   if (prompt === undefined || completion === undefined || prompt === 0) {
     return {
-      ruleName: 'token_efficiency',
+      ruleName: 'verbosity_ratio',
       category: 'cost',
       passed: false,
       score: 0,
@@ -2261,7 +2261,7 @@ function tokenEfficiency(ctx: EvalContext): EvalRuleResult {
   const maxRatio = VENDORED_THRESHOLDS.max_token_ratio;
   const passed = ratio <= maxRatio;
   return {
-    ruleName: 'token_efficiency',
+    ruleName: 'verbosity_ratio',
     category: 'cost',
     passed,
     score: passed ? 1 : Math.max(0, 1 - (ratio - maxRatio) / maxRatio),
@@ -2588,7 +2588,7 @@ const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRu
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure],
   relevance: [keywordOverlap, topicConsistency],
   completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage],
-  cost: [costUnderThreshold, tokenEfficiency, noToolLoop],
+  cost: [costUnderThreshold, verbosityRatio, noToolLoop],
 };
 
 export interface EvalSummary {

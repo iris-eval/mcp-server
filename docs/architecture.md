@@ -138,7 +138,7 @@ src/
       completeness.ts   4 rules: min_output_length, non_empty_output, sentence_count, expected_coverage
       relevance.ts      2 rules: keyword_overlap, topic_consistency
       safety.ts         6 rules: no_pii (19 patterns), no_blocklist_words, no_injection_patterns (37 patterns), no_stub_output, no_hallucination_markers (25 context-grounded signals), no_silent_tool_failure
-      cost.ts           3 rules: cost_under_threshold, token_efficiency, no_tool_loop
+      cost.ts           3 rules: cost_under_threshold, verbosity_ratio, no_tool_loop
       trajectory.ts     Shared definitions the two trajectory rules judge by: when a call FAILED, when an output ACKNOWLEDGES a failure, when two calls are the same call
       custom.ts         Factory for 8 custom rule types (regex, length, keywords, JSON, cost)
       index.ts          Rule registry by eval type
@@ -235,7 +235,7 @@ dashboard/              React SPA (separate Vite build)
 | `completeness`  | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage` | 1, 2, 0.5, 1.5 |
 | `relevance`     | `keyword_overlap`, `topic_consistency`                       | 1, 1 |
 | `safety`        | `no_pii`, `no_blocklist_words`, `no_injection_patterns`, `no_stub_output`, `no_hallucination_markers`, `no_silent_tool_failure` | 2, 2, 2, 1.5, 1, 1.5 |
-| `cost`          | `cost_under_threshold`, `token_efficiency`, `no_tool_loop`   | 1, 0.5, 1 |
+| `cost`          | `cost_under_threshold`, `verbosity_ratio`, `no_tool_loop`   | 1, 0.5, 1 |
 | `custom`        | Dynamically built from `CustomRuleDefinition` array          | User-defined |
 
 Which of these rules VETO the verdict is per-deployment: `config.eval.criticalRules` promotes built-in rules to critical and `config.eval.nonCriticalRules` demotes them, both validated against the registry at load. `src/eval/criticality.ts` resolves the effective value and every surface that reports criticality reads it from there, so a roster can never disagree with the verdicts the same process produces. See `docs/api-reference.md` § Rule criticality.
@@ -276,7 +276,7 @@ Each rule returns a score between 0 and 1. The final score is the weighted avera
 
 **Cost rules:**
 - `cost_under_threshold` (weight 1) -- Configurable USD threshold (default: $0.10). Score degrades proportionally above threshold.
-- `token_efficiency` (weight 0.5) -- Checks completion/prompt token ratio against a max (default: 5x). Skipped if no token data.
+- `verbosity_ratio` (weight 0.5) -- Checks completion/prompt token ratio against a max (default: 5x). Skipped if no token data.
 - `no_tool_loop` (weight 1) -- **Trajectory rule.** Fails when one tool is called with an identical normalised input (object keys sorted, whitespace collapsed) more than `max_tool_repeats` times (default 3), or when two distinct calls alternate for more than two complete cycles. Sees the waste a USD threshold cannot: five identical calls can still bill under `cost_threshold`. **Skips** without `tool_calls`. Non-critical.
 
 ### Custom rule types

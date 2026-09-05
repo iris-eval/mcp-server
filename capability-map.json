@@ -689,7 +689,7 @@
         },
         {
           "kind": "rule",
-          "name": "token_efficiency"
+          "name": "verbosity_ratio"
         }
       ],
       "needs": [
@@ -757,7 +757,7 @@
         },
         {
           "kind": "proof",
-          "name": "token_efficiency"
+          "name": "verbosity_ratio"
         }
       ],
       "needs": []

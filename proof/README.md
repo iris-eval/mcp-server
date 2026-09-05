@@ -109,7 +109,7 @@ the materialised text and refuses to write if any verdict moves.
 
 The remaining built-in rules (`min_output_length`, `non_empty_output`,
 `sentence_count`, `expected_coverage`, `keyword_overlap`, `topic_consistency`,
-`no_blocklist_words`, `cost_under_threshold`, `token_efficiency`) had no
+`no_blocklist_words`, `cost_under_threshold`, `verbosity_ratio`) had no
 labelled cases before this directory existed. Their families
 (`corpus/<rule>.json`) were **LLM-authored and LLM-labelled against each
 rule's documented definition on 2026-09-04** — the definition in

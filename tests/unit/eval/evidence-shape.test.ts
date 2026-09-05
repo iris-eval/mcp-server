@@ -138,7 +138,7 @@ describe('evidence — real transcripts through the real handler', () => {
 
   it('every measurement carries its statistic with a unit and the threshold it was held to', async () => {
     const r = await evaluate(t13);
-    for (const name of ['min_output_length', 'sentence_count', 'keyword_overlap', 'topic_consistency', 'token_efficiency', 'cost_under_threshold']) {
+    for (const name of ['min_output_length', 'sentence_count', 'keyword_overlap', 'topic_consistency', 'verbosity_ratio', 'cost_under_threshold']) {
       const x = r.rule_results.find((y) => y.ruleName === name)!;
       expect(x.skipped, name).toBeFalsy();
       expect(x.value, `${name}.value`).toBeDefined();
