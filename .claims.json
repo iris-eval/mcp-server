@@ -71,8 +71,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-05T07:34:22.721Z",
-  "generatedFromCommit": "6151d91",
+  "generatedAt": "2026-09-05T07:35:16.685Z",
+  "generatedFromCommit": "b88ad15",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -635,7 +635,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 1902,
+    "totalCombined": 1910,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -643,8 +643,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1736,
-      "total": 1736
+      "passed": 1744,
+      "total": 1744
     }
   },
   "version": {
