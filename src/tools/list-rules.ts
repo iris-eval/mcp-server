@@ -43,7 +43,7 @@ export function registerListRulesTool(
         '',
         'Sibling tools — deploy_rule adds custom rules, delete_rule removes them, evaluate_output runs them against agent output. log_trace / get_traces / delete_trace handle the trace lifecycle separately. list_rules is the READ path for the custom-rule store; nothing else exposes the inventory.',
         '',
-        'Behavior. Pure read of ~/.iris/custom-rules.json (in-memory cached; no disk read per call after server boot). No mutation, no external network. Tenant-scoped in Cloud tier; OSS returns all rules for the single local tenant. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Returns in <5ms.',
+        'Behavior. Pure read of ~/.iris/custom-rules.json (in-memory cached; no disk read per call after server boot). No mutation, no external network. Returns the rules of the local tenant. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio.',
         '',
         'Output shape. Returns JSON: `{ "rules": [{ "id": "rule-XXXX", "name", "description", "evalType", "severity", "definition": { name, type, config, weight? }, "enabled": boolean, "createdAt": ISO timestamp, "updatedAt": ISO timestamp, "version": number, "sourceMomentId?": string }], "total": number, "enabled_count": number, "built_in": [{ "name", "category", "weight", "critical": boolean, "criticalSource": "default" | "config" }] }`. Empty `rules` array + total=0 when no custom rules are deployed. A deployed rule fires only on evaluate_output calls whose eval_type equals its evalType (or eval_type="all", which runs every bundle). `built_in` is the shipped rule set, always present and NOT narrowed by the filters; `total` and `enabled_count` count custom rules only.',
         '',

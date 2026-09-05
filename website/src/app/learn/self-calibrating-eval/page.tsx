@@ -89,8 +89,11 @@ export default function LearnSelfCalibratingEval(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris provides the scoring data that powers self-calibrating eval. Every output you send it is scored with the same rules, building the distribution data needed to detect calibration issues. The dashboard shows pass/fail rates over time — when a rule passes 100% of outputs, it&apos;s visible immediately.
+          Iris provides the scoring data that this pattern needs. Every output you send it is scored with the same rules, building the distribution data needed to see calibration issues. The dashboard&apos;s trend and drift views show pass rates over time — when a rule passes 100% of outputs, it&apos;s visible immediately.
         </p>
+        <CalloutBox variant="definition">
+          <strong>What Iris does today, precisely.</strong> Iris does not monitor its own thresholds or recommend adjustments — the Detect and Recommend steps above are yours. Every rule threshold is a setting you choose (<code>eval.ruleThresholds</code> in <code>config.json</code>, documented in the API reference); the dashboard shows the pass rate over time so you can see when a threshold has stopped discriminating. The measured accuracy of each rule, with intervals, is on <Link href="/proof" className="text-iris-400 hover:text-iris-300">the proof page</Link>.
+        </CalloutBox>
         <p className="mt-6 text-text-secondary"><Link href="/blog/self-calibrating-eval" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: Self-Calibrating Eval &rarr;</Link></p>
 
         <SectionHeading id="related-concepts" level={2}>Related Concepts</SectionHeading>

@@ -4,6 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
+import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -85,7 +86,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", helicone: "Proxy-based (change base URL + add header)", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", helicone: "Docker container + ClickHouse + PostgreSQL", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", helicone: "1–5 ms proxy latency (Rust gateway)", irisWin: true },
-  { feature: "Eval rules", iris: "15 built-in heuristic rules + 4 custom-rule types (<1ms)", helicone: "Evaluators via dashboard, LLM-based scoring", irisWin: false },
+  { feature: "Eval rules", iris: `${RULE_COUNT_BUILT_IN} built-in heuristic rules + ${CUSTOM_RULE_TYPE_COUNT} custom-rule types (in-process, no provider call)`, helicone: "Evaluators via dashboard, LLM-based scoring", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", helicone: "Multi-dimension cost analytics (user, model, session, geography)", heliconeWin: true },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", helicone: "MCP server for data access only", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", helicone: "Apache 2.0 (permissive)", irisWin: false },

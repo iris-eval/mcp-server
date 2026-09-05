@@ -4,7 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
-import { VERSION_MCP_SERVER } from "@/lib/claims";
+import { VERSION_MCP_SERVER, RULE_COUNT_BUILT_IN, LLM_JUDGE_TEMPLATE_COUNT, LLM_JUDGE_TEMPLATE_NAMES, MCP_TOOL_COUNT } from "@/lib/claims";
 
 function sanitizeText(value: unknown): string {
   return String(value ?? "")
@@ -87,13 +87,13 @@ const FEATURES = [
   { feature: "When eval runs", iris: "Inline, every output in production", deepeval: "Offline, batch test suites in CI/CD", irisWin: true },
   { feature: "Language", iris: "TypeScript (any MCP agent)", deepeval: "Python only", irisWin: true },
   { feature: "Self-hosting", iris: "Single binary, one SQLite file", deepeval: "pip install, local execution", irisWin: false },
-  { feature: "Built-in metrics", iris: "13 deterministic rules + 5 LLM-judge templates (accuracy, helpfulness, safety, correctness, faithfulness) + semantic citation verification", deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", irisWin: true },
-  { feature: "Citation verification", iris: "SSRF-guarded source fetch + per-claim LLM verdict (v0.4)", deepeval: "Not included", irisWin: true },
+  { feature: "Built-in metrics", iris: `${RULE_COUNT_BUILT_IN} deterministic rules + ${LLM_JUDGE_TEMPLATE_COUNT} LLM-judge templates (${LLM_JUDGE_TEMPLATE_NAMES.join(", ")}) + semantic citation verification`, deepeval: "14+ metrics (faithfulness, hallucination, bias, toxicity)", irisWin: true },
+  { feature: "Citation verification", iris: "SSRF-guarded source fetch + per-claim LLM verdict (needs your API key; fetch is off by default)", deepeval: "Not included", irisWin: true },
   { feature: "Custom metrics", iris: "Zod schema custom rules + programmatic MCP deploy_rule", deepeval: "Python custom metrics class", irisNeutral: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost + per-LLM-judge-eval cost + aggregate visibility", deepeval: "Token cost fields on traced spans" },
   { feature: "Dashboard", iris: "Real-time dark-mode UI with Decision Moments + drift detection", deepeval: "Confident AI cloud dashboard (separate product)", irisWin: true },
-  { feature: "MCP support", iris: "Protocol-native (IS an MCP server; 9 tools)", deepeval: "Evaluates MCP tool use (MCPUseMetric, multi-turn); MCP server configs in test cases since v4.2.0; not an MCP server itself" },
-  { feature: "OpenTelemetry export", iris: "OTLP/HTTP JSON to Jaeger/Tempo/Datadog (v0.4)", deepeval: "OTLP tracing via run_otel" },
+  { feature: "MCP support", iris: `Protocol-native (IS an MCP server; ${MCP_TOOL_COUNT} tools)`, deepeval: "Evaluates MCP tool use (MCPUseMetric, multi-turn); MCP server configs in test cases since v4.2.0; not an MCP server itself" },
+  { feature: "OpenTelemetry export", iris: "OTLP/HTTP JSON to Jaeger/Tempo/Datadog (set IRIS_OTEL_ENDPOINT)", deepeval: "OTLP tracing via run_otel" },
   { feature: "Supply-chain integrity", iris: "SBOM + cosign + SLSA build-provenance (v0.4)", deepeval: "Standard pip", irisWin: true },
   { feature: "License", iris: "MIT", deepeval: "Apache 2.0", irisWin: false },
   { feature: "Maturity", iris: `Early stage (v${VERSION_MCP_SERVER})`, deepeval: "Established (18K+ GitHub stars)", deepevalWin: true, irisNeutral: true },

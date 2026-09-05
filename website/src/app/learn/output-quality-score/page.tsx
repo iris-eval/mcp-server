@@ -64,19 +64,19 @@ export default function LearnOQS(): React.ReactElement {
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border-default bg-surface-primary p-5">
             <h3 className="font-semibold text-text-primary mb-2">Completeness</h3>
-            <p className="text-sm text-text-secondary">Did the agent answer the full question? Is the response structurally complete? Minimum length, required sections, response format.</p>
+            <p className="text-sm text-text-secondary">Did the agent produce a full answer? In Iris: a minimum length, a non-empty output, a sentence count, and coverage of an expected answer when you supply one.</p>
           </div>
           <div className="rounded-lg border border-border-default bg-surface-primary p-5">
             <h3 className="font-semibold text-text-primary mb-2">Relevance</h3>
-            <p className="text-sm text-text-secondary">Is the response on-topic? Does it address the actual input? Topic consistency, keyword presence, semantic alignment.</p>
+            <p className="text-sm text-text-secondary">Is the response on-topic? In Iris: keyword overlap and topic consistency against the input — lexical checks, not semantic ones; semantic judgment is the LLM judge&apos;s job, with your key.</p>
           </div>
           <div className="rounded-lg border border-border-default bg-surface-primary p-5">
             <h3 className="font-semibold text-text-primary mb-2">Safety</h3>
-            <p className="text-sm text-text-secondary">Is the output safe to show to users? PII detection, prompt injection patterns, hallucination markers, blocklist enforcement.</p>
+            <p className="text-sm text-text-secondary">Is the output safe to show to users? In Iris: PII patterns, prompt-injection patterns, hallucination signals grounded in the input you pass, stub markers, and your blocklist.</p>
           </div>
           <div className="rounded-lg border border-border-default bg-surface-primary p-5">
             <h3 className="font-semibold text-text-primary mb-2">Cost</h3>
-            <p className="text-sm text-text-secondary">Is the output cost-efficient? Token usage relative to output quality, USD per trace, cost threshold enforcement.</p>
+            <p className="text-sm text-text-secondary">Did the output cost what you allow? In Iris: a cost threshold on the USD you report per trace and a completion-to-prompt token ratio, plus a tool-loop check when you pass the agent&apos;s tool calls.</p>
           </div>
         </div>
 
@@ -92,6 +92,9 @@ export default function LearnOQS(): React.ReactElement {
         <p className="mt-4 text-text-secondary leading-relaxed">
           Iris scores every output across all four dimensions. The dashboard shows individual rule results and aggregate quality trends. The composite signal makes it easy to spot when overall quality is declining — even when individual dimensions look acceptable in isolation.
         </p>
+        <CalloutBox variant="definition">
+          <strong>What Iris computes, precisely.</strong> &ldquo;Output Quality Score&rdquo; is this page&apos;s name for the <code>score</code> field <code>evaluate_output</code> returns: a weighted mean over the rules that ran (rules with nothing to judge skip and are excluded), with fixed per-rule weights. <code>passed</code> is the verdict, decided by the threshold and the critical-rule veto. Iris computes no other quality index. How often each rule is right is measured and published, with intervals, on <Link href="/proof" className="text-iris-400 hover:text-iris-300">the proof page</Link>; how the composite verdict itself performs is not yet measured, and the page says so.
+        </CalloutBox>
         <p className="mt-6 text-text-secondary"><Link href="/blog/output-quality-score" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: Output Quality Score &rarr;</Link></p>
 
         <SectionHeading id="related-concepts" level={2}>Related Concepts</SectionHeading>

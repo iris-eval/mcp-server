@@ -45,6 +45,8 @@ export const RULE_NAMES = claimsRaw.evalRules.names as readonly string[];
 export const PII_PATTERN_COUNT = claimsRaw.evalRules.piiPatterns as number | null;
 export const INJECTION_PATTERN_COUNT = claimsRaw.evalRules.injectionPatterns as number | null;
 export const HALLUCINATION_MARKER_COUNT = claimsRaw.evalRules.hallucinationMarkers as number | null;
+export const CUSTOM_RULE_TYPE_COUNT = claimsRaw.evalRules.customRuleTypeCount as number;
+export const CUSTOM_RULE_TYPES = claimsRaw.evalRules.customRuleTypes as readonly string[];
 
 // LLM-judge templates
 export const LLM_JUDGE_TEMPLATE_COUNT = claimsRaw.llmJudgeTemplates.count as number;

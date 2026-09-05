@@ -26,6 +26,13 @@ const RULE_DEF_RE = /export\s+const\s+(\w+)\s*:\s*EvalRule\s*=\s*\{/g;
 const ENGINE_FILE = 'src/eval/engine.ts';
 const DEFAULT_EVAL_TYPE_RE = /export\s+const\s+DEFAULT_EVAL_TYPE\s*:\s*\w+\s*=\s*'(\w+)'/;
 
+// The custom-rule types a caller can deploy or pass inline. Six compare pages
+// said "4 custom-rule types" against a union of eight, and no scanner pattern
+// tracked the count because the truthbase never carried it. Read the union
+// itself, in declaration order.
+const TYPES_FILE = 'src/types/eval.ts';
+const CUSTOM_RULE_TYPE_RE = /export\s+type\s+CustomRuleType\s*=([\s\S]*?);/;
+
 export async function generate() {
   const allNames = [];
   const sources = {};
@@ -52,10 +59,18 @@ export async function generate() {
   if (!dm) throw new Error(`eval-rules generator: DEFAULT_EVAL_TYPE not found in ${ENGINE_FILE}`);
   const defaultEvalType = dm[1];
 
+  const typesSrc = await readFile(resolve(root, TYPES_FILE), 'utf-8');
+  const tm = typesSrc.match(CUSTOM_RULE_TYPE_RE);
+  if (!tm) throw new Error(`eval-rules generator: CustomRuleType union not found in ${TYPES_FILE}`);
+  const customRuleTypes = [...tm[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  if (customRuleTypes.length === 0) throw new Error(`eval-rules generator: CustomRuleType union in ${TYPES_FILE} has no members`);
+
   return {
     builtInCount: names.length,
     categories: CATEGORIES,
     categoryCount: CATEGORIES.length,
+    customRuleTypeCount: customRuleTypes.length,
+    customRuleTypes,
     defaultEvalType,
     names,
     piiPatterns,

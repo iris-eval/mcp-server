@@ -4,6 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
+import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -85,7 +86,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", braintrust: "SDK imports (Python, TS, Go, Ruby, C#)", irisWin: true },
   { feature: "Self-hosting", iris: "Single SQLite file", braintrust: "Enterprise plan only (cloud-first)", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", braintrust: "Async logging, minimal overhead", irisWin: true },
-  { feature: "Eval approach", iris: "15 built-in heuristic rules + 4 custom-rule types (<1ms)", braintrust: "LLM, code, and human scoring + datasets + experiments", braintrustWin: true },
+  { feature: "Eval approach", iris: `${RULE_COUNT_BUILT_IN} built-in heuristic rules + ${CUSTOM_RULE_TYPE_COUNT} custom-rule types (in-process, no provider call)`, braintrust: "LLM, code, and human scoring + datasets + experiments", braintrustWin: true },
   { feature: "Prompt playground", iris: "Not included", braintrust: "Full playground with side-by-side comparison", braintrustWin: true, irisNeutral: true },
   { feature: "Datasets & experiments", iris: "Not included", braintrust: "Production traces to datasets, experiment tracking, CI integration", braintrustWin: true, irisNeutral: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost", braintrust: "Per-trace cost, per-user/feature/model breakdowns", braintrustWin: true },

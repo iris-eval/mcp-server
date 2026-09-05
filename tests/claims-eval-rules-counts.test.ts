@@ -81,6 +81,28 @@ describe('claims counts match runtime truth', () => {
     expect(claims.evalRules.hallucinationMarkers).toBe(HALLUCINATION_MARKERS.length);
   });
 
+  /*
+   * The custom-rule type count. Six compare pages said "4 custom-rule types"
+   * against a union of eight for months; the truthbase never carried the
+   * number, so no scanner pattern could disagree. The generator reads the
+   * CustomRuleType union; this anchors it to the runtime switch in
+   * createCustomRule — every declared type has a case, every case is declared.
+   */
+  it('customRuleTypes equals the runtime switch in createCustomRule', async () => {
+    const out = (await generate()) as { customRuleTypeCount: number; customRuleTypes: string[] };
+    const customSrc = readFileSync(resolve(__dirname, '..', 'src', 'eval', 'rules', 'custom.ts'), 'utf-8');
+    const switchBody = customSrc.slice(customSrc.indexOf('switch (definition.type)'));
+    const cases = [...switchBody.matchAll(/case\s+'([a-z_]+)'/g)].map((m) => m[1]);
+    expect(cases.length).toBeGreaterThan(0);
+    expect([...out.customRuleTypes].sort()).toEqual([...new Set(cases)].sort());
+    expect(out.customRuleTypeCount).toBe(out.customRuleTypes.length);
+    const committed = JSON.parse(readFileSync(resolve(__dirname, '..', '.claims.json'), 'utf-8')) as {
+      evalRules: { customRuleTypeCount: number; customRuleTypes: string[] };
+    };
+    expect(committed.evalRules.customRuleTypes).toEqual(out.customRuleTypes);
+    expect(committed.evalRules.customRuleTypeCount).toBe(out.customRuleTypeCount);
+  });
+
   it('rule descriptions that quote a count quote the real one', () => {
     expect(noInjectionPatterns.description).toContain(`${INJECTION_PATTERNS.length} patterns`);
     // The hallucination rule describes its mechanism, not a number — assert it

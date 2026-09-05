@@ -84,7 +84,7 @@ const jsonLd = {
 const FEATURES = [
   { feature: "Deployment", iris: "Self-hosted (your infrastructure)", confidentai: "Managed cloud (SaaS)", irisWin: true },
   { feature: "Integration method", iris: "MCP config (zero code)", confidentai: "Python SDK + API key", irisWin: true },
-  { feature: "Eval approach", iris: "Deterministic heuristic rules (<1ms)", confidentai: "LLM-as-Judge metrics (semantic)", confidentaiWin: true },
+  { feature: "Eval approach", iris: "Deterministic heuristic rules (in-process, no provider call)", confidentai: "LLM-as-Judge metrics (semantic)", confidentaiWin: true },
   { feature: "When eval runs", iris: "Inline, every output in production", confidentai: "Online evals on traces and spans as they are ingested, plus batch experiments and CI/CD" },
   { feature: "Data ownership", iris: "100% local (SQLite, your machine)", confidentai: "Cloud-hosted (vendor manages)", irisWin: true },
   { feature: "Team collaboration", iris: "Single-user (team features on roadmap)", confidentai: "Multi-user dashboards, shared experiments", confidentaiWin: true, irisNeutral: true },

@@ -1,6 +1,6 @@
 # Iris Roadmap
 
-Public roadmap for `@iris-eval/mcp-server`. Updated 2026-08-10.
+Public roadmap for `@iris-eval/mcp-server`. Updated 2026-09-05.
 
 The canonical public version lives at [iris-eval.com#roadmap](https://iris-eval.com/#roadmap). This file mirrors it with the per-version detail that doesn't fit on the marketing page.
 
@@ -84,9 +84,15 @@ Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export 
 
 ---
 
+## v0.5 through v0.8 -- Released
+
+**Status: Released.** The per-version detail lives in the [CHANGELOG](../CHANGELOG.md): v0.5.0 (the context-grounded hallucination rule), v0.6.0 (the correctness release), v0.7.0 (the proof release — every built-in rule measured, the numbers on https://iris-eval.com/proof), v0.8.0 (the trajectory release — the first two rules that read the agent's tool calls), v0.8.1 (the honest-surfaces patch). Each release's own verification recipe is in its changelog entry.
+
+---
+
 ## What comes next
 
-**Status: Planned.** The work below is organised as three tracks rather than a version ladder, because they progress in parallel and gate each other. Nothing here is shipped; each item says so plainly.
+**Status: mixed, and each item says which.** The work below is organised as three tracks rather than a version ladder, because they progress in parallel and gate each other. Every line is marked *shipped* (with the version) or *not shipped*; nothing unshipped is written in the present tense. The capability map — every evaluation question × every subject, with what Iris has, has weakly, and lacks — will replace this list as the canonical roadmap surface when it ships.
 
 Iris is an evaluation tool, so the thing it owes you above all else is evidence that its own evaluations are correct. Track 1 is therefore first among equals — the other two are worth less without it.
 
@@ -94,40 +100,28 @@ Iris is an evaluation tool, so the thing it owes you above all else is evidence 
 
 ### Track 1 -- Proof: measure our own evaluators, and publish the results
 
-Every eval tool tells you your agent's score. Almost none tell you how often the evaluator itself is wrong. We intend to, including where the answer is unflattering.
+Every eval tool tells you your agent's score. Almost none tell you how often the evaluator itself is wrong. Iris does, including where the answer is unflattering.
 
-- **Labeled golden corpora per rule.** Versioned, downloadable, with per-item provenance and a published inter-annotator agreement floor — so the ground truth is auditable rather than asserted.
-- **Per-rule precision, recall and confusion matrices.** Broken out per rule and per pattern, never as a single aggregate accuracy number. Aggregates hide exactly the failures that matter. Published at https://iris-eval.com/proof with 95% confidence intervals as each rule is measured.
-- **Chance-corrected agreement** (Cohen's kappa / Krippendorff's alpha) reported alongside raw agreement. Raw percentage agreement systematically overstates evaluator quality, and we would rather publish the smaller honest number.
-- **Confidence intervals and sample sizes** on every figure.
-- **Adversarial suite for the LLM-judge path**, reporting measured false-positive rates: known "master key" inputs, verbosity-matched pairs, and prompt-perturbation variance (rubric order, score range).
-- **Position-consistency accuracy** for any pairwise judging: swap the order, count only verdicts stable under the swap.
-- **One-command reproduction** with pinned model IDs, temperature, prompt hashes and dataset checksums, so the numbers can be re-derived on your machine and not just believed.
-- **Versioned results per release, gated in CI**, with a changelog entry when accuracy moves. Evaluator drift is the failure mode nobody reports.
-- **Published negative results.** Where a rule is weak, the table will say so.
+- **Shipped (v0.7.0).** Per-rule precision, recall and F1 with Wilson 95% intervals for every built-in rule, on a labelled corpus committed in the repo (`proof/corpus/`), reproducible with `npm run proof`, regenerated and byte-checked in CI, published at https://iris-eval.com/proof with the misses listed by case id. The corpus is synthetic and labelled by the same model that wrote it; the page says so.
+- **Shipped (v0.8.0).** The blind-sample instrument for human agreement (`proof/blind-sample.mjs`) — 40 cases; the label itself is pending.
+- **Not shipped.** Human agreement on the blind sample. The LLM judge's and the citation verifier's own accuracy, stability and prompt/model sensitivity: the harness is complete (`npm run proof:judge`) and runs on a key you supply; no number is published until a keyed run is committed, and the proof page says "pending" until then. A labelled corpus for the top-level verdict (`passed`) rather than per-rule numbers; a threshold sweep; calibration; adversarial transforms (zero-width, homoglyph, whitespace); chance-corrected agreement (Cohen's kappa / Krippendorff's alpha); published precision at field prevalence rather than corpus prevalence. Each lands on https://iris-eval.com/proof when it is measured, and nowhere before.
 
-This maps directly onto NIST AI RMF MEASURE 2.13 (evaluating the effectiveness of the evaluation methods themselves) and EU AI Act Article 15(3), which requires declared accuracy metrics in the instructions for use.
+This maps onto NIST AI RMF MEASURE 2.13 (evaluating the effectiveness of the evaluation methods themselves) and EU AI Act Article 15(3), which asks for declared accuracy metrics in the instructions for use.
 
 ### Track 2 -- Coverage: evaluate what actually fails
 
-Published measurement is only useful if the rules are aimed at real failures. Current coverage is strongest on single-output checks and weakest on everything that only appears across a trajectory.
+Published measurement is only useful if the rules are aimed at real failures. Coverage is strongest on single-output checks and still thin on everything that only appears across a trajectory.
 
-- **Correct the hallucination-marker rule.** ✅ Shipped (v0.5.0). The old rule flagged refusal boilerplate — hedging correlates with agents that fail *honestly*, and measured against a 90-case gold corpus it caught 0 of 46 real hallucinations (that corpus was private and in-sample; the public, reproducible per-rule numbers live at https://iris-eval.com/proof). The rewrite is context-grounded: pass `input` and the output's specific claims (attributed numbers/quotes/sections, table bindings, booleans, dates, times, versions, statuses) are cross-checked against the provided material. It also moved to the `safety` bundle, where the `evaluate_output` docs had always advertised it. What deterministic string checks still cannot reach — wrong code semantics, wrong entity/speaker binding when both values appear in the source, trend direction, intent summaries — stays with the LLM judge, and the rule's source says so.
-- **False-success detection.** Output that reads as successful while the underlying task did not complete. This is the largest single failure class in the published research and is poorly served by LLM judges, which key on confident phrasing. A first single-output signal shipped inside the v0.5.0 hallucination rewrite (failure recorded in the provided tool result, success claimed in the output); trajectory-level detection across a full trace remains open here.
-- **Loop and non-termination rules**: near-duplicate tool-call detection, step and turn ceilings. Deterministic, cheap, and aimed at a large share of documented multi-agent failures.
-- **Trace ingestion via OpenTelemetry GenAI semantic conventions** (pinned version). This is the prerequisite for any trajectory-level rule.
-- **Verification auditing**: did the agent check its own work, and was that check correct.
-- **Data-flow checks for injection**, superseding pattern matching alone: untrusted content reaching a privileged tool call, and egress/exfiltration shapes.
+- **Shipped (v0.5.0).** The context-grounded hallucination rule: pass `input` and the output's specific claims (attributed numbers, quotes, sections, table bindings, booleans, dates, versions, statuses) are cross-checked against the provided material. A private 90-case gold corpus showed the old rule caught 0 of 46 real hallucinations; the public, reproducible numbers for the rewrite live at https://iris-eval.com/proof.
+- **Shipped (v0.8.0).** The first trajectory rules, reading `tool_calls`: `no_silent_tool_failure` (a tool call that failed and an output that never acknowledges it) and `no_tool_loop` (the same call repeated past a configurable limit). Rules that need the trajectory skip, and say so, when it is not supplied.
+- **Not shipped.** Argument validity against the agent's own tool catalogue; grounding the output's identifiers in what the tools actually returned (not only in the prompt); coverage of a multi-part ask; injection compliance across a trajectory (untrusted content in a tool result reaching a later call or the answer); step and turn ceilings; verification auditing (did the agent check its own work); trace ingestion via OpenTelemetry GenAI semantic conventions.
 
 ### Track 3 -- Reach: make Iris usable from wherever your agents run
 
 MCP is how Iris is discovered and how it is used interactively. It is not a guarantee of capture: under the protocol a tool call is always the model's decision, so anything that *must* be recorded needs a path that does not depend on the model choosing to call it.
 
-- **HTTP write endpoints.** `POST /api/v1/traces` now exists ([docs/http-ingest.md](http-ingest.md)): the same contract as the `log_trace` tool, with optional deterministic evaluation on write, so a CI job, a service in another language, or plain `curl` can send traces without an MCP client. This was the keystone: the CLI and SDKs below become thin clients over it rather than parallel implementations. Still open: a batch shape and a dedicated `POST /evaluations` route.
-- **CLI** for CI quality gates and batch/offline evaluation.
-- **SDKs** for guaranteed capture, starting with LangChain, then generic TypeScript and Python clients.
-- **Server-provided MCP guidance** (`instructions`, shipped skill) to improve — not guarantee — tool invocation in interactive clients.
-- **Datasets and run comparison**, so evaluation becomes a regression workflow rather than a one-off score.
+- **Shipped.** `POST /api/v1/traces` ([docs/http-ingest.md](http-ingest.md)): the same contract as the `log_trace` tool, with optional deterministic evaluation on write, so a CI job, a service in another language, or plain `curl` can send traces without an MCP client. The Claude Code skill and plugin (`skills/iris-eval/`, `claude-plugin/`).
+- **Not shipped.** Server-provided MCP `instructions` on initialize and a capabilities resource; a CLI for CI gates and batch evaluation; SDKs for guaranteed capture — the TypeScript LangChain wrapper in `packages/langchain/` is **unpublished** and LangChain agents should use HTTP ingest today; a batch ingest shape and a dedicated `POST /evaluations` route; datasets and run comparison, so evaluation becomes a regression workflow rather than a one-off score.
 
 ### Hosted and team features
 
