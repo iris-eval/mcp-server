@@ -351,6 +351,13 @@ export interface BuiltInRuleMeta {
   category: DeployedCustomRule['evalType'];
   description: string;
   weight: number;
+  /** Declared from 0.9.0: the kind of claim, how it is measured, what it reads, the question it answers, the failure classes, the definition version. */
+  kind?: 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
+  mechanism?: 'formula' | 'pattern' | 'heuristic' | 'model' | 'external';
+  needs?: string[];
+  question?: string;
+  classes?: string[];
+  version?: number;
   /**
    * A failing critical rule forces passed=false regardless of the weighted
    * score. This is the EFFECTIVE value — what this server will apply after

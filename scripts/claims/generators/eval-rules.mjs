@@ -33,6 +33,51 @@ const DEFAULT_EVAL_TYPE_RE = /export\s+const\s+DEFAULT_EVAL_TYPE\s*:\s*\w+\s*=\s
 const TYPES_FILE = 'src/types/eval.ts';
 const CUSTOM_RULE_TYPE_RE = /export\s+type\s+CustomRuleType\s*=([\s\S]*?);/;
 
+// The roster's declared metadata (0.9.0): kind · mechanism · needs · question ·
+// classes · version per built-in, and the evaluation questions the rules
+// declare against. Read from the rule objects and src/eval/questions.ts;
+// tests/unit/eval/rule-metadata.test.ts anchors both to the runtime registry.
+const QUESTIONS_FILE = 'src/eval/questions.ts';
+const scalar = (block, key) => {
+  const m = block.match(new RegExp(`^\\s*${key}:\\s*'([a-z_]+)',`, 'm'));
+  return m ? m[1] : null;
+};
+const list = (block, key) => {
+  const m = block.match(new RegExp(`^\\s*${key}:\\s*\\[([^\\]]*)\\],`, 'm'));
+  return m ? [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]) : null;
+};
+function rosterFrom(sources) {
+  const roster = [];
+  for (const src of Object.values(sources)) {
+    const re = /export\s+const\s+\w+\s*:\s*EvalRule\s*=\s*\{/g;
+    let m;
+    while ((m = re.exec(src))) {
+      const start = m.index;
+      const end = src.indexOf('\n};', start);
+      const block = src.slice(start, end === -1 ? undefined : end);
+      const name = scalar(block, 'name');
+      const versionMatch = block.match(/^\s*version:\s*(\d+),/m);
+      roster.push({
+        name,
+        kind: scalar(block, 'kind'),
+        mechanism: scalar(block, 'mechanism'),
+        needs: list(block, 'needs'),
+        question: scalar(block, 'question'),
+        classes: list(block, 'classes'),
+        version: versionMatch ? Number(versionMatch[1]) : null,
+      });
+    }
+  }
+  return roster.sort((a, b) => a.name.localeCompare(b.name));
+}
+function questionsFrom(src) {
+  return [...src.matchAll(/\{\s*id:\s*'([a-z_]+)',\s*text:\s*'((?:[^'\\]|\\.)*)',\s*answeredBy:\s*'(rule|tool|surface)'\s*\}/g)].map((m) => ({
+    id: m[1],
+    text: m[2].replace(/\\'/g, "'"),
+    answeredBy: m[3],
+  }));
+}
+
 export async function generate() {
   const allNames = [];
   const sources = {};
@@ -65,6 +110,12 @@ export async function generate() {
   const customRuleTypes = [...tm[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   if (customRuleTypes.length === 0) throw new Error(`eval-rules generator: CustomRuleType union in ${TYPES_FILE} has no members`);
 
+  const roster = rosterFrom(sources);
+  const missing = roster.filter((r) => !r.name || !r.kind || !r.mechanism || !r.needs || !r.question || !r.classes || r.version === null);
+  if (missing.length > 0) throw new Error(`eval-rules generator: rule metadata missing on ${missing.map((r) => r.name ?? '?').join(', ')}`);
+  const questions = questionsFrom(await readFile(resolve(root, QUESTIONS_FILE), 'utf-8'));
+  if (questions.length === 0) throw new Error(`eval-rules generator: no questions found in ${QUESTIONS_FILE}`);
+
   return {
     builtInCount: names.length,
     categories: CATEGORIES,
@@ -77,6 +128,8 @@ export async function generate() {
     injectionPatterns,
     hallucinationMarkers,
     stubMarkers,
+    roster,
+    questions,
   };
 }
 

@@ -74,7 +74,7 @@ Or add to your MCP config:
 | `log_trace` | Record an agent execution — spans, tool calls, token usage, cost. Optional OTLP export via `IRIS_OTEL_ENDPOINT`. |
 | `evaluate_output` | Score output against the built-in rules. `eval_type` defaults to `all` — every bundle runs (completeness \| relevance \| safety \| cost \| custom); pass one bundle name to score only that bundle. Heuristic, deterministic, free. |
 | `get_traces` | Query stored traces with filters, pagination, time ranges. |
-| `list_rules` | Enumerate deployed custom eval rules, plus the built-in roster with the criticality this server applies. |
+| `list_rules` | Enumerate deployed custom eval rules, plus the built-in roster: the criticality this server applies, and each rule's kind of claim, what it needs, the question it answers and the failure classes it names. |
 | `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |
 | `delete_rule` | Remove a deployed custom rule, or disable / re-enable it. |
 | `delete_trace` | Remove a single stored trace by ID. |

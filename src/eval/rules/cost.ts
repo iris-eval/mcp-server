@@ -6,6 +6,12 @@ export const costUnderThreshold: EvalRule = {
   description: 'Total cost must be under a configurable USD threshold',
   evalType: 'cost',
   weight: 1,
+  kind: 'policy',
+  mechanism: 'formula',
+  needs: ['cost'],
+  question: 'within_budget',
+  classes: ['over_budget'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     if (context.costUsd === undefined || context.costUsd === null) {
       return { ruleName: 'cost_under_threshold', passed: false, score: 0, message: 'Cost data not provided', skipped: true, skipReason: 'context.costUsd not provided' };
@@ -29,6 +35,12 @@ export const tokenEfficiency: EvalRule = {
   description: 'Checks output-to-input token ratio for efficiency',
   evalType: 'cost',
   weight: 0.5,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['tokens'],
+  question: 'within_budget',
+  classes: ['over_budget'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     const prompt = context.tokenUsage?.prompt_tokens;
     const completion = context.tokenUsage?.completion_tokens;
@@ -96,6 +108,12 @@ export const noToolLoop: EvalRule = {
     'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when two calls alternate for more than two complete A,B,A,B cycles. Skips when no tool calls are provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit',
   evalType: 'cost',
   weight: 1,
+  kind: 'detection',
+  mechanism: 'formula',
+  needs: ['tool_calls'],
+  question: 'tool_use_correct',
+  classes: ['tool_loop'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('no_tool_loop', context);
     if (skip) return skip;

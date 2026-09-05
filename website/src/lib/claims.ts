@@ -47,6 +47,22 @@ export const INJECTION_PATTERN_COUNT = claimsRaw.evalRules.injectionPatterns as 
 export const HALLUCINATION_MARKER_COUNT = claimsRaw.evalRules.hallucinationMarkers as number | null;
 export const CUSTOM_RULE_TYPE_COUNT = claimsRaw.evalRules.customRuleTypeCount as number;
 export const CUSTOM_RULE_TYPES = claimsRaw.evalRules.customRuleTypes as readonly string[];
+export interface RuleRosterEntry {
+  name: string;
+  kind: 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
+  mechanism: 'formula' | 'pattern' | 'heuristic' | 'model' | 'external';
+  needs: string[];
+  question: string;
+  classes: string[];
+  version: number;
+}
+export interface EvaluationQuestion {
+  id: string;
+  text: string;
+  answeredBy: 'rule' | 'tool' | 'surface';
+}
+export const RULE_ROSTER = claimsRaw.evalRules.roster as readonly RuleRosterEntry[];
+export const EVALUATION_QUESTIONS = claimsRaw.evalRules.questions as readonly EvaluationQuestion[];
 
 // LLM-judge templates
 export const LLM_JUDGE_TEMPLATE_COUNT = claimsRaw.llmJudgeTemplates.count as number;

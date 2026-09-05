@@ -125,6 +125,12 @@ export const keywordOverlap: EvalRule = {
     'Recall of the input\'s content terms in the output: stopwords and request verbs are not terms, code identifiers and paths are split into their words, inflections are folded (purge/purged/purging). Passes when at least 35% of the input\'s terms appear in the output (configurable: keyword_overlap)',
   evalType: 'relevance',
   weight: 1,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['output', 'input'],
+  question: 'relevant',
+  classes: ['off_task'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
       return { ruleName: 'keyword_overlap', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
@@ -179,6 +185,12 @@ export const topicConsistency: EvalRule = {
     'Continuity with the input: the share of the output\'s content-bearing sentences that connect to the input\'s topic — a sentence connects when it shares a content term with the input or with an earlier connected sentence (list items are read under the sentence that introduces them). Passes when at least a third connect (configurable: topic_consistency); a third, not half, so a short honest answer that elaborates in fresh words is not read as drift. Replaces the output-word-ratio measure that failed every grounded technical answer. Skipped when the output is too brief for meaningful comparison',
   evalType: 'relevance',
   weight: 1,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['output', 'input'],
+  question: 'relevant',
+  classes: ['off_task'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
       return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };

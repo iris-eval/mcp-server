@@ -30,7 +30,7 @@
  * severity stays its own definition's business.
  */
 
-import type { EvalRule, EvalType } from '../types/eval.js';
+import type { EvalRule, EvalType, ClaimKind, Mechanism, Need, QuestionId, FailureClass } from '../types/eval.js';
 import { rulesByType } from './rules/index.js';
 
 /** Where a rule's EFFECTIVE criticality came from. */
@@ -163,6 +163,13 @@ export interface BuiltInRuleMeta {
   critical: boolean;
   /** Who decided it: the rule's own declaration, or one of the config lists. */
   criticalSource: CriticalitySource;
+  /** The rule's declared metadata (see EvalRule): the kind of claim, its mechanism, what it reads, the question it answers, the failure classes, the definition version. */
+  kind?: ClaimKind;
+  mechanism?: Mechanism;
+  needs?: readonly Need[];
+  question?: QuestionId;
+  classes?: readonly FailureClass[];
+  version?: number;
 }
 
 /**
@@ -194,6 +201,12 @@ export function builtInRuleRoster(
         weight: rule.weight,
         critical: effective.critical,
         criticalSource: effective.source,
+        kind: rule.kind,
+        mechanism: rule.mechanism,
+        needs: rule.needs,
+        question: rule.question,
+        classes: rule.classes,
+        version: rule.version,
       });
     }
   }

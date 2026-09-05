@@ -45,7 +45,7 @@ export function registerListRulesTool(
         '',
         'Behavior. Pure read of ~/.iris/custom-rules.json (in-memory cached; no disk read per call after server boot). No mutation, no external network. Returns the rules of the local tenant. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio.',
         '',
-        'Output shape. Returns JSON: `{ "rules": [{ "id": "rule-XXXX", "name", "description", "evalType", "severity", "definition": { name, type, config, weight? }, "enabled": boolean, "createdAt": ISO timestamp, "updatedAt": ISO timestamp, "version": number, "sourceMomentId?": string }], "total": number, "enabled_count": number, "built_in": [{ "name", "category", "weight", "critical": boolean, "criticalSource": "default" | "config" }] }`. Empty `rules` array + total=0 when no custom rules are deployed. A deployed rule fires only on evaluate_output calls whose eval_type equals its evalType (or eval_type="all", which runs every bundle). `built_in` is the shipped rule set, always present and NOT narrowed by the filters; `total` and `enabled_count` count custom rules only.',
+        'Output shape. Returns JSON: `{ "rules": [{ "id": "rule-XXXX", "name", "description", "evalType", "severity", "definition": { name, type, config, weight? }, "enabled": boolean, "createdAt": ISO timestamp, "updatedAt": ISO timestamp, "version": number, "sourceMomentId?": string }], "total": number, "enabled_count": number, "built_in": [{ "name", "category", "description", "weight", "critical": boolean, "criticalSource": "default" | "config", "kind": "measurement" | "detection" | "inference" | "judgment" | "policy" | "verification", "mechanism": "formula" | "pattern" | "heuristic" | "model" | "external", "needs": ["output" | "input" | "expected" | "tool_calls" | "cost" | "tokens" | …], "question": "safe_output" | "grounded" | "complete" | "relevant" | "task_completed" | "tool_use_correct" | "within_budget", "classes": string[], "version": number }] }`. `kind` is the kind of claim the rule makes and `needs` the inputs it reads — a rule whose need is absent skips and never passes; `question` is the evaluation question it answers; `classes` names what a failure means. Empty `rules` array + total=0 when no custom rules are deployed. A deployed rule fires only on evaluate_output calls whose eval_type equals its evalType (or eval_type="all", which runs every bundle). `built_in` is the shipped rule set, always present and NOT narrowed by the filters; `total` and `enabled_count` count custom rules only.',
         '',
         'Why `built_in` carries criticality. A critical rule vetoes `passed` regardless of the weighted score, and which built-in rules are critical is configurable (`eval.criticalRules` / `eval.nonCriticalRules`). `critical` is the EFFECTIVE value this server applies and `criticalSource` says who decided it: `default` is the declaration on the rule itself, `config` means one of those lists named it. Read it before trusting a `passed: true` — it is how you tell "nothing was violated" from "the rule that would have vetoed is demoted on this server".',
         '',
@@ -89,9 +89,16 @@ export function registerListRulesTool(
       const built_in = builtInRuleRoster((rule) => evalEngine.effectiveCriticality(rule)).map((r) => ({
         name: r.name,
         category: r.category,
+        description: r.description,
         weight: r.weight,
         critical: r.critical,
         criticalSource: r.criticalSource,
+        kind: r.kind,
+        mechanism: r.mechanism,
+        needs: r.needs,
+        question: r.question,
+        classes: r.classes,
+        version: r.version,
       }));
       return {
         content: [
