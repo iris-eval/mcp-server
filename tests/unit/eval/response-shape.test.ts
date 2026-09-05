@@ -88,6 +88,23 @@ describe('response shape — every built-in result carries its receipt', () => {
     // The stamp changes no verdict: the silent grep failure is caught, the SSN rule is quiet.
     expect(byName.get('no_silent_tool_failure')!.passed).toBe(false);
     expect(byName.get('no_pii')!.passed).toBe(true);
+    // The whole-evaluation receipt: verdict with its basis, coverage by question, provenance.
+    expect(r.verdict).toBeDefined();
+    expect(r.verdict!.passed).toBe(r.passed);
+    expect(['clean', 'score_below_threshold', 'detector_veto', 'policy_gate', 'no_rules']).toContain(r.verdict!.basis);
+    expect(r.coverage!.questions.find((q) => q.id === 'tool_use_correct')!.status).toBe('judged');
+    expect(r.coverage!.inputs).toMatchObject({ output: true, input: true, tool_calls: true, cost: true, tokens: true });
+    expect(r.provenance!.irisVersion).toMatch(/^\d+\.\d+\.\d+/);
+    expect(r.provenance!.thresholds.default).toBe(defaultConfig.eval.defaultThreshold);
+  });
+
+  it('trace_id is echoed on the response when the evaluation was linked', async () => {
+    const logged = await client.callTool({ name: 'log_trace', arguments: { agent_name: 'echo-test', input: t13.input, output: t13.output } });
+    const { trace_id } = JSON.parse((logged.content as Array<{ type: string; text: string }>)[0].text) as { trace_id: string };
+    const r = await evaluate({ output: t13.output, eval_type: 'safety', trace_id });
+    expect(r.trace_id).toBe(trace_id);
+    const unlinked = await evaluate({ output: t13.output, eval_type: 'safety' });
+    expect(unlinked.trace_id).toBeUndefined();
   });
 
   it('a fired detection or inference carries the published PPV interval with its provenance; a quiet one carries the miss rate', async () => {

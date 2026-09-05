@@ -94,9 +94,35 @@ export const evalCategoryResultSchema = z.looseObject({
     critical_skipped: z.array(z.string()).optional(),
   });
 
+export const coverageSchema = z.looseObject({
+  inputs: z.record(z.string(), z.boolean()),
+  questions: z.array(z.looseObject({ id: questionIdSchema, status: z.enum(['judged', 'unjudged', 'not_applicable']), why: z.string().optional() })),
+  dormant: z.array(z.looseObject({ ruleId: z.string(), name: z.string(), reason: z.string() })).optional(),
+});
+export const verdictSchema = z.looseObject({
+  state: z.enum(['pass', 'fail', 'unknown']),
+  passed: z.boolean(),
+  basis: z.enum(['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'score_below_threshold', 'clean', 'no_rules']),
+  by: z.array(z.string()),
+  risk: z.looseObject({ pBad: z.number(), lo: z.number(), hi: z.number() }).nullable(),
+  confidence: z.enum(['decisive', 'marginal']).optional(),
+});
+export const provenanceSchema = z.looseObject({
+  irisVersion: z.string(),
+  rulesetHash: z.string(),
+  configHash: z.string(),
+  thresholds: z.looseObject({ default: z.number(), perRule: z.record(z.string(), z.unknown()).optional() }),
+  corpusVersion: z.string(),
+  judgedAt: z.string(),
+});
+
 /** The `evaluate_output` response — the same object the engine returns plus the tool's own fields. */
 export const evaluateOutputResponseSchema = z.looseObject({
     id: z.string(),
+    trace_id: z.string().optional(),
+    verdict: verdictSchema.optional(),
+    coverage: coverageSchema.optional(),
+    provenance: provenanceSchema.optional(),
     eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']),
     score: z.number(),
     passed: z.boolean(),

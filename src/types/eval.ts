@@ -166,6 +166,46 @@ export interface MeasuredValue {
 export const MAX_EVIDENCE_ITEMS = 25;
 
 /**
+ * Which evaluation questions this evaluation judged, which it did not and
+ * why — coverage by question, not by rule count. `inputs` says what the
+ * call carried; a question is `judged` when at least one rule that answers
+ * it ran, `unjudged` when every such rule skipped (the reason names the
+ * missing input, or that the rule was defeated or broken), and
+ * `not_applicable` when no rule for it was in the selected bundles.
+ */
+export interface Coverage {
+  inputs: Record<Need, boolean>;
+  questions: Array<{ id: QuestionId; status: 'judged' | 'unjudged' | 'not_applicable'; why?: string }>;
+  /** Quarantined critical rules that did not run (surfaced by the rule-store release). */
+  dormant?: Array<{ ruleId: string; name: string; reason: string }>;
+}
+
+/**
+ * The verdict with its basis. `passed` is `state === 'pass'` and equals the
+ * top-level `passed`; `basis` says which layer decided — a configured policy,
+ * a detector's veto, nothing judged, or the score against the threshold.
+ * `risk` is null until the compose-by-kind release computes it.
+ */
+export interface Verdict {
+  state: 'pass' | 'fail' | 'unknown';
+  passed: boolean;
+  basis: 'policy_gate' | 'detector_veto' | 'critical_unknown' | 'required_evidence_missing' | 'risk_over_loss' | 'score_below_threshold' | 'clean' | 'no_rules';
+  by: string[];
+  risk: { pBad: number; lo: number; hi: number; perClass: Partial<Record<FailureClass, number | null>>; assumptions: string[] } | null;
+  confidence?: 'decisive' | 'marginal';
+}
+
+/** What produced this verdict, so it can be replayed or compared: the release, the ruleset, the configuration, the thresholds, the proof corpus, the time. */
+export interface Provenance {
+  irisVersion: string;
+  rulesetHash: string;
+  configHash: string;
+  thresholds: { default: number; perRule?: Record<string, unknown> };
+  corpusVersion: string;
+  judgedAt: string;
+}
+
+/**
  * How wrong this result tends to be, and on what basis. `published_accuracy`
  * carries the rule's measured numbers from the shipped proof (src/eval/
  * published-accuracy.ts): for a fired detection or inference the positive
@@ -338,6 +378,15 @@ export interface EvalResult {
    * rule_results carry a `category` per rule so a reader can regroup.
    */
   categories?: Partial<Record<EvalType, EvalCategoryResult>>;
+  /** The verdict with its basis (0.9.0) — computed by the engine, derived on read for stored rows that carry provenance. */
+  verdict?: Verdict;
+  /** Coverage by evaluation question (0.9.0) — computed by the engine, derived on read from the stamped rule results. */
+  coverage?: Coverage;
+  /** What produced this verdict (0.9.0) — persisted; absent on rows written before it, never fabricated. */
+  provenance?: Provenance;
+  /** What the evaluation itself cost (the judge's spend); undefined for the free rules. */
+  eval_cost_usd?: number;
+  eval_tokens?: number;
 }
 
 export type CustomRuleType =

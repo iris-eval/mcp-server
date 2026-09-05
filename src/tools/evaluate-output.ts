@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { toEvaluationResponse } from '../eval/response.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalType, CustomRuleDefinition } from '../types/eval.js';
@@ -141,35 +142,16 @@ export function registerEvaluateOutputTool(
       // will derive tenant from the authenticated MCP session.
       await insertLinkedEvalResult(storage, LOCAL_TENANT, result);
 
+      // One serializer for every evaluation surface (src/eval/response.ts):
+      // the tool, the HTTP ingest route and the drift-lock all read the
+      // same object, so a field added there reaches every reader at once.
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({
-              id: result.id,
-              // Echo which bundle actually ran. Without this, a caller who
-              // omitted eval_type could not tell a "safety pass" from a
-              // completeness eval that never ran a single safety rule.
-              eval_type: result.eval_type,
-              score: result.score,
-              passed: result.passed,
-              ...(result.critical_failures ? { critical_failures: result.critical_failures } : {}),
-              // The other half of the veto contract. The engine names every
-              // critical rule that SKIPPED (budget-killed regex, missing cost
-              // data) so a fail-closed gate can treat the eval as unknown;
-              // this response used to drop the field, so the gate the
-              // description tells users to write keyed on something that
-              // never arrived and read passed:true as clean.
-              ...(result.critical_skipped ? { critical_skipped: result.critical_skipped } : {}),
-              rule_results: result.rule_results,
-              suggestions: result.suggestions,
-              rules_evaluated: result.rules_evaluated,
-              rules_skipped: result.rules_skipped,
-              insufficient_data: result.insufficient_data,
-              // Per-bundle breakdown — eval_type="all" only.
-              ...(result.categories ? { categories: result.categories } : {}),
-              ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}),
-            }),
+            text: JSON.stringify(
+              toEvaluationResponse(result, { traceId: args.trace_id, ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
+            ),
           },
         ],
       };

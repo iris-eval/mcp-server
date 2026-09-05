@@ -33,7 +33,8 @@ import type {
   EvalStatsFailure,
 } from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
-import type { EvalResult } from '../types/eval.js';
+import type { EvalResult, Provenance } from '../types/eval.js';
+import { deriveCoverage, deriveCriticalSkipped, deriveVerdict } from '../eval/verdict.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { runMigrations } from './migrations/index.js';
@@ -76,7 +77,13 @@ export class SqliteAdapter implements IStorageAdapter {
      * alternative is the whole point of #372.
      */
     this.db.pragma('secure_delete = ON');
-    runMigrations(this.db);
+    try {
+      runMigrations(this.db);
+    } catch (err) {
+      // A refused boot (a newer writer, a failed migration) must not leak the handle.
+      this.db.close();
+      throw err;
+    }
     /*
      * iris.db holds agent inputs and outputs verbatim, and a tool that
      * detects PII necessarily stores the PII it found. better-sqlite3
@@ -278,9 +285,15 @@ export class SqliteAdapter implements IStorageAdapter {
      * no surface could filter, count, or explain the release's flagship
      * behaviour. NULL when nothing vetoed.
      */
+    /*
+     * Provenance (migration 007) is the part of the receipt a row cannot
+     * reconstruct: the release, the ruleset and config hashes, the threshold.
+     * verdict / coverage / critical_skipped are derived on every read from
+     * rule_results plus that threshold, so they are not columns.
+     */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -297,6 +310,13 @@ export class SqliteAdapter implements IStorageAdapter {
       result.insufficient_data ? 1 : 0,
       result.critical_failures?.length ? JSON.stringify(result.critical_failures) : null,
       new Date().toISOString(),
+      result.provenance ? JSON.stringify(result.provenance) : null,
+      result.provenance?.irisVersion ?? null,
+      result.provenance?.rulesetHash ?? null,
+      result.provenance?.configHash ?? null,
+      result.provenance?.thresholds.default ?? null,
+      result.eval_cost_usd ?? null,
+      result.eval_tokens ?? null,
     );
   }
 
@@ -765,7 +785,7 @@ export class SqliteAdapter implements IStorageAdapter {
   }
 
   private rowToEvalResult(row: Record<string, unknown>): EvalResult {
-    return {
+    const result: EvalResult = {
       id: row.id as string,
       trace_id: row.trace_id as string | undefined,
       eval_type: row.eval_type as EvalResult['eval_type'],
@@ -792,6 +812,22 @@ export class SqliteAdapter implements IStorageAdapter {
       ...(row.critical_failures != null
         ? { critical_failures: JSON.parse(row.critical_failures as string) as string[] }
         : {}),
+      ...(row.eval_cost_usd != null ? { eval_cost_usd: row.eval_cost_usd as number } : {}),
+      ...(row.eval_tokens != null ? { eval_tokens: row.eval_tokens as number } : {}),
+      ...(row.provenance != null ? { provenance: JSON.parse(row.provenance as string) as Provenance } : {}),
     };
+    /*
+     * Derived on every read, never stored (0.9.0): the critical rules that
+     * skipped (from the stamped flags — absent for rows older than those
+     * flags, never []), the coverage by question, and the verdict with its
+     * basis — the last only when the row carries the threshold it was judged
+     * against, because a basis guessed against today's threshold would be a
+     * fabrication about that day.
+     */
+    const criticalSkipped = deriveCriticalSkipped(result.rule_results);
+    if (criticalSkipped) result.critical_skipped = criticalSkipped;
+    if (result.rule_results.some((r) => r.question !== undefined)) result.coverage = deriveCoverage(result.rule_results);
+    if (result.provenance) result.verdict = deriveVerdict(result, result.provenance.thresholds.default);
+    return result;
   }
 }
