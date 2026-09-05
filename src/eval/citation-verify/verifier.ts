@@ -51,7 +51,22 @@ export interface VerifyCitationsResult {
   // judge verdict (cost cap, judge timeout/error, malformed verdict —
   // infrastructure failures are unverified, never unsupported).
   overallScore: number | null;
-  passed: boolean;
+  /**
+   * The verdict, and it is **null when nothing was judged**.
+   *
+   * Until 0.10.0 this was `true` in that case: no citation resolved, or the
+   * judge failed on every one, and the tool said the output passed. A
+   * caller reading `passed` shipped an answer whose sources had not been
+   * checked at all. There is no verdict when nothing was verified, and null
+   * is what says so.
+   *
+   * When citations WERE judged, the rule is counts and not a proportion:
+   * every judged citation must be supported. A proportion let one
+   * fabricated source among three real ones score 0.67 and pass.
+   */
+  passed: boolean | null;
+  /** Judged citations the judge ruled unsupported. The number the verdict turns on. */
+  totalUnsupported: number;
   // Per-citation detail for the dashboard.
   citations: VerifiedCitation[];
   // Accumulated cost across all LLM calls we made.
@@ -345,14 +360,24 @@ export async function verifyCitations(
   // unsupported would make a judge outage on 5 of 10 supported citations
   // score 0.5, indistinguishable from fabrication.
   const overallScore = totalJudged > 0 ? Math.round((totalSupported / totalJudged) * 100) / 100 : null;
-  // Fail if >= 50% of judged sources don't support the claim. When no
-  // citations, none resolved, or none judged, we don't fail — there's
-  // nothing to score, we just report that.
-  const passed = overallScore === null ? true : overallScore >= 0.5;
+  const totalUnsupported = totalJudged - totalSupported;
+  /*
+   * Counts, not a proportion, and null when nothing was judged.
+   *
+   * The old rule was `overallScore >= 0.5`, with `true` when the score was
+   * null. Both halves were wrong. A proportion let one fabricated source
+   * among three real ones score 0.67 and pass — a citation either supports
+   * the claim or it does not, and one that does not is the finding. And
+   * "nothing was judged" was reported as a pass, so an output whose sources
+   * never resolved, or whose every judge call failed, came back looking
+   * verified. There is no verdict when nothing was verified.
+   */
+  const passed = totalJudged === 0 ? null : totalUnsupported === 0;
 
   return {
     overallScore,
     passed,
+    totalUnsupported,
     citations: out,
     totalCostUsd: Math.round(totalCost * 1_000_000) / 1_000_000,
     totalCitationsFound: totalFound,

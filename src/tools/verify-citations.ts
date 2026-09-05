@@ -84,7 +84,13 @@ export const verifyCitationsOutputSchema = z.looseObject({
   id: z.string().describe('the evaluation id; read it back at iris://evaluations/{id}'),
   trace_id: z.string().optional().describe('the linked trace, when one was named'),
   overall_score: z.number().nullable().describe('supported / judged; null when nothing was judged'),
-  passed: z.boolean().describe('true when every judged citation was supported, or nothing was judged and nothing failed'),
+  passed: z
+    .boolean()
+    .nullable()
+    .describe(
+      'true when every judged citation was supported; false when any judged citation was not; NULL when nothing was judged — no verdict, because nothing was verified. Until 0.10.0 that last case returned true.',
+    ),
+  total_unsupported: z.number().int().describe('judged citations the judge ruled unsupported — the number the verdict turns on'),
   total_citations_found: z.number().int().describe('citations extracted from the output'),
   total_resolved: z.number().int().describe('citations whose source was fetched'),
   total_judged: z.number().int().describe('citations the judge ruled on'),
@@ -166,11 +172,21 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         eval_type: 'custom',
         output_text: args.output,
         score,
-        passed: result.passed,
+        passed: result.passed === true,
         rule_results: [
           {
             ruleName: `semantic_citation_verify:${provider}/${args.model}`,
-            passed: result.passed,
+            /*
+             * Null means nothing was judged, which is not a pass and not a
+             * failure — it is a check that did not run. Stored as a SKIP so
+             * the composer treats it as coverage rather than silently
+             * reading a paid-for "nothing verified" as clean.
+             */
+            passed: result.passed === null ? false : result.passed,
+            ...(result.passed === null
+              ? { skipped: true, skipReason: `no citation was judged (found ${result.totalCitationsFound}, resolved ${result.totalResolved})` }
+              : {}),
+            kind: 'judgment',
             score,
             message:
               result.overallScore === null
@@ -178,7 +194,12 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
                 : `${result.totalSupported}/${result.totalJudged} judged sources supported the output`,
           },
         ],
-        suggestions: result.passed ? [] : [`Only ${result.totalSupported}/${result.totalJudged} judged sources actually supported the claim.`],
+        suggestions:
+          result.passed === null
+            ? ['No citation was judged, so nothing about the sources was verified. This is not a pass.']
+            : result.passed
+              ? []
+              : [`${result.totalUnsupported} of ${result.totalJudged} judged sources did not support the claim.`],
         rules_evaluated: 1,
         rules_skipped: 0,
         insufficient_data: result.overallScore === null,
@@ -192,6 +213,9 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
           ...(args.trace_id ? { trace_id: args.trace_id } : {}),
           overall_score: result.overallScore,
           passed: result.passed,
+          // Derived rather than read: the verifier reports it, but the tool
+          // must not break if a caller hands it an older shape.
+          total_unsupported: result.totalUnsupported ?? Math.max(0, result.totalJudged - result.totalSupported),
           total_citations_found: result.totalCitationsFound,
           total_resolved: result.totalResolved,
           total_judged: result.totalJudged,
