@@ -56,11 +56,11 @@ describe('custom cost_threshold rule without cost data', () => {
 });
 
 describe('a critical cost_threshold rule that could not run', () => {
-  it('is reported in critical_skipped, not silently passed', () => {
+  it('is reported in critical_skipped, not silently passed', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('safety', costRule(0.5, 'critical'), 'rule-cost');
 
-    const result = engine.evaluate('safety', { output: 'a clean response with no PII in it' });
+    const result = await engine.evaluate('safety', { output: 'a clean response with no PII in it' });
 
     const rule = result.rule_results.find((r) => r.ruleName === 'cost_ceiling');
     expect(rule?.skipped).toBe(true);
@@ -69,11 +69,11 @@ describe('a critical cost_threshold rule that could not run', () => {
     expect(result.suggestions.join(' ')).toContain('did NOT judge this output');
   });
 
-  it('is still named in critical_skipped when it was the ONLY rule (insufficient_data path)', () => {
+  it('is still named in critical_skipped when it was the ONLY rule (insufficient_data path)', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', costRule(0.5, 'critical'), 'rule-cost');
 
-    const result = engine.evaluate('custom', { output: 'no cost attached' });
+    const result = await engine.evaluate('custom', { output: 'no cost attached' });
 
     // Every rule skipped → no verdict. The description promises every
     // critical rule that skipped is named, on this path too.
@@ -82,11 +82,11 @@ describe('a critical cost_threshold rule that could not run', () => {
     expect(result.critical_skipped).toEqual(['cost_ceiling']);
   });
 
-  it('vetoes when cost data is present and over the ceiling', () => {
+  it('vetoes when cost data is present and over the ceiling', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('safety', costRule(0.5, 'critical'), 'rule-cost');
 
-    const result = engine.evaluate('safety', {
+    const result = await engine.evaluate('safety', {
       output: 'a clean response with no PII in it',
       costUsd: 0.75,
     });

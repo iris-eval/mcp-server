@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The evaluation engine is asynchronous.** `EvalEngine.evaluate`, `evaluateAll` and the private `run` return promises, so the judgment rule that calls a provider can run through the same path as every other rule instead of a parallel one. No verdict changes and no rule changes: `EvalRule.evaluate` stays synchronous on purpose, because that is what makes "the free evaluation path cannot reach the network" a fact the compiler checks rather than a test. Rules still run one at a time — they share the regex circuit breaker that bounds a hostile output, and running them concurrently would race it. Locked by `no-floating-promises`, `no-misused-promises` and `await-thenable` on the async surface, and by both proof files regenerating byte for byte.
+
 ### Added
 
 - **The capability map moves two cells at the arc close.** Where and why the evaluator itself fails (Q9 × the evaluator itself) reads *has*: every miss is named by id, the three critical rules are measured under seven evasion transforms, and the PII rule reports recall by entity. Whether the evaluator is better or worse than before (Q8 × the evaluator itself) reads *partial*: the verdict is measured on a composite corpus with a candidate composer scored beside the shipped arithmetic, but no release-over-release comparison exists yet.

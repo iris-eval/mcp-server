@@ -68,7 +68,7 @@ const trace: Trace = {
 describe('safety violation counting', () => {
   it('counts a PII violation, which now also fails the eval outright', async () => {
     const engine = new EvalEngine();
-    const result = engine.evaluate('safety', { output: trace.output!, input: trace.input });
+    const result = await engine.evaluate('safety', { output: trace.output!, input: trace.input });
 
     const pii = result.rule_results.find((r) => r.ruleName === 'no_pii');
     expect(pii?.passed).toBe(false);
@@ -101,7 +101,7 @@ describe('safety violation counting', () => {
         'You get 30 days of PTO per year — that is spelled out in section 9.4 of the handbook, so book the trip with confidence.',
     };
     const engine = new EvalEngine();
-    const result = engine.evaluate('safety', {
+    const result = await engine.evaluate('safety', {
       output: hallucinating.output!,
       input: hallucinating.input,
     });
@@ -159,7 +159,7 @@ describe('safety violation counting', () => {
       trace_id: 'trace-clean',
       output: 'The customer record was updated successfully with no issues to report.',
     };
-    const result = engine.evaluate('safety', { output: clean.output!, input: clean.input });
+    const result = await engine.evaluate('safety', { output: clean.output!, input: clean.input });
 
     await adapter.insertTrace(LOCAL_TENANT, clean);
     await adapter.insertEvalResult(LOCAL_TENANT, { ...result, trace_id: clean.trace_id });

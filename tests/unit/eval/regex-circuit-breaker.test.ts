@@ -23,12 +23,12 @@ afterAll(() => {
 });
 
 describe('per-evaluation regex circuit breaker', () => {
-  it('opens after 3 budget breaches; later regex rules skip without running', () => {
+  it('opens after 3 budget breaches; later regex rules skip without running', async () => {
     const engine = new EvalEngine(0.7);
     const rules = Array.from({ length: 6 }, (_, i) => hostileRule(`hostile-${i}`));
 
     const started = Date.now();
-    const result = engine.evaluate('custom', { output: HOSTILE_FUEL }, rules);
+    const result = await engine.evaluate('custom', { output: HOSTILE_FUEL }, rules);
     const elapsed = Date.now() - started;
 
     // 3 real breaches (~190ms each incl. respawn) + 3 short-circuits (~0ms).
@@ -46,9 +46,9 @@ describe('per-evaluation regex circuit breaker', () => {
     expect(circuitSkips.length).toBe(3);
   });
 
-  it('the breaker is per-evaluation: a fresh evaluate() starts closed', () => {
+  it('the breaker is per-evaluation: a fresh evaluate() starts closed', async () => {
     const engine = new EvalEngine(0.7);
-    engine.evaluate('custom', { output: HOSTILE_FUEL }, [
+    await engine.evaluate('custom', { output: HOSTILE_FUEL }, [
       hostileRule('a'),
       hostileRule('b'),
       hostileRule('c'),
@@ -56,18 +56,18 @@ describe('per-evaluation regex circuit breaker', () => {
     ]);
     // Next evaluation: a benign regex rule must run normally, not hit an
     // inherited open breaker.
-    const benign = engine.evaluate('custom', { output: 'hello world' }, [
+    const benign = await engine.evaluate('custom', { output: 'hello world' }, [
       { name: 'ok', type: 'regex_match', config: { pattern: 'hello' } },
     ]);
     expect(benign.rule_results[0].skipped).toBeUndefined();
     expect(benign.rule_results[0].passed).toBe(true);
   });
 
-  it('suggestions quote the real skip reason, not "(missing context)"', () => {
+  it('suggestions quote the real skip reason, not "(missing context)"', async () => {
     const engine = new EvalEngine(0.7);
     // Mix: one hostile rule (budget skip) + one benign rule that evaluates,
     // so we exercise the MIXED path, not the all-skipped path.
-    const result = engine.evaluate('custom', { output: HOSTILE_FUEL }, [
+    const result = await engine.evaluate('custom', { output: HOSTILE_FUEL }, [
       hostileRule('stalled-policy'),
       { name: 'has-an-a', type: 'regex_match', config: { pattern: 'a' } },
     ]);

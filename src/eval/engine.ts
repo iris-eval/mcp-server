@@ -146,11 +146,11 @@ export class EvalEngine {
     return this.rulesById.has(ruleId);
   }
 
-  evaluate(
+  async evaluate(
     evalType: EvalType,
     context: EvalContext,
     customRules?: CustomRuleDefinition[],
-  ): EvalResult {
+  ): Promise<EvalResult> {
     /*
      * Inline custom_rules are ADDITIVE, which is what evaluate_output's
      * description promises in two places: "fires REGARDLESS of eval_type"
@@ -188,7 +188,7 @@ export class EvalEngine {
    * that ran (weighted score against the threshold, critical veto across
    * all bundles); `categories` carries the same arithmetic per bundle.
    */
-  evaluateAll(context: EvalContext, customRules?: CustomRuleDefinition[]): EvalResult {
+  async evaluateAll(context: EvalContext, customRules?: CustomRuleDefinition[]): Promise<EvalResult> {
     const rules: EvalRule[] = [];
     const categories: EvalType[] = [];
     for (const type of ALL_EVAL_TYPES) {
@@ -204,12 +204,21 @@ export class EvalEngine {
     return this.run('all', rules, categories, context);
   }
 
-  private run(
+  /*
+   * Async from 0.10.0. Nothing it awaits yet: every rule the package ships
+   * is synchronous, and `EvalRule.evaluate` stays synchronous so the type
+   * system keeps proving that a deterministic rule cannot reach the network
+   * — which is what makes "evaluate_output never spends" a compile-time
+   * fact rather than a test. The signature moves first, in one mechanical
+   * change, so the judgment rule that DOES call a provider can be added
+   * without re-touching every caller a second time.
+   */
+  private async run(
     evalType: EvalResultType,
     rules: EvalRule[],
     categories: EvalType[] | undefined,
     context: EvalContext,
-  ): EvalResult {
+  ): Promise<EvalResult> {
     // Merge system-level thresholds into customConfig (user-provided values take precedence)
     if (this.ruleThresholds) {
       context = {
@@ -244,7 +253,14 @@ export class EvalEngine {
      * rule it carries.
      */
     const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 } };
-    const ruleResults: EvalRuleResult[] = rules.map((rule, i) => {
+    /*
+     * Sequential, and it must stay sequential when a rule becomes awaitable:
+     * every rule in one evaluation shares the regex circuit breaker above,
+     * and running them concurrently would race the breach count that bounds
+     * a hostile output.
+     */
+    const ruleResults: EvalRuleResult[] = [];
+    for (const [i, rule] of rules.entries()) {
       const raw = rule.evaluate(evalContext);
       const ruleId = this.idByRule.get(rule);
       const category = categories?.[i];
@@ -271,7 +287,7 @@ export class EvalEngine {
        * so no surface can show a result without its receipt. It changes no
        * verdict: summarize() below still decides passed exactly as before.
        */
-      return {
+      ruleResults.push({
         ruleName,
         ...(ruleId !== undefined ? { ruleId } : {}),
         ...(category !== undefined ? { category } : {}),
@@ -279,8 +295,8 @@ export class EvalEngine {
         criticalSource: source,
         ...rest,
         ...stampRuleResult(rule, raw, context, effective),
-      };
-    });
+      });
+    }
 
     const overall = this.summarize(rules, ruleResults);
     const perCategory = categories ? this.categorize(rules, ruleResults, categories) : undefined;

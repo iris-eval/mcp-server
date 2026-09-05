@@ -3,52 +3,52 @@ import { EvalEngine } from '../../../src/eval/engine.js';
 import { passingContext, failingContext } from '../../fixtures/sample-evals.js';
 
 describe('EvalEngine', () => {
-  it('should return passing result for good output', () => {
+  it('should return passing result for good output', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('completeness', passingContext);
+    const result = await engine.evaluate('completeness', passingContext);
     expect(result.passed).toBe(true);
     expect(result.score).toBeGreaterThanOrEqual(0.7);
     expect(result.rule_results.length).toBeGreaterThan(0);
   });
 
-  it('should return failing result for empty output', () => {
+  it('should return failing result for empty output', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('completeness', failingContext);
+    const result = await engine.evaluate('completeness', failingContext);
     expect(result.passed).toBe(false);
     expect(result.score).toBeLessThan(0.7);
   });
 
-  it('should respect custom threshold', () => {
+  it('should respect custom threshold', async () => {
     const engine = new EvalEngine(0.95);
-    const result = engine.evaluate('completeness', passingContext);
+    const result = await engine.evaluate('completeness', passingContext);
     // Even a good output may not pass a very high threshold
     expect(result.score).toBeGreaterThan(0);
   });
 
-  it('should generate suggestions for failing rules', () => {
+  it('should generate suggestions for failing rules', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('completeness', failingContext);
+    const result = await engine.evaluate('completeness', failingContext);
     expect(result.suggestions.length).toBeGreaterThan(0);
   });
 
-  it('should handle custom eval type with no rules', () => {
+  it('should handle custom eval type with no rules', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('custom', passingContext);
+    const result = await engine.evaluate('custom', passingContext);
     expect(result.passed).toBe(false);
     expect(result.score).toBe(0);
     expect(result.insufficient_data).toBe(true);
   });
 
-  it('should handle custom rules', () => {
+  it('should handle custom rules', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('custom', passingContext, [
+    const result = await engine.evaluate('custom', passingContext, [
       { name: 'min_len', type: 'min_length', config: { length: 10 } },
     ]);
     expect(result.passed).toBe(true);
     expect(result.rule_results[0].ruleName).toBe('min_len');
   });
 
-  it('should register additional rules', () => {
+  it('should register additional rules', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('completeness', {
       name: 'custom_rule',
@@ -57,15 +57,15 @@ describe('EvalEngine', () => {
       weight: 1,
       evaluate: () => ({ ruleName: 'custom_rule', passed: true, score: 1, message: 'Custom OK' }),
     });
-    const result = engine.evaluate('completeness', passingContext);
+    const result = await engine.evaluate('completeness', passingContext);
     const customResult = result.rule_results.find(r => r.ruleName === 'custom_rule');
     expect(customResult).toBeDefined();
     expect(customResult!.passed).toBe(true);
   });
 
-  it('should handle multiple custom rules without NaN scores', () => {
+  it('should handle multiple custom rules without NaN scores', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('custom', passingContext, [
+    const result = await engine.evaluate('custom', passingContext, [
       { name: 'min_len', type: 'min_length', config: { min_length: 10 } },
       { name: 'has_pattern', type: 'regex_match', config: { pattern: '.' } },
     ]);
@@ -74,21 +74,21 @@ describe('EvalEngine', () => {
     expect(result.rule_results).toHaveLength(2);
   });
 
-  it('should accept min_length with either config key name', () => {
+  it('should accept min_length with either config key name', async () => {
     const engine = new EvalEngine(0.7);
-    const r1 = engine.evaluate('custom', passingContext, [
+    const r1 = await engine.evaluate('custom', passingContext, [
       { name: 'old_key', type: 'min_length', config: { length: 10 } },
     ]);
-    const r2 = engine.evaluate('custom', passingContext, [
+    const r2 = await engine.evaluate('custom', passingContext, [
       { name: 'new_key', type: 'min_length', config: { min_length: 10 } },
     ]);
     expect(r1.passed).toBe(true);
     expect(r2.passed).toBe(true);
   });
 
-  it('should not produce NaN when custom rule config is invalid', () => {
+  it('should not produce NaN when custom rule config is invalid', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('custom', passingContext, [
+    const result = await engine.evaluate('custom', passingContext, [
       { name: 'bad_config', type: 'min_length', config: {} },
       { name: 'good_rule', type: 'regex_match', config: { pattern: '.' } },
     ]);
@@ -101,9 +101,9 @@ describe('EvalEngine', () => {
   // is broken" AND silently deflated every aggregate score for as long as the
   // rule stayed deployed. Config errors must be SKIPPED (excluded from the
   // weighted average), the same contract expected_coverage uses.
-  it('skips misconfigured custom rules instead of scoring them 0', () => {
+  it('skips misconfigured custom rules instead of scoring them 0', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('custom', passingContext, [
+    const result = await engine.evaluate('custom', passingContext, [
       { name: 'broken', type: 'min_length', config: {} },
       { name: 'good_rule', type: 'regex_match', config: { pattern: '.' } },
     ]);
@@ -116,7 +116,7 @@ describe('EvalEngine', () => {
     expect(result.passed).toBe(true);
   });
 
-  it('skips every custom-rule config-error branch rather than failing the output', () => {
+  it('skips every custom-rule config-error branch rather than failing the output', async () => {
     const engine = new EvalEngine(0.7);
     const broken = [
       { name: 'no_min', type: 'min_length' as const, config: {} },
@@ -126,7 +126,7 @@ describe('EvalEngine', () => {
       { name: 'no_cost', type: 'cost_threshold' as const, config: {} },
       { name: 'bad_regex', type: 'regex_match' as const, config: { pattern: '(' } },
     ];
-    const result = engine.evaluate('custom', passingContext, broken);
+    const result = await engine.evaluate('custom', passingContext, broken);
     for (const rule of broken) {
       const r = result.rule_results.find((x) => x.ruleName === rule.name);
       expect(r?.skipped, `${rule.name} should be skipped`).toBe(true);
@@ -141,13 +141,13 @@ describe('EvalEngine', () => {
   // `config.min_length` / `config.max_cost`. Rules built from our own
   // documentation deployed fine and then never worked. The documented
   // spellings are honoured as aliases so those rules start working.
-  it('honours the config key spellings our docs shipped', () => {
+  it('honours the config key spellings our docs shipped', async () => {
     const engine = new EvalEngine(0.7);
-    expect(engine.evaluate('custom', passingContext, [
+    expect((await engine.evaluate('custom', passingContext, [
       { name: 'documented_min', type: 'min_length', config: { min: 10 } },
-    ]).passed).toBe(true);
+    ])).passed).toBe(true);
 
-    const costResult = engine.evaluate('custom', { ...passingContext, costUsd: 0.001 }, [
+    const costResult = await engine.evaluate('custom', { ...passingContext, costUsd: 0.001 }, [
       { name: 'documented_cost', type: 'cost_threshold', config: { max_usd: 1 } },
     ]);
     const costRule = costResult.rule_results.find((r) => r.ruleName === 'documented_cost');
@@ -168,14 +168,14 @@ describe('EvalEngine', () => {
       evaluate: () => ({ ruleName: name, passed: true, score: 1, message: 'OK' }),
     });
 
-    it('unregistered rule stops firing on the next evaluate', () => {
+    it('unregistered rule stops firing on the next evaluate', async () => {
       const engine = new EvalEngine(0.7);
       engine.registerRule('completeness', makeRule('hot_removed'), 'rule-abc123');
-      const before = engine.evaluate('completeness', passingContext);
+      const before = await engine.evaluate('completeness', passingContext);
       expect(before.rule_results.find((r) => r.ruleName === 'hot_removed')).toBeDefined();
 
       expect(engine.unregisterRule('rule-abc123')).toBe(true);
-      const after = engine.evaluate('completeness', passingContext);
+      const after = await engine.evaluate('completeness', passingContext);
       expect(after.rule_results.find((r) => r.ruleName === 'hot_removed')).toBeUndefined();
     });
 
@@ -184,7 +184,7 @@ describe('EvalEngine', () => {
       expect(engine.unregisterRule('rule-ffffff')).toBe(false);
     });
 
-    it('removes only the instance registered under the id — a same-named rule keeps firing', () => {
+    it('removes only the instance registered under the id — a same-named rule keeps firing', async () => {
       // deploy_rule doesn't enforce name uniqueness, so removal must key on
       // rule id, not name. Deleting one of two same-named rules leaves the
       // survivor registered.
@@ -193,7 +193,7 @@ describe('EvalEngine', () => {
       engine.registerRule('completeness', makeRule('twin'), 'rule-222222');
 
       expect(engine.unregisterRule('rule-111111')).toBe(true);
-      const result = engine.evaluate('completeness', passingContext);
+      const result = await engine.evaluate('completeness', passingContext);
       expect(result.rule_results.filter((r) => r.ruleName === 'twin')).toHaveLength(1);
     });
 
@@ -205,17 +205,17 @@ describe('EvalEngine', () => {
     });
   });
 
-  it('should generate unique eval IDs', () => {
+  it('should generate unique eval IDs', async () => {
     const engine = new EvalEngine(0.7);
-    const r1 = engine.evaluate('completeness', passingContext);
-    const r2 = engine.evaluate('completeness', passingContext);
+    const r1 = await engine.evaluate('completeness', passingContext);
+    const r2 = await engine.evaluate('completeness', passingContext);
     expect(r1.id).not.toBe(r2.id);
   });
 
-  it('should evaluate all eval types', () => {
+  it('should evaluate all eval types', async () => {
     const engine = new EvalEngine(0.7);
     for (const type of ['completeness', 'relevance', 'safety', 'cost'] as const) {
-      const result = engine.evaluate(type, passingContext);
+      const result = await engine.evaluate(type, passingContext);
       expect(result.eval_type).toBe(type);
       expect(result.rule_results.length).toBeGreaterThan(0);
     }

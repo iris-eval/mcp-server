@@ -46,7 +46,7 @@ describe('regex rules with a malformed config', () => {
           skipped: true,
           configInvalid: true,
         });
-        expect(result!.skipReason).toMatch(/config\.(pattern|flags)/);
+        expect(result.skipReason).toMatch(/config\.(pattern|flags)/);
       });
     }
   }
@@ -66,32 +66,31 @@ describe('keyword rules with a malformed config', () => {
         result = rule.evaluate({ output: 'anything' });
       }).not.toThrow();
       expect(result).toMatchObject({ skipped: true, configInvalid: true });
-      expect(result!.skipReason).toContain('config.keywords');
+      expect(result.skipReason).toContain('config.keywords');
     });
   }
 });
 
 describe('the engine survives an inline rule with a malformed config', () => {
-  it('finishes the evaluation and reports the rule as skipped', () => {
+  it('finishes the evaluation and reports the rule as skipped', async () => {
     const engine = new EvalEngine(0.7);
     const broken: CustomRuleDefinition = { name: 'x', type: 'regex_match', config: {} };
 
-    let result;
-    expect(() => {
-      result = engine.evaluate('custom', { output: 'anything' }, [broken]);
-    }).not.toThrow();
+    // Not throwing is the property under test: the engine is async from
+    // 0.10.0, so a rejection here fails the test exactly as a throw did.
+    const result = await engine.evaluate('custom', { output: 'anything' }, [broken]);
 
     // The only rule skipped, so there is no verdict — insufficient_data,
     // not a crash, with the reason spelled out for the caller.
-    expect(result!.insufficient_data).toBe(true);
-    expect(result!.rules_skipped).toBe(1);
-    expect(result!.rule_results[0]).toMatchObject({ ruleName: 'x', skipped: true, configInvalid: true });
-    expect(result!.suggestions.join(' ')).toContain('config.pattern');
+    expect(result.insufficient_data).toBe(true);
+    expect(result.rules_skipped).toBe(1);
+    expect(result.rule_results[0]).toMatchObject({ ruleName: 'x', skipped: true, configInvalid: true });
+    expect(result.suggestions.join(' ')).toContain('config.pattern');
   });
 
-  it('keeps scoring the rules that are well-formed', () => {
+  it('keeps scoring the rules that are well-formed', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('custom', { output: 'hello there world' }, [
+    const result = await engine.evaluate('custom', { output: 'hello there world' }, [
       { name: 'broken', type: 'regex_match', config: { pattern: null } },
       { name: 'fine', type: 'contains_keywords', config: { keywords: ['hello'] } },
     ]);

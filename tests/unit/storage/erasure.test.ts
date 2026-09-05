@@ -21,7 +21,7 @@ async function storeLinked(storage: SqliteAdapter, timestamp = new Date().toISOS
   const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds);
   const traceId = generateTraceId();
   await storage.insertTrace(LOCAL_TENANT, { trace_id: traceId, agent_name: 'erasure', input: 'q', output: SSN_OUTPUT, timestamp });
-  const result = engine.evaluate('safety', { output: SSN_OUTPUT, expected: 'the invoice is settled' });
+  const result = await engine.evaluate('safety', { output: SSN_OUTPUT, expected: 'the invoice is settled' });
   result.trace_id = traceId;
   result.expected_text = 'the invoice is settled';
   await storage.insertEvalResult(LOCAL_TENANT, result);

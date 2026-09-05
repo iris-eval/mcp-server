@@ -20,7 +20,7 @@ describe('storage.redact', () => {
   it('critical_spans stores the flagged spans redacted, keeps the offsets, and leaves quiet text alone', async () => {
     const storage = new SqliteAdapter(':memory:', { redact: 'critical_spans' });
     await storage.initialize();
-    const result = engine.evaluate('safety', { output: OUTPUT });
+    const result = await engine.evaluate('safety', { output: OUTPUT });
     const pii = result.rule_results.find((r) => r.ruleName === 'no_pii')!;
     expect(pii.passed).toBe(false);
     const spans = (pii.evidence ?? []).filter((e) => e.type === 'span');
@@ -39,7 +39,7 @@ describe('storage.redact', () => {
   it('none (the default) stores the text verbatim', async () => {
     const storage = createStorage(defaultConfig) as SqliteAdapter;
     await storage.initialize();
-    const result = engine.evaluate('safety', { output: OUTPUT });
+    const result = await engine.evaluate('safety', { output: OUTPUT });
     await storage.insertEvalResult(LOCAL_TENANT, result);
     expect((await storage.getEvalById(LOCAL_TENANT, result.id))!.output_text).toBe(OUTPUT);
     await storage.close();
@@ -49,7 +49,7 @@ describe('storage.redact', () => {
     const storage = new SqliteAdapter(':memory:', { redact: 'critical_spans' });
     await storage.initialize();
     const clean = 'The report is ready and the weather in Paris stays mild this week.';
-    const result = engine.evaluate('safety', { output: clean });
+    const result = await engine.evaluate('safety', { output: clean });
     await storage.insertEvalResult(LOCAL_TENANT, result);
     expect((await storage.getEvalById(LOCAL_TENANT, result.id))!.output_text).toBe(clean);
     await storage.close();

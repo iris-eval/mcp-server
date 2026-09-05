@@ -71,8 +71,8 @@ async function request(
 }
 
 const context = { output: 'A canary sentence long enough to evaluate cleanly.' };
-const firings = (engine: EvalEngine) =>
-  engine.evaluate('completeness', context).rule_results.filter((r) => r.ruleName === 'toggle-canary').length;
+const firings = async (engine: EvalEngine) =>
+  (await engine.evaluate('completeness', context)).rule_results.filter((r) => r.ruleName === 'toggle-canary').length;
 
 async function deployCanary(app: express.Express): Promise<string> {
   const deployed = await request(app, 'POST', '/api/v1/rules/custom', {
@@ -89,19 +89,19 @@ describe('PATCH /rules/custom/:id — enable / disable on the live engine', () =
     const engine = new EvalEngine(0.7);
     const app = makeApp(engine);
     const ruleId = await deployCanary(app);
-    expect(firings(engine)).toBe(1);
+    expect(await firings(engine)).toBe(1);
 
     const disabled = await request(app, 'PATCH', `/api/v1/rules/custom/${ruleId}`, { enabled: false });
     expect(disabled.status).toBe(200);
     expect((disabled.json as { rule: { enabled: boolean } }).rule.enabled).toBe(false);
-    expect(firings(engine)).toBe(0);
+    expect(await firings(engine)).toBe(0);
     // Persisted, not just in-process: the store says disabled too.
     expect(store.get(LOCAL_TENANT, ruleId)?.enabled).toBe(false);
 
     const enabled = await request(app, 'PATCH', `/api/v1/rules/custom/${ruleId}`, { enabled: true });
     expect(enabled.status).toBe(200);
     expect((enabled.json as { rule: { enabled: boolean } }).rule.enabled).toBe(true);
-    expect(firings(engine)).toBe(1);
+    expect(await firings(engine)).toBe(1);
   });
 
   it('is idempotent — enabling an enabled rule does not register it twice', async () => {
@@ -111,12 +111,12 @@ describe('PATCH /rules/custom/:id — enable / disable on the live engine', () =
 
     const again = await request(app, 'PATCH', `/api/v1/rules/custom/${ruleId}`, { enabled: true });
     expect(again.status).toBe(200);
-    expect(firings(engine)).toBe(1);
+    expect(await firings(engine)).toBe(1);
 
     await request(app, 'PATCH', `/api/v1/rules/custom/${ruleId}`, { enabled: false });
     const stillOff = await request(app, 'PATCH', `/api/v1/rules/custom/${ruleId}`, { enabled: false });
     expect(stillOff.status).toBe(200);
-    expect(firings(engine)).toBe(0);
+    expect(await firings(engine)).toBe(0);
   });
 
   it('404s an unknown id without touching the engine', async () => {
@@ -138,6 +138,6 @@ describe('PATCH /rules/custom/:id — enable / disable on the live engine', () =
     expect(typo.status).toBe(400);
     expect(JSON.stringify(typo.json.details)).toContain('Valid keys: enabled');
     // The typo changed nothing.
-    expect(firings(engine)).toBe(1);
+    expect(await firings(engine)).toBe(1);
   });
 });

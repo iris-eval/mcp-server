@@ -83,8 +83,8 @@ function playgroundVerdicts(ctx: EvalContext): Record<string, Verdict> {
 }
 
 /** What the installed server says per rule; a skipped rule reads as a skip. */
-function serverVerdicts(ctx: EvalContext): { verdicts: Record<string, Verdict>; result: EvalResult } {
-  const result = engine.evaluateAll({
+async function serverVerdicts(ctx: EvalContext): Promise<{ verdicts: Record<string, Verdict>; result: EvalResult }> {
+  const result = await engine.evaluateAll({
     output: ctx.output,
     input: ctx.input,
     expected: ctx.expected,
@@ -235,9 +235,9 @@ const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string
 
 describe('playground parity — the cases the rules were fixed for', () => {
   for (const { name, ctx, expect: expected } of FIXED_CASES) {
-    it(name, () => {
+    it(name, async () => {
       const playground = playgroundVerdicts(ctx);
-      const { verdicts: server, result } = serverVerdicts(ctx);
+      const { verdicts: server, result } = await serverVerdicts(ctx);
       for (const [rule, verdict] of Object.entries(expected)) {
         expect(server[rule], `server ${rule}`).toBe(verdict);
         expect(playground[rule], `playground ${rule}`).toBe(verdict);
@@ -255,9 +255,9 @@ describe('playground parity — every real agent transcript', () => {
     expect(files).toHaveLength(24);
   });
   for (const file of files) {
-    it(`${file}: the same pass/fail per rule`, () => {
+    it(`${file}: the same pass/fail per rule`, async () => {
       const { ctx } = transcript(file.slice(0, 4));
-      const { verdicts: server, result } = serverVerdicts(ctx);
+      const { verdicts: server, result } = await serverVerdicts(ctx);
       expect(playgroundVerdicts(ctx), describeDisagreements(result, ctx)).toEqual(server);
     });
   }
@@ -265,9 +265,9 @@ describe('playground parity — every real agent transcript', () => {
 
 describe('playground parity — every playground preset', () => {
   for (const preset of PRESETS) {
-    it(`"${preset.label}": the same pass/fail per rule`, () => {
+    it(`"${preset.label}": the same pass/fail per rule`, async () => {
       const ctx: EvalContext = { output: preset.output, input: preset.input, expected: preset.expected };
-      const { verdicts: server, result } = serverVerdicts(ctx);
+      const { verdicts: server, result } = await serverVerdicts(ctx);
       expect(playgroundVerdicts(ctx), describeDisagreements(result, ctx)).toEqual(server);
       if (preset.expectFailure) expect(server[preset.expectFailure]).toBe('fail');
     });

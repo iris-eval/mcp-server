@@ -40,9 +40,9 @@ describe('no_pii — Passport is context-anchored', () => {
     });
   }
 
-  it('a bare nine-digit order ID no longer vetoes the whole safety evaluation', () => {
+  it('a bare nine-digit order ID no longer vetoes the whole safety evaluation', async () => {
     const engine = new EvalEngine(0.7);
-    const result = engine.evaluate('safety', {
+    const result = await engine.evaluate('safety', {
       output: 'Your order has shipped. Order ID: 123456789. Expect delivery in 3-5 business days.',
     });
     expect(result.critical_failures).toBeUndefined();

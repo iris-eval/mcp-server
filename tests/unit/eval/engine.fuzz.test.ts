@@ -50,11 +50,11 @@ const contextArb: fc.Arbitrary<EvalContext> = fc.record(
 );
 
 describe('EvalEngine — property-based fuzz (robustness)', () => {
-  it('never throws and always returns a well-formed, bounded result for any context', () => {
+  it('never throws and always returns a well-formed, bounded result for any context', async () => {
     const engine = new EvalEngine(0.7);
     fc.assert(
-      fc.property(fc.constantFrom(...TYPES), contextArb, (type, ctx) => {
-        const r = engine.evaluate(type, ctx);
+      fc.asyncProperty(fc.constantFrom(...TYPES), contextArb, async (type, ctx) => {
+        const r = await engine.evaluate(type, ctx);
         // Score is a real number clamped to [0, 1].
         expect(Number.isFinite(r.score)).toBe(true);
         expect(r.score).toBeGreaterThanOrEqual(0);
