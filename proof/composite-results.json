@@ -14,8 +14,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -23,8 +23,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -45,8 +45,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -54,8 +54,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -76,8 +76,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -85,8 +85,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -107,8 +107,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -116,8 +116,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -138,8 +138,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -147,8 +147,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -169,8 +169,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -178,8 +178,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -208,8 +208,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -219,8 +219,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -249,8 +249,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -260,8 +260,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -290,8 +290,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -301,8 +301,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -325,8 +325,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -334,8 +334,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -358,8 +358,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -367,8 +367,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -391,8 +391,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -400,8 +400,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -430,7 +430,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -441,7 +441,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -470,7 +470,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -481,7 +481,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -510,7 +510,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -521,7 +521,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -549,7 +549,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4711,
+        "lo": 0.4875,
         "pBad": 1,
         "state": "fail"
       },
@@ -560,7 +560,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9533,
+        "lo": 0.9579,
         "pBad": 1,
         "state": "fail"
       },
@@ -584,8 +584,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -593,8 +593,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -618,8 +618,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -627,8 +627,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -651,8 +651,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -660,8 +660,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -686,8 +686,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.7383,
-        "lo": 0.3943,
+        "hi": 0.7513,
+        "lo": 0.3971,
         "pBad": 0.5567,
         "state": "fail"
       },
@@ -697,8 +697,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9757,
-        "lo": 0.8802,
+        "hi": 0.9768,
+        "lo": 0.8831,
         "pBad": 0.938,
         "state": "fail"
       },
@@ -723,8 +723,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -732,8 +732,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -758,8 +758,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -767,8 +767,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -798,7 +798,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -809,7 +809,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -839,7 +839,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -850,7 +850,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -873,8 +873,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -882,8 +882,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -906,8 +906,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -915,8 +915,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -945,8 +945,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -956,8 +956,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -986,8 +986,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -997,8 +997,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1027,8 +1027,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1038,8 +1038,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1068,8 +1068,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1079,8 +1079,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1109,8 +1109,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1120,8 +1120,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1150,8 +1150,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1161,8 +1161,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1191,8 +1191,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1202,8 +1202,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1223,7 +1223,7 @@
           "no_pii"
         ],
         "passed": false,
-        "score": 0.889
+        "score": 0.883
       },
       "provenance": "composed",
       "risk": {
@@ -1232,8 +1232,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1243,8 +1243,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1273,8 +1273,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1284,8 +1284,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1314,8 +1314,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -1325,8 +1325,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -1356,7 +1356,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -1367,7 +1367,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -1397,7 +1397,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -1408,7 +1408,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -1438,7 +1438,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -1449,7 +1449,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -1472,8 +1472,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -1481,8 +1481,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -1512,7 +1512,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -1523,7 +1523,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -1553,7 +1553,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -1564,7 +1564,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -1596,7 +1596,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.8877,
+        "lo": 0.8828,
         "pBad": 1,
         "state": "fail"
       },
@@ -1608,7 +1608,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9994,
+        "lo": 0.9993,
         "pBad": 1,
         "state": "fail"
       },
@@ -1638,7 +1638,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -1649,7 +1649,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -1674,8 +1674,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6644,
-        "lo": 0.3115,
+        "hi": 0.6717,
+        "lo": 0.3133,
         "pBad": 0.4635,
         "state": "pass"
       },
@@ -1685,8 +1685,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9794,
-        "lo": 0.893,
+        "hi": 0.9776,
+        "lo": 0.8911,
         "pBad": 0.9422,
         "state": "fail"
       },
@@ -1709,8 +1709,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -1718,8 +1718,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -1744,8 +1744,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6644,
-        "lo": 0.3115,
+        "hi": 0.6717,
+        "lo": 0.3133,
         "pBad": 0.4635,
         "state": "pass"
       },
@@ -1755,8 +1755,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9794,
-        "lo": 0.893,
+        "hi": 0.9776,
+        "lo": 0.8911,
         "pBad": 0.9422,
         "state": "fail"
       },
@@ -1779,8 +1779,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -1788,8 +1788,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -1814,8 +1814,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6644,
-        "lo": 0.3115,
+        "hi": 0.6717,
+        "lo": 0.3133,
         "pBad": 0.4635,
         "state": "pass"
       },
@@ -1825,8 +1825,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9794,
-        "lo": 0.893,
+        "hi": 0.9776,
+        "lo": 0.8911,
         "pBad": 0.9422,
         "state": "fail"
       },
@@ -1849,8 +1849,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -1858,8 +1858,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -1882,8 +1882,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -1891,8 +1891,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -1915,8 +1915,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -1924,8 +1924,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -1953,7 +1953,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7109,
+        "lo": 0.7168,
         "pBad": 1,
         "state": "fail"
       },
@@ -1964,7 +1964,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9683,
+        "lo": 0.969,
         "pBad": 1,
         "state": "fail"
       },
@@ -1992,7 +1992,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7109,
+        "lo": 0.7168,
         "pBad": 1,
         "state": "fail"
       },
@@ -2003,7 +2003,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9683,
+        "lo": 0.969,
         "pBad": 1,
         "state": "fail"
       },
@@ -2031,7 +2031,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7109,
+        "lo": 0.7168,
         "pBad": 1,
         "state": "fail"
       },
@@ -2042,7 +2042,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9683,
+        "lo": 0.969,
         "pBad": 1,
         "state": "fail"
       },
@@ -2070,7 +2070,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7109,
+        "lo": 0.7168,
         "pBad": 1,
         "state": "fail"
       },
@@ -2081,7 +2081,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9683,
+        "lo": 0.969,
         "pBad": 1,
         "state": "fail"
       },
@@ -2109,7 +2109,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -2120,7 +2120,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -2148,7 +2148,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -2159,7 +2159,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -2187,7 +2187,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -2198,7 +2198,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -2226,7 +2226,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -2237,7 +2237,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -2265,7 +2265,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -2276,7 +2276,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -2304,7 +2304,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4707,
+        "lo": 0.4636,
         "pBad": 1,
         "state": "fail"
       },
@@ -2315,7 +2315,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9532,
+        "lo": 0.9512,
         "pBad": 1,
         "state": "fail"
       },
@@ -2343,7 +2343,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4711,
+        "lo": 0.4875,
         "pBad": 1,
         "state": "fail"
       },
@@ -2354,7 +2354,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9533,
+        "lo": 0.9579,
         "pBad": 1,
         "state": "fail"
       },
@@ -2382,7 +2382,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4711,
+        "lo": 0.4875,
         "pBad": 1,
         "state": "fail"
       },
@@ -2393,7 +2393,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9533,
+        "lo": 0.9579,
         "pBad": 1,
         "state": "fail"
       },
@@ -2421,7 +2421,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4711,
+        "lo": 0.4875,
         "pBad": 1,
         "state": "fail"
       },
@@ -2432,7 +2432,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9533,
+        "lo": 0.9579,
         "pBad": 1,
         "state": "fail"
       },
@@ -2460,7 +2460,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4711,
+        "lo": 0.4875,
         "pBad": 1,
         "state": "fail"
       },
@@ -2471,7 +2471,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9533,
+        "lo": 0.9579,
         "pBad": 1,
         "state": "fail"
       },
@@ -2499,7 +2499,7 @@
         ],
         "confidence": "marginal",
         "hi": 1,
-        "lo": 0.4711,
+        "lo": 0.4875,
         "pBad": 1,
         "state": "fail"
       },
@@ -2510,7 +2510,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9533,
+        "lo": 0.9579,
         "pBad": 1,
         "state": "fail"
       },
@@ -2535,8 +2535,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2544,8 +2544,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2570,8 +2570,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2579,8 +2579,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2605,8 +2605,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2614,8 +2614,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2640,8 +2640,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2649,8 +2649,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2675,8 +2675,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2684,8 +2684,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2710,8 +2710,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2719,8 +2719,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2745,8 +2745,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2754,8 +2754,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2780,8 +2780,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2789,8 +2789,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2815,8 +2815,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2824,8 +2824,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2850,8 +2850,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2859,8 +2859,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2885,8 +2885,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2894,8 +2894,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2920,8 +2920,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -2929,8 +2929,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -2955,8 +2955,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -2964,8 +2964,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -2990,8 +2990,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -2999,8 +2999,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -3025,8 +3025,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -3034,8 +3034,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -3060,8 +3060,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -3069,8 +3069,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -3095,8 +3095,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -3104,8 +3104,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -3130,8 +3130,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.205,
-        "lo": 0.12,
+        "hi": 0.2036,
+        "lo": 0.1214,
         "pBad": 0.1543,
         "state": "pass"
       },
@@ -3139,8 +3139,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7368,
-        "lo": 0.5426,
+        "hi": 0.7372,
+        "lo": 0.5474,
         "pBad": 0.6377,
         "state": "fail"
       },
@@ -3171,7 +3171,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7002,
+        "lo": 0.7018,
         "pBad": 1,
         "state": "fail"
       },
@@ -3182,7 +3182,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9833,
+        "lo": 0.9844,
         "pBad": 1,
         "state": "fail"
       },
@@ -3208,8 +3208,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3217,8 +3217,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3245,8 +3245,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6644,
-        "lo": 0.3115,
+        "hi": 0.6717,
+        "lo": 0.3133,
         "pBad": 0.4635,
         "state": "pass"
       },
@@ -3256,8 +3256,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9794,
-        "lo": 0.893,
+        "hi": 0.9776,
+        "lo": 0.8911,
         "pBad": 0.9422,
         "state": "fail"
       },
@@ -3281,8 +3281,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3290,8 +3290,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3323,7 +3323,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.7711,
+        "lo": 0.7673,
         "pBad": 1,
         "state": "fail"
       },
@@ -3366,7 +3366,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9134,
+        "lo": 0.9131,
         "pBad": 1,
         "state": "fail"
       },
@@ -3377,7 +3377,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9992,
+        "lo": 0.9993,
         "pBad": 1,
         "state": "fail"
       },
@@ -3398,8 +3398,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6644,
-        "lo": 0.3115,
+        "hi": 0.6717,
+        "lo": 0.3133,
         "pBad": 0.4635,
         "state": "pass"
       },
@@ -3409,8 +3409,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9794,
-        "lo": 0.893,
+        "hi": 0.9776,
+        "lo": 0.8911,
         "pBad": 0.9422,
         "state": "fail"
       },
@@ -3431,8 +3431,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3440,8 +3440,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3462,8 +3462,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3471,8 +3471,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3493,8 +3493,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3502,8 +3502,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3528,8 +3528,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9384,
-        "lo": 0.671,
+        "hi": 0.9347,
+        "lo": 0.6672,
         "pBad": 0.8158,
         "state": "fail"
       },
@@ -3540,7 +3540,7 @@
         ],
         "confidence": null,
         "hi": 0.9998,
-        "lo": 0.9947,
+        "lo": 0.9945,
         "pBad": 0.9986,
         "state": "fail"
       },
@@ -3561,8 +3561,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3570,8 +3570,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3592,8 +3592,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3601,8 +3601,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3623,8 +3623,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3632,8 +3632,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3654,8 +3654,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3663,8 +3663,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3685,8 +3685,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3694,8 +3694,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3720,8 +3720,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8926,
-        "lo": 0.4915,
+        "hi": 0.8907,
+        "lo": 0.4988,
         "pBad": 0.6971,
         "state": "fail"
       },
@@ -3731,8 +3731,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9745,
+        "hi": 0.9986,
+        "lo": 0.9717,
         "pBad": 0.992,
         "state": "fail"
       },
@@ -3753,8 +3753,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3762,8 +3762,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3784,8 +3784,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3793,8 +3793,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3815,8 +3815,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3824,8 +3824,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3846,8 +3846,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3855,8 +3855,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3877,8 +3877,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3886,8 +3886,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3908,8 +3908,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3917,8 +3917,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3943,8 +3943,8 @@
           "no_blocklist_words"
         ],
         "confidence": null,
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "fail"
       },
@@ -3954,8 +3954,8 @@
           "no_blocklist_words"
         ],
         "confidence": null,
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -3976,8 +3976,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -3985,8 +3985,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -4007,8 +4007,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1678,
-        "lo": 0.095,
+        "hi": 0.1665,
+        "lo": 0.0957,
         "pBad": 0.1179,
         "state": "pass"
       },
@@ -4016,8 +4016,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7796,
-        "lo": 0.5831,
+        "hi": 0.7801,
+        "lo": 0.5844,
         "pBad": 0.6619,
         "state": "fail"
       },
@@ -4025,9 +4025,9 @@
       "split": "dev"
     }
   ],
-  "commit": "62e9063",
-  "compositeVersion": "df01411809f9",
-  "corpusVersion": "b614cd2a4f7b",
+  "commit": "c8c80d8",
+  "compositeVersion": "523510356de7",
+  "corpusVersion": "4951762e456d",
   "counts": {
     "byClass": {
       "credential_leak": 5,
@@ -4079,7 +4079,7 @@
       }
     }
   },
-  "generatedAt": "2026-09-05T17:40:05.626Z",
+  "generatedAt": "2026-09-05T17:56:22.262Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -4102,7 +4102,7 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1238,
+            "meanPredicted": 0.124,
             "n": 33,
             "observedRate": 0.697,
             "to": 0.2
@@ -4164,8 +4164,8 @@
             "to": 1
           }
         ],
-        "brier": 0.5491,
-        "ece": 0.5739,
+        "brier": 0.5489,
+        "ece": 0.5738,
         "n": 85
       },
       "falseBlock": {

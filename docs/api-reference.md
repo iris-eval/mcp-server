@@ -1216,12 +1216,12 @@ Used when `eval_type` is `"cost"`. These rules check execution cost and token ef
 | Rule | Weight | What It Checks | Configurable Threshold | Pass Condition |
 |------|--------|----------------|----------------------|----------------|
 | `cost_under_threshold` | 1.0 | Total USD cost against a threshold | `cost_threshold` (default: `$0.10`) | `cost_usd <= cost_threshold` |
-| `token_efficiency` | 0.5 | Completion-to-prompt token ratio | `max_token_ratio` (default: `5`) | `completion_tokens / prompt_tokens <= max_token_ratio` |
+| `verbosity_ratio` | 0.5 | Completion-to-prompt token ratio | `max_token_ratio` (default: `5`) | `completion_tokens / prompt_tokens <= max_token_ratio` |
 | `no_tool_loop` | 1.0 | **Trajectory rule** — the agent must not repeat itself. Catches the waste a USD threshold cannot see: five identical calls can still bill under `cost_threshold`. Requires `tool_calls`; **skips** without them | `max_tool_repeats` (default: `3`) | No call repeated more than `max_tool_repeats` times, and no two-call cycle repeating more than twice |
 
 **`cost_under_threshold` scoring:** If over threshold, score is `max(0, 1 - (cost - threshold) / threshold)`. Degrades linearly as cost exceeds the threshold.
 
-**`token_efficiency` scoring:** If over ratio limit, score is `max(0, 1 - (ratio - max) / max)`. Skipped (returns score 1) when token usage data is not provided.
+**`verbosity_ratio` scoring:** If over ratio limit, score is `max(0, 1 - (ratio - max) / max)`. Skipped (returns score 1) when token usage data is not provided.
 
 **`no_tool_loop` scoring:** `max(0, 1 - (repeats - max_tool_repeats) * 0.25)` for a repeated call, `max(0, 1 - (cycles - 2) * 0.25)` for an alternating pair. Two calls are the same call when their `tool_name` matches and their inputs normalise to the same string (object keys sorted, whitespace collapsed, trimmed).
 

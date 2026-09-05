@@ -53,7 +53,7 @@ Actual response (captured 2026-09-03 against the shipped server):
 
 ### Cost Evaluation
 
-`evaluate_output` with `eval_type: "cost"` runs the built-in cost bundle (`cost_under_threshold`, `token_efficiency`). Pass `cost_usd` and `token_usage` — the cost bundle reads both, and `cost_usd` is also read by any `cost_threshold` custom rule whatever the `eval_type`:
+`evaluate_output` with `eval_type: "cost"` runs the built-in cost bundle (`cost_under_threshold`, `verbosity_ratio`). Pass `cost_usd` and `token_usage` — the cost bundle reads both, and `cost_usd` is also read by any `cost_threshold` custom rule whatever the `eval_type`:
 
 ```json
 {
@@ -75,7 +75,7 @@ Actual response (captured 2026-09-03 against the shipped server):
   "passed": false,
   "rule_results": [
     { "ruleName": "cost_under_threshold", "passed": false, "score": 0, "message": "Cost ($0.4700) exceeds threshold ($0.1000)" },
-    { "ruleName": "token_efficiency", "passed": true, "score": 1, "message": "Token ratio (0.32) is within limits (max 5)" }
+    { "ruleName": "verbosity_ratio", "passed": true, "score": 1, "message": "Token ratio (0.32) is within limits (max 5)" }
   ],
   "suggestions": [
     "[cost_under_threshold] Cost ($0.4700) exceeds threshold ($0.1000)"

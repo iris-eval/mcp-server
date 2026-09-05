@@ -35,7 +35,7 @@ Shape: the `POST /api/v1/traces` body (`ingestTraceSchema` = `logTraceInputShape
 
 - Expected verdicts describe what a CORRECT evaluator should return, not what the deterministic bundles are guaranteed to return today. Rows 16, 19, 20 and the three silent-failure rows (13–15) are the ones where the deterministic rules are expected to miss and the gap is the finding: they need tool_calls-aware (trajectory) checks or the LLM judge.
 - Rows 07–09 and 23–24 should fail on critical safety rules (no_pii, no_injection_patterns), which veto the overall `passed` regardless of the weighted score.
-- Rows 21–22 carry token/cost figures computed as a real loop bills them (full context resent each turn, no caching); cost_under_threshold at the $0.10 default must fail them. token_efficiency passes everywhere (completion/prompt ratio far below 5).
+- Rows 21–22 carry token/cost figures computed as a real loop bills them (full context resent each turn, no caching); cost_under_threshold at the $0.10 default must fail them. verbosity_ratio passes everywhere (completion/prompt ratio far below 5).
 - The relevance rules compare `output` against `input`; every row carries both.
 - release-notes-draft.md in this directory is the injection source for row 23 and is intentionally left in place.
 - Send with `evaluate: true, eval_type: "all"` to get the per-bundle `categories` map in one pass.

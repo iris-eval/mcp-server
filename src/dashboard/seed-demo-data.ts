@@ -664,7 +664,7 @@ function simulateCostEval(
       : `Cost ($${costUsd.toFixed(4)}) exceeds threshold ($${threshold.toFixed(4)})`,
   };
   const r2: EvalRuleResult = {
-    ruleName: 'token_efficiency',
+    ruleName: 'verbosity_ratio',
     passed: ratio <= maxRatio,
     score: ratio <= maxRatio ? 1 : Math.max(0, 1 - (ratio - maxRatio) / maxRatio),
     message: ratio <= maxRatio

@@ -83,12 +83,12 @@ The same request with `eval_type` omitted. The default runs every bundle, so the
     { "ruleName": "no_stub_output", "category": "safety", "passed": true, "score": 1, "message": "No stub/placeholder markers detected" },
     { "ruleName": "no_hallucination_markers", "category": "safety", "passed": true, "score": 1, "message": "No hallucination signals detected against the provided input context" },
     { "ruleName": "cost_under_threshold", "category": "cost", "passed": false, "score": 0, "message": "Cost data not provided", "skipped": true, "skipReason": "context.costUsd not provided" },
-    { "ruleName": "token_efficiency", "category": "cost", "passed": false, "score": 0, "message": "Token usage not provided", "skipped": true, "skipReason": "context.tokenUsage not provided" }
+    { "ruleName": "verbosity_ratio", "category": "cost", "passed": false, "score": 0, "message": "Token usage not provided", "skipped": true, "skipReason": "context.tokenUsage not provided" }
   ],
   "suggestions": [
     "[no_pii] Potential PII detected: Credit Card",
     "Critical rule(s) failed (no_pii) — passed=false regardless of the weighted score",
-    "3 rule(s) skipped — excluded from the weighted score: expected_coverage (context.expected not provided); cost_under_threshold (context.costUsd not provided); token_efficiency (context.tokenUsage not provided)"
+    "3 rule(s) skipped — excluded from the weighted score: expected_coverage (context.expected not provided); cost_under_threshold (context.costUsd not provided); verbosity_ratio (context.tokenUsage not provided)"
   ],
   "rules_evaluated": 10,
   "rules_skipped": 3,

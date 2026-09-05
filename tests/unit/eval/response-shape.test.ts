@@ -136,7 +136,7 @@ describe('response shape — every built-in result carries its receipt', () => {
   it('an output-only call skips the rules that need more, each saying it was never asked', async () => {
     const r = await evaluate({ output: t13.output, eval_type: 'all' });
     const byName = new Map(r.rule_results.map((x) => [x.ruleName, x]));
-    for (const name of ['keyword_overlap', 'topic_consistency', 'no_silent_tool_failure', 'no_tool_loop', 'cost_under_threshold', 'token_efficiency', 'expected_coverage']) {
+    for (const name of ['keyword_overlap', 'topic_consistency', 'no_silent_tool_failure', 'no_tool_loop', 'cost_under_threshold', 'verbosity_ratio', 'expected_coverage']) {
       const x = byName.get(name)!;
       expect(x.skipped, name).toBe(true);
       expect(x.skipClass, name).toBe('not_applicable');

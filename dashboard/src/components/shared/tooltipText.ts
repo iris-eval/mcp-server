@@ -52,7 +52,7 @@ export const TT = {
   totalCost: 'Sum of trace-level USD cost for this period.',
   costPerTrace: 'Cost in USD attributed to this single trace by the agent (token usage × model pricing).',
   latencyMs: 'End-to-end latency the agent reported for this trace.',
-  tokenEfficiency: 'Output-to-input token ratio. High values may indicate verbose padding.',
+  verbosityRatio: 'Output-to-input token ratio. High values may indicate verbose padding.',
 
   // Rule library
   ruleSeverityLow: `Low — informational: ${SEVERITY_WEIGHT_ONLY}. Does not block an evaluation.`,

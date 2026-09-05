@@ -108,7 +108,7 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   expected_coverage: 'completeness',
   // cost (3)
   cost_under_threshold: 'cost',
-  token_efficiency: 'cost',
+  verbosity_ratio: 'cost',
   no_tool_loop: 'cost',
 };
 
@@ -127,6 +127,6 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'sentence_count', category: 'completeness' },
   { name: 'expected_coverage', category: 'completeness' },
   { name: 'cost_under_threshold', category: 'cost' },
-  { name: 'token_efficiency', category: 'cost' },
+  { name: 'verbosity_ratio', category: 'cost' },
   { name: 'no_tool_loop', category: 'cost' },
 ];

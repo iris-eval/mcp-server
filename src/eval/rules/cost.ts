@@ -32,9 +32,10 @@ export const costUnderThreshold: EvalRule = {
   },
 };
 
-export const tokenEfficiency: EvalRule = {
-  name: 'token_efficiency',
-  description: 'Checks output-to-input token ratio for efficiency',
+export const verbosityRatio: EvalRule = {
+  name: 'verbosity_ratio',
+  description:
+    'The completion-to-prompt token ratio against a ceiling: completion_tokens / prompt_tokens must not exceed max_token_ratio (default 5). This measures output VERBOSITY relative to prompt size, not efficiency — a long answer to a long prompt passes and a long answer to a short prompt fails, and neither says whether the tokens were well spent. Skipped when token usage is not supplied. Renamed from token_efficiency in 0.10.0, because the old name named something the rule does not measure',
   evalType: 'cost',
   weight: 0.5,
   kind: 'measurement',
@@ -47,13 +48,13 @@ export const tokenEfficiency: EvalRule = {
     const prompt = context.tokenUsage?.prompt_tokens;
     const completion = context.tokenUsage?.completion_tokens;
     if (prompt === undefined || completion === undefined || prompt === 0) {
-      return { ruleName: 'token_efficiency', passed: false, score: 0, message: 'Token usage not provided', skipped: true, skipReason: 'context.tokenUsage not provided' };
+      return { ruleName: 'verbosity_ratio', passed: false, score: 0, message: 'Token usage not provided', skipped: true, skipReason: 'context.tokenUsage not provided' };
     }
     const ratio = completion / prompt;
     const maxRatio = (context.customConfig?.max_token_ratio as number) ?? 5;
     const passed = ratio <= maxRatio;
     return {
-      ruleName: 'token_efficiency',
+      ruleName: 'verbosity_ratio',
       passed,
       score: passed ? 1 : Math.max(0, 1 - (ratio - maxRatio) / maxRatio),
       value: { stat: 'completion_to_prompt_ratio', unit: 'ratio', value: ratio },
@@ -192,4 +193,4 @@ export const noToolLoop: EvalRule = {
   },
 };
 
-export const costRules: EvalRule[] = [costUnderThreshold, tokenEfficiency, noToolLoop];
+export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop];

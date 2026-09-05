@@ -149,7 +149,7 @@ carry the judge's reasoning.
 | Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |
 | Safety | no_silent_tool_failure | A tool call that failed is acknowledged, not answered over. Reads `tool_calls`; **skips** without them |
 | Cost | cost_under_threshold | Execution cost within budget |
-| Cost | token_efficiency | Token usage proportionate to the output |
+| Cost | verbosity_ratio | Token usage proportionate to the output |
 | Cost | no_tool_loop | No tool called with the same input more than `max_tool_repeats` times (default 3). Reads `tool_calls`; **skips** without them |
 
 How often each rule is right is measured and published, with intervals, at

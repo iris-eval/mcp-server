@@ -68,11 +68,11 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 ### what did it cost
 
 - **single output** — *has*. Trace cost and token usage are captured and judged by the cost bundle, and the evaluator's own spend — the judge's tokens and cost — is stored on the evaluation. Evidence: tool `log_trace`, rule `cost_under_threshold`, resource `iris://evaluations/{id}`. Needs: `cost`.
-- **output with input / context** — *partial*. A cost ceiling and a token ratio are judged from the trace totals; the ratio measures verbosity, not efficiency, and says so. Evidence: rule `cost_under_threshold`, rule `token_efficiency`. Needs: `cost`, `tokens`.
+- **output with input / context** — *partial*. A cost ceiling and a token ratio are judged from the trace totals; the ratio measures verbosity, not efficiency, and says so. Evidence: rule `cost_under_threshold`, rule `verbosity_ratio`. Needs: `cost`, `tokens`.
 - **trajectory (tool calls)** — *partial*. Cost is judged on the trace total; per-call latency is recorded, per-call tokens and cost are not yet. Evidence: rule `cost_under_threshold`, tool `log_trace`. Needs: `cost`.
 - **multi-run of one input** — *gap*. No grouping over repeated runs, and no rule reads an agent's own cost distribution.
 - **population / dataset / baseline** — *partial*. Aggregate cost over a time window is served to the dashboard; the cost-spike classifier uses a fixed threshold rather than the agent's own distribution. Evidence: route `/api/v1/eval-stats`, resource `iris://dashboard/summary`.
-- **the evaluator itself** — *has*. The cost rules are measured as conformance to their formula, and the evaluator's own spend is stored per evaluation. Evidence: proof `cost_under_threshold`, proof `token_efficiency`.
+- **the evaluator itself** — *has*. The cost rules are measured as conformance to their formula, and the evaluator's own spend is stored per evaluation. Evidence: proof `cost_under_threshold`, proof `verbosity_ratio`.
 ### is it better or worse than before
 
 - **single output** — *n/a*. Better or worse than before needs at least two things to compare.

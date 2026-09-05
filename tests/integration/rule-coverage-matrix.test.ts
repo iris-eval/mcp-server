@@ -481,7 +481,7 @@ const TABLE: ControlledCase[] = [
     category: 'cost',
     output: 'Some output without token context.',
     evalType: 'cost',
-    expectations: { token_efficiency: 'skip' },
+    expectations: { verbosity_ratio: 'skip' },
   },
   {
     id: 'cost.efficiency.pass',
@@ -489,7 +489,7 @@ const TABLE: ControlledCase[] = [
     output: 'Response text.',
     tokenUsage: { prompt_tokens: 100, completion_tokens: 200 },
     evalType: 'cost',
-    expectations: { token_efficiency: 'pass' },
+    expectations: { verbosity_ratio: 'pass' },
   },
   {
     id: 'cost.efficiency.fire',
@@ -497,7 +497,7 @@ const TABLE: ControlledCase[] = [
     output: 'Response with wasteful padding.',
     tokenUsage: { prompt_tokens: 100, completion_tokens: 1000 },
     evalType: 'cost',
-    expectations: { token_efficiency: 'fire' },
+    expectations: { verbosity_ratio: 'fire' },
   },
 ];
 

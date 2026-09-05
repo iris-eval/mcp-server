@@ -160,7 +160,7 @@ const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string
       topic_consistency: 'skip',
       expected_coverage: 'skip',
       cost_under_threshold: 'skip',
-      token_efficiency: 'skip',
+      verbosity_ratio: 'skip',
       no_silent_tool_failure: 'skip',
       no_tool_loop: 'skip',
       non_empty_output: 'pass',

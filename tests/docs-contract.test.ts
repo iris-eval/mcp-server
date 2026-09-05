@@ -249,10 +249,16 @@ describe('docs contract — IRIS_* variables', () => {
 /* ── rule names ──────────────────────────────────────────────────── */
 
 /**
- * Names a rule no longer has. A rename (arc 3 renames token_efficiency)
+ * Names a rule no longer has. A rename (arc 3 renames verbosity_ratio)
  * adds the old name here, and any prose still quoting it fails.
  */
-const RETIRED_RULE_NAMES = new Set<string>([]);
+const RETIRED_RULE_NAMES = new Set<string>([
+  // Renamed in 0.10.0: the rule measures output verbosity relative to prompt
+  // size, and "efficiency" named something it does not measure. Dated blog
+  // posts keep the old name — they described the product on their day — and
+  // this list is what stops NEW prose reintroducing it.
+  'token_efficiency',
+]);
 
 describe('docs contract — rule names', () => {
   // The runtime registry, not the truthbase: .claims.json evalRules.names are the
