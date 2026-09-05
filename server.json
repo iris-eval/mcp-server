@@ -106,6 +106,55 @@
           "format": "string",
           "isSecret": false,
           "name": "IRIS_CITATION_DOMAINS"
+        },
+        {
+          "description": "Transport: stdio (default) or http; same as --transport",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_TRANSPORT"
+        },
+        {
+          "description": "Bind host for the HTTP transport (default 127.0.0.1); only used with --transport http",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_HOST"
+        },
+        {
+          "description": "Comma-separated Origin allowlist for the HTTP transport and dashboard CORS (default http://localhost:*)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_ALLOWED_ORIGINS"
+        },
+        {
+          "description": "Bind host for the dashboard (default 127.0.0.1); same as --dashboard-host",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_DASHBOARD_HOST"
+        },
+        {
+          "description": "Comma-separated key=value headers sent with every OTLP export (for example an auth token for your collector)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_OTEL_HEADERS"
+        },
+        {
+          "description": "service.name resource attribute on exported spans (default iris-mcp)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_OTEL_SERVICE_NAME"
+        },
+        {
+          "description": "Timeout in milliseconds for each OTLP export request",
+          "isRequired": false,
+          "format": "number",
+          "isSecret": false,
+          "name": "IRIS_OTEL_TIMEOUT_MS"
         }
       ]
     }

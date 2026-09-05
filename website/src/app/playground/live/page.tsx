@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "../../../components/nav";
 import { Footer } from "../../../components/footer";
 import { LivePlayground } from "../../../components/playground/live-playground";
+import { VENDORED_RULE_COUNTS_BY_CATEGORY } from "../../../lib/eval/rules";
 
 export const metadata: Metadata = {
   title: "Iris Live Playground — Run real eval rules against your output",
@@ -29,7 +30,7 @@ export default function LivePlaygroundPage() {
     <>
       <Nav />
       <main>
-        <LivePlayground />
+        <LivePlayground ruleCounts={VENDORED_RULE_COUNTS_BY_CATEGORY} />
       </main>
       <Footer />
     </>

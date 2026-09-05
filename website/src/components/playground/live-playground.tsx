@@ -18,6 +18,8 @@ interface RuleResult {
   passed: boolean;
   score: number;
   message: string;
+  skipped?: boolean;
+  skipReason?: string;
 }
 
 interface EvalSummary {
@@ -26,18 +28,28 @@ interface EvalSummary {
   score: number;
   totalRules: number;
   passedRules: number;
+  skippedRules: number;
   vendoredFromVersion: string;
 }
 
-const CATEGORY_OPTIONS: Array<{ value: EvalCategory; label: string }> = [
-  { value: "all", label: "All categories" },
-  { value: "safety", label: "Safety only (4 rules)" },
-  { value: "relevance", label: "Relevance only (3 rules)" },
-  { value: "completeness", label: "Completeness only (4 rules)" },
-  { value: "cost", label: "Cost only (2 rules)" },
-];
+type RuleCounts = Record<Exclude<EvalCategory, "all">, number>;
 
-export function LivePlayground(): React.ReactElement {
+function categoryOptions(counts: RuleCounts): Array<{ value: EvalCategory; label: string }> {
+  return [
+    { value: "all", label: "All categories" },
+    { value: "safety", label: `Safety only (${counts.safety} rules)` },
+    { value: "relevance", label: `Relevance only (${counts.relevance} rules)` },
+    { value: "completeness", label: `Completeness only (${counts.completeness} rules)` },
+    { value: "cost", label: `Cost only (${counts.cost} rules)` },
+  ];
+}
+
+/**
+ * `ruleCounts` comes from the server component that renders this page,
+ * read off the vendored registry — the labels are never typed by hand.
+ */
+export function LivePlayground({ ruleCounts }: { ruleCounts: RuleCounts }): React.ReactElement {
+  const CATEGORY_OPTIONS = categoryOptions(ruleCounts);
   const [output, setOutput] = useState("");
   const [input, setInput] = useState("");
   const [expected, setExpected] = useState("");
@@ -212,7 +224,8 @@ export function LivePlayground(): React.ReactElement {
                 </div>
                 <div className="text-right">
                   <p className="text-[12px] uppercase tracking-[0.1em] text-text-muted">
-                    {result.passedRules} of {result.totalRules} rules pass
+                    {result.passedRules} of {result.totalRules} judged rules pass
+                    {result.skippedRules > 0 ? ` · ${result.skippedRules} skipped` : ""}
                   </p>
                   <p className="font-mono text-2xl font-bold text-text-primary">
                     {(result.score * 100).toFixed(0)}%
@@ -224,9 +237,11 @@ export function LivePlayground(): React.ReactElement {
                   <div
                     key={r.ruleName}
                     className={`rounded-md border p-3 ${
-                      r.passed
-                        ? "border-eval-pass/30 bg-eval-pass/5"
-                        : "border-eval-fail/40 bg-eval-fail/10"
+                      r.skipped
+                        ? "border-dashed border-border-default bg-surface-primary"
+                        : r.passed
+                          ? "border-eval-pass/30 bg-eval-pass/5"
+                          : "border-eval-fail/40 bg-eval-fail/10"
                     }`}
                   >
                     <div className="flex items-baseline justify-between gap-2">
@@ -234,12 +249,16 @@ export function LivePlayground(): React.ReactElement {
                         {r.ruleName}
                       </code>
                       <span
-                        className={`text-[11px] font-bold uppercase ${r.passed ? "text-eval-pass" : "text-eval-fail"}`}
+                        className={`text-[11px] font-bold uppercase ${
+                          r.skipped ? "text-text-muted" : r.passed ? "text-eval-pass" : "text-eval-fail"
+                        }`}
                       >
-                        {r.passed ? "PASS" : "FAIL"} · {r.category}
+                        {r.skipped ? "SKIPPED" : r.passed ? "PASS" : "FAIL"} · {r.category}
                       </span>
                     </div>
-                    <p className="mt-1 text-[12px] text-text-secondary">{r.message}</p>
+                    <p className="mt-1 text-[12px] text-text-secondary">
+                      {r.skipped ? `Not judged: ${r.skipReason ?? r.message}. The installed server skips it the same way.` : r.message}
+                    </p>
                   </div>
                 ))}
               </div>

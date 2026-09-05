@@ -381,6 +381,11 @@ async function* walk(dir) {
       if (SKIP_DIR_NAMES.has(e.name)) continue;
       yield* walk(resolve(dir, e.name));
     } else if (e.isFile()) {
+      // A *.template.* file is the SOURCE of a rendered surface (the two
+      // SKILL.md files render from skills/iris-eval/SKILL.template.md); its
+      // {{slots}} carry no numbers, and scanning it beside its renders would
+      // double-count every claim they make.
+      if (/\.template\./.test(e.name)) continue;
       yield resolve(dir, e.name);
     }
   }

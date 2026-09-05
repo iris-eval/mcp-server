@@ -19,8 +19,11 @@
  *      playground's pass/fail must equal the server's. The server's engine
  *      runs with the shipped thresholds, exactly as evaluate_output does.
  *      A rule the server SKIPS (no input, no cost data, output too brief)
- *      counts as a pass, which is what the playground reports for it — the
- *      playground has no skip mechanism and says so in its header.
+ *      must be SKIPPED by the playground too: skip parity is asserted, not
+ *      waived (it used to count a server skip as a pass, which enshrined the
+ *      playground's "skipped rule shows as a pass with score 1" defect —
+ *      arc zero, G10). The fixed cases include inputs missing each context
+ *      so every skip path is exercised.
  *   2. SOURCE PINS — every pattern, constant and helper the two files share
  *      is compared as source text, comments and whitespace aside, so a
  *      server edit to a shared block fails here until it is carried over.
@@ -70,16 +73,16 @@ const RULE_NAMES = CATEGORIES.flatMap((category) => rulesByType[category].map((r
 
 const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds);
 
-type Verdict = 'pass' | 'fail';
+type Verdict = 'pass' | 'fail' | 'skip';
 
 /** What the playground says per rule. */
 function playgroundVerdicts(ctx: EvalContext): Record<string, Verdict> {
   const verdicts: Record<string, Verdict> = {};
-  for (const r of evaluateOutput(ctx, 'all').ruleResults) verdicts[r.ruleName] = r.passed ? 'pass' : 'fail';
+  for (const r of evaluateOutput(ctx, 'all').ruleResults) verdicts[r.ruleName] = r.skipped ? 'skip' : r.passed ? 'pass' : 'fail';
   return verdicts;
 }
 
-/** What the installed server says per rule; a skipped rule reads as a pass. */
+/** What the installed server says per rule; a skipped rule reads as a skip. */
 function serverVerdicts(ctx: EvalContext): { verdicts: Record<string, Verdict>; result: EvalResult } {
   const result = engine.evaluateAll({
     output: ctx.output,
@@ -92,7 +95,7 @@ function serverVerdicts(ctx: EvalContext): { verdicts: Record<string, Verdict>; 
         : undefined,
   });
   const verdicts: Record<string, Verdict> = {};
-  for (const r of result.rule_results) verdicts[r.ruleName] = r.skipped || r.passed ? 'pass' : 'fail';
+  for (const r of result.rule_results) verdicts[r.ruleName] = r.skipped ? 'skip' : r.passed ? 'pass' : 'fail';
   return { verdicts, result };
 }
 
@@ -101,7 +104,7 @@ function describeDisagreements(server: EvalResult, playground: EvalContext): str
   return RULE_NAMES.map((name) => {
     const s = server.rule_results.find((r) => r.ruleName === name);
     const p = mine.find((r) => r.ruleName === name);
-    return `${name}: server ${s?.skipped ? 'skip' : s?.passed ? 'pass' : 'fail'} (${s?.message}) · playground ${p?.passed ? 'pass' : 'fail'} (${p?.message})`;
+    return `${name}: server ${s?.skipped ? 'skip' : s?.passed ? 'pass' : 'fail'} (${s?.message}) · playground ${p?.skipped ? 'skip' : p?.passed ? 'pass' : 'fail'} (${p?.message})`;
   }).join('\n');
 }
 
@@ -138,6 +141,25 @@ const PUBLIC_IP = '93.184.216.34';
  * every other rule too.
  */
 const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string, Verdict> }> = [
+  {
+    name: 'output alone: every rule that needs input, expected, cost, tokens or tool calls skips on both sides',
+    ctx: { output: 'The retention sweep runs when the server starts and deletes traces older than the configured number of days.' },
+    expect: {
+      keyword_overlap: 'skip',
+      topic_consistency: 'skip',
+      expected_coverage: 'skip',
+      cost_under_threshold: 'skip',
+      token_efficiency: 'skip',
+      no_silent_tool_failure: 'skip',
+      no_tool_loop: 'skip',
+      non_empty_output: 'pass',
+    },
+  },
+  {
+    name: 'a brief output with an input: topic_consistency skips, keyword_overlap judges',
+    ctx: { output: 'Yes, on loopback.', input: 'Does the dashboard bind to the loopback address by default?' },
+    expect: { topic_consistency: 'skip', keyword_overlap: 'fail' },
+  },
   {
     name: 'a loopback address is not PII (t-19, t-21)',
     ctx: { output: 'The dashboard binds to 127.0.0.1 by default and serves on port 6920.' },
