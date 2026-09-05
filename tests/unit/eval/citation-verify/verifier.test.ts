@@ -41,7 +41,13 @@ describe('verifyCitations', () => {
       allowFetch: true,
     });
     expect(res.overallScore).toBeNull();
-    expect(res.passed).toBe(true); // nothing to fail
+    /*
+     * Nothing was judged, so there is no verdict — null, not true. Until
+     * 0.10.0 this returned `passed: true`, so an output whose sources were
+     * never checked came back looking verified, and a caller reading
+     * `passed` shipped it.
+     */
+    expect(res.passed).toBeNull();
     expect(res.totalCitationsFound).toBe(0);
     expect(res.totalResolved).toBe(0);
   });
@@ -175,7 +181,14 @@ describe('verifyCitations', () => {
     expect(res.totalSupported).toBe(1);
     expect(res.totalResolved).toBe(2);
     expect(res.overallScore).toBe(0.5);
-    expect(res.passed).toBe(true); // 0.5 >= 0.5 threshold
+    /*
+     * Counts, not a proportion. One judged source did not support the
+     * claim, and that is the finding — a fabricated citation among real
+     * ones used to score 0.67 and pass. The score is still reported; it is
+     * no longer what decides.
+     */
+    expect(res.totalUnsupported).toBe(1);
+    expect(res.passed).toBe(false);
   });
 
   it('stops calling judge when total cost cap would be exceeded', async () => {
@@ -282,8 +295,13 @@ describe('verifyCitations', () => {
     expect(res.totalJudged).toBe(0);
     expect(res.totalSupported).toBe(0);
     // Nothing was judged — there is no verdict, so no score and no fail.
-    expect(res.overallScore).toBeNull();
-    expect(res.passed).toBe(true);
+    expect(res.overallScore).toBeNull();
+    /*
+     * The judge failed on every citation, so nothing was verified. That is
+     * not a pass — a judge outage used to come back looking like a clean
+     * bill of health for the sources.
+     */
+    expect(res.passed).toBeNull();
     expect(res.citations[0].resolveError?.kind).toBe('server_error');
   });
 
