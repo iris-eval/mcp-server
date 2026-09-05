@@ -44,6 +44,6 @@
     "@langchain/core": ">=0.3.0"
   },
   "dependencies": {
-    "@iris-eval/mcp-server": "^0.9.0"
+    "@iris-eval/mcp-server": "^0.10.0"
   }
 }

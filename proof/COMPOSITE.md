@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-09-05T18:21:18.800Z for v0.9.0 (local generating commit `ece19ed` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-05T19:17:13.397Z for v0.10.0 (local generating commit `ae27615` — branch commits are squashed on merge, so cite the version).
 Composite version `523510356de7` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `4951762e456d`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 111 cases: 24 real transcripts (the out-of-sample line) and 87 composed; 73 must not ship, 38 may, 0 unlabelled. Split: 85 dev / 26 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
