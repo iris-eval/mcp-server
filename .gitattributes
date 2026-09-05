@@ -14,3 +14,4 @@ skills/iris-eval/SKILL.template.md text eol=lf
 skills/iris-eval/SKILL.md text eol=lf
 claude-plugin/skills/agent-eval/SKILL.md text eol=lf
 scripts/claims/render-llms.mjs text eol=lf
+src/eval/published-accuracy.ts text eol=lf
