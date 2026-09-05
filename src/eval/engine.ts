@@ -10,6 +10,7 @@ import type {
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
+import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
 import { inputsPresent, stampRuleResult } from './stamp.js';
 import { buildProvenance, configHash, deriveCoverage, deriveVerdict, rulesetHash } from './verdict.js';
 import { PKG_VERSION } from '../config/defaults.js';
@@ -80,6 +81,9 @@ export class EvalEngine {
    */
   private criticality: (rule: EvalRule) => EffectiveCriticality;
 
+  /** The verdict's six defaults, resolved once from the config this engine was built with. */
+  private compose: ComposeConfig;
+
   /**
    * `criticalityOverrides` are `config.eval` — the criticalRules /
    * nonCriticalRules lists. Validated here as well as in loadConfig, so an
@@ -95,6 +99,33 @@ export class EvalEngine {
     this.ruleThresholds = ruleThresholds;
     this.criticalityOverrides = criticalityOverrides;
     this.criticality = criticalityResolver(criticalityOverrides);
+    this.compose = {
+      composer: criticalityOverrides?.composer ?? DEFAULT_COMPOSE.composer,
+      falsePassCost: criticalityOverrides?.falsePassCost ?? DEFAULT_COMPOSE.falsePassCost,
+      onCriticalSkipped: criticalityOverrides?.onCriticalSkipped ?? DEFAULT_COMPOSE.onCriticalSkipped,
+      requiredEvidence: (criticalityOverrides?.requiredEvidence as ComposeConfig['requiredEvidence']) ?? DEFAULT_COMPOSE.requiredEvidence,
+      defaultsGate: criticalityOverrides?.defaultsGate ?? DEFAULT_COMPOSE.defaultsGate,
+      prior: criticalityOverrides?.prior ?? DEFAULT_COMPOSE.prior,
+      priorMode: criticalityOverrides?.priorMode ?? DEFAULT_COMPOSE.priorMode,
+    };
+  }
+
+  /*
+   * The verdict, and `passed` with it.
+   *
+   * From 0.10.0 `passed` IS `verdict.state === 'pass'` — one definition, on
+   * every surface. The weighted `score` survives untouched as a quality
+   * gradient over the rules that ran, and is never re-meant: a reader who
+   * was using it as a gradient keeps it, and a reader who was using it as a
+   * safety signal was reading a number that arc zero measured as inert.
+   */
+  private decide(result: EvalResult): EvalResult {
+    const verdict = this.compose.composer === 'legacy' ? deriveVerdict(result, this.threshold) : compose(result, this.compose);
+    result.verdict = verdict;
+    result.passed = verdict.passed;
+    const notes = interpretations(result, verdict, this.compose);
+    if (notes.length > 0) result.interpretations = notes;
+    return result;
   }
 
   /** The effective criticality of one rule under this engine's config. Read by the rule roster surfaces. */
@@ -263,7 +294,15 @@ export class EvalEngine {
     for (const [i, rule] of rules.entries()) {
       const raw = rule.evaluate(evalContext);
       const ruleId = this.idByRule.get(rule);
-      const category = categories?.[i];
+      /*
+       * The bundle this rule ran under. `categories` is only supplied for
+       * eval_type="all"; for a single bundle the rule's own evalType is the
+       * answer and is just as true. It used to be left off, which meant a
+       * single-bundle call could not tell a custom rule from a built-in one
+       * — and the composer needs that, because a custom rule's severity is
+       * the deployment's own statement of how much it matters.
+       */
+      const category = categories?.[i] ?? (evalType === 'all' ? rule.evalType : evalType);
       /*
        * Every result says whether THIS rule vetoes and who decided that.
        * Without it, a reader holding a failed evaluation cannot tell a
@@ -352,8 +391,7 @@ export class EvalEngine {
         coverage,
         provenance,
       };
-      unknown.verdict = deriveVerdict(unknown, this.threshold);
-      return unknown;
+      return this.decide(unknown);
     }
 
     const suggestions: string[] = [];
@@ -410,8 +448,7 @@ export class EvalEngine {
       coverage,
       provenance,
     };
-    result.verdict = deriveVerdict(result, this.threshold);
-    return result;
+    return this.decide(result);
   }
 
   /**

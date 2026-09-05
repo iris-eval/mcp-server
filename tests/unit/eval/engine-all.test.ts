@@ -126,13 +126,20 @@ describe('EvalEngine.evaluateAll', () => {
 });
 
 describe('EvalEngine rule identity', () => {
-  it('single-bundle evaluate stamps ruleId on deployed rules and leaves category off', async () => {
+  it('single-bundle evaluate stamps ruleId on deployed rules and stamps the bundle too', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('completeness', keywordRule('canary', 'report'), 'rule-00000001');
     const result = await engine.evaluate('completeness', { output: CLEAN_OUTPUT });
     const canary = result.rule_results.find((r) => r.ruleName === 'canary')!;
     expect(canary.ruleId).toBe('rule-00000001');
-    expect(canary.category).toBeUndefined();
+    /*
+     * The bundle used to be stamped only for eval_type="all". From 0.10.0 a
+     * single-bundle call stamps the rule's own evalType, which is just as
+     * true and which the composer needs: a custom rule's severity is the
+     * deployment's statement of how much it matters, and without the bundle
+     * a single-bundle call could not tell a custom rule from a built-in.
+     */
+    expect(canary.category).toBe('completeness');
     // The id sits right after the name so a reader sees it first.
     expect(Object.keys(canary).slice(0, 2)).toEqual(['ruleName', 'ruleId']);
   });

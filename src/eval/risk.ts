@@ -19,16 +19,25 @@
  * badness of an output); policies are gates, not evidence; judgments would
  * enter only with a local measured run, which no harness case has.
  *
- * Nothing here ships: `passed` is still today's arithmetic. This module
- * exists so arc 2 can score the risk verdict beside the legacy one on the
- * same corpus, with the interval on the difference, BEFORE arc 3 makes it
- * the composer. Plan §4.3, §4.4.
+ * Arc 2 measured this beside today's arithmetic on a labelled corpus before
+ * arc 3 made it the composer: on the held-out split it is right about
+ * shipping 57.7% of the time against 38.5%, at an IDENTICAL false-block
+ * rate, and misses 55.6% of the bad outputs against 83.3%. The difference
+ * in accuracy is +19.2 points with a 95% interval of [-7.5, 42.4], so the
+ * case for it is that it misses less without blocking more — not that it is
+ * proven more accurate at that sample size. Plan §4.3, §4.4;
+ * proof/COMPOSITE.md carries the numbers and regenerates them.
  */
-import type { EvalResult, EvalRuleResult, FailureClass } from '../../src/types/eval.js';
-import { publishedAccuracyFor } from '../../src/eval/accuracy.js';
-import { PUBLISHED_ACCURACY_CORPUS_VERSION } from '../../src/eval/published-accuracy.js';
-import { FAILURE_CLASS_IDS } from '../../src/eval/failure-classes.js';
-import { fnv1a, mulberry32 } from './materialise.js';
+import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js';
+import { publishedAccuracyFor } from './accuracy.js';
+import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
+import { FAILURE_CLASS_IDS } from './failure-classes.js';
+import { fnv1a, mulberry32 } from './seeded-random.js';
+
+/** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
+const HALF = 0.5;
+const sensOf = (d: { counts: { tp: number; fn: number } }): number => (d.counts.tp + HALF) / (d.counts.tp + d.counts.fn + 2 * HALF);
+const specOf = (d: { counts: { tn: number; fp: number } }): number => (d.counts.tn + HALF) / (d.counts.tn + d.counts.fp + 2 * HALF);
 
 export const RISK_DRAWS = 2000;
 export const DEFAULT_PRIOR = 0.5;
@@ -170,13 +179,21 @@ const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): RiskEstimate | null {
   const detectors = detectorsOf(result);
   if (detectors.length === 0) return null;
-  const point = pBadFrom(
-    detectors,
-    prior,
-    mode,
-    (d) => d.counts.tp / (d.counts.tp + d.counts.fn),
-    (d) => d.counts.tn / (d.counts.tn + d.counts.fp),
-  );
+  /*
+   * Jeffreys half-counts in the POINT estimate, not only in the draws.
+   *
+   * Twelve of the fifteen published families recorded zero false positives.
+   * With specificity exactly 1 the positive predictive value of a fire is
+   * exactly 1 at every prior, so p_bad read exactly 1.000 on 31 of the 111
+   * composite cases — the same overconfidence the credible interval was
+   * added to cure, reintroduced one layer down. A half-count on each cell
+   * says what thirty cases can actually support: no_silent_tool_failure's
+   * single-fire contribution moves from 1.000 to about 0.69, still well
+   * over the shipped threshold, and now with an interval that means
+   * something. Found by arc 2 while writing up the composer, not by
+   * reading it.
+   */
+  const point = pBadFrom(detectors, prior, mode, sensOf, specOf);
   const rng = mulberry32(fnv1a(`risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}`).join(',')}`));
   const draws: number[] = [];
   for (let i = 0; i < RISK_DRAWS; i++) {
@@ -199,7 +216,12 @@ export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, 
     lo: round4(Math.min(at(0.025), point.pBad)),
     hi: round4(Math.max(at(0.975), point.pBad)),
     perClass: Object.fromEntries(Object.entries(point.perClass).map(([k, v]) => [k, v === null ? null : round4(v)])),
-    assumptions: ['detectors independent across classes', 'published accuracy is in-sample, same-model labelled', `prior ${prior} ${mode} (default)`],
+    assumptions: [
+      'detectors independent across classes',
+      'published accuracy is in-sample, same-model labelled',
+      'sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain',
+      `prior ${prior}, spread ${mode}`,
+    ],
   };
 }
 

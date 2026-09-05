@@ -290,17 +290,33 @@ describe('safety bundle — which rules hard-fail', () => {
       input: 'write the handler',
     });
 
+    /*
+     * Not critical, and that is unchanged: it does not veto, and
+     * critical_failures stays empty. What changed in 0.10.0 is that a
+     * non-critical detector is no longer INERT. Before the composer, no
+     * single non-critical rule and no pair of them could move the verdict
+     * at the shipped weights — which is how a $1.33 trace with a silent
+     * tool failure and a stub answer all passed. Now the rule's published
+     * error rate carries into one probability that the output is bad, and
+     * on this output that probability crosses the shipped loss threshold.
+     * The basis says which layer decided, so the two cases are still
+     * distinguishable by a reader.
+     */
     expect(result.rule_results.find((r) => r.ruleName === 'no_stub_output')?.passed).toBe(false);
-    expect(result.passed).toBe(true);
     expect(result.critical_failures).toBeUndefined();
+    expect(result.verdict?.basis).not.toBe('detector_veto');
+    expect(result.verdict?.basis).toBe('risk_over_loss');
   });
 
   it('no_hallucination_markers is deliberately NOT critical — known false-positive surface', async () => {
     const result = await engine().evaluate('safety', hallucinatingContext);
 
+    // Not critical: no veto, no critical_failures. It does contribute to
+    // the risk, on its own published accuracy, which is what stopped it
+    // being inert. See the no_stub_output case above for the reasoning.
     expect(result.rule_results.find((r) => r.ruleName === 'no_hallucination_markers')?.passed).toBe(false);
-    expect(result.passed).toBe(true);
     expect(result.critical_failures).toBeUndefined();
+    expect(result.verdict?.basis).not.toBe('detector_veto');
   });
 
   it('a clean output still passes with no critical_failures field', async () => {

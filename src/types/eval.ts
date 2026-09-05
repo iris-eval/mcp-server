@@ -77,6 +77,14 @@ export interface EvalRule {
   classes?: readonly FailureClass[];
   /** Bumped when the rule's meaning changes, so a stored result names the definition that produced it. */
   version?: number;
+  /**
+   * Who wrote this rule. `custom` marks anything `createCustomRule`
+   * produced — a deployed rule or one passed inline in the call. The
+   * composer needs it: for OUR rule a shipped threshold is a guess and only
+   * advises, while for THEIRS the severity they deployed it at is their own
+   * statement of how much it matters. Absent means built-in.
+   */
+  origin?: 'built-in' | 'custom';
   evaluate(context: EvalContext): EvalRuleResult;
 }
 
@@ -186,6 +194,27 @@ export interface Coverage {
  * a detector's veto, nothing judged, or the score against the threshold.
  * `risk` is null until the compose-by-kind release computes it.
  */
+/**
+ * A sentence a reader needs that the verdict alone does not carry, with who
+ * it is for and what to change. The one that must exist: when a rule
+ * visibly FIRED and the verdict still passed, say why and name the setting
+ * that would change it — "cost_under_threshold failed" beside
+ * "passed: true" reads as a bug to anyone who has not read the composer.
+ *
+ * `suggestions` remains for now and is rendered from these; it is deprecated
+ * from 0.13.0 and removed at 1.0, per VERSIONING.md's two-minor rule.
+ */
+export interface Interpretation {
+  severity: 'block' | 'warn' | 'note';
+  addressee: 'agent' | 'operator' | 'author';
+  /** The rule this is about, when it is about one. */
+  rule?: string;
+  text: string;
+  /** The configuration key that changes this behaviour, when there is one. */
+  configKey?: string;
+}
+
+/** Placed on EvalResult by the engine; see Interpretation above. */
 export interface Verdict {
   state: 'pass' | 'fail' | 'unknown';
   passed: boolean;
@@ -252,6 +281,8 @@ export interface EvalRuleResult {
   classes?: FailureClass[];
   /** The version of the rule definition that produced this result. */
   ruleVersion?: number;
+  /** Who wrote the rule: `custom` for anything createCustomRule produced. See EvalRule.origin. */
+  origin?: 'built-in' | 'custom';
   /** Which of the rule's declared needs the call actually carried — what the rule SAW. */
   saw?: Need[];
   /** Present only when `skipped`; says whether the rule was never asked or was asked and could not answer. */
@@ -380,6 +411,10 @@ export interface EvalResult {
   categories?: Partial<Record<EvalType, EvalCategoryResult>>;
   /** The verdict with its basis (0.9.0) — computed by the engine, derived on read for stored rows that carry provenance. */
   verdict?: Verdict;
+
+  /** Sentences a reader needs that the verdict alone does not carry (0.10.0). */
+
+  interpretations?: Interpretation[];
   /** Coverage by evaluation question (0.9.0) — computed by the engine, derived on read from the stamped rule results. */
   coverage?: Coverage;
   /** What produced this verdict (0.9.0) — persisted; absent on rows written before it, never fabricated. */

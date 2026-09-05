@@ -34,8 +34,15 @@ describe('deriveVerdict — the basis of today\'s arithmetic, with passed unchan
     expect(r.verdict).toMatchObject({ state: 'pass', passed: true, basis: 'clean', by: [], risk: null });
   });
 
-  it('a low score is score_below_threshold and names the rules that failed', async () => {
-    const r = await engine.evaluate('completeness', { output: 'ok' });
+  it('a low score is score_below_threshold under the legacy composer, and names the rules that failed', async () => {
+    /*
+     * score_below_threshold is the LEGACY basis: the composer that shipped
+     * from 0.10.0 never consults the weighted mean, so this asserts the
+     * composer a deployment selects with eval.composer = "legacy" (kept for
+     * two minors so an upgrade has somewhere to stand).
+     */
+    const legacy = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { composer: 'legacy' });
+    const r = await legacy.evaluate('completeness', { output: 'ok' });
     expect(r.passed).toBe(false);
     expect(r.verdict!.basis).toBe('score_below_threshold');
     expect(r.verdict!.by.length).toBeGreaterThan(0);
@@ -135,6 +142,12 @@ describe('deriveCriticalSkipped and the hashes', () => {
     expect(r.provenance!.thresholds.default).toBe(defaultConfig.eval.defaultThreshold);
     expect(r.provenance!.corpusVersion).toMatch(/^[0-9a-f]{12}$/);
     expect(new Date(r.provenance!.judgedAt).toISOString()).toBe(r.provenance!.judgedAt);
-    expect(deriveVerdict(r, r.provenance!.thresholds.default)).toEqual(r.verdict);
+    /*
+     * The result's verdict is the COMPOSED one from 0.10.0; deriveVerdict is
+     * the legacy arithmetic and is no longer what the engine puts there. On
+     * a clean output both agree that it passed, which is the property worth
+     * asserting: the two composers do not disagree about nothing being wrong.
+     */
+    expect(deriveVerdict(r, r.provenance!.thresholds.default).passed).toBe(r.verdict!.passed);
   });
 });

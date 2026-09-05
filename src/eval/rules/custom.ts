@@ -269,6 +269,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
     weight: definition.weight ?? 1,
     critical: severity === 'high' || severity === 'critical',
     kind: 'policy',
+    origin: 'custom',
     mechanism: meta?.mechanism ?? 'formula',
     needs: meta?.needs ?? ['output'],
     classes: [],
