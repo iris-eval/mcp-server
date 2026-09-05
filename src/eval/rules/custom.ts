@@ -1,5 +1,5 @@
 import isSafeRegex from 'safe-regex2';
-import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition } from '../../types/eval.js';
+import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, CustomRuleType, Mechanism, Need } from '../../types/eval.js';
 import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
@@ -244,13 +244,35 @@ function runSandboxed(
  * dashboard sorting. Inline custom_rules (evaluate_output's per-call
  * definitions) carry no severity and stay weight-only.
  */
+/**
+ * A custom rule is the author's own constraint, so its kind is `policy`
+ * whatever its mechanism; the mechanism and the inputs it reads follow the
+ * type. The question it answers is the author's and is not guessed here.
+ */
+const CUSTOM_TYPE_META: Record<CustomRuleType, { mechanism: Mechanism; needs: readonly Need[] }> = {
+  regex_match: { mechanism: 'pattern', needs: ['output'] },
+  regex_no_match: { mechanism: 'pattern', needs: ['output'] },
+  min_length: { mechanism: 'formula', needs: ['output'] },
+  max_length: { mechanism: 'formula', needs: ['output'] },
+  contains_keywords: { mechanism: 'pattern', needs: ['output'] },
+  excludes_keywords: { mechanism: 'pattern', needs: ['output'] },
+  json_schema: { mechanism: 'formula', needs: ['output'] },
+  cost_threshold: { mechanism: 'formula', needs: ['cost'] },
+};
+
 export function createCustomRule(definition: CustomRuleDefinition, severity?: RuleSeverity): EvalRule {
+  const meta = CUSTOM_TYPE_META[definition.type];
   return {
     name: definition.name,
     description: `Custom rule: ${definition.name}`,
     evalType: 'custom',
     weight: definition.weight ?? 1,
     critical: severity === 'high' || severity === 'critical',
+    kind: 'policy',
+    mechanism: meta?.mechanism ?? 'formula',
+    needs: meta?.needs ?? ['output'],
+    classes: [],
+    version: 1,
     evaluate(context: EvalContext): EvalRuleResult {
       switch (definition.type) {
         case 'regex_match': {

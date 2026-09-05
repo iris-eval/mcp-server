@@ -214,7 +214,9 @@
         "stubMarkers",
         "defaultEvalType",
         "customRuleTypeCount",
-        "customRuleTypes"
+        "customRuleTypes",
+        "roster",
+        "questions"
       ],
       "properties": {
         "builtInCount": {
@@ -231,6 +233,38 @@
             "type": "string"
           },
           "description": "The custom-rule type identifiers, in declaration order."
+        },
+        "roster": {
+          "type": "array",
+          "description": "Every built-in rule's declared metadata (0.9.0): the kind of claim, its mechanism, the inputs it reads, the question it answers, the failure classes a failure belongs to, and the definition version. Read from the rule sources; anchored to the runtime registry by tests/unit/eval/rule-metadata.test.ts.",
+          "items": {
+            "type": "object",
+            "required": ["name", "kind", "mechanism", "needs", "question", "classes", "version"],
+            "properties": {
+              "name": { "type": "string" },
+              "kind": { "type": "string", "enum": ["measurement", "detection", "inference", "judgment", "policy", "verification"] },
+              "mechanism": { "type": "string", "enum": ["formula", "pattern", "heuristic", "model", "external"] },
+              "needs": { "type": "array", "items": { "type": "string" } },
+              "question": { "type": "string" },
+              "classes": { "type": "array", "items": { "type": "string" } },
+              "version": { "$ref": "#/$defs/count" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "questions": {
+          "type": "array",
+          "description": "The evaluation questions (src/eval/questions.ts): the vocabulary of coverage and of the public capability map.",
+          "items": {
+            "type": "object",
+            "required": ["id", "text", "answeredBy"],
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "answeredBy": { "type": "string", "enum": ["rule", "tool", "surface"] }
+            },
+            "additionalProperties": false
+          }
         },
         "categories": {
           "type": "array",

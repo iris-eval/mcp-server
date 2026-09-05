@@ -5,6 +5,12 @@ export const minOutputLength: EvalRule = {
   description: 'Output must meet a minimum character length',
   evalType: 'completeness',
   weight: 1,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['output'],
+  question: 'complete',
+  classes: ['format'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     const minLen = (context.customConfig?.min_output_length as number)
       ?? (context.customConfig?.min_length as number)
@@ -25,6 +31,12 @@ export const nonEmptyOutput: EvalRule = {
   description: 'Output must not be empty or whitespace-only',
   evalType: 'completeness',
   weight: 2,
+  kind: 'policy',
+  mechanism: 'formula',
+  needs: ['output'],
+  question: 'complete',
+  classes: ['format'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     const passed = context.output.trim().length > 0;
     return {
@@ -41,6 +53,12 @@ export const sentenceCount: EvalRule = {
   description: 'Output must contain a minimum number of sentences',
   evalType: 'completeness',
   weight: 0.5,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['output'],
+  question: 'complete',
+  classes: ['format'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     const minSentences = (context.customConfig?.min_sentences as number) ?? 2;
     const sentences = context.output.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
@@ -59,6 +77,12 @@ export const expectedCoverage: EvalRule = {
   description: 'Output must cover key terms from expected output',
   evalType: 'completeness',
   weight: 1.5,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['output', 'expected'],
+  question: 'complete',
+  classes: ['incomplete_ask'],
+  version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.expected) {
       return { ruleName: 'expected_coverage', passed: false, score: 0, message: 'No expected output provided', skipped: true, skipReason: 'context.expected not provided' };

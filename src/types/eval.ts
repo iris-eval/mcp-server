@@ -11,6 +11,38 @@ export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custo
  */
 export type EvalResultType = EvalType | 'all';
 
+/**
+ * What KIND of claim a rule makes — the mandate's distinction between a
+ * measurement (a statistic against a threshold), a detection (a pattern is
+ * present, with a measured error rate), an inference (a signal standing in
+ * for an unobservable property), a judgment (a model's reasoning), a policy
+ * (the deployment's own constraint) and an external verification. Kind is
+ * the claim; `mechanism` is how the claim is measured. The composer decides
+ * by kind and never averages kinds together.
+ */
+export type ClaimKind = 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
+export type Mechanism = 'formula' | 'pattern' | 'heuristic' | 'model' | 'external';
+/** An input a rule reads. A rule skips — never passes — when a declared need is absent. */
+export type Need = 'output' | 'input' | 'expected' | 'tool_calls' | 'tool_outputs' | 'tools_catalogue' | 'cost' | 'tokens' | 'citations';
+/** The evaluation question a rule answers; the registry is src/eval/questions.ts. */
+export type QuestionId = 'safe_output' | 'grounded' | 'complete' | 'relevant' | 'task_completed' | 'tool_use_correct' | 'within_budget';
+/** What went wrong, in the reader's words, independent of which rule caught it; the registry is src/eval/failure-classes.ts. */
+export type FailureClass =
+  | 'pii_leak'
+  | 'credential_leak'
+  | 'injection'
+  | 'injection_compliance'
+  | 'silent_tool_failure'
+  | 'tool_loop'
+  | 'stub'
+  | 'fabrication'
+  | 'ungrounded'
+  | 'incomplete_ask'
+  | 'off_task'
+  | 'over_budget'
+  | 'format'
+  | 'invalid_tool_call';
+
 export interface EvalRule {
   name: string;
   description: string;
@@ -28,6 +60,23 @@ export interface EvalRule {
    * is the verdict, and a critical violation must never be averaged away.
    */
   critical?: boolean;
+  /**
+   * The rule's metadata — what kind of claim it makes, how it measures it,
+   * what it reads, which question it answers, which failure classes a
+   * failing result belongs to, and the version of its definition. Every
+   * built-in declares all six (tests/unit/eval/rule-metadata.test.ts);
+   * custom types declare kind, mechanism, needs and version and leave the
+   * question to their author. Optional on the interface so a rule built
+   * elsewhere still compiles; a result from a rule without them carries no
+   * `kind`, which reads as unknown — never as a measurement.
+   */
+  kind?: ClaimKind;
+  mechanism?: Mechanism;
+  needs?: readonly Need[];
+  question?: QuestionId;
+  classes?: readonly FailureClass[];
+  /** Bumped when the rule's meaning changes, so a stored result names the definition that produced it. */
+  version?: number;
   evaluate(context: EvalContext): EvalRuleResult;
 }
 
