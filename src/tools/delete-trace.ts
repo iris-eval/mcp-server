@@ -14,6 +14,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
+import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { guarded, respond } from './respond.js';
 
 const inputSchema = {
   trace_id: z
@@ -21,6 +23,11 @@ const inputSchema = {
     .regex(/^[a-f0-9]{32}$/)
     .describe('Trace id to delete (32-hex lowercase; obtained from log_trace response or get_traces)'),
 };
+
+export const deleteTraceOutputSchema = z.looseObject({
+  deleted: z.boolean().describe('true when a trace row was removed; false when no trace with that id existed for this tenant'),
+  trace_id: z.string().describe('the id that was asked for'),
+});
 
 export function registerDeleteTraceTool(
   server: McpServer,
@@ -30,24 +37,26 @@ export function registerDeleteTraceTool(
     'delete_trace',
     {
       title: 'Delete Trace',
-      description: [
-        'Remove a single trace by id. Cascades to spans; eval_results keep the score history with trace_id NULLed.',
-        '',
-        'Sibling tools — log_trace creates traces, get_traces queries them, evaluate_output / evaluate_with_llm_judge / verify_citations score them. delete_rule handles custom-rule deletion (separate concern); list_rules / deploy_rule manage the custom-rule lifecycle. delete_trace is the DESTRUCTIVE single-row remove for traces; it does NOT touch eval_results (preserved for audit + drift analytics), spans cascade automatically.',
-        '',
-        'Behavior. DESTRUCTIVE — SQL DELETE scoped to the caller\'s tenant_id. Cascades: spans belonging to this trace are deleted (FK ON DELETE CASCADE); eval_results that referenced this trace have their trace_id set to NULL (FK ON DELETE SET NULL) so aggregate dashboards + historical scores remain valid even after the trace is gone. Not idempotent: deleting an already-deleted trace returns `deleted: false`. Does not emit an audit log entry — traces are user-scope data, not policy changes. Rate-limited to 20 req/min on HTTP MCP.',
-        '',
-        'Output shape. Returns JSON: `{ "deleted": boolean, "trace_id": string }`. `deleted=true` if a row was removed; `deleted=false` if no trace with that id existed (or it belonged to a different tenant — cross-tenant deletes silently fail).',
-        '',
-        "Use when a trace was captured in error, contains sensitive data that must be removed for compliance (e.g., a customer exercises GDPR right-to-erasure), or when cleaning up test data. Combine with get_traces to find candidates: query with filters → review → delete_trace(id) per target. For bulk time-window deletion, set `retention.days` in config.json (default 30; the sweep runs when the server starts) — delete_trace is the single-row surgical path.",
-        '',
-        "Don't use to clean up OLD data in bulk (use the `retention.days` setting in config.json; there is no command-line flag for it). Don't use to PAUSE a trace — traces are immutable once stored; there's nothing to pause. Don't use to delete eval_results — eval_results survive their trace's deletion intentionally (for audit + drift analysis); they're pruned only by retention.",
-        '',
-        'Parameters. trace_id is the only parameter; must match 32-char lowercase hex (Zod regex). The trace_id you pass is exactly what log_trace returned in its response, or what get_traces returned per row. Format mismatch fails Zod with 400 BEFORE the storage layer is touched. Cross-tenant trace_ids return `deleted: false` silently — they\'re invisible to the caller\'s tenant (prevents enumeration attacks; matches delete_rule\'s tenant-isolation contract).',
-        '',
-        "Error modes. Throws 400 on malformed trace_id (wrong format: not 32-char lowercase hex). Returns `{deleted: false}` when the id doesn't exist in the caller's tenant (not an error — the trace may simply have been deleted already). Returns 429 on HTTP rate limit. Storage failures propagate as 500.",
-      ].join('\n'),
+      description: describeTool({
+        summary: 'Remove one stored trace by id; its spans go with it, and its evaluations keep their scores with trace_id cleared.',
+        does:
+          "Deletes the trace row for the caller's tenant. Spans cascade. Evaluations linked to it are kept for history with their trace_id set to null. " +
+          "deleted is false when no trace has that id — already removed, or not this tenant's — and that is not an error. " +
+          'No audit entry is written: traces are user data, not policy. For bulk expiry set retention.days in config.json (the sweep runs at startup); this is the single-row path.',
+        whenNot:
+          'To expire old data in bulk (retention.days). To delete evaluations: they are not deleted per row; retention and --purge cover them. To pause anything: traces are immutable, there is nothing to pause.',
+        returns: deleteTraceOutputSchema,
+        errors:
+          'IRIS_STORAGE_ERROR when the delete cannot run. A malformed trace_id (not 32 lowercase hex) is refused before the handler runs. ' +
+          ERROR_ENVELOPE_SENTENCE,
+        siblings: {
+          log_trace: 'store a trace',
+          get_traces: 'find the trace to delete',
+          delete_rule: 'the equivalent for custom rules',
+        },
+      }),
       inputSchema: strictInput(inputSchema),
+      outputSchema: deleteTraceOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -55,16 +64,9 @@ export function registerDeleteTraceTool(
         openWorldHint: false,
       },
     },
-    async (args) => {
+    guarded(async (args) => {
       const deleted = await storage.deleteTrace(LOCAL_TENANT, args.trace_id);
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({ deleted, trace_id: args.trace_id }),
-          },
-        ],
-      };
-    },
+      return respond(deleteTraceOutputSchema, { deleted, trace_id: args.trace_id });
+    }),
   );
 }

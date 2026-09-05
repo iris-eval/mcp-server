@@ -3,18 +3,22 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { verifyCitations } from '../eval/citation-verify/verifier.js';
-import { findPricing } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import { generateEvalId } from '../utils/ids.js';
+import { JUDGE_KEY_VARS } from '../judge-enablement.js';
 import { strictInput } from './strict-input.js';
 import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
+import { inferProvider, resolveApiKey } from './evaluate-with-llm-judge.js';
+import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { irisError } from './errors.js';
+import { evaluationLinks, guarded, respond } from './respond.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output containing citations to verify'),
   model: z
     .string()
     .describe(
-      'Judge model for per-citation verification. Supported: anthropic = claude-opus-4-7 | claude-sonnet-4-6 | claude-haiku-4-5-20251001; openai = gpt-4o | gpt-4o-mini | o1-mini.',
+      'Judge model for per-citation verification. Supported: anthropic = claude-opus-4-7 | claude-sonnet-4-6 | claude-haiku-4-5 | claude-haiku-4-5-20251001; openai = gpt-4o | gpt-4o-mini | o1-mini.',
     ),
   provider: z.enum(['anthropic', 'openai']).optional().describe('Auto-detected from model when omitted'),
   allow_fetch: z.boolean().optional().describe('Permit outbound HTTP to resolve URLs/DOIs. Defaults to IRIS_CITATION_ALLOW_FETCH=1; false otherwise. SSRF-guarded regardless.'),
@@ -22,32 +26,12 @@ const inputSchema = {
     .array(z.string())
     .optional()
     .describe('Restrict fetches to hostnames in this list (suffix match allowed). Merged with IRIS_CITATION_DOMAINS env.'),
-  max_cost_usd_total: z.number().positive().optional().describe('Cap TOTAL judge cost across all citations in this call; default $1.00'),
-  max_citations: z.number().int().positive().max(50).optional().describe('Max citations to verify (extras skipped); default 20'),
+  max_cost_usd_total: z.number().positive().optional().describe('Cap TOTAL judge cost across all citations in this call; default 1.00 USD — the pipeline stops when the next call would exceed it'),
+  max_citations: z.number().int().positive().max(50).optional().describe('Max citations to verify (extras skipped, not errored); default 20, at most 50'),
   per_source_timeout_ms: z.number().int().positive().optional().describe('Per-URL fetch timeout; default 10_000'),
   per_source_max_bytes: z.number().int().positive().optional().describe('Per-URL body cap; default 5MB'),
   trace_id: z.string().optional().describe('Link verification result to a stored trace (id from log_trace / get_traces); an unknown id is rejected before any fetch or judge call'),
 };
-
-function inferProvider(model: string): LLMProvider {
-  const pricing = findPricing(model);
-  if (!pricing) {
-    throw new Error(
-      `Unknown model "${model}". Provider cannot be inferred. Supported models: src/eval/llm-judge/pricing.ts.`,
-    );
-  }
-  return pricing.provider;
-}
-
-function resolveApiKey(provider: LLMProvider): string {
-  const key = provider === 'anthropic' ? process.env.IRIS_ANTHROPIC_API_KEY : process.env.IRIS_OPENAI_API_KEY;
-  if (!key) {
-    throw new Error(
-      `${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} judge requires IRIS_${provider === 'anthropic' ? 'ANTHROPIC' : 'OPENAI'}_API_KEY for verify_citations.`,
-    );
-  }
-  return key;
-}
 
 function resolveAllowFetch(paramValue?: boolean): boolean {
   if (paramValue !== undefined) return paramValue;
@@ -68,8 +52,8 @@ function resolveDomainAllowlist(paramValue?: string[]): readonly string[] | unde
  * was nothing to judge (no citations, none resolved). It is NOT the honest
  * answer when citations resolved and the judge then failed on every one —
  * a wrong API key, a model the provider refused, a parse failure — because
- * the caller reads "passed" and ships. That case is an error naming the
- * cause; nothing is stored. (v0.6.0 acceptance pass, observation 3.)
+ * the caller reads "passed" and ships. That case is IRIS_JUDGE_FAILED
+ * naming the cause; nothing is stored. (v0.6.0 acceptance pass, observation 3.)
  */
 export function assertJudgeRan(result: {
   totalResolved: number;
@@ -81,35 +65,62 @@ export function assertJudgeRan(result: {
   if (judgeFailures.length === 0) return;
   const kinds = [...new Set(judgeFailures.map((c) => c.resolveError!.kind))].join(', ');
   const first = judgeFailures[0].resolveError!.message;
-  throw new Error(
+  throw irisError(
+    'IRIS_JUDGE_FAILED',
     `verify_citations could not judge any of the ${result.totalResolved} resolved citation(s): the judge failed on every one (${kinds}). ` +
       `Nothing was verified and nothing was stored, so there is no verdict. First error: ${first}`,
+    {
+      retryable: /timeout|rate_limit|server_error/.test(kinds),
+      recovery: [
+        'Check the key and the model: a refused key or an unknown model fails every citation the same way.',
+        'Retry when the kind is a timeout, a rate limit or a provider server error.',
+        'Raise max_cost_usd_total when the kind is cost_cap_reached.',
+      ],
+    },
   );
 }
+
+export const verifyCitationsOutputSchema = z.looseObject({
+  id: z.string().describe('the evaluation id; read it back at iris://evaluations/{id}'),
+  trace_id: z.string().optional().describe('the linked trace, when one was named'),
+  overall_score: z.number().nullable().describe('supported / judged; null when nothing was judged'),
+  passed: z.boolean().describe('true when every judged citation was supported, or nothing was judged and nothing failed'),
+  total_citations_found: z.number().int().describe('citations extracted from the output'),
+  total_resolved: z.number().int().describe('citations whose source was fetched'),
+  total_judged: z.number().int().describe('citations the judge ruled on'),
+  total_supported: z.number().int().describe('citations the judge found supported'),
+  total_cost_usd: z.number().describe('the spend across every judge call'),
+  citations: z.array(z.looseObject({ resolve_status: z.string() })).describe('per citation: the citation (raw, kind, identifier, offsets), resolve_status ok | skipped | error, resolve_error, source (url, status, content_type, bytes_fetched, truncated), judge (supported, confidence, rationale, cost_usd, latency_ms, tokens)'),
+});
 
 export function registerVerifyCitationsTool(server: McpServer, storage: IStorageAdapter): void {
   server.registerTool(
     'verify_citations',
     {
       title: 'Verify Citations',
-      description: [
-        'Extract citations from agent output, fetch the cited sources, and use an LLM judge to check whether each source supports the claim in context. Returns per-citation verdicts + an overall support ratio.',
-        '',
-        'Sibling tools — evaluate_with_llm_judge runs general semantic scoring (accuracy, helpfulness, correctness, faithfulness); this tool is specifically for citation grounding (does the cited source actually support the claim). evaluate_output\'s no_hallucination_markers heuristic detects FABRICATED-looking citations cheaply (free, no fetch); this tool resolves and verifies them (paid, opt-in fetch, SSRF-guarded). log_trace / get_traces handle trace I/O. verify_citations is the GROUNDING-CHECK path — narrowest in scope, deepest in rigor.',
-        '',
-        'Behavior. Three-phase pipeline: (1) regex extraction of [N] numbered refs, (Author, Year) parentheticals, bare URLs, and DOIs (in-process, no network); (2) SSRF-guarded fetch of URL + DOI citations, with scheme allowlist, private/link-local/cloud-metadata IP blocking, optional domain allowlist (IRIS_CITATION_DOMAINS), 10s timeout, 5MB body cap, manual redirect chase (max 3, re-checked), in-process LRU cache; (3) per-citation LLM judge call asking "does this source support this claim?" with a 256-token verdict. Opt-in via allow_fetch=true or IRIS_CITATION_ALLOW_FETCH=1 — Iris refuses outbound HTTP by default. Cost-capped across the entire call by max_cost_usd_total (default $1.00) — the pipeline stops when the cap would be exceeded. Rate-limited to 20 req/min on HTTP MCP. Writes one eval_result row tagged with per-citation provenance.',
-        '',
-        'Output shape. Returns JSON: `{ "id": "<uuid>", "overall_score": 0..1|null, "passed": boolean, "total_citations_found": number, "total_resolved": number, "total_judged": number, "total_supported": number, "total_cost_usd": number, "citations": [{ "citation": { "raw", "kind", "identifier", "offset_start", "offset_end" }, "resolve_status": "ok"|"skipped"|"error", "resolve_error"?, "source"?: { "url", "status", "content_type", "bytes_fetched", "truncated" }, "judge"?: { "supported", "confidence", "rationale", "cost_usd", "latency_ms", "input_tokens", "output_tokens" } }] }`. `overall_score = supported / judged`; `null` when nothing was judged (no resolvable citations, or every judge call failed). Infrastructure failures (cost cap, judge timeout/error, malformed verdict) leave a citation resolved-but-unjudged — reported per-citation via resolve_error, never scored as unsupported.',
-        '',
-        'Use when the output makes factual claims backed by [1]-style references, DOIs, or URLs and you want to separate "cited correctly" from "cited and wrong" from "cited but unresolvable". Particularly useful for research/legal/medical agents where fabricated citations are the dominant failure mode.',
-        "",
-        "Don't use when the agent output has no citations at all (overall_score will be null; the tool degrades gracefully but a heuristic rule is cheaper). Don't use without allow_fetch=true or IRIS_CITATION_ALLOW_FETCH=1 — the tool refuses outbound HTTP unless explicitly enabled. Don't use with an open allowlist + untrusted output on the public internet; you are effectively running a user-directed fetcher. For stricter safety set IRIS_CITATION_DOMAINS to a curated list.",
-        '',
-        'Parameters. model is required; provider auto-detected from model name (override only for ambiguous IDs). allow_fetch=false by default — outbound HTTP is REFUSED unless explicitly true OR IRIS_CITATION_ALLOW_FETCH=1 env. domain_allowlist suffix-matches hostnames (e.g., "wikipedia.org" allows en.wikipedia.org); merged with IRIS_CITATION_DOMAINS env (UNION — either source permits). max_citations defaults 20, hard cap 50 (extras are skipped silently, NOT errored — check total_citations_found in the response if precise). max_cost_usd_total defaults $1.00 — the pipeline stops mid-citation when the next judge call would exceed the cap (returns partial verdicts). per_source_timeout_ms defaults 10000 (10s); per_source_max_bytes defaults 5MB (truncates at boundary, judges still run on truncated content); independently of that, the judge reads at most the first 12,000 characters of each fetched source, and the per-citation cost estimate is taken on that truncated prompt, not on the full body. trace_id optional but recommended. Defaults: max_citations=20, max_cost_usd_total=$1.00, per_source_timeout_ms=10000, per_source_max_bytes=5242880, allow_fetch=false.',
-        '',
-        'Error modes. Throws when the API key env var is missing. Throws "Unknown model" on unsupported model IDs. Throws when trace_id does not match a stored trace (checked before any fetch or judge call; nothing is written). Per-citation errors are collected (resolve_error.kind = bad_scheme / ssrf / not_allowed_domain / timeout / too_large / bad_status / redirect_loop / not_text / fetch_disabled / malformed_judge_response / cost_cap_reached / unresolvable_kind) and returned in the response rather than thrown. An empty output or output with zero extractable citations returns overall_score=null + passed=true (nothing to fail).',
-      ].join('\n'),
+      description: describeTool({
+        summary:
+          'Extract the citations in an output, fetch the sources (opt-in, SSRF-guarded) and ask an LLM judge on your key whether each source supports its claim.',
+        does:
+          'Three phases. Extraction, no network: [N] references, (Author, Year), bare URLs and DOIs. Fetch of URL and DOI citations only when allow_fetch is true or IRIS_CITATION_ALLOW_FETCH=1, through a scheme allowlist, private and cloud-metadata address blocking, an optional hostname allowlist (domain_allowlist, merged with IRIS_CITATION_DOMAINS), a per-source timeout and byte cap, and at most three re-checked redirects. ' +
+          'Then one judge call per resolved citation on your own key, reading the first part of each source, capped in total by max_cost_usd_total. Up to max_citations are verified; extras are skipped, not errored. ' +
+          'overall_score is supported / judged and null when nothing was judged. Per-citation failures (bad scheme, blocked address, timeout, too large, cost cap, fetch disabled) are reported on the citation, never scored as unsupported. One evaluation row is stored.',
+        whenNot:
+          "When the output has no citations: the score is null, and evaluate_output's hallucination signals are the cheap check. " +
+          `Without a key (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}): the call returns IRIS_JUDGE_NOT_ENABLED with the enable steps. ` +
+          'With fetch enabled and an open allowlist on untrusted output: you are running a user-directed fetcher — set IRIS_CITATION_DOMAINS.',
+        returns: verifyCitationsOutputSchema,
+        errors:
+          'IRIS_JUDGE_NOT_ENABLED, IRIS_JUDGE_UNKNOWN_MODEL and IRIS_UNKNOWN_TRACE before any fetch or spend. IRIS_JUDGE_FAILED when citations resolved but the judge failed on every one — an error, not a passing verdict; nothing is stored. ' +
+          ERROR_ENVELOPE_SENTENCE,
+        siblings: {
+          evaluate_with_llm_judge: 'general semantic scoring',
+          evaluate_output: 'the free deterministic path, including the hallucination signals',
+          log_trace: 'record the execution first',
+        },
+      }),
       inputSchema: strictInput(inputSchema),
+      outputSchema: verifyCitationsOutputSchema,
       annotations: {
         readOnlyHint: false,      // Writes eval_result + spends money
         destructiveHint: false,   // Creates data; doesn't overwrite/delete
@@ -117,9 +128,9 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         openWorldHint: true,      // Outbound HTTP to citation URLs + LLM provider API
       },
     },
-    async (args) => {
+    guarded(async (args) => {
       const provider = (args.provider as LLMProvider | undefined) ?? inferProvider(args.model);
-      const apiKey = resolveApiKey(provider);
+      const apiKey = resolveApiKey(provider, 'verify_citations');
       const allowFetch = resolveAllowFetch(args.allow_fetch);
       const domainAllowlist = resolveDomainAllowlist(args.domain_allowlist);
 
@@ -171,60 +182,59 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         rules_evaluated: 1,
         rules_skipped: 0,
         insufficient_data: result.overallScore === null,
+        eval_cost_usd: result.totalCostUsd,
       });
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              id: evalId,
-              overall_score: result.overallScore,
-              passed: result.passed,
-              total_citations_found: result.totalCitationsFound,
-              total_resolved: result.totalResolved,
-              total_judged: result.totalJudged,
-              total_supported: result.totalSupported,
-              total_cost_usd: result.totalCostUsd,
-              citations: result.citations.map((c) => ({
-                citation: {
-                  raw: c.citation.raw,
-                  kind: c.citation.kind,
-                  identifier: c.citation.identifier,
-                  offset_start: c.citation.offsetStart,
-                  offset_end: c.citation.offsetEnd,
-                },
-                resolve_status: c.resolveStatus,
-                resolve_error: c.resolveError,
-                // Mapped to the documented snake_case keys. The verifier's
-                // internal shape is camelCase (contentType, bytesFetched) and
-                // used to be passed through verbatim, so a client parsing
-                // `source.content_type` per the description read undefined.
-                source: c.source
-                  ? {
-                      url: c.source.url,
-                      status: c.source.status,
-                      content_type: c.source.contentType,
-                      bytes_fetched: c.source.bytesFetched,
-                      truncated: c.source.truncated,
-                    }
-                  : undefined,
-                judge: c.judge
-                  ? {
-                      supported: c.judge.supported,
-                      confidence: c.judge.confidence,
-                      rationale: c.judge.rationale,
-                      cost_usd: c.judge.costUsd,
-                      latency_ms: c.judge.latencyMs,
-                      input_tokens: c.judge.inputTokens,
-                      output_tokens: c.judge.outputTokens,
-                    }
-                  : undefined,
-              })),
-            }),
-          },
-        ],
-      };
-    },
+      return respond(
+        verifyCitationsOutputSchema,
+        {
+          id: evalId,
+          ...(args.trace_id ? { trace_id: args.trace_id } : {}),
+          overall_score: result.overallScore,
+          passed: result.passed,
+          total_citations_found: result.totalCitationsFound,
+          total_resolved: result.totalResolved,
+          total_judged: result.totalJudged,
+          total_supported: result.totalSupported,
+          total_cost_usd: result.totalCostUsd,
+          citations: result.citations.map((c) => ({
+            citation: {
+              raw: c.citation.raw,
+              kind: c.citation.kind,
+              identifier: c.citation.identifier,
+              offset_start: c.citation.offsetStart,
+              offset_end: c.citation.offsetEnd,
+            },
+            resolve_status: c.resolveStatus,
+            resolve_error: c.resolveError,
+            // Mapped to the documented snake_case keys. The verifier's
+            // internal shape is camelCase (contentType, bytesFetched) and
+            // used to be passed through verbatim, so a client parsing
+            // `source.content_type` per the description read undefined.
+            source: c.source
+              ? {
+                  url: c.source.url,
+                  status: c.source.status,
+                  content_type: c.source.contentType,
+                  bytes_fetched: c.source.bytesFetched,
+                  truncated: c.source.truncated,
+                }
+              : undefined,
+            judge: c.judge
+              ? {
+                  supported: c.judge.supported,
+                  confidence: c.judge.confidence,
+                  rationale: c.judge.rationale,
+                  cost_usd: c.judge.costUsd,
+                  latency_ms: c.judge.latencyMs,
+                  input_tokens: c.judge.inputTokens,
+                  output_tokens: c.judge.outputTokens,
+                }
+              : undefined,
+          })),
+        },
+        evaluationLinks(evalId, args.trace_id),
+      );
+    }),
   );
 }

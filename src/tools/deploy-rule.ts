@@ -19,13 +19,16 @@ import type { DeployedCustomRule } from '../types/custom-rule.js';
 import type { CustomRuleDefinition, EvalType } from '../types/eval.js';
 import { LOCAL_TENANT, type TenantId } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
+import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { guarded, respond } from './respond.js';
 
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
 
 /**
  * A rule with this name is already deployed and the caller did not ask to
  * replace it. Carries the existing rule(s) so an HTTP surface can answer
- * 409 with them beside the same message the MCP tool throws.
+ * 409 with them beside the same message the MCP tool returns as
+ * IRIS_DUPLICATE_RULE (src/tools/errors.ts maps it by name).
  */
 export class DuplicateRuleNameError extends Error {
   readonly existing: DeployedCustomRule[];
@@ -181,6 +184,12 @@ const inputSchemaWithAliases = strictInput(inputSchema).superRefine((args, ctx) 
   }
 });
 
+export const deployRuleOutputSchema = z.looseObject({
+  rule: z.looseObject({ id: z.string(), name: z.string() }).describe('the rule as persisted: id (rule-<hex>, keep it for delete_rule), name, description, evalType, severity, definition, enabled, createdAt, updatedAt, version, sourceMomentId'),
+  replaced: z.array(z.looseObject({ id: z.string() })).optional().describe('with replace: true, the earlier rule(s) of the same name that were retired'),
+  warning: z.string().optional().describe('with replace: true, one sentence naming what was retired'),
+});
+
 export function registerDeployRuleTool(
   server: McpServer,
   customRuleStore: CustomRuleStore,
@@ -190,24 +199,29 @@ export function registerDeployRuleTool(
     'deploy_rule',
     {
       title: 'Deploy Custom Rule',
-      description: [
-        'Deploy a new custom evaluation rule that will fire on every future evaluate_output call of its eval category.',
-        '',
-        'Sibling tools — list_rules enumerates deployed rules, delete_rule removes them (or disables/re-enables them with its `enabled` argument), evaluate_output runs them. log_trace / get_traces / delete_trace handle the trace lifecycle separately; evaluate_with_llm_judge / verify_citations run semantic scoring (not heuristic-rule-driven). deploy_rule is the WRITE path that grows the custom-rule library.',
-        '',
-        'Behavior. Writes a row to ~/.iris/custom-rules.json (atomic write via temp file + rename) and appends a `rule.deploy` entry to the audit log (~/.iris/audit.log). The rule activates immediately for the running process and persists across restarts. Each call mints a fresh rule_id. Rule names are unique among deployed rules: deploying a name that is already deployed is REJECTED unless `replace: true`, in which case the existing same-named rule(s) are deleted (audit `rule.delete` rows written, unregistered from the live engine) and the new rule takes their place under a new id — the response lists what was replaced. Rules are owned by the local tenant. Rate-limited to 20 req/min on HTTP MCP.',
-        '',
-        'Output shape. Returns JSON: `{ "rule": { "id": "rule-XXXX", "name", "description", "evalType", "severity", "definition", "enabled": true, "createdAt", "updatedAt", "version": 1, "sourceMomentId?" }, "replaced?": [{ "id", "evalType", "severity" }], "warning?": string }`. The returned rule is the canonical persisted form; save the `id` if you plan to disable or delete later. `replaced` and `warning` appear only when `replace: true` removed an earlier rule of the same name.',
-        '',
-        "Use when an agent observes a recurring failure pattern and decides to enforce it as a standing rule. The `source_moment_id` field preserves provenance — downstream audit can trace the rule back to the moment that inspired it. Combine with evaluate_output + get_traces: 1) evaluate_output surfaces failures; 2) get_traces filters to the failure set; 3) analyze the pattern; 4) deploy_rule bakes it into the default eval path.",
-        '',
-        "Don't use to VALIDATE a rule before committing — deploy writes immediately. Use the dashboard's preview endpoint (POST /api/v1/rules/custom/preview) to replay a definition against recent stored traces first. To UPDATE a rule: call deploy_rule with the same name and `replace: true` (the old rule is deleted, the new one gets a fresh id), or delete_rule then deploy_rule. To pause a rule without losing it: delete_rule with `enabled: false`.",
-        '',
-        'Parameters. Argument names are snake_case (eval_type, source_moment_id) — the camelCase spellings evalType / sourceMomentId are accepted as aliases for compatibility, but pass only one spelling of each. name is 1-80 chars (Zod-enforced min/max — the same cap the persisted store applies); appears in eval_result rule_results (alongside the rule id as `ruleId`) so make it human-readable. description is optional, max 500 chars (used in dashboard tooltips). eval_type determines WHEN the rule fires: a deployed rule runs ONLY on evaluate_output calls whose eval_type equals the rule\'s eval_type, plus eval_type="all" (which runs every bundle) — a "completeness" rule does NOT fire on eval_type="safety" or on eval_type="custom"; eval_type="custom" runs rules deployed under "custom" (and the call\'s inline custom_rules) and nothing else. severity decides what a FAILURE of the rule does: low/medium failures only lower the weighted score (and drive dashboard sort + audit alerts); high/critical failures HARD-FAIL the evaluation — the overall `passed` is forced to false regardless of the weighted score, and the rule is listed in the response\'s `critical_failures`. Severity never changes the numeric score itself (that uses the rule\'s weight). definition.type and definition.config must match (e.g., regex_match needs config.pattern; cost_threshold needs config.max_cost; min_length needs config.min_length; max_length needs config.max_length; contains_keywords/excludes_keywords need config.keywords). definition.name is optional and, if given, overwritten by the top-level name. Invalid configs are REJECTED at deploy time with the offending field named, instead of deploying and then failing every evaluation. source_moment_id is optional but recommended (preserves workflow-inversion provenance from Make-This-A-Rule composer). replace defaults to false. Defaults: severity="medium", replace=false.',
-        '',
-        "Error modes. Throws 400 on invalid definition (Zod rejects — e.g., regex that fails safe-regex2 ReDoS check, or length > 1000 chars), on an unknown key inside `definition` (the valid keys are listed; config keys are free-form), on empty `name` or `name` over 80 chars, on a non-positive weight, and when both spellings of an aliased argument are passed. Throws when a rule with the same name is already deployed and `replace` is not true — the message names the existing rule id so you can delete it, replace it, or pick another name. Any eval_type/definition.type combination is valid (a regex_match rule can enforce a safety policy; a max_length rule can express completeness) — there is no category/type mismatch error. Returns 429 when HTTP rate limit exceeded. File-write failures (disk full, read-only fs) propagate as 500; the audit log is best-effort and does not block deploy.",
-      ].join('\n'),
+      description: describeTool({
+        summary: 'Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited.',
+        does:
+          'Writes the rule to ~/.iris/custom-rules.json, appends a rule.deploy audit entry and registers it with the running engine, so it fires on the very next call and survives restarts. ' +
+          'eval_type says WHEN it fires (that bundle, and eval_type="all"); severity says what a failure DOES: low and medium only lower the weighted score, high and critical force passed to false and list the rule in critical_failures. ' +
+          'definition.type picks the check (regex_match, regex_no_match, min_length, max_length, contains_keywords, excludes_keywords, json_schema, cost_threshold) and definition.config carries its keys (pattern; min_length; max_length; keywords; max_cost). ' +
+          'Any bundle and type combine. Names are unique: a taken name is refused unless replace is true, which retires the earlier rule(s) first and reports them. Argument names are snake_case; the camelCase aliases evalType and sourceMomentId are accepted — pass one spelling of each.',
+        whenNot:
+          'To try a rule first: POST /api/v1/rules/custom/preview on the dashboard replays a definition against stored traces without deploying. For a one-off check on one call: the custom_rules argument of evaluate_output. To pause a rule: delete_rule with enabled: false.',
+        returns: deployRuleOutputSchema,
+        errors:
+          'IRIS_DUPLICATE_RULE when the name is deployed and replace is false (the message names the existing id). ' +
+          'IRIS_INVALID_RULE_CONFIG when the definition is rejected — a regex that fails the ReDoS check or exceeds 1000 characters, a missing config key — naming the field; nothing is deployed. ' +
+          'IRIS_STORAGE_ERROR when the store cannot be written. An unknown key in definition, a name over 80 characters, a non-positive weight or both spellings of an alias are refused before the handler runs. ' +
+          ERROR_ENVELOPE_SENTENCE,
+        siblings: {
+          list_rules: 'see what is deployed and the built-in roster',
+          delete_rule: 'remove, disable or re-enable',
+          evaluate_output: 'where the rule fires',
+        },
+      }),
       inputSchema: inputSchemaWithAliases,
+      outputSchema: deployRuleOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -215,7 +229,7 @@ export function registerDeployRuleTool(
         openWorldHint: false,
       },
     },
-    async (args) => {
+    guarded(async (args) => {
       const evalType = (args.eval_type ?? args.evalType) as EvalType;
       const sourceMomentId = args.source_moment_id ?? args.sourceMomentId;
 
@@ -231,7 +245,8 @@ export function registerDeployRuleTool(
 
       // Same-name redeploy (#373) — shared with the dashboard's deploy
       // route; see retireSameNamedRules above. Throws (nothing deployed)
-      // when the name is taken and replace is false.
+      // when the name is taken and replace is false; `guarded` turns that
+      // into IRIS_DUPLICATE_RULE.
       const replaced = retireSameNamedRules(customRuleStore, evalEngine, LOCAL_TENANT, args.name, args.replace, 'mcp');
 
       // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
@@ -253,19 +268,10 @@ export function registerDeployRuleTool(
       // Severity rides along: high/critical makes the rule hard-failing.
       evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              rule,
-              ...(replaced.length > 0
-                ? { replaced, warning: replacedRulesWarning(args.name, replaced) }
-                : {}),
-            }),
-          },
-        ],
-      };
-    },
+      return respond(deployRuleOutputSchema, {
+        rule,
+        ...(replaced.length > 0 ? { replaced, warning: replacedRulesWarning(args.name, replaced) } : {}),
+      });
+    }),
   );
 }

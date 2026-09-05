@@ -12,6 +12,25 @@ import { registerDeleteTraceTool } from './delete-trace.js';
 import { registerEvaluateWithLLMJudgeTool } from './evaluate-with-llm-judge.js';
 import { registerVerifyCitationsTool } from './verify-citations.js';
 
+/**
+ * Every tool this server registers, by name. The capabilities object
+ * lists it, the docs contract checks prose against it, and a test asserts
+ * it equals what tools/list returns — so a tool added below without a
+ * name here (or the reverse) fails before it ships.
+ */
+export const TOOL_NAMES = [
+  'log_trace',
+  'evaluate_output',
+  'get_traces',
+  'list_rules',
+  'deploy_rule',
+  'delete_rule',
+  'delete_trace',
+  'evaluate_with_llm_judge',
+  'verify_citations',
+] as const;
+export type ToolName = (typeof TOOL_NAMES)[number];
+
 export function registerAllTools(
   server: McpServer,
   storage: IStorageAdapter,

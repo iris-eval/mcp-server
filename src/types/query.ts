@@ -122,6 +122,8 @@ export interface IStorageAdapter {
   getSpansByTraceId(tenantId: TenantId, traceId: string): Promise<Span[]>;
   insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void>;
   getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]>;
+  /** One stored evaluation by id, in the same derived-on-read shape as every other reader; null when absent. */
+  getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null>;
   queryEvalResults(
     tenantId: TenantId,
     options: {

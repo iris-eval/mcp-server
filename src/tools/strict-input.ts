@@ -31,7 +31,7 @@ export function strictInput<T extends z.ZodRawShape>(shape: T) {
           `Valid arguments: ${validKeys}. ` +
           'Unknown arguments are rejected rather than silently ignored, so a misspelled ' +
           'argument name cannot change what gets evaluated — check the spelling against ' +
-          "the tool's input schema and retry."
+          "the tool's input schema and retry. Code IRIS_INVALID_ARGUMENT."
         : undefined,
   });
 }

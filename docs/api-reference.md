@@ -20,8 +20,11 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [verify_citations](#verify_citations)
 - [OpenTelemetry Export](#opentelemetry-export)
 - [MCP Resources](#mcp-resources)
+  - [iris://capabilities](#iriscapabilities)
+  - [iris://proof](#irisproof)
   - [iris://dashboard/summary](#irisdashboardsummary)
   - [iris://traces/{trace_id}](#iristracestrace_id)
+  - [iris://evaluations/{id}](#irisevaluationsid)
 - [Dashboard API Routes](#dashboard-api-routes)
   - [POST /api/v1/traces](#post-apiv1traces)
   - [GET /api/v1/traces](#get-apiv1traces)
@@ -581,9 +584,27 @@ One `ResourceSpans` entry per trace with `service.name`, `telemetry.sdk.name=iri
 
 ---
 
+## Server instructions, structured responses and errors
+
+Since 0.9.0 the server is agent-native in three ways, all locked by `tests/integration/response-schema.test.ts`:
+
+- **Instructions.** The `initialize` response carries server instructions built at boot from this server's runtime state: the rule count and bundles, the effective critical list after `eval.criticalRules` / `eval.nonCriticalRules`, the pass threshold, whether a judge key reached the process, and the resources. A client that shows instructions gets the frame before it lists a tool; a client that hides them gets the same facts from `iris://capabilities`.
+- **Structured responses.** Every tool declares an `outputSchema` and returns the same object as `content[0].text` (JSON) and as `structuredContent`. Responses that create something link it as a `resource_link` content item (`log_trace` → `iris://traces/{trace_id}`; the three verdict tools → `iris://evaluations/{id}` and the trace when linked; `list_rules` → `iris://proof`).
+- **Structured errors.** A failure inside a tool returns `isError: true` with `{"error": {"code", "message", "recovery": [], "retryable", "field"?, "valid"?, "see"?, "kind"?, "retryAfterMs"?}}` as text and as `structuredContent`, plus a link to `iris://capabilities`. Codes: `IRIS_UNKNOWN_TRACE`, `IRIS_DUPLICATE_RULE`, `IRIS_INVALID_RULE_CONFIG`, `IRIS_JUDGE_NOT_ENABLED` (its `recovery` is the enable workflow), `IRIS_JUDGE_UNKNOWN_MODEL` (`valid` lists the models), `IRIS_BUDGET_EXCEEDED`, `IRIS_PROVIDER_ERROR` (`kind`: auth · rate_limit · bad_request · server_error · timeout · malformed_response), `IRIS_JUDGE_FAILED`, `IRIS_STORAGE_ERROR`, `IRIS_INTERNAL_ERROR`. An argument the input schema rejects never reaches the handler: the protocol layer answers with plain text that names the offending argument, the valid arguments and `IRIS_INVALID_ARGUMENT`. Every code is provoked over a real transport by `tests/unit/tools/error-codes.test.ts`, and the provoked set must equal the catalogue.
+
+One prompt is registered, `evaluate-my-agent` (optional argument `what`: `output` or `trace-file`): a walk of log → evaluate → read → explain, rendered from the same facts as the instructions. Clients without prompt support never see it and nothing depends on it.
+
 ## MCP Resources
 
-MCP resources are read-only data endpoints accessed via the MCP `resources/read` method.
+MCP resources are read-only data endpoints accessed via the MCP `resources/read` method. Fixed URIs appear in `resources/list`; the two parameterised ones appear in `resources/templates/list`. A resource that does not exist is the protocol's resource-not-found error (`-32002`), never a `200` body.
+
+### iris://capabilities
+
+What this server can do, as one object — the same one `GET /api/v1/capabilities` serves: `version`, `transport`, the evaluation `questions` registry, the `rules` roster (each with `kind`, `mechanism`, `needs`, `question`, `classes`, `version`, the effective `critical` flag with `criticalSource`, and `proof`), `customRules` counts, the `judge` state (`enabled`, `provider`, `providers`, `costCapUsd`, `howToEnable[]` — provider name only, never a key), the `citations` posture (`fetchAllowed`, `domainsRestricted`), the `dashboard` address and mode, the `limits` a caller will hit, and the `tools`, `resources` and `prompts` registered.
+
+### iris://proof
+
+The published accuracy of every measured built-in rule, the same numbers as https://iris-eval.com/proof served to the agent: the confusion counts, precision and recall with 95% intervals, `ppvAt` (positive predictive value at four prevalences), and the corpus version, release and labelling the numbers come from.
 
 ### iris://dashboard/summary
 
@@ -683,6 +704,13 @@ Returns full trace detail including spans and linked evaluation results.
 ```
 
 ---
+
+### iris://evaluations/{id}
+
+One stored evaluation, in the same shape `evaluate_output` returned it — `verdict`, `coverage`, `provenance`, every rule result with its evidence — derived on read, so a row written by an earlier release reads back with the fields it can support and never a fabricated one.
+
+**URI Template:** `iris://evaluations/{id}`
+**MIME Type:** `application/json`
 
 ## Dashboard API Routes
 
@@ -898,6 +926,10 @@ Get distinct filter values for the dashboard UI dropdowns.
 ```
 
 ---
+
+### GET /api/v1/capabilities
+
+The same object as `iris://capabilities`, for the HTTP path. No key is ever included.
 
 ### GET /api/v1/health
 

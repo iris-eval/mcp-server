@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { toEvaluationResponse } from '../eval/response.js';
+import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalType, CustomRuleDefinition } from '../types/eval.js';
@@ -10,6 +11,11 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
 import { toolCallSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
+import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { evaluationLinks, guarded, respond } from './respond.js';
+
+/** The most inline custom rules one call may carry (see the argument description). */
+export const MAX_INLINE_CUSTOM_RULES = 10;
 
 /*
  * Strict one level down (#376): `{ name, type, config, wieght: 5 }` used to
@@ -41,13 +47,13 @@ const inputSchema = {
   eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('Rule bundle to apply: completeness | relevance | safety | cost | custom | all — picks which built-in rules fire. "all" runs every bundle in one call and adds a per-category breakdown. Defaults to "all" when omitted — every bundle runs, safety included, and the response carries a note saying the default ran'),
   expected: z.string().optional().describe('Expected output for comparison — consulted only by the completeness bundle\'s expected_coverage rule; NOT used by relevance (the relevance rules compare the output against `input`)'),
   input: z.string().optional().describe('Original input for context (the ask + any source material the agent was given) — REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it and skip without it); also grounds the safety bundle\'s hallucination signals'),
-  trace_id: z.string().optional().describe('Link evaluation to a trace — surfaces this eval in the dashboard\'s trace drill-through. Must be the id of a stored trace (from log_trace / get_traces); an unknown id is rejected before anything is evaluated'),
+  trace_id: z.string().optional().describe('Link evaluation to a trace — surfaces this eval in the dashboard\'s trace drill-through and lets the tool reuse the trace\'s stored tool_calls. Must be the id of a stored trace (from log_trace / get_traces); an unknown id is rejected before anything is evaluated'),
   // .max(10): inline rules skip the deploy-time probe, and the engine runs
   // rules synchronously — without a cap, one request carrying N sandbox-
   // defeating regex rules stalls the server linearly in N (measured 9.3s at
   // N=50). Ten is ample for per-call rules; persistent sets belong in
   // deploy_rule, where deploy-time validation probes each pattern.
-  custom_rules: z.array(CustomRuleSchema).max(10).optional().describe('Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight — an unknown key (e.g. a misspelled weight) is rejected'),
+  custom_rules: z.array(CustomRuleSchema).max(MAX_INLINE_CUSTOM_RULES).optional().describe('Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight — an unknown key (e.g. a misspelled weight) is rejected'),
   cost_usd: z.number().optional().describe('Cost in USD — consulted by the cost bundle (eval_type="cost" or "all") AND by any cost_threshold custom rule regardless of eval_type; omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped)'),
   token_usage: z.object({
     prompt_tokens: z.number().optional(),
@@ -69,28 +75,32 @@ export function registerEvaluateOutputTool(
     'evaluate_output',
     {
       title: 'Evaluate Output',
-      description: [
-        'Score agent output against configurable eval rules and return a 0..1 score + per-rule breakdown.',
-        '',
-        'Sibling tools — evaluate_with_llm_judge runs semantic LLM-based scoring (slower, costs money; this tool is heuristic, free, deterministic), verify_citations checks citation grounding specifically, log_trace records executions, get_traces queries them, list_rules / deploy_rule / delete_rule manage the custom-rule lifecycle. evaluate_output is the FAST PATH for length / keyword / PII / injection / cost-threshold checks where rules are sufficient.',
-        '',
-        'Behavior. Deterministic, in-process scoring — same inputs always produce the same result. Writes one eval_result row to Iris storage (linked to trace_id if provided; unlinked otherwise). No external network calls — semantic scoring is a separate tool (evaluate_with_llm_judge) that needs an API key you supply. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Runs in-process; no provider is called.',
-        '',
-        'Output shape. Returns JSON: `{ "id": "<uuid>", "eval_type": "<bundle that ran>", "score": 0..1, "passed": boolean, "critical_failures?": string[], "critical_skipped?": string[], "rule_results": [{ "ruleName", "ruleId?", "category?", "critical", "criticalSource", "passed", "score", "message", "skipped?", "skipReason?", "budgetExceeded?", "configInvalid?", "kind", "role", "question", "classes", "ruleVersion", "saw", "skipClass?", "uncertainty?" }], "suggestions": string[], "rules_evaluated": number, "rules_skipped": number, "insufficient_data": boolean, "categories?": { "<bundle>": { "score": number|null, "passed": boolean|null, "rules_evaluated", "rules_skipped", "insufficient_data", "critical_failures?", "critical_skipped?" } }, "note?": string }`. `ruleId` is present on results produced by a deployed rule (rule-XXXX) so two rules sharing a name stay distinguishable. `categories` appears only for eval_type="all" and carries one entry per bundle that had rules, each with the same threshold + critical-veto semantics as a single-bundle run; `category` on each rule result says which bundle it came from. `insufficient_data=true` means no applicable rules fired (e.g., safety eval with only cost data). Inside `categories`, a bundle that evaluated no rule (every rule skipped for missing context — cost without `cost_usd`, relevance without `input`) reports `passed: null` and `score: null` with `insufficient_data: true`: it was not judged, so it is neither passing nor failing, and it does not count toward the overall verdict. The top-level `passed` stays a boolean and is false when NOTHING was evaluated — a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged". `note` appears only when eval_type was omitted, saying that the default ran every bundle. Every rule result carries its receipt: `kind` (the kind of claim — measurement, detection, inference, judgment, policy, verification), `role` (what the composer did with it: `veto` for a critical rule, `term` for one that fed the score), `question` (the evaluation question it answers), `classes` (what a failure means), `saw` (which of its declared inputs this call carried), `skipClass` when it skipped (`not_applicable` = never asked; `defeated` or `config_invalid` = asked and could not answer — treat those as unknown), and `uncertainty` — for a fired detection or inference the published positive predictive value with a 95% interval at the stated prior and the corpus it was measured on; for a quiet one the residual miss rate; `definition` conformance for a measurement; `policy` for a configured constraint; `unmeasured` with the reason otherwise.',
-        '',
-        'What `passed` means. `score` and `passed` answer different questions. `score` is the weighted average across the rules that ran — a 0..1 quality gradient. `passed` is the ship/no-ship verdict: true only when the score clears the pass threshold (default 0.7, configurable via config `eval.defaultThreshold`) AND no critical rule failed. Critical rules HARD-FAIL: if one fails, `passed` is false regardless of the weighted score, and the culprits are listed in `critical_failures`. The critical rules are the genuine safety violations — `no_pii`, `no_injection_patterns`, `no_blocklist_words` — plus any deployed custom rule with severity high/critical. Which built-in rules are critical is CONFIGURABLE per deployment (`eval.criticalRules` / `eval.nonCriticalRules`), so do not infer it from this list: every rule result carries `critical` (the effective value) and `criticalSource` (`default` when the declaration on the rule itself decided it, `config` when this server promoted or demoted it), and `list_rules` reports the same for the whole built-in roster. A leaked SSN can never be averaged away by other rules passing. For eval_type="all" the veto spans every bundle: one critical failure anywhere forces the overall `passed` to false. One caveat, stated because it is reachable on purpose: a critical rule that SKIPPED did not judge the output and therefore cannot veto — a regex rule whose match blew the 100ms sandbox budget on crafted output skips, so `passed` can be true with no `critical_failures`. Every such rule is named in `critical_skipped`. If your gate must fail closed, treat a non-empty `critical_skipped` as UNKNOWN, not clean.',
-        '',
-        'Use when you want a quality score on a specific output — typically after log_trace records the execution. Pass `eval_type` to route to the right rule bundle: `completeness` (length, non-empty output, sentence count, coverage of `expected`), `relevance` (keyword overlap and topic consistency against `input`), `safety` (PII leak, prompt injection, hallucination markers, stub-output detection — pass `input` so the hallucination signals can cross-check the output against the material the agent was given), `cost` (budget threshold), `custom` (bring your own rules via `custom_rules`), or `all` (every bundle above in one call — completeness, relevance, safety, cost, plus rules deployed under "custom" and any inline custom_rules — with per-category scores in `categories` and one overall verdict; rules whose context is missing, such as relevance without `input` or cost without `cost_usd`, skip and are excluded from the score exactly as in a single-bundle run).',
-        '',
-        'Injection scope. ' + INJECTION_SCOPE_SENTENCE + ' Screening what reaches the agent is a different control, outside this tool.',
-        '',
-        'Don\'t use when the output is empty or has no applicable rules — the eval_type decides which rules apply, and invalid combinations return score=0 + insufficient_data=true (not an error, but not actionable). Don\'t use to VALIDATE JSON schemas directly (use your language\'s JSON Schema validator — Iris\'s `json_schema` custom rule type is for output-shape assertions, not arbitrary validation).',
-        '',
-        'Parameters. input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it; without it both rules skip and the response reports insufficient_data=true) AND grounds the safety bundle\'s hallucination signals (without it those signals stay silent rather than guess); ignored otherwise. expected is consulted only by the completeness bundle\'s expected_coverage rule; ignored for other eval_types — it is NOT the relevance target. cost_usd is consulted by the cost bundle AND by any cost_threshold custom rule regardless of eval_type — omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped); token_usage is ONLY consulted by the cost bundle. tool_calls is what the agent DID (the trajectory) and is read only by the trajectory rules; omit it and those rules SKIP rather than pass, so an evaluation with no trajectory data reports "not judged" instead of "clean", and when trace_id names a stored trace the tool_calls stored on it are used unless this argument overrides them. custom_rules ALWAYS fires regardless of eval_type — pass eval_type="custom" if you want ONLY your rules to run (otherwise both your rules AND the eval_type bundle run together); each entry takes exactly name, type, config and weight. trace_id is optional but recommended (linking the eval to its trace surfaces it in the dashboard\'s drill-through) and must name a stored trace. Defaults: eval_type="all" — every bundle runs, safety included, and when you rely on that default the response carries a `note` saying so; pass a single bundle name to narrow the run.',
-        '',
-        'Error modes. Throws on unknown argument names (strict schema — a misspelled argument is rejected with the valid argument list, never silently dropped), and likewise on an unknown key inside a custom_rules entry (e.g. `wieght`) or inside a tool_calls entry (e.g. `err` for `error`) — the valid keys are listed; a rule\'s `config` keys are free-form and are not checked here. Throws on malformed custom_rules (Zod rejects the shape: missing name/type, unknown type, non-object config, non-positive weight) and on more than 10 custom_rules in one call (use deploy_rule for persistent rule sets). Throws when trace_id does not match a stored trace — checked BEFORE evaluating, so nothing is scored or written; the message names the trace_id. An inline rule whose CONFIG is unusable — a regex that fails the safe-regex2 ReDoS check or exceeds the 1000-char limit, a missing or non-string config.pattern, non-string keywords — does NOT error: that rule reports skipped with configInvalid=true and a skipReason naming the field, and the other rules still run (deploy_rule rejects the same configs with a 400 at deploy time). Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. The eval itself never throws — failing rules report `passed: false` with a message, they don\'t bubble exceptions. A regex that exceeds the 100ms sandbox matching budget on a given output reports skipped with budgetExceeded=true instead of hanging the server (fail-open per rule — gate on that flag if you must fail closed).',
-      ].join('\n'),
+      description: describeTool({
+        summary:
+          'Score an agent output against the deterministic rule bundles: the ship verdict with its basis, every rule result with evidence and uncertainty, and what was not judged.',
+        does:
+          'In-process, no network, no key. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown in categories. ' +
+          'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it and skip without it) and grounds the hallucination signals; ' +
+          'tool_calls, or a trace_id whose stored tool_calls are reused, feed the trajectory rules; cost_usd and token_usage feed the cost rules; expected feeds only expected_coverage. ' +
+          'A rule without its input SKIPS, is named, and never counts as a pass. custom_rules fire regardless of eval_type. One evaluation row is stored, linked to trace_id when given.',
+        whenNot:
+          'To validate arbitrary JSON Schema (the json_schema custom type asserts an output\'s shape; use a validator for the rest). ' +
+          `To screen inputs before they reach an agent: ${INJECTION_SCOPE_SENTENCE} ` +
+          'For semantic judgment, evaluate_with_llm_judge and verify_citations need a key you supply.',
+        returns: evaluateOutputResponseSchema,
+        errors:
+          'IRIS_UNKNOWN_TRACE when trace_id names no stored trace — checked first, nothing scored or written. IRIS_STORAGE_ERROR when the row cannot be written. ' +
+          'Unknown arguments or keys are refused before the handler runs, naming the valid ones; a regex rule over its budget or with a broken config reports skipped, not an error. ' +
+          ERROR_ENVELOPE_SENTENCE,
+        siblings: {
+          log_trace: 'record the execution first',
+          evaluate_with_llm_judge: 'semantic scoring on your key',
+          verify_citations: 'citation grounding on your key',
+          list_rules: 'the roster, needs and published accuracy',
+        },
+      }),
       inputSchema: strictInput(inputSchema),
+      outputSchema: evaluateOutputResponseSchema,
       annotations: {
         readOnlyHint: false,     // Writes an eval_result row
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete
@@ -98,7 +108,7 @@ export function registerEvaluateOutputTool(
         openWorldHint: false,    // No external network in heuristic mode; LLM-as-judge has its own tool with openWorldHint:true
       },
     },
-    async (args) => {
+    guarded(async (args) => {
       // Refuse an unknown trace_id up front (#376): the old path ran the
       // evaluation and then surfaced SQLite's "FOREIGN KEY constraint
       // failed", which names neither the field nor the fix.
@@ -143,18 +153,14 @@ export function registerEvaluateOutputTool(
       await insertLinkedEvalResult(storage, LOCAL_TENANT, result);
 
       // One serializer for every evaluation surface (src/eval/response.ts):
-      // the tool, the HTTP ingest route and the drift-lock all read the
-      // same object, so a field added there reaches every reader at once.
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              toEvaluationResponse(result, { traceId: args.trace_id, ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
-            ),
-          },
-        ],
-      };
-    },
+      // the tool, the HTTP ingest route, the resources and the drift-lock
+      // all read the same object, so a field added there reaches every
+      // reader at once.
+      return respond(
+        evaluateOutputResponseSchema,
+        toEvaluationResponse(result, { traceId: args.trace_id, ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
+        evaluationLinks(result.id, args.trace_id),
+      );
+    }),
   );
 }
