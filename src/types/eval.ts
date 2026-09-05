@@ -118,6 +118,22 @@ export interface EvalContext {
    * main-thread stall scale linearly with N.
    */
   regexBudget?: { breaches: number };
+
+  /**
+
+   * Whether this evaluation may call a paid provider. Set ONLY by the tools
+
+   * whose whole purpose is to do so — the LLM judge and the citation
+
+   * verifier. The engine refuses to run a judgment rule without it, which
+
+   * is what makes "evaluate_output never spends" a property of the engine
+
+   * rather than a promise in a tool description.
+
+   */
+
+  allowPaid?: boolean;
 }
 
 /**
@@ -161,7 +177,16 @@ export type Evidence =
   | { type: 'pattern'; name: string; count: number }
   | { type: 'toolCall'; index: number; toolName: string; label: string }
   | { type: 'citation'; url: string; status: 'resolved' | 'dead' | 'unverifiable' | 'supported' | 'unsupported' }
-  | { type: 'count'; stat: string; unit: string; value: number; threshold?: number; thresholdSource?: 'default' | 'config' | 'call' | 'rule' };
+  | { type: 'count'; stat: string; unit: string; value: number; threshold?: number; thresholdSource?: 'default' | 'config' | 'call' | 'rule' }
+  /*
+   * One judge sample (0.10.0). `score` is what the model returned;
+   * `selfReportedPass` is what it CLAIMED about passing, recorded because
+   * the verdict comes from the template's threshold and not from the claim,
+   * and a disagreement between the two is worth a reader's attention. With
+   * `samples: n` there is one of these per sample, which is what the
+   * self-consistency interval is computed from.
+   */
+  | { type: 'sample'; score: number; selfReportedPass?: boolean; rationaleHash: string };
 
 /** A measurement's statistic — the number the rule computed, with its unit, before any score transform. */
 export interface MeasuredValue {

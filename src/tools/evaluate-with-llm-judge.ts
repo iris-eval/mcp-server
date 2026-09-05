@@ -185,6 +185,28 @@ export function registerEvaluateWithLLMJudgeTool(
             passed: result.passed,
             score: result.score,
             message: result.rationale || 'LLM judge evaluation',
+            /*
+             * The row says what KIND of claim it is (0.10.0). Without it a
+             * stored judge evaluation read back through the composer had no
+             * layer to fall into — not a policy, not a detector with a
+             * published rate — and a FAILED judgement read back as clean.
+             * A judgment the caller asked and paid for decides.
+             */
+            kind: 'judgment',
+            role: 'gate',
+            saw: ['output'],
+            evidence: [
+              {
+                type: 'sample',
+                score: result.score,
+                ...(result.selfReportedPass !== undefined ? { selfReportedPass: result.selfReportedPass } : {}),
+                rationaleHash: '',
+              },
+            ],
+            uncertainty: {
+              basis: 'unmeasured',
+              why: 'the judge is user-keyed and its accuracy is measured only by a run on a key you or the maintainer supplies (npm run proof:judge)',
+            },
           },
         ],
         suggestions: result.passed ? [] : [result.rationale],

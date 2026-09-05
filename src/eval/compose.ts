@@ -10,9 +10,10 @@
  *
  * This composer reads the rules by what KIND of claim each one makes:
  *
- *   1. GATES     — a policy the deployment configured. Its author has
- *                  already decided; the verdict does not weigh it against
- *                  anything.
+ *   1. GATES     — a policy the deployment configured, or a judgment the
+ *                  caller explicitly asked and paid for. Either way
+ *                  somebody has already decided; the verdict does not
+ *                  weigh it against anything.
  *   2. VETOES    — an effectively-critical detection or inference. High
  *                  precision on a must-not-ship condition, so one fire is
  *                  the answer.
@@ -127,8 +128,16 @@ export function compose(
     return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
   }
 
-  // 1. Gates: a policy whose author has already decided.
-  const gates = rows.filter((r) => r.kind === 'policy' && fired(r) && decides(r, cfg.defaultsGate));
+  /*
+   * 1. Gates: a policy whose author has already decided — and a JUDGMENT,
+   * for the same reason. Nobody runs a judge by accident: the caller chose
+   * the template, supplied the key and paid for the answer, so a failing
+   * judgment decides rather than being weighed against anything. It also
+   * cannot be weighed: a judgment carries no published error rate until a
+   * measured run exists for its template and model, so the risk layer would
+   * drop it silently and a paid-for "fail" would read as clean.
+   */
+  const gates = rows.filter((r) => fired(r) && ((r.kind === 'policy' && decides(r, cfg.defaultsGate)) || r.kind === 'judgment'));
   if (gates.length > 0) {
     return { state: 'fail', passed: false, basis: 'policy_gate', by: gates.map((r) => r.ruleName), risk: null };
   }
