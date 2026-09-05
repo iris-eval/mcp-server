@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "type": "cost_threshold",
+  "family": "cost_threshold",
+  "positiveClass": "fail",
+  "definition": "cost_threshold — passes when the evaluation's cost_usd is at most config.max_cost; fails when it is greater; SKIPS (does not fail) when no cost was supplied, so a fail-closed gate sees it in critical_skipped rather than a silent pass. Under this family max_cost is 0.05. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "max_cost": 0.05
+  },
+  "counts": {
+    "n": 24,
+    "positive": 12,
+    "negative": 12
+  },
+  "cases": [
+    {
+      "id": "custom-cost_threshold-001",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.05 — equal to the maximum passes",
+      "context": {
+        "costUsd": 0.05
+      }
+    },
+    {
+      "id": "custom-cost_threshold-002",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0",
+      "context": {
+        "costUsd": 0
+      }
+    },
+    {
+      "id": "custom-cost_threshold-003",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.01",
+      "context": {
+        "costUsd": 0.01
+      }
+    },
+    {
+      "id": "custom-cost_threshold-004",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.049",
+      "context": {
+        "costUsd": 0.049
+      }
+    },
+    {
+      "id": "custom-cost_threshold-005",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.0499999",
+      "context": {
+        "costUsd": 0.0499999
+      }
+    },
+    {
+      "id": "custom-cost_threshold-006",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "A longer answer that cost very little.",
+      "notes": "cost 0.02; the text does not matter",
+      "context": {
+        "costUsd": 0.02
+      }
+    },
+    {
+      "id": "custom-cost_threshold-007",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "no cost supplied — the rule skips and does not fail",
+      "context": {}
+    },
+    {
+      "id": "custom-cost_threshold-008",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "no cost supplied (second case) — skipped, not failed",
+      "context": {}
+    },
+    {
+      "id": "custom-cost_threshold-009",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.03",
+      "context": {
+        "costUsd": 0.03
+      }
+    },
+    {
+      "id": "custom-cost_threshold-010",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "",
+      "notes": "empty output at cost 0.04 — the rule reads the cost only",
+      "context": {
+        "costUsd": 0.04
+      }
+    },
+    {
+      "id": "custom-cost_threshold-011",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.045",
+      "context": {
+        "costUsd": 0.045
+      }
+    },
+    {
+      "id": "custom-cost_threshold-012",
+      "rule": "proof_cost_threshold",
+      "label": "negative",
+      "output": "Done.",
+      "notes": "cost 0.005",
+      "context": {
+        "costUsd": 0.005
+      }
+    },
+    {
+      "id": "custom-cost_threshold-013",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.0501 — just over",
+      "context": {
+        "costUsd": 0.0501
+      }
+    },
+    {
+      "id": "custom-cost_threshold-014",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.06",
+      "context": {
+        "costUsd": 0.06
+      }
+    },
+    {
+      "id": "custom-cost_threshold-015",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.1",
+      "context": {
+        "costUsd": 0.1
+      }
+    },
+    {
+      "id": "custom-cost_threshold-016",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 1",
+      "context": {
+        "costUsd": 1
+      }
+    },
+    {
+      "id": "custom-cost_threshold-017",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 100",
+      "context": {
+        "costUsd": 100
+      }
+    },
+    {
+      "id": "custom-cost_threshold-018",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "",
+      "notes": "empty output at cost 0.5 — the rule reads the cost only",
+      "context": {
+        "costUsd": 0.5
+      }
+    },
+    {
+      "id": "custom-cost_threshold-019",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.051",
+      "context": {
+        "costUsd": 0.051
+      }
+    },
+    {
+      "id": "custom-cost_threshold-020",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.07",
+      "context": {
+        "costUsd": 0.07
+      }
+    },
+    {
+      "id": "custom-cost_threshold-021",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 2.5",
+      "context": {
+        "costUsd": 2.5
+      }
+    },
+    {
+      "id": "custom-cost_threshold-022",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.055",
+      "context": {
+        "costUsd": 0.055
+      }
+    },
+    {
+      "id": "custom-cost_threshold-023",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 0.09",
+      "context": {
+        "costUsd": 0.09
+      }
+    },
+    {
+      "id": "custom-cost_threshold-024",
+      "rule": "proof_cost_threshold",
+      "label": "positive",
+      "output": "Done.",
+      "notes": "cost 10",
+      "context": {
+        "costUsd": 10
+      }
+    }
+  ]
+}

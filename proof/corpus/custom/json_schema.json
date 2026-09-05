@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "type": "json_schema",
+  "family": "json_schema",
+  "positiveClass": "fail",
+  "definition": "json_schema — in this version passes when the output parses as JSON (JSON.parse succeeds) and fails when it does not; the schema in config is not consulted (README: config `{}`; validating against a schema is on the roadmap). Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {},
+  "counts": {
+    "n": 25,
+    "positive": 12,
+    "negative": 13
+  },
+  "cases": [
+    {
+      "id": "custom-json_schema-001",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{}",
+      "notes": "an empty object"
+    },
+    {
+      "id": "custom-json_schema-002",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "[]",
+      "notes": "an empty array"
+    },
+    {
+      "id": "custom-json_schema-003",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"ok\": true, \"items\": [1, 2, 3]}",
+      "notes": "a nested document"
+    },
+    {
+      "id": "custom-json_schema-004",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "\"a bare string\"",
+      "notes": "a JSON string is valid JSON"
+    },
+    {
+      "id": "custom-json_schema-005",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "42",
+      "notes": "a bare number"
+    },
+    {
+      "id": "custom-json_schema-006",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "null",
+      "notes": "the null literal"
+    },
+    {
+      "id": "custom-json_schema-007",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "true",
+      "notes": "a boolean"
+    },
+    {
+      "id": "custom-json_schema-008",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "  {\"padded\": 1}  \n",
+      "notes": "surrounding whitespace is allowed"
+    },
+    {
+      "id": "custom-json_schema-009",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"unicode\": \"caf\\u00e9\"}",
+      "notes": "an escaped code point"
+    },
+    {
+      "id": "custom-json_schema-010",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "[[[[1]]]]",
+      "notes": "deep nesting"
+    },
+    {
+      "id": "custom-json_schema-011",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"a\": {\"b\": {\"c\": null}}}",
+      "notes": "nested nulls"
+    },
+    {
+      "id": "custom-json_schema-012",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"n\": -1.5e10}",
+      "notes": "an exponent number"
+    },
+    {
+      "id": "custom-json_schema-013",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "",
+      "notes": "empty output is not JSON"
+    },
+    {
+      "id": "custom-json_schema-014",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "{\"trailing\": 1,}",
+      "notes": "a trailing comma"
+    },
+    {
+      "id": "custom-json_schema-015",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "{'single': 'quotes'}",
+      "notes": "single quotes"
+    },
+    {
+      "id": "custom-json_schema-016",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "{unquoted: 1}",
+      "notes": "an unquoted key"
+    },
+    {
+      "id": "custom-json_schema-017",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "NaN",
+      "notes": "NaN is not a JSON literal"
+    },
+    {
+      "id": "custom-json_schema-018",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "undefined",
+      "notes": "undefined is not a JSON literal"
+    },
+    {
+      "id": "custom-json_schema-019",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "{\"a\": 1} // comment",
+      "notes": "a comment"
+    },
+    {
+      "id": "custom-json_schema-020",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "```json\n{\"fenced\": true}\n```",
+      "notes": "a markdown fence around valid JSON is not JSON"
+    },
+    {
+      "id": "custom-json_schema-021",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "{\"a\": 1} {\"b\": 2}",
+      "notes": "two documents"
+    },
+    {
+      "id": "custom-json_schema-022",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "Here is the result: {\"a\": 1}",
+      "notes": "prose before the object"
+    },
+    {
+      "id": "custom-json_schema-023",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "[1, 2, 3",
+      "notes": "an unclosed array"
+    },
+    {
+      "id": "custom-json_schema-024",
+      "rule": "proof_json_schema",
+      "label": "positive",
+      "output": "{\"a\": 0x1F}",
+      "notes": "a hex literal"
+    },
+    {
+      "id": "custom-json_schema-025",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"schema\": \"ignored\", \"extra\": true}",
+      "notes": "valid JSON that a schema might reject: passes, because the schema is not consulted in this version"
+    }
+  ]
+}

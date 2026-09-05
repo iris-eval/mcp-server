@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "type": "max_length",
+  "family": "max_length",
+  "positiveClass": "fail",
+  "definition": "max_length — passes when the output is at most config.max_length characters long (a JavaScript string length: UTF-16 code units, whitespace included); fails when longer. Under this family the maximum is 120. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "max_length": 120
+  },
+  "counts": {
+    "n": 24,
+    "positive": 14,
+    "negative": 10
+  },
+  "cases": [
+    {
+      "id": "custom-max_length-001",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracki",
+      "notes": "exactly 120 characters"
+    },
+    {
+      "id": "custom-max_length-002",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the track",
+      "notes": "119"
+    },
+    {
+      "id": "custom-max_length-003",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "",
+      "notes": "empty is within any maximum"
+    },
+    {
+      "id": "custom-max_length-004",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "Short.",
+      "notes": "six characters"
+    },
+    {
+      "id": "custom-max_length-005",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "                                                                                                                        ",
+      "notes": "120 spaces"
+    },
+    {
+      "id": "custom-max_length-006",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "notes": "60 emoji are 120 code units"
+    },
+    {
+      "id": "custom-max_length-007",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has sh",
+      "notes": "100"
+    },
+    {
+      "id": "custom-max_length-008",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the track\n",
+      "notes": "119 plus a newline is 120"
+    },
+    {
+      "id": "custom-max_length-009",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will",
+      "notes": "50"
+    },
+    {
+      "id": "custom-max_length-010",
+      "rule": "proof_max_length",
+      "label": "negative",
+      "output": "------------------------------------------------------------------------------------------------------------------------",
+      "notes": "120 punctuation characters"
+    },
+    {
+      "id": "custom-max_length-011",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the trackin",
+      "notes": "121 — one over"
+    },
+    {
+      "id": "custom-max_length-012",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tr",
+      "notes": "200"
+    },
+    {
+      "id": "custom-max_length-013",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "                                                                                                                         ",
+      "notes": "121 spaces"
+    },
+    {
+      "id": "custom-max_length-014",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "notes": "61 emoji are 122 code units"
+    },
+    {
+      "id": "custom-max_length-015",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracki\n",
+      "notes": "120 plus a trailing newline is 121"
+    },
+    {
+      "id": "custom-max_length-016",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within th",
+      "notes": "long output"
+    },
+    {
+      "id": "custom-max_length-017",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email",
+      "notes": "150"
+    },
+    {
+      "id": "custom-max_length-018",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracki.",
+      "notes": "120 plus a full stop"
+    },
+    {
+      "id": "custom-max_length-019",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "THE ORDER HAS SHIPPED AND THE TRACKING NUMBER WILL ARRIVE BY EMAIL WITHIN THE HOUR. THE ORDER HAS SHIPPED AND THE TRACKIN",
+      "notes": "case does not change length"
+    },
+    {
+      "id": "custom-max_length-020",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "ababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
+      "notes": "122 characters of repeated letters"
+    },
+    {
+      "id": "custom-max_length-021",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number wi",
+      "notes": "300"
+    },
+    {
+      "id": "custom-max_length-022",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking",
+      "notes": "122"
+    },
+    {
+      "id": "custom-max_length-023",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "notes": "130 precomposed accented letters"
+    },
+    {
+      "id": "custom-max_length-024",
+      "rule": "proof_max_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking nu",
+      "notes": "125"
+    }
+  ]
+}

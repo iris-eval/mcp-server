@@ -1,15 +1,529 @@
 {
-  "commit": "b417a93",
-  "corpusVersion": "1251d242916c",
-  "generatedAt": "2026-09-05T10:06:35.369Z",
+  "commit": "5644322",
+  "corpusVersion": "1a82d36c1644",
+  "custom": {
+    "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
+    "types": [
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7847,
+            1
+          ],
+          "recall": [
+            0.7847,
+            1
+          ]
+        },
+        "config": {
+          "keywords": [
+            "refund",
+            "policy",
+            "days"
+          ],
+          "threshold": 1
+        },
+        "credible95": {
+          "f1": [
+            0.8778,
+            0.9991
+          ],
+          "precision": [
+            0.8443,
+            1
+          ],
+          "recall": [
+            0.8325,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 10,
+        "positives": 14,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 10,
+        "tp": 14,
+        "type": "contains_keywords"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7575,
+            1
+          ],
+          "recall": [
+            0.7575,
+            1
+          ]
+        },
+        "config": {
+          "max_cost": 0.05
+        },
+        "credible95": {
+          "f1": [
+            0.8493,
+            0.9989
+          ],
+          "precision": [
+            0.7984,
+            1
+          ],
+          "recall": [
+            0.8176,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 12,
+        "positives": 12,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 2,
+        "tn": 12,
+        "tp": 12,
+        "type": "cost_threshold"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7412,
+            1
+          ],
+          "recall": [
+            0.7412,
+            1
+          ]
+        },
+        "config": {
+          "keywords": [
+            "guarantee",
+            "risk-free"
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8385,
+            0.999
+          ],
+          "precision": [
+            0.7973,
+            1
+          ],
+          "recall": [
+            0.8083,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 13,
+        "positives": 11,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 13,
+        "tp": 11,
+        "type": "excludes_keywords"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7575,
+            1
+          ],
+          "recall": [
+            0.7575,
+            1
+          ]
+        },
+        "config": {},
+        "credible95": {
+          "f1": [
+            0.8518,
+            0.9988
+          ],
+          "precision": [
+            0.8208,
+            1
+          ],
+          "recall": [
+            0.8104,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 25,
+        "negatives": 13,
+        "positives": 12,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 13,
+        "tp": 12,
+        "type": "json_schema"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7847,
+            1
+          ],
+          "recall": [
+            0.7847,
+            1
+          ]
+        },
+        "config": {
+          "max_length": 120
+        },
+        "credible95": {
+          "f1": [
+            0.8767,
+            0.9992
+          ],
+          "precision": [
+            0.8502,
+            1
+          ],
+          "recall": [
+            0.8347,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 10,
+        "positives": 14,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 10,
+        "tp": 14,
+        "type": "max_length"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7719,
+            1
+          ],
+          "recall": [
+            0.7719,
+            1
+          ]
+        },
+        "config": {
+          "min_length": 80
+        },
+        "credible95": {
+          "f1": [
+            0.865,
+            0.9992
+          ],
+          "precision": [
+            0.8189,
+            0.9999
+          ],
+          "recall": [
+            0.8297,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 11,
+        "positives": 13,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 11,
+        "tp": 13,
+        "type": "min_length"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7847,
+            1
+          ],
+          "recall": [
+            0.7847,
+            1
+          ]
+        },
+        "config": {
+          "pattern": "^Ticket #[0-9]{6}\\b"
+        },
+        "credible95": {
+          "f1": [
+            0.8721,
+            0.9992
+          ],
+          "precision": [
+            0.8278,
+            1
+          ],
+          "recall": [
+            0.833,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 10,
+        "positives": 14,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 10,
+        "tp": 14,
+        "type": "regex_match"
+      },
+      {
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7575,
+            1
+          ],
+          "recall": [
+            0.7575,
+            1
+          ]
+        },
+        "config": {
+          "pattern": "\\bTODO\\b"
+        },
+        "credible95": {
+          "f1": [
+            0.8531,
+            0.9988
+          ],
+          "precision": [
+            0.8181,
+            1
+          ],
+          "recall": [
+            0.8157,
+            0.9999
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 24,
+        "negatives": 12,
+        "positives": 12,
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 12,
+        "tp": 12,
+        "type": "regex_no_match"
+      }
+    ]
+  },
+  "customCorpusVersion": "950bf970c1c1",
+  "entities": [
+    {
+      "method": "positives carry `entities` named by the case author; caught = the rule failed the case for any reason; named = the evidence named this entity; recall = named / present, Wilson 95% — a case caught for another reason is visible as caught − named",
+      "rows": [
+        {
+          "caught": 3,
+          "ci95": [
+            0.4385,
+            1
+          ],
+          "entity": "ssn",
+          "named": 3,
+          "present": 3,
+          "recall": 1
+        },
+        {
+          "caught": 2,
+          "ci95": [
+            0.3424,
+            1
+          ],
+          "entity": "credit_card",
+          "named": 2,
+          "present": 2,
+          "recall": 1
+        },
+        {
+          "caught": 1,
+          "ci95": [
+            0,
+            0.7935
+          ],
+          "entity": "iban",
+          "named": 0,
+          "present": 1,
+          "recall": 0
+        },
+        {
+          "caught": 7,
+          "ci95": [
+            0.6457,
+            1
+          ],
+          "entity": "phone",
+          "named": 7,
+          "present": 7,
+          "recall": 1
+        },
+        {
+          "caught": 11,
+          "ci95": [
+            0.7412,
+            1
+          ],
+          "entity": "email",
+          "named": 11,
+          "present": 11,
+          "recall": 1
+        },
+        {
+          "caught": 1,
+          "ci95": [
+            0.2065,
+            1
+          ],
+          "entity": "dob",
+          "named": 1,
+          "present": 1,
+          "recall": 1
+        },
+        {
+          "caught": 2,
+          "ci95": [
+            0.3424,
+            1
+          ],
+          "entity": "private_key",
+          "named": 2,
+          "present": 2,
+          "recall": 1
+        },
+        {
+          "caught": 1,
+          "ci95": [
+            0.2065,
+            1
+          ],
+          "entity": "seed_phrase",
+          "named": 1,
+          "present": 1,
+          "recall": 1
+        },
+        {
+          "caught": 10,
+          "ci95": [
+            0.3601,
+            0.7839
+          ],
+          "entity": "api_key",
+          "named": 10,
+          "present": 17,
+          "recall": 0.5882
+        },
+        {
+          "caught": 2,
+          "ci95": [
+            0,
+            0.6576
+          ],
+          "entity": "password",
+          "named": 0,
+          "present": 2,
+          "recall": 0
+        },
+        {
+          "caught": 3,
+          "ci95": [
+            0,
+            0.3903
+          ],
+          "entity": "address",
+          "named": 0,
+          "present": 6,
+          "recall": 0
+        },
+        {
+          "caught": 0,
+          "ci95": [
+            0,
+            0.7935
+          ],
+          "entity": "url_token",
+          "named": 0,
+          "present": 1,
+          "recall": 0
+        }
+      ],
+      "rule": "no_pii"
+    }
+  ],
+  "generatedAt": "2026-09-05T15:51:33.612Z",
   "humanAgreement": {
-    "note": "founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)",
+    "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
   },
   "method": {
     "ci": "wilson-95",
+    "credible": "dirichlet-jeffreys-2000-draws-marsaglia-tsang-mulberry32-seed-proof-dirichlet-credible-v1",
     "f1Ci": "bootstrap-percentile-2000-mulberry32-seed-proof-f1-bootstrap-v1",
     "positiveClass": "fail",
+    "ppvAt": "positive predictive value of a fire at prevalences 0.01, 0.05, 0.2, 0.5: sens·π / (sens·π + (1 − spec)(1 − π)) from this family's counts",
     "skipped": "a skipped result (the rule declined to judge) counts as not failed; the count is reported per rule"
   },
   "rules": [
@@ -29,6 +543,20 @@
           1
         ]
       },
+      "credible95": {
+        "f1": [
+          0.8587,
+          0.9991
+        ],
+        "precision": [
+          0.8257,
+          1
+        ],
+        "recall": [
+          0.8258,
+          1
+        ]
+      },
       "f1": 1,
       "fn": 0,
       "fp": 0,
@@ -36,6 +564,12 @@
       "name": "min_output_length",
       "negatives": 16,
       "positives": 13,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 1,
       "skipped": 0,
@@ -58,6 +592,20 @@
           0.953
         ]
       },
+      "credible95": {
+        "f1": [
+          0.6939,
+          0.9725
+        ],
+        "precision": [
+          0.7794,
+          0.9999
+        ],
+        "recall": [
+          0.5752,
+          0.9615
+        ]
+      },
       "f1": 0.9091,
       "fn": 2,
       "fp": 0,
@@ -65,6 +613,12 @@
       "name": "non_empty_output",
       "negatives": 17,
       "positives": 12,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 0.8333,
       "skipped": 0,
@@ -87,6 +641,20 @@
           0.7862
         ]
       },
+      "credible95": {
+        "f1": [
+          0.4701,
+          0.8811
+        ],
+        "precision": [
+          0.7329,
+          0.9999
+        ],
+        "recall": [
+          0.3194,
+          0.8074
+        ]
+      },
       "f1": 0.7273,
       "fn": 6,
       "fp": 0,
@@ -94,6 +662,12 @@
       "name": "sentence_count",
       "negatives": 16,
       "positives": 14,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 0.5714,
       "skipped": 0,
@@ -116,6 +690,20 @@
           1
         ]
       },
+      "credible95": {
+        "f1": [
+          0.87,
+          0.9991
+        ],
+        "precision": [
+          0.8477,
+          1
+        ],
+        "recall": [
+          0.8182,
+          1
+        ]
+      },
       "f1": 1,
       "fn": 0,
       "fp": 0,
@@ -123,6 +711,12 @@
       "name": "expected_coverage",
       "negatives": 15,
       "positives": 14,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 1,
       "skipped": 0,
@@ -145,6 +739,20 @@
           1
         ]
       },
+      "credible95": {
+        "f1": [
+          0.822,
+          0.9988
+        ],
+        "precision": [
+          0.7793,
+          1
+        ],
+        "recall": [
+          0.7801,
+          0.9999
+        ]
+      },
       "f1": 1,
       "fn": 0,
       "fp": 0,
@@ -152,6 +760,12 @@
       "name": "keyword_overlap",
       "negatives": 20,
       "positives": 10,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 1,
       "skipped": 0,
@@ -174,6 +788,20 @@
           0.9851
         ]
       },
+      "credible95": {
+        "f1": [
+          0.7718,
+          0.9913
+        ],
+        "precision": [
+          0.7894,
+          1
+        ],
+        "recall": [
+          0.6709,
+          0.9926
+        ]
+      },
       "f1": 0.9565,
       "fn": 1,
       "fp": 0,
@@ -181,6 +809,12 @@
       "name": "topic_consistency",
       "negatives": 19,
       "positives": 12,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 0.9167,
       "skipped": 1,
@@ -203,6 +837,20 @@
           0.8576
         ]
       },
+      "credible95": {
+        "f1": [
+          0.7005,
+          0.8823
+        ],
+        "precision": [
+          0.7317,
+          0.9455
+        ],
+        "recall": [
+          0.6165,
+          0.8597
+        ]
+      },
       "f1": 0.8095,
       "fn": 11,
       "fp": 5,
@@ -210,6 +858,12 @@
       "name": "no_pii",
       "negatives": 45,
       "positives": 45,
+      "ppvAt": {
+        "0.01": 0.0643,
+        "0.05": 0.2636,
+        "0.2": 0.6296,
+        "0.5": 0.8718
+      },
       "precision": 0.8718,
       "recall": 0.7556,
       "skipped": 0,
@@ -232,6 +886,20 @@
           0.891
         ]
       },
+      "credible95": {
+        "f1": [
+          0.5987,
+          0.9213
+        ],
+        "precision": [
+          0.679,
+          0.9906
+        ],
+        "recall": [
+          0.4808,
+          0.901
+        ]
+      },
       "f1": 0.8148,
       "fn": 4,
       "fp": 1,
@@ -239,6 +907,12 @@
       "name": "no_blocklist_words",
       "negatives": 17,
       "positives": 15,
+      "ppvAt": {
+        "0.01": 0.1118,
+        "0.05": 0.3962,
+        "0.2": 0.7571,
+        "0.5": 0.9257
+      },
       "precision": 0.9167,
       "recall": 0.7333,
       "skipped": 0,
@@ -261,6 +935,20 @@
           0.9958
         ]
       },
+      "credible95": {
+        "f1": [
+          0.932,
+          0.9971
+        ],
+        "precision": [
+          0.9419,
+          1
+        ],
+        "recall": [
+          0.8899,
+          0.9975
+        ]
+      },
       "f1": 0.988,
       "fn": 1,
       "fp": 0,
@@ -268,6 +956,12 @@
       "name": "no_injection_patterns",
       "negatives": 48,
       "positives": 42,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 0.9762,
       "skipped": 0,
@@ -290,6 +984,20 @@
           0.8283
         ]
       },
+      "credible95": {
+        "f1": [
+          0.6585,
+          0.8609
+        ],
+        "precision": [
+          0.7151,
+          0.9428
+        ],
+        "recall": [
+          0.5701,
+          0.8288
+        ]
+      },
       "f1": 0.7792,
       "fn": 12,
       "fp": 5,
@@ -297,6 +1005,12 @@
       "name": "no_stub_output",
       "negatives": 47,
       "positives": 42,
+      "ppvAt": {
+        "0.01": 0.0635,
+        "0.05": 0.2611,
+        "0.2": 0.6267,
+        "0.5": 0.8704
+      },
       "precision": 0.8571,
       "recall": 0.7143,
       "skipped": 0,
@@ -319,6 +1033,20 @@
           0.844
         ]
       },
+      "credible95": {
+        "f1": [
+          0.7374,
+          0.9109
+        ],
+        "precision": [
+          0.9223,
+          1
+        ],
+        "recall": [
+          0.6006,
+          0.8435
+        ]
+      },
       "f1": 0.85,
       "fn": 12,
       "fp": 0,
@@ -326,6 +1054,12 @@
       "name": "no_hallucination_markers",
       "negatives": 44,
       "positives": 46,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 0.7391,
       "skipped": 0,
@@ -348,6 +1082,20 @@
           0.9873
         ]
       },
+      "credible95": {
+        "f1": [
+          0.7944,
+          0.991
+        ],
+        "precision": [
+          0.8179,
+          1
+        ],
+        "recall": [
+          0.7003,
+          0.9928
+        ]
+      },
       "f1": 0.963,
       "fn": 1,
       "fp": 0,
@@ -355,6 +1103,12 @@
       "name": "no_silent_tool_failure",
       "negatives": 16,
       "positives": 14,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 0.9286,
       "skipped": 0,
@@ -377,6 +1131,20 @@
           1
         ]
       },
+      "credible95": {
+        "f1": [
+          0.8349,
+          0.9988
+        ],
+        "precision": [
+          0.7907,
+          0.9999
+        ],
+        "recall": [
+          0.7878,
+          0.9999
+        ]
+      },
       "f1": 1,
       "fn": 0,
       "fp": 0,
@@ -384,6 +1152,12 @@
       "name": "cost_under_threshold",
       "negatives": 16,
       "positives": 10,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 1,
       "skipped": 2,
@@ -406,6 +1180,20 @@
           1
         ]
       },
+      "credible95": {
+        "f1": [
+          0.8063,
+          0.9989
+        ],
+        "precision": [
+          0.7643,
+          0.9999
+        ],
+        "recall": [
+          0.7595,
+          0.9999
+        ]
+      },
       "f1": 1,
       "fn": 0,
       "fp": 0,
@@ -413,6 +1201,12 @@
       "name": "token_efficiency",
       "negatives": 16,
       "positives": 9,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 1,
       "skipped": 1,
@@ -435,6 +1229,20 @@
           1
         ]
       },
+      "credible95": {
+        "f1": [
+          0.8547,
+          0.9992
+        ],
+        "precision": [
+          0.8011,
+          1
+        ],
+        "recall": [
+          0.8082,
+          1
+        ]
+      },
       "f1": 1,
       "fn": 0,
       "fp": 0,
@@ -442,6 +1250,12 @@
       "name": "no_tool_loop",
       "negatives": 16,
       "positives": 12,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
       "precision": 1,
       "recall": 1,
       "skipped": 0,
@@ -449,6 +1263,620 @@
       "tp": 12
     }
   ],
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "transforms": {
+    "method": "for each positive the rule caught untransformed with a span into the raw output, the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted",
+    "rows": [
+      {
+        "caught": 13,
+        "ci95": [
+          0.239,
+          0.5496
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-009",
+          "pii-010",
+          "pii-011",
+          "pii-015",
+          "pii-018",
+          "pii-020",
+          "pii-032",
+          "pii-033",
+          "pii-035",
+          "pii-045",
+          "pii-048",
+          "pii-051",
+          "pii-056",
+          "pii-057",
+          "pii-064",
+          "pii-068",
+          "pii-074",
+          "pii-081",
+          "pii-083",
+          "pii-087"
+        ],
+        "n": 34,
+        "recall": 0.3824,
+        "rule": "no_pii",
+        "transform": "zero_width"
+      },
+      {
+        "caught": 6,
+        "ci95": [
+          0.1061,
+          0.4076
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-009",
+          "pii-011",
+          "pii-021",
+          "pii-023",
+          "pii-032",
+          "pii-036",
+          "pii-045",
+          "pii-047",
+          "pii-048",
+          "pii-051",
+          "pii-058",
+          "pii-060",
+          "pii-063",
+          "pii-068",
+          "pii-072",
+          "pii-073",
+          "pii-079",
+          "pii-081",
+          "pii-083",
+          "pii-084"
+        ],
+        "n": 27,
+        "recall": 0.2222,
+        "rule": "no_pii",
+        "transform": "homoglyph"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.1015
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-009",
+          "pii-010",
+          "pii-011",
+          "pii-015",
+          "pii-018",
+          "pii-020",
+          "pii-021",
+          "pii-023",
+          "pii-032",
+          "pii-033",
+          "pii-035",
+          "pii-036",
+          "pii-038",
+          "pii-045",
+          "pii-047",
+          "pii-048",
+          "pii-051",
+          "pii-054",
+          "pii-056",
+          "pii-057",
+          "pii-058",
+          "pii-060",
+          "pii-063",
+          "pii-064",
+          "pii-068",
+          "pii-072",
+          "pii-073",
+          "pii-074",
+          "pii-079",
+          "pii-081",
+          "pii-083",
+          "pii-084",
+          "pii-087"
+        ],
+        "n": 34,
+        "recall": 0,
+        "rule": "no_pii",
+        "transform": "fullwidth"
+      },
+      {
+        "caught": 9,
+        "ci95": [
+          0.523,
+          0.9486
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-032"
+        ],
+        "n": 11,
+        "recall": 0.8182,
+        "rule": "no_pii",
+        "transform": "nbsp"
+      },
+      {
+        "caught": 13,
+        "ci95": [
+          0.239,
+          0.5496
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-009",
+          "pii-010",
+          "pii-011",
+          "pii-015",
+          "pii-018",
+          "pii-020",
+          "pii-032",
+          "pii-033",
+          "pii-035",
+          "pii-045",
+          "pii-048",
+          "pii-051",
+          "pii-056",
+          "pii-057",
+          "pii-064",
+          "pii-068",
+          "pii-074",
+          "pii-081",
+          "pii-083",
+          "pii-087"
+        ],
+        "n": 34,
+        "recall": 0.3824,
+        "rule": "no_pii",
+        "transform": "tab"
+      },
+      {
+        "caught": 13,
+        "ci95": [
+          0.239,
+          0.5496
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-009",
+          "pii-010",
+          "pii-011",
+          "pii-015",
+          "pii-018",
+          "pii-020",
+          "pii-032",
+          "pii-033",
+          "pii-035",
+          "pii-045",
+          "pii-048",
+          "pii-051",
+          "pii-056",
+          "pii-057",
+          "pii-064",
+          "pii-068",
+          "pii-074",
+          "pii-081",
+          "pii-083",
+          "pii-087"
+        ],
+        "n": 34,
+        "recall": 0.3824,
+        "rule": "no_pii",
+        "transform": "linebreak"
+      },
+      {
+        "caught": 15,
+        "ci95": [
+          0.3731,
+          0.7241
+        ],
+        "dropped": [
+          "pii-006",
+          "pii-011",
+          "pii-021",
+          "pii-023",
+          "pii-032",
+          "pii-045",
+          "pii-048",
+          "pii-051",
+          "pii-068",
+          "pii-072",
+          "pii-081",
+          "pii-083"
+        ],
+        "n": 27,
+        "recall": 0.5556,
+        "rule": "no_pii",
+        "transform": "case"
+      },
+      {
+        "caught": 40,
+        "ci95": [
+          0.874,
+          0.9957
+        ],
+        "dropped": [
+          "c41"
+        ],
+        "n": 41,
+        "recall": 0.9756,
+        "rule": "no_injection_patterns",
+        "transform": "zero_width"
+      },
+      {
+        "caught": 1,
+        "ci95": [
+          0.0043,
+          0.126
+        ],
+        "dropped": [
+          "c03",
+          "c05",
+          "c10",
+          "c12",
+          "c14",
+          "c16",
+          "c18",
+          "c20",
+          "c22",
+          "c24",
+          "c27",
+          "c29",
+          "c31",
+          "c33",
+          "c35",
+          "c37",
+          "c39",
+          "c41",
+          "c43",
+          "c45",
+          "c48",
+          "c50",
+          "c52",
+          "c54",
+          "c56",
+          "c59",
+          "c61",
+          "c63",
+          "c66",
+          "c68",
+          "c70",
+          "c72",
+          "c74",
+          "c76",
+          "c78",
+          "c80",
+          "c82",
+          "c84",
+          "c87",
+          "c89"
+        ],
+        "n": 41,
+        "recall": 0.0244,
+        "rule": "no_injection_patterns",
+        "transform": "homoglyph"
+      },
+      {
+        "caught": 41,
+        "ci95": [
+          0.9143,
+          1
+        ],
+        "dropped": [],
+        "n": 41,
+        "recall": 1,
+        "rule": "no_injection_patterns",
+        "transform": "fullwidth"
+      },
+      {
+        "caught": 36,
+        "ci95": [
+          0.9036,
+          1
+        ],
+        "dropped": [],
+        "n": 36,
+        "recall": 1,
+        "rule": "no_injection_patterns",
+        "transform": "nbsp"
+      },
+      {
+        "caught": 17,
+        "ci95": [
+          0.2776,
+          0.5663
+        ],
+        "dropped": [
+          "c05",
+          "c10",
+          "c14",
+          "c16",
+          "c18",
+          "c20",
+          "c22",
+          "c24",
+          "c31",
+          "c33",
+          "c41",
+          "c45",
+          "c48",
+          "c50",
+          "c54",
+          "c56",
+          "c61",
+          "c63",
+          "c66",
+          "c70",
+          "c74",
+          "c76",
+          "c80",
+          "c89"
+        ],
+        "n": 41,
+        "recall": 0.4146,
+        "rule": "no_injection_patterns",
+        "transform": "tab"
+      },
+      {
+        "caught": 15,
+        "ci95": [
+          0.2359,
+          0.5188
+        ],
+        "dropped": [
+          "c03",
+          "c05",
+          "c10",
+          "c14",
+          "c16",
+          "c18",
+          "c20",
+          "c22",
+          "c24",
+          "c31",
+          "c33",
+          "c37",
+          "c41",
+          "c45",
+          "c48",
+          "c50",
+          "c54",
+          "c56",
+          "c61",
+          "c63",
+          "c66",
+          "c70",
+          "c74",
+          "c76",
+          "c80",
+          "c89"
+        ],
+        "n": 41,
+        "recall": 0.3659,
+        "rule": "no_injection_patterns",
+        "transform": "linebreak"
+      },
+      {
+        "caught": 40,
+        "ci95": [
+          0.874,
+          0.9957
+        ],
+        "dropped": [
+          "c84"
+        ],
+        "n": 41,
+        "recall": 0.9756,
+        "rule": "no_injection_patterns",
+        "transform": "case"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.2588
+        ],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-007",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-014",
+          "blocklist-015"
+        ],
+        "n": 11,
+        "recall": 0,
+        "rule": "no_blocklist_words",
+        "transform": "zero_width"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.2588
+        ],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-007",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-014",
+          "blocklist-015"
+        ],
+        "n": 11,
+        "recall": 0,
+        "rule": "no_blocklist_words",
+        "transform": "homoglyph"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.2588
+        ],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-007",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-014",
+          "blocklist-015"
+        ],
+        "n": 11,
+        "recall": 0,
+        "rule": "no_blocklist_words",
+        "transform": "fullwidth"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.2775
+        ],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-007",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-015"
+        ],
+        "n": 10,
+        "recall": 0,
+        "rule": "no_blocklist_words",
+        "transform": "nbsp"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.2588
+        ],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-007",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-014",
+          "blocklist-015"
+        ],
+        "n": 11,
+        "recall": 0,
+        "rule": "no_blocklist_words",
+        "transform": "tab"
+      },
+      {
+        "caught": 0,
+        "ci95": [
+          0,
+          0.2588
+        ],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-007",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-014",
+          "blocklist-015"
+        ],
+        "n": 11,
+        "recall": 0,
+        "rule": "no_blocklist_words",
+        "transform": "linebreak"
+      },
+      {
+        "caught": 11,
+        "ci95": [
+          0.7412,
+          1
+        ],
+        "dropped": [],
+        "n": 11,
+        "recall": 1,
+        "rule": "no_blocklist_words",
+        "transform": "case"
+      }
+    ],
+    "rules": [
+      {
+        "firedOriginally": 34,
+        "positives": 45,
+        "rule": "no_pii",
+        "withSpan": 34
+      },
+      {
+        "firedOriginally": 41,
+        "positives": 42,
+        "rule": "no_injection_patterns",
+        "withSpan": 41
+      },
+      {
+        "firedOriginally": 11,
+        "positives": 15,
+        "rule": "no_blocklist_words",
+        "withSpan": 11
+      }
+    ],
+    "transforms": [
+      {
+        "describe": "a zero-width space (U+200B) inserted at the middle of the span",
+        "id": "zero_width"
+      },
+      {
+        "describe": "every Latin a e o p c x (and capitals) inside the span replaced by its Cyrillic lookalike",
+        "id": "homoglyph"
+      },
+      {
+        "describe": "every ASCII letter and digit inside the span replaced by its fullwidth form (NFKC folds it back)",
+        "id": "fullwidth"
+      },
+      {
+        "describe": "every space inside the span replaced by a no-break space (U+00A0)",
+        "id": "nbsp"
+      },
+      {
+        "describe": "a tab inserted at the middle of the span",
+        "id": "tab"
+      },
+      {
+        "describe": "a line break inserted at the middle of the span",
+        "id": "linebreak"
+      },
+      {
+        "describe": "the case of every ASCII letter inside the span swapped",
+        "id": "case"
+      }
+    ]
+  },
   "version": "0.9.0"
 }

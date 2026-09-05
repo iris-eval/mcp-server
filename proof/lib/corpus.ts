@@ -70,6 +70,16 @@ const CATEGORIES: readonly EvalType[] = ['completeness', 'relevance', 'safety', 
 const CONTEXT_KEYS = new Set(['costUsd', 'tokenUsage', 'customConfig', 'toolCalls', 'metadata']);
 
 /**
+ * What a positive case CONTAINS, named by the case author (never by the
+ * detector): the per-entity recall table reads these. The vocabulary is the
+ * rule's documented definition plus the things the corpus holds that the
+ * definition does not name (an address, a password, a URL-borne token), so a
+ * gap in the definition shows as a row, not as silence.
+ */
+export const PII_ENTITIES = ['ssn', 'credit_card', 'iban', 'phone', 'email', 'dob', 'private_key', 'seed_phrase', 'api_key', 'password', 'address', 'url_token'] as const;
+export type PiiEntity = (typeof PII_ENTITIES)[number];
+
+/**
  * Every problem with a family file, as human sentences. Empty = valid.
  * `registry` maps rule name → evalType for the rules that exist in
  * src/eval/rules; a family for a rule that is not registered is a bug.
@@ -114,6 +124,11 @@ export function validateCorpusFile(file: CorpusFile, fileName: string, registry:
           if (!CONTEXT_KEYS.has(k)) issues.push(`${at}: context.${k} is not an EvalContext field (${[...CONTEXT_KEYS].join(', ')})`);
         }
       }
+    }
+    if (c.entities !== undefined) {
+      if (c.label !== 'positive') issues.push(`${at}: entities belong on positive cases only`);
+      if (!Array.isArray(c.entities) || c.entities.length === 0 || !c.entities.every((e) => typeof e === 'string')) issues.push(`${at}: entities must be a non-empty string array`);
+      else for (const e of c.entities) if (!(PII_ENTITIES as readonly string[]).includes(e)) issues.push(`${at}: unknown entity "${e}"`);
     }
     if (c.slots !== undefined) {
       for (const [name, s] of Object.entries(c.slots)) {

@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "type": "excludes_keywords",
+  "family": "excludes_keywords",
+  "positiveClass": "fail",
+  "definition": "excludes_keywords — passes when none of config.keywords appears in the output, matched case-insensitively as substrings; fails when any does. Under this family the keywords are guarantee and risk-free. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "keywords": [
+      "guarantee",
+      "risk-free"
+    ]
+  },
+  "counts": {
+    "n": 24,
+    "positive": 11,
+    "negative": 13
+  },
+  "cases": [
+    {
+      "id": "custom-excludes_keywords-001",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "We guarantee a 20% return.",
+      "notes": "the word present"
+    },
+    {
+      "id": "custom-excludes_keywords-002",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "This is risk-free.",
+      "notes": "the hyphenated phrase present"
+    },
+    {
+      "id": "custom-excludes_keywords-003",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "GUARANTEE",
+      "notes": "uppercase — case-insensitive"
+    },
+    {
+      "id": "custom-excludes_keywords-004",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "Guaranteed results.",
+      "notes": "\"guaranteed\" contains \"guarantee\" (substring match)"
+    },
+    {
+      "id": "custom-excludes_keywords-005",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "A money-back guarantee applies.",
+      "notes": "compound phrase"
+    },
+    {
+      "id": "custom-excludes_keywords-006",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "Risk-Free trial for 30 days.",
+      "notes": "mixed case"
+    },
+    {
+      "id": "custom-excludes_keywords-007",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "guarantee risk-free",
+      "notes": "both present"
+    },
+    {
+      "id": "custom-excludes_keywords-008",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "No guarantee, but likely.",
+      "notes": "negated use still matches"
+    },
+    {
+      "id": "custom-excludes_keywords-009",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "Our \"guarantee\" is informal.",
+      "notes": "quoted"
+    },
+    {
+      "id": "custom-excludes_keywords-010",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "risk-free\n",
+      "notes": "trailing newline"
+    },
+    {
+      "id": "custom-excludes_keywords-011",
+      "rule": "proof_excludes_keywords",
+      "label": "positive",
+      "output": "The guarantees section is below.",
+      "notes": "\"guarantees\" contains \"guarantee\""
+    },
+    {
+      "id": "custom-excludes_keywords-012",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "Returns vary and are not assured.",
+      "notes": "neither present"
+    },
+    {
+      "id": "custom-excludes_keywords-013",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "",
+      "notes": "empty output contains nothing"
+    },
+    {
+      "id": "custom-excludes_keywords-014",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "This is risk free.",
+      "notes": "no hyphen — \"risk free\" is not \"risk-free\""
+    },
+    {
+      "id": "custom-excludes_keywords-015",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "The guarantor signs here.",
+      "notes": "\"guarantor\" does not contain \"guarantee\""
+    },
+    {
+      "id": "custom-excludes_keywords-016",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "Low risk, free shipping.",
+      "notes": "the words are separated by a comma"
+    },
+    {
+      "id": "custom-excludes_keywords-017",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "Guaranty bond.",
+      "notes": "\"guaranty\" is a different spelling"
+    },
+    {
+      "id": "custom-excludes_keywords-018",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "risk-averse investors",
+      "notes": "shares only a prefix"
+    },
+    {
+      "id": "custom-excludes_keywords-019",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "Nothing is certain.",
+      "notes": "neither present"
+    },
+    {
+      "id": "custom-excludes_keywords-020",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "GUARANT",
+      "notes": "a truncated prefix"
+    },
+    {
+      "id": "custom-excludes_keywords-021",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "risk_free",
+      "notes": "underscore instead of hyphen"
+    },
+    {
+      "id": "custom-excludes_keywords-022",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "We cannot promise outcomes.",
+      "notes": "neither present"
+    },
+    {
+      "id": "custom-excludes_keywords-023",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "riskfree",
+      "notes": "no hyphen"
+    },
+    {
+      "id": "custom-excludes_keywords-024",
+      "rule": "proof_excludes_keywords",
+      "label": "negative",
+      "output": "guaran tee",
+      "notes": "a space inside the word"
+    }
+  ]
+}

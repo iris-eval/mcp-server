@@ -34,10 +34,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
 
 import { rulesByType } from '../src/eval/rules/index.js';
-import type { EvalContext, EvalRule, EvalType } from '../src/types/eval.js';
-import { loadCorpus, validateCorpusFile, type CorpusFile } from './lib/corpus.js';
+import type { EvalRule, EvalType } from '../src/types/eval.js';
+import { loadCorpus, validateCorpusFile, PII_ENTITIES, type CorpusFile } from './lib/corpus.js';
 import { materialiseCase } from './lib/materialise.js';
 import { summarise, F1_CI_METHOD, type Observation, type RuleSummary } from './lib/metrics.js';
+import { CREDIBLE_METHOD } from './lib/intervals.js';
+import { contextFor } from './lib/context.js';
+import { measureTransforms, type TransformResults } from './lib/transforms.js';
+import { loadCustomCorpus, validateCustomCorpusFile, measureCustom, type CustomRow } from './lib/custom-corpus.js';
+import { wilson } from './judge/lib/wilson.js';
+
+export { contextFor };
 import { measureComposite, renderCompositeMarkdown, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from './lib/composite-report.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,14 +71,28 @@ export interface RuleRow extends RuleSummary {
   falseNegatives: string[];
 }
 
+export interface EntityRow {
+  entity: string;
+  /** Positive cases whose author named this entity. */
+  present: number;
+  /** Of those, cases the rule failed for any reason. */
+  caught: number;
+  /** Of those, cases where the rule's evidence named this entity — recall is this over present. */
+  named: number;
+  recall: number | null;
+  ci95: [number, number] | null;
+}
+
 export interface ProofResults {
-  schemaVersion: 1;
+  schemaVersion: 2;
   corpusVersion: string;
+  /** sha256 over proof/corpus/custom/*.json — the conformance families. */
+  customCorpusVersion: string;
   generatedAt: string;
   commit: string;
   /** package.json version the numbers were generated for — the public surfaces cite this, because a squash-merge erases branch commits. */
   version: string;
-  method: { ci: 'wilson-95'; f1Ci: string; positiveClass: 'fail'; skipped: string };
+  method: { ci: 'wilson-95'; f1Ci: string; credible: string; ppvAt: string; positiveClass: 'fail'; skipped: string };
   rules: Array<{
     name: string;
     category: EvalType;
@@ -87,30 +108,94 @@ export interface ProofResults {
     recall: number | null;
     f1: number | null;
     ci95: RuleSummary['ci95'];
+    credible95: RuleSummary['credible95'];
+    ppvAt: Record<string, number | null>;
   }>;
+  transforms: TransformResults;
+  entities: Array<{ rule: string; method: string; rows: EntityRow[] }>;
+  custom: {
+    method: string;
+    types: Array<{
+      type: string;
+      config: Record<string, unknown>;
+      n: number;
+      positives: number;
+      negatives: number;
+      skipped: number;
+      tp: number;
+      fp: number;
+      fn: number;
+      tn: number;
+      precision: number | null;
+      recall: number | null;
+      f1: number | null;
+      ci95: RuleSummary['ci95'];
+      credible95: RuleSummary['credible95'];
+    }>;
+  };
   humanAgreement: { status: 'pending'; note: string };
+}
+
+/** PPV of a fire at a prevalence, from the family's sensitivity and specificity; null when either is undefined. */
+export function ppvFromCounts(c: { tp: number; fp: number; fn: number; tn: number }, prevalence: number): number | null {
+  if (c.tp + c.fn === 0 || c.tn + c.fp === 0) return null;
+  const sens = c.tp / (c.tp + c.fn);
+  const spec = c.tn / (c.tn + c.fp);
+  const den = sens * prevalence + (1 - spec) * (1 - prevalence);
+  return den === 0 ? null : Math.round(((sens * prevalence) / den) * 10_000) / 10_000;
+}
+export const PPV_PREVALENCES = [0.01, 0.05, 0.2, 0.5] as const;
+
+/** Label the no_pii rule emits → the entity it names. */
+const PII_LABEL_TO_ENTITY: Record<string, string> = {
+  SSN: 'ssn',
+  'Credit Card': 'credit_card',
+  IBAN: 'iban',
+  Phone: 'phone',
+  Email: 'email',
+  DOB: 'dob',
+  'Private Key Block': 'private_key',
+  'Seed Phrase': 'seed_phrase',
+  'API Key': 'api_key',
+  'AWS Access Key': 'api_key',
+  'Slack Token': 'api_key',
+  'SendGrid Key': 'api_key',
+  'GitHub Token': 'api_key',
+  'Google API Key': 'api_key',
+  'npm Token': 'api_key',
+  'DigitalOcean Token': 'api_key',
+};
+
+/** Per-entity recall for a family whose positives carry `entities`. */
+export function measureEntities(file: CorpusFile, rule: EvalRule): EntityRow[] {
+  const rows: EntityRow[] = [];
+  const positives = file.cases.filter((c) => c.label === 'positive' && c.entities && c.entities.length > 0);
+  const observed = positives.map((raw) => {
+    const c = materialiseCase(raw);
+    const r = rule.evaluate(contextFor(c, file.config));
+    const fired = !r.skipped && r.passed === false;
+    const named = new Set<string>();
+    for (const e of r.evidence ?? []) {
+      const label = e.type === 'span' ? e.label : e.type === 'pattern' ? e.name : undefined;
+      const entity = label ? PII_LABEL_TO_ENTITY[label] : undefined;
+      if (entity) named.add(entity);
+    }
+    return { entities: raw.entities as string[], fired, named };
+  });
+  for (const entity of PII_ENTITIES) {
+    const present = observed.filter((o) => o.entities.includes(entity));
+    if (present.length === 0) continue;
+    const caught = present.filter((o) => o.fired).length;
+    const named = present.filter((o) => o.named.has(entity)).length;
+    const w = wilson(named, present.length);
+    rows.push({ entity, present: present.length, caught, named, recall: Math.round((named / present.length) * 10_000) / 10_000, ci95: w ? [Math.round(w.lo * 10_000) / 10_000, Math.round(w.hi * 10_000) / 10_000] : null });
+  }
+  return rows;
 }
 
 /** Every registry rule, in bundle order, keyed by name. */
 export function registryRules(): EvalRule[] {
   return (['completeness', 'relevance', 'safety', 'cost'] as const).flatMap((t) => rulesByType[t]);
-}
-
-/** Builds the EvalContext a case declares: text fields plus any extra context keys. */
-export function contextFor(c: ReturnType<typeof materialiseCase>, fileConfig?: Record<string, unknown>): EvalContext {
-  const ctx: EvalContext = { output: c.output };
-  if (c.input !== undefined) ctx.input = c.input;
-  if (c.expected !== undefined) ctx.expected = c.expected;
-  if (fileConfig && Object.keys(fileConfig).length > 0) ctx.customConfig = { ...fileConfig };
-  if (c.context) {
-    const extra = c.context as Partial<EvalContext>;
-    if (extra.costUsd !== undefined) ctx.costUsd = extra.costUsd;
-    if (extra.tokenUsage !== undefined) ctx.tokenUsage = extra.tokenUsage;
-    if (extra.toolCalls !== undefined) ctx.toolCalls = extra.toolCalls;
-    if (extra.metadata !== undefined) ctx.metadata = extra.metadata;
-    if (extra.customConfig !== undefined) ctx.customConfig = { ...(ctx.customConfig ?? {}), ...extra.customConfig };
-  }
-  return ctx;
 }
 
 /** Runs one family through its rule and returns the observations, one per case. */
@@ -128,16 +213,23 @@ export function observe(file: CorpusFile, rule: EvalRule): Observation[] {
   });
 }
 
-export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVersion: string; missing: string[] }> {
+export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVersion: string; customCorpusVersion: string; missing: string[]; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[] }> {
   const { files, corpusVersion } = await loadCorpus(root);
+  const { files: customFiles, customCorpusVersion } = await loadCustomCorpus(root);
   const rules = registryRules();
   const registry = new Map(rules.map((r) => [r.name, r.evalType]));
   const byName = new Map(rules.map((r) => [r.name, r]));
 
-  const issues = files.flatMap((f) => validateCorpusFile(f, `${f.family ?? '?'}.json`, registry));
+  const issues = [
+    ...files.flatMap((f) => validateCorpusFile(f, `${f.family ?? '?'}.json`, registry)),
+    ...customFiles.flatMap((f) => validateCustomCorpusFile(f, `custom/${f.type ?? '?'}.json`)),
+  ];
   if (issues.length > 0) {
     throw new Error(`corpus validation failed:\n  ${issues.join('\n  ')}`);
   }
+  const customTypes = customFiles.map((f) => f.type);
+  const dupCustom = customTypes.filter((t, i, a) => a.indexOf(t) !== i);
+  if (dupCustom.length > 0) throw new Error(`more than one conformance family for: ${[...new Set(dupCustom)].join(', ')}`);
   const byRule = new Map(files.map((f) => [f.rule, f]));
   const dup = files.map((f) => f.rule).filter((r, i, a) => a.indexOf(r) !== i);
   if (dup.length > 0) throw new Error(`more than one family for: ${[...new Set(dup)].join(', ')}`);
@@ -155,12 +247,23 @@ export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVe
       name: rule.name,
       category: rule.evalType,
       family: file.family,
-      ...summarise(obs),
+      ...summarise(obs, rule.name),
       falsePositives: obs.filter((o) => !o.actual && o.predicted).map((o) => o.id),
       falseNegatives: obs.filter((o) => o.actual && !o.predicted).map((o) => o.id),
     });
   }
-  return { rows, corpusVersion, missing };
+  const transforms = measureTransforms(files, byName);
+  const entities: ProofResults['entities'] = [];
+  const pii = byRule.get('no_pii');
+  if (pii && byName.get('no_pii')) {
+    entities.push({
+      rule: 'no_pii',
+      method: 'positives carry `entities` named by the case author; caught = the rule failed the case for any reason; named = the evidence named this entity; recall = named / present, Wilson 95% — a case caught for another reason is visible as caught − named',
+      rows: measureEntities(pii, byName.get('no_pii') as EvalRule),
+    });
+  }
+  const custom = measureCustom(customFiles);
+  return { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom };
 }
 
 function gitCommit(root: string): string {
@@ -171,16 +274,26 @@ function gitCommit(root: string): string {
   }
 }
 
-export function toResults(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, version: string): ProofResults {
+export function toResults(
+  rows: RuleRow[],
+  corpusVersion: string,
+  generatedAt: string,
+  commit: string,
+  version: string,
+  extra: { customCorpusVersion: string; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[] },
+): ProofResults {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     corpusVersion,
+    customCorpusVersion: extra.customCorpusVersion,
     generatedAt,
     commit,
     version,
     method: {
       ci: 'wilson-95',
       f1Ci: F1_CI_METHOD,
+      credible: CREDIBLE_METHOD,
+      ppvAt: `positive predictive value of a fire at prevalences ${PPV_PREVALENCES.join(', ')}: sens·π / (sens·π + (1 − spec)(1 − π)) from this family's counts`,
       positiveClass: 'fail',
       skipped: 'a skipped result (the rule declined to judge) counts as not failed; the count is reported per rule',
     },
@@ -199,10 +312,34 @@ export function toResults(rows: RuleRow[], corpusVersion: string, generatedAt: s
       recall: r.recall,
       f1: r.f1,
       ci95: r.ci95,
+      credible95: r.credible95,
+      ppvAt: Object.fromEntries(PPV_PREVALENCES.map((p) => [String(p), ppvFromCounts(r, p)])),
     })),
+    transforms: extra.transforms,
+    entities: extra.entities,
+    custom: {
+      method: "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
+      types: extra.custom.map((c) => ({
+        type: c.type,
+        config: c.config,
+        n: c.n,
+        positives: c.positives,
+        negatives: c.negatives,
+        skipped: c.skipped,
+        tp: c.tp,
+        fp: c.fp,
+        fn: c.fn,
+        tn: c.tn,
+        precision: c.precision,
+        recall: c.recall,
+        f1: c.f1,
+        ci95: c.ci95,
+        credible95: c.credible95,
+      })),
+    },
     humanAgreement: {
       status: 'pending',
-      note: 'founder blind label of a 40-case stratified sample; until then the labels are same-model dual annotation (see proof/README.md)',
+      note: 'founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)',
     },
   };
 }
@@ -229,20 +366,20 @@ function ci(i: [number, number] | null): string {
   return i === null ? '—' : `[${(i[0] * 100).toFixed(1)}, ${(i[1] * 100).toFixed(1)}]`;
 }
 
-export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, missing: string[], version: string): string {
+export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, missing: string[], version: string, results?: ProofResults): string {
   const L: string[] = [];
   L.push('# Iris built-in rules — measured on the proof corpus');
   L.push('');
   L.push(`Generated ${generatedAt} for v${version} (local generating commit \`${commit}\` — branch commits are squashed on merge, so cite the version).`);
   L.push(`Corpus version \`${corpusVersion}\` (sha256 of proof/corpus/*.json). Reproduce with \`npm run proof\`; CI runs \`npm run proof -- --check\`.`);
   L.push('');
-  L.push('The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1. A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.');
+  L.push('The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.');
   L.push('');
-  L.push('| Rule | Bundle | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) |');
-  L.push('|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|');
+  L.push('| Rule | Bundle | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |');
+  L.push('|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|');
   for (const r of rows) {
     L.push(
-      `| \`${r.name}\` | ${r.category} | ${r.n} | ${r.positives} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${pct(r.precision)} ${ci(r.ci95.precision)} | ${pct(r.recall)} ${ci(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} ${ci(r.ci95.f1)} |`,
+      `| \`${r.name}\` | ${r.category} | ${r.n} | ${r.positives} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${pct(r.precision)} ${ci(r.ci95.precision)} | ${pct(r.recall)} ${ci(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} ${ci(r.ci95.f1)} | ${ci(r.credible95.f1)} | ${pct(ppvFromCounts(r, 0.05))} / ${pct(ppvFromCounts(r, 0.5))} |`,
     );
   }
   if (missing.length > 0) {
@@ -260,7 +397,41 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
     L.push(`- \`${r.name}\` — FP: ${fp} · FN: ${fn}`);
   }
   L.push('');
-  L.push('Human agreement: pending (founder blind label of a 40-case stratified sample).');
+  if (results) {
+    L.push('## Transforms — do the critical rules survive the evasions a leak arrives in?');
+    L.push('');
+    L.push(`${results.transforms.method}.`);
+    L.push('');
+    L.push('| Rule | positives | fired untransformed | with a span |');
+    L.push('|---|--:|--:|--:|');
+    for (const s of results.transforms.rules) L.push(`| \`${s.rule}\` | ${s.positives} | ${s.firedOriginally} | ${s.withSpan} |`);
+    L.push('');
+    L.push('| Rule | Transform | n | still caught | Recall (95% CI) | dropped |');
+    L.push('|---|---|--:|--:|---|---|');
+    for (const t of results.transforms.rows) L.push(`| \`${t.rule}\` | ${t.transform} | ${t.n} | ${t.caught} | ${t.n === 0 ? 'n/a' : `${pct(t.recall)} ${ci(t.ci95)}`} | ${t.dropped.length === 0 ? (t.n === 0 ? '—' : 'none') : t.dropped.join(', ')} |`);
+    L.push('');
+    for (const t of results.transforms.transforms) L.push(`- \`${t.id}\` — ${t.describe}`);
+    L.push('');
+    for (const e of results.entities) {
+      L.push(`## Recall by entity — \`${e.rule}\``);
+      L.push('');
+      L.push(`${e.method}.`);
+      L.push('');
+      L.push('| Entity | present | caught | named | Recall (95% CI) |');
+      L.push('|---|--:|--:|--:|---|');
+      for (const r of e.rows) L.push(`| \`${r.entity}\` | ${r.present} | ${r.caught} | ${r.named} | ${pct(r.recall)} ${ci(r.ci95)} |`);
+      L.push('');
+    }
+    L.push('## Custom rule types — conformance to their documented definitions');
+    L.push('');
+    L.push(`${results.custom.method}. Families live in proof/corpus/custom/<type>.json with the config each is measured under.`);
+    L.push('');
+    L.push('| Type | config | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) |');
+    L.push('|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|');
+    for (const c of results.custom.types) L.push(`| \`${c.type}\` | \`${JSON.stringify(c.config)}\` | ${c.n} | ${c.positives} | ${c.skipped} | ${c.tp} | ${c.fp} | ${c.fn} | ${c.tn} | ${pct(c.precision)} ${ci(c.ci95.precision)} | ${pct(c.recall)} ${ci(c.ci95.recall)} |`);
+    L.push('');
+  }
+  L.push('Human agreement: pending (founder blind label of a 140-case stratified sample, twenty per judgment family).');
   L.push('');
   return L.join('\n');
 }
@@ -366,13 +537,13 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { rows, corpusVersion, missing } = await measure(repoRoot);
+  const { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom } = await measure(repoRoot);
   const generatedAt = new Date().toISOString();
   const commit = gitCommit(repoRoot);
   const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-  const results = toResults(rows, corpusVersion, generatedAt, commit, version);
+  const results = toResults(rows, corpusVersion, generatedAt, commit, version, { customCorpusVersion, transforms, entities, custom });
   const json = stableJson(results);
-  const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version);
+  const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version, results);
   const ts = renderPublishedAccuracy(results);
 
   for (const r of rows) {
@@ -380,6 +551,8 @@ async function main(): Promise<void> {
       `  ${r.name.padEnd(26)} n=${String(r.n).padStart(3)} skip=${String(r.skipped).padStart(2)} tp=${String(r.tp).padStart(3)} fp=${String(r.fp).padStart(3)} fn=${String(r.fn).padStart(3)} tn=${String(r.tn).padStart(3)}  P=${pct(r.precision).padStart(6)} ${ci(r.ci95.precision).padEnd(14)} R=${pct(r.recall).padStart(6)} ${ci(r.ci95.recall).padEnd(14)} F1=${r.f1 === null ? '—' : r.f1.toFixed(3)}\n`,
     );
   }
+  for (const t of transforms.rows) if (t.n > 0) process.stdout.write(`  transform ${t.rule.padEnd(22)} ${t.transform.padEnd(10)} n=${String(t.n).padStart(3)} caught=${String(t.caught).padStart(3)} R=${pct(t.recall).padStart(6)}\n`);
+  for (const c of custom) process.stdout.write(`  custom ${c.type.padEnd(18)} n=${String(c.n).padStart(3)} tp=${c.tp} fp=${c.fp} fn=${c.fn} tn=${c.tn} skip=${c.skipped}\n`);
   if (missing.length > 0) {
     process.stderr.write(`proof — ${missing.length} registry rule(s) have no family: ${missing.join(', ')}\n`);
     if (check) {
