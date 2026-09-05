@@ -11,9 +11,9 @@
  *     transcripts with their answer keys stripped, generated here, never
  *     hand-copied); this script lives outside it
  *   - a scratch IRIS_HOME per phase, also outside the directory
- *   - `claude -p --bare --permission-mode dontAsk --strict-mcp-config
- *     --output-format stream-json` with a scoped allowlist; --bare skips
- *     hooks, plugins and auto-memory (the contamination the verifier found)
+ *   - `claude -p --permission-mode dontAsk --strict-mcp-config
+ *     --output-format stream-json` with a scoped allowlist (not --bare: it skips
+ *     the login too; a never-used cwd already has no memory, no CLAUDE.md)
  *   - the MCP path in two phases: phase 1 (A1–A3) discovers the install and
  *     writes the config it would use; phase 2 (A4–A7) starts from that exact
  *     config, with the package spec rewritten to the artefact under test and
@@ -32,11 +32,14 @@
  *   node tests/acceptance/stranger/run.mjs --spec @iris-eval/mcp-server@0.9.0 --out <dir> [--phase all|http|mcp1|mcp2|a8]
  *   node tests/acceptance/stranger/run.mjs --tarball ./iris-eval-mcp-server-0.9.0.tgz --out <dir>
  *
- * Each phase writes <out>/<phase>.jsonl (the stream), <phase>.stderr.log,
- * <phase>.json (model, cost, wall time, tool calls, denials, README reads)
- * and, at the end, <out>/rows.json — A1–A9 with the evidence line per row.
- * The runs cost real money on the account running them (about one to two
- * dollars per phase); a judge key is never required and never passed.
+ * The phases can be run separately against one record dir: `--phase mcp2`
+ * reuses the config phase 1 wrote there and runs the A8 driver turn after
+ * it; rows.json merges across runs. Each phase writes <out>/<phase>.jsonl
+ * (the stream), <phase>.stderr.log, <phase>.json (model, cost, wall time,
+ * tool calls, denials, README reads) and rows.json — A1–A8 and the HTTP
+ * rows with the evidence line per row. The runs cost real money on the
+ * account running them (about one to two dollars per phase); a judge key
+ * is never required and never passed.
  */
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -114,8 +117,22 @@ function makePhaseDir(phase) {
 }
 
 /* ── running claude -p and capturing the stream ── */
+/** The Claude Code executable: the npm shim's target on Windows, `claude` on a PATH elsewhere. */
+function claudeBinary() {
+  if (process.platform === 'win32') {
+    const shimTarget = join(process.env.APPDATA ?? '', 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe');
+    if (existsSync(shimTarget)) return shimTarget;
+  }
+  return 'claude';
+}
+
 function runClaude({ phase, cwd, home, prompt, mcpConfig, resume }) {
-  const cli = ['-p', prompt, '--bare', '--permission-mode', 'dontAsk', '--strict-mcp-config', '--output-format', 'stream-json', '--verbose', '--allowedTools', ...ALLOWED_TOOLS];
+  // Not `--bare`: it also skips the keychain and OAuth reads, so the session
+  // runs "Not logged in" and ends on an api_error before a single call. The
+  // isolation the verifier asked for holds without it — a never-used cwd has
+  // no CLAUDE.md, no project settings and an empty per-directory memory, and
+  // --strict-mcp-config keeps every other server off the session.
+  const cli = ['-p', prompt, '--permission-mode', 'dontAsk', '--strict-mcp-config', '--output-format', 'stream-json', '--verbose', '--allowedTools', ...ALLOWED_TOOLS];
   if (mcpConfig) cli.push('--mcp-config', mcpConfig);
   if (resume) cli.push('--resume', resume);
   if (MODEL) cli.push('--model', MODEL);
@@ -123,7 +140,12 @@ function runClaude({ phase, cwd, home, prompt, mcpConfig, resume }) {
   const env = { ...process.env, IRIS_HOME: home };
   for (const k of Object.keys(env)) if (/^IRIS_(ANTHROPIC|OPENAI)_API_KEY$/.test(k)) delete env[k];
   return new Promise((resolveRun, reject) => {
-    const child = spawn('claude', cli, { cwd, env, shell: process.platform === 'win32', windowsHide: true });
+    // Never through a shell: on Windows the npm `claude` shim is a .cmd that
+    // hands cmd.exe the whole line, and a multi-line prompt argument comes
+    // apart there (the first run captured plain text and zero tool calls).
+    // Spawn the executable the shim wraps, with an argument array, and give
+    // it no stdin so it never waits three seconds for a prompt on a pipe.
+    const child = spawn(claudeBinary(), cli, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
     child.stdout.on('data', (d) => { out += d; });
@@ -269,6 +291,25 @@ function grade({ mcp1, mcp2, a8, http }) {
   return rows;
 }
 
+/**
+ * The config the stranger wrote, made runnable: the package spec rewritten to
+ * the artefact under test (a pre-release tarball, or the exact version) with
+ * the substitution recorded, and an IRIS_HOME placeholder injected per phase.
+ */
+function prepareConfig(written) {
+  const config = JSON.parse(JSON.stringify(written));
+  let substitution = null;
+  for (const [name, server] of Object.entries(config.mcpServers ?? {})) {
+    if (Array.isArray(server.args)) {
+      const before = [...server.args];
+      server.args = server.args.map((a) => (/^@iris-eval\/mcp-server(@.*)?$/.test(a) ? PACKAGE_SPEC : a));
+      if (JSON.stringify(before) !== JSON.stringify(server.args)) substitution = `${name}: args ${JSON.stringify(before)} → ${JSON.stringify(server.args)}`;
+    }
+    server.env = { ...(server.env ?? {}), IRIS_HOME: '${IRIS_HOME}' };
+  }
+  return { config, substitution };
+}
+
 /* ── the phases ── */
 async function phaseMcp1() {
   const { dir, home } = makePhaseDir('mcp1');
@@ -278,18 +319,8 @@ async function phaseMcp1() {
   let substitution = null;
   const cfgPath = join(dir, 'mcp-config.json');
   if (existsSync(cfgPath)) {
-    config = JSON.parse(readFileSync(cfgPath, 'utf8'));
-    // Rewrite the package spec to the artefact under test (a pre-release
-    // tarball, or the exact version), and record the substitution.
-    for (const [name, server] of Object.entries(config.mcpServers ?? {})) {
-      if (Array.isArray(server.args)) {
-        const before = [...server.args];
-        server.args = server.args.map((a) => (/^@iris-eval\/mcp-server(@.*)?$/.test(a) ? PACKAGE_SPEC : a));
-        if (JSON.stringify(before) !== JSON.stringify(server.args)) substitution = `${name}: args ${JSON.stringify(before)} → ${JSON.stringify(server.args)}`;
-      }
-      server.env = { ...(server.env ?? {}), IRIS_HOME: '${IRIS_HOME}' };
-    }
     writeFileSync(join(OUT, 'mcp-config-as-written.json'), readFileSync(cfgPath, 'utf8'));
+    ({ config, substitution } = prepareConfig(JSON.parse(readFileSync(cfgPath, 'utf8'))));
   }
   const rec = summarise('mcp1', d, r.wallMs, substitution);
   return { d, rec, config, substitution };
@@ -325,30 +356,51 @@ async function phaseHttp() {
 
 const results = {};
 const want = (p) => PHASE === 'all' || PHASE === p;
-if (want('mcp1') || want('mcp2') || want('a8')) {
+const line = (name, rec) => console.log(`${name}: ${rec.toolCalls} calls, $${rec.costUsd}, ${Math.round(rec.wallMs / 1000)}s, denials ${rec.denials}${rec.irisCalls.length ? `, iris ${rec.irisCalls.join(',')}` : ''}`);
+const savedConfig = join(OUT, 'mcp-config-as-written.json');
+let connectedConfig = null;
+if (want('mcp1')) {
   results.mcp1 = await phaseMcp1();
-  console.log(`mcp1: ${results.mcp1.rec.toolCalls} calls, $${results.mcp1.rec.costUsd}, ${Math.round(results.mcp1.rec.wallMs / 1000)}s, denials ${results.mcp1.rec.denials}`);
-  if (results.mcp1.config && (want('mcp2') || want('a8'))) {
-    results.mcp2 = await phaseMcp2(results.mcp1.config);
-    console.log(`mcp2: ${results.mcp2.rec.toolCalls} calls, $${results.mcp2.rec.costUsd}, ${Math.round(results.mcp2.rec.wallMs / 1000)}s, denials ${results.mcp2.rec.denials}, iris ${results.mcp2.rec.irisCalls.join(',')}`);
-    if (want('a8') || PHASE === 'all') {
-      results.a8 = await phaseA8(results.mcp2);
-      console.log(`a8: ${results.a8.rec.toolCalls} calls, $${results.a8.rec.costUsd}, ${Math.round(results.a8.rec.wallMs / 1000)}s`);
-    }
-  }
+  line('mcp1', results.mcp1.rec);
+  connectedConfig = results.mcp1.config;
+} else if ((want('mcp2') || want('a8')) && existsSync(savedConfig)) {
+  // Reuse the config phase 1 wrote on an earlier run of this record dir.
+  connectedConfig = prepareConfig(JSON.parse(readFileSync(savedConfig, 'utf8'))).config;
+}
+if (PHASE === 'a8' && existsSync(join(OUT, 'mcp2.jsonl')) && existsSync(join(OUT, 'mcp-config-as-run.json'))) {
+  // The driver turn alone, resumed on the connected phase already in this
+  // record dir: its cwd and session id from the stream's init event, its
+  // config (with the scratch home) from the as-run copy.
+  const d2 = digest(parseStream(readFileSync(join(OUT, 'mcp2.jsonl'), 'utf8')));
+  const asRun = JSON.parse(readFileSync(join(OUT, 'mcp-config-as-run.json'), 'utf8'));
+  const home = Object.values(asRun.mcpServers ?? {}).map((s) => s.env?.IRIS_HOME).find(Boolean);
+  const cfgPath = join(tmpdir(), `iris-stranger-a8-config-${Date.now()}.json`);
+  writeFileSync(cfgPath, JSON.stringify(asRun));
+  const mcp2 = { d: d2, rec: { sessionId: d2.init?.session_id }, dir: d2.init?.cwd, home, cfgPath };
+  if (!mcp2.dir || !mcp2.rec.sessionId || !existsSync(mcp2.dir)) throw new Error('a8 needs the connected phase\'s directory and session; run --phase mcp2 first');
+  results.a8 = await phaseA8(mcp2);
+  line('a8', results.a8.rec);
+} else if (connectedConfig && (want('mcp2') || want('a8'))) {
+  results.mcp2 = await phaseMcp2(connectedConfig);
+  line('mcp2', results.mcp2.rec);
+  results.a8 = await phaseA8(results.mcp2);
+  line('a8', results.a8.rec);
 }
 if (want('http')) {
   results.http = await phaseHttp();
-  console.log(`http: ${results.http.rec.toolCalls} calls, $${results.http.rec.costUsd}, ${Math.round(results.http.rec.wallMs / 1000)}s, denials ${results.http.rec.denials}`);
+  line('http', results.http.rec);
 }
 const rows = grade(results);
+// Rows merge across runs of the same record dir, so the phases can be run
+// separately (mcp1, then mcp2 + a8, then http) and graded together.
+const previous = existsSync(join(OUT, 'rows.json')) ? JSON.parse(readFileSync(join(OUT, 'rows.json'), 'utf8')) : null;
 const record = {
   protocol: PROTOCOL_VERSION,
   spec: PACKAGE_SPEC,
   gradedAt: new Date().toISOString(),
-  model: Object.values(results).map((r) => r.rec.model).find(Boolean) ?? null,
-  totalCostUsd: Object.values(results).reduce((s, r) => s + (r.rec.costUsd ?? 0), 0),
-  rows,
+  model: Object.values(results).map((r) => r.rec.model).find(Boolean) ?? previous?.model ?? null,
+  totalCostUsd: (previous?.totalCostUsd ?? 0) + Object.values(results).reduce((s, r) => s + (r.rec.costUsd ?? 0), 0),
+  rows: { ...(previous?.rows ?? {}), ...rows },
 };
 writeFileSync(join(OUT, 'rows.json'), JSON.stringify(record, null, 2));
 console.log(JSON.stringify(record, null, 2));
