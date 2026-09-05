@@ -132,11 +132,30 @@ function computeRuleSnapshot(evals: EvalResult[]): MomentRuleSnapshot {
   return { failed, skipped, passedCount, totalCount };
 }
 
+/*
+ * The moment SHOWS the verdict each evaluation reached; it does not compute
+ * a second one.
+ *
+ * It used to count failed rules: no failures meant pass, no passes meant
+ * fail, anything else meant partial. From 0.10.0 those two answers diverge,
+ * and the divergence is the whole point of the composer. An evaluation can
+ * pass with a rule visibly failed — a shipped default that only advises, or
+ * evidence too weak to carry the risk past the deployment's loss threshold
+ * — and the old arithmetic would have called that "partial", contradicting
+ * the verdict the tool returned for the same evaluation.
+ *
+ * "partial" now means what it says: several evaluations of one trace and
+ * they did not agree. An `unknown` verdict reads as unevaluated, because
+ * that is what it is — asked, and unable to answer.
+ */
 function computeVerdict(evals: EvalResult[], snapshot: MomentRuleSnapshot): MomentVerdict {
   if (evals.length === 0) return 'unevaluated';
   if (snapshot.totalCount - snapshot.skipped.length === 0) return 'unevaluated';
-  if (snapshot.failed.length === 0) return 'pass';
-  if (snapshot.passedCount === 0) return 'fail';
+  const decided = evals.filter((e) => e.verdict === undefined || e.verdict.state !== 'unknown');
+  if (decided.length === 0) return 'unevaluated';
+  const passed = decided.filter((e) => e.passed).length;
+  if (passed === decided.length) return 'pass';
+  if (passed === 0) return 'fail';
   return 'partial';
 }
 
@@ -159,8 +178,19 @@ function classifySignificance({
   ruleSnapshot,
   verdict,
 }: SignificanceInput): MomentSignificance {
-  // 1. Safety violation — any safety rule failed → top priority.
-  const safetyFailed = ruleSnapshot.failed.filter((name) => SAFETY_RULE_NAMES.has(name));
+  /*
+   * 1. Safety violation — a rule that VETOES failed, or a safety-bundle rule
+   * did. Bundle membership alone was the old test, and it is the weaker
+   * one: from 0.10.0 which rules veto is the deployment's call
+   * (eval.criticalRules), so a rule promoted to critical outside the safety
+   * bundle is exactly as serious and used to rank as a plain failure. The
+   * bundle list stays as well, because a safety rule that a deployment
+   * DEMOTED still describes what it found.
+   */
+  const vetoed = new Set(
+    evals.flatMap((e) => e.rule_results.filter((r) => !r.skipped && r.passed === false && r.role === 'veto').map((r) => r.ruleName)),
+  );
+  const safetyFailed = ruleSnapshot.failed.filter((name) => SAFETY_RULE_NAMES.has(name) || vetoed.has(name));
   if (safetyFailed.length > 0) {
     return {
       kind: 'safety-violation',

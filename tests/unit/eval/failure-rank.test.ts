@@ -60,15 +60,10 @@ describe('isFailureMoment', () => {
     expect(isFailureMoment(m)).toBe(true);
   });
 
-  it('includes partial verdicts', () => {
+  it('includes partial verdicts — two evaluations of one trace that disagree', () => {
     const m = deriveMoment(makeTrace(), [
-      makeEval({
-        passed: false,
-        rule_results: [
-          { ruleName: 'min_output_length', passed: false, score: 0, message: 'Too short' },
-          { ruleName: 'no_blocklist_check', passed: true, score: 1, message: 'OK' },
-        ],
-      }),
+      makeEval({ passed: true, rule_results: [{ ruleName: 'no_blocklist_check', passed: true, score: 1, message: 'OK' }] }),
+      makeEval({ passed: false, rule_results: [{ ruleName: 'min_output_length', passed: false, score: 0, message: 'Too short' }] }),
     ]);
     expect(m.verdict).toBe('partial');
     expect(isFailureMoment(m)).toBe(true);
