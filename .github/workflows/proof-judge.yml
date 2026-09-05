@@ -43,9 +43,15 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # Map secret presence for the CHOSEN provider to an output. Secrets can't
-      # be read in a step `if:`, so resolve it here. Absent key → skip the run
-      # (neutral, with a notice) rather than fail red on a missing credential,
-      # matching nightly-real-llm-smoke.yml.
+      # be read in a step `if:`, so resolve it here. Absent key → FAIL RED. It
+      # used to skip with a notice and go green, and a green that means "did
+      # not run" is indistinguishable from a green that means "passed" — the
+      # nightly (nightly-real-llm-smoke.yml) learned the same lesson in v0.8.1.
+      # This workflow is dispatch-only, so no pull request is blocked by it;
+      # the only thing the red costs is the accurate knowledge that the judge
+      # was not measured. The judge is a user-keyed feature: a repository
+      # secret is one way to run this, a maintainer's own key on a checkout
+      # (npm run proof:judge) is the other, and neither is assumed.
       - name: Check for the provider key
         id: keycheck
         env:
@@ -62,7 +68,8 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No key for provider '$PROVIDER' ($VAR is unset). Skipping. Dispatch with provider=openai to run on the configured OPENAI_API_KEY secret, or add an IRIS_ANTHROPIC_API_KEY secret for the anthropic path."
+            echo "::error::No key for provider '$PROVIDER' ($VAR is unset), so the judge measurement did not run and this dispatch proves nothing. Dispatch with provider=openai to run on the configured OPENAI_API_KEY secret, add an IRIS_ANTHROPIC_API_KEY secret for the anthropic path, or run npm run proof:judge on a checkout with your own key."
+            exit 1
           fi
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0

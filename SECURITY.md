@@ -21,6 +21,10 @@ This security policy applies to:
 
 For every open Dependabot advisory on this repo, [`SECURITY-EXPOSURE.md`](./SECURITY-EXPOSURE.md) records the per-surface threat-model assessment: load-graph reachability, code-path reachability, untrusted-input reachability, downstream guards, and the resulting decision (override / dismiss-as-not-used / dismiss-as-tolerable-risk / track / patch). CI fails any PR that surfaces a new ≥medium advisory without a corresponding row in that file. This is the substance behind any "open alerts" count you see on the GitHub Security tab.
 
+## Review Posture
+
+Iris has one maintainer. Every change reaches `main` through a pull request that must pass the required CI checks listed in [CONTRIBUTING.md](./CONTRIBUTING.md) — lint and typecheck, unit and integration tests on two Node versions, end-to-end, build, the Docker image started as shipped, the security-exposure gate, the hardcoded-claim scanner and the truthbase regeneration — and CodeQL runs on every pull request; the maintainer reviews and squash-merges it. There is no second human reviewer today, and this policy says so rather than implying one. If that is not enough for your threat model, pin a version and verify the signed release assets (SBOMs, Sigstore bundles, the image signature) the way each release's notes describe; the release workflow runs that verification itself before it reports success.
+
 ## Supported Versions
 
 Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.8.x` line.
