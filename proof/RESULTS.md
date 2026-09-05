@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-05T17:15:06.895Z for v0.9.0 (local generating commit `9491820` — branch commits are squashed on merge, so cite the version).
-Corpus version `1a82d36c1644` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-05T17:39:41.668Z for v0.9.0 (local generating commit `62e9063` — branch commits are squashed on merge, so cite the version).
+Corpus version `b614cd2a4f7b` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -9,11 +9,11 @@ The positive class is the violation: precision = of the outputs the rule failed,
 |---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|
 | `min_output_length` | completeness | 29 | 13 | 0 | 13 | 0 | 0 | 16 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [85.9, 99.9] | 100.0% / 100.0% |
 | `non_empty_output` | completeness | 29 | 12 | 0 | 10 | 0 | 2 | 17 | 100.0% [72.3, 100.0] | 83.3% [55.2, 95.3] | 0.909 [73.7, 100.0] | [69.4, 97.3] | 100.0% / 100.0% |
-| `sentence_count` | completeness | 30 | 14 | 0 | 8 | 0 | 6 | 16 | 100.0% [67.6, 100.0] | 57.1% [32.6, 78.6] | 0.727 [47.1, 90.9] | [47.0, 88.1] | 100.0% / 100.0% |
+| `sentence_count` | completeness | 30 | 16 | 0 | 16 | 0 | 0 | 14 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] | 1.000 [100.0, 100.0] | [88.6, 99.9] | 100.0% / 100.0% |
 | `expected_coverage` | completeness | 29 | 14 | 0 | 14 | 0 | 0 | 15 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [87.0, 99.9] | 100.0% / 100.0% |
 | `keyword_overlap` | relevance | 30 | 10 | 0 | 10 | 0 | 0 | 20 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [82.2, 99.9] | 100.0% / 100.0% |
 | `topic_consistency` | relevance | 31 | 12 | 1 | 11 | 0 | 1 | 19 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [83.3, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
-| `no_pii` | safety | 90 | 45 | 0 | 34 | 5 | 11 | 40 | 87.2% [73.3, 94.4] | 75.6% [61.3, 85.8] | 0.809 [71.0, 89.4] | [70.0, 88.2] | 26.4% / 87.2% |
+| `no_pii` | safety | 93 | 45 | 0 | 34 | 5 | 11 | 43 | 87.2% [73.3, 94.4] | 75.6% [61.3, 85.8] | 0.809 [70.8, 89.3] | [70.0, 88.2] | 27.6% / 87.9% |
 | `no_blocklist_words` | safety | 32 | 15 | 0 | 14 | 1 | 1 | 16 | 93.3% [70.2, 98.8] | 93.3% [70.2, 98.8] | 0.933 [81.5, 100.0] | [76.4, 98.2] | 45.5% / 94.1% |
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
@@ -29,7 +29,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 
 - `min_output_length` — FP: none · FN: none
 - `non_empty_output` — FP: none · FN: nonempty-009, nonempty-010
-- `sentence_count` — FP: none · FN: sentences-005, sentences-006, sentences-007, sentences-008, sentences-009, sentences-014
+- `sentence_count` — FP: none · FN: none
 - `expected_coverage` — FP: none · FN: none
 - `keyword_overlap` — FP: none · FN: none
 - `topic_consistency` — FP: none · FN: topic-021
@@ -60,7 +60,7 @@ for each positive the rule caught untransformed with a span into the raw output,
 | `no_pii` | fullwidth | 34 | 34 | 100.0% [89.8, 100.0] | none |
 | `no_pii` | nbsp | 11 | 11 | 100.0% [74.1, 100.0] | none |
 | `no_pii` | tab | 34 | 18 | 52.9% [36.7, 68.5] | pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-033, pii-035, pii-045, pii-048, pii-051, pii-064, pii-068, pii-081, pii-083, pii-087 |
-| `no_pii` | linebreak | 34 | 16 | 47.1% [31.4, 63.3] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-064, pii-068, pii-081, pii-083, pii-087 |
+| `no_pii` | linebreak | 34 | 13 | 38.2% [23.9, 55.0] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-056, pii-057, pii-064, pii-068, pii-074, pii-081, pii-083, pii-087 |
 | `no_pii` | case | 27 | 15 | 55.6% [37.3, 72.4] | pii-006, pii-011, pii-021, pii-023, pii-032, pii-045, pii-048, pii-051, pii-068, pii-072, pii-081, pii-083 |
 | `no_injection_patterns` | zero_width | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | homoglyph | 41 | 41 | 100.0% [91.4, 100.0] | none |

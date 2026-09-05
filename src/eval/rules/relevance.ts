@@ -1,4 +1,5 @@
 import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js';
+import { sentencesOf } from '../text/sentences.js';
 
 /*
  * Relevance rules — one tokenizer, two DISTINCT signals.
@@ -179,7 +180,11 @@ export const keywordOverlap: EvalRule = {
 const DEFAULT_TOPIC_THRESHOLD = 1 / 3;
 
 const LIST_ITEM = /^\s*(?:[-*+•]|\d{1,3}[.)])\s+/;
-const SENTENCE_BREAK = /(?<=[.!?])\s+/;
+/*
+ * Replaced by the shared splitter (src/eval/text/sentences.ts). The old
+ * pattern broke after any terminator followed by whitespace, so "Dr. Chen"
+ * and "3. 5" were two sentences each.
+ */
 
 export const topicConsistency: EvalRule = {
   name: 'topic_consistency',
@@ -230,7 +235,7 @@ export const topicConsistency: EvalRule = {
     for (const line of context.output.replace(FENCED_CODE, '\n').split('\n')) {
       const isItem = LIST_ITEM.test(line);
       let lineConnected = false;
-      for (const sentence of line.split(SENTENCE_BREAK)) {
+      for (const sentence of sentencesOf(line)) {
         const terms = contentTerms(sentence);
         if (terms.length === 0) continue;
         sentences++;

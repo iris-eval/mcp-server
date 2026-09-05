@@ -1,4 +1,5 @@
 import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js';
+import { countSentences } from '../text/sentences.js';
 
 export const minOutputLength: EvalRule = {
   name: 'min_output_length',
@@ -64,7 +65,10 @@ export const sentenceCount: EvalRule = {
   version: 1,
   evaluate(context: EvalContext): EvalRuleResult {
     const minSentences = (context.customConfig?.min_sentences as number) ?? 2;
-    const sentences = context.output.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
+    // One splitter, shared with topic_consistency (src/eval/text/sentences.ts).
+    // Splitting on /[.!?]+/ counted "The latency is 3.5 seconds." as two
+    // sentences and "Dr. Chen approved it." as two more.
+    const sentences = countSentences(context.output);
     const passed = sentences >= minSentences;
     return {
       ruleName: 'sentence_count',
