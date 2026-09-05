@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "type": "contains_keywords",
+  "family": "contains_keywords",
+  "positiveClass": "fail",
+  "definition": "contains_keywords — passes when at least config.threshold (a share, default 1 = all) of config.keywords appear in the output, matched case-insensitively as substrings; fails otherwise. Under this family the keywords are refund, policy and days with threshold 1. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "keywords": [
+      "refund",
+      "policy",
+      "days"
+    ],
+    "threshold": 1
+  },
+  "counts": {
+    "n": 24,
+    "positive": 14,
+    "negative": 10
+  },
+  "cases": [
+    {
+      "id": "custom-contains_keywords-001",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "Our refund policy allows returns within 30 days.",
+      "notes": "all three present"
+    },
+    {
+      "id": "custom-contains_keywords-002",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "REFUND POLICY: 14 DAYS.",
+      "notes": "uppercase — case-insensitive"
+    },
+    {
+      "id": "custom-contains_keywords-003",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "Refunds are issued under the policy after 5 days.",
+      "notes": "\"refunds\" contains \"refund\" (substring match)"
+    },
+    {
+      "id": "custom-contains_keywords-004",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "policy, days, refund",
+      "notes": "order does not matter"
+    },
+    {
+      "id": "custom-contains_keywords-005",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "The days-to-refund clause is in the policy document.",
+      "notes": "hyphenated and embedded"
+    },
+    {
+      "id": "custom-contains_keywords-006",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "Policyholders may request a refund; allow ten days.",
+      "notes": "\"policyholders\" contains \"policy\""
+    },
+    {
+      "id": "custom-contains_keywords-007",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "refund\npolicy\ndays",
+      "notes": "one per line"
+    },
+    {
+      "id": "custom-contains_keywords-008",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "A prepaid refund under our policy lands in 3 business days.",
+      "notes": "all three, in prose"
+    },
+    {
+      "id": "custom-contains_keywords-009",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "Nowadays the policy is a full refund.",
+      "notes": "\"nowadays\" contains \"days\""
+    },
+    {
+      "id": "custom-contains_keywords-010",
+      "rule": "proof_contains_keywords",
+      "label": "negative",
+      "output": "Refund. Policy. Days.",
+      "notes": "punctuated"
+    },
+    {
+      "id": "custom-contains_keywords-011",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Our refund policy is generous.",
+      "notes": "\"days\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-012",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Returns accepted within 30 days under our policy.",
+      "notes": "\"refund\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-013",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "A refund arrives in 5 days.",
+      "notes": "\"policy\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-014",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "",
+      "notes": "empty output contains nothing"
+    },
+    {
+      "id": "custom-contains_keywords-015",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Contact support for help.",
+      "notes": "none present"
+    },
+    {
+      "id": "custom-contains_keywords-016",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "re-fund pol-icy da-ys",
+      "notes": "hyphens break the substrings"
+    },
+    {
+      "id": "custom-contains_keywords-017",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Refund and policy only.",
+      "notes": "\"days\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-018",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "The day the policy changed we refunded everyone.",
+      "notes": "\"day\" is not \"days\"; \"refunded\" contains \"refund\"; \"days\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-019",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "policy",
+      "notes": "one of three"
+    },
+    {
+      "id": "custom-contains_keywords-020",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "r e f u n d p o l i c y d a y s",
+      "notes": "spaced letters"
+    },
+    {
+      "id": "custom-contains_keywords-021",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Reimbursement rules: 30 days.",
+      "notes": "\"refund\" and \"policy\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-022",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Refund policy: see the terms.",
+      "notes": "\"days\" missing"
+    },
+    {
+      "id": "custom-contains_keywords-023",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "daysrefund",
+      "notes": "two of three"
+    },
+    {
+      "id": "custom-contains_keywords-024",
+      "rule": "proof_contains_keywords",
+      "label": "positive",
+      "output": "Policies and refunds take time.",
+      "notes": "\"policies\" does not contain \"policy\"; \"days\" missing"
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "type": "min_length",
+  "family": "min_length",
+  "positiveClass": "fail",
+  "definition": "min_length — passes when the output is at least config.min_length characters long (a JavaScript string length: UTF-16 code units, whitespace included); fails when shorter. Under this family the minimum is 80. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "min_length": 80
+  },
+  "counts": {
+    "n": 24,
+    "positive": 13,
+    "negative": 11
+  },
+  "cases": [
+    {
+      "id": "custom-min_length-001",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the ho",
+      "notes": "exactly 80 characters"
+    },
+    {
+      "id": "custom-min_length-002",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hou",
+      "notes": "81 characters"
+    },
+    {
+      "id": "custom-min_length-003",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tr",
+      "notes": "well over"
+    },
+    {
+      "id": "custom-min_length-004",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "                                                                                ",
+      "notes": "80 spaces — whitespace counts"
+    },
+    {
+      "id": "custom-min_length-005",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "abababababababababababababababababababababababababababababababababababababababab",
+      "notes": "80 characters of repeated letters"
+    },
+    {
+      "id": "custom-min_length-006",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the h\n",
+      "notes": "79 characters plus a trailing newline is 80"
+    },
+    {
+      "id": "custom-min_length-007",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "notes": "40 emoji are 80 UTF-16 code units"
+    },
+    {
+      "id": "custom-min_length-008",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracking number will arrive by email within the ho",
+      "notes": "long output"
+    },
+    {
+      "id": "custom-min_length-009",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "--------------------------------------------------------------------------------",
+      "notes": "80 punctuation characters"
+    },
+    {
+      "id": "custom-min_length-010",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "The order has shipped and the tracking number will arrive by email within the hour. The order has shipped and the tracki",
+      "notes": "120 characters"
+    },
+    {
+      "id": "custom-min_length-011",
+      "rule": "proof_min_length",
+      "label": "negative",
+      "output": "THE ORDER HAS SHIPPED AND THE TRACKING NUMBER WILL ARRIVE BY EMAIL WITHIN THE HO",
+      "notes": "case does not change length"
+    },
+    {
+      "id": "custom-min_length-012",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "",
+      "notes": "empty"
+    },
+    {
+      "id": "custom-min_length-013",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "Short.",
+      "notes": "six characters"
+    },
+    {
+      "id": "custom-min_length-014",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the h",
+      "notes": "79 characters — one short"
+    },
+    {
+      "id": "custom-min_length-015",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "                                                                               ",
+      "notes": "79 spaces"
+    },
+    {
+      "id": "custom-min_length-016",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "notes": "39 emoji are 78 code units"
+    },
+    {
+      "id": "custom-min_length-017",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking n",
+      "notes": "40 characters"
+    },
+    {
+      "id": "custom-min_length-018",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "ok",
+      "notes": "two characters"
+    },
+    {
+      "id": "custom-min_length-019",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by",
+      "notes": "60 characters"
+    },
+    {
+      "id": "custom-min_length-020",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "\n\n\n",
+      "notes": "three newlines"
+    },
+    {
+      "id": "custom-min_length-021",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "T",
+      "notes": "one character"
+    },
+    {
+      "id": "custom-min_length-022",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within the ",
+      "notes": "78 characters"
+    },
+    {
+      "id": "custom-min_length-023",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "éééééééééé",
+      "notes": "ten precomposed accented letters are ten code units"
+    },
+    {
+      "id": "custom-min_length-024",
+      "rule": "proof_min_length",
+      "label": "positive",
+      "output": "The order has shipped and the tracking number will arrive by email within t",
+      "notes": "75 characters"
+    }
+  ]
+}

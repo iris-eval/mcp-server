@@ -26,7 +26,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS = join(HERE, 'corpus');
 const MANIFEST = join(HERE, 'blind-sample.json');
 const SEED = 20260904;
-const TARGET = 40;
+const TARGET = 140;
+/** Twenty per judgment family: seven families × twenty = the 140-case sample (arc 2). */
+const PER_FAMILY = 20;
 
 /** Deterministic PRNG so the same seed always draws the same sample. */
 function mulberry32(a) {
@@ -89,8 +91,8 @@ export function drawSample(corpus, seed = SEED, target = TARGET) {
     throw new Error(`expected ${JUDGMENT_RULES.length} judgment families, found ${fams.length}`);
   }
   const big = fams.filter((f) => f.cases.length >= 80);
-  const quota = new Map(fams.map((f) => [f.rule, 4]));
-  let remaining = target - fams.length * 4;
+  const quota = new Map(fams.map((f) => [f.rule, PER_FAMILY]));
+  let remaining = target - fams.length * PER_FAMILY;
   for (let i = 0; remaining > 0; i++, remaining--) {
     const r = big[i % big.length].rule;
     quota.set(r, quota.get(r) + 1);

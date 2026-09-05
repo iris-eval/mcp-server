@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "type": "regex_no_match",
+  "family": "regex_no_match",
+  "positiveClass": "fail",
+  "definition": "regex_no_match — passes when the pattern matches nowhere in the output; fails when it is found. Under this family the pattern is \\bTODO\\b: the word TODO, case-sensitive, as a whole word. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "pattern": "\\bTODO\\b"
+  },
+  "counts": {
+    "n": 24,
+    "positive": 12,
+    "negative": 12
+  },
+  "cases": [
+    {
+      "id": "custom-regex_no_match-001",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "TODO: wire the retry path.",
+      "notes": "the word at the start"
+    },
+    {
+      "id": "custom-regex_no_match-002",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "Left a TODO in the handler.",
+      "notes": "the word mid-sentence"
+    },
+    {
+      "id": "custom-regex_no_match-003",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "(TODO)",
+      "notes": "parentheses are boundaries"
+    },
+    {
+      "id": "custom-regex_no_match-004",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "TODO",
+      "notes": "the word alone"
+    },
+    {
+      "id": "custom-regex_no_match-005",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "done.\nTODO\n",
+      "notes": "the word on its own line"
+    },
+    {
+      "id": "custom-regex_no_match-006",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "// TODO remove before release",
+      "notes": "inside a comment"
+    },
+    {
+      "id": "custom-regex_no_match-007",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "Two items: TODO and FIXME.",
+      "notes": "the word followed by a space"
+    },
+    {
+      "id": "custom-regex_no_match-008",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "#TODO",
+      "notes": "a hash before the word is a boundary"
+    },
+    {
+      "id": "custom-regex_no_match-009",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "TODO, then ship",
+      "notes": "comma after"
+    },
+    {
+      "id": "custom-regex_no_match-010",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "\"TODO\"",
+      "notes": "quoted"
+    },
+    {
+      "id": "custom-regex_no_match-011",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "The TODO count is zero.",
+      "notes": "the word used as a noun still matches"
+    },
+    {
+      "id": "custom-regex_no_match-012",
+      "rule": "proof_regex_no_match",
+      "label": "positive",
+      "output": "TODO:TODO",
+      "notes": "two occurrences"
+    },
+    {
+      "id": "custom-regex_no_match-013",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "todo: wire the retry path.",
+      "notes": "lowercase — the pattern is case-sensitive"
+    },
+    {
+      "id": "custom-regex_no_match-014",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "Todo list for Monday.",
+      "notes": "title case"
+    },
+    {
+      "id": "custom-regex_no_match-015",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "TODOS remain in the backlog.",
+      "notes": "TODOS — no boundary after TODO"
+    },
+    {
+      "id": "custom-regex_no_match-016",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "MYTODO is a product name.",
+      "notes": "no boundary before"
+    },
+    {
+      "id": "custom-regex_no_match-017",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "TO DO: call the vendor.",
+      "notes": "split into two words"
+    },
+    {
+      "id": "custom-regex_no_match-018",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "Nothing left to do.",
+      "notes": "no occurrence"
+    },
+    {
+      "id": "custom-regex_no_match-019",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "",
+      "notes": "empty output has no match"
+    },
+    {
+      "id": "custom-regex_no_match-020",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "ToDo",
+      "notes": "mixed case"
+    },
+    {
+      "id": "custom-regex_no_match-021",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "T.O.D.O.",
+      "notes": "punctuated letters"
+    },
+    {
+      "id": "custom-regex_no_match-022",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "TODO_1 is the ticket id.",
+      "notes": "underscore is a word character — no boundary"
+    },
+    {
+      "id": "custom-regex_no_match-023",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "All work is complete and reviewed.",
+      "notes": "no occurrence"
+    },
+    {
+      "id": "custom-regex_no_match-024",
+      "rule": "proof_regex_no_match",
+      "label": "negative",
+      "output": "The label says TODAY, not the other word.",
+      "notes": "TODAY shares a prefix only"
+    }
+  ]
+}

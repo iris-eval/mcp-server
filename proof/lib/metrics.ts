@@ -21,6 +21,7 @@
 
 import { wilson } from '../judge/lib/wilson.js';
 import { fnv1a, mulberry32 } from './materialise.js';
+import { credibleIntervals } from './intervals.js';
 
 export interface Observation {
   id: string;
@@ -39,6 +40,8 @@ export interface Confusion {
 export type Interval = [number, number];
 
 export interface RuleSummary extends Confusion {
+  /** Dirichlet (Jeffreys) credible intervals — do not collapse to [1, 1] at zero errors. */
+  credible95: { precision: Interval | null; recall: Interval | null; f1: Interval | null };
   n: number;
   positives: number;
   negatives: number;
@@ -122,8 +125,9 @@ export function bootstrapF1(
   return [at(0.025), at(0.975)];
 }
 
-export function summarise(obs: readonly Observation[]): RuleSummary {
+export function summarise(obs: readonly Observation[], seed = 'proof'): RuleSummary {
   const c = confusion(obs);
+  const credible = credibleIntervals(c, seed);
   const n = obs.length;
   const positives = obs.filter((o) => o.actual).length;
   const precision = ratio(c.tp, c.tp + c.fp);
@@ -141,6 +145,11 @@ export function summarise(obs: readonly Observation[]): RuleSummary {
       precision: roundInterval(c.tp + c.fp === 0 ? null : wilsonInterval(c.tp, c.tp + c.fp)),
       recall: roundInterval(c.tp + c.fn === 0 ? null : wilsonInterval(c.tp, c.tp + c.fn)),
       f1: roundInterval(bootstrapF1(obs)),
+    },
+    credible95: {
+      precision: roundInterval(credible.precision),
+      recall: roundInterval(credible.recall),
+      f1: roundInterval(credible.f1),
     },
   };
 }

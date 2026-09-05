@@ -43,7 +43,7 @@
     },
     "proof": {
       "type": "object",
-      "description": "Evaluator accuracy: proof/results.json copied verbatim by scripts/claims/generators/proof.mjs (per built-in rule: confusion matrix, precision/recall/F1, 95% intervals), plus proof/judge-results.json as `judge`. Optional: absent until the first measurement lands.",
+      "description": "Evaluator accuracy: proof/results.json copied verbatim by scripts/claims/generators/proof.mjs (per built-in rule: confusion matrix, precision/recall/F1, Wilson and credible 95% intervals, ppvAt; the transforms table; per-entity recall; custom-type conformance), plus proof/judge-results.json as `judge`. Optional: absent until the first measurement lands.",
       "required": [
         "schemaVersion",
         "corpusVersion",
@@ -56,7 +56,7 @@
       ],
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "const": 2
         },
         "corpusVersion": {
           "type": "string",
@@ -143,6 +143,14 @@
               },
               "ci95": {
                 "type": "object"
+              },
+              "credible95": {
+                "type": "object",
+                "description": "Dirichlet (Jeffreys) 95% credible intervals for precision, recall and F1; unlike the bootstrap they do not collapse to [1, 1] at zero errors"
+              },
+              "ppvAt": {
+                "type": "object",
+                "description": "Positive predictive value of a fire at prevalences 0.01, 0.05, 0.2 and 0.5, from this rule's sensitivity and specificity"
               }
             }
           }
@@ -152,6 +160,25 @@
         },
         "judge": {
           "type": "object"
+        },
+        "customCorpusVersion": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}$"
+        },
+        "transforms": {
+          "type": "object",
+          "description": "Recall of the three critical rules when the evidence span is transformed (zero-width, homoglyph, fullwidth, NBSP, tab, line break, case); proof/results.json → transforms"
+        },
+        "entities": {
+          "type": "array",
+          "description": "Per-entity recall for families whose positives name what they contain (no_pii): present, caught, named, recall with a Wilson interval",
+          "items": {
+            "type": "object"
+          }
+        },
+        "custom": {
+          "type": "object",
+          "description": "Conformance of the eight custom rule types to their documented definitions under a declared config (proof/corpus/custom/<type>.json)"
         }
       }
     },

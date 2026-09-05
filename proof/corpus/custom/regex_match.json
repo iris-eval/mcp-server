@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "type": "regex_match",
+  "family": "regex_match",
+  "positiveClass": "fail",
+  "definition": "regex_match — passes when the pattern matches somewhere in the output (JavaScript RegExp, no flags unless config.flags); fails when it does not. Under this family the pattern is ^Ticket #[0-9]{6}\\b: the output must START with \"Ticket #\" and exactly six digits followed by a word boundary. Positive = the rule should FAIL the output.",
+  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
+  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "authored": "2026-09-05",
+  "config": {
+    "pattern": "^Ticket #[0-9]{6}\\b"
+  },
+  "counts": {
+    "n": 24,
+    "positive": 14,
+    "negative": 10
+  },
+  "cases": [
+    {
+      "id": "custom-regex_match-001",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #482910 has been closed.",
+      "notes": "starts with the token, six digits, boundary after"
+    },
+    {
+      "id": "custom-regex_match-002",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #000001",
+      "notes": "six digits, end of string is a boundary"
+    },
+    {
+      "id": "custom-regex_match-003",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #123456: escalated to tier 2",
+      "notes": "colon after the digits is a boundary"
+    },
+    {
+      "id": "custom-regex_match-004",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #999999\nResolved by the on-call engineer.",
+      "notes": "first line matches; the anchor is the start of the output"
+    },
+    {
+      "id": "custom-regex_match-005",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #555000 — duplicate of #555001",
+      "notes": "first token matches; the second is irrelevant"
+    },
+    {
+      "id": "custom-regex_match-006",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #100200 (reopened)",
+      "notes": "parenthesis after the digits is a boundary"
+    },
+    {
+      "id": "custom-regex_match-007",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #777777.",
+      "notes": "full stop is a boundary"
+    },
+    {
+      "id": "custom-regex_match-008",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #314159 was merged into #271828.",
+      "notes": "six digits then a space"
+    },
+    {
+      "id": "custom-regex_match-009",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #424242 closed; customer notified.",
+      "notes": "six digits then a space"
+    },
+    {
+      "id": "custom-regex_match-010",
+      "rule": "proof_regex_match",
+      "label": "negative",
+      "output": "Ticket #808080",
+      "notes": "exactly the pattern, nothing else"
+    },
+    {
+      "id": "custom-regex_match-011",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "ticket #482910 has been closed.",
+      "notes": "lowercase t — the pattern is case-sensitive"
+    },
+    {
+      "id": "custom-regex_match-012",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Re: Ticket #482910 has been closed.",
+      "notes": "the token is not at the start; ^ anchors to the beginning"
+    },
+    {
+      "id": "custom-regex_match-013",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket #48291 has been closed.",
+      "notes": "five digits"
+    },
+    {
+      "id": "custom-regex_match-014",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket #4829105 has been closed.",
+      "notes": "seven digits — the boundary after six fails on a digit"
+    },
+    {
+      "id": "custom-regex_match-015",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket#482910",
+      "notes": "missing the space"
+    },
+    {
+      "id": "custom-regex_match-016",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket # 482910",
+      "notes": "a space after the hash"
+    },
+    {
+      "id": "custom-regex_match-017",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket #48A910",
+      "notes": "a letter among the digits"
+    },
+    {
+      "id": "custom-regex_match-018",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "",
+      "notes": "empty output cannot match"
+    },
+    {
+      "id": "custom-regex_match-019",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "\nTicket #482910",
+      "notes": "a leading newline: ^ without the m flag is the start of the string"
+    },
+    {
+      "id": "custom-regex_match-020",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Closed. Ticket #482910",
+      "notes": "the token follows other text"
+    },
+    {
+      "id": "custom-regex_match-021",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket #482910x",
+      "notes": "a letter right after the digits — no word boundary"
+    },
+    {
+      "id": "custom-regex_match-022",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "TICKET #482910",
+      "notes": "uppercase — case-sensitive"
+    },
+    {
+      "id": "custom-regex_match-023",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": " Ticket #482910",
+      "notes": "a leading space"
+    },
+    {
+      "id": "custom-regex_match-024",
+      "rule": "proof_regex_match",
+      "label": "positive",
+      "output": "Ticket #4829-10",
+      "notes": "a hyphen inside the digits"
+    }
+  ]
+}

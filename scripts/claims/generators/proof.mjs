@@ -27,8 +27,8 @@ const JUDGE_PATH = resolve(root, 'proof/judge-results.json');
 
 export async function generate() {
   const results = JSON.parse(await readFile(RESULTS_PATH, 'utf-8'));
-  if (results.schemaVersion !== 1 || !Array.isArray(results.rules)) {
-    throw new Error(`proof/results.json is not a schemaVersion-1 results file (run npm run proof)`);
+  if (results.schemaVersion !== 2 || !Array.isArray(results.rules)) {
+    throw new Error(`proof/results.json is not a schemaVersion-2 results file (run npm run proof)`);
   }
   const judge = JSON.parse(await readFile(JUDGE_PATH, 'utf-8'));
   return { ...results, judge };
