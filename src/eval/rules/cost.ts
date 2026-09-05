@@ -1,4 +1,4 @@
-import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js';
+import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import { callKey, describeInput, skipWithoutTrajectory } from './trajectory.js';
 
 export const costUnderThreshold: EvalRule = {
@@ -23,6 +23,8 @@ export const costUnderThreshold: EvalRule = {
       ruleName: 'cost_under_threshold',
       passed,
       score: passed ? 1 : Math.max(0, 1 - (cost - threshold) / threshold),
+      value: { stat: 'cost', unit: 'usd', value: cost },
+      evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: cost, threshold, thresholdSource: threshold === 0.10 ? 'default' : 'config' }],
       message: passed
         ? `Cost ($${cost.toFixed(4)}) is under threshold ($${threshold.toFixed(4)})`
         : `Cost ($${cost.toFixed(4)}) exceeds threshold ($${threshold.toFixed(4)})`,
@@ -54,6 +56,8 @@ export const tokenEfficiency: EvalRule = {
       ruleName: 'token_efficiency',
       passed,
       score: passed ? 1 : Math.max(0, 1 - (ratio - maxRatio) / maxRatio),
+      value: { stat: 'completion_to_prompt_ratio', unit: 'ratio', value: ratio },
+      evidence: [{ type: 'count', stat: 'completion_to_prompt_ratio', unit: 'ratio', value: ratio, threshold: maxRatio, thresholdSource: maxRatio === 5 ? 'default' : 'config' }],
       message: passed
         ? `Token ratio (${ratio.toFixed(2)}) is within limits (max ${maxRatio})`
         : `Token ratio (${ratio.toFixed(2)}) exceeds max (${maxRatio})`,
@@ -138,12 +142,21 @@ export const noToolLoop: EvalRule = {
       }
     }
 
+    const repeatsEvidence: Evidence[] = [
+      { type: 'count', stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount, threshold: maxRepeats, thresholdSource: maxRepeats === DEFAULT_MAX_TOOL_REPEATS ? 'default' : 'config' },
+    ];
     if (worstCount > maxRepeats) {
       const call = calls[keys.indexOf(worstKey)];
+      const evidence: Evidence[] = [...repeatsEvidence];
+      keys.forEach((key, index) => {
+        if (key === worstKey && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].tool_name, label: 'repeated call' });
+      });
       return {
         ruleName: 'no_tool_loop',
         passed: false,
         score: Math.max(0, 1 - (worstCount - maxRepeats) * 0.25),
+        value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
+        evidence,
         message: `Tool loop: ${call.tool_name} called ${worstCount} times with the same input — ${describeInput(call.input)} — over ${calls.length} call${calls.length === 1 ? '' : 's'} (max ${maxRepeats})`,
       };
     }
@@ -152,10 +165,18 @@ export const noToolLoop: EvalRule = {
     if (cycle !== null && cycle.cycles > MAX_TWO_CALL_CYCLES) {
       const a = calls[keys.indexOf(cycle.a)];
       const b = calls[keys.indexOf(cycle.b)];
+      const evidence: Evidence[] = [
+        { type: 'count', stat: 'two_call_cycles', unit: 'cycles', value: cycle.cycles, threshold: MAX_TWO_CALL_CYCLES, thresholdSource: 'rule' },
+      ];
+      keys.forEach((key, index) => {
+        if ((key === cycle.a || key === cycle.b) && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].tool_name, label: 'alternating call' });
+      });
       return {
         ruleName: 'no_tool_loop',
         passed: false,
         score: Math.max(0, 1 - (cycle.cycles - MAX_TWO_CALL_CYCLES) * 0.25),
+        value: { stat: 'two_call_cycles', unit: 'cycles', value: cycle.cycles },
+        evidence,
         message: `Tool loop: ${a.tool_name} (${describeInput(a.input)}) and ${b.tool_name} (${describeInput(b.input)}) alternate for ${cycle.cycles} cycles (max ${MAX_TWO_CALL_CYCLES})`,
       };
     }
@@ -165,6 +186,8 @@ export const noToolLoop: EvalRule = {
       passed: true,
       score: 1,
       message: `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})`,
+      value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
+      evidence: repeatsEvidence,
     };
   },
 };

@@ -21,6 +21,8 @@ export const minOutputLength: EvalRule = {
       ruleName: 'min_output_length',
       passed,
       score: passed ? 1 : Math.min(len / minLen, 0.99),
+      value: { stat: 'length', unit: 'chars', value: len },
+      evidence: [{ type: 'count', stat: 'length', unit: 'chars', value: len, threshold: minLen, thresholdSource: minLen === 50 ? 'default' : 'config' }],
       message: passed ? `Output length (${len}) meets minimum (${minLen})` : `Output length (${len}) below minimum (${minLen})`,
     };
   },
@@ -43,6 +45,7 @@ export const nonEmptyOutput: EvalRule = {
       ruleName: 'non_empty_output',
       passed,
       score: passed ? 1 : 0,
+      value: { stat: 'length', unit: 'chars', value: context.output.trim().length },
       message: passed ? 'Output is non-empty' : 'Output is empty or whitespace-only',
     };
   },
@@ -67,6 +70,8 @@ export const sentenceCount: EvalRule = {
       ruleName: 'sentence_count',
       passed,
       score: passed ? 1 : Math.min(sentences / minSentences, 0.99),
+      value: { stat: 'sentences', unit: 'sentences', value: sentences },
+      evidence: [{ type: 'count', stat: 'sentences', unit: 'sentences', value: sentences, threshold: minSentences, thresholdSource: minSentences === 2 ? 'default' : 'config' }],
       message: passed ? `Sentence count (${sentences}) meets minimum (${minSentences})` : `Sentence count (${sentences}) below minimum (${minSentences})`,
     };
   },
@@ -106,6 +111,8 @@ export const expectedCoverage: EvalRule = {
       ruleName: 'expected_coverage',
       passed,
       score: ratio,
+      value: { stat: 'expected_terms_covered', unit: 'ratio', value: ratio },
+      evidence: [{ type: 'count', stat: 'expected_terms_covered', unit: 'ratio', value: ratio, threshold: 0.5, thresholdSource: 'rule' }],
       message: `Covered ${covered}/${expectedWords.size} expected terms (${(ratio * 100).toFixed(0)}%)`,
     };
   },

@@ -140,6 +140,32 @@ export interface Interval {
 }
 
 /**
+ * What a rule saw — typed, locatable, never an excerpt. A detection reports
+ * the OFFSETS of what it matched (into the raw text, so a leak detector can
+ * redact the span it found without ever repeating it); a trajectory rule the
+ * index of the call it judged; a measurement its statistic with a unit and
+ * the threshold it was held to; a signal that yields no offset yet reports
+ * its name and count. The reader can locate every claim; the stored row
+ * can be redacted; nothing here restates the offending text.
+ */
+export type Evidence =
+  | { type: 'span'; source: 'output' | 'input' | `tool_outputs[${number}]`; start: number; end: number; label: string }
+  | { type: 'pattern'; name: string; count: number }
+  | { type: 'toolCall'; index: number; toolName: string; label: string }
+  | { type: 'citation'; url: string; status: 'resolved' | 'dead' | 'unverifiable' | 'supported' | 'unsupported' }
+  | { type: 'count'; stat: string; unit: string; value: number; threshold?: number; thresholdSource?: 'default' | 'config' | 'call' | 'rule' };
+
+/** A measurement's statistic — the number the rule computed, with its unit, before any score transform. */
+export interface MeasuredValue {
+  stat: string;
+  unit: string;
+  value: number;
+}
+
+/** Evidence lists are capped so a pathological output cannot balloon a stored row. */
+export const MAX_EVIDENCE_ITEMS = 25;
+
+/**
  * How wrong this result tends to be, and on what basis. `published_accuracy`
  * carries the rule's measured numbers from the shipped proof (src/eval/
  * published-accuracy.ts): for a fired detection or inference the positive
@@ -192,6 +218,10 @@ export interface EvalRuleResult {
   skipClass?: SkipClass;
   /** How wrong this result tends to be, and on what basis. Present on every result that made a claim (not on skips). */
   uncertainty?: Uncertainty;
+  /** What the rule saw: spans (offsets, never text), tool-call indices, pattern names, counts. Present on every fired detection or inference, and on measurements. */
+  evidence?: Evidence[];
+  /** A measurement's statistic and unit — the number before the score transform. */
+  value?: MeasuredValue;
   /**
    * Deployed rule id (rule-<hex>) when the rule came from the custom-rule
    * store. Absent for built-in rules and for inline custom_rules. Names are

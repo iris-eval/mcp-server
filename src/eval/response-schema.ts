@@ -44,6 +44,15 @@ export const uncertaintySchema = z.discriminatedUnion('basis', [
   z.looseObject({ basis: z.literal('unmeasured'), why: z.string() }),
 ]);
 
+export const evidenceSchema = z.discriminatedUnion('type', [
+  z.looseObject({ type: z.literal('span'), source: z.string(), start: z.number().int().nonnegative(), end: z.number().int().nonnegative(), label: z.string() }),
+  z.looseObject({ type: z.literal('pattern'), name: z.string(), count: z.number().int().nonnegative() }),
+  z.looseObject({ type: z.literal('toolCall'), index: z.number().int().nonnegative(), toolName: z.string(), label: z.string() }),
+  z.looseObject({ type: z.literal('citation'), url: z.string(), status: z.enum(['resolved', 'dead', 'unverifiable', 'supported', 'unsupported']) }),
+  z.looseObject({ type: z.literal('count'), stat: z.string(), unit: z.string(), value: z.number(), threshold: z.number().optional(), thresholdSource: z.enum(['default', 'config', 'call', 'rule']).optional() }),
+]);
+export const measuredValueSchema = z.looseObject({ stat: z.string(), unit: z.string(), value: z.number() });
+
 export const claimKindSchema = z.enum(['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification']);
 export const roleSchema = z.enum(['gate', 'veto', 'risk', 'advisory', 'term']);
 export const skipClassSchema = z.enum(['not_applicable', 'defeated', 'config_invalid']);
@@ -71,6 +80,8 @@ export const evalRuleResultSchema = z.looseObject({
     saw: z.array(needSchema).optional(),
     skipClass: skipClassSchema.optional(),
     uncertainty: uncertaintySchema.optional(),
+    evidence: z.array(evidenceSchema).optional(),
+    value: measuredValueSchema.optional(),
   });
 
 export const evalCategoryResultSchema = z.looseObject({
