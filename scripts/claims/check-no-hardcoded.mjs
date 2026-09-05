@@ -80,9 +80,86 @@ const PATTERNS = [
   },
   {
     name: 'builtin-rule-count',
-    re: /\b(\d{1,2})\s+(?:built-?in|heuristic)\s+(?:eval\s+|deterministic\s+)?rules\b/gi,
+    // "deterministic rules" is an anchor too: a compare page said "13
+    // deterministic rules" against a 15-rule roster and the built-in/heuristic
+    // forms never matched it.
+    re: /\b(\d{1,2})\s+(?:built-?in|heuristic|deterministic)\s+(?:eval\s+|deterministic\s+|heuristic\s+)?rules\b/gi,
     expected: c => [c.evalRules?.builtInCount],
     fix: 'Import BUILT_IN_RULE_COUNT from ~/lib/claims (or state the current count from .claims.json)',
+  },
+  /*
+   * The custom-rule type count. Six compare pages carried "4 custom-rule
+   * types" against a union of eight; the truthbase never held the number, so
+   * neither claims gate could disagree. evalRules.customRuleTypeCount is read
+   * from the CustomRuleType union by the eval-rules generator.
+   */
+  {
+    name: 'custom-rule-type-count',
+    re: /\b(\d{1,2})\s+custom[- ]rule\s+types\b/gi,
+    expected: c => [c.evalRules?.customRuleTypeCount],
+    fix: 'Import CUSTOM_RULE_TYPE_COUNT from ~/lib/claims (or state the current count from .claims.json evalRules.customRuleTypeCount)',
+  },
+  /*
+   * Latency claims with nothing to point at. Tool descriptions said
+   * evaluate_output "runs in ~5-50ms", log_trace "returns within ~50ms",
+   * list_rules "returns in <5ms", six compare pages said "(<1 ms)" and the
+   * judge docs said "5-50ms" — five different unmeasured numbers for one
+   * code path, two of them 10x apart. Value-free: a latency figure may appear
+   * on a public surface only where the same line or the line before links to
+   * its measurement (the /proof page, docs/proof.md, proof/results.json).
+   * Config constants ("a hard 100 ms deadline", "timeout_ms default 60000")
+   * are settings, not claims, and the verb-led forms below do not match them.
+   */
+  {
+    name: 'latency-claim-without-measurement',
+    re: /\b(?:runs?|returns?|responds?|takes|is)\s+(?:in|within)?\s*[~<]?\s*\d+(?:\s*-\s*\d+)?\s*ms\b|\(\s*<\s*\d+\s*ms\s*\)|\b\d+\s*-\s*\d+\s*(?:seconds?|s)\s+latency\b/gi,
+    onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/', 'src/tools/'],
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/sdk-spec.md', 'docs/proof.md', 'website/src/app/proof/'],
+    skipComments: true,
+    exemptIf: (text, index) => {
+      const lineStart = text.lastIndexOf('\n', index - 1) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const line = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      const prevStart = lineStart === 0 ? 0 : text.lastIndexOf('\n', lineStart - 2) + 1;
+      const prev = lineStart === 0 ? '' : text.slice(prevStart, lineStart - 1);
+      return MEASUREMENT_LINK_RE.test(line) || MEASUREMENT_LINK_RE.test(prev);
+    },
+    fix: 'Drop the latency number, or link it to a measurement on the same line or the line before (https://iris-eval.com/proof, docs/proof.md or proof/results.json). "In-process, no provider call" is a true sentence; "~5-50ms" is a number nobody measured.',
+  },
+  /*
+   * The hosted tier that is not being built. Four tool descriptions said
+   * "Tenant-scoped in Cloud tier" / "Postgres in Cloud tier" to every agent
+   * that listed the tools, while docs/roadmap.md says hosted features are
+   * "under consideration, not under construction". Value-free; dated
+   * artifacts keep their period voice; code comments are engineering notes.
+   */
+  {
+    name: 'retired-cloud-tier',
+    re: /\bCloud\s+tier\b/gi,
+    // The agent-facing and documentation surfaces. The website's legal pages
+    // (terms, privacy) describe a waitlist in their own register and are a
+    // founder-owned surface, not a product claim this scanner adjudicates.
+    onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/'],
+    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    skipComments: true,
+    fix: 'No hosted tier exists or is under construction (docs/roadmap.md). Describe what the local server does; delete the tier.',
+  },
+  /*
+   * Era stamps inside the MCP tool descriptions. "v0.4 adds an llm_as_judge
+   * eval_type", "no wildcards in v0.4", "no update path in v0.4", "in v0.4 —
+   * traces are user-scope data": four descriptions dated themselves four
+   * minors back, and an agent reading them at 0.8 had no way to tell a
+   * shipped feature from a promise. Same shape as dashboard-version-caption:
+   * a version literal that is not the shipping version flags; comments are
+   * engineering notes and stay.
+   */
+  {
+    name: 'era-stamp-in-tool-description',
+    re: /\bv(\d+\.\d+(?:\.\d+)?)\b/g,
+    expectedStrings: c => versionForms(c.version?.mcpServer),
+    onlyPrefixes: ['src/tools/'],
+    skipComments: true,
+    fix: 'Describe the behaviour without a version; the shipped version is on the server object and in .claims.json version.mcpServer.',
   },
   /*
    * The pii/injection regexes cover BOTH orderings: "N PII patterns" and
@@ -242,7 +319,11 @@ const PATTERNS = [
   {
     name: 'measurement-claim-without-link',
     re: /\bmeasured against\b|\blabell?ed corpus\b|\bcalibrated\b|\bprecision\b|\brecall\b|\bF1\b/g,
-    onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/'],
+    // src/tools/ holds the MCP tool descriptions — the prose an agent reads
+    // instead of the README. The judge's description said "calibrated" for
+    // four minors while its measurement was pending, and this pattern never
+    // walked it.
+    onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/', 'src/tools/'],
     // website/src/lib/claims.ts is the truthbase reader: it TYPES the proof
     // schema (`precision: number`), which is an identifier, not a claim.
     // website/public/claims-schema-v1.json is the published JSON Schema of

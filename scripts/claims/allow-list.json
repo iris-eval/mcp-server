@@ -56,6 +56,18 @@
       "reason": "Frozen launch template with an in-file historical banner instructing a fresh compose against .claims.json before any submission."
     },
     {
+      "file": "docs/launch/directory-listing-template.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Frozen launch template with an in-file historical banner (13 rules at the time); surfaced when the scanner learned the 'N deterministic rules' spelling."
+    },
+    {
+      "file": "docs/blog/016-the-eval-loop.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dated post (13 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when the scanner learned the 'N deterministic rules' spelling."
+    },
+    {
       "file": "website/src/components/roadmap.tsx",
       "pattern": "mcp-tool-count",
       "line": "*",

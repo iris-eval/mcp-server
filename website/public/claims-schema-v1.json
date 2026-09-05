@@ -212,12 +212,25 @@
         "names",
         "piiPatterns",
         "stubMarkers",
-        "defaultEvalType"
+        "defaultEvalType",
+        "customRuleTypeCount",
+        "customRuleTypes"
       ],
       "properties": {
         "builtInCount": {
           "$ref": "#/$defs/count",
           "description": "Number of built-in deterministic rules; equals names.length."
+        },
+        "customRuleTypeCount": {
+          "$ref": "#/$defs/count",
+          "description": "Number of custom-rule types a caller can deploy or pass inline; equals customRuleTypes.length (CustomRuleType in src/types/eval.ts)."
+        },
+        "customRuleTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The custom-rule type identifiers, in declaration order."
         },
         "categories": {
           "type": "array",

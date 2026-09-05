@@ -26,6 +26,17 @@
       "cost"
     ],
     "categoryCount": 4,
+    "customRuleTypeCount": 8,
+    "customRuleTypes": [
+      "regex_match",
+      "regex_no_match",
+      "min_length",
+      "max_length",
+      "contains_keywords",
+      "excludes_keywords",
+      "json_schema",
+      "cost_threshold"
+    ],
     "defaultEvalType": "all",
     "hallucinationMarkers": 25,
     "injectionPatterns": 37,
@@ -60,8 +71,8 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-04T22:50:44.969Z",
-  "generatedFromCommit": "1e6de44",
+  "generatedAt": "2026-09-05T05:35:21.277Z",
+  "generatedFromCommit": "b07ee19",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -624,16 +635,16 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 1918,
+    "totalCombined": 1183,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 185,
-      "total": 185
+      "passed": 152,
+      "total": 152
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1719,
-      "total": 1719
+      "passed": 1017,
+      "total": 1017
     }
   },
   "version": {

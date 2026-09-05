@@ -81,7 +81,7 @@ const jsonLd = {
 };
 
 const FEATURES = [
-  { feature: "Eval approach", iris: "Deterministic heuristic rules (<1ms)", patronus: "Fine-tuned eval models (Lynx, Glider)", patronusWin: true },
+  { feature: "Eval approach", iris: "Deterministic heuristic rules (in-process, no provider call)", patronus: "Fine-tuned eval models (Lynx, Glider)", patronusWin: true },
   { feature: "Integration method", iris: "MCP config (zero code)", patronus: "REST API + SDK", irisWin: true },
   { feature: "Deployment", iris: "Self-hosted (your infrastructure)", patronus: "Cloud API (vendor-hosted)", irisWin: true },
   { feature: "Hallucination detection", iris: "Heuristic pattern matching", patronus: "Purpose-built Lynx model", patronusWin: true },

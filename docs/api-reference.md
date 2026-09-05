@@ -1261,7 +1261,7 @@ Safety: two layers, and only the second one holds.
 
 **The runtime boundary:** every match of a user-supplied pattern executes in a sandbox worker thread under a hard 100 ms deadline. A match still backtracking at the deadline is terminated mid-execution, so a pattern that survived the static checks — or an output crafted to stall a legitimate pattern — cannot hang the server. Two further bounds: a per-evaluation circuit breaker opens after 3 budget breaches, and `custom_rules` is capped at 10 per call.
 
-**This is fail-open per rule, and a gate should know it.** A budget-killed rule reports `skipped: true` with `budgetExceeded: true` and does **not** judge the output — so it neither scores nor vetoes, and an adversary who knows your pattern can craft output that stalls it into skipping. If your gate must fail closed, treat any `skipped && budgetExceeded` result as a failure; if a *critical* rule was the one killed, the response also carries `critical_skipped`. See [Custom Rules → ReDoS Protection](custom-rules.md#redos-protection).
+**This is fail-open per rule, and a gate should know it.** A budget-killed rule reports `skipped: true` with `budgetExceeded: true` and does **not** judge the output — so it neither scores nor vetoes, and an adversary who knows your pattern can craft output that stalls it into skipping. A *critical* rule that was killed this way is named in `critical_skipped`. The recipe, the same on every surface: a gate that must fail closed treats a non-empty `critical_skipped` as unknown, not clean, and may also treat any `skipped && budgetExceeded` result in `rule_results` as a failure. See [Custom Rules → ReDoS Protection](custom-rules.md#redos-protection).
 
 ```json
 {

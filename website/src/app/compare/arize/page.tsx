@@ -4,6 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
+import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -85,7 +86,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", arize: "OpenTelemetry SDK + auto-instrumentation", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", arize: "Phoenix: pip install + PostgreSQL (production)", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", arize: "OpenTelemetry collector + SDK in application", irisWin: true },
-  { feature: "Eval capabilities", iris: "15 built-in heuristic rules + 4 custom-rule types (<1 ms)", arize: "LLM-as-Judge, custom evaluators, agent eval templates", arizeWin: true },
+  { feature: "Eval capabilities", iris: `${RULE_COUNT_BUILT_IN} built-in heuristic rules + ${CUSTOM_RULE_TYPE_COUNT} custom-rule types (in-process, no provider call)`, arize: "LLM-as-Judge, custom evaluators, agent eval templates", arizeWin: true },
   { feature: "Cost tracking", iris: "Per-trace USD cost", arize: "Token and cost tracking across models", irisWin: false },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", arize: "Phoenix MCP server (prompts, traces, datasets, experiments, SQL); no tool runs an eval", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", arize: "Phoenix: Elastic License 2.0 (ELv2)", irisWin: true },

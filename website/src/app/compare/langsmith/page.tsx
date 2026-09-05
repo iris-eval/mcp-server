@@ -4,6 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
+import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -85,7 +86,7 @@ const FEATURES = [
   { feature: "Integration method", iris: "MCP config (zero code)", langsmith: "SDK imports + @traceable decorators", irisWin: true },
   { feature: "Self-hosting complexity", iris: "Single SQLite file", langsmith: "Enterprise-only, license key required", irisWin: true },
   { feature: "Performance overhead", iris: "Zero (no SDK in hot path)", langsmith: "Async tracing via SDK in your process", irisWin: true },
-  { feature: "Eval rules", iris: "15 built-in heuristic rules + 4 custom-rule types (<1ms)", langsmith: "LLM-as-Judge + human review workflows", irisWin: false },
+  { feature: "Eval rules", iris: `${RULE_COUNT_BUILT_IN} built-in heuristic rules + ${CUSTOM_RULE_TYPE_COUNT} custom-rule types (in-process, no provider call)`, langsmith: "LLM-as-Judge + human review workflows", irisWin: false },
   { feature: "Cost tracking", iris: "Per-trace USD cost", langsmith: "Token + latency per trace and tool call", irisWin: false },
   { feature: "MCP support", iris: "Protocol-native (IS an MCP server)", langsmith: "LangSmith MCP server (fetch runs, projects, datasets, experiments; no tool runs an eval) plus MCP/A2A deployment support", irisWin: true },
   { feature: "License", iris: "MIT (fully permissive)", langsmith: "Proprietary platform (SDK is MIT)", irisWin: true },

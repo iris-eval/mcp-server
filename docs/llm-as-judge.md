@@ -152,7 +152,7 @@ They're stored under `eval_type='custom'` because LLM-judge spans all four heuri
 ## Design rationale
 
 **Why a separate tool, not a flag on `evaluate_output`?**
-Different operational shape. `evaluate_output` is 5-50ms, free, deterministic. `evaluate_with_llm_judge` takes 1-10 seconds, costs money, and can fail for reasons `evaluate_output` never can (auth, rate limit, upstream outage). MCP annotations reflect this — `evaluate_output.readOnlyHint=false, openWorldHint=false` vs `evaluate_with_llm_judge.openWorldHint=true`. Agents should be able to reason about these differently before calling.
+Different operational shape. `evaluate_output` is in-process, free and deterministic. `evaluate_with_llm_judge` waits on a provider round-trip, costs money, and can fail for reasons `evaluate_output` never can (auth, rate limit, upstream outage). MCP annotations reflect this — `evaluate_output.readOnlyHint=false, openWorldHint=false` vs `evaluate_with_llm_judge.openWorldHint=true`. Agents should be able to reason about these differently before calling.
 
 **Why fetch() instead of the vendor SDKs?**
 Supply-chain minimalism. The wire format is simple, the SDKs pull in dozens of transitive deps, and Iris's surface area is narrow enough that a hand-rolled fetch wrapper is 200 lines and auditable. When Anthropic or OpenAI ships new features we can't use (streaming, tool-use, vision), we'll reconsider — but for judge workloads, single-shot text-in / text-out is it.
