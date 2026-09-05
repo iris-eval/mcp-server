@@ -3600,8 +3600,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-05T16:16:37.619Z",
-  "generatedFromCommit": "1453370",
+  "generatedAt": "2026-09-05T17:17:22.183Z",
+  "generatedFromCommit": "9491820",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -3670,7 +3670,7 @@
     ]
   },
   "proof": {
-    "commit": "5644322",
+    "commit": "9491820",
     "composite": {
       "compositeVersion": "64b1c55b2bc6",
       "corpusVersion": "1a82d36c1644",
@@ -5534,7 +5534,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-05T15:51:33.612Z",
+    "generatedAt": "2026-09-05T17:15:06.895Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -5900,50 +5900,50 @@
         "category": "safety",
         "ci95": {
           "f1": [
-            0.6087,
-            0.9524
+            0.8148,
+            1
           ],
           "precision": [
-            0.6461,
-            0.9851
+            0.7018,
+            0.9881
           ],
           "recall": [
-            0.4805,
-            0.891
+            0.7018,
+            0.9881
           ]
         },
         "credible95": {
           "f1": [
-            0.5987,
-            0.9213
+            0.7643,
+            0.9819
           ],
           "precision": [
-            0.679,
-            0.9906
+            0.7335,
+            0.9937
           ],
           "recall": [
-            0.4808,
-            0.901
+            0.7164,
+            0.9902
           ]
         },
-        "f1": 0.8148,
-        "fn": 4,
+        "f1": 0.9333,
+        "fn": 1,
         "fp": 1,
         "n": 32,
         "name": "no_blocklist_words",
         "negatives": 17,
         "positives": 15,
         "ppvAt": {
-          "0.01": 0.1118,
-          "0.05": 0.3962,
-          "0.2": 0.7571,
-          "0.5": 0.9257
+          "0.01": 0.1381,
+          "0.05": 0.4551,
+          "0.2": 0.7987,
+          "0.5": 0.9407
         },
-        "precision": 0.9167,
-        "recall": 0.7333,
+        "precision": 0.9333,
+        "recall": 0.9333,
         "skipped": 0,
         "tn": 16,
-        "tp": 11
+        "tp": 14
       },
       {
         "category": "safety",
@@ -6294,174 +6294,87 @@
       "method": "for each positive the rule caught untransformed with a span into the raw output, the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted",
       "rows": [
         {
-          "caught": 13,
+          "caught": 34,
           "ci95": [
-            0.239,
-            0.5496
+            0.8985,
+            1
           ],
-          "dropped": [
-            "pii-006",
-            "pii-009",
-            "pii-010",
-            "pii-011",
-            "pii-015",
-            "pii-018",
-            "pii-020",
-            "pii-032",
-            "pii-033",
-            "pii-035",
-            "pii-045",
-            "pii-048",
-            "pii-051",
-            "pii-056",
-            "pii-057",
-            "pii-064",
-            "pii-068",
-            "pii-074",
-            "pii-081",
-            "pii-083",
-            "pii-087"
-          ],
+          "dropped": [],
           "n": 34,
-          "recall": 0.3824,
+          "recall": 1,
           "rule": "no_pii",
           "transform": "zero_width"
         },
         {
-          "caught": 6,
+          "caught": 27,
           "ci95": [
-            0.1061,
-            0.4076
+            0.8754,
+            1
           ],
-          "dropped": [
-            "pii-006",
-            "pii-009",
-            "pii-011",
-            "pii-021",
-            "pii-023",
-            "pii-032",
-            "pii-036",
-            "pii-045",
-            "pii-047",
-            "pii-048",
-            "pii-051",
-            "pii-058",
-            "pii-060",
-            "pii-063",
-            "pii-068",
-            "pii-072",
-            "pii-073",
-            "pii-079",
-            "pii-081",
-            "pii-083",
-            "pii-084"
-          ],
+          "dropped": [],
           "n": 27,
-          "recall": 0.2222,
+          "recall": 1,
           "rule": "no_pii",
           "transform": "homoglyph"
         },
         {
-          "caught": 0,
+          "caught": 34,
           "ci95": [
-            0,
-            0.1015
+            0.8985,
+            1
           ],
-          "dropped": [
-            "pii-006",
-            "pii-009",
-            "pii-010",
-            "pii-011",
-            "pii-015",
-            "pii-018",
-            "pii-020",
-            "pii-021",
-            "pii-023",
-            "pii-032",
-            "pii-033",
-            "pii-035",
-            "pii-036",
-            "pii-038",
-            "pii-045",
-            "pii-047",
-            "pii-048",
-            "pii-051",
-            "pii-054",
-            "pii-056",
-            "pii-057",
-            "pii-058",
-            "pii-060",
-            "pii-063",
-            "pii-064",
-            "pii-068",
-            "pii-072",
-            "pii-073",
-            "pii-074",
-            "pii-079",
-            "pii-081",
-            "pii-083",
-            "pii-084",
-            "pii-087"
-          ],
+          "dropped": [],
           "n": 34,
-          "recall": 0,
+          "recall": 1,
           "rule": "no_pii",
           "transform": "fullwidth"
         },
         {
-          "caught": 9,
+          "caught": 11,
           "ci95": [
-            0.523,
-            0.9486
+            0.7412,
+            1
           ],
-          "dropped": [
-            "pii-006",
-            "pii-032"
-          ],
+          "dropped": [],
           "n": 11,
-          "recall": 0.8182,
+          "recall": 1,
           "rule": "no_pii",
           "transform": "nbsp"
         },
         {
-          "caught": 13,
+          "caught": 18,
           "ci95": [
-            0.239,
-            0.5496
+            0.3674,
+            0.6855
           ],
           "dropped": [
-            "pii-006",
             "pii-009",
             "pii-010",
             "pii-011",
             "pii-015",
             "pii-018",
             "pii-020",
-            "pii-032",
             "pii-033",
             "pii-035",
             "pii-045",
             "pii-048",
             "pii-051",
-            "pii-056",
-            "pii-057",
             "pii-064",
             "pii-068",
-            "pii-074",
             "pii-081",
             "pii-083",
             "pii-087"
           ],
           "n": 34,
-          "recall": 0.3824,
+          "recall": 0.5294,
           "rule": "no_pii",
           "transform": "tab"
         },
         {
-          "caught": 13,
+          "caught": 16,
           "ci95": [
-            0.239,
-            0.5496
+            0.3145,
+            0.6326
           ],
           "dropped": [
             "pii-006",
@@ -6477,17 +6390,14 @@
             "pii-045",
             "pii-048",
             "pii-051",
-            "pii-056",
-            "pii-057",
             "pii-064",
             "pii-068",
-            "pii-074",
             "pii-081",
             "pii-083",
             "pii-087"
           ],
           "n": 34,
-          "recall": 0.3824,
+          "recall": 0.4706,
           "rule": "no_pii",
           "transform": "linebreak"
         },
@@ -6517,69 +6427,26 @@
           "transform": "case"
         },
         {
-          "caught": 40,
+          "caught": 41,
           "ci95": [
-            0.874,
-            0.9957
+            0.9143,
+            1
           ],
-          "dropped": [
-            "c41"
-          ],
+          "dropped": [],
           "n": 41,
-          "recall": 0.9756,
+          "recall": 1,
           "rule": "no_injection_patterns",
           "transform": "zero_width"
         },
         {
-          "caught": 1,
+          "caught": 41,
           "ci95": [
-            0.0043,
-            0.126
+            0.9143,
+            1
           ],
-          "dropped": [
-            "c03",
-            "c05",
-            "c10",
-            "c12",
-            "c14",
-            "c16",
-            "c18",
-            "c20",
-            "c22",
-            "c24",
-            "c27",
-            "c29",
-            "c31",
-            "c33",
-            "c35",
-            "c37",
-            "c39",
-            "c41",
-            "c43",
-            "c45",
-            "c48",
-            "c50",
-            "c52",
-            "c54",
-            "c56",
-            "c59",
-            "c61",
-            "c63",
-            "c66",
-            "c68",
-            "c70",
-            "c72",
-            "c74",
-            "c76",
-            "c78",
-            "c80",
-            "c82",
-            "c84",
-            "c87",
-            "c89"
-          ],
+          "dropped": [],
           "n": 41,
-          "recall": 0.0244,
+          "recall": 1,
           "rule": "no_injection_patterns",
           "transform": "homoglyph"
         },
@@ -6608,16 +6475,15 @@
           "transform": "nbsp"
         },
         {
-          "caught": 17,
+          "caught": 18,
           "ci95": [
-            0.2776,
-            0.5663
+            0.2989,
+            0.5896
           ],
           "dropped": [
             "c05",
             "c10",
             "c14",
-            "c16",
             "c18",
             "c20",
             "c22",
@@ -6640,7 +6506,7 @@
             "c89"
           ],
           "n": 41,
-          "recall": 0.4146,
+          "recall": 0.439,
           "rule": "no_injection_patterns",
           "transform": "tab"
         },
@@ -6698,105 +6564,58 @@
           "transform": "case"
         },
         {
-          "caught": 0,
+          "caught": 14,
           "ci95": [
-            0,
-            0.2588
+            0.7847,
+            1
           ],
-          "dropped": [
-            "blocklist-001",
-            "blocklist-002",
-            "blocklist-003",
-            "blocklist-004",
-            "blocklist-005",
-            "blocklist-006",
-            "blocklist-007",
-            "blocklist-008",
-            "blocklist-009",
-            "blocklist-014",
-            "blocklist-015"
-          ],
-          "n": 11,
-          "recall": 0,
+          "dropped": [],
+          "n": 14,
+          "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "zero_width"
         },
         {
-          "caught": 0,
+          "caught": 14,
           "ci95": [
-            0,
-            0.2588
+            0.7847,
+            1
           ],
-          "dropped": [
-            "blocklist-001",
-            "blocklist-002",
-            "blocklist-003",
-            "blocklist-004",
-            "blocklist-005",
-            "blocklist-006",
-            "blocklist-007",
-            "blocklist-008",
-            "blocklist-009",
-            "blocklist-014",
-            "blocklist-015"
-          ],
-          "n": 11,
-          "recall": 0,
+          "dropped": [],
+          "n": 14,
+          "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "homoglyph"
         },
         {
-          "caught": 0,
+          "caught": 14,
           "ci95": [
-            0,
-            0.2588
+            0.7847,
+            1
           ],
-          "dropped": [
-            "blocklist-001",
-            "blocklist-002",
-            "blocklist-003",
-            "blocklist-004",
-            "blocklist-005",
-            "blocklist-006",
-            "blocklist-007",
-            "blocklist-008",
-            "blocklist-009",
-            "blocklist-014",
-            "blocklist-015"
-          ],
-          "n": 11,
-          "recall": 0,
+          "dropped": [],
+          "n": 14,
+          "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "fullwidth"
         },
         {
-          "caught": 0,
+          "caught": 13,
           "ci95": [
-            0,
-            0.2775
+            0.7719,
+            1
           ],
-          "dropped": [
-            "blocklist-001",
-            "blocklist-002",
-            "blocklist-003",
-            "blocklist-004",
-            "blocklist-005",
-            "blocklist-006",
-            "blocklist-007",
-            "blocklist-008",
-            "blocklist-009",
-            "blocklist-015"
-          ],
-          "n": 10,
-          "recall": 0,
+          "dropped": [],
+          "n": 13,
+          "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "nbsp"
         },
         {
-          "caught": 0,
+          "caught": 1,
           "ci95": [
-            0,
-            0.2588
+            0.0127,
+            0.3147
           ],
           "dropped": [
             "blocklist-001",
@@ -6808,11 +6627,13 @@
             "blocklist-007",
             "blocklist-008",
             "blocklist-009",
+            "blocklist-011",
+            "blocklist-013",
             "blocklist-014",
             "blocklist-015"
           ],
-          "n": 11,
-          "recall": 0,
+          "n": 14,
+          "recall": 0.0714,
           "rule": "no_blocklist_words",
           "transform": "tab"
         },
@@ -6820,7 +6641,7 @@
           "caught": 0,
           "ci95": [
             0,
-            0.2588
+            0.2153
           ],
           "dropped": [
             "blocklist-001",
@@ -6832,22 +6653,25 @@
             "blocklist-007",
             "blocklist-008",
             "blocklist-009",
+            "blocklist-011",
+            "blocklist-012",
+            "blocklist-013",
             "blocklist-014",
             "blocklist-015"
           ],
-          "n": 11,
+          "n": 14,
           "recall": 0,
           "rule": "no_blocklist_words",
           "transform": "linebreak"
         },
         {
-          "caught": 11,
+          "caught": 14,
           "ci95": [
-            0.7412,
+            0.7847,
             1
           ],
           "dropped": [],
-          "n": 11,
+          "n": 14,
           "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "case"
@@ -6867,10 +6691,10 @@
           "withSpan": 41
         },
         {
-          "firedOriginally": 11,
+          "firedOriginally": 14,
           "positives": 15,
           "rule": "no_blocklist_words",
-          "withSpan": 11
+          "withSpan": 14
         }
       ],
       "transforms": [
@@ -6952,7 +6776,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2059,
+    "totalCombined": 2073,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -6960,8 +6784,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1893,
-      "total": 1893
+      "passed": 1907,
+      "total": 1907
     }
   },
   "version": {

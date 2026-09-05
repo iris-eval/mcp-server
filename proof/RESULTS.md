@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-05T15:51:33.612Z for v0.9.0 (local generating commit `5644322` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-05T17:15:06.895Z for v0.9.0 (local generating commit `9491820` — branch commits are squashed on merge, so cite the version).
 Corpus version `1a82d36c1644` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -14,7 +14,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `keyword_overlap` | relevance | 30 | 10 | 0 | 10 | 0 | 0 | 20 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [82.2, 99.9] | 100.0% / 100.0% |
 | `topic_consistency` | relevance | 31 | 12 | 1 | 11 | 0 | 1 | 19 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [83.3, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
 | `no_pii` | safety | 90 | 45 | 0 | 34 | 5 | 11 | 40 | 87.2% [73.3, 94.4] | 75.6% [61.3, 85.8] | 0.809 [71.0, 89.4] | [70.0, 88.2] | 26.4% / 87.2% |
-| `no_blocklist_words` | safety | 32 | 15 | 0 | 11 | 1 | 4 | 16 | 91.7% [64.6, 98.5] | 73.3% [48.0, 89.1] | 0.815 [60.9, 95.2] | [59.9, 92.1] | 39.6% / 92.6% |
+| `no_blocklist_words` | safety | 32 | 15 | 0 | 14 | 1 | 1 | 16 | 93.3% [70.2, 98.8] | 93.3% [70.2, 98.8] | 0.933 [81.5, 100.0] | [76.4, 98.2] | 45.5% / 94.1% |
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
 | `no_hallucination_markers` | safety | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
@@ -34,7 +34,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `keyword_overlap` — FP: none · FN: none
 - `topic_consistency` — FP: none · FN: topic-021
 - `no_pii` — FP: pii-008, pii-037, pii-053, pii-062, pii-075 · FN: pii-001, pii-004, pii-027, pii-041, pii-043, pii-061, pii-067, pii-071, pii-076, pii-088, pii-089
-- `no_blocklist_words` — FP: blocklist-016 · FN: blocklist-010, blocklist-011, blocklist-012, blocklist-013
+- `no_blocklist_words` — FP: blocklist-016 · FN: blocklist-010
 - `no_injection_patterns` — FP: none · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
@@ -51,31 +51,31 @@ for each positive the rule caught untransformed with a span into the raw output,
 |---|--:|--:|--:|
 | `no_pii` | 45 | 34 | 34 |
 | `no_injection_patterns` | 42 | 41 | 41 |
-| `no_blocklist_words` | 15 | 11 | 11 |
+| `no_blocklist_words` | 15 | 14 | 14 |
 
 | Rule | Transform | n | still caught | Recall (95% CI) | dropped |
 |---|---|--:|--:|---|---|
-| `no_pii` | zero_width | 34 | 13 | 38.2% [23.9, 55.0] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-056, pii-057, pii-064, pii-068, pii-074, pii-081, pii-083, pii-087 |
-| `no_pii` | homoglyph | 27 | 6 | 22.2% [10.6, 40.8] | pii-006, pii-009, pii-011, pii-021, pii-023, pii-032, pii-036, pii-045, pii-047, pii-048, pii-051, pii-058, pii-060, pii-063, pii-068, pii-072, pii-073, pii-079, pii-081, pii-083, pii-084 |
-| `no_pii` | fullwidth | 34 | 0 | 0.0% [0.0, 10.2] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-021, pii-023, pii-032, pii-033, pii-035, pii-036, pii-038, pii-045, pii-047, pii-048, pii-051, pii-054, pii-056, pii-057, pii-058, pii-060, pii-063, pii-064, pii-068, pii-072, pii-073, pii-074, pii-079, pii-081, pii-083, pii-084, pii-087 |
-| `no_pii` | nbsp | 11 | 9 | 81.8% [52.3, 94.9] | pii-006, pii-032 |
-| `no_pii` | tab | 34 | 13 | 38.2% [23.9, 55.0] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-056, pii-057, pii-064, pii-068, pii-074, pii-081, pii-083, pii-087 |
-| `no_pii` | linebreak | 34 | 13 | 38.2% [23.9, 55.0] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-056, pii-057, pii-064, pii-068, pii-074, pii-081, pii-083, pii-087 |
+| `no_pii` | zero_width | 34 | 34 | 100.0% [89.8, 100.0] | none |
+| `no_pii` | homoglyph | 27 | 27 | 100.0% [87.5, 100.0] | none |
+| `no_pii` | fullwidth | 34 | 34 | 100.0% [89.8, 100.0] | none |
+| `no_pii` | nbsp | 11 | 11 | 100.0% [74.1, 100.0] | none |
+| `no_pii` | tab | 34 | 18 | 52.9% [36.7, 68.5] | pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-033, pii-035, pii-045, pii-048, pii-051, pii-064, pii-068, pii-081, pii-083, pii-087 |
+| `no_pii` | linebreak | 34 | 16 | 47.1% [31.4, 63.3] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-064, pii-068, pii-081, pii-083, pii-087 |
 | `no_pii` | case | 27 | 15 | 55.6% [37.3, 72.4] | pii-006, pii-011, pii-021, pii-023, pii-032, pii-045, pii-048, pii-051, pii-068, pii-072, pii-081, pii-083 |
-| `no_injection_patterns` | zero_width | 41 | 40 | 97.6% [87.4, 99.6] | c41 |
-| `no_injection_patterns` | homoglyph | 41 | 1 | 2.4% [0.4, 12.6] | c03, c05, c10, c12, c14, c16, c18, c20, c22, c24, c27, c29, c31, c33, c35, c37, c39, c41, c43, c45, c48, c50, c52, c54, c56, c59, c61, c63, c66, c68, c70, c72, c74, c76, c78, c80, c82, c84, c87, c89 |
+| `no_injection_patterns` | zero_width | 41 | 41 | 100.0% [91.4, 100.0] | none |
+| `no_injection_patterns` | homoglyph | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | fullwidth | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | nbsp | 36 | 36 | 100.0% [90.4, 100.0] | none |
-| `no_injection_patterns` | tab | 41 | 17 | 41.5% [27.8, 56.6] | c05, c10, c14, c16, c18, c20, c22, c24, c31, c33, c41, c45, c48, c50, c54, c56, c61, c63, c66, c70, c74, c76, c80, c89 |
+| `no_injection_patterns` | tab | 41 | 18 | 43.9% [29.9, 59.0] | c05, c10, c14, c18, c20, c22, c24, c31, c33, c41, c45, c48, c50, c54, c56, c61, c63, c66, c70, c74, c76, c80, c89 |
 | `no_injection_patterns` | linebreak | 41 | 15 | 36.6% [23.6, 51.9] | c03, c05, c10, c14, c16, c18, c20, c22, c24, c31, c33, c37, c41, c45, c48, c50, c54, c56, c61, c63, c66, c70, c74, c76, c80, c89 |
 | `no_injection_patterns` | case | 41 | 40 | 97.6% [87.4, 99.6] | c84 |
-| `no_blocklist_words` | zero_width | 11 | 0 | 0.0% [0.0, 25.9] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-014, blocklist-015 |
-| `no_blocklist_words` | homoglyph | 11 | 0 | 0.0% [0.0, 25.9] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-014, blocklist-015 |
-| `no_blocklist_words` | fullwidth | 11 | 0 | 0.0% [0.0, 25.9] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-014, blocklist-015 |
-| `no_blocklist_words` | nbsp | 10 | 0 | 0.0% [0.0, 27.8] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-015 |
-| `no_blocklist_words` | tab | 11 | 0 | 0.0% [0.0, 25.9] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-014, blocklist-015 |
-| `no_blocklist_words` | linebreak | 11 | 0 | 0.0% [0.0, 25.9] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-014, blocklist-015 |
-| `no_blocklist_words` | case | 11 | 11 | 100.0% [74.1, 100.0] | none |
+| `no_blocklist_words` | zero_width | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_blocklist_words` | homoglyph | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_blocklist_words` | fullwidth | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_blocklist_words` | nbsp | 13 | 13 | 100.0% [77.2, 100.0] | none |
+| `no_blocklist_words` | tab | 14 | 1 | 7.1% [1.3, 31.5] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-011, blocklist-013, blocklist-014, blocklist-015 |
+| `no_blocklist_words` | linebreak | 14 | 0 | 0.0% [0.0, 21.5] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-011, blocklist-012, blocklist-013, blocklist-014, blocklist-015 |
+| `no_blocklist_words` | case | 14 | 14 | 100.0% [78.5, 100.0] | none |
 
 - `zero_width` — a zero-width space (U+200B) inserted at the middle of the span
 - `homoglyph` — every Latin a e o p c x (and capitals) inside the span replaced by its Cyrillic lookalike

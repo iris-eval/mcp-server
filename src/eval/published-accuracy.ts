@@ -46,9 +46,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7329, 0.944], recall: [0.6133, 0.8576], f1: [0.7105, 0.8936] },
   },
   no_blocklist_words: {
-    n: 32, tp: 11, fp: 1, fn: 4, tn: 16,
-    precision: 0.9167, recall: 0.7333, f1: 0.8148,
-    ci95: { precision: [0.6461, 0.9851], recall: [0.4805, 0.891], f1: [0.6087, 0.9524] },
+    n: 32, tp: 14, fp: 1, fn: 1, tn: 16,
+    precision: 0.9333, recall: 0.9333, f1: 0.9333,
+    ci95: { precision: [0.7018, 0.9881], recall: [0.7018, 0.9881], f1: [0.8148, 1] },
   },
   no_injection_patterns: {
     n: 90, tp: 41, fp: 0, fn: 1, tn: 48,
