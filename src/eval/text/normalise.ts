@@ -109,10 +109,47 @@ export interface Normalised {
    * came from. Length is `text.length + 1`; the final entry is the raw
    * length, so a normalised span `[s, e)` becomes the raw span
    * `[map[s], map[e])` with no special case at the end of the string.
+   *
+   * Built on first read. A rule asks for it only when a pattern actually
+   * fires, and on a one-megabyte output the array is four megabytes — so
+   * the overwhelming majority of evaluations, which find nothing, never
+   * allocate it.
    */
-  map: Int32Array;
-  /** True when normalisation changed nothing, so callers can skip a second pass. */
+  readonly map: Int32Array;
+  /**
+   * True when the fold changed nothing AND the map is the identity, so a
+   * caller can use normalised offsets as raw offsets directly.
+   */
   unchanged: boolean;
+}
+
+/**
+ * Printable ASCII plus the newline. Nothing in that set folds, so the only
+ * thing that could change such a string is a whitespace RUN — which makes
+ * two linear scans a complete test for "this text is already normalised".
+ *
+ * This is the hot path and it is why the pass is affordable. Ordinary agent
+ * output is plain text; a one-megabyte payload of it used to cost a grapheme
+ * segmentation and a character-by-character rebuild, and the hostile-payload
+ * budget in the test battery caught exactly that.
+ */
+const PLAIN_TEXT = /^[\x20-\x7E\n]*$/;
+const WHITESPACE_RUN = /\s\s/;
+
+/** The result for text that is already in normal form: no copy, no map until asked. */
+function identity(raw: string): Normalised {
+  let cached: Int32Array | undefined;
+  return {
+    text: raw,
+    unchanged: true,
+    get map(): Int32Array {
+      if (cached === undefined) {
+        cached = new Int32Array(raw.length + 1);
+        for (let i = 0; i <= raw.length; i++) cached[i] = i;
+      }
+      return cached;
+    },
+  };
 }
 
 let segmenter: Intl.Segmenter | undefined;
@@ -132,14 +169,20 @@ const LINE_BREAK = /[\n\r\u2028\u2029]/u;
 
 /** Folds `raw` for matching and returns the offset map that puts evidence back on the raw text. */
 export function normalise(raw: string): Normalised {
+  // Already in normal form: two linear scans and no allocation at all.
+  if (PLAIN_TEXT.test(raw) && !WHITESPACE_RUN.test(raw)) return identity(raw);
+
   const out: string[] = [];
   const offsets: number[] = [];
   /** The whitespace run being accumulated: where it started, and whether it broke a line. */
   let run: { at: number; hadBreak: boolean } | null = null;
   let changed = false;
+  /** False as soon as one output character does not sit at its own raw offset. */
+  let identityMap = true;
 
   const push = (chars: string, at: number): void => {
     for (const ch of chars) {
+      if (at !== out.length) identityMap = false;
       out.push(ch);
       offsets.push(at);
     }
@@ -213,10 +256,20 @@ export function normalise(raw: string): Normalised {
 
   flushRun();
 
-  const map = new Int32Array(offsets.length + 1);
-  map.set(offsets);
-  map[offsets.length] = raw.length;
-  return { text: out.join(''), map, unchanged: !changed && out.length === raw.length };
+  const text = out.join('');
+  let cached: Int32Array | undefined;
+  return {
+    text,
+    unchanged: !changed && identityMap && text.length === raw.length,
+    get map(): Int32Array {
+      if (cached === undefined) {
+        cached = new Int32Array(offsets.length + 1);
+        cached.set(offsets);
+        cached[offsets.length] = raw.length;
+      }
+      return cached;
+    },
+  };
 }
 
 /**
@@ -226,6 +279,9 @@ export function normalise(raw: string): Normalised {
  * is what a reader wants — the evasion is part of the evidence.
  */
 export function toRawSpan(n: Normalised, start: number, end: number): [number, number] {
+  // The identity case never touches the map, so no array is built for the
+  // ordinary text that makes up almost every evaluation.
+  if (n.unchanged) return [Math.max(0, start), Math.max(start, end)];
   const s = Math.max(0, Math.min(start, n.map.length - 1));
   const e = Math.max(s, Math.min(end, n.map.length - 1));
   return [n.map[s], n.map[e]];
