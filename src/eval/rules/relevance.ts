@@ -148,6 +148,8 @@ export const keywordOverlap: EvalRule = {
     const threshold = (context.customConfig?.keyword_overlap as number) ?? 0.35;
     const passed = ratio >= threshold;
     return {
+      value: { stat: 'input_terms_in_output', unit: 'ratio', value: ratio },
+      evidence: [{ type: 'count', stat: 'input_terms_in_output', unit: 'ratio', value: ratio, threshold, thresholdSource: threshold === 0.35 ? 'default' : 'config' }],
       ruleName: 'keyword_overlap',
       passed,
       score: Math.min(ratio * 2, 1),
@@ -252,6 +254,8 @@ export const topicConsistency: EvalRule = {
       passed,
       // Full marks at two thirds connected; proportional below.
       score: Math.min(ratio * 1.5, 1),
+      value: { stat: 'connected_sentences', unit: 'ratio', value: ratio },
+      evidence: [{ type: 'count', stat: 'connected_sentences', unit: 'ratio', value: ratio, threshold, thresholdSource: threshold === DEFAULT_TOPIC_THRESHOLD ? 'default' : 'config' }],
       message: `Topic consistency: ${connected}/${sentences} content sentences connect to the input's topic (${(ratio * 100).toFixed(0)}%)`,
     };
   },
