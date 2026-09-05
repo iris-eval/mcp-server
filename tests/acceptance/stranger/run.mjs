@@ -260,8 +260,32 @@ function grade({ mcp1, mcp2, a8, http }) {
     row('A5', invalid.length === 0 || (invalid.length === 1 && corrected), invalid.length ? invalid[0].result : 'zero invalid-argument results');
     const t = d.finalText;
     const out2 = /no_pii/.test(t);
-    const out3 = /no_silent_tool_failure/.test(t) && /(still|nonetheless|only blocks one|not critical|passed anyway|bundle passed|verdict.*pass)/i.test(t);
-    const out1 = /(output[- ]?1|first output)[^.]*\b(passed|clean)\b/i.test(t) && /(not judged|unjudged|skipped|cost_usd|no cost|coverage)/i.test(t);
+    /*
+     * 0.10.0 changed what an agent can quote here, and this row is graded
+     * on wording, so the rule has to change with it.
+     *
+     * The verdict's `by` used to name the RULE. When the basis is
+     * risk_over_loss it names the failure CLASS, so an agent reading the
+     * verdict writes "silent_tool_failure" and not
+     * "no_silent_tool_failure". Both are correct; either counts.
+     *
+     * The old rule also required the agent to say the output "still
+     * passed", which was true while a silent tool failure could not move
+     * the verdict. It now FAILS, which is the point of the arc. What the
+     * row asks for is that the agent names the failure and says what the
+     * verdict was — not that the verdict came out a particular way.
+     *
+     * And the output-1 probe demanded that "output 1" precede "passed" or
+     * "clean" in the same sentence. An agent that writes "the clean
+     * verdict for output-1" said the same thing in the other order.
+     */
+    const out3 =
+      /\bno_silent_tool_failure\b|\bsilent_tool_failure\b/.test(t) &&
+      /(still|nonetheless|only blocks one|not critical|passed anyway|bundle passed|verdict.*pass|risk_over_loss|also fails|fails the gate|don't ship)/i.test(t);
+    const out1 =
+      /(output[- ]?1|first output)/i.test(t) &&
+      /\b(passed|clean)\b/i.test(t) &&
+      /(not judged|unjudged|skipped|cost_usd|no cost|coverage)/i.test(t);
     row('A6', out2 && out3 && out1, t, `out2:${out2} out3:${out3} out1:${out1}`);
     const logged = d.calls.some((c) => irisName(c.name) === 'log_trace');
     const followed = d.calls.some((c) => /ReadMcpResource|readResource|iris:\/\//.test(`${c.name} ${JSON.stringify(c.input)}`)) || /iris:\/\/(evaluations|traces)\//.test(t);
