@@ -123,7 +123,14 @@ describe('deriveMoment', () => {
     expect(m.ruleSnapshot.failed).toHaveLength(2);
   });
 
-  it('returns partial verdict when mix of pass/fail', () => {
+  it('one failed evaluation is a fail, whatever its rules did', () => {
+    /*
+     * "partial" used to mean "some rules failed inside one evaluation",
+     * which from 0.10.0 contradicts the verdict that evaluation reached: a
+     * rule can fail while the verdict passes, because a shipped default
+     * only advises and weak evidence does not carry the risk past the loss
+     * threshold. The moment shows the verdict; it does not compute a second.
+     */
     const m = deriveMoment(makeTrace(), [
       makeEval({
         passed: false,
@@ -132,6 +139,14 @@ describe('deriveMoment', () => {
           { ruleName: 'sentence_count', passed: false, score: 0, message: 'Too few' },
         ],
       }),
+    ]);
+    expect(m.verdict).toBe('fail');
+  });
+
+  it('partial is what it says: two evaluations of one trace that disagree', () => {
+    const m = deriveMoment(makeTrace(), [
+      makeEval({ passed: true, rule_results: [{ ruleName: 'min_output_length', passed: true, score: 1, message: 'OK' }] }),
+      makeEval({ passed: false, rule_results: [{ ruleName: 'sentence_count', passed: false, score: 0, message: 'Too few' }] }),
     ]);
     expect(m.verdict).toBe('partial');
   });
