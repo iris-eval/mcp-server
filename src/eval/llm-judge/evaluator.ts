@@ -38,9 +38,28 @@ export interface LLMJudgeEvaluateParams {
 }
 
 export interface LLMJudgeEvaluationResult {
-  // Pass/fail against template's threshold.
+  /**
+   * The verdict, and it is the THRESHOLD's, not the model's.
+   *
+   * Until 0.10.0 the model's own `passed` boolean won whenever it supplied
+   * one, and the template's threshold was a fallback the product rarely
+   * reached. That let a judge return `score: 0.2` with `passed: true` and
+   * be believed — a scoring rubric whose score did not decide anything.
+   * Now the score is the measurement and the threshold is the rule.
+   */
   passed: boolean;
   score: number;
+  /** The threshold the score was read against, so a reader can check the arithmetic. */
+  passThreshold: number;
+  /** What the model said about passing, when it said anything. Recorded, never obeyed. */
+  selfReportedPass?: boolean;
+  /**
+   * True when the model's own boolean disagrees with the threshold verdict.
+   * Worth surfacing: a judge that scores 0.95 and says "fail", or scores
+   * 0.2 and says "pass", is telling you its rubric and its judgement have
+   * come apart on this output.
+   */
+  disagreement?: boolean;
   rationale: string;
   dimensions: Record<string, number>;
   // Provenance so the dashboard / audit log / trace detail can show the
@@ -229,11 +248,20 @@ export async function evaluateWithLLMJudge(
     parsed = parseJudgeResponse(raw.content);
   }
 
-  const passed = parsed.passed ?? parsed.score >= template.passThreshold;
+  /*
+   * The threshold decides. The model's own boolean is evidence about the
+   * model, not about the output, and it is recorded beside the verdict
+   * rather than substituted for it.
+   */
+  const passed = parsed.score >= template.passThreshold;
+  const disagreement = parsed.passed !== undefined && parsed.passed !== passed;
   const costUsd = estimateCostUsd(params.model, inputTokens, outputTokens);
 
   return {
     passed,
+    passThreshold: template.passThreshold,
+    ...(parsed.passed !== undefined ? { selfReportedPass: parsed.passed } : {}),
+    ...(disagreement ? { disagreement: true } : {}),
     score: parsed.score,
     rationale: parsed.rationale,
     dimensions: parsed.dimensions,
