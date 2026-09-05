@@ -27,9 +27,10 @@
  * "MATCHED NOTHING" rule, in test form). Dated artifacts (docs/blog,
  * docs/launch) keep their period voice and are not surfaces here.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { defaultConfig } from '../src/config/defaults.js';
 import { rulesByType } from '../src/eval/rules/index.js';
 import { ERROR_CODE_CATALOGUE } from '../src/tools/errors.js';
 
@@ -302,5 +303,74 @@ describe('docs contract — rule names', () => {
       }
     }
     expect([...new Set(unknown)]).toEqual([]);
+  });
+});
+
+/**
+ * Paths the repository no longer has. A file deleted in a release (arc 3
+ * deleted proof/lib/risk.ts when the harness started importing the module
+ * that ships) goes here, and any prose still pointing a reader at it fails.
+ */
+const RETIRED_PATHS = new Set<string>(['proof/lib/risk.ts']);
+
+/**
+ * Sentences that were true while the risk composer ran in the harness only,
+ * and false from the moment it shipped. This is not a wording preference: a
+ * reader who believes "nothing about which outputs pass has changed" will
+ * upgrade without reading the changelog. The assertion is keyed on the
+ * shipped default, so it cannot go stale in either direction — if a future
+ * release makes 'legacy' the default again, these sentences become sayable
+ * again and this test stops demanding their absence.
+ */
+const PROSPECTIVE_COMPOSER_PHRASES = [
+  'a future release may adopt',
+  'runs in the harness only',
+  'run in the harness only',
+  'nothing about which outputs pass has changed',
+];
+
+/*
+ * The public /proof page is prose a reader trusts exactly as much as the
+ * docs, and it is NOT in PROSE_SURFACES (which stops at the repo's own
+ * markdown and the agent-facing strings). These two blocks read it directly.
+ */
+const COMPOSER_PROSE = [
+  ...prose,
+  ...['website/src/app/proof/measurements.tsx', 'website/src/app/proof/page.tsx']
+    .filter((rel) => existsSync(join(root, rel)))
+    .map((rel) => ({ rel, text: read(rel) })),
+];
+
+describe('docs contract — the composer is described as shipped', () => {
+  it('the assertion is keyed on a runtime fact (guards the read itself)', () => {
+    expect(defaultConfig.eval.composer).toBe('risk');
+  });
+
+  it('no prose surface calls the shipped composer prospective', () => {
+    if (defaultConfig.eval.composer !== 'risk') return;
+    const stale: string[] = [];
+    for (const { rel, text } of COMPOSER_PROSE) {
+      const folded = text.toLowerCase();
+      for (const phrase of PROSPECTIVE_COMPOSER_PHRASES) {
+        if (folded.includes(phrase)) stale.push(`${rel}: "${phrase}"`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
+  it('no prose surface points a reader at a path the repository no longer has', () => {
+    const stale: string[] = [];
+    for (const { rel, text } of COMPOSER_PROSE) {
+      for (const path of RETIRED_PATHS) {
+        if (text.includes(path)) stale.push(`${rel}: ${path}`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
+  it('every retired path really is gone (the list cannot rot into a no-op)', () => {
+    for (const path of RETIRED_PATHS) {
+      expect(existsSync(join(root, path)), `${path} still exists; take it off RETIRED_PATHS`).toBe(false);
+    }
   });
 });

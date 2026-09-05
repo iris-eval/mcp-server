@@ -178,12 +178,14 @@ is never stored, so it cannot drift.
 
 `npm run proof -- --composite` runs every case through the real engine at the
 shipped defaults and scores three composers on the same rule results: the
-**legacy** arithmetic (`passed` as the tool returns it today) and the **risk**
-composer that a future release may adopt — a class-grouped noisy-OR over the
+**legacy** arithmetic that decided `passed` before 0.10.0, and the **risk**
+composer that has decided it since — a class-grouped noisy-OR over the
 published positive predictive values, gates and vetoes first, then the risk
-against a loss-derived threshold — under two readings of its prior. Nothing in
-the package changes: the risk composer runs in the harness only
-(`proof/lib/risk.ts`), so the comparison exists before any behaviour does.
+against a loss-derived threshold — under two readings of its prior. The risk
+composer is the one in the package (`src/eval/risk.ts`), and the harness
+imports the module that ships rather than a copy of it, so this table measures
+the code you run. `eval.composer: "legacy"` selects the old arithmetic for two
+minor releases, which is why it is still scored here.
 
 It writes `proof/composite-results.json` and `proof/COMPOSITE.md`; CI runs
 `npm run proof -- --check --composite` and fails on any difference, so the
