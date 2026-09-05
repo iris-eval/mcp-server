@@ -314,7 +314,7 @@ jobs:
           name: docker-sbom
           path: ./release-assets
 
-      # Cosign sign-blob both SBOMs and attach a .cosign.bundle per SBOM to
+      # Cosign sign-blob both SBOMs and attach a .sigstore.json per SBOM to
       # the GitHub Release. Closes Scorecard Signed-Releases — auditors
       # (and `cosign verify-blob`) can verify the SBOMs are the bytes we
       # shipped, not a mutated copy attacker-served from the release page.
@@ -325,8 +325,14 @@ jobs:
       # ignores them under the default new bundle format (writing to an empty
       # --bundle path → "create bundle file: open : no such file or directory",
       # which silently broke SBOM signing from the v4.1.2 installer bump until
-      # v0.4.4 surfaced it). The single .cosign.bundle carries signature +
-      # cert + Rekor entry; verify with `cosign verify-blob --bundle`.
+      # v0.4.4 surfaced it). The single .sigstore.json carries signature +
+      # cert + Rekor entry; verify with `cosign verify-blob --bundle`. The
+      # suffix is .sigstore.json, not the previous cosign-flavoured one: same bytes (a Sigstore
+      # bundle), but OpenSSF Scorecard's Signed-Releases check only counts
+      # assets whose name it recognises (.sig, .sigstore, .sigstore.json,
+      # .intoto.jsonl …) — with the old suffix every release scored 0 there
+      # while carrying a valid signature. tests/release-workflow-consistency
+      # pins the suffix at every site in this file.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
 
@@ -336,7 +342,7 @@ jobs:
           for sbom in *.spdx.json; do
             echo "Signing ${sbom}..."
             cosign sign-blob --yes "$sbom" \
-              --bundle "${sbom}.cosign.bundle"
+              --bundle "${sbom}.sigstore.json"
           done
           ls -la
 
@@ -381,10 +387,10 @@ jobs:
           ## Supply-chain transparency
 
           - **SBOMs**: `iris-npm-sbom.spdx.json` + `iris-docker-sbom.spdx.json` (attached below). Both are SPDX 2.3 JSON, cover direct + transitive dependencies.
-          - **SBOM signatures**: each SBOM has a companion `.cosign.bundle` (Sigstore bundle — signature + cert + Rekor entry) attached to this release. Verify with:
+          - **SBOM signatures**: each SBOM has a companion `.sigstore.json` (Sigstore bundle — signature + cert + Rekor entry) attached to this release. The release workflow runs this exact verification itself before it reports success. Verify with:
             ```
             cosign verify-blob \
-              --bundle iris-npm-sbom.spdx.json.cosign.bundle \
+              --bundle iris-npm-sbom.spdx.json.sigstore.json \
               --certificate-identity-regexp='https://github.com/__REPO__' \
               --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
               iris-npm-sbom.spdx.json
@@ -410,9 +416,9 @@ jobs:
           make_latest: ${{ steps.release-type.outputs.prerelease == 'false' && 'true' || 'false' }}
           files: |
             ./release-assets/iris-npm-sbom.spdx.json
-            ./release-assets/iris-npm-sbom.spdx.json.cosign.bundle
+            ./release-assets/iris-npm-sbom.spdx.json.sigstore.json
             ./release-assets/iris-docker-sbom.spdx.json
-            ./release-assets/iris-docker-sbom.spdx.json.cosign.bundle
+            ./release-assets/iris-docker-sbom.spdx.json.sigstore.json
           body_path: release-body.md
 
   publish-registry:
@@ -626,8 +632,8 @@ jobs:
             --json tagName,isDraft,isPrerelease,assets,body > release.json
           jq -e '.isDraft == false' release.json > /dev/null || { echo "✗ release is still a draft" && exit 1; }
           jq -e --argjson p "$PRERELEASE" '.isPrerelease == $p' release.json > /dev/null || { echo "✗ prerelease flag does not match the tag" && exit 1; }
-          for a in iris-npm-sbom.spdx.json iris-npm-sbom.spdx.json.cosign.bundle \
-                   iris-docker-sbom.spdx.json iris-docker-sbom.spdx.json.cosign.bundle; do
+          for a in iris-npm-sbom.spdx.json iris-npm-sbom.spdx.json.sigstore.json \
+                   iris-docker-sbom.spdx.json iris-docker-sbom.spdx.json.sigstore.json; do
             jq -e --arg a "$a" '.assets[] | select(.name == $a)' release.json > /dev/null || { echo "✗ release asset $a is missing" && exit 1; }
           done
           if [ "$PRERELEASE" = "false" ]; then
@@ -635,6 +641,30 @@ jobs:
               || { echo "✗ release body does not carry the CHANGELOG section for $VERSION" && exit 1; }
           fi
           echo "✓ GitHub release $GITHUB_REF_NAME: published, assets + notes present"
+
+      # The notes tell readers to run `cosign verify-blob`; until now nothing
+      # in this workflow ever ran it — the step above checked that a bundle
+      # was ATTACHED, which is not a signature that verifies. Download the
+      # assets from the release just checked and verify each SBOM against its
+      # bundle under the identity this workflow signs with.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+
+      - name: GitHub release — the SBOM signatures verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p verify-assets && cd verify-assets
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
+            -p 'iris-*-sbom.spdx.json' -p 'iris-*-sbom.spdx.json.sigstore.json'
+          for sbom in iris-npm-sbom.spdx.json iris-docker-sbom.spdx.json; do
+            cosign verify-blob \
+              --bundle "${sbom}.sigstore.json" \
+              --certificate-identity-regexp="https://github.com/${GITHUB_REPOSITORY}" \
+              --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+              "$sbom" || { echo "✗ ${sbom}: the signature does not verify" && exit 1; }
+            echo "✓ ${sbom}: signature verifies under https://github.com/${GITHUB_REPOSITORY}"
+          done
 
       - name: MCP Registry — latest is this version
         if: steps.rt.outputs.prerelease == 'false'

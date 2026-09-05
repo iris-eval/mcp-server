@@ -177,8 +177,45 @@ function reportRemediable(advisories) {
   console.log('[security-gate] (informational — merge the Dependabot PR or add an override)');
 }
 
+/*
+ * Installed-version claims in the record must match the lockfile.
+ *
+ * The hono row said "1.19.13 installed" for a month after the MCP SDK's
+ * 1.30.0 bump had put 2.1.0 in the tree — the assessment that "the fix is a
+ * major bump that must arrive via the SDK" had already come true and the
+ * record still argued for tolerating the old version. A reader trusting the
+ * record over the lockfile got the wrong picture. Every "**Package:**
+ * \`name\` (X.Y.Z installed" phrase is now compared with the root lockfile;
+ * a mismatch fails the gate, and the fix is an edit inside the same PR
+ * (the deadlock invariant holds).
+ */
+async function checkInstalledVersionClaims() {
+  const content = await readFile(EXPOSURE_FILE, 'utf-8');
+  let lock;
+  try {
+    lock = JSON.parse(await readFile(resolve(root, 'package-lock.json'), 'utf-8'));
+  } catch (e) {
+    err(`cannot read package-lock.json: ${e.message}`);
+  }
+  const claims = [...content.matchAll(/\*\*Package:\*\* `([^`]+)` \((\d[^\s)]*) installed/g)];
+  const mismatches = [];
+  for (const [, name, claimed] of claims) {
+    const entry = lock.packages?.[`node_modules/${name}`];
+    if (!entry) {
+      mismatches.push(`${name}: the record says ${claimed} installed; the root lockfile has no node_modules/${name}`);
+    } else if (entry.version !== claimed) {
+      mismatches.push(`${name}: the record says ${claimed} installed; the lockfile has ${entry.version}`);
+    }
+  }
+  console.log(`[security-gate] ${claims.length} installed-version claim(s) in SECURITY-EXPOSURE.md checked against package-lock.json`);
+  if (mismatches.length > 0) {
+    fail(`SECURITY-EXPOSURE.md disagrees with package-lock.json:\n  - ${mismatches.join('\n  - ')}\nUpdate the row (and its decision, if the upgrade closed the advisory).`);
+  }
+}
+
 async function main() {
   const documented = await getDocumentedGhsas();
+  await checkInstalledVersionClaims();
   const advisories = getAuditAdvisories();
 
   console.log(`[security-gate] npm audit reports ${advisories.length} advisory(ies) at >=moderate severity`);

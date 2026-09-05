@@ -187,11 +187,11 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 #### [GHSA-frvp-7c67-39w9](https://github.com/advisories/GHSA-frvp-7c67-39w9) — @hono/node-server serveStatic path traversal on Windows via encoded backslash (`%5C`)
 
-- **Severity:** moderate — **Package:** `@hono/node-server` (1.19.13 installed; advisory's fix is 2.0.5, a major bump that must arrive via the MCP SDK)
+- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.0 installed — the MCP SDK's 1.30.0 bump carried it past the advisory's 2.0.5 fix; `npm audit` no longer reports this advisory for this tree. The row stays as the record of the assessment made while it was open; the installed version above is checked against `package-lock.json` by `scripts/security/check-exposure-coverage.mjs`)
 - **Load-graph reachable:** **Yes on HTTP transport** (see correction above); no on stdio.
 - **Code-path reachable:** **No.** The vulnerability is in `serveStatic`; iris calls only `getRequestListener`. iris serves no static files through this package — dashboard assets go through Express `express.static`.
-- **Decision:** **Dismiss as `tolerable_risk`** — loaded, but the vulnerable static-file handler is off iris's call graph. Cannot be overridden locally without forcing a major version on the SDK's bridge; tracks the SDK upgrade.
-- **Assessed:** 2026-08-06.
+- **Decision:** **Resolved 2026-09-05 by the SDK upgrade** (while open: dismiss as `tolerable_risk`) — loaded, but the vulnerable static-file handler is off iris's call graph. Cannot be overridden locally without forcing a major version on the SDK's bridge; tracks the SDK upgrade.
+- **Assessed:** 2026-08-06; re-verified against the lockfile 2026-09-05 (the record had said 1.19.13 for a month after the upgrade).
 
 #### [GHSA-8j4g-w8fx-2239](https://github.com/advisories/GHSA-8j4g-w8fx-2239), [GHSA-hvrm-45r6-mjfj](https://github.com/advisories/GHSA-hvrm-45r6-mjfj), [GHSA-w62v-xxxg-mg59](https://github.com/advisories/GHSA-w62v-xxxg-mg59), [GHSA-xgm2-5f3f-mvvc](https://github.com/advisories/GHSA-xgm2-5f3f-mvvc) — hono core (CORS-middleware ReDoS, hono/jsx cross-request context leak, `cx()` JSX XSS, API-Gateway v1 adapter header de-dup)
 
