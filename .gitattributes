@@ -3,3 +3,14 @@
 proof/corpus/*.json text eol=lf
 proof/results.json text eol=lf
 proof/RESULTS.md text eol=lf
+
+# Rendered surfaces are byte-compared with their render (npm run llms:check, tests/claims-trust-surfaces):
+# keep templates, renderer and outputs LF on every platform, or a Windows checkout disagrees with CI.
+website/public/llms.txt text eol=lf
+website/public/llms-full.txt text eol=lf
+website/llms.template.txt text eol=lf
+website/llms-full.template.txt text eol=lf
+skills/iris-eval/SKILL.template.md text eol=lf
+skills/iris-eval/SKILL.md text eol=lf
+claude-plugin/skills/agent-eval/SKILL.md text eol=lf
+scripts/claims/render-llms.mjs text eol=lf
