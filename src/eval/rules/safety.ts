@@ -205,6 +205,28 @@ export const PII_PATTERNS: Array<{ name: string; pattern: RegExp; placeholders?:
  * reported) when nothing real fired.
  */
 /**
+ * Does one PII pattern fire on the output, and how many documentation
+ * placeholders were ignored on the way. This is the FIRING decision; the
+ * playground's vendored library carries this block verbatim (the parity
+ * test pins it), so the boolean form stays and the span form below adds
+ * the evidence beside it.
+ */
+function piiPatternMatches(
+  output: string,
+  pattern: RegExp,
+  placeholders?: RegExp[],
+): { fired: boolean; suppressed: number } {
+  if (!placeholders) return { fired: pattern.test(output), suppressed: 0 };
+  const global = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
+  let suppressed = 0;
+  for (const match of output.matchAll(global)) {
+    if (!placeholders.some((placeholder) => placeholder.test(match[0]))) return { fired: true, suppressed };
+    suppressed++;
+  }
+  return { fired: false, suppressed };
+}
+
+/**
  * Every non-placeholder match of one PII pattern, as OFFSETS into the raw
  * output (capped), plus the number of documentation placeholders ignored.
  * The offsets are the evidence a result carries — a reader (or a redaction
@@ -287,10 +309,10 @@ export const noPii: EvalRule = {
     const evidence: Evidence[] = [];
     const suppressed = new Map<string, number>();
     for (const { name, pattern, placeholders } of PII_PATTERNS) {
-      const { spans, suppressed: ignored } = piiPatternSpans(context.output, pattern, placeholders);
-      if (spans.length > 0) {
+      const { fired, suppressed: ignored } = piiPatternMatches(context.output, pattern, placeholders);
+      if (fired) {
         found.push(name);
-        for (const [start, end] of spans) {
+        for (const [start, end] of piiPatternSpans(context.output, pattern, placeholders).spans) {
           if (evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'span', source: 'output', start, end, label: name });
         }
       } else if (ignored > 0) {
