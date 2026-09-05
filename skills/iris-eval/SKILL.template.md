@@ -56,9 +56,9 @@ Or add to your MCP config:
    trajectory rules can judge what the agent did.
 3. **Judge** semantically when heuristics aren't enough:
    `evaluate_with_llm_judge` ({{llmJudgeTemplateCount}} templates: {{llmJudgeTemplateNames}}).
-   Requires the user's own API key in `IRIS_ANTHROPIC_API_KEY` or
-   `IRIS_OPENAI_API_KEY` — Iris never proxies. Without a key the tool says so
-   and names the variable; the deterministic rules never need one.
+   Requires the user's own API key — see "LLM judge setup" below. Without a
+   key the tool returns `IRIS_JUDGE_NOT_ENABLED` with the steps in its
+   `recovery`; the deterministic rules never need one.
 4. **Verify citations** in research/RAG outputs: `verify_citations` extracts
    citations, fetches sources (SSRF-guarded, opt-in), and checks each claim.
 5. **Inspect** history: `get_traces` with filters; costs aggregate across
@@ -188,6 +188,10 @@ length bands, a per-agent cost ceiling.
 | IRIS_OTEL_ENDPOINT | (none) | OTLP/HTTP collector for trace export |
 | IRIS_ANTHROPIC_API_KEY / IRIS_OPENAI_API_KEY | (none) | Your own key for the LLM judge and citation verifier |
 | IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL | 0.25 | Hard cost cap per LLM judge call |
+
+## LLM judge setup
+
+{{judgeEnableBlock}}
 
 ## Example Workflows
 

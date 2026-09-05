@@ -82,7 +82,7 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     if (savedKey === undefined) delete process.env.IRIS_ANTHROPIC_API_KEY;
     else process.env.IRIS_ANTHROPIC_API_KEY = savedKey;
     global.fetch = savedFetch;
-    __setDnsLookupForTests(undefined);
+    __setDnsLookupForTests(null);
     __clearCitationCacheForTests();
   });
 
@@ -174,8 +174,10 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     process.env.IRIS_ANTHROPIC_API_KEY = 'test-key';
     __setDnsLookupForTests(async () => [{ address: '93.184.216.34', family: 4 }]);
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('anthropic.com')) return new Response('{"error":"down"}', { status: 500 });
+      // Route by hostname, not by substring: the provider host gets the
+      // failing judge, the cited source gets a page (CodeQL js/incomplete-url-substring-sanitization).
+      const { hostname } = new URL(input instanceof Request ? input.url : String(input));
+      if (hostname === 'api.anthropic.com' || hostname.endsWith('.anthropic.com')) return new Response('{"error":"down"}', { status: 500 });
       return new Response('<html><body>A source about the claim.</body></html>', { status: 200, headers: { 'content-type': 'text/html' } });
     }) as unknown as typeof fetch;
     const e = envelope(

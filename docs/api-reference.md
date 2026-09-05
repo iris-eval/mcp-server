@@ -943,7 +943,9 @@ Health check endpoint. Reports server status and storage connectivity.
   "version": "0.4.6",
   "uptime_seconds": 3600,
   "trace_count": 142,
-  "storage": "connected"
+  "storage": "connected",
+  "judge": { "enabled": false, "provider": null },
+  "mode": "real"
 }
 ```
 

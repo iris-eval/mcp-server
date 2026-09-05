@@ -3,15 +3,19 @@
  * user enables it by supplying their own provider key, and every surface
  * that mentions it has to say so in the same words — the error a tool
  * returns without a key, the capabilities resource, the server
- * instructions, the self-test, the README and the docs. This module is
- * the one place those words live; everything else renders from it.
+ * instructions, the self-test, the README and the docs. The words live
+ * once, in judge-enablement.json beside this file: the runtime imports
+ * it, the truthbase generator copies it into .claims.json, the skill files
+ * render it as a slot, and tests/judge-enablement-surfaces.test.ts asserts
+ * the README and the judge doc carry the same block verbatim.
  *
  * What "enabled" means: a key for at least one provider reached THIS
  * process's environment. That is the only fact Iris can check, and it is
  * the fact users get wrong — a key exported in a shell is not passed to
  * the child process an MCP client spawns unless the client's config says
- * so. Step 2 below exists because of that.
+ * so. Step 2 exists because of that.
  */
+import enable from './judge-enablement.json' with { type: 'json' };
 
 export type JudgeProvider = 'anthropic' | 'openai';
 
@@ -60,30 +64,25 @@ export function judgeState(): JudgeState {
   };
 }
 
-export const JUDGE_ENABLE_TITLE = 'Enable the LLM judge (optional; the deterministic rules never need it)';
+export const JUDGE_ENABLE_TITLE: string = enable.title;
 
 /**
- * The enable workflow, one step per entry. Rendered verbatim into the
- * IRIS_JUDGE_NOT_ENABLED error's `recovery`, the capabilities resource's
- * `howToEnable`, and (through the truthbase) the README, the judge doc and
- * the skill files. Change it here and nowhere else.
+ * The enable workflow, one step per entry, from judge-enablement.json.
+ * Rendered verbatim into the IRIS_JUDGE_NOT_ENABLED error's `recovery`,
+ * the capabilities resource's `howToEnable`, and (through the truthbase)
+ * the README, the judge doc and the skill files. Change the JSON and
+ * nowhere else.
  */
-export const JUDGE_ENABLE_STEPS: readonly string[] = [
-  'Get an API key from Anthropic or OpenAI.',
-  'Put it in the environment of the process that runs Iris, not only your shell. ' +
-    'Claude Code, Claude Desktop, Cursor and most MCP clients: the "env" block of the iris-eval entry in your MCP config — ' +
-    '"iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server"], "env": { "IRIS_ANTHROPIC_API_KEY": "sk-ant-..." } }. ' +
-    'Docker: -e IRIS_ANTHROPIC_API_KEY=... on the run command. HTTP or CI: export it before starting iris-mcp.',
-  'Restart the MCP session. A running process never sees a variable set after it started.',
-  'Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. ' +
-    'A key exported in your shell is not passed to the process your client spawns unless its config lists it.',
-  `Spend guard: each call is capped by ${JUDGE_COST_CAP_VAR} (default ${JUDGE_DEFAULT_COST_CAP_USD} USD) and refused before any spend ` +
-    'if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it.',
-];
+export const JUDGE_ENABLE_STEPS: readonly string[] = enable.steps;
 
-/** The block as prose: the title, then the numbered steps. */
+/** The block as prose: the title in bold, then the numbered steps — the exact form every surface carries. */
 export function judgeEnableBlock(): string {
-  return [JUDGE_ENABLE_TITLE, ...JUDGE_ENABLE_STEPS.map((s, i) => `${i + 1}. ${s}`)].join('\n');
+  return renderJudgeEnableBlock(JUDGE_ENABLE_TITLE, JUDGE_ENABLE_STEPS);
+}
+
+/** Shared with scripts/claims/render-llms.mjs, which renders the same shape from .claims.json. */
+export function renderJudgeEnableBlock(title: string, steps: readonly string[]): string {
+  return [`**${title}**`, ...steps.map((s, i) => `${i + 1}. ${s}`)].join('\n');
 }
 
 /** The steps as an error's `recovery[]`, with the variable the call needed named first. */

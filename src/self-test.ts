@@ -50,6 +50,7 @@ import { irisHome } from './utils/iris-home.js';
 import { EvalEngine } from './eval/engine.js';
 import { generateTraceId } from './utils/ids.js';
 import { LOCAL_TENANT } from './types/tenant.js';
+import { judgeState, judgeStateLine } from './judge-enablement.js';
 import type { IrisConfig, Trace } from './types/index.js';
 import type { IStorageAdapter } from './types/query.js';
 import type { EvalResult } from './types/eval.js';
@@ -64,6 +65,7 @@ const CROSS = '✗';
  */
 export const SELF_TEST_STEPS = {
   configuredHome: 'configured IRIS_HOME is writable',
+  judge: 'judge key in this shell',
   tempHome: 'create isolated temp home',
   storage: 'initialize storage',
   trace: 'log a trace',
@@ -269,6 +271,19 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   await step(SELF_TEST_STEPS.configuredHome, () => probeConfiguredHome(userHome, userStoragePath), {
     independent: true,
   });
+
+  /*
+   * The judge line, read from THIS shell's environment before the scrub
+   * (the judge variables are not scrubbed, but the order keeps the claim
+   * honest). Informational — a missing key is not a failed install — and
+   * it never calls a provider. The sentence about the client's env block
+   * is the whole point: a key exported here can print enabled while the
+   * process an MCP client spawns never receives it.
+   */
+  await step(SELF_TEST_STEPS.judge, () => {
+    const state = judgeState();
+    return `${judgeStateLine(state)}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;
+  }, { independent: true });
 
   await step(SELF_TEST_STEPS.tempHome, () => {
     tempHome = mkdtempSync(join(tmpdir(), 'iris-self-test-'));

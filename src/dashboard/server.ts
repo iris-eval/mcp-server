@@ -117,7 +117,7 @@ export function createDashboardServer(
   registerEvaluationRoutes(router, storage);
   registerEvalStatsRoutes(router, storage);
   registerFilterRoutes(router, storage);
-  registerHealthRoutes(router, storage, config.server.version);
+  registerHealthRoutes(router, storage, config.server.version, { mode: options?.mode });
   // The same object iris://capabilities serves, for the HTTP path.
   registerCapabilitiesRoutes(router, () =>
     buildCapabilities({ config, evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, mode: options?.mode }),
