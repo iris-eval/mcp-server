@@ -2,6 +2,13 @@ export interface IrisConfig {
   storage: {
     type: 'sqlite';
     path: string;
+    /**
+     * `critical_spans` stores each evaluation's output text with the spans a
+     * critical detector flagged replaced by `[REDACTED:<pattern>]`, so a tool
+     * that detects leaks need not keep the leak it found. The evidence
+     * offsets still index the original text the caller saw. Default `none`.
+     */
+    redact?: 'none' | 'critical_spans';
   };
   server: {
     name: string;
@@ -53,6 +60,8 @@ export interface IrisConfig {
   };
   retention: {
     days: number;
+    /** How often the sweep re-runs after boot, in hours; 0 disables the timer (the boot sweep still runs). Default 24. */
+    sweepIntervalHours: number;
   };
   security: {
     apiKey?: string;

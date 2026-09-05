@@ -460,7 +460,7 @@ Remove a deployed custom rule by ID. Idempotent-ish: re-deleting a removed rule 
 
 ### delete_trace
 
-Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns.
+Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns. Spans cascade. Every evaluation linked to the trace keeps its verdict, scores, criticality and evidence offsets and loses its text — `output_text`, the expected text, the suggestions and the rule messages are erased in the same transaction and `erased_at` is stamped — so no text from the trace survives in any evaluation. The retention sweep erases the same way for the traces it deletes.
 
 #### Parameters
 

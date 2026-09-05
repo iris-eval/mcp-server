@@ -112,7 +112,7 @@ export function createDashboardServer(
   // API routes with rate limiting
   const router = express.Router();
   router.use(createApiRateLimiter(config));
-  registerTraceRoutes(router, storage, { evalEngine: options?.evalEngine });
+  registerTraceRoutes(router, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore });
   registerSummaryRoutes(router, storage);
   registerEvaluationRoutes(router, storage);
   registerEvalStatsRoutes(router, storage);

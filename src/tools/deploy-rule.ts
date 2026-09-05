@@ -251,6 +251,7 @@ export function registerDeployRuleTool(
 
       // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
       const rule = customRuleStore.deploy(LOCAL_TENANT, {
+        replaces: replaced.map((r) => r.id),
         name: args.name,
         description: args.description,
         evalType,

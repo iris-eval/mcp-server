@@ -8,6 +8,7 @@ import { PKG_VERSION } from './config/defaults.js';
 import { createStorage } from './storage/index.js';
 import { withDemoIngestGuard } from './storage/demo-guard.js';
 import { createIrisServer } from './server.js';
+import { runRetentionSweep, scheduleRetentionSweep } from './retention.js';
 import { createStdioTransport } from './transport/stdio.js';
 import { createHttpTransport } from './transport/http.js';
 import { createDashboardServer } from './dashboard/server.js';
@@ -328,35 +329,10 @@ async function main(): Promise<void> {
 
   const httpServers: Server[] = [];
 
-  // Run data retention cleanup on startup.
-  //
-  // For OSS single-tenant installs we explicitly scope cleanup to
-  // LOCAL_TENANT. Cloud will enumerate all tenants (TenantRegistry) and
-  // call this per-tenant so retention applies uniformly; the adapter
-  // method already scopes DELETEs by tenant, so the behavior scales
-  // cleanly.
-  if (config.retention.days > 0) {
-    try {
-      const deletedTraces = await storage.deleteTracesOlderThan(LOCAL_TENANT, config.retention.days);
-      /*
-       * Evaluations too (#372). Deleting a trace only NULLs trace_id on
-       * its evaluations, so every eval row — output_text verbatim,
-       * including whatever no_pii flagged — used to outlive the retention
-       * window indefinitely while the traces around it were swept.
-       */
-      const deletedEvals = await storage.deleteEvalResultsOlderThan(LOCAL_TENANT, config.retention.days);
-      if (deletedTraces + deletedEvals > 0) {
-        // Fold the WAL into the main file and truncate it, so the swept
-        // rows do not survive as readable text in iris.db-wal.
-        await storage.checkpoint();
-        logger.info(
-          `Retention cleanup: deleted ${deletedTraces} trace(s) and ${deletedEvals} evaluation(s) older than ${config.retention.days} days`,
-        );
-      }
-    } catch (err) {
-      logger.warn(`Retention cleanup skipped: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
+  // Retention: one sweep at boot and the same sweep on a timer that never
+  // holds the process open (src/retention.ts).
+  await runRetentionSweep(storage, config, logger);
+  scheduleRetentionSweep(storage, config, logger);
 
   if (config.transport.type === 'http') {
     const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger);

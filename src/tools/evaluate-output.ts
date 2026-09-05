@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { toEvaluationResponse } from '../eval/response.js';
+import type { DormantRule } from '../eval/dormant.js';
 import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
@@ -66,10 +67,16 @@ const inputSchema = {
   tool_calls: z.array(toolCallSchema).optional().describe('What the agent DID — the tool calls it made, in order, each { tool_name, input?, output?, latency_ms?, error? } exactly as log_trace records them. Read by the trajectory rules — the rules that judge what the agent DID rather than what it wrote. Omit it and those rules SKIP rather than pass — an evaluation with no trajectory data reports "not judged", never "clean". When trace_id names a stored trace and this argument is omitted, the tool_calls stored on that trace are loaded and used, so a caller who already logged them need not resend them'),
 };
 
+export interface EvaluateOutputOptions {
+  /** The quarantined gating rules on this server, for coverage.dormant. */
+  dormant?: () => DormantRule[];
+}
+
 export function registerEvaluateOutputTool(
   server: McpServer,
   storage: IStorageAdapter,
   evalEngine: EvalEngine,
+  options?: EvaluateOutputOptions,
 ): void {
   server.registerTool(
     'evaluate_output',
@@ -82,9 +89,9 @@ export function registerEvaluateOutputTool(
           'In-process, no network, no key. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown in categories. ' +
           'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it and skip without it) and grounds the hallucination signals; ' +
           'tool_calls, or a trace_id whose stored tool_calls are reused, feed the trajectory rules; cost_usd and token_usage feed the cost rules; expected feeds only expected_coverage. ' +
-          'A rule without its input SKIPS, is named, and never counts as a pass. custom_rules fire regardless of eval_type. One evaluation row is stored, linked to trace_id when given.',
+          'A rule without its input SKIPS, is named, and never counts as a pass. custom_rules always fire. One row is stored, linked to trace_id when given.',
         whenNot:
-          'To validate arbitrary JSON Schema (the json_schema custom type asserts an output\'s shape; use a validator for the rest). ' +
+          'To validate arbitrary JSON Schema (the json_schema custom type asserts an output\'s shape only). ' +
           `To screen inputs before they reach an agent: ${INJECTION_SCOPE_SENTENCE} ` +
           'For semantic judgment, evaluate_with_llm_judge and verify_citations need a key you supply.',
         returns: evaluateOutputResponseSchema,
@@ -158,7 +165,7 @@ export function registerEvaluateOutputTool(
       // reader at once.
       return respond(
         evaluateOutputResponseSchema,
-        toEvaluationResponse(result, { traceId: args.trace_id, ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
+        toEvaluationResponse(result, { traceId: args.trace_id, dormant: options?.dormant?.(), ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
         evaluationLinks(result.id, args.trace_id),
       );
     }),

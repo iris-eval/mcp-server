@@ -138,7 +138,9 @@ export function registerRuleRoutes(
   router.get('/rules/custom', (req, res) => {
     const tenantId = requireTenant(req);
     const rules = opts.customRuleStore.list(tenantId);
-    res.json({ rules });
+    // Quarantined entries ride along: they are on disk, never registered,
+    // and a gating one is named on every verdict as coverage.dormant.
+    res.json({ rules, quarantined: opts.customRuleStore.quarantined(tenantId) });
   });
 
   router.post('/rules/custom', async (req, res) => {
@@ -172,6 +174,7 @@ export function registerRuleRoutes(
       );
 
       const rule = opts.customRuleStore.deploy(tenantId, {
+        replaces: replaced.map((r) => r.id),
         name: input.name,
         description: input.description,
         evalType: input.evalType,

@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { toEvaluationResponse } from '../../eval/response.js';
+import { dormantRulesFrom } from '../../eval/dormant.js';
+import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { IStorageAdapter } from '../../types/query.js';
 import type { Trace } from '../../types/trace.js';
 import type { EvalEngine } from '../../eval/engine.js';
@@ -18,6 +20,8 @@ export interface TraceRouteOptions {
    * as a success.
    */
   evalEngine?: EvalEngine;
+  /** The custom-rule store, so an evaluation over HTTP carries coverage.dormant like the tool does. */
+  customRuleStore?: CustomRuleStore;
 }
 
 export function registerTraceRoutes(
@@ -120,7 +124,11 @@ export function registerTraceRoutes(
       res.status(201).json({
         trace_id: traceId,
         status: 'stored',
-        evaluation: toEvaluationResponse(evaluation, { traceId, ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
+        evaluation: toEvaluationResponse(evaluation, {
+          traceId,
+          dormant: options?.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
+          ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}),
+        }),
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {

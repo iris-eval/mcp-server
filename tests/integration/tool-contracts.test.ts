@@ -20,7 +20,7 @@ import { createIrisServer } from '../../src/server.js';
 import { createCustomRuleStore } from '../../src/custom-rule-store.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -363,6 +363,10 @@ describe('tool contracts (MCP surface)', () => {
       expect(replaced.rule.id).not.toBe(first.rule.id);
       expect(replaced.replaced).toEqual([{ id: first.rule.id, evalType: 'completeness', severity: 'medium' }]);
       expect(replaced.warning).toContain(first.rule.id);
+      // The audit row of the replacing deploy names what it retired (0.9.0).
+      const audit = readFileSync(join(ruleDir, 'audit.log'), 'utf8').trim().split('\n').map((l) => JSON.parse(l) as { action: string; ruleId: string; details?: { replaces?: string[] } });
+      const deployRow = audit.find((a) => a.action === 'rule.deploy' && a.ruleId === replaced.rule.id);
+      expect(deployRow?.details?.replaces).toEqual([first.rule.id]);
 
       // Exactly one rule named "policy" fires, and it is the new one — the
       // ruleId in rule_results says which.

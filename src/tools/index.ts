@@ -11,6 +11,8 @@ import { registerDeleteRuleTool } from './delete-rule.js';
 import { registerDeleteTraceTool } from './delete-trace.js';
 import { registerEvaluateWithLLMJudgeTool } from './evaluate-with-llm-judge.js';
 import { registerVerifyCitationsTool } from './verify-citations.js';
+import { dormantRulesFrom } from '../eval/dormant.js';
+import { LOCAL_TENANT } from '../types/tenant.js';
 
 /**
  * Every tool this server registers, by name. The capabilities object
@@ -38,7 +40,9 @@ export function registerAllTools(
   customRuleStore: CustomRuleStore,
 ): void {
   registerLogTraceTool(server, storage);
-  registerEvaluateOutputTool(server, storage, evalEngine);
+  registerEvaluateOutputTool(server, storage, evalEngine, {
+    dormant: () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT)),
+  });
   registerGetTracesTool(server, storage);
   registerListRulesTool(server, customRuleStore, evalEngine);
   registerDeployRuleTool(server, customRuleStore, evalEngine);
