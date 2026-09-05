@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 13 are answered by a shipped, measured thing, 20 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 15 are answered by a shipped, measured thing, 18 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -15,7 +15,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **what did it cost** | has | partial | partial | gap | partial | has |
 | **is it better or worse than before** | n/a | n/a | gap | gap | partial | partial |
 | **where and why does it fail** | has | has | has | gap | partial | has |
-| **can this verdict be trusted** | partial | partial | partial | gap | gap | has |
+| **can this verdict be trusted** | has | has | partial | gap | gap | has |
 
 ### is it safe
 
@@ -91,8 +91,8 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 - **the evaluator itself** — *has*. Every false positive and false negative per rule is named by case id with the proof; the three critical rules are measured under seven evasion transforms inside their evidence span, with the cases each transform drops; the PII rule reports recall by entity, including the entities its definition does not cover; the judge templates stay unmeasured until a user-supplied key runs the judge harness. Evidence: resource `iris://proof`, proof `no_pii`, proof `no_injection_patterns`, proof `no_blocklist_words`.
 ### can this verdict be trusted
 
-- **single output** — *partial*. Every rule result carries what kind of claim it is, what it saw and its published uncertainty; the judge's result stays a separate tool, so one verdict does not yet combine both. Evidence: tool `evaluate_output`, tool `evaluate_with_llm_judge`. Needs: `output`.
-- **output with input / context** — *partial*. The verdict names which layer decided it, coverage says which questions were judged and why the others were not, a skipped critical rule reads as unknown, and the capabilities resource says what this server can judge; a risk estimate with an interval is not yet part of the verdict. Evidence: tool `evaluate_output`, resource `iris://capabilities`, route `/api/v1/capabilities`, tool `list_rules`. Needs: `output`, `input`.
+- **single output** — *has*. Every rule result carries what kind of claim it is, what it saw, where in the raw text it found it, and how wrong it tends to be; the verdict names which layer decided — a configured policy, a high-precision detector, a check that could not answer, or the combined risk against the deployment's stated loss ratio — and one definition of passed covers the deterministic rules, the judge and the citation verifier alike. Evidence: tool `evaluate_output`, tool `evaluate_with_llm_judge`, tool `verify_citations`, resource `iris://proof`. Needs: `output`.
+- **output with input / context** — *has*. The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses. Evidence: tool `evaluate_output`, resource `iris://capabilities`, route `/api/v1/capabilities`, tool `list_rules`. Needs: `output`, `input`.
 - **trajectory (tool calls)** — *partial*. When tool calls are absent the trajectory rules skip and coverage names the question as unjudged; both rules are non-critical by default, so their skip never vetoes. Evidence: rule `no_silent_tool_failure`, rule `no_tool_loop`. Needs: `output`, `tool_calls`.
 - **multi-run of one input** — *gap*. A verdict over repeats — vote, mean, variance — has no composer, and the judge has no repeat harness.
 - **population / dataset / baseline** — *gap*. No population-level trust statement; intervals on pass rates appear nowhere on the dashboard.

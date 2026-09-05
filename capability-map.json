@@ -953,8 +953,8 @@
       "id": "Q10xS1",
       "question": "Q10",
       "subject": "S1",
-      "status": "partial",
-      "summary": "Every rule result carries what kind of claim it is, what it saw and its published uncertainty; the judge's result stays a separate tool, so one verdict does not yet combine both.",
+      "status": "has",
+      "summary": "Every rule result carries what kind of claim it is, what it saw, where in the raw text it found it, and how wrong it tends to be; the verdict names which layer decided — a configured policy, a high-precision detector, a check that could not answer, or the combined risk against the deployment's stated loss ratio — and one definition of passed covers the deterministic rules, the judge and the citation verifier alike.",
       "evidence": [
         {
           "kind": "tool",
@@ -963,6 +963,14 @@
         {
           "kind": "tool",
           "name": "evaluate_with_llm_judge"
+        },
+        {
+          "kind": "tool",
+          "name": "verify_citations"
+        },
+        {
+          "kind": "resource",
+          "name": "iris://proof"
         }
       ],
       "needs": [
@@ -973,8 +981,8 @@
       "id": "Q10xS2",
       "question": "Q10",
       "subject": "S2",
-      "status": "partial",
-      "summary": "The verdict names which layer decided it, coverage says which questions were judged and why the others were not, a skipped critical rule reads as unknown, and the capabilities resource says what this server can judge; a risk estimate with an interval is not yet part of the verdict.",
+      "status": "has",
+      "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses.",
       "evidence": [
         {
           "kind": "tool",

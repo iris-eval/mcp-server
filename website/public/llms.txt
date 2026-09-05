@@ -8,7 +8,7 @@ Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semanti
 
 Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 15 built-in rules, corpus 4951762e456d, generated 2026-09-05 for v0.10.0; reproduce with `npm run proof`.
 
-Of 60 capability cells (10 evaluation questions by 6 subjects), 13 are answered by a shipped, measured thing, 20 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it. The full map: https://iris-eval.com/capabilities.
+Of 60 capability cells (10 evaluation questions by 6 subjects), 15 are answered by a shipped, measured thing, 18 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it. The full map: https://iris-eval.com/capabilities.
 
 ## Getting Started
 
