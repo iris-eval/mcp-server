@@ -92,7 +92,7 @@ Semantic evaluation powered by LLMs, SSRF-guarded citation verification, export 
 
 ## What comes next
 
-**Status: mixed, and each item says which.** The work below is organised as three tracks rather than a version ladder, because they progress in parallel and gate each other. Every line is marked *shipped* (with the version) or *not shipped*; nothing unshipped is written in the present tense. The capability map — every evaluation question × every subject, with what Iris has, has weakly, and lacks — will replace this list as the canonical roadmap surface when it ships.
+**Status: mixed, and each item says which.** The work below is organised as three tracks rather than a version ladder, because they progress in parallel and gate each other. Every line is marked *shipped* (with the version) or *not shipped*; nothing unshipped is written in the present tense. The capability map — every evaluation question × every subject, with what Iris has, has with a stated limit, and lacks — shipped in 0.9.0 as [`docs/capabilities.md`](capabilities.md) and https://iris-eval.com/capabilities and is the canonical roadmap surface; this list is kept for the items below that the map states as gaps.
 
 Iris is an evaluation tool, so the thing it owes you above all else is evidence that its own evaluations are correct. Track 1 is therefore first among equals — the other two are worth less without it.
 
@@ -121,7 +121,8 @@ Published measurement is only useful if the rules are aimed at real failures. Co
 MCP is how Iris is discovered and how it is used interactively. It is not a guarantee of capture: under the protocol a tool call is always the model's decision, so anything that *must* be recorded needs a path that does not depend on the model choosing to call it.
 
 - **Shipped.** `POST /api/v1/traces` ([docs/http-ingest.md](http-ingest.md)): the same contract as the `log_trace` tool, with optional deterministic evaluation on write, so a CI job, a service in another language, or plain `curl` can send traces without an MCP client. The Claude Code skill and plugin (`skills/iris-eval/`, `claude-plugin/`).
-- **Not shipped.** Server-provided MCP `instructions` on initialize and a capabilities resource; a CLI for CI gates and batch evaluation; SDKs for guaranteed capture — the TypeScript LangChain wrapper in `packages/langchain/` is **unpublished** and LangChain agents should use HTTP ingest today; a batch ingest shape and a dedicated `POST /evaluations` route; datasets and run comparison, so evaluation becomes a regression workflow rather than a one-off score.
+- **Shipped (0.9.0).** Server-provided MCP `instructions` on initialize, `outputSchema` and `structuredContent` on every tool, structured errors with recovery steps, `iris://capabilities` and `GET /api/v1/capabilities`, the `evaluate-my-agent` prompt.
+- **Not shipped.** A CLI for CI gates and batch evaluation; SDKs for guaranteed capture — the TypeScript LangChain wrapper in `packages/langchain/` is **unpublished** and LangChain agents should use HTTP ingest today; a batch ingest shape and a dedicated `POST /evaluations` route; datasets and run comparison, so evaluation becomes a regression workflow rather than a one-off score.
 
 ### Hosted and team features
 
