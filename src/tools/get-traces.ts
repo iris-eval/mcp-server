@@ -3,6 +3,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
+import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { guarded, respond } from './respond.js';
 
 /*
  * An ISO-8601 instant (2026-08-01T00:00:00Z, offsets allowed) or calendar
@@ -74,7 +76,7 @@ const inputSchema = {
   // Mirrors traceQuerySchema in dashboard/validation.ts — both capture paths
   // (MCP tool, HTTP query) enforce the same 1..1000 bound. Unclamped, limit:-1
   // meant "LIMIT -1" in SQLite, i.e. every row (#332).
-  limit: z.number().int().min(1).max(1000).default(50).describe('Results per page (default 50, max 1000 — values >1000 return 400)'),
+  limit: z.number().int().min(1).max(1000).default(50).describe('Results per page (default 50, max 1000 — values above are rejected)'),
   offset: z.number().int().min(0).default(0).describe('Zero-based pagination offset — skip first N results (non-negative integer)'),
   sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp').describe('Sort by timestamp | latency_ms | cost_usd (default timestamp)'),
   sort_order: z.enum(['asc', 'desc']).default('desc').describe('Sort order: asc | desc (default desc — most recent / highest first)'),
@@ -84,29 +86,39 @@ const inputSchema = {
 // Cross-field range checks — see addTraceRangeIssues above.
 const inputSchemaWithRanges = strictInput(inputSchema).superRefine(addTraceRangeIssues);
 
+export const getTracesOutputSchema = z.looseObject({
+  traces: z.array(z.looseObject({ trace_id: z.string() })).describe('the page of traces: trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp'),
+  total: z.number().int().describe('how many traces match the filters, across every page'),
+  limit: z.number().int().describe('the page size applied'),
+  offset: z.number().int().describe('the offset applied'),
+  summary: z.looseObject({}).optional().describe('the dashboard aggregates for the last hour, when include_summary was true'),
+});
+
 export function registerGetTracesTool(server: McpServer, storage: IStorageAdapter): void {
   server.registerTool(
     'get_traces',
     {
       title: 'Get Traces',
-      description: [
-        'Query stored agent-execution traces with filters, pagination, and optional dashboard summary.',
-        '',
-        'Sibling tools — log_trace creates traces, delete_trace removes a single trace, evaluate_output / evaluate_with_llm_judge / verify_citations score them, list_rules / deploy_rule / delete_rule manage the custom-rule lifecycle. get_traces is the READ path for historical agent executions — never mutates anything.',
-        '',
-        'Behavior. Read-only: never mutates storage, never calls external services. Idempotent: repeated calls with the same args return consistent results (new traces logged after the call obviously show up on subsequent calls). Tenant-scoped: queries only the caller\'s tenant rows (LOCAL_TENANT in OSS). Paginates results (default limit 50, max 1000). Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio.',
-        '',
-        'Output shape. Returns JSON: `{ "traces": [{...traceRow}], "total": number, "limit": number, "offset": number, "summary"?: { total_traces, avg_latency_ms, total_cost_usd, error_rate, eval_pass_rate, traces_per_hour, top_agents } }`. Each trace row includes trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp. `summary` only included when `include_summary: true`.',
-        '',
-        'Use when you need historical data: investigating a past failure, computing quality trends, comparing agents, or feeding an analytics job. Set `agent_name` / `framework` / `since` / `until` to narrow the query. Set `min_score` / `max_score` to surface outliers. Set `sort_by: "cost_usd"` + `sort_order: "desc"` to find the most expensive traces. Set `include_summary: true` when you want dashboard-style aggregates in one round-trip.',
-        '',
-        'Don\'t use to score a trace (use evaluate_output). Don\'t use to create a trace (use log_trace). Don\'t use as a live event stream — it\'s a query, not a subscription, and Iris has no event-stream endpoint; poll with exponential backoff.',
-        '',
-        'Parameters. limit defaults to 50, max 1000 (anything higher returns 400). offset is zero-based pagination (non-negative integer). since / until must be ISO 8601 timestamps or dates — `since` is inclusive (timestamp >= since), `until` is inclusive (timestamp <= until), and `since` may not be later than `until`. min_score / max_score are 0..1 and filter on the LATEST eval per trace, not all evals (so a trace with one failing + one passing eval may or may not match depending on which landed last); min_score may not exceed max_score. Combining since + sort_by="latency_ms" + sort_order="desc" is the canonical "find slow recent traces" query. include_summary returns dashboard-style aggregates in the SAME response (saves a round-trip; use true for dashboard ingest, false for analytics queries that don\'t need them). agent_name and framework are exact-match (no wildcards). Defaults: limit=50, offset=0, sort_by="timestamp", sort_order="desc", include_summary=false.',
-        '',
-        'Error modes. Returns 400 on invalid sort_by / sort_order (Zod enum). Returns 400 if limit > 1000 or offset < 0. Returns 400 — naming both values — on an empty range: min_score > max_score, since later than until, a score outside 0..1, or a since/until that is not an ISO 8601 timestamp or date (an unparseable bound is refused, never silently ignored). Returns 429 when HTTP rate limit exceeded. Storage failures propagate as 500. Empty result with `total: 0` on no matches (not an error).',
-      ].join('\n'),
+      description: describeTool({
+        summary: 'Query stored traces with filters, pagination and sorting; optionally include the dashboard summary in the same response.',
+        does:
+          'Read-only, local storage only. Filters are exact-match (agent_name, framework), inclusive time bounds (since, until — an ISO 8601 timestamp or date) and a score range applied to the LATEST evaluation of each trace (min_score, max_score, 0..1). ' +
+          'limit is 1..1000 (default 50), offset counts from 0, sort_by is timestamp, latency_ms or cost_usd, sort_order asc or desc (default: newest first). include_summary adds the one-hour dashboard aggregates. ' +
+          'A crossed range (min above max, since after until) is refused naming both values rather than returning an empty page that reads as "no such traces".',
+        whenNot:
+          'To score a trace (evaluate_output). To create one (log_trace). As a live stream: this is a query, and Iris has no event stream — poll with backoff.',
+        returns: getTracesOutputSchema,
+        errors:
+          'IRIS_STORAGE_ERROR when the database cannot be read. An out-of-range or crossed bound is refused before the handler runs, naming the values. An empty result is total 0, not an error. ' +
+          ERROR_ENVELOPE_SENTENCE,
+        siblings: {
+          log_trace: 'record an execution',
+          evaluate_output: 'score one output',
+          delete_trace: 'remove one trace',
+        },
+      }),
       inputSchema: inputSchemaWithRanges,
+      outputSchema: getTracesOutputSchema,
       annotations: {
         readOnlyHint: true,      // Pure query: never writes, never deletes
         destructiveHint: false,  // Inverse of readOnly — trivially false
@@ -114,7 +126,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         openWorldHint: false,    // Queries local storage only; no external network
       },
     },
-    async (args) => {
+    guarded(async (args) => {
       // OSS single-tenant: MCP caller is the local user.
       const result = await storage.queryTraces(LOCAL_TENANT, {
         filter: {
@@ -142,14 +154,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         response.summary = await storage.getDashboardSummary(LOCAL_TENANT);
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(response),
-          },
-        ],
-      };
-    },
+      return respond(getTracesOutputSchema, response);
+    }),
   );
 }

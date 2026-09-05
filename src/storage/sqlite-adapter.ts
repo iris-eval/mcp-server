@@ -328,6 +328,14 @@ export class SqliteAdapter implements IStorageAdapter {
     return rows.map((row) => this.rowToEvalResult(row));
   }
 
+  async getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null> {
+    assertTenant(tenantId);
+    const row = this.db
+      .prepare('SELECT * FROM eval_results WHERE tenant_id = ? AND id = ?')
+      .get(tenantId, id) as Record<string, unknown> | undefined;
+    return row ? this.rowToEvalResult(row) : null;
+  }
+
   async queryEvalResults(
     tenantId: TenantId,
     options: {

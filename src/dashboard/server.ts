@@ -7,6 +7,8 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { irisHome } from '../utils/iris-home.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { IrisConfig } from '../types/config.js';
+import { buildCapabilities } from '../capabilities.js';
+import { registerCapabilitiesRoutes } from './routes/capabilities.js';
 import type { Logger } from '../utils/logger.js';
 import { createAuthMiddleware } from '../middleware/auth.js';
 import { createCorsMiddleware } from '../middleware/cors.js';
@@ -39,6 +41,8 @@ export interface DashboardServerOptions {
   customRuleStore?: CustomRuleStore;
   evalEngine?: EvalEngine;
   preferenceStore?: PreferenceStore;
+  /**  when serving the disposable demo database; reported on /api/v1/capabilities. */
+  mode?: 'real' | 'demo';
 }
 
 export function createDashboardServer(
@@ -113,7 +117,11 @@ export function createDashboardServer(
   registerEvaluationRoutes(router, storage);
   registerEvalStatsRoutes(router, storage);
   registerFilterRoutes(router, storage);
-  registerHealthRoutes(router, storage, config.server.version);
+  registerHealthRoutes(router, storage, config.server.version, { mode: options?.mode });
+  // The same object iris://capabilities serves, for the HTTP path.
+  registerCapabilitiesRoutes(router, () =>
+    buildCapabilities({ config, evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, mode: options?.mode }),
+  );
   registerMomentRoutes(router, storage);
   registerFailureRoutes(router, storage);
   if (options?.customRuleStore && options?.evalEngine) {

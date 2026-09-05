@@ -5,6 +5,9 @@ import { generateTraceId, generateSpanId } from '../utils/ids.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { bestEffortExport } from '../otel/lazy.js';
 import { strictInput, strictNested } from './strict-input.js';
+import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { guarded, respond } from './respond.js';
+import { traceUri } from '../resources/uris.js';
 
 /*
  * The tool-call record — one entry of `tool_calls[]`.
@@ -67,43 +70,52 @@ export const logTraceInputShape = {
   framework: z.string().optional().describe('Agent framework identifier (e.g., langchain, autogen, custom)'),
   input: z.string().optional().describe('Agent input text — the user prompt or upstream input that produced this output'),
   output: z.string().optional().describe('Agent output text — what the agent produced (pass to evaluate_output for scoring)'),
-  tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made during execution (per-call latency, errors, input/output)'),
+  tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made during execution, in order, each { tool_name, input?, output?, latency_ms?, error? } — what the trajectory rules judge; evaluate_output reuses them when given this trace_id'),
   latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
   token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
   cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
   metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
-  spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events)'),
+  spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events); a span without start_time takes the trace timestamp'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
 };
+
+export const logTraceOutputSchema = z.looseObject({
+  trace_id: z.string().describe('the stored trace id, 32 hex — pass it to evaluate_output, get_traces or delete_trace'),
+  status: z.literal('stored').describe('always "stored" on success'),
+});
 
 export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter): void {
   server.registerTool(
     'log_trace',
     {
       title: 'Log Trace',
-      description: [
-        'Persist a single agent execution trace (input, output, spans, tool calls, cost, latency, token usage).',
-        '',
-        'Sibling tools — evaluate_output runs heuristic scoring on the trace; evaluate_with_llm_judge runs semantic LLM-based scoring; verify_citations checks citation grounding; get_traces queries stored traces; delete_trace removes a single trace; list_rules / deploy_rule / delete_rule manage custom evaluation rules. log_trace is the WRITE path that records executions; everything else reads, scores, or manages around it.',
-        '',
-        'Behavior. Writes one row to Iris storage (SQLite). When IRIS_OTEL_ENDPOINT is set, ALSO fires a best-effort async export to the configured OTLP/HTTP collector (Jaeger, Tempo, Datadog OTLP, OTEL Collector). The OTel export is fire-and-forget — its success does not affect the tool response; failures are logged but the trace is still stored locally. No authentication in stdio mode. HTTP mode requires a Bearer token ONLY when --api-key / IRIS_API_KEY is set (recommended); with no key configured the auth middleware is a pass-through and writes are unauthenticated — a default HTTP server is protected by its loopback bind (127.0.0.1) and Origin validation, not by a credential. Rate-limited to 20 req/min on HTTP MCP, unlimited on stdio. Not idempotent: each call mints a fresh trace_id, so resubmitting the same payload creates a duplicate trace.',
-        '',
-        'Output shape. Returns a JSON string: `{ "trace_id": "<32-hex>", "status": "stored" }`. The trace_id is the key you pass to evaluate_output or get_traces afterwards.',
-        '',
-        'Use when you want to record an agent execution for later evaluation, analysis, or audit. Call it AFTER the agent has produced output; call evaluate_output afterwards to score it; call get_traces to query historical traces. Store rich context: spans (span tree), tool_calls (which tools were invoked with latency/errors), token_usage, cost_usd, metadata (arbitrary key-value). All optional except agent_name.',
-        '',
-        'Don\'t use when you only need a transient log (use console logging). Don\'t use to update an existing trace — there is no update path (traces are immutable once stored).',
-        '',
-        'Parameters. agent_name is required; everything else is optional. token_usage and cost_usd are summary fields — if you ALSO pass spans with per-tool-call costs, the summary fields are treated as authoritative (no auto-aggregation). spans without an explicit start_time fall back to the trace timestamp; spans with an end_time get a duration_ms derived. metadata is opaque key-value (queryable in the dashboard, not via get_traces filters). tool_calls record per-tool latency + errors; missing latency_ms means "not reported," not "zero." Defaults: span.kind="INTERNAL", span.status_code="UNSET", timestamp=now() if omitted.',
-        '',
-        'Error modes. Throws on missing agent_name. Throws on malformed span or tool_call objects (Zod rejects). Returns 500 on storage failure (disk full, DB locked). Never blocks on the agent — the local write is synchronous and the OTel export is asynchronous.',
-      ].join('\n'),
+      description: describeTool({
+        summary:
+          'Store one agent execution — input, output, tool calls, spans, cost, latency, token usage — and get the trace_id every later call keys on.',
+        does:
+          'Writes one trace row to local SQLite and mints a fresh trace_id; nothing is deduplicated, so resubmitting the same payload stores a second trace. ' +
+          'Only agent_name is required. Store what you have: tool_calls so the trajectory rules can later judge what the agent did, cost_usd and token_usage so the cost rules can, input and output so everything else can. ' +
+          'When IRIS_OTEL_ENDPOINT is set the trace is also exported to that collector, best-effort and asynchronous; the local write never waits on it. ' +
+          'Traces are immutable: there is no update path. In stdio mode nothing authenticates the caller; over HTTP a Bearer token is required only when an API key is configured.',
+        whenNot:
+          'For a transient log line (use your logger). To score an output: log first, then call evaluate_output with the trace_id, which also lets it reuse the stored tool_calls. To change a stored trace: delete_trace and log again.',
+        returns: logTraceOutputSchema,
+        errors:
+          'IRIS_STORAGE_ERROR when the database cannot be written. An unknown argument or a malformed span or tool_calls entry is refused before the handler runs, naming the valid keys. ' +
+          ERROR_ENVELOPE_SENTENCE,
+        siblings: {
+          evaluate_output: 'score the stored output',
+          get_traces: 'query what was logged',
+          delete_trace: 'remove one trace',
+        },
+      }),
       // Strict at the MCP boundary (unknown args rejected, not stripped).
       // The dashboard's HTTP ingest builds its own — equally strict —
       // schema FROM this shape (dashboard/validation.ts): a client-supplied
       // trace_id is rejected there with a 400 whose message says the server
       // mints it, exactly as this tool mints its own in the handler below.
       inputSchema: strictInput(logTraceInputShape),
+      outputSchema: logTraceOutputSchema,
       annotations: {
         readOnlyHint: false,     // Writes a row to storage
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete
@@ -111,7 +123,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         openWorldHint: false,    // Local storage first. When IRIS_OTEL_ENDPOINT is set a best-effort async OTel export runs but is non-blocking (tool succeeds even if export fails).
       },
     },
-    async (args) => {
+    guarded(async (args) => {
       const traceId = generateTraceId();
       const timestamp = args.timestamp ?? new Date().toISOString();
 
@@ -145,14 +157,9 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         console.warn(`[iris.otel] ${err.message}`);
       });
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({ trace_id: traceId, status: 'stored' }),
-          },
-        ],
-      };
-    },
+      return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored' }, [
+        { uri: traceUri(traceId), name: `trace ${traceId}`, description: 'The stored trace with its spans and, later, its evaluations' },
+      ]);
+    }),
   );
 }

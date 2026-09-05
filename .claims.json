@@ -324,11 +324,21 @@
       "[ADD "
     ]
   },
-  "generatedAt": "2026-09-05T08:51:39.869Z",
-  "generatedFromCommit": "90844a8",
+  "generatedAt": "2026-09-05T09:35:48.206Z",
+  "generatedFromCommit": "e40eac3",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
+    "enable": {
+      "steps": [
+        "Get an API key from Anthropic or OpenAI.",
+        "Put it in the environment of the process that runs Iris, not only your shell. Claude Code, Claude Desktop, Cursor and most MCP clients: the \"env\" block of the iris-eval entry in your MCP config — \"iris-eval\": { \"command\": \"npx\", \"args\": [\"-y\", \"@iris-eval/mcp-server\"], \"env\": { \"IRIS_ANTHROPIC_API_KEY\": \"sk-ant-...\" } } (IRIS_OPENAI_API_KEY for an OpenAI key). Docker: -e IRIS_ANTHROPIC_API_KEY=... on the run command. HTTP or CI: export it before starting iris-mcp.",
+        "Restart the MCP session. A running process never sees a variable set after it started.",
+        "Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. A key exported in your shell is not passed to the process your client spawns unless its config lists it. On a machine, `npx @iris-eval/mcp-server --self-test` prints the judge line for that shell, and GET /api/v1/health reports judge.enabled on a running dashboard.",
+        "Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it."
+      ],
+      "title": "Enable the LLM judge (optional; the deterministic rules never need it)"
+    },
     "names": [
       "accuracy",
       "helpfulness",
@@ -888,7 +898,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 1972,
+    "totalCombined": 2007,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -896,8 +906,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 1806,
-      "total": 1806
+      "passed": 1841,
+      "total": 1841
     }
   },
   "version": {

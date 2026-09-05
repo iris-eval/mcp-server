@@ -1,14 +1,29 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
 import { LOCAL_TENANT } from '../../types/tenant.js';
+import { judgeState } from '../../judge-enablement.js';
 
 const startTime = Date.now();
 
-export function registerHealthRoutes(router: Router, storage?: IStorageAdapter, version?: string): void {
+export interface HealthOptions {
+  /** `demo` when serving the disposable demo database. */
+  mode?: 'real' | 'demo';
+}
+
+export function registerHealthRoutes(router: Router, storage?: IStorageAdapter, version?: string, options?: HealthOptions): void {
   const serverVersion = version ?? 'unknown';
+  const mode = options?.mode ?? 'real';
 
   router.get('/health', async (_req, res) => {
     const uptime_seconds = Math.floor((Date.now() - startTime) / 1000);
+    /*
+     * The judge state, provider name only — never the key. Read per
+     * request rather than at boot so a test (or an operator) that sets
+     * the variable in this process sees it here; the process a client
+     * spawns has a fixed environment anyway, so both reads agree there.
+     */
+    const judge = judgeState();
+    const judgeField = { enabled: judge.enabled, provider: judge.provider };
 
     if (storage) {
       try {
@@ -32,12 +47,14 @@ export function registerHealthRoutes(router: Router, storage?: IStorageAdapter, 
           uptime_seconds,
           trace_count: total,
           storage: 'connected',
+          judge: judgeField,
+          mode,
         });
       } catch {
-        res.status(503).json({ status: 'degraded', version: serverVersion, uptime_seconds, storage: 'disconnected' });
+        res.status(503).json({ status: 'degraded', version: serverVersion, uptime_seconds, storage: 'disconnected', judge: judgeField, mode });
       }
     } else {
-      res.json({ status: 'ok', version: serverVersion, uptime_seconds });
+      res.json({ status: 'ok', version: serverVersion, uptime_seconds, judge: judgeField, mode });
     }
   });
 }

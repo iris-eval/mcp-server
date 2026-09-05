@@ -63,9 +63,9 @@ Or add to your MCP config:
    trajectory rules can judge what the agent did.
 3. **Judge** semantically when heuristics aren't enough:
    `evaluate_with_llm_judge` (5 templates: accuracy, helpfulness, safety, correctness, faithfulness).
-   Requires the user's own API key in `IRIS_ANTHROPIC_API_KEY` or
-   `IRIS_OPENAI_API_KEY` — Iris never proxies. Without a key the tool says so
-   and names the variable; the deterministic rules never need one.
+   Requires the user's own API key — see "LLM judge setup" below. Without a
+   key the tool returns `IRIS_JUDGE_NOT_ENABLED` with the steps in its
+   `recovery`; the deterministic rules never need one.
 4. **Verify citations** in research/RAG outputs: `verify_citations` extracts
    citations, fetches sources (SSRF-guarded, opt-in), and checks each claim.
 5. **Inspect** history: `get_traces` with filters; costs aggregate across
@@ -195,6 +195,15 @@ length bands, a per-agent cost ceiling.
 | IRIS_OTEL_ENDPOINT | (none) | OTLP/HTTP collector for trace export |
 | IRIS_ANTHROPIC_API_KEY / IRIS_OPENAI_API_KEY | (none) | Your own key for the LLM judge and citation verifier |
 | IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL | 0.25 | Hard cost cap per LLM judge call |
+
+## LLM judge setup
+
+**Enable the LLM judge (optional; the deterministic rules never need it)**
+1. Get an API key from Anthropic or OpenAI.
+2. Put it in the environment of the process that runs Iris, not only your shell. Claude Code, Claude Desktop, Cursor and most MCP clients: the "env" block of the iris-eval entry in your MCP config — "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server"], "env": { "IRIS_ANTHROPIC_API_KEY": "sk-ant-..." } } (IRIS_OPENAI_API_KEY for an OpenAI key). Docker: -e IRIS_ANTHROPIC_API_KEY=... on the run command. HTTP or CI: export it before starting iris-mcp.
+3. Restart the MCP session. A running process never sees a variable set after it started.
+4. Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. A key exported in your shell is not passed to the process your client spawns unless its config lists it. On a machine, `npx @iris-eval/mcp-server --self-test` prints the judge line for that shell, and GET /api/v1/health reports judge.enabled on a running dashboard.
+5. Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it.
 
 ## Example Workflows
 

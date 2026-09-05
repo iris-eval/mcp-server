@@ -2,6 +2,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import type { EvalResult } from '../types/eval.js';
 import type { Trace } from '../types/trace.js';
 import type { TenantId } from '../types/tenant.js';
+import { irisError } from './errors.js';
 
 /*
  * Linking an evaluation to a trace that does not exist.
@@ -34,13 +35,24 @@ export function unknownTraceMessage(traceId: string): string {
  * existence check had to load the row anyway. Fetching it twice would be
  * two reads for one fact — and two chances for them to disagree.
  */
+/** The IRIS_UNKNOWN_TRACE error, built once for both the pre-check and the insert race. */
+export function unknownTraceError(traceId: string) {
+  return irisError('IRIS_UNKNOWN_TRACE', unknownTraceMessage(traceId), {
+    field: 'trace_id',
+    recovery: [
+      'Pass the trace_id that log_trace returned, or one listed by get_traces.',
+      'Or omit trace_id to store an unlinked evaluation.',
+    ],
+  });
+}
+
 export async function getTraceOrThrow(
   storage: IStorageAdapter,
   tenantId: TenantId,
   traceId: string,
 ): Promise<Trace> {
   const trace = await storage.getTrace(tenantId, traceId);
-  if (!trace) throw new Error(unknownTraceMessage(traceId));
+  if (!trace) throw unknownTraceError(traceId);
   return trace;
 }
 
@@ -64,7 +76,7 @@ export async function insertLinkedEvalResult(
     const code = (err as { code?: unknown }).code;
     const message = err instanceof Error ? err.message : String(err);
     if (result.trace_id && (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || /FOREIGN KEY constraint failed/i.test(message))) {
-      throw new Error(unknownTraceMessage(result.trace_id));
+      throw unknownTraceError(result.trace_id);
     }
     throw err;
   }

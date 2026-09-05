@@ -127,6 +127,9 @@ export function slotsFrom(claims) {
     hallucinationMarkers: claims.evalRules.hallucinationMarkers,
     llmJudgeTemplateCount: claims.llmJudgeTemplates.count,
     llmJudgeTemplateNames: claims.llmJudgeTemplates.names.join(', '),
+    // The judge enable workflow, the same shape src/judge-enablement.ts renders
+    // (renderJudgeEnableBlock): the title in bold, then the numbered steps.
+    judgeEnableBlock: [`**${claims.llmJudgeTemplates.enable.title}**`, ...claims.llmJudgeTemplates.enable.steps.map((s, i) => `${i + 1}. ${s}`)].join('\n'),
     npmPackage: claims.brand.npmPackage,
     repoUrl: claims.brand.publicRepoUrl,
     websiteUrl: claims.brand.websiteUrl,

@@ -149,15 +149,13 @@ describe('MCP Protocol Integration', () => {
     //   - Error modes (failure conditions + status codes)
     // Check that each section keyword appears per tool. Drift here drops
     // the per-tool grade and (via 60% mean + 40% min) the server TDQS.
+    // Since 0.9.0 the descriptions come from one template
+    // (src/tools/describe.ts): five fixed headings in order, the Returns
+    // heading generated from the output schema. tests/unit/tools/
+    // descriptions.test.ts holds the full contract; this keeps the
+    // protocol-level check that every tool carries every heading.
     const result = await client.listTools();
-    const required = [
-      'Behavior',
-      'Output shape',
-      'Use when',
-      "Don't use",
-      'Parameters',
-      'Error modes',
-    ];
+    const required = ['What it does.', 'When not to use it.', 'Returns.', 'Errors.', 'Siblings.'];
     const allToolNames = [
       'log_trace',
       'evaluate_output',

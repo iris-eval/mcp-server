@@ -2,6 +2,23 @@ import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } fr
 import { estimateCostUsd, findPricing } from './pricing.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
+/**
+ * The pre-check refused the call: the worst-case spend (two attempts) would
+ * exceed the cap. Typed so the tool can answer IRIS_BUDGET_EXCEEDED with both
+ * numbers; nothing was spent.
+ */
+export class CostCapError extends Error {
+  constructor(
+    public readonly estimatedUsd: number,
+    public readonly capUsd: number,
+  ) {
+    super(
+      `Estimated max cost ${estimatedUsd.toFixed(4)} USD (including one retry on a malformed judge reply) exceeds cap ${capUsd.toFixed(4)} USD — refusing to call. Raise IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL or max_cost_usd, or trim prompts/maxOutputTokens.`,
+    );
+    this.name = 'CostCapError';
+  }
+}
+
 export interface LLMJudgeEvaluateParams {
   output: string;
   template: TemplateName;
@@ -162,9 +179,7 @@ export async function evaluateWithLLMJudge(
   const estimatedCost =
     firstAttemptCost === null || retryCost === null ? null : firstAttemptCost + retryCost;
   if (estimatedCost !== null && estimatedCost > maxCost) {
-    throw new Error(
-      `Estimated max cost ${estimatedCost.toFixed(4)} USD (including one retry on a malformed judge reply) exceeds cap ${maxCost.toFixed(4)} USD — refusing to call. Raise IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL or trim prompts/maxOutputTokens.`,
-    );
+    throw new CostCapError(estimatedCost, maxCost);
   }
 
   // First attempt

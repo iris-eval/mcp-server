@@ -159,10 +159,12 @@ describe('tool contracts (MCP surface)', () => {
         arguments: { output: 'hello world', eval_type: 'safety', trace_id: 'f'.repeat(32) },
       });
       expect(r.isError).toBe(true);
-      const t = text(r);
-      expect(t).toContain(`trace_id "${'f'.repeat(32)}" does not match any stored trace`);
-      expect(t).toContain('Nothing was evaluated or written');
-      expect(t).not.toContain('FOREIGN KEY');
+      // Since 0.9.0 a handler failure is a JSON envelope, not a flattened line.
+      const e = (parse(r) as { error: { code: string; message: string } }).error;
+      expect(e.code).toBe('IRIS_UNKNOWN_TRACE');
+      expect(e.message).toContain(`trace_id "${'f'.repeat(32)}" does not match any stored trace`);
+      expect(e.message).toContain('Nothing was evaluated or written');
+      expect(e.message).not.toContain('FOREIGN KEY');
       expect((await storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
     });
 
@@ -277,8 +279,8 @@ describe('tool contracts (MCP surface)', () => {
     it('the description documents the "all" bundle and the categories field', async () => {
       const { tools } = await client.listTools();
       const tool = tools.find((t) => t.name === 'evaluate_output')!;
-      expect(tool.description).toContain('`all` (every bundle above in one call');
-      expect(tool.description).toContain('"categories?"');
+      expect(tool.description).toContain('or all (the default): every bundle plus deployed and inline custom rules');
+      expect(tool.description).toContain('`categories`');
       const evalType = (tool.inputSchema as { properties: Record<string, { enum?: string[] }> }).properties.eval_type;
       expect(evalType.enum).toContain('all');
     });
@@ -346,8 +348,10 @@ describe('tool contracts (MCP surface)', () => {
         arguments: { name: 'policy', eval_type: 'completeness', definition: { type: 'contains_keywords', config: { keywords: ['zebra'] } } },
       });
       expect(dup.isError).toBe(true);
-      expect(text(dup)).toContain(`A rule named "policy" is already deployed: ${first.rule.id}`);
-      expect(text(dup)).toContain('replace: true');
+      const dupError = (parse(dup) as { error: { code: string; message: string; recovery: string[] } }).error;
+      expect(dupError.code).toBe('IRIS_DUPLICATE_RULE');
+      expect(dupError.message).toContain(`A rule named "policy" is already deployed: ${first.rule.id}`);
+      expect(dupError.recovery.join(' ')).toContain('replace: true');
       // Still exactly one rule, still the first one firing.
       const listed = parse(await client.callTool({ name: 'list_rules', arguments: {} }));
       expect(listed.total).toBe(1);
@@ -374,9 +378,9 @@ describe('tool contracts (MCP surface)', () => {
       const { tools } = await client.listTools();
       const tool = tools.find((t) => t.name === 'deploy_rule')!;
       expect(tool.description).not.toContain('OR eval_type="custom"');
-      expect(tool.description).toContain('runs ONLY on evaluate_output calls whose eval_type equals the rule\'s eval_type, plus eval_type="all"');
+      expect(tool.description).toContain('eval_type says WHEN it fires (that bundle, and eval_type="all")');
       expect(tool.description).toContain('snake_case');
-      expect(tool.description).toContain('"replaced?"');
+      expect(tool.description).toContain('`replaced`');
     });
 
     it('matches the engine: a completeness rule does not fire on eval_type="custom" but does on "all"', async () => {

@@ -247,6 +247,8 @@ export interface CustomRuleStore {
   ): DeployedCustomRule | undefined;
   /** All ENABLED rules for a tenant in deploy order — what the engine should register. */
   enabledRules(tenantId: TenantId): DeployedCustomRule[];
+  /** Entries in the store this version could not validate: kept on disk, never registered, never deleted by a deploy. */
+  quarantined(tenantId: TenantId): unknown[];
   /** Path on disk for diagnostics. Different per tenant. */
   pathFor(tenantId: TenantId): string;
   auditPath: string;
@@ -400,6 +402,9 @@ export function createCustomRuleStore(opts?: {
     pathFor,
     list(tenantId: TenantId): DeployedCustomRule[] {
       return [...load(tenantId)];
+    },
+    quarantined(tenantId: TenantId): unknown[] {
+      return state(tenantId).quarantined;
     },
     get(tenantId: TenantId, id: string): DeployedCustomRule | undefined {
       return load(tenantId).find((r) => r.id === id);

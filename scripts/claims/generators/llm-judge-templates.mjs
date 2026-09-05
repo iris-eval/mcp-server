@@ -1,5 +1,6 @@
 // LLM-judge templates generator — reads src/eval/llm-judge/templates/index.ts
-// and parses the TemplateName union.
+// and parses the TemplateName union; reads src/judge-enablement.json for the
+// enable workflow every surface renders (the runtime imports the same file).
 
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -17,6 +18,11 @@ export async function generate() {
     ? [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1])
     : [];
 
+  const enable = JSON.parse(await readFile(resolve(root, 'src/judge-enablement.json'), 'utf-8'));
+  if (typeof enable.title !== 'string' || !Array.isArray(enable.steps) || enable.steps.length === 0) {
+    throw new Error('src/judge-enablement.json must carry a title and a non-empty steps array');
+  }
+
   return {
     count: names.length,
     names,
@@ -29,5 +35,6 @@ export async function generate() {
       'gpt-4o-mini',
       'o1-mini',
     ],
+    enable: { title: enable.title, steps: enable.steps },
   };
 }
