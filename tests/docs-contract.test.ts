@@ -94,6 +94,7 @@ function cliFlags(): Set<string> {
  */
 const FOREIGN_FLAGS = new Set([
   'check', // npm run proof -- --check, claims --check
+  'composite', // npm run proof -- --composite (the verdict on the composite corpus)
   'yes', // cosign sign --yes
   'ignore-scripts', // npm ci --ignore-scripts
   'provenance', // npm publish --provenance
