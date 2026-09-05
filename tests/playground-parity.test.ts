@@ -67,6 +67,17 @@ const VENDORED_FILE = 'website/src/lib/eval/rules.ts';
 const SERVER_SAFETY_FILE = 'src/eval/rules/safety.ts';
 const SERVER_RELEVANCE_FILE = 'src/eval/rules/relevance.ts';
 const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
+/*
+ * The shared text modules (0.10.0). They are not rule files: every rule that
+ * matches text folds through them first, so a playground that vendored the
+ * rules and not the fold would disagree with the server on exactly the
+ * inputs the fold exists for.
+ */
+const SERVER_TEXT_FILES: Array<[string, string[]]> = [
+  ['src/eval/text/normalise.ts', ['DROPPED', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'toRawSpan']],
+  ['src/eval/text/checksums.ts', ['luhn', 'iban', 'ssnStructure']],
+  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
+];
 
 const CATEGORIES: EvalCategory[] = ['safety', 'relevance', 'completeness', 'cost'];
 const RULE_NAMES = CATEGORIES.flatMap((category) => rulesByType[category].map((rule) => rule.name));
@@ -401,7 +412,7 @@ const SHARED_SAFETY_BLOCKS = [
   'HALLUCINATION_MARKERS',
 ];
 
-const SHARED_RELEVANCE_BLOCKS = ['STOPWORDS', 'stemTerm', 'FENCED_CODE', 'CAMEL_BOUNDARY', 'WORD', 'contentTerms', 'LIST_ITEM', 'SENTENCE_BREAK'];
+const SHARED_RELEVANCE_BLOCKS = ['STOPWORDS', 'stemTerm', 'FENCED_CODE', 'CAMEL_BOUNDARY', 'WORD', 'contentTerms', 'LIST_ITEM'];
 
 /*
  * The trajectory vocabulary — the definitions no_silent_tool_failure and
@@ -445,6 +456,14 @@ describe('playground parity — shared source blocks are identical (comments and
     it(`${name} (relevance.ts)`, () => {
       expect(normalize(block(vendored, name, VENDORED_FILE))).toBe(normalize(block(relevance, name, SERVER_RELEVANCE_FILE)));
     });
+  }
+  for (const [file, names] of SERVER_TEXT_FILES) {
+    const src = source(file);
+    for (const name of names) {
+      it(`${name} (${file.split('/').pop()})`, () => {
+        expect(normalize(block(vendored, name, VENDORED_FILE))).toBe(normalize(block(src, name, file)));
+      });
+    }
   }
   const trajectory = source(SERVER_TRAJECTORY_FILE);
   for (const name of SHARED_TRAJECTORY_BLOCKS) {

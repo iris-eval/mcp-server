@@ -5,13 +5,13 @@
   "family": "sentences",
   "positiveClass": "fail",
   "definition": "sentence_count — the output must contain at least min_sentences sentences, default 2 (config key min_sentences); the documented mechanism splits on \".!?\" and counts non-empty segments. docs/api-reference.md §Completeness Rules. Positive = fewer than two sentences as a reader counts them (the rule should FAIL).",
-  "source": "LLM-authored on 2026-09-04; cases marked \"real transcript t-NN\" carry the real input/output pair (and token/cost figures where used) from a 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0.",
+  "source": "LLM-authored on 2026-09-04; cases marked \"real transcript t-NN\" carry the real input/output pair (and token/cost figures where used) from a 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0. Two cases were relabelled on 2026-09-05 (arc 3) because their sentence counts came from the old splitter's defects rather than from the text.",
   "labelling": "LLM-authored and LLM-labelled against the documented definition on 2026-09-04. Sentences are counted as a reader counts them; cases where the documented \".!?\" split would count differently (decimals, URLs, filenames, abbreviations, ellipses) are included as boundaries and say so in notes.",
   "authored": "2026-09-04",
   "counts": {
     "n": 30,
-    "positive": 14,
-    "negative": 16
+    "positive": 16,
+    "negative": 14
   },
   "cases": [
     {
@@ -201,10 +201,10 @@
     {
       "id": "sentences-027",
       "rule": "sentence_count",
-      "label": "negative",
+      "label": "positive",
       "input": "How many MCP tools does package.json declare? Use node to read it.",
       "output": "package.json declares 9 MCP tools: log_trace, evaluate_output, get_traces, list_rules, deploy_rule, delete_rule, delete_trace, evaluate_with_llm_judge, verify_citations.",
-      "notes": "real transcript t-15: two sentences"
+      "notes": "real transcript t-15. RELABELLED 2026-09-05 (arc 3): this is ONE sentence. The previous label of two came from splitting on the full stop inside the filename \"package.json\" — a defect of the old splitter, which the label had encoded. Under the family's stated definition and a minimum of two, the rule should fail this output."
     },
     {
       "id": "sentences-028",
@@ -217,10 +217,10 @@
     {
       "id": "sentences-029",
       "rule": "sentence_count",
-      "label": "negative",
+      "label": "positive",
       "input": "Three things: (1) what port does the dashboard bind by default, (2) how do I change it, and (3) does the POST /api/v1/traces endpoint move with it or stay on 3000?",
       "output": "The dashboard binds to 127.0.0.1 on port 6920 by default (src/index.ts help text: \"--dashboard-port <port>  Dashboard port 1-65535 (default: 6920)\" and \"--dashboard-host <host>  Dashboard bind address (default: 127.0.0.1)\").",
-      "notes": "real transcript t-19: several sentences, although two of three parts are missing — sentence count is not completeness"
+      "notes": "real transcript t-19. RELABELLED 2026-09-05 (arc 3): this is ONE sentence. The previous label of several came from splitting on the dots inside \"127.0.0.1\", \"src/index.ts\" and the quoted flag text — a defect of the old splitter, which the label had encoded. Sentence count is not completeness, and under a minimum of two the rule should fail this output."
     },
     {
       "id": "sentences-030",

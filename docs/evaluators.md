@@ -179,7 +179,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `no_pii` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[no_pii] (precision, recall and F1 on 90 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[no_pii] (precision, recall and F1 on 93 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** measured — proof/results.json → transforms.rows[rule=no_pii] (recall under 7 evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md)
 - **Q3** stated — list_rules → kind: detection, mechanism: pattern; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
