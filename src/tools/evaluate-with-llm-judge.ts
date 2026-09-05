@@ -159,6 +159,10 @@ export function registerEvaluateWithLLMJudgeTool(
         rules_evaluated: 1,
         rules_skipped: 0,
         insufficient_data: false,
+        // What the evaluation itself cost — the description promised it was
+        // kept and the write path stored none of it (arc zero, G15).
+        eval_cost_usd: result.costUsd ?? undefined,
+        eval_tokens: result.inputTokens + result.outputTokens,
       });
 
       return {

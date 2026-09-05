@@ -30,7 +30,7 @@ import { defaultConfig } from '../../../src/config/defaults.js';
 import { rulesByType } from '../../../src/eval/rules/index.js';
 import { PII_PATTERNS } from '../../../src/eval/rules/safety.js';
 import { evaluateOutputResponseSchema, type EvaluateOutputResponse } from '../../../src/eval/response-schema.js';
-import type { EvalRule, EvalRuleResult, Evidence } from '../../../src/types/eval.js';
+import type { EvalRule, Evidence } from '../../../src/types/eval.js';
 import { loadCorpus } from '../../../proof/lib/corpus.js';
 import { materialiseCase } from '../../../proof/lib/materialise.js';
 import { contextFor } from '../../../proof/run.js';

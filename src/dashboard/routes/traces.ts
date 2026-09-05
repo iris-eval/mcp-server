@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { toEvaluationResponse } from '../../eval/response.js';
 import type { IStorageAdapter } from '../../types/query.js';
 import type { Trace } from '../../types/trace.js';
 import type { EvalEngine } from '../../eval/engine.js';
@@ -113,38 +114,13 @@ export function registerTraceRoutes(
       evaluation.trace_id = traceId;
       await storage.insertEvalResult(tenantId, evaluation);
 
+      // The same serializer as evaluate_output (src/eval/response.ts): the
+      // veto reason, the skipped criticals, the verdict basis, coverage and
+      // provenance travel the ingest path exactly as they travel the tool.
       res.status(201).json({
         trace_id: traceId,
         status: 'stored',
-        evaluation: {
-          id: evaluation.id,
-          eval_type: evaluation.eval_type,
-          score: evaluation.score,
-          passed: evaluation.passed,
-          rule_results: evaluation.rule_results,
-          suggestions: evaluation.suggestions,
-          rules_evaluated: evaluation.rules_evaluated,
-          rules_skipped: evaluation.rules_skipped,
-          insufficient_data: evaluation.insufficient_data,
-          /*
-           * The veto reason travels the ingest path too. Omitting it left an
-           * HTTP caller seeing passed:false beside a high score with no way
-           * to learn that a critical rule — not the weighted average —
-           * produced the verdict. Absent when nothing vetoed.
-           */
-          ...(evaluation.critical_failures?.length
-            ? { critical_failures: evaluation.critical_failures }
-            : {}),
-          // The other half of the veto contract, same as evaluate_output: a
-          // critical rule that SKIPPED did not judge the output and cannot
-          // veto, so a fail-closed gate needs to see it named.
-          ...(evaluation.critical_skipped?.length
-            ? { critical_skipped: evaluation.critical_skipped }
-            : {}),
-          // Per-bundle breakdown — eval_type="all" only.
-          ...(evaluation.categories ? { categories: evaluation.categories } : {}),
-          ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}),
-        },
+        evaluation: toEvaluationResponse(evaluation, { traceId, ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {

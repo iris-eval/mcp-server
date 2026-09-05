@@ -10,7 +10,9 @@ import type {
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
-import { stampRuleResult } from './stamp.js';
+import { inputsPresent, stampRuleResult } from './stamp.js';
+import { buildProvenance, configHash, deriveCoverage, deriveVerdict, rulesetHash } from './verdict.js';
+import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
 
 /**
@@ -70,6 +72,7 @@ export class EvalEngine {
   private idByRule: Map<EvalRule, string> = new Map();
   private threshold: number;
   private ruleThresholds?: Record<string, unknown>;
+  private criticalityOverrides?: CriticalityOverrides;
   /**
    * Effective criticality per rule, bound to this engine's config overrides.
    * Every veto decision reads THIS, never `rule.critical` directly, so a
@@ -90,6 +93,7 @@ export class EvalEngine {
   ) {
     this.threshold = threshold;
     this.ruleThresholds = ruleThresholds;
+    this.criticalityOverrides = criticalityOverrides;
     this.criticality = criticalityResolver(criticalityOverrides);
   }
 
@@ -227,6 +231,7 @@ export class EvalEngine {
         rules_evaluated: 0,
         rules_skipped: 0,
         insufficient_data: true,
+        verdict: { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null },
       };
     }
 
@@ -280,6 +285,28 @@ export class EvalEngine {
     const overall = this.summarize(rules, ruleResults);
     const perCategory = categories ? this.categorize(rules, ruleResults, categories) : undefined;
 
+    /*
+     * The receipt for the whole evaluation (0.9.0): what produced it, which
+     * questions it judged, and the basis of its verdict. Computed here from
+     * what the engine already holds; persisted as provenance and derived
+     * again on every read, so a stored row answers "why did this pass on
+     * that day" without a backfill. Changes no verdict.
+     */
+    const provenance = buildProvenance({
+      irisVersion: PKG_VERSION,
+      rulesetHash: rulesetHash(rules, (r) => this.criticality(r)),
+      configHash: configHash({
+        threshold: this.threshold,
+        ruleThresholds: this.ruleThresholds,
+        criticalRules: this.criticalityOverrides?.criticalRules,
+        nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
+      }),
+      threshold: this.threshold,
+      ruleThresholds: this.ruleThresholds,
+      judgedAt: new Date().toISOString(),
+    });
+    const coverage = deriveCoverage(ruleResults, inputsPresent(context));
+
     // Handle "all rules skipped" — insufficient data
     if (overall.rulesEvaluated === 0) {
       const skipMessages = ruleResults
@@ -289,7 +316,7 @@ export class EvalEngine {
       // that EVERY critical rule that skipped is named here, and a caller
       // whose only rules were critical ones should not have to infer that
       // from insufficient_data alone.
-      return {
+      const unknown: EvalResult = {
         id: generateEvalId(),
         eval_type: evalType,
         output_text: context.output,
@@ -306,7 +333,11 @@ export class EvalEngine {
         insufficient_data: true,
         ...(overall.criticalSkipped.length > 0 ? { critical_skipped: overall.criticalSkipped } : {}),
         ...(perCategory ? { categories: perCategory } : {}),
+        coverage,
+        provenance,
       };
+      unknown.verdict = deriveVerdict(unknown, this.threshold);
+      return unknown;
     }
 
     const suggestions: string[] = [];
@@ -345,7 +376,7 @@ export class EvalEngine {
       );
     }
 
-    return {
+    const result: EvalResult = {
       id: generateEvalId(),
       eval_type: evalType,
       output_text: context.output,
@@ -360,7 +391,11 @@ export class EvalEngine {
       ...(overall.criticalFailures.length > 0 ? { critical_failures: overall.criticalFailures } : {}),
       ...(overall.criticalSkipped.length > 0 ? { critical_skipped: overall.criticalSkipped } : {}),
       ...(perCategory ? { categories: perCategory } : {}),
+      coverage,
+      provenance,
     };
+    result.verdict = deriveVerdict(result, this.threshold);
+    return result;
   }
 
   /**
