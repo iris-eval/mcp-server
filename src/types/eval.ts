@@ -112,8 +112,86 @@ export interface EvalContext {
   regexBudget?: { breaches: number };
 }
 
+/**
+ * What the composer DID with a result under this deployment's configuration
+ * — distinct from `kind`, which is what the rule claims. Today's composer
+ * (a weighted mean plus the critical veto) knows two roles: `veto` for an
+ * effectively critical rule and `term` for one that feeds the score. The
+ * compose-by-kind release adds `gate` (a configured policy that decides),
+ * `risk` (a detection or inference feeding the risk estimate) and
+ * `advisory` (reported, deciding nothing).
+ */
+export type Role = 'gate' | 'veto' | 'risk' | 'advisory' | 'term';
+
+/**
+ * Why a rule skipped. `not_applicable`: the evidence it needs was not
+ * supplied (never asked — coverage). `defeated`: asked and could not answer,
+ * because this output stalled its pattern past the sandbox budget.
+ * `config_invalid`: asked and could not answer, because its definition is
+ * broken. A gate that fails closed treats the last two as unknown; the first
+ * is a coverage fact, not a verdict.
+ */
+export type SkipClass = 'not_applicable' | 'defeated' | 'config_invalid';
+
+export interface Interval {
+  point: number;
+  lo: number;
+  hi: number;
+}
+
+/**
+ * How wrong this result tends to be, and on what basis. `published_accuracy`
+ * carries the rule's measured numbers from the shipped proof (src/eval/
+ * published-accuracy.ts): for a fired detection or inference the positive
+ * predictive value at the stated prior, for one that did not fire the
+ * residual miss rate, each with a 95% credible interval. `definition` is a
+ * measurement's conformance to its formula (n cases, matched). `policy` is
+ * the deployment's own constraint — no error rate applies. `self_consistency`
+ * and `local_labels` arrive with the judge-through-the-engine and the
+ * own-traffic labels releases. `unmeasured` says why nothing can be stated.
+ */
+export type Uncertainty =
+  | {
+      basis: 'published_accuracy';
+      fired: true;
+      ppv: Interval;
+      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+    }
+  | {
+      basis: 'published_accuracy';
+      fired: false;
+      missRate: Interval;
+      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+    }
+  | { basis: 'definition'; conformance: { n: number; matched: number } }
+  | { basis: 'self_consistency'; samples: number; voteFraction: number; scoreSd: number }
+  | { basis: 'local_labels'; precision: Interval; n: number }
+  | { basis: 'policy' }
+  | { basis: 'unmeasured'; why: string };
+
 export interface EvalRuleResult {
   ruleName: string;
+  /**
+   * What kind of claim this result makes, what the composer did with it,
+   * which question it answers and which failure classes a failure belongs
+   * to — stamped by the engine from the rule's declaration (0.9.0). Absent
+   * on results written before that release and on rules that declare no
+   * metadata; never fabricated on read.
+   */
+  kind?: ClaimKind;
+  role?: Role;
+  question?: QuestionId;
+  classes?: FailureClass[];
+  /** The version of the rule definition that produced this result. */
+  ruleVersion?: number;
+  /** Which of the rule's declared needs the call actually carried — what the rule SAW. */
+  saw?: Need[];
+  /** Present only when `skipped`; says whether the rule was never asked or was asked and could not answer. */
+  skipClass?: SkipClass;
+  /** How wrong this result tends to be, and on what basis. Present on every result that made a claim (not on skips). */
+  uncertainty?: Uncertainty;
   /**
    * Deployed rule id (rule-<hex>) when the rule came from the custom-rule
    * store. Absent for built-in rules and for inline custom_rules. Names are

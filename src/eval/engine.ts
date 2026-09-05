@@ -10,6 +10,7 @@ import type {
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
+import { stampRuleResult } from './stamp.js';
 import { generateEvalId } from '../utils/ids.js';
 
 /**
@@ -251,10 +252,20 @@ export class EvalEngine {
        * the one path every evaluation takes, so a surface cannot render the
        * declared criticality where the engine applied a configured one.
        */
-      const { critical, source } = this.criticality(rule);
+      const effective = this.criticality(rule);
+      const { critical, source } = effective;
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
       const { ruleName, ...rest } = raw;
+      /*
+       * The stamp (0.9.0): what kind of claim this is, what the composer
+       * did with it, which question it answers, what it saw, why it skipped,
+       * and how wrong it tends to be — from the rule's declaration, the
+       * inputs this call carried, and the published accuracy that ships in
+       * the package. Computed here, on the one path every evaluation takes,
+       * so no surface can show a result without its receipt. It changes no
+       * verdict: summarize() below still decides passed exactly as before.
+       */
       return {
         ruleName,
         ...(ruleId !== undefined ? { ruleId } : {}),
@@ -262,6 +273,7 @@ export class EvalEngine {
         critical,
         criticalSource: source,
         ...rest,
+        ...stampRuleResult(rule, raw, context, effective),
       };
     });
 
