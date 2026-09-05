@@ -42,7 +42,7 @@ export function VerdictMeasured({ proof }: { proof: ProofClaims }): React.ReactE
     <section>
       <h2 className={h2}>The verdict, measured</h2>
       <p>
-        A gate does not key on a rule; it keys on <code className={code}>passed</code>, the verdict the composer makes from every rule that ran. The composite corpus scores that verdict: the 24 real transcripts, promoted as they are, plus cases composed by splicing a rule family&rsquo;s case into a clean transcript so the failure classes present are true by construction. Beside today&rsquo;s arithmetic it scores the risk composer a future release may adopt, run in the harness only — nothing about which outputs pass has changed.
+        A gate does not key on a rule; it keys on <code className={code}>passed</code>, the verdict the composer makes from every rule that ran. The composite corpus scores that verdict: the 24 real transcripts, promoted as they are, plus cases composed by splicing a rule family&rsquo;s case into a clean transcript so the failure classes present are true by construction. It scores the risk composer that has decided <code className={code}>passed</code> since 0.10.0 beside the arithmetic that decided it before, on the same rule results, so the change is readable rather than asserted.
       </p>
       {c ? (
         <>
