@@ -292,7 +292,24 @@ export class EvalEngine {
      */
     const ruleResults: EvalRuleResult[] = [];
     for (const [i, rule] of rules.entries()) {
-      const raw = rule.evaluate(evalContext);
+      /*
+       * A judgment rule calls a provider and costs money. It runs only when
+       * the caller has said this evaluation may spend — which the free
+       * evaluation path never does. Enforced here, on the one path every
+       * evaluation takes, so no tool can forget it and no future rule can
+       * quietly opt itself in.
+       */
+      const raw =
+        rule.kind === 'judgment' && evalContext.allowPaid !== true
+          ? {
+              ruleName: rule.name,
+              passed: false,
+              score: 0,
+              message: 'Judgment rules are not run on this path: it may not call a paid provider.',
+              skipped: true,
+              skipReason: 'this evaluation may not spend (context.allowPaid is not set)',
+            }
+          : rule.evaluate(evalContext);
       const ruleId = this.idByRule.get(rule);
       /*
        * The bundle this rule ran under. `categories` is only supplied for
