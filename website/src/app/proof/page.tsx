@@ -12,6 +12,7 @@ import {
   type ProofRule,
 } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
+import { ArcTwoSections } from "./measurements";
 
 /* The truthbase lists rule names in camelCase (`noPii`); the proof runner keys them by their
  * registry name (`no_pii`). Compare through one spelling so the page never calls a measured rule
@@ -57,6 +58,7 @@ const code = "rounded bg-bg-surface px-1.5 py-0.5 font-mono text-[13px] text-tex
 const link = "font-semibold text-text-accent hover:underline";
 
 const fmt = (v: number): string => v.toFixed(2);
+const ppv = (v: number | null | undefined): string => (v === null || v === undefined ? "—" : v.toFixed(2));
 
 function longDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -174,6 +176,7 @@ function RuleTable({ category, rules }: { category: string; rules: ProofRule[] }
               <th scope="col" className="px-2 py-3 font-bold">Precision</th>
               <th scope="col" className="px-2 py-3 font-bold">Recall</th>
               <th scope="col" className="px-2 py-3 font-bold">F1</th>
+              <th scope="col" className="px-2 py-3 font-bold normal-case tracking-normal" title="Positive predictive value of a fire: the share of fires that are real violations when violations are that common">PPV at 1% · 5%</th>
             </tr>
           </thead>
           <tbody>
@@ -193,6 +196,9 @@ function RuleTable({ category, rules }: { category: string; rules: ProofRule[] }
                 <MetricCell name="precision" value={r.precision} ci={r.ci95.precision} />
                 <MetricCell name="recall" value={r.recall} ci={r.ci95.recall} />
                 <MetricCell name="F1" value={r.f1} ci={r.ci95.f1} />
+                <td className="px-2 py-3 align-middle font-mono text-[13px] tabular-nums text-text-secondary whitespace-nowrap">
+                  {r.ppvAt ? `${ppv(r.ppvAt["0.01"])} · ${ppv(r.ppvAt["0.05"])}` : "—"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -227,6 +233,9 @@ function Results(): React.ReactElement {
         Bar = 95% confidence interval · tick = point estimate · scale 0 to 1. n
         splits into labelled violations (+) and labelled clean outputs (−); tp,
         fp, fn, tn are the confusion counts the three figures are computed from.
+        PPV at 1% · 5% is what a fire is worth when one output in a hundred, or
+        five, is a violation: the corpus is about half positive, and a deployment
+        rarely is, so the precision column overstates a fire at field prevalence.
       </p>
 
       {groups.map((g) => (
@@ -384,6 +393,8 @@ export default function Proof(): React.ReactElement {
               </li>
             </ul>
           </section>
+
+          <ArcTwoSections proof={proof} />
 
           <section>
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">
