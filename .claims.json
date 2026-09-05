@@ -898,6 +898,14 @@
           {
             "kind": "tool",
             "name": "evaluate_with_llm_judge"
+          },
+          {
+            "kind": "tool",
+            "name": "verify_citations"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://proof"
           }
         ],
         "id": "Q10xS1",
@@ -905,9 +913,9 @@
           "output"
         ],
         "question": "Q10",
-        "status": "partial",
+        "status": "has",
         "subject": "S1",
-        "summary": "Every rule result carries what kind of claim it is, what it saw and its published uncertainty; the judge's result stays a separate tool, so one verdict does not yet combine both."
+        "summary": "Every rule result carries what kind of claim it is, what it saw, where in the raw text it found it, and how wrong it tends to be; the verdict names which layer decided — a configured policy, a high-precision detector, a check that could not answer, or the combined risk against the deployment's stated loss ratio — and one definition of passed covers the deterministic rules, the judge and the citation verifier alike."
       },
       {
         "evidence": [
@@ -934,9 +942,9 @@
           "input"
         ],
         "question": "Q10",
-        "status": "partial",
+        "status": "has",
         "subject": "S2",
-        "summary": "The verdict names which layer decided it, coverage says which questions were judged and why the others were not, a skipped critical rule reads as unknown, and the capabilities resource says what this server can judge; a risk estimate with an interval is not yet part of the verdict."
+        "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses."
       },
       {
         "evidence": [
@@ -1002,9 +1010,9 @@
     ],
     "counts": {
       "gap": 23,
-      "has": 13,
+      "has": 15,
       "n/a": 4,
-      "partial": 20
+      "partial": 18
     },
     "questions": [
       {
@@ -3600,8 +3608,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-05T19:17:13.723Z",
-  "generatedFromCommit": "ae27615",
+  "generatedAt": "2026-09-05T19:52:43.552Z",
+  "generatedFromCommit": "6ad3d3e",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
