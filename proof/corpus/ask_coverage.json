@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "rule": "ask_coverage",
+  "category": "completeness",
+  "family": "ask_coverage",
+  "positiveClass": "fail",
+  "definition": "ask_coverage — an ask that DECLARES its own parts must be answered in every part. Parts are declared three ways and no other: a bullet block of at least two list items, an inline enumeration of at least two markers in ascending sequence ((1), (a), i)), or an ordinal-word sequence (first … second … finally). Sentence boundaries and connectors are NOT part boundaries — a writer who numbers their questions is declaring that these are separate things, and a full stop declares nothing. A part is MEASURABLE when it carries at least two content terms, at least one of which names a subject rather than a manner of answering (cite, source, point, spec, example …), and when it is not itself a manner clause (answer from…, keep it…). A measurable part is COVERED when at least two of its distinct content terms are engaged by the output (exact, stemmed, or sharing a four-character prefix), OR the part carried an ordinal the output mirrors, OR the part asks for prose with a produce verb (draft, write, summarise …) and the output carries at least forty words — because an output that IS the requested reply cannot be recognised as one lexically. The rule FAILS when at least one measurable part is uncovered, and SKIPS when there is no input, when the output is empty, when the input exceeds 1500 characters, or when fewer than two parts can be measured. Definitions: src/eval/text/asks.ts; rule: src/eval/rules/completeness.ts. Positive = a reader of the ask and the answer would say a declared part was not addressed (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-05 for arc 4. One case carries the shape of real transcript t-19 (a three-part enumerated question answered in one part). Three negatives exist because the design FAILED them against the real transcripts before this file was written and was corrected: a meta-ask with no subject (\"Cite a source\"), a manner clause (\"Answer from the engine source, not the docs\"), and an answer that performs the ask rather than describing it (a drafted reply). Every case declares its parts and every case is one the rule JUDGES — none skips, because the proof runner scores a skip as not-failed.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-05, by reading the ask against the answer and asking whether a reader would say a declared part went unaddressed — never by counting terms. Each note states which clause decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled. Two failure modes are stated rather than discovered later: a declared part answered in wholly different words, with no ordinal mirrored and no produce verb, reads as uncovered; and a genuinely multi-part ask written as flowing prose is not judged at all.",
+  "authored": "2026-09-05",
+  "counts": {
+    "n": 31,
+    "positive": 14,
+    "negative": 17
+  },
+  "cases": [
+    {
+      "id": "ask-001",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "Three things: (1) what port does the dashboard bind by default, (2) which config key changes the retention window, and (3) does the traces endpoint move with the port?",
+      "output": "The dashboard binds port 6920 by default, set in the dashboard block of the configuration.",
+      "notes": "Three enumerated parts, one addressed. Neither the retention window nor the traces endpoint appears in any words. FAIL."
+    },
+    {
+      "id": "ask-002",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "Tell me (1) how many built-in rules there are, (2) which bundle each rule belongs to, and (3) which rules are critical by default.",
+      "output": "There are seventeen built-in rules.",
+      "notes": "The count is given; the bundle mapping and the critical list are absent. FAIL."
+    },
+    {
+      "id": "ask-003",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "Please cover (1) how the retention sweep is scheduled, (2) what records it deletes, and (3) how an operator disables it.",
+      "output": "The sweep runs on a timer at boot and again every twenty-four hours, on an unref-ed interval so it never holds the process open.",
+      "notes": "Scheduling is answered thoroughly. Thoroughness on one part does not cover the other two. FAIL."
+    },
+    {
+      "id": "ask-004",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "- Summarise what the composer does\n- List the configuration keys it reads\n- Say which of those keys are still unruled",
+      "output": "The composer reads each rule by what kind of claim it makes: a configured policy gates, a high-precision detector vetoes, a critical check that could not answer makes the verdict unknown, and everything else becomes one probability against the deployment loss ratio.",
+      "notes": "A bulleted three-part ask. The first bullet is answered well; the keys and their ruling status are never mentioned. FAIL."
+    },
+    {
+      "id": "ask-005",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "- Explain what a proof family is\n- State the minimum case count a family needs\n- State what the positive share has to be",
+      "output": "A proof family is the labelled corpus a rule is measured against. Each case carries an output and a label, and its notes say which clause of the definition decided that label.",
+      "notes": "Three bullets, one answered. The minimum count and the positive share are absent. FAIL."
+    },
+    {
+      "id": "ask-006",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "- Describe the normalisation pass\n- Name the rules that consume it",
+      "output": "It iterates grapheme clusters, applies NFKC, strips zero-width characters, folds a confusables table and collapses whitespace runs, keeping an offset map so a span still indexes the raw text.",
+      "notes": "Two bullets. The pass is described in detail; which rules consume it is never said. FAIL."
+    },
+    {
+      "id": "ask-007",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "First, tell me what the stranger harness measures. Second, tell me what one run costs.",
+      "output": "It replays the arc-zero acceptance protocol as code against the packed tarball, grading each row on tool-call evidence or on the words the agent used.",
+      "notes": "An ordinal-word sequence with the cost never given. FAIL."
+    },
+    {
+      "id": "ask-008",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "First, list the failure classes the composite corpus carries. Second, say which of them have no detector yet.",
+      "output": "The corpus carries fourteen classes, from personal-data and credential leaks through injection, silent tool failures and loops to cost overruns.",
+      "notes": "The classes are listed; the second declared part is dropped. FAIL."
+    },
+    {
+      "id": "ask-009",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "First tell me what the capability map is. Second, tell me how many cells it has. Finally, say who decided it should be public.",
+      "output": "The capability map is ten evaluation questions against six subjects, each cell naming the shipped thing that answers it. It has sixty cells.",
+      "notes": "Three ordinal words, the last dropped. FAIL."
+    },
+    {
+      "id": "ask-010",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "First explain what a skip means. Second, explain how a skip differs from a pass. Finally, say what a gate should do about one.",
+      "output": "A skip means the rule was never asked, because the input it needed was absent. It differs from a pass in that a pass is a judgement and a skip is the absence of one.",
+      "notes": "Three ordinal words, the last dropped. FAIL."
+    },
+    {
+      "id": "ask-011",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "Cover (a) what the tools catalogue is for, (b) where the catalogue is stored, and (c) what happens when no catalogue arrives.",
+      "output": "The catalogue is the tools/list result, and it is what lets a call be checked against the schema its own tool declares.",
+      "notes": "Three lettered parts; storage and the absent-catalogue behaviour are missing. FAIL."
+    },
+    {
+      "id": "ask-012",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "Cover (a) how spans reach the trajectory rules, (b) what happens when both shapes arrive at once, and (c) what the derivation cap is.",
+      "output": "A span of kind TOOL becomes a step, so a trace captured by an OpenTelemetry instrumentation is judged where it used to be reported as not judged.",
+      "notes": "Only the first lettered part is answered. FAIL."
+    },
+    {
+      "id": "ask-013",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "- Explain what the Jeffreys correction fixed\n- Give the number of cases that stopped claiming certainty",
+      "output": "It puts a half-count prior into the point estimate as well as into the interval draws, so a family with no observed false positives no longer pins its positive predictive value to exactly one.",
+      "notes": "Two bullets; the number is never given. FAIL."
+    },
+    {
+      "id": "ask-014",
+      "rule": "ask_coverage",
+      "label": "positive",
+      "input": "- Say what the transforms harness measures\n- Say which rules it covers today",
+      "output": "It re-runs a rule on positives whose evidence span has been rewritten with an evasion — a zero-width character, a homoglyph, a full-width digit — and publishes recall per transform with an interval.",
+      "notes": "Two bullets, the second never addressed. FAIL."
+    },
+    {
+      "id": "ask-015",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Tell me (1) what the dashboard port is and (2) which file sets it.",
+      "output": "It listens on 6920. That value comes from the dashboard block in the configuration defaults.",
+      "notes": "Both parts answered, the second in words the ask did not use — \"file\" became \"configuration defaults\" — and enough of its terms are still engaged. PASS."
+    },
+    {
+      "id": "ask-016",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Explain (1) how the composer decides and (2) how a deployment changes the loss ratio.",
+      "output": "(1) It reads each rule by what kind of claim it makes and combines the evidence into one probability. (2) Set eval.falsePassCost; a higher number means a false pass costs more, so the threshold drops.",
+      "notes": "THE ORDINAL MIRROR: both parts answered and the numbering repeated, which is strong evidence of engagement even where the vocabulary diverges. PASS."
+    },
+    {
+      "id": "ask-017",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Explain (1) what a veto is and (2) what a gate is.",
+      "output": "(1) A high-precision detector of a must-not-ship condition, which blocks on its own. (2) A policy the deployment configured, which decides because the deployment said so.",
+      "notes": "Answered in entirely different words from the ask, with the numbering mirrored. PASS."
+    },
+    {
+      "id": "ask-018",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "- Say what the composite corpus measures\n- Say how the split is decided",
+      "output": "- It measures the ship verdict rather than any single rule, on cases whose failure classes are true by construction.\n- Dev and test are decided by a hash of the case id, so the split cannot drift.",
+      "notes": "A bulleted ask answered in matching bulleted form. PASS."
+    },
+    {
+      "id": "ask-019",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "- Explain what a corpus family is\n- Explain the balance requirement a family has",
+      "output": "A family is the labelled set a rule is measured on. Each one needs at least twenty-four cases, and between thirty and seventy per cent of them must be positive so that neither precision nor recall rests on a handful.",
+      "notes": "Two bullets answered in one flowing paragraph. Matching form is not required. PASS."
+    },
+    {
+      "id": "ask-020",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "First, draft a reply to this customer email. Second, say whether the date-of-birth pattern catches the ISO form.",
+      "output": "To: devraj@example.test\nSubject: Re: Does Iris flag date of birth?\n\nHi Devraj,\n\nYes — the personal-data rule is label-anchored and matches an ISO date as well as the slash form, so an intake record carrying DOB: 1991-04-17 is caught. The stored trace text is redacted only when you turn redaction on.\n\nBest,\nSupport",
+      "notes": "THE PERFORMED ASK: the output IS the drafted reply, and no lexical test can see that. A produce-verb part discharged by substantial prose reads as covered, which resolves the ambiguity in the direction this rule always resolves it. PASS."
+    },
+    {
+      "id": "ask-021",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "First, write a short summary of the arc. Second, say which release carried it.",
+      "output": "The arc replaced the averaged verdict with a composer that reads each rule by what kind of claim it makes, measured on a labelled corpus before it shipped. It went out as 0.10.0.",
+      "notes": "A produce verb plus a factual part, both discharged. PASS."
+    },
+    {
+      "id": "ask-022",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "- Say how many rules are in the safety bundle\n- Say whether the staging server is reachable",
+      "output": "The safety bundle has seven rules. I could not reach the staging server — the health check timed out — so I cannot tell you whether it is up.",
+      "notes": "The second part is discharged by an HONEST REFUSAL, which engages its terms as surely as an answer would. No extra machinery is needed for that and none should be added. PASS."
+    },
+    {
+      "id": "ask-023",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Explain (1) why the prior is per-output and (2) what the per-class reading did.",
+      "output": "(1) One half that the output is bad at all, spread across the classes examined, so installing another detector does not make every output more suspicious before that detector has looked at anything. (2) Read per class it blocked every clean case on every split.",
+      "notes": "Both answered, numbering mirrored, and the second answer is short. Length is not coverage. PASS."
+    },
+    {
+      "id": "ask-024",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "First explain what an interpretation is. Second, say what a suggestion was.",
+      "output": "First, an interpretation is a typed sentence a verdict carries: the setting that would have made a fired rule decide, what could not answer, or that the interval straddles the threshold too closely to call. Second, suggestions were the untyped strings it replaces.",
+      "notes": "Ordinals mirrored, both parts answered. PASS."
+    },
+    {
+      "id": "ask-025",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "First explain what a step is. Second, say where a step comes from.",
+      "output": "A step is one thing the agent did, carrying its name, its arguments, what came back and whether it failed. It comes from either the recorded tool calls or from spans of kind TOOL, never from both at once.",
+      "notes": "Both answered in prose with no mirroring, on term overlap alone. PASS."
+    },
+    {
+      "id": "ask-026",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Cover (a) what the risk estimate combines and (b) what happens when no detector fired.",
+      "output": "(a) It groups detectors by failure class, takes the highest positive predictive value inside a class, and combines classes with a noisy-OR. (b) With nothing fired it falls back to a residual-miss estimate from the same posteriors.",
+      "notes": "Lettered parts, both answered and mirrored. PASS."
+    },
+    {
+      "id": "ask-027",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Cover (a) what a span carries and (b) why parentage is stored but unread.",
+      "output": "(a) An identifier, a kind, a status, timings, attributes and events. (b) Parentage is carried so a sub-agent tree does not force a redesign later, and nothing reads it yet.",
+      "notes": "Both lettered parts answered. PASS."
+    },
+    {
+      "id": "ask-028",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "- Explain what the tools catalogue is\n- Explain why an over-size one is refused rather than truncated",
+      "output": "It is the tools/list result carried verbatim. An over-size catalogue is refused because truncating one would make \"this tool is not in the catalogue\" a lie, and that sentence is evidence about an agent inventing capability.",
+      "notes": "Two bullets, both answered. PASS."
+    },
+    {
+      "id": "ask-029",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "- Say what a proposal marker suppresses\n- Say why suppression is safe",
+      "output": "A proposal marker suppresses a citation inside a sentence that is suggesting rather than asserting. Suppression is safe because every marker only ever removes a finding, never adds one.",
+      "notes": "Two bullets, both answered with the ask words reused. PASS."
+    },
+    {
+      "id": "ask-030",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "Explain (1) what the stranger harness is and (2) what it runs against.",
+      "output": "(1) The arc-zero acceptance protocol, implemented as code and graded by fixed rules over the stream. (2) It runs against the packed tarball at every release, never against a checkout.",
+      "notes": "Both answered, mirrored. PASS."
+    },
+    {
+      "id": "ask-031",
+      "rule": "ask_coverage",
+      "label": "negative",
+      "input": "First, say what a skip class is. Second, say which classes exist.",
+      "output": "A skip class says WHY a rule did not judge. There are three: not applicable when the input was never supplied, defeated when the rule was asked and could not answer, and config invalid when its own definition is broken.",
+      "notes": "Both parts answered in one paragraph without mirroring. PASS."
+    }
+  ]
+}

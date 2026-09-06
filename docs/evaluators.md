@@ -1,6 +1,6 @@
 # Evaluator of evaluators — the thirteen trust questions, asked of every evaluator Iris ships
 
-Rendered from `.claims.json → evaluators` by `npm run llms:render`; do not edit `docs/evaluators.md` by hand. Evaluators with three or more of the thirteen trust questions measured: 26 of 32 (the built-in rules 17 of 17; the custom rule types 8 of 8; the LLM-judge templates 0 of 5; the citation verifier 0 of 1; the verdict composer 1 of 1) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.
+Rendered from `.claims.json → evaluators` by `npm run llms:render`; do not edit `docs/evaluators.md` by hand. Evaluators with three or more of the thirteen trust questions measured: 27 of 33 (the built-in rules 18 of 18; the custom rule types 8 of 8; the LLM-judge templates 0 of 5; the citation verifier 0 of 1; the verdict composer 1 of 1) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.
 
 Every cell is derived from the committed proof files by `scripts/claims/generators/evaluators.mjs` — never typed. A cell reads **measured** only when a number for it exists in `proof/results.json`, `proof/composite-results.json` or `proof/judge-results.json`, and the evidence list below names the file and key. The other statuses: **partial** (part of the question has a number — the misses are named by id, but no rate), **stated** (the answer is a declaration in code or a corpus definition, not a measurement), **measurable** (the harness that would measure it is named; no number yet), **n/a** (the question does not apply — a deterministic rule has no prompt or model sensitivity). The judge templates and the citation verifier stay measurable until a judge key that the founder or a user supplies runs `npm run proof:judge`; every other row moves only when a release roll regenerates the proof files.
 
@@ -22,7 +22,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | 12 | Can deterministic evidence corroborate model-based judgment? |
 | 13 | Can multiple independent methods triangulate the same conclusion? |
 
-## The built-in rules — 17 of 17 with three or more questions measured
+## The built-in rules — 18 of 18 with three or more questions measured
 
 | Evaluator | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Q12 | Q13 | measured |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|--:|
@@ -31,6 +31,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `sentence_count` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `expected_coverage` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `valid_tool_arguments` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
+| `ask_coverage` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `keyword_overlap` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `topic_consistency` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `no_pii` | ● | ● | ≡ | ≡ | ○ | — | — | ● | ● | ● | ● | ○ | ○ | 6 |
@@ -160,6 +161,22 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 - **Q9** measurable — proof/lib/transforms.ts extends to any rule that reports a span
 - **Q10** measured — proof/results.json → rules[valid_tool_arguments].ppvAt (what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts)
 - **Q11** measured — proof/composite-results.json → perClass[invalid_tool_call] (recall on composed cases and the 24 real transcripts where the class is present)
+- **Q12** measurable — pair rule fires with the judge's dimensions on one corpus (needs a key)
+- **Q13** measurable — run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)
+
+### `ask_coverage` (the built-in rules)
+
+- **Q1** measured — proof/results.json → rules[ask_coverage] (precision, recall and F1 on 31 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
+- **Q3** stated — list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
+- **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
+- **Q5** measurable — proof/lib/composite-report.ts calibration, per rule score (a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today)
+- **Q6** n/a (deterministic)
+- **Q7** n/a (deterministic)
+- **Q8** measured — npm run proof -- --check regenerates the file byte for byte in CI on every pull request (a pure function of its input; the committed numbers are the code's)
+- **Q9** measurable — proof/lib/transforms.ts extends to any rule that reports a span
+- **Q10** measured — proof/results.json → rules[ask_coverage].ppvAt (what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts)
+- **Q11** measured — proof/composite-results.json → perClass[incomplete_ask] (recall on composed cases and the 24 real transcripts where the class is present)
 - **Q12** measurable — pair rule fires with the judge's dimensions on one corpus (needs a key)
 - **Q13** measurable — run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)
 

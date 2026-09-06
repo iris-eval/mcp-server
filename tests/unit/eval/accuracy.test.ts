@@ -84,9 +84,18 @@ describe('accuracy — the published numbers and their intervals', () => {
     expect(at1!.point).toBeLessThan(at50!.point);
     // The point is the published precision's arithmetic at corpus prevalence.
     const counts = publishedAccuracyFor('no_pii')!;
-    const sens = counts.tp / (counts.tp + counts.fn);
-    const spec = counts.tn / (counts.tn + counts.fp);
+    /*
+     * Half a pseudo-count per cell, the same Jeffreys prior the draws use.
+     * The point estimate used the RAW rates until arc 4, which is how three
+     * rules came to report a positive predictive value of exactly 1 while
+     * the interval around it was capped below 1 and the risk layer, computing
+     * the same quantity from the same counts, quietly disagreed.
+     */
+    const sens = (counts.tp + 0.5) / (counts.tp + counts.fn + 1);
+    const spec = (counts.tn + 0.5) / (counts.tn + counts.fp + 1);
     expect(at50!.point).toBeCloseTo(ppv(sens, spec, 0.5), 4);
+    // And it can no longer be certain, which is the point of the prior.
+    expect(at50!.point).toBeLessThan(1);
   });
 
   it('the interval is a pure function of the rule, the prevalence and the corpus (seeded)', () => {

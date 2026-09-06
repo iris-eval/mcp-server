@@ -473,16 +473,25 @@
         "summary": "Task completion cannot be judged from the output alone, and no rule attempts it."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "ask_coverage"
+          },
+          {
+            "kind": "proof",
+            "name": "ask_coverage"
+          }
+        ],
         "id": "Q5xS2",
         "needs": [
           "output",
           "input"
         ],
         "question": "Q5",
-        "status": "gap",
+        "status": "has",
         "subject": "S2",
-        "summary": "No rule reads the structure of the ask, so an answer that addresses one part of three and drops the rest reads as complete."
+        "summary": "An ask that declares its parts — a bullet list, a numbered or lettered enumeration, a first/second/finally sequence — is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing."
       },
       {
         "evidence": [],
@@ -1029,8 +1038,8 @@
       }
     ],
     "counts": {
-      "gap": 22,
-      "has": 17,
+      "gap": 21,
+      "has": 18,
       "n/a": 4,
       "partial": 17
     },
@@ -1116,7 +1125,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 17,
+    "builtInCount": 18,
     "categories": [
       "completeness",
       "relevance",
@@ -1139,6 +1148,7 @@
     "hallucinationMarkers": 25,
     "injectionPatterns": 37,
     "names": [
+      "askCoverage",
       "costUnderThreshold",
       "expectedCoverage",
       "groundedInReads",
@@ -1211,6 +1221,20 @@
       }
     ],
     "roster": [
+      {
+        "classes": [
+          "incomplete_ask"
+        ],
+        "kind": "inference",
+        "mechanism": "heuristic",
+        "name": "ask_coverage",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "task_completed",
+        "version": 1
+      },
       {
         "classes": [
           "over_budget"
@@ -1475,19 +1499,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 17,
-          "measuredThreeOrMore": 17
+          "evaluators": 18,
+          "measuredThreeOrMore": 18
         }
       },
       "byStatus": {
-        "measurable": 153,
-        "measured": 104,
-        "n/a": 80,
-        "partial": 14,
-        "stated": 65
+        "measurable": 157,
+        "measured": 108,
+        "n/a": 82,
+        "partial": 15,
+        "stated": 67
       },
-      "evaluators": 32,
-      "measuredThreeOrMore": 26,
+      "evaluators": 33,
+      "measuredThreeOrMore": 27,
       "questions": 13
     },
     "evaluators": [
@@ -1830,6 +1854,74 @@
         "id": "rule:valid_tool_arguments",
         "measured": 4,
         "name": "valid_tool_arguments"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[ask_coverage]",
+            "note": "precision, recall and F1 on 31 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[ask_coverage].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[incomplete_ask]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:ask_coverage",
+        "measured": 4,
+        "name": "ask_coverage"
       },
       {
         "cells": {
@@ -3777,13 +3869,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "86b890e4c919"
+        "compositeVersion": "ecc52d7452d9"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "b15dd3d73b3e",
+        "corpusVersion": "02fb6dff0a73",
         "customCorpusVersion": "e2451fcc02d6"
       }
     },
@@ -3796,8 +3888,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T04:49:12.717Z",
-  "generatedFromCommit": "1aa1fd3",
+  "generatedAt": "2026-09-06T05:30:14.475Z",
+  "generatedFromCommit": "6493b87",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -3866,10 +3958,10 @@
     ]
   },
   "proof": {
-    "commit": "1aa1fd3",
+    "commit": "6493b87",
     "composite": {
-      "compositeVersion": "86b890e4c919",
-      "corpusVersion": "b15dd3d73b3e",
+      "compositeVersion": "ecc52d7452d9",
+      "corpusVersion": "02fb6dff0a73",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -4043,7 +4135,7 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0263,
+                "meanPredicted": 0.0283,
                 "n": 18,
                 "observedRate": 0.6667,
                 "to": 0.1
@@ -4112,8 +4204,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.6582,
-            "ece": 0.7018,
+            "brier": 0.6553,
+            "ece": 0.7003,
             "n": 24
           },
           "falseBlock": {
@@ -4149,7 +4241,7 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0398,
+                "meanPredicted": 0.0418,
                 "n": 18,
                 "observedRate": 0.7222,
                 "to": 0.1
@@ -4218,8 +4310,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.5748,
-            "ece": 0.5975,
+            "brier": 0.5724,
+            "ece": 0.5962,
             "n": 28
           },
           "falseBlock": {
@@ -4348,14 +4440,14 @@
           "recall": 0.25
         },
         {
-          "caught": 0,
+          "caught": 1,
           "ci95": [
-            0,
-            0.7935
+            0.2065,
+            1
           ],
           "class": "incomplete_ask",
           "present": 1,
-          "recall": 0
+          "recall": 1
         },
         {
           "caught": 6,
@@ -4527,8 +4619,8 @@
               {
                 "from": 0.1,
                 "meanPredicted": 0.1288,
-                "n": 13,
-                "observedRate": 0.5385,
+                "n": 12,
+                "observedRate": 0.5,
                 "to": 0.2
               },
               {
@@ -4540,9 +4632,9 @@
               },
               {
                 "from": 0.3,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.3184,
+                "n": 1,
+                "observedRate": 1,
                 "to": 0.4
               },
               {
@@ -4588,8 +4680,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.2567,
-            "ece": 0.3309,
+            "brier": 0.2444,
+            "ece": 0.323,
             "n": 24
           },
           "falseBlock": {
@@ -4632,9 +4724,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1325,
-                "n": 14,
-                "observedRate": 0.4286,
+                "meanPredicted": 0.1328,
+                "n": 13,
+                "observedRate": 0.3846,
                 "to": 0.2
               },
               {
@@ -4646,9 +4738,9 @@
               },
               {
                 "from": 0.3,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.3184,
+                "n": 1,
+                "observedRate": 1,
                 "to": 0.4
               },
               {
@@ -4694,8 +4786,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.2321,
-            "ece": 0.2381,
+            "brier": 0.2216,
+            "ece": 0.2313,
             "n": 28
           },
           "falseBlock": {
@@ -4881,9 +4973,9 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6916,
-                "n": 11,
-                "observedRate": 0.5455,
+                "meanPredicted": 0.6912,
+                "n": 10,
+                "observedRate": 0.5,
                 "to": 0.7
               },
               {
@@ -4902,14 +4994,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9877,
-                "n": 11,
+                "meanPredicted": 0.9829,
+                "n": 12,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.1497,
-            "ece": 0.0897,
+            "brier": 0.1461,
+            "ece": 0.1053,
             "n": 24
           },
           "falseBlock": {
@@ -4987,9 +5079,9 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6845,
-                "n": 12,
-                "observedRate": 0.4167,
+                "meanPredicted": 0.6835,
+                "n": 11,
+                "observedRate": 0.3636,
                 "to": 0.7
               },
               {
@@ -5008,14 +5100,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9859,
-                "n": 14,
-                "observedRate": 0.9286,
+                "meanPredicted": 0.9821,
+                "n": 15,
+                "observedRate": 0.9333,
                 "to": 1
               }
             ],
-            "brier": 0.1883,
-            "ece": 0.1584,
+            "brier": 0.1851,
+            "ece": 0.1668,
             "n": 28
           },
           "falseBlock": {
@@ -5221,7 +5313,7 @@
       },
       "version": "0.10.0"
     },
-    "corpusVersion": "b15dd3d73b3e",
+    "corpusVersion": "02fb6dff0a73",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -5768,7 +5860,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-06T04:42:57.012Z",
+    "generatedAt": "2026-09-06T05:29:31.357Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -6031,6 +6123,55 @@
         "skipped": 0,
         "tn": 18,
         "tp": 15
+      },
+      {
+        "category": "completeness",
+        "ci95": {
+          "f1": [
+            0.6087,
+            0.9333
+          ],
+          "precision": [
+            0.505,
+            0.8982
+          ],
+          "recall": [
+            0.6006,
+            0.9599
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.591,
+            0.9067
+          ],
+          "precision": [
+            0.4977,
+            0.9066
+          ],
+          "recall": [
+            0.6209,
+            0.9676
+          ]
+        },
+        "f1": 0.8,
+        "fn": 2,
+        "fp": 4,
+        "n": 31,
+        "name": "ask_coverage",
+        "negatives": 17,
+        "positives": 14,
+        "ppvAt": {
+          "0.01": 0.0355,
+          "0.05": 0.1609,
+          "0.2": 0.4766,
+          "0.5": 0.7846
+        },
+        "precision": 0.75,
+        "recall": 0.8571,
+        "skipped": 5,
+        "tn": 13,
+        "tp": 12
       },
       {
         "category": "relevance",
@@ -7111,7 +7252,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2230,
+    "totalCombined": 2271,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -7119,8 +7260,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2064,
-      "total": 2064
+      "passed": 2105,
+      "total": 2105
     }
   },
   "version": {

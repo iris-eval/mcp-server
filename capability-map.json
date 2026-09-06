@@ -536,9 +536,18 @@
       "id": "Q5xS2",
       "question": "Q5",
       "subject": "S2",
-      "status": "gap",
-      "summary": "No rule reads the structure of the ask, so an answer that addresses one part of three and drops the rest reads as complete.",
-      "evidence": [],
+      "status": "has",
+      "summary": "An ask that declares its parts \u2014 a bullet list, a numbered or lettered enumeration, a first/second/finally sequence \u2014 is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "ask_coverage"
+        },
+        {
+          "kind": "proof",
+          "name": "ask_coverage"
+        }
+      ],
       "needs": [
         "output",
         "input"

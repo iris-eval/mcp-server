@@ -91,11 +91,29 @@ export interface Confusion {
 }
 
 /** Sensitivity (recall on the positive class) and specificity from a confusion matrix; null where the denominator is zero. */
+/**
+ * Half a pseudo-count per cell — the Jeffreys prior the interval draws
+ * already use.
+ *
+ * Arc 3 put these half-counts into the RISK arithmetic and stopped there,
+ * and arc 4's response-shape test caught what that left behind: the
+ * published positive predictive value a reader sees on a rule result was
+ * still computed from the raw rates, so a family with no observed false
+ * positives reported a point estimate of exactly 1 while the interval it sat
+ * in was capped below 1 and the risk layer, computing the same quantity,
+ * disagreed with it. Three shipped rules were reporting certainty they had
+ * not earned, and the release notes said no case did.
+ *
+ * The number a reader is shown and the number the verdict is computed from
+ * are the same quantity, so they are now the same function.
+ */
+export const JEFFREYS_HALF = 0.5;
+
 export function sensitivity(c: Confusion): number | null {
-  return c.tp + c.fn === 0 ? null : c.tp / (c.tp + c.fn);
+  return c.tp + c.fn === 0 ? null : (c.tp + JEFFREYS_HALF) / (c.tp + c.fn + 2 * JEFFREYS_HALF);
 }
 export function specificity(c: Confusion): number | null {
-  return c.tn + c.fp === 0 ? null : c.tn / (c.tn + c.fp);
+  return c.tn + c.fp === 0 ? null : (c.tn + JEFFREYS_HALF) / (c.tn + c.fp + 2 * JEFFREYS_HALF);
 }
 
 /**

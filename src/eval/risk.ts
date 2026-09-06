@@ -32,12 +32,19 @@ import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js'
 import { publishedAccuracyFor } from './accuracy.js';
 import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
 import { FAILURE_CLASS_IDS } from './failure-classes.js';
+import { sensitivity, specificity } from './stats.js';
 import { fnv1a, mulberry32 } from './seeded-random.js';
 
 /** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
-const HALF = 0.5;
-const sensOf = (d: { counts: { tp: number; fn: number } }): number => (d.counts.tp + HALF) / (d.counts.tp + d.counts.fn + 2 * HALF);
-const specOf = (d: { counts: { tn: number; fp: number } }): number => (d.counts.tn + HALF) / (d.counts.tn + d.counts.fp + 2 * HALF);
+/*
+ * The same two functions the published number uses (src/eval/stats.ts).
+ * They were a private copy here until arc 4 found the two had drifted: the
+ * risk carried the half-counts and the published PPV did not, so a rule
+ * could show a reader 1.00 while the verdict computed 0.97 from the same
+ * counts. One quantity, one definition.
+ */
+const sensOf = (d: { counts: { tp: number; fn: number } }): number => sensitivity(d.counts as never) ?? 0;
+const specOf = (d: { counts: { tn: number; fp: number } }): number => specificity(d.counts as never) ?? 0;
 
 export const RISK_DRAWS = 2000;
 export const DEFAULT_PRIOR = 0.5;
