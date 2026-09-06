@@ -43,9 +43,16 @@ describe('evaluator-of-evaluators matrix', () => {
     expect(m.counts.questions).toBe(13);
     expect(m.questions.map((q) => q.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     expect(new Set(m.evaluators.map((e) => e.group))).toEqual(new Set(GROUPS.map((g) => g.id)));
-    expect(m.counts.byGroup.rules.evaluators).toBe(15);
-    expect(m.counts.byGroup.custom.evaluators).toBe(8);
-    expect(m.counts.byGroup.judge.evaluators).toBe(5);
+    /*
+     * Derived from the truthbase, not typed. These three were literals until
+     * arc 4 added a rule and turned a correct change into a red test with
+     * nothing wrong behind it — the drift rule this repository already
+     * applies everywhere else: a number that appears on two surfaces is a
+     * constant or a check, never a copy.
+     */
+    expect(m.counts.byGroup.rules.evaluators).toBe(claims.evalRules.builtInCount);
+    expect(m.counts.byGroup.custom.evaluators).toBe(claims.evalRules.customRuleTypeCount);
+    expect(m.counts.byGroup.judge.evaluators).toBe(claims.llmJudgeTemplates.count);
     for (const e of m.evaluators) {
       expect(Object.keys(e.cells).sort()).toEqual(QUESTIONS.map((q) => q.id).sort());
       for (const [q, c] of Object.entries(e.cells)) {

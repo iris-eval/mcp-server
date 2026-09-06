@@ -1,17 +1,17 @@
 {
-  "$comment": "Explicit exemptions for the hardcoded-claims scanner. Each entry justifies why a match stays uncovered. Prefer line: '*' scoped to a pattern for FROZEN historical files (line pins shift and break — see PR #245/#246); use line pins only for active files where the exemption must stay surgical. As surfaces migrate to ~/lib/claims reader imports (code) or get refreshed to current truth (prose), entries here are removed.",
+  "$comment": "Explicit exemptions for the hardcoded-claims scanner. Each entry justifies why a match stays uncovered. Prefer line: '*' scoped to a pattern for FROZEN historical files (line pins shift and break \u2014 see PR #245/#246); use line pins only for active files where the exemption must stay surgical. As surfaces migrate to ~/lib/claims reader imports (code) or get refreshed to current truth (prose), entries here are removed.",
   "entries": [
     {
       "file": "CHANGELOG.md",
       "pattern": "test-count",
       "line": "*",
-      "reason": "CHANGELOG entries are historical past-tense — counts are correct as-of-release-date."
+      "reason": "CHANGELOG entries are historical past-tense \u2014 counts are correct as-of-release-date."
     },
     {
       "file": "CHANGELOG.md",
       "pattern": "mcp-tool-count",
       "line": "*",
-      "reason": "CHANGELOG entries are historical past-tense — counts are correct as-of-release-date."
+      "reason": "CHANGELOG entries are historical past-tense \u2014 counts are correct as-of-release-date."
     },
     {
       "file": "src/eval/llm-judge/templates/index.ts",
@@ -23,7 +23,7 @@
       "file": "scripts/claims/generators/eval-rules.mjs",
       "pattern": "test-count",
       "line": "*",
-      "reason": "Generator regex source — not a real test-count claim."
+      "reason": "Generator regex source \u2014 not a real test-count claim."
     },
     {
       "file": "docs/roadmap.md",
@@ -35,13 +35,13 @@
       "file": "docs/roadmap.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 12 rules; v0.3.1 documents the 12→13 expansion)."
+      "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 12 rules; v0.3.1 documents the 12\u219213 expansion)."
     },
     {
       "file": "docs/roadmap.md",
       "pattern": "pii-pattern-count",
       "line": "*",
-      "reason": "The v0.3.1 section records the 4→10 PII expansion as shipped then; the safety-corpus release took it to 19. Past-tense release history, correct as-of-version."
+      "reason": "The v0.3.1 section records the 4\u219210 PII expansion as shipped then; the safety-corpus release took it to 19. Past-tense release history, correct as-of-version."
     },
     {
       "file": "docs/launch/directory-listing-template.md",
@@ -77,13 +77,13 @@
       "file": "website/src/components/roadmap.tsx",
       "pattern": "pii-pattern-count",
       "line": "*",
-      "reason": "v0.3.1 row documents the pattern expansion as shipped then (10 PII) — historical row, correct as-of-version."
+      "reason": "v0.3.1 row documents the pattern expansion as shipped then (10 PII) \u2014 historical row, correct as-of-version."
     },
     {
       "file": "website/src/components/roadmap.tsx",
       "pattern": "injection-pattern-count",
       "line": "*",
-      "reason": "v0.3.1 row documents the pattern expansion as shipped then (13 injection) — historical row, correct as-of-version."
+      "reason": "v0.3.1 row documents the pattern expansion as shipped then (13 injection) \u2014 historical row, correct as-of-version."
     },
     {
       "file": "docs/launch/demo-script.md",
@@ -125,7 +125,7 @@
       "file": "docs/launch/reddit-posts.md",
       "pattern": "pii-pattern-count",
       "line": "*",
-      "reason": "Frozen mixed-era launch drafts with an in-file historical banner (v0.3.1 shipped 10 PII patterns); surfaced when the scanner learned the 'PII … N patterns' ordering."
+      "reason": "Frozen mixed-era launch drafts with an in-file historical banner (v0.3.1 shipped 10 PII patterns); surfaced when the scanner learned the 'PII \u2026 N patterns' ordering."
     },
     {
       "file": "docs/launch/reddit-posts.md",
@@ -143,49 +143,73 @@
       "file": "docs/blog/devto/007-evaluate-without-llm.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Dev.to syndication snapshot — records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
+      "reason": "Dev.to syndication snapshot \u2014 records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
     },
     {
       "file": "docs/blog/devto/heuristic-vs-semantic-eval.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Dev.to syndication snapshot — records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
+      "reason": "Dev.to syndication snapshot \u2014 records what was actually published there (v0.1 era). Canonical post at docs/blog/ is kept current instead."
     },
     {
       "file": "src/dashboard/seed-demo-data.ts",
       "pattern": "test-count",
       "line": "*",
-      "reason": "Fixture prose inside seeded demo agent outputs (a fictional CI status report) — not a claim about iris's own test suite."
+      "reason": "Fixture prose inside seeded demo agent outputs (a fictional CI status report) \u2014 not a claim about iris's own test suite."
     },
     {
       "file": "docs/roadmap.md",
       "pattern": "injection-pattern-count",
       "line": "*",
-      "reason": "The v0.3.1 section records the 5→13 injection expansion as shipped then; the safety-corpus release took it to 37. Past-tense release history, correct as-of-version. Surfaced when the scanner learned the 'no_injection_patterns … N patterns' spelling."
+      "reason": "The v0.3.1 section records the 5\u219213 injection expansion as shipped then; the safety-corpus release took it to 37. Past-tense release history, correct as-of-version. Surfaced when the scanner learned the 'no_injection_patterns \u2026 N patterns' spelling."
     },
     {
       "file": "website/src/app/api/playground/eval/route.ts",
       "pattern": "rate-limit",
       "line": "*",
-      "reason": "A DIFFERENT limiter — the hosted playground's own per-IP throttle, not the shipped server's dashboard/MCP limits that security.rateLimit describes."
+      "reason": "A DIFFERENT limiter \u2014 the hosted playground's own per-IP throttle, not the shipped server's dashboard/MCP limits that security.rateLimit describes."
     },
     {
       "file": "website/src/components/playground/playground-data.ts",
       "pattern": "rate-limit",
       "line": "*",
-      "reason": "Fixture prose inside a demo agent transcript (a fictional API's docs excerpt) — not a claim about iris's own rate limits."
+      "reason": "Fixture prose inside a demo agent transcript (a fictional API's docs excerpt) \u2014 not a claim about iris's own rate limits."
     },
     {
       "file": "website/src/components/problem.tsx",
       "pattern": "rate-limit",
       "line": "*",
-      "reason": "Illustrative throughput figure on a mock observability panel — a metric about the reader's agent, not an iris limit."
+      "reason": "Illustrative throughput figure on a mock observability panel \u2014 a metric about the reader's agent, not an iris limit."
     },
     {
       "file": "dashboard/src/api/hooks.ts",
       "pattern": "rate-limit",
       "line": "*",
       "reason": "Arithmetic in a comment about the dashboard's own polling cadence (requests the UI generates), not a published limit."
+    },
+    {
+      "file": "docs/blog/005-heuristic-vs-semantic-eval.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+    },
+    {
+      "file": "docs/blog/007-how-to-evaluate-agent-output-without-llm.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+    },
+    {
+      "file": "docs/blog/015-eval-driven-development.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+    },
+    {
+      "file": "docs/blog/devto/eval-driven-development.md",
+      "pattern": "builtin-rule-count",
+      "line": "*",
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
     }
   ]
 }

@@ -143,6 +143,7 @@ carry the judge's reasoning.
 | Safety | no_silent_tool_failure | A tool call that failed is acknowledged, not answered over. Reads `tool_calls`; **skips** without them |
 | Cost | cost_under_threshold | Execution cost within budget |
 | Cost | verbosity_ratio | Token usage proportionate to the output |
+| Completeness | valid_tool_arguments | Every tool call names a tool in the catalogue and carries arguments its schema accepts. Reads `tool_calls` and `tools` (your MCP tools/list result, verbatim); **skips** without either, and an invalid call the agent retried successfully is recorded rather than failed |
 | Cost | no_tool_loop | No tool called with the same input more than `max_tool_repeats` times (default 3). Reads `tool_calls`; **skips** without them |
 
 How often each rule is right is measured and published, with intervals, at

@@ -78,7 +78,16 @@ export interface CompositeCase {
   base: string;
   inject?: CompositeInject[];
   /** Overrides applied after the base and the injections (costUsd, tokenUsage, toolCalls …). */
-  context?: Partial<Pick<EvalContext, 'costUsd' | 'tokenUsage' | 'toolCalls' | 'tools' | 'spans' | 'expected' | 'input'>>;
+  /**
+   * Overrides applied after the base and the injections.
+   *
+   * `output` is here for the act layer: a case about a call that was not
+   * callable lives in the relationship between a call and a schema, and
+   * there is no text to splice into a clean transcript that would create
+   * one. Such a case states its own output, and `base` still supplies
+   * everything it does not state.
+   */
+  context?: Partial<Pick<EvalContext, 'output' | 'costUsd' | 'tokenUsage' | 'toolCalls' | 'tools' | 'spans' | 'expected' | 'input'>>;
   notes: string;
   expected: CompositeExpected;
 }
@@ -239,9 +248,12 @@ export function compositeContext(loaded: LoadedComposite, c: CompositeCase): Eva
     if (injected.customConfig) ctx.customConfig = { ...(ctx.customConfig ?? {}), ...injected.customConfig };
   }
   if (c.context) {
+    if (c.context.output !== undefined) ctx.output = c.context.output;
     if (c.context.costUsd !== undefined) ctx.costUsd = c.context.costUsd;
     if (c.context.tokenUsage !== undefined) ctx.tokenUsage = c.context.tokenUsage;
     if (c.context.toolCalls !== undefined) ctx.toolCalls = c.context.toolCalls;
+    if (c.context.tools !== undefined) ctx.tools = c.context.tools;
+    if (c.context.spans !== undefined) ctx.spans = c.context.spans;
     if (c.context.expected !== undefined) ctx.expected = c.context.expected;
     if (c.context.input !== undefined) ctx.input = c.context.input;
   }
