@@ -15,7 +15,7 @@ description: Evaluate AI agent output quality, safety, and cost using the Iris M
 # Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
-safety failures, and enforces cost budgets. 9 MCP tools, 15 built-in
+safety failures, and enforces cost budgets. 9 MCP tools, 16 built-in
 deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code changes.
 
 If this plugin is installed, the 9 tools are already available — no setup needed. If the tools are missing, the server starts with `npx -y @iris-eval/mcp-server` in any MCP client config (Quick Start below).
@@ -128,7 +128,7 @@ Each heuristic rule fires independently with a clear pass/fail result — every
 score is deterministic and reproducible. LLM-judge scores are semantic and
 carry the judge's reasoning.
 
-## The 15 built-in eval rules
+## The 16 built-in eval rules
 
 | Category | Rule | What It Checks |
 |----------|------|---------------|
@@ -146,6 +146,7 @@ carry the judge's reasoning.
 | Safety | no_silent_tool_failure | A tool call that failed is acknowledged, not answered over. Reads `tool_calls`; **skips** without them |
 | Cost | cost_under_threshold | Execution cost within budget |
 | Cost | verbosity_ratio | Token usage proportionate to the output |
+| Completeness | valid_tool_arguments | Every tool call names a tool in the catalogue and carries arguments its schema accepts. Reads `tool_calls` and `tools` (your MCP tools/list result, verbatim); **skips** without either, and an invalid call the agent retried successfully is recorded rather than failed |
 | Cost | no_tool_loop | No tool called with the same input more than `max_tool_repeats` times (default 3). Reads `tool_calls`; **skips** without them |
 
 How often each rule is right is measured and published, with intervals, at

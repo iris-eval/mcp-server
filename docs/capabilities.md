@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 15 are answered by a shipped, measured thing, 18 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 16 are answered by a shipped, measured thing, 17 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -11,7 +11,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **is it complete** | partial | partial | gap | gap | partial | has |
 | **is it on-task** | gap | partial | gap | gap | partial | partial |
 | **did it complete the task** | gap | gap | gap | gap | gap | gap |
-| **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | partial | gap | partial | has |
+| **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | has | gap | partial | has |
 | **what did it cost** | has | partial | partial | gap | partial | has |
 | **is it better or worse than before** | n/a | n/a | gap | gap | partial | partial |
 | **where and why does it fail** | has | has | has | gap | partial | has |
@@ -61,7 +61,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 
 - **single output** — *n/a*. Acting well is a property of the trajectory, not of a single output.
 - **output with input / context** — *n/a*. As for a single output.
-- **trajectory (tool calls)** — *partial*. Two deterministic trajectory rules — a failed tool call the output never acknowledges, and a repeated call with the same input — measured with intervals; tool choice and argument validity have no evaluator yet. Evidence: rule `no_silent_tool_failure`, rule `no_tool_loop`, tool `log_trace`. Needs: `output`, `tool_calls`.
+- **trajectory (tool calls)** — *has*. Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — still has no deterministic evaluator. Evidence: rule `no_silent_tool_failure`, rule `no_tool_loop`, rule `valid_tool_arguments`, tool `log_trace`. Needs: `output`, `tool_calls`, `tools_catalogue`.
 - **multi-run of one input** — *gap*. No grouping over repeated runs.
 - **population / dataset / baseline** — *partial*. Per-rule failure counts for the two trajectory rules over time only. Evidence: route `/api/v1/eval-stats`.
 - **the evaluator itself** — *has*. Both trajectory rules are measured with intervals on their corpus families, and each fire carries its positive predictive value. Evidence: proof `no_silent_tool_failure`, proof `no_tool_loop`.

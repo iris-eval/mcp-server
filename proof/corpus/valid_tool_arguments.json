@@ -1,0 +1,3412 @@
+{
+  "schemaVersion": 1,
+  "rule": "valid_tool_arguments",
+  "category": "completeness",
+  "family": "valid_tool_arguments",
+  "positiveClass": "fail",
+  "definition": "valid_tool_arguments — a tool call must be CALLABLE against the catalogue the caller supplied. A call is INVALID when (a) its tool_name is absent from `context.tools`, or (b) the tool is present, declares an `inputSchema`, and the call input does not validate against that schema. A call is UNCHECKED when the catalogue entry declares no inputSchema, when Iris declines to compile the schema (see the guard ladder in src/eval/schema-validator.ts), or when the input is larger than the checking limit; an unchecked call is neither valid nor invalid and never fires. An invalid call is RECOVERED when a LATER call to the same tool_name validates; recovery is forward-looking, because an earlier success cannot repair a later failure, and a call to a tool absent from the catalogue is NEVER recoverable — the tool does not exist, so calling it is invented capability rather than a typo. The rule FAILS when at least one invalid call is unrecovered, PASSES when none is (recovered ones are reported in the evidence), and SKIPS when there is no trajectory, when no catalogue was supplied, or when no call could be checked at all. Definitions: src/eval/schema-validator.ts and src/eval/catalogue.ts; rule: src/eval/rules/completeness.ts. Positive = at least one unrecovered invalid call (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-05 for arc 4. The catalogue is one four-tool set reused by every case — a read tool with additionalProperties:false, a search tool with an enum and a number, a write tool with a nested object, and one tool that declares no inputSchema — so that a reader comparing two cases is comparing the CALLS and not two different worlds. Cases exercise each clause of the definition: every shape of schema violation, the absent-tool clause, the unchecked clause, and the recovery clause in both directions.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-05, by reading each trajectory against the definition rather than by running the rule. Each note states which clause decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled. One false negative is accepted by construction and stated here rather than discovered later: an agent that retries with different arguments that are also wrong but schema-VALID scores as recovered, because recovery is defined on schema validity and not on whether the retry was the right call. That miss belongs to no_silent_tool_failure and the completeness bundle, not to this rule.",
+  "authored": "2026-09-05",
+  "counts": {
+    "n": 33,
+    "positive": 15,
+    "negative": 18
+  },
+  "cases": [
+    {
+      "id": "args-001",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "The config lives in src/config/defaults.ts and sets the port to 6920.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "max_bytes": 400
+            },
+            "output": "error: path is required"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "read_file requires `path` and the call omits it; no later call to read_file succeeds. Unrecovered invalid → the rule should FAIL."
+    },
+    {
+      "id": "args-002",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I read the file and it declares nine tools.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": 12
+            },
+            "output": "error: bad request"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "`path` is declared a string and the call passes a number. Unrecovered, so the rule should FAIL."
+    },
+    {
+      "id": "args-003",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "The search turned up four matches in the eval directory.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "q": "evaluate"
+            },
+            "output": "error: unknown field"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "search requires `query`; the call sends `q`. The schema does not forbid extra properties, but the required one is absent. Unrecovered → FAIL."
+    },
+    {
+      "id": "args-004",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I wrote the summary to docs/summary.md.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "docs/summary.md"
+            },
+            "output": "error: content is required"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "write_file requires both `path` and `content`; `content` is missing and never retried. FAIL."
+    },
+    {
+      "id": "args-005",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I checked the repository and the web for that identifier.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "irisEval",
+              "scope": "everywhere"
+            },
+            "output": "error: bad scope"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "`scope` is an enum of repo|web and the call passes \"everywhere\". Unrecovered → FAIL."
+    },
+    {
+      "id": "args-006",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "The deployment tool reported success.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "deploy_service",
+            "input": {
+              "env": "prod"
+            },
+            "output": "ok"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "deploy_service is not in the catalogue. A tool that does not exist is invented capability, never recoverable, so the rule should FAIL."
+    },
+    {
+      "id": "args-007",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I listed the directory and then read the entry point.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {
+              "path": "src"
+            },
+            "output": "index.ts"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "export {}"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The second call is valid, but list_dir is not in the catalogue and cannot be recovered by a different tool succeeding. FAIL."
+    },
+    {
+      "id": "args-008",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I read the file with the byte cap you asked for.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts",
+              "max_bytes": "400"
+            },
+            "output": "error"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "`max_bytes` is declared a number and the call passes the string \"400\". Unrecovered → FAIL."
+    },
+    {
+      "id": "args-009",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I saved it with the mode you specified.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "a.txt",
+              "content": "x",
+              "options": {
+                "mode": 644
+              }
+            },
+            "output": "error"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The nested `options.mode` is declared a string and the call passes a number. A nested violation is still a violation. FAIL."
+    },
+    {
+      "id": "args-010",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "Read the file and here is what it says.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts",
+              "encoding": "utf8"
+            },
+            "output": "error: unexpected property"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "read_file sets additionalProperties:false, so `encoding` is rejected by the tool's own schema. Unrecovered → FAIL."
+    },
+    {
+      "id": "args-011",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I tried twice and got the content on the second attempt.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "pth": "a.ts"
+            },
+            "output": "error"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "pth": "a.ts"
+            },
+            "output": "error"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Two attempts, both missing the required `path` and both carrying a rejected extra property. No later call to read_file validates, so neither is recovered. FAIL."
+    },
+    {
+      "id": "args-012",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "Searched the repo, limited to ten results.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "compose",
+              "limit": "ten"
+            },
+            "output": "error"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "`limit` is declared a number and the call passes a word. Unrecovered → FAIL."
+    },
+    {
+      "id": "args-013",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I read both files.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "export const a = 1;"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {},
+            "output": "error: path is required"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The second call is invalid and no read_file call AFTER it succeeds — recovery is forward-looking, because an earlier success cannot repair a later failure. FAIL."
+    },
+    {
+      "id": "args-014",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "Wrote the file.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": "docs/a.md",
+            "output": "error"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The whole input is a bare string where the schema declares an object. FAIL."
+    },
+    {
+      "id": "args-015",
+      "rule": "valid_tool_arguments",
+      "label": "positive",
+      "output": "I searched and then wrote the results out.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "x"
+            },
+            "output": "one match"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "content": "one match"
+            },
+            "output": "error: path is required"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The search is valid; the write omits the required `path` and is never retried. One unrecovered invalid call is enough. FAIL."
+    },
+    {
+      "id": "args-016",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "The config sets the dashboard port to 6920.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/config/defaults.ts"
+            },
+            "output": "port: 6920"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "One call, every required property present and correctly typed. Nothing to fire on → PASS."
+    },
+    {
+      "id": "args-017",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Four matches, all under src/eval.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "compose",
+              "scope": "repo",
+              "limit": 4
+            },
+            "output": "four matches"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Every property present, the enum value is one of the declared ones, the number is a number. PASS."
+    },
+    {
+      "id": "args-018",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "I mistyped the argument first, then read the file: it exports three symbols.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "pat": "src/index.ts"
+            },
+            "output": "error: path is required"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "export const a = 1;"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "THE CENTRAL NEGATIVE: the first call is invalid and a later call to the SAME tool validates, so it is recovered. An agent that mistypes, reads the error and retries correctly did good work, and the definition says a recovered call is recorded rather than failed. PASS."
+    },
+    {
+      "id": "args-019",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "It took a couple of goes to get the search right, but the answer is four.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "scope": "repo"
+            },
+            "output": "error: query is required"
+          },
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "compose",
+              "scope": "invalid"
+            },
+            "output": "error: bad scope"
+          },
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "compose",
+              "scope": "repo"
+            },
+            "output": "four matches"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Two invalid calls, both to search, and a later search call validates — so both are recovered by the definition. PASS."
+    },
+    {
+      "id": "args-020",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Wrote the note after one false start.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "note.md"
+            },
+            "output": "error: content is required"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "note.md",
+              "content": "hello"
+            },
+            "output": "written"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Invalid then recovered on the same tool. PASS."
+    },
+    {
+      "id": "args-021",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "I read it with the legacy tool and confirmed against the file.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "legacy_tool",
+            "input": {
+              "anything": [
+                1,
+                2,
+                3
+              ]
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "legacy_tool declares no inputSchema, so its call is UNCHECKED rather than invalid; the read_file call IS checked and valid. Some call was checked, so the rule judges rather than skipping, and nothing invalid remains. PASS. (A trajectory where the ONLY call is unchecked makes the rule SKIP, and a skipping case does not belong in a family: proof/run.ts scores a skip as not-failed, which would be a free true negative inflating the specificity of this family and therefore its published precision. That path is proved in tests/unit/eval/valid-tool-arguments.test.ts instead.)"
+    },
+    {
+      "id": "args-022",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Read the file, no byte cap needed.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "`max_bytes` is optional and omitting an optional property is not a violation. PASS."
+    },
+    {
+      "id": "args-023",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Searched with just a query.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "trajectory"
+            },
+            "output": "two matches"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Only the required property is supplied; the optional enum and number are absent. PASS."
+    },
+    {
+      "id": "args-024",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Searched with an extra hint the tool ignores.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "trajectory",
+              "highlight": true
+            },
+            "output": "two matches"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "search does not set additionalProperties:false, so an extra property is allowed by the tool’s own schema. Iris judges the schema the tool declares, not a stricter one of its own. PASS."
+    },
+    {
+      "id": "args-025",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Wrote the file with a nested option.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "a.txt",
+              "content": "x",
+              "options": {
+                "mode": "644"
+              }
+            },
+            "output": "written"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The nested object matches its declared shape. PASS."
+    },
+    {
+      "id": "args-026",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Read three files and summarised them.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "a"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "b"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "c"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Three valid calls. PASS."
+    },
+    {
+      "id": "args-027",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "The search failed at the tool and I said so rather than guessing.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "nothing here"
+            },
+            "error": "upstream timeout"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "The arguments are valid; the CALL failed for a reason that has nothing to do with its arguments. This rule judges callability, and a valid call that errored belongs to no_silent_tool_failure. PASS."
+    },
+    {
+      "id": "args-028",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Read the file with a byte cap.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts",
+              "max_bytes": 400
+            },
+            "output": "contents"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Both properties present and correctly typed. PASS."
+    },
+    {
+      "id": "args-029",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Read one file, then wrote a summary of it.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "summary.md",
+              "content": "a summary"
+            },
+            "output": "written"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Two different tools, both called correctly. PASS."
+    },
+    {
+      "id": "args-030",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Nothing needed reading; I answered from the input.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search",
+            "input": {
+              "query": "a"
+            },
+            "output": "no matches"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "A single valid call that found nothing. An empty result is not an invalid call. PASS."
+    },
+    {
+      "id": "args-031",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Retried after the wrong type and got it.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": 5
+            },
+            "output": "error"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "5.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Wrong type, then a valid call to the same tool. Recovered → PASS."
+    },
+    {
+      "id": "args-032",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Used the legacy tool and then read a file properly.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "legacy_tool",
+            "input": {
+              "x": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "One unchecked call (no schema declared) and one valid call. Some calls were checked, so the rule judges rather than skipping, and nothing invalid remains. PASS."
+    },
+    {
+      "id": "args-033",
+      "rule": "valid_tool_arguments",
+      "label": "negative",
+      "output": "Wrote two files.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "a.txt",
+              "content": "1"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "b.txt",
+              "content": "2"
+            },
+            "output": "written"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file from the workspace",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "max_bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "search",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "repo",
+                    "web"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ]
+            }
+          },
+          {
+            "name": "legacy_tool",
+            "description": "A tool whose catalogue entry declares no inputSchema"
+          }
+        ]
+      },
+      "notes": "Two valid calls to the same tool. PASS."
+    }
+  ]
+}

@@ -2584,10 +2584,46 @@ function noToolLoop(ctx: EvalContext): EvalRuleResult {
 
 /* ── Public API ──────────────────────────────────────────────────── */
 
+/*
+ * valid_tool_arguments — vendored as a skip, deliberately.
+ *
+ * The server rule checks a call against the JSON Schema its tool declares,
+ * which needs the tools catalogue AND a JSON Schema validator. The playground
+ * has neither: it collects no tool calls, and shipping ajv into a browser
+ * bundle to run a rule that can never have data would be pure weight. The
+ * parity test compares VERDICTS, and a skip on both sides is a match — this
+ * entry exists so the vendored roster equals the server roster, which is what
+ * stops the two libraries drifting before the playground can collect a
+ * trajectory at all.
+ */
+function validToolArguments(ctx: EvalContext): EvalRuleResult {
+  const calls = ctx.toolCalls;
+  if (calls === undefined || calls.length === 0) {
+    return {
+      ruleName: 'valid_tool_arguments',
+      category: 'completeness',
+      passed: false,
+      score: 0,
+      message: 'No tool calls provided',
+      skipped: true,
+      skipReason: 'context.toolCalls not provided',
+    };
+  }
+  return {
+    ruleName: 'valid_tool_arguments',
+    category: 'completeness',
+    passed: false,
+    score: 0,
+    message: 'No tools catalogue provided',
+    skipped: true,
+    skipReason: 'context.tools not provided',
+  };
+}
+
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure],
   relevance: [keywordOverlap, topicConsistency],
-  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage],
+  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments],
   cost: [costUnderThreshold, verbosityRatio, noToolLoop],
 };
 

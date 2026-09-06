@@ -129,11 +129,12 @@ describe('capability map — needs are real', () => {
     output: 'The retention sweep runs at boot and deletes traces older than the configured window. Nothing else changes.',
     input: 'Explain what the retention sweep does and when it runs.',
     expected: 'retention sweep boot window',
-    toolCalls: [{ tool_name: 'grep', input: 'sweep', output: 'retention.ts: sweep()' }],
+    toolCalls: [{ tool_name: 'grep', input: { pattern: 'sweep' }, output: 'retention.ts: sweep()' }],
+    tools: [{ name: 'grep', inputSchema: { type: 'object', properties: { pattern: { type: 'string' } }, required: ['pattern'] } }],
     costUsd: 0.01,
     tokenUsage: { prompt_tokens: 100, completion_tokens: 20 },
   };
-  const NEED_TO_CONTEXT: Record<string, keyof typeof FULL> = { input: 'input', expected: 'expected', tool_calls: 'toolCalls', cost: 'costUsd', tokens: 'tokenUsage' };
+  const NEED_TO_CONTEXT: Record<string, keyof typeof FULL> = { input: 'input', expected: 'expected', tool_calls: 'toolCalls', tools_catalogue: 'tools', cost: 'costUsd', tokens: 'tokenUsage' };
 
   it('for every cell need beyond output, each cited rule that declares that need skips when the engine is called without it', async () => {
     let checked = 0;

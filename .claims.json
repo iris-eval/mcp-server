@@ -537,6 +537,10 @@
             "name": "no_tool_loop"
           },
           {
+            "kind": "rule",
+            "name": "valid_tool_arguments"
+          },
+          {
             "kind": "tool",
             "name": "log_trace"
           }
@@ -544,12 +548,13 @@
         "id": "Q6xS3",
         "needs": [
           "output",
-          "tool_calls"
+          "tool_calls",
+          "tools_catalogue"
         ],
         "question": "Q6",
-        "status": "partial",
+        "status": "has",
         "subject": "S3",
-        "summary": "Two deterministic trajectory rules — a failed tool call the output never acknowledges, and a repeated call with the same input — measured with intervals; tool choice and argument validity have no evaluator yet."
+        "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — still has no deterministic evaluator."
       },
       {
         "evidence": [],
@@ -1010,9 +1015,9 @@
     ],
     "counts": {
       "gap": 23,
-      "has": 15,
+      "has": 16,
       "n/a": 4,
-      "partial": 18
+      "partial": 17
     },
     "questions": [
       {
@@ -1096,7 +1101,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 15,
+    "builtInCount": 16,
     "categories": [
       "completeness",
       "relevance",
@@ -1133,6 +1138,7 @@
       "nonEmptyOutput",
       "sentenceCount",
       "topicConsistency",
+      "validToolArguments",
       "verbosityRatio"
     ],
     "piiPatterns": 19,
@@ -1377,6 +1383,20 @@
       },
       {
         "classes": [
+          "invalid_tool_call"
+        ],
+        "kind": "detection",
+        "mechanism": "formula",
+        "name": "valid_tool_arguments",
+        "needs": [
+          "tool_calls",
+          "tools_catalogue"
+        ],
+        "question": "tool_use_correct",
+        "version": 1
+      },
+      {
+        "classes": [
           "over_budget"
         ],
         "kind": "measurement",
@@ -1423,19 +1443,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 15,
-          "measuredThreeOrMore": 15
+          "evaluators": 16,
+          "measuredThreeOrMore": 16
         }
       },
       "byStatus": {
-        "measurable": 145,
-        "measured": 96,
-        "n/a": 76,
-        "partial": 12,
-        "stated": 61
+        "measurable": 149,
+        "measured": 100,
+        "n/a": 78,
+        "partial": 13,
+        "stated": 63
       },
-      "evaluators": 30,
-      "measuredThreeOrMore": 24,
+      "evaluators": 31,
+      "measuredThreeOrMore": 25,
       "questions": 13
     },
     "evaluators": [
@@ -1710,6 +1730,74 @@
         "id": "rule:expected_coverage",
         "measured": 4,
         "name": "expected_coverage"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[valid_tool_arguments]",
+            "note": "precision, recall and F1 on 33 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[valid_tool_arguments].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[invalid_tool_call]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: detection, mechanism: formula; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:valid_tool_arguments",
+        "measured": 4,
+        "name": "valid_tool_arguments"
       },
       {
         "cells": {
@@ -3589,13 +3677,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "523510356de7"
+        "compositeVersion": "8194ee800e59"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "4951762e456d",
+        "corpusVersion": "d280c2ee0858",
         "customCorpusVersion": "950bf970c1c1"
       }
     },
@@ -3608,8 +3696,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T03:11:29.203Z",
-  "generatedFromCommit": "695b10c",
+  "generatedAt": "2026-09-06T03:46:38.725Z",
+  "generatedFromCommit": "b62cade",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -3678,10 +3766,10 @@
     ]
   },
   "proof": {
-    "commit": "ae27615",
+    "commit": "b62cade",
     "composite": {
-      "compositeVersion": "523510356de7",
-      "corpusVersion": "4951762e456d",
+      "compositeVersion": "8194ee800e59",
+      "corpusVersion": "d280c2ee0858",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -3689,21 +3777,22 @@
           "format": 7,
           "incomplete_ask": 1,
           "injection": 13,
+          "invalid_tool_call": 7,
           "off_task": 8,
           "over_budget": 10,
           "pii_leak": 13,
-          "silent_tool_failure": 10,
+          "silent_tool_failure": 16,
           "stub": 8,
           "tool_loop": 7,
           "ungrounded": 4
         },
-        "cases": 111,
-        "clean": 38,
-        "composed": 87,
-        "dev": 85,
-        "mustNotShip": 73,
+        "cases": 119,
+        "clean": 42,
+        "composed": 95,
+        "dev": 91,
+        "mustNotShip": 77,
         "realTranscripts": 24,
-        "test": 26,
+        "test": 28,
         "unlabelled": 0
       },
       "difference": {
@@ -3715,9 +3804,9 @@
             "lo": -0.0679
           },
           "test": {
-            "delta": 0.1923,
-            "hi": 0.4243,
-            "lo": -0.0746
+            "delta": 0.2143,
+            "hi": 0.4366,
+            "lo": -0.0446
           }
         },
         "riskPerClass": {
@@ -3727,9 +3816,9 @@
             "lo": 0.0159
           },
           "test": {
-            "delta": 0.3077,
-            "hi": 0.5223,
-            "lo": 0.0374
+            "delta": 0.2857,
+            "hi": 0.4976,
+            "lo": 0.0253
           }
         }
       },
@@ -3737,20 +3826,20 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.482,
-              0.6868
+              0.4798,
+              0.6784
             ],
-            "k": 50,
-            "n": 85,
-            "rate": 0.5882
+            "k": 53,
+            "n": 91,
+            "rate": 0.5824
           },
           "calibration": {
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0245,
-                "n": 48,
-                "observedRate": 0.6042,
+                "meanPredicted": 0.0298,
+                "n": 54,
+                "observedRate": 0.5926,
                 "to": 0.1
               },
               {
@@ -3817,27 +3906,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.5489,
-            "ece": 0.5738,
-            "n": 85
+            "brier": 0.54,
+            "ece": 0.5642,
+            "n": 91
           },
           "falseBlock": {
             "ci95": [
-              0.0185,
-              0.2132
+              0.0168,
+              0.1961
             ],
             "k": 2,
-            "n": 30,
-            "rate": 0.0667
+            "n": 33,
+            "rate": 0.0606
           },
           "missedBlock": {
             "ci95": [
-              0.4681,
-              0.7188
+              0.492,
+              0.7344
             ],
-            "k": 33,
-            "n": 55,
-            "rate": 0.6
+            "k": 36,
+            "n": 58,
+            "rate": 0.6207
           }
         },
         "realTranscripts": {
@@ -3949,27 +4038,27 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.2243,
-              0.5747
+              0.2357,
+              0.5759
             ],
-            "k": 10,
-            "n": 26,
-            "rate": 0.3846
+            "k": 11,
+            "n": 28,
+            "rate": 0.3929
           },
           "calibration": {
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0342,
-                "n": 16,
-                "observedRate": 0.75,
+                "meanPredicted": 0.0329,
+                "n": 17,
+                "observedRate": 0.7059,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1438,
-                "n": 9,
-                "observedRate": 0.5556,
+                "meanPredicted": 0.1399,
+                "n": 10,
+                "observedRate": 0.6,
                 "to": 0.2
               },
               {
@@ -4029,27 +4118,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.5928,
-            "ece": 0.6119,
-            "n": 26
+            "brier": 0.5791,
+            "ece": 0.5997,
+            "n": 28
           },
           "falseBlock": {
             "ci95": [
-              0.0224,
-              0.4709
+              0.0199,
+              0.435
             ],
             "k": 1,
-            "n": 8,
-            "rate": 0.125
+            "n": 9,
+            "rate": 0.1111
           },
           "missedBlock": {
             "ci95": [
-              0.6078,
-              0.9416
+              0.6243,
+              0.9448
             ],
-            "k": 15,
-            "n": 18,
-            "rate": 0.8333
+            "k": 16,
+            "n": 19,
+            "rate": 0.8421
           }
         }
       },
@@ -4109,13 +4198,13 @@
           "recall": null
         },
         {
-          "caught": 10,
+          "caught": 16,
           "ci95": [
-            0.7225,
+            0.8064,
             1
           ],
           "class": "silent_tool_failure",
-          "present": 10,
+          "present": 16,
           "recall": 1
         },
         {
@@ -4199,23 +4288,26 @@
           "recall": 0.8571
         },
         {
-          "caught": 0,
-          "ci95": null,
+          "caught": 4,
+          "ci95": [
+            0.2505,
+            0.8418
+          ],
           "class": "invalid_tool_call",
-          "present": 0,
-          "recall": null
+          "present": 7,
+          "recall": 0.5714
         }
       ],
       "risk": {
         "dev": {
           "accuracy": {
             "ci95": [
-              0.6643,
-              0.8422
+              0.661,
+              0.8346
             ],
-            "k": 65,
-            "n": 85,
-            "rate": 0.7647
+            "k": 69,
+            "n": 91,
+            "rate": 0.7582
           },
           "calibration": {
             "bins": [
@@ -4228,9 +4320,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1327,
-                "n": 44,
-                "observedRate": 0.3636,
+                "meanPredicted": 0.1323,
+                "n": 45,
+                "observedRate": 0.3556,
                 "to": 0.2
               },
               {
@@ -4270,9 +4362,9 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7895,
-                "n": 7,
-                "observedRate": 1,
+                "meanPredicted": 0.7836,
+                "n": 9,
+                "observedRate": 0.7778,
                 "to": 0.8
               },
               {
@@ -4284,33 +4376,33 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9276,
-                "n": 14,
+                "meanPredicted": 0.9307,
+                "n": 17,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.184,
-            "ece": 0.2047,
-            "n": 85
+            "brier": 0.1849,
+            "ece": 0.1762,
+            "n": 91
           },
           "falseBlock": {
             "ci95": [
-              0.0185,
-              0.2132
+              0.0482,
+              0.2733
             ],
-            "k": 2,
-            "n": 30,
-            "rate": 0.0667
+            "k": 4,
+            "n": 33,
+            "rate": 0.1212
           },
           "missedBlock": {
             "ci95": [
-              0.2181,
-              0.459
+              0.2062,
+              0.438
             ],
             "k": 18,
-            "n": 55,
-            "rate": 0.3273
+            "n": 58,
+            "rate": 0.3103
           }
         },
         "realTranscripts": {
@@ -4422,12 +4514,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.3895,
-              0.7446
+              0.4241,
+              0.7643
             ],
-            "k": 15,
-            "n": 26,
-            "rate": 0.5769
+            "k": 17,
+            "n": 28,
+            "rate": 0.6071
           },
           "calibration": {
             "bins": [
@@ -4440,9 +4532,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1347,
-                "n": 15,
-                "observedRate": 0.5333,
+                "meanPredicted": 0.1335,
+                "n": 16,
+                "observedRate": 0.5,
                 "to": 0.2
               },
               {
@@ -4496,33 +4588,33 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9193,
-                "n": 2,
+                "meanPredicted": 0.9279,
+                "n": 3,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.3017,
-            "ece": 0.3328,
-            "n": 26
+            "brier": 0.2808,
+            "ece": 0.3069,
+            "n": 28
           },
           "falseBlock": {
             "ci95": [
-              0.0224,
-              0.4709
+              0.0199,
+              0.435
             ],
             "k": 1,
-            "n": 8,
-            "rate": 0.125
+            "n": 9,
+            "rate": 0.1111
           },
           "missedBlock": {
             "ci95": [
-              0.3372,
-              0.7544
+              0.3171,
+              0.7267
             ],
             "k": 10,
-            "n": 18,
-            "rate": 0.5556
+            "n": 19,
+            "rate": 0.5263
           }
         }
       },
@@ -4530,12 +4622,12 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.5411,
-              0.7403
+              0.5349,
+              0.7287
             ],
-            "k": 55,
-            "n": 85,
-            "rate": 0.6471
+            "k": 58,
+            "n": 91,
+            "rate": 0.6374
           },
           "calibration": {
             "bins": [
@@ -4590,9 +4682,9 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.7052,
+                "n": 1,
+                "observedRate": 0,
                 "to": 0.8
               },
               {
@@ -4604,32 +4696,32 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.988,
-                "n": 41,
-                "observedRate": 0.9512,
+                "meanPredicted": 0.9888,
+                "n": 46,
+                "observedRate": 0.913,
                 "to": 1
               }
             ],
-            "brier": 0.198,
-            "ece": 0.1865,
-            "n": 85
+            "brier": 0.2119,
+            "ece": 0.2037,
+            "n": 91
           },
           "falseBlock": {
             "ci95": [
-              0.8865,
+              0.8957,
               1
             ],
-            "k": 30,
-            "n": 30,
+            "k": 33,
+            "n": 33,
             "rate": 1
           },
           "missedBlock": {
             "ci95": [
               0,
-              0.0653
+              0.0621
             ],
             "k": 0,
-            "n": 55,
+            "n": 58,
             "rate": 0
           }
         },
@@ -4742,12 +4834,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.5001,
-              0.835
+              0.4934,
+              0.8207
             ],
-            "k": 18,
-            "n": 26,
-            "rate": 0.6923
+            "k": 19,
+            "n": 28,
+            "rate": 0.6786
           },
           "calibration": {
             "bins": [
@@ -4802,9 +4894,9 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.7052,
+                "n": 1,
+                "observedRate": 0,
                 "to": 0.8
               },
               {
@@ -4816,32 +4908,32 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9836,
-                "n": 11,
-                "observedRate": 0.9091,
+                "meanPredicted": 0.9849,
+                "n": 12,
+                "observedRate": 0.9167,
                 "to": 1
               }
             ],
-            "brier": 0.1905,
-            "ece": 0.1201,
-            "n": 26
+            "brier": 0.1946,
+            "ece": 0.1366,
+            "n": 28
           },
           "falseBlock": {
             "ci95": [
-              0.6756,
+              0.7009,
               1
             ],
-            "k": 8,
-            "n": 8,
+            "k": 9,
+            "n": 9,
             "rate": 1
           },
           "missedBlock": {
             "ci95": [
               0,
-              0.1759
+              0.1682
             ],
             "k": 0,
-            "n": 18,
+            "n": 19,
             "rate": 0
           }
         }
@@ -4852,175 +4944,175 @@
         "note": "utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the argmax is a check on the loss model, never adopted",
         "rows": [
           {
-            "accuracy": 0.6471,
+            "accuracy": 0.6374,
             "fn": 0,
-            "fp": 30,
+            "fp": 33,
             "tau": 0.05,
             "tn": 0,
-            "tp": 55,
-            "utility": -30
+            "tp": 58,
+            "utility": -33
           },
           {
-            "accuracy": 0.6471,
+            "accuracy": 0.6374,
             "fn": 0,
-            "fp": 30,
+            "fp": 33,
             "tau": 0.1,
             "tn": 0,
-            "tp": 55,
-            "utility": -30
+            "tp": 58,
+            "utility": -33
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 13,
-            "fp": 6,
+            "fp": 8,
             "tau": 0.15,
-            "tn": 24,
-            "tp": 42,
-            "utility": -19
+            "tn": 25,
+            "tp": 45,
+            "utility": -21
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 16,
-            "fp": 3,
+            "fp": 5,
             "tau": 0.2,
-            "tn": 27,
-            "tp": 39,
-            "utility": -19
+            "tn": 28,
+            "tp": 42,
+            "utility": -21
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 16,
-            "fp": 3,
+            "fp": 5,
             "tau": 0.25,
-            "tn": 27,
-            "tp": 39,
-            "utility": -19
+            "tn": 28,
+            "tp": 42,
+            "utility": -21
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 16,
-            "fp": 3,
+            "fp": 5,
             "tau": 0.3,
-            "tn": 27,
-            "tp": 39,
-            "utility": -19
+            "tn": 28,
+            "tp": 42,
+            "utility": -21
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 16,
-            "fp": 3,
+            "fp": 5,
             "tau": 0.35,
-            "tn": 27,
-            "tp": 39,
-            "utility": -19
+            "tn": 28,
+            "tp": 42,
+            "utility": -21
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 16,
-            "fp": 3,
+            "fp": 5,
             "tau": 0.4,
-            "tn": 27,
-            "tp": 39,
-            "utility": -19
+            "tn": 28,
+            "tp": 42,
+            "utility": -21
           },
           {
-            "accuracy": 0.7765,
+            "accuracy": 0.7692,
             "fn": 16,
-            "fp": 3,
+            "fp": 5,
             "tau": 0.45,
-            "tn": 27,
-            "tp": 39,
-            "utility": -19
+            "tn": 28,
+            "tp": 42,
+            "utility": -21
           },
           {
-            "accuracy": 0.7647,
+            "accuracy": 0.7582,
             "fn": 18,
-            "fp": 2,
+            "fp": 4,
             "tau": 0.5,
-            "tn": 28,
-            "tp": 37,
-            "utility": -20
+            "tn": 29,
+            "tp": 40,
+            "utility": -22
           },
           {
-            "accuracy": 0.7529,
+            "accuracy": 0.7473,
             "fn": 19,
-            "fp": 2,
+            "fp": 4,
             "tau": 0.55,
-            "tn": 28,
-            "tp": 36,
-            "utility": -21
+            "tn": 29,
+            "tp": 39,
+            "utility": -23
           },
           {
-            "accuracy": 0.7529,
+            "accuracy": 0.7473,
             "fn": 19,
-            "fp": 2,
+            "fp": 4,
             "tau": 0.6,
-            "tn": 28,
-            "tp": 36,
-            "utility": -21
+            "tn": 29,
+            "tp": 39,
+            "utility": -23
           },
           {
-            "accuracy": 0.7529,
+            "accuracy": 0.7473,
             "fn": 19,
-            "fp": 2,
+            "fp": 4,
             "tau": 0.65,
-            "tn": 28,
-            "tp": 36,
-            "utility": -21
+            "tn": 29,
+            "tp": 39,
+            "utility": -23
           },
           {
-            "accuracy": 0.7529,
+            "accuracy": 0.7473,
             "fn": 19,
-            "fp": 2,
+            "fp": 4,
             "tau": 0.7,
-            "tn": 28,
-            "tp": 36,
-            "utility": -21
+            "tn": 29,
+            "tp": 39,
+            "utility": -23
           },
           {
-            "accuracy": 0.7529,
+            "accuracy": 0.7473,
             "fn": 19,
-            "fp": 2,
+            "fp": 4,
             "tau": 0.75,
-            "tn": 28,
-            "tp": 36,
-            "utility": -21
+            "tn": 29,
+            "tp": 39,
+            "utility": -23
           },
           {
-            "accuracy": 0.6706,
+            "accuracy": 0.6923,
             "fn": 26,
             "fp": 2,
             "tau": 0.8,
-            "tn": 28,
-            "tp": 29,
+            "tn": 31,
+            "tp": 32,
             "utility": -28
           },
           {
-            "accuracy": 0.6235,
+            "accuracy": 0.6484,
             "fn": 30,
             "fp": 2,
             "tau": 0.85,
-            "tn": 28,
-            "tp": 25,
+            "tn": 31,
+            "tp": 28,
             "utility": -32
           },
           {
-            "accuracy": 0.6235,
+            "accuracy": 0.6484,
             "fn": 30,
             "fp": 2,
             "tau": 0.9,
-            "tn": 28,
-            "tp": 25,
+            "tn": 31,
+            "tp": 28,
             "utility": -32
           },
           {
-            "accuracy": 0.5882,
-            "fn": 33,
+            "accuracy": 0.5824,
+            "fn": 36,
             "fp": 2,
             "tau": 0.95,
-            "tn": 28,
+            "tn": 31,
             "tp": 22,
-            "utility": -35
+            "utility": -38
           }
         ],
         "shippedTau": 0.5,
@@ -5029,7 +5121,7 @@
       },
       "version": "0.10.0"
     },
-    "corpusVersion": "4951762e456d",
+    "corpusVersion": "d280c2ee0858",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -5542,7 +5634,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-05T19:17:04.462Z",
+    "generatedAt": "2026-09-06T03:41:58.755Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -5756,6 +5848,55 @@
         "skipped": 0,
         "tn": 15,
         "tp": 14
+      },
+      {
+        "category": "completeness",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7961,
+            1
+          ],
+          "recall": [
+            0.7961,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8807,
+            0.9992
+          ],
+          "precision": [
+            0.8439,
+            1
+          ],
+          "recall": [
+            0.8458,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 33,
+        "name": "valid_tool_arguments",
+        "negatives": 18,
+        "positives": 15,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 18,
+        "tp": 15
       },
       {
         "category": "relevance",
@@ -6787,7 +6928,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2205,
+    "totalCombined": 2215,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -6795,8 +6936,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2039,
-      "total": 2039
+      "passed": 2049,
+      "total": 2049
     }
   },
   "version": {
