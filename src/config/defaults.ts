@@ -77,6 +77,19 @@ export const defaultConfig: IrisConfig = {
     defaultsGate: false,
     prior: 0.5,
     priorMode: 'per-output',
+    /*
+     * Whether tool-call arguments are checked against the schemas the tools
+     * catalogue declares.
+     *
+     * An off switch that is not an uninstall, because this is the one path
+     * where a caller supplies something Iris COMPILES rather than merely
+     * parses: ajv generates JavaScript from a schema and runs it on the main
+     * thread. The guard ladder in src/eval/schema-validator.ts is the answer
+     * to that, and this key is the answer for an operator who would rather
+     * not run the path at all. False makes the rules that need it skip,
+     * naming this key.
+     */
+    validateToolArguments: true,
   },
   logging: {
     level: 'info',

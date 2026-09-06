@@ -4,7 +4,7 @@ import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
 
-const MAX_PATTERN_LENGTH = 1000;
+export const MAX_PATTERN_LENGTH = 1000;
 
 // A rule whose CONFIG is invalid has not evaluated the output — it could not
 // run at all. Returning `passed:false, score:0` for that case conflates "your

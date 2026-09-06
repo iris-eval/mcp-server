@@ -85,6 +85,8 @@ export interface IrisConfig {
      * "the output is empty" — gates either way.
      */
     defaultsGate?: boolean;
+    /** Check tool-call arguments against the catalogue's schemas. See defaults.ts. */
+    validateToolArguments?: boolean;
     /** The prior that an output is bad before any rule speaks. 0.5 matches the proof corpus, not your traffic. */
     prior?: number;
     /**

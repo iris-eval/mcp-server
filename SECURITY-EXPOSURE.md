@@ -30,11 +30,11 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Severity:** HIGH
 - **Package:** `fast-uri`
 - **Vulnerable:** ≤ 3.1.1 — **first patched:** 3.1.2
-- **Load path:** `fast-uri` ← `ajv@8.18.0` ← `@modelcontextprotocol/sdk@1.29.0`
+- **Load path:** `fast-uri` ← `ajv@8.18.0`, which is now BOTH a direct dependency of iris (declared at the SDK’s own `^8.17.1` so npm dedupes to one copy) and a transitive of `@modelcontextprotocol/sdk`.
 - **Load-graph reachable:** Yes — ajv is imported by the SDK for protocol-message validation.
 - **Code-path reachable:** ajv invokes fast-uri only for `format: "uri"` JSON-Schema validation. The MCP protocol uses URI fields; iris's tool argument schemas may include URI-formatted fields.
 - **Untrusted input reachable:** Indirect — MCP tool args reach ajv, which reaches fast-uri.
-- **Downstream guards:** iris's only outbound URL handling is the citation-verify resolver (`src/eval/citation-verify/resolve.ts`, v0.4.0+), which does its own scheme allowlist (http/https only), private-IP block, cloud-metadata host block, and DNS pre-resolve check before fetching. fast-uri's correctness is **not** on iris's security-critical URL acceptance path — a successfully-bypassed fast-uri parse cannot smuggle a request past the resolver's independent checks.
+- **Downstream guards:** iris’s own ajv instance (`src/eval/schema-validator.ts`, v0.11.0+) sets `validateFormats: false` and does not depend on `ajv-formats`, so `format: "uri"` in a caller-supplied tool schema is an annotation and never reaches fast-uri from the tool-argument path. Separately, iris's only outbound URL handling is the citation-verify resolver (`src/eval/citation-verify/resolve.ts`, v0.4.0+), which does its own scheme allowlist (http/https only), private-IP block, cloud-metadata host block, and DNS pre-resolve check before fetching. fast-uri's correctness is **not** on iris's security-critical URL acceptance path — a successfully-bypassed fast-uri parse cannot smuggle a request past the resolver's independent checks.
 - **Decision:** **Override** — `package.json` `overrides.fast-uri = "^3.1.2"` forces the patched version. Defense in depth even though reachability analysis indicates the vulnerability is not iris-exploitable.
 - **Assessed:** 2026-05-08 against iris commit `47a3de2`.
 
@@ -232,6 +232,48 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 **Gate after:** `npm audit reports 0 advisory(ies) at >=moderate severity`. The Dependabot PR for the fast-uri bump (#390) is superseded by this batch.
 
+
+### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
+
+Not an advisory. A standing assessment, recorded here because it is the one place in iris where a
+caller supplies something that is COMPILED rather than merely parsed.
+
+A tools catalogue arrives over `log_trace` (unauthenticated in stdio mode), over `POST /api/v1/traces`,
+and inline on `evaluate_output`. Its `inputSchema` is JSON Schema, and ajv does not interpret a schema —
+it generates JavaScript from it, compiles that with `new Function`, and runs it on the main thread.
+
+The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test that fires it
+(`tests/unit/eval/schema-validator.test.ts`). A reviewer changing that module checks this list:
+
+1. Static caps first, before ajv is imported: 32 KiB serialised, depth 12, 2,000 nodes, 24 patterns.
+   This is the real boundary against compile blowup — total, cheap, and it bounds every rung after it.
+2. `$ref` must start with `#`. A remote reference is refused by the walk, and `loadSchema` is never
+   configured, so nothing can be fetched even if the walk were bypassed. `$id`, `$dynamicRef`,
+   `$dynamicAnchor`, `$recursiveRef` and `$vocabulary` are refused: their validation depth cannot be
+   bounded from the schema alone.
+3. Every `pattern` and every `patternProperties` KEY: length cap, then syntax, then safe-regex2 star
+   height, then the empirical probe behind the sandbox worker’s hard deadline. Star height sits ahead of
+   the probe because the probe has to guess an igniting payload and cannot in general — an exponential
+   pattern in a `patternProperties` key passed the probe during development and star height caught it.
+4. `allErrors: false` (ajv’s own docs name it a DoS vector on untrusted schemas), `validateFormats:
+   false`, `$data: false`, and `coerceTypes` / `useDefaults` / `removeAdditional` all false — a validator
+   that mutated the instance would change what the repeat detector hashes.
+5. Rejections are cached alongside acceptances, so a hostile catalogue resent a thousand times pays its
+   probe cost once per process.
+6. A rung that trips rejects the WHOLE tool’s schema. A partially applied schema reporting a call valid
+   is a false all-clear about a security-relevant class.
+
+**One tuning note, because it is a trap this repository has fallen into before.** The compile ceiling is
+wall-clock and therefore deliberately generous (1s). A tight one refuses honest schemas on a loaded
+host — the guard-ladder test caught a three-property object schema being rejected at 50ms during
+development — and a checker that randomly stops checking is worse than one that occasionally pays a
+second. The static caps are the boundary; the ceiling is a hang-killer that caches its refusal.
+
+**The residual, stated.** The probe is a courtesy and not a boundary, and on this path there is no
+boundary behind it: ajv inlines a pattern into generated code and runs it on the main thread, so a
+polynomial pattern that survives star height and does not ignite the probe will run there. What bounds it
+is everything around it — the instance is capped at 64 KiB, the pattern count at 24, the per-schema probe
+at 2s, and `eval.validateToolArguments` turns the whole path off without an uninstall.
 ## Operational notes
 
 - **When a new Dependabot alert opens:** add a section here within one PR cycle. The CI gate (`scripts/security/check-exposure-coverage.mjs`) will fail PRs that introduce or surface a new ≥medium alert without a corresponding row.
