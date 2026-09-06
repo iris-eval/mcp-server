@@ -739,20 +739,24 @@
       "id": "Q7xS3",
       "question": "Q7",
       "subject": "S3",
-      "status": "partial",
-      "summary": "Cost is judged on the trace total; per-call latency is recorded, per-call tokens and cost are not yet.",
+      "status": "has",
+      "summary": "A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the budget in force, advising at the shipped default and gating once a deployment sets its own, and no_tool_loop counts the repeated work inside it. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row.",
       "evidence": [
         {
           "kind": "rule",
-          "name": "cost_under_threshold"
+          "name": "max_steps"
         },
         {
-          "kind": "tool",
-          "name": "log_trace"
+          "kind": "rule",
+          "name": "no_tool_loop"
+        },
+        {
+          "kind": "proof",
+          "name": "max_steps"
         }
       ],
       "needs": [
-        "cost"
+        "tool_calls"
       ]
     },
     {

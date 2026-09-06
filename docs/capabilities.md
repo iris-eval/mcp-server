@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 19 are answered by a shipped, measured thing, 17 are answered with a stated limit, 20 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 20 are answered by a shipped, measured thing, 16 are answered with a stated limit, 20 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -12,7 +12,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **is it on-task** | gap | partial | gap | gap | partial | partial |
 | **did it complete the task** | gap | has | gap | gap | gap | gap |
 | **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | has | gap | partial | has |
-| **what did it cost** | has | partial | partial | gap | partial | has |
+| **what did it cost** | has | partial | has | gap | partial | has |
 | **is it better or worse than before** | n/a | n/a | gap | gap | partial | partial |
 | **where and why does it fail** | has | has | has | gap | partial | has |
 | **can this verdict be trusted** | has | has | partial | gap | gap | has |
@@ -69,7 +69,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 
 - **single output** — *has*. Trace cost and token usage are captured and judged by the cost bundle, and the evaluator's own spend — the judge's tokens and cost — is stored on the evaluation. Evidence: tool `log_trace`, rule `cost_under_threshold`, resource `iris://evaluations/{id}`. Needs: `cost`.
 - **output with input / context** — *partial*. A cost ceiling and a token ratio are judged from the trace totals; the ratio measures verbosity, not efficiency, and says so. Evidence: rule `cost_under_threshold`, rule `verbosity_ratio`. Needs: `cost`, `tokens`.
-- **trajectory (tool calls)** — *partial*. Cost is judged on the trace total; per-call latency is recorded, per-call tokens and cost are not yet. Evidence: rule `cost_under_threshold`, tool `log_trace`. Needs: `cost`.
+- **trajectory (tool calls)** — *has*. A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the budget in force, advising at the shipped default and gating once a deployment sets its own, and no_tool_loop counts the repeated work inside it. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row. Evidence: rule `max_steps`, rule `no_tool_loop`, proof `max_steps`. Needs: `tool_calls`.
 - **multi-run of one input** — *gap*. No grouping over repeated runs, and no rule reads an agent's own cost distribution.
 - **population / dataset / baseline** — *partial*. Aggregate cost over a time window is served to the dashboard; the cost-spike classifier uses a fixed threshold rather than the agent's own distribution. Evidence: route `/api/v1/eval-stats`, resource `iris://dashboard/summary`.
 - **the evaluator itself** — *has*. The cost rules are measured as conformance to their formula, and the evaluator's own spend is stored per evaluation. Evidence: proof `cost_under_threshold`, proof `verbosity_ratio`.

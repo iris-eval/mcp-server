@@ -124,7 +124,7 @@ describe('proof runner', () => {
 
     const committed = await readFile(resolve(repoRoot, 'proof/results.json'), 'utf-8');
     const md = await readFile(resolve(repoRoot, 'proof/RESULTS.md'), 'utf-8');
-    const fresh = normaliseForCheck(j1, renderMarkdown(one.rows, one.corpusVersion, 'T', 'C', one.missing, version, toResults(one.rows, one.corpusVersion, 'T', 'C', version, extraOf(one))));
+    const fresh = normaliseForCheck(j1, renderMarkdown(one.rows, one.corpusVersion, 'T', 'C', one.missing, version, toResults(one.rows, one.corpusVersion, 'T', 'C', version, extraOf(one)), one.shadow));
     const onDisk = normaliseForCheck(committed, md);
     expect(fresh.json).toBe(onDisk.json);
     expect(fresh.md).toBe(onDisk.md);
