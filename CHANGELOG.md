@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-06
+
+**The act layer.** Iris scored what an agent wrote and had almost nothing to say about what it DID. Of the sixty cells in the public capability map, the trajectory column held one `has` in ten, and two failure classes the registry declared — an invalid tool call, an injected instruction obeyed — had never been measured at all. An agent that fetched a poisoned page, did what the page said, and wrote a clean summary passed every bundle.
+
+This release adds five deterministic rules that read the trajectory, a ninth custom type for the tools an agent may call, and the measurement to go with them. **Nothing here calls a model or leaves your machine**: a gate that bills per pull request is not a gate. Pass `tools` — your MCP `tools/list` result, verbatim — and argument validity, invented capability and wasted rereads become judgeable; pass OpenTelemetry spans and a regular cadence stops being mistaken for a loop.
+
+Three results are worth reading before the list. **A change was measured and abandoned**: narrowing what counts as acknowledging a failed call cleared none of the bar set for it beforehand, both confusion matrices are published, and the rule is untouched. **A published number was found claiming certainty it had not earned** and now carries the same half-count prior the risk layer uses. And **the transcript gap table stopped being hand-written**, because a table of known misses can only rot in one direction — a gap that closes stays recorded as open.
+
+Built-in rules 15 → 20, custom types 8 → 9, and every failure class the product declares now has labelled cases behind it.
+
+
 ### Changed
 - **The out-of-sample number is measured now, and the table of what it misses cannot rot.** `npm run proof -- --transcripts` runs the 24 real agent transcripts — runs captured against this repository before any of the rules that judge them existed, with an answer key written at capture time — and writes `proof/transcript-results.json` and `proof/TRANSCRIPTS.md`, diffed in CI by `--check --transcripts`. It reports **three numbers that are not the same number**: failure classes present that some rule caught (**14 of 23** — the one to read, because it needs no relabelling as rules are added), ship verdicts agreeing (**17 of 24**), and the legacy per-bundle arithmetic (**11 of 24** with all four agreeing). Until now the bundle number came from a hand-written table of allowed disagreements, which can only rot in one direction: **a gap that CLOSES stays recorded as open**, because nothing re-derives it and closing it is invisible. The gaps are measured, the test reads what the runner wrote, and a drift-lock fails on a stale reason and on an unexplained new gap alike.
 
