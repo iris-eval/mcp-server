@@ -1,6 +1,6 @@
 {
-  "commit": "9325a34",
-  "generatedAt": "2026-09-06T19:35:35.375Z",
+  "commit": "b494f49",
+  "generatedAt": "2026-09-06T22:03:20.510Z",
   "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
   "rows": [
     {
@@ -1526,5 +1526,5 @@
     "transcripts": 24
   },
   "transcriptsVersion": "f26dc9fc1f64",
-  "version": "0.10.0"
+  "version": "0.11.0"
 }

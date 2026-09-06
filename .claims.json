@@ -4135,8 +4135,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T19:43:11.091Z",
-  "generatedFromCommit": "9325a34",
+  "generatedAt": "2026-09-06T22:03:21.590Z",
+  "generatedFromCommit": "b494f49",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4205,7 +4205,7 @@
     ]
   },
   "proof": {
-    "commit": "9325a34",
+    "commit": "b494f49",
     "composite": {
       "compositeVersion": "a4e0e6d77d07",
       "corpusVersion": "795a0dced3cd",
@@ -5562,7 +5562,7 @@
         "split": "dev",
         "variant": "per-output"
       },
-      "version": "0.10.0"
+      "version": "0.11.0"
     },
     "corpusVersion": "795a0dced3cd",
     "custom": {
@@ -6189,7 +6189,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-06T19:33:06.941Z",
+    "generatedAt": "2026-09-06T22:03:04.091Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7287,7 +7287,7 @@
         "transcripts": 24
       },
       "transcriptsVersion": "f26dc9fc1f64",
-      "version": "0.10.0"
+      "version": "0.11.0"
     },
     "transforms": {
       "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
@@ -7824,12 +7824,12 @@
         }
       ]
     },
-    "version": "0.10.0"
+    "version": "0.11.0"
   },
   "release": {
-    "currentReleaseDate": "2026-09-05",
-    "currentReleaseHeadline": "The verdict",
-    "currentReleaseVersion": "0.10.0",
+    "currentReleaseDate": "2026-09-06",
+    "currentReleaseHeadline": "The act layer",
+    "currentReleaseVersion": "0.11.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -7888,7 +7888,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.10.0",
+    "mcpServer": "0.11.0",
     "published": {
       "initPackage": false,
       "langchainPackage": false,
