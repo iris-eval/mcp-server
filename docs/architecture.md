@@ -140,7 +140,7 @@ src/
       safety.ts         6 rules: no_pii (19 patterns), no_blocklist_words, no_injection_patterns (37 patterns), no_stub_output, no_hallucination_markers (25 context-grounded signals), no_silent_tool_failure
       cost.ts           3 rules: cost_under_threshold, verbosity_ratio, no_tool_loop
       trajectory.ts     Shared definitions the two trajectory rules judge by: when a call FAILED, when an output ACKNOWLEDGES a failure, when two calls are the same call
-      custom.ts         Factory for 8 custom rule types (regex, length, keywords, JSON, cost)
+      custom.ts         Factory for 9 custom rule types (regex, length, keywords, JSON, cost, action policy)
       index.ts          Rule registry by eval type
   storage/
     index.ts            Factory: creates storage adapter from config

@@ -1142,7 +1142,7 @@
       "cost"
     ],
     "categoryCount": 4,
-    "customRuleTypeCount": 8,
+    "customRuleTypeCount": 9,
     "customRuleTypes": [
       "regex_match",
       "regex_no_match",
@@ -1151,7 +1151,8 @@
       "contains_keywords",
       "excludes_keywords",
       "json_schema",
-      "cost_threshold"
+      "cost_threshold",
+      "action_policy"
     ],
     "defaultEvalType": "all",
     "hallucinationMarkers": 25,
@@ -1516,8 +1517,8 @@
           "measuredThreeOrMore": 1
         },
         "custom": {
-          "evaluators": 8,
-          "measuredThreeOrMore": 8
+          "evaluators": 9,
+          "measuredThreeOrMore": 9
         },
         "judge": {
           "evaluators": 5,
@@ -1529,14 +1530,14 @@
         }
       },
       "byStatus": {
-        "measurable": 160,
-        "measured": 114,
-        "n/a": 84,
+        "measurable": 161,
+        "measured": 117,
+        "n/a": 90,
         "partial": 15,
-        "stated": 69
+        "stated": 72
       },
-      "evaluators": 34,
-      "measuredThreeOrMore": 28,
+      "evaluators": 35,
+      "measuredThreeOrMore": 29,
       "questions": 13
     },
     "evaluators": [
@@ -3371,6 +3372,72 @@
       {
         "cells": {
           "q1": {
+            "evidence": "proof/results.json → custom.types[action_policy]",
+            "note": "conformance to the documented definition under a declared config on 30 cases",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → custom.types[action_policy].ci95.precision",
+            "note": "a pass that is wrong is a conformance miss; the precision interval bounds it",
+            "status": "measured"
+          },
+          "q11": {
+            "note": "the outcome is the constraint itself",
+            "status": "n/a"
+          },
+          "q12": {
+            "note": "not model-based",
+            "status": "n/a"
+          },
+          "q13": {
+            "evidence": "a second implementation of the same constraint over the same family",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/corpus/custom/action_policy.json → definition and boundary cases",
+            "note": "the definition names the limit; the family holds the boundary cases",
+            "status": "stated"
+          },
+          "q3": {
+            "evidence": "proof/corpus/custom/action_policy.json → definition, config",
+            "note": "the author's own constraint under the config the family declares",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "proof/corpus/custom/action_policy.json → definition",
+            "note": "a constraint, not a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "note": "a constraint is not a probability",
+            "status": "n/a"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "deterministic",
+            "status": "measured"
+          },
+          "q9": {
+            "note": "arithmetic over the whole output",
+            "status": "n/a"
+          }
+        },
+        "group": "custom",
+        "id": "custom:action_policy",
+        "measured": 3,
+        "name": "action_policy"
+      },
+      {
+        "cells": {
+          "q1": {
             "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
             "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
@@ -3970,7 +4037,7 @@
       },
       "results": {
         "corpusVersion": "aa42f895a309",
-        "customCorpusVersion": "e2451fcc02d6"
+        "customCorpusVersion": "7f0a2fdc0855"
       }
     },
     "statuses": [
@@ -3982,8 +4049,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T15:58:11.406Z",
-  "generatedFromCommit": "2529164",
+  "generatedAt": "2026-09-06T17:19:55.686Z",
+  "generatedFromCommit": "51211b7",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4052,7 +4119,7 @@
     ]
   },
   "proof": {
-    "commit": "c301b24",
+    "commit": "51211b7",
     "composite": {
       "compositeVersion": "6de034552bd5",
       "corpusVersion": "aa42f895a309",
@@ -5422,6 +5489,84 @@
               1
             ],
             "precision": [
+              0.8064,
+              1
+            ],
+            "recall": [
+              0.8064,
+              1
+            ]
+          },
+          "config": {
+            "allow": [
+              {
+                "args": {
+                  "/path": "/workspace/**"
+                },
+                "tool": "read_file"
+              },
+              {
+                "args": {
+                  "/path": "/workspace/**"
+                },
+                "tool": "list_dir"
+              },
+              {
+                "args": {
+                  "/url": "https://docs.vendor.test/**"
+                },
+                "tool": "web_fetch"
+              }
+            ],
+            "deny": [
+              {
+                "args": {
+                  "/path": "/workspace/.env*"
+                },
+                "tool": "read_file"
+              },
+              {
+                "tool": "bash"
+              },
+              {
+                "tool": "http_post"
+              }
+            ]
+          },
+          "credible95": {
+            "f1": [
+              0.8915,
+              0.9992
+            ],
+            "precision": [
+              0.8631,
+              1
+            ],
+            "recall": [
+              0.8545,
+              1
+            ]
+          },
+          "f1": 1,
+          "fn": 0,
+          "fp": 0,
+          "n": 30,
+          "negatives": 14,
+          "positives": 16,
+          "precision": 1,
+          "recall": 1,
+          "skipped": 0,
+          "tn": 14,
+          "tp": 16,
+          "type": "action_policy"
+        },
+        {
+          "ci95": {
+            "f1": [
+              1,
+              1
+            ],
+            "precision": [
               0.7847,
               1
             ],
@@ -5817,7 +5962,7 @@
         }
       ]
     },
-    "customCorpusVersion": "e2451fcc02d6",
+    "customCorpusVersion": "7f0a2fdc0855",
     "entities": [
       {
         "method": "positives carry `entities` named by the case author; caught = the rule failed the case for any reason; named = the evidence named this entity; recall = named / present, Wilson 95% — a case caught for another reason is visible as caught − named",
@@ -5958,7 +6103,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-06T15:42:13.255Z",
+    "generatedAt": "2026-09-06T17:15:08.699Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7493,16 +7638,16 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2292,
+    "totalCombined": 2354,
     "vitestDashboard": {
-      "failed": 0,
-      "passed": 152,
-      "total": 152
+      "failed": 1,
+      "passed": 184,
+      "total": 185
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2126,
-      "total": 2126
+      "passed": 2155,
+      "total": 2155
     }
   },
   "version": {

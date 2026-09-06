@@ -32,6 +32,7 @@ import { z } from 'zod';
 import isSafeRegex from 'safe-regex2';
 import { regexBacktrackingBudgetExceeded } from './eval/rules/regex-budget.js';
 import { compileToolSchema } from './eval/schema-validator.js';
+import { compileActionPolicy } from './eval/action-policy.js';
 import { normalizeRegexSource } from './eval/rules/custom.js';
 import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
@@ -54,6 +55,7 @@ const RULE_TYPE_VALUES = [
   'excludes_keywords',
   'json_schema',
   'cost_threshold',
+  'action_policy',
 ] as const;
 
 // Per-type config requirements, enforced at DEPLOY time.
@@ -185,6 +187,24 @@ const DefinitionSchema = z
             code: z.ZodIssueCode.custom,
             path: ['config', 'schema'],
             message: `config.schema was not compiled: ${compiled.reason}`,
+          });
+        }
+        break;
+      }
+      /*
+       * A policy that will not compile must be refused at DEPLOY. Every
+       * other config error here is an annoyance; this one is a security
+       * hole with a friendly face — a rule the author believes is guarding
+       * their agent, skipping on every evaluation for the life of the
+       * deployment because a JSON Pointer was written as a dotted path.
+       */
+      case 'action_policy': {
+        const compiled = compileActionPolicy(config as Record<string, unknown>);
+        if ('error' in compiled) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config'],
+            message: `action_policy ${compiled.error}`,
           });
         }
         break;

@@ -511,7 +511,8 @@ export type CustomRuleType =
   | 'contains_keywords'
   | 'excludes_keywords'
   | 'json_schema'
-  | 'cost_threshold';
+  | 'cost_threshold'
+  | 'action_policy';
 
 export interface CustomRuleDefinition {
   name: string;

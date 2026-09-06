@@ -122,11 +122,12 @@ const CustomRuleDefinitionSchema = strictNested(
         'excludes_keywords',
         'json_schema',
         'cost_threshold',
+        'action_policy',
       ])
       .describe('Check type — decides which config keys are required'),
     config: z
       .record(z.string(), z.unknown())
-      .describe('Check configuration; required keys depend on type (regex_match: pattern; min_length: min_length; max_length: max_length; contains_keywords/excludes_keywords: keywords; cost_threshold: max_cost; json_schema: none)'),
+      .describe('Check configuration; required keys depend on type (regex_match: pattern; min_length: min_length; max_length: max_length; contains_keywords/excludes_keywords: keywords; cost_threshold: max_cost; json_schema: schema, optional; action_policy: allow and/or deny)'),
     weight: z.number().positive().optional().describe('Weight in the weighted score (default 1; must be > 0)'),
   },
   'definition',
@@ -204,7 +205,9 @@ export function registerDeployRuleTool(
         does:
           'Writes the rule to ~/.iris/custom-rules.json, appends a rule.deploy audit entry and registers it with the running engine, so it fires on the very next call and survives restarts. ' +
           'eval_type says WHEN it fires (that bundle, and eval_type="all"); severity says what a failure DOES: low and medium only lower the weighted score, high and critical force passed to false and list the rule in critical_failures. ' +
-          'definition.type picks the check (regex_match, regex_no_match, min_length, max_length, contains_keywords, excludes_keywords, json_schema, cost_threshold) and definition.config carries its keys (pattern; min_length; max_length; keywords; max_cost). ' +
+          'definition.type picks the check (regex_match, regex_no_match, min_length, max_length, contains_keywords, excludes_keywords, json_schema, cost_threshold, action_policy) and definition.config carries its keys (pattern; min_length; max_length; keywords; max_cost; schema; allow/deny). ' +
+          'action_policy judges the TRAJECTORY: allow and deny rules name a tool by glob and its arguments by JSON Pointer, deny wins, and `allow` being present means a tool it does not name is DENIED. ' +
+          'It ADVISES until you deploy it at severity high or critical — a deny list you deploy at the default severity does not block, and its own message says so on every result. ' +
           'Any bundle and type combine. Names are unique: a taken name is refused unless replace is true, which retires the earlier rule(s) first and reports them. Argument names are snake_case; the camelCase aliases evalType and sourceMomentId are accepted — pass one spelling of each.',
         whenNot:
           'To try a rule first: POST /api/v1/rules/custom/preview on the dashboard replays a definition against stored traces without deploying. For a one-off check on one call: the custom_rules argument of evaluate_output. To pause a rule: delete_rule with enabled: false.',
