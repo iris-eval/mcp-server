@@ -31,6 +31,26 @@ export const toolCallSchema = strictNested(
     output: z.unknown().optional(),
     latency_ms: z.number().optional(),
     error: z.string().optional(),
+    /*
+     * Added in 0.11.0, all optional, all read by nothing yet. Each is
+     * knowable only to the producer and unrecoverable afterwards, so they
+     * land with the step layer rather than with the first rule that wants
+     * them — adding a capture field once corpus cases exist means
+     * relabelling those cases.
+     *
+     * The object is STRICT, so a caller who was already sending these was
+     * being rejected; accepting them is a widening, not a behaviour change.
+     */
+    call_id: z.string().optional(),
+    truncated: z.boolean().optional(),
+    token_usage: z
+      .object({
+        prompt_tokens: z.number().optional(),
+        completion_tokens: z.number().optional(),
+        total_tokens: z.number().optional(),
+      })
+      .optional(),
+    cost_usd: z.number().optional(),
   },
   'a tool_calls entry',
 );

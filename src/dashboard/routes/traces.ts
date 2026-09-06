@@ -106,6 +106,10 @@ export function registerTraceRoutes(
         // guaranteed present — an ingest that captured a failed tool call
         // and then evaluated as though it had never been told.
         toolCalls: body.tool_calls,
+        // Whole-source precedence in the step layer means these are only
+        // reached when tool_calls is absent, so forwarding them costs a
+        // reference and buys trajectory evaluation for a span-only capture.
+        spans: trace.spans,
       };
       // An omitted eval_type runs every bundle — the same default, from the
       // same constant, as the MCP tool — and says so in the response.

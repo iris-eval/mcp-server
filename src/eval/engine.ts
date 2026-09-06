@@ -12,6 +12,7 @@ import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
 import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
 import { inputsPresent, stampRuleResult } from './stamp.js';
+import { toSteps } from './steps.js';
 import { buildProvenance, configHash, deriveCoverage, deriveVerdict, rulesetHash } from './verdict.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
@@ -283,7 +284,7 @@ export class EvalEngine {
      * without running — one hostile output cannot stall the request once per
      * rule it carries.
      */
-    const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 } };
+    const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 }, steps: toSteps(context) };
     /*
      * Sequential, and it must stay sequential when a rule becomes awaitable:
      * every rule in one evaluation shares the regex circuit breaker above,

@@ -129,6 +129,17 @@ export function registerEvaluateOutputTool(
         ? await getTraceOrThrow(storage, LOCAL_TENANT, args.trace_id)
         : undefined;
       const toolCalls = args.tool_calls ?? trace?.tool_calls;
+      /*
+       * Spans are a separate read: getTrace returns the traces row and the
+       * spans live in their own table, so rowToTrace has never carried
+       * them. Only fetched when they could actually be used — the step
+       * layer's precedence is whole-source, so a caller-supplied or stored
+       * tool_calls wins outright and this query would be wasted.
+       */
+      const spans =
+        args.trace_id !== undefined && (toolCalls === undefined || toolCalls.length === 0)
+          ? await storage.getSpansByTraceId(LOCAL_TENANT, args.trace_id)
+          : undefined;
 
       // Track omission explicitly: a caller who never chose a bundle gets
       // every bundle (DEFAULT_EVAL_TYPE) AND a note saying so. The default
@@ -143,6 +154,7 @@ export function registerEvaluateOutputTool(
         costUsd: args.cost_usd,
         tokenUsage: args.token_usage,
         toolCalls,
+        spans,
       };
       const customRules = args.custom_rules as CustomRuleDefinition[] | undefined;
 

@@ -1,4 +1,4 @@
-import type { ToolCallRecord } from './trace.js';
+import type { Span, Step, ToolCallRecord } from './trace.js';
 
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
@@ -105,6 +105,25 @@ export interface EvalContext {
    * that gap the next time a field is added to the capture shape.
    */
   toolCalls?: ToolCallRecord[];
+  /**
+   * The raw spans the CALLER supplied.
+   *
+   * NO RULE MAY READ THIS. It is transport, and there is exactly one
+   * derived reading of a trajectory (src/eval/steps.ts, reached through
+   * stepsOf). Two vocabularies for "what the agent did" is the drift
+   * rules/trajectory.ts exists to prevent, and it would land in rules whose
+   * measured accuracy is arithmetic inside the verdict. Enforced by
+   * tests/unit/eval/steps-single-reading.test.ts.
+   */
+  spans?: Span[];
+  /**
+   * The derived trajectory, computed once per evaluation by the engine.
+   *
+   * Rules read it through stepsOf(context), never directly: the proof
+   * runner evaluates a rule without going through the engine, and a rule
+   * that read the field would skip on every corpus case.
+   */
+  steps?: readonly Step[];
   tokenUsage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   costUsd?: number;
   metadata?: Record<string, unknown>;
