@@ -249,10 +249,23 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
       ...claims,
       proof: { rules: [{}, {}], corpusVersion: 'c1', generatedAt: '2026-09-05T12:00:00Z', commit: 'abc1234', version: '9.9.9' },
     });
-    // The summary cites the release version, not the generating commit: branch commits are
-    // squashed on merge, so a hash here is one no reader can resolve.
-    expect(after).toMatch(/for 2 built-in rules, corpus c1, generated 2026-09-05 for v9\.9\.9/);
+    /*
+     * The summary pins the numbers to the CORPUS and to nothing else.
+     *
+     * Not the generating commit: branch commits are squashed on merge, so a
+     * hash here is one no reader can resolve. And, from 2026-09-06, not the
+     * release version either — that attribution was FALSE between releases.
+     * `npm run proof` stamps the version from package.json, which the roll
+     * bumps only at a release; the website deploys from `main`, so on every
+     * other commit the line joined new measurements to the last released
+     * version. It said "for 20 built-in rules … for v0.10.0" on the live
+     * site while the published v0.10.0 had fifteen.
+     */
+    expect(after).toMatch(/for 2 built-in rules, corpus c1, generated 2026-05?-?0?5|for 2 built-in rules, corpus c1, generated 2026-09-05/);
     expect(after).not.toMatch(/abc1234/);
+    // The version must not reappear beside the numbers, however it is spelled.
+    expect(after, 'the proof line must not attribute its numbers to a release version').not.toMatch(/9\.9\.9/);
+    expect(after).not.toMatch(/for v\d/);
   });
 
   it('neither template carries a literal version or a literal count', () => {
