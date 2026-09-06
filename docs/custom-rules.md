@@ -1,6 +1,6 @@
 # Custom Eval Rules
 
-Define your own evaluation criteria. Iris ships with 18 built-in rules across completeness, relevance, safety, and cost. Custom rules let you enforce domain-specific requirements — regulatory compliance, output format constraints, brand guidelines, budget limits — evaluated with the same weighted scoring engine.
+Define your own evaluation criteria. Iris ships with 19 built-in rules across completeness, relevance, safety, and cost. Custom rules let you enforce domain-specific requirements — regulatory compliance, output format constraints, brand guidelines, budget limits — evaluated with the same weighted scoring engine.
 
 **How it works:** Pass a `custom_rules` array to `evaluate_output` with `eval_type: "custom"`. Each rule runs against the output, produces a score between 0 and 1, and the engine computes a weighted average. The evaluation passes when the score meets the configured threshold (default: `0.7`) and no critical rule failed — rules deployed with severity `high`/`critical` hard-fail the evaluation when they fail (inline `custom_rules` carry no severity and never hard-fail). A critical rule that SKIPPED — missing context, a broken definition, or a regex killed at the sandbox budget — has not judged the output and does not veto; every such rule is named in `critical_skipped`. A gate that must fail closed treats a non-empty `critical_skipped` as unknown, not clean, and may treat any `budgetExceeded` skip in `rule_results` the same way.
 

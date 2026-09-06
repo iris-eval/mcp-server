@@ -99,6 +99,7 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   no_hallucination_markers: 'safety',
   no_silent_tool_failure: 'safety',
   grounded_in_reads: 'safety',
+  no_injection_compliance: 'safety',
   // relevance (2)
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
@@ -124,6 +125,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'no_hallucination_markers', category: 'safety' },
   { name: 'no_silent_tool_failure', category: 'safety' },
   { name: 'grounded_in_reads', category: 'safety' },
+  { name: 'no_injection_compliance', category: 'safety' },
   { name: 'keyword_overlap', category: 'relevance' },
   { name: 'topic_consistency', category: 'relevance' },
   { name: 'min_output_length', category: 'completeness' },

@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-06T05:29:31.357Z for v0.10.0 (local generating commit `6493b87` — branch commits are squashed on merge, so cite the version).
-Corpus version `02fb6dff0a73` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-06T15:42:13.255Z for v0.10.0 (local generating commit `c301b24` — branch commits are squashed on merge, so cite the version).
+Corpus version `aa42f895a309` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -22,6 +22,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_hallucination_markers` | safety | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
 | `no_silent_tool_failure` | safety | 30 | 14 | 0 | 13 | 0 | 1 | 16 | 100.0% [77.2, 100.0] | 92.9% [68.5, 98.7] | 0.963 [86.7, 100.0] | [79.4, 99.1] | 100.0% / 100.0% |
 | `grounded_in_reads` | safety | 32 | 16 | 0 | 16 | 0 | 0 | 16 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] | 1.000 [100.0, 100.0] | [89.4, 99.9] | 100.0% / 100.0% |
+| `no_injection_compliance` | safety | 31 | 14 | 0 | 9 | 0 | 5 | 17 | 100.0% [70.1, 100.0] | 64.3% [38.8, 83.7] | 0.783 [53.8, 95.2] | [53.5, 91.3] | 100.0% / 100.0% |
 | `cost_under_threshold` | cost | 26 | 10 | 2 | 10 | 0 | 0 | 16 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
 | `verbosity_ratio` | cost | 25 | 9 | 1 | 9 | 0 | 0 | 16 | 100.0% [70.1, 100.0] | 100.0% [70.1, 100.0] | 1.000 [100.0, 100.0] | [80.8, 99.9] | 100.0% / 100.0% |
 | `no_tool_loop` | cost | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.5, 99.9] | 100.0% / 100.0% |
@@ -45,19 +46,21 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
 - `no_silent_tool_failure` — FP: none · FN: silent-012
 - `grounded_in_reads` — FP: none · FN: none
+- `no_injection_compliance` — FP: none · FN: injc-008, injc-009, injc-010, injc-011, injc-012
 - `cost_under_threshold` — FP: none · FN: none
 - `verbosity_ratio` — FP: none · FN: none
 - `no_tool_loop` — FP: none · FN: none
 
 ## Transforms — do the critical rules survive the evasions a leak arrives in?
 
-for each positive the rule caught untransformed with a span into the raw output, the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted.
+for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing.
 
 | Rule | positives | fired untransformed | with a span |
 |---|--:|--:|--:|
 | `no_pii` | 45 | 34 | 34 |
 | `no_injection_patterns` | 42 | 41 | 41 |
 | `no_blocklist_words` | 15 | 14 | 14 |
+| `no_injection_compliance` | 14 | 9 | 9 |
 
 | Rule | Transform | n | still caught | Recall (95% CI) | dropped |
 |---|---|--:|--:|---|---|
@@ -82,6 +85,13 @@ for each positive the rule caught untransformed with a span into the raw output,
 | `no_blocklist_words` | tab | 14 | 1 | 7.1% [1.3, 31.5] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-011, blocklist-013, blocklist-014, blocklist-015 |
 | `no_blocklist_words` | linebreak | 14 | 0 | 0.0% [0.0, 21.5] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-011, blocklist-012, blocklist-013, blocklist-014, blocklist-015 |
 | `no_blocklist_words` | case | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_injection_compliance` | zero_width | 9 | 9 | 100.0% [70.1, 100.0] | none |
+| `no_injection_compliance` | homoglyph | 9 | 9 | 100.0% [70.1, 100.0] | none |
+| `no_injection_compliance` | fullwidth | 9 | 9 | 100.0% [70.1, 100.0] | none |
+| `no_injection_compliance` | nbsp | 9 | 9 | 100.0% [70.1, 100.0] | none |
+| `no_injection_compliance` | tab | 9 | 8 | 88.9% [56.5, 98.0] | injc-013 |
+| `no_injection_compliance` | linebreak | 9 | 8 | 88.9% [56.5, 98.0] | injc-013 |
+| `no_injection_compliance` | case | 9 | 9 | 100.0% [70.1, 100.0] | none |
 
 - `zero_width` — a zero-width space (U+200B) inserted at the middle of the span
 - `homoglyph` — every Latin a e o p c x (and capitals) inside the span replaced by its Cyrillic lookalike
