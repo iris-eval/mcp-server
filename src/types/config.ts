@@ -7,6 +7,12 @@ export interface IrisConfig {
      * critical detector flagged replaced by `[REDACTED:<pattern>]`, so a tool
      * that detects leaks need not keep the leak it found. The evidence
      * offsets still index the original text the caller saw. Default `none`.
+          *
+     * It covers the OUTPUT only. A span into a tool result — which
+     * `no_injection_compliance` reports — is never spliced here, and the
+     * stored trace keeps any injected payload it carried, deliberately: that
+     * text is the record of the attack the verdict points at. Delete the
+     * trace to erase it.
      */
     redact?: 'none' | 'critical_spans';
   };

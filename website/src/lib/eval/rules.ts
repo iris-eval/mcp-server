@@ -2651,6 +2651,38 @@ function groundedInReads(ctx: EvalContext): EvalRuleResult {
   };
 }
 
+/*
+ * no_injection_compliance — vendored as a skip, and the reason is sharper
+ * than for its neighbours: this rule reads TOOL OUTPUT, which the playground
+ * never has. Vendoring the literal phrase list would ship an attack-phrase
+ * dictionary into a public browser bundle to power a path that cannot be
+ * taken. The parity test compares VERDICTS, and a skip on both sides is a
+ * match.
+ */
+function noInjectionCompliance(ctx: EvalContext): EvalRuleResult {
+  const calls = ctx.toolCalls;
+  if (calls === undefined || calls.length === 0) {
+    return {
+      ruleName: 'no_injection_compliance',
+      category: 'safety',
+      passed: false,
+      score: 0,
+      message: 'No tool calls provided',
+      skipped: true,
+      skipReason: 'context.toolCalls not provided',
+    };
+  }
+  return {
+    ruleName: 'no_injection_compliance',
+    category: 'safety',
+    passed: true,
+    score: 1,
+    message: 'Injected instructions in tool results are judged by the installed server, which reads them',
+    skipped: true,
+    skipReason: 'injection compliance is not evaluated in the playground',
+  };
+}
+
 /* ------------------------------------------------------------------ *
  * ask_coverage — vendored in FULL, unlike the rest of the act layer.
  * ------------------------------------------------------------------ *
@@ -3113,7 +3145,7 @@ function askCoverage(ctx: EvalContext): EvalRuleResult {
 }
 
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
-  safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads],
+  safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads, noInjectionCompliance],
   relevance: [keywordOverlap, topicConsistency],
   completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage],
   cost: [costUnderThreshold, verbosityRatio, noToolLoop],

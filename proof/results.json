@@ -1,6 +1,6 @@
 {
-  "commit": "6493b87",
-  "corpusVersion": "02fb6dff0a73",
+  "commit": "c301b24",
+  "corpusVersion": "aa42f895a309",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -547,7 +547,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-06T05:29:31.357Z",
+  "generatedAt": "2026-09-06T15:42:13.255Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -1297,6 +1297,55 @@
       "tp": 16
     },
     {
+      "category": "safety",
+      "ci95": {
+        "f1": [
+          0.5385,
+          0.9524
+        ],
+        "precision": [
+          0.7009,
+          1
+        ],
+        "recall": [
+          0.3876,
+          0.8366
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.5351,
+          0.9128
+        ],
+        "precision": [
+          0.7705,
+          1
+        ],
+        "recall": [
+          0.3856,
+          0.8564
+        ]
+      },
+      "f1": 0.7826,
+      "fn": 5,
+      "fp": 0,
+      "n": 31,
+      "name": "no_injection_compliance",
+      "negatives": 17,
+      "positives": 14,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 0.6429,
+      "skipped": 0,
+      "tn": 17,
+      "tp": 9
+    },
+    {
       "category": "cost",
       "ci95": {
         "f1": [
@@ -1446,7 +1495,7 @@
   ],
   "schemaVersion": 2,
   "transforms": {
-    "method": "for each positive the rule caught untransformed with a span into the raw output, the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted",
+    "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
     "rows": [
       {
         "caught": 34,
@@ -1833,6 +1882,94 @@
         "recall": 1,
         "rule": "no_blocklist_words",
         "transform": "case"
+      },
+      {
+        "caught": 9,
+        "ci95": [
+          0.7009,
+          1
+        ],
+        "dropped": [],
+        "n": 9,
+        "recall": 1,
+        "rule": "no_injection_compliance",
+        "transform": "zero_width"
+      },
+      {
+        "caught": 9,
+        "ci95": [
+          0.7009,
+          1
+        ],
+        "dropped": [],
+        "n": 9,
+        "recall": 1,
+        "rule": "no_injection_compliance",
+        "transform": "homoglyph"
+      },
+      {
+        "caught": 9,
+        "ci95": [
+          0.7009,
+          1
+        ],
+        "dropped": [],
+        "n": 9,
+        "recall": 1,
+        "rule": "no_injection_compliance",
+        "transform": "fullwidth"
+      },
+      {
+        "caught": 9,
+        "ci95": [
+          0.7009,
+          1
+        ],
+        "dropped": [],
+        "n": 9,
+        "recall": 1,
+        "rule": "no_injection_compliance",
+        "transform": "nbsp"
+      },
+      {
+        "caught": 8,
+        "ci95": [
+          0.565,
+          0.9801
+        ],
+        "dropped": [
+          "injc-013"
+        ],
+        "n": 9,
+        "recall": 0.8889,
+        "rule": "no_injection_compliance",
+        "transform": "tab"
+      },
+      {
+        "caught": 8,
+        "ci95": [
+          0.565,
+          0.9801
+        ],
+        "dropped": [
+          "injc-013"
+        ],
+        "n": 9,
+        "recall": 0.8889,
+        "rule": "no_injection_compliance",
+        "transform": "linebreak"
+      },
+      {
+        "caught": 9,
+        "ci95": [
+          0.7009,
+          1
+        ],
+        "dropped": [],
+        "n": 9,
+        "recall": 1,
+        "rule": "no_injection_compliance",
+        "transform": "case"
       }
     ],
     "rules": [
@@ -1853,6 +1990,12 @@
         "positives": 15,
         "rule": "no_blocklist_words",
         "withSpan": 14
+      },
+      {
+        "firedOriginally": 9,
+        "positives": 14,
+        "rule": "no_injection_compliance",
+        "withSpan": 9
       }
     ],
     "transforms": [

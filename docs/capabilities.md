@@ -1,12 +1,12 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 18 are answered by a shipped, measured thing, 17 are answered with a stated limit, 21 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 19 are answered by a shipped, measured thing, 17 are answered with a stated limit, 20 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
 | Question | single output | output with input / context | trajectory (tool calls) | multi-run of one input | population / dataset / baseline | the evaluator itself |
 |---|---|---|---|---|---|---|
-| **is it safe** | has | has | gap | gap | partial | has |
+| **is it safe** | has | has | has | gap | partial | has |
 | **is it grounded / correct** | partial | has | has | gap | gap | partial |
 | **is it complete** | partial | partial | gap | gap | partial | has |
 | **is it on-task** | gap | partial | gap | gap | partial | partial |
@@ -21,7 +21,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 
 - **single output** — *has*. Deterministic detectors for leaked personal data and credentials, injection-shaped output and deployment-prohibited words, each fire naming the pattern and the span; precision and recall are published per rule at https://iris-eval.com/proof, not yet per entity. Evidence: rule `no_pii`, rule `no_injection_patterns`, rule `no_blocklist_words`, tool `evaluate_output`, tool `deploy_rule`, proof `no_pii`. Needs: `output`.
 - **output with input / context** — *has*. The safety detectors read the output; supplying the input changes nothing for them, so the single-output answer carries over. A keyed judge template for harm potential exists and is unmeasured. Evidence: rule `no_pii`, rule `no_injection_patterns`, template `safety`. Needs: `output`.
-- **trajectory (tool calls)** — *gap*. Tool outputs are never scanned for injected directives, and no rule relates a directive in a tool result to a later action. Needs: `output`, `tool_calls`.
+- **trajectory (tool calls)** — *has*. A directive found in a tool result is related to what the agent did next: no_injection_compliance matches directive wording as literal phrases over a capped, normalised slice — never a regular expression, because a tool result is attacker-controlled — and fails when a later call carries terms the directive introduced and the ask never used. Merely repeating those terms is reported on a passing result, because measured on its own family that weaker signal cannot tell reporting an injection from complying with one. Evidence: rule `no_injection_compliance`, proof `no_injection_compliance`. Needs: `output`, `tool_calls`.
 - **multi-run of one input** — *gap*. No grouping over repeated runs of one input exists, so nothing can say safe on nine of ten runs.
 - **population / dataset / baseline** — *partial*. Per-rule failure counts over a time window are served to the dashboard, with no interval and no cohort key. Evidence: route `/api/v1/eval-stats`, tool `get_traces`, resource `iris://dashboard/summary`.
 - **the evaluator itself** — *has*. The three safety detectors are measured on a labelled corpus with 95% intervals, and every fire carries its positive predictive value at the stated prior; robustness to obfuscated text is not yet measured. Evidence: proof `no_pii`, proof `no_injection_patterns`, proof `no_blocklist_words`, resource `iris://proof`.

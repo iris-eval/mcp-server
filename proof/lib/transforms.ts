@@ -22,7 +22,7 @@ import { materialiseCase } from './materialise.js';
 import { contextFor } from './context.js';
 import { wilson } from '../judge/lib/wilson.js';
 
-export const TRANSFORM_RULES = ['no_pii', 'no_injection_patterns', 'no_blocklist_words'] as const;
+export const TRANSFORM_RULES = ['no_pii', 'no_injection_patterns', 'no_blocklist_words', 'no_injection_compliance'] as const;
 export type TransformRule = (typeof TRANSFORM_RULES)[number];
 
 export type TransformId = 'zero_width' | 'homoglyph' | 'fullwidth' | 'nbsp' | 'tab' | 'linebreak' | 'case';
@@ -113,12 +113,47 @@ export interface TransformResults {
 
 const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
-function outputSpans(evidence: Evidence[] | undefined): Array<{ start: number; end: number }> {
-  return (evidence ?? [])
-    .filter((e): e is Extract<Evidence, { type: 'span' }> => e.type === 'span' && e.source === 'output')
-    .map((e) => ({ start: e.start, end: e.end }))
-    .filter((s) => s.end > s.start)
-    .sort((a, b) => b.start - a.start); // last first, so earlier offsets stay valid while splicing
+/**
+ * Where a reported span lives.
+ *
+ * Until arc 4 every span was into the agent's own output, so the harness
+ * could transform one string. `no_injection_compliance` reports into
+ * `tool_outputs[i]` — the first rule to do so — which is what makes the
+ * evasion question askable of a trajectory rule at all. The matrix records
+ * Q9 as merely *measurable* for the two shipped trajectory rules precisely
+ * because neither reports a span.
+ */
+type SpanTarget = { kind: 'output' } | { kind: 'tool_output'; index: number };
+interface TargetedSpans {
+  target: SpanTarget;
+  spans: Array<{ start: number; end: number }>;
+}
+
+const TOOL_OUTPUT_SOURCE = /^tool_outputs\[(\d+)\]$/;
+
+function targetOf(source: string): SpanTarget | null {
+  if (source === 'output') return { kind: 'output' };
+  const m = TOOL_OUTPUT_SOURCE.exec(source);
+  return m ? { kind: 'tool_output', index: Number(m[1]) } : null;
+}
+
+/** Every reported span, grouped by the text it indexes. */
+function spanTargets(evidence: Evidence[] | undefined): TargetedSpans[] {
+  const byKey = new Map<string, TargetedSpans>();
+  for (const e of evidence ?? []) {
+    if (e.type !== 'span' || e.end <= e.start) continue;
+    const target = targetOf(e.source);
+    if (target === null) continue;
+    const key = target.kind === 'output' ? 'output' : `t${target.index}`;
+    const entry = byKey.get(key) ?? { target, spans: [] };
+    entry.spans.push({ start: e.start, end: e.end });
+    byKey.set(key, entry);
+  }
+  for (const entry of byKey.values()) {
+    // Last first, so earlier offsets stay valid while splicing.
+    entry.spans.sort((a, b) => b.start - a.start);
+  }
+  return [...byKey.values()];
 }
 
 /** Applies a transform inside every reported span; null when it applied to none. */
@@ -134,6 +169,45 @@ export function transformOutput(output: string, spans: Array<{ start: number; en
   return applied ? out : null;
 }
 
+/**
+ * Rebuild a context with every reported span transformed.
+ *
+ * Returns null when the transform applied to none of them, so an
+ * inapplicable transform is never counted as an evasion the rule survived.
+ */
+export function transformContext(
+  ctx: ReturnType<typeof contextFor>,
+  targets: TargetedSpans[],
+  t: Transform,
+): ReturnType<typeof contextFor> | null {
+  let applied = false;
+  let output = ctx.output;
+  let toolCalls = ctx.toolCalls;
+  for (const { target, spans } of targets) {
+    if (target.kind === 'output') {
+      const next = transformOutput(output, spans, t);
+      if (next === null) continue;
+      output = next;
+      applied = true;
+      continue;
+    }
+    const call = (toolCalls ?? [])[target.index];
+    if (!call || typeof call.output !== 'string') continue;
+    const next = transformOutput(call.output, spans, t);
+    if (next === null) continue;
+    toolCalls = (toolCalls ?? []).map((c, i) => (i === target.index ? { ...c, output: next } : c));
+    applied = true;
+  }
+  if (!applied) return null;
+  /*
+   * `steps` is DERIVED from tool_calls, and the engine may have populated it
+   * already. Carrying the old derivation forward would transform one list
+   * and measure another — the rule would read the untransformed tool output
+   * through `stepsOf` and report a recall this harness never tested.
+   */
+  return { ...ctx, output, toolCalls, steps: undefined };
+}
+
 export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, EvalRule>): TransformResults {
   const rows: TransformRow[] = [];
   const summaries: TransformRuleSummary[] = [];
@@ -142,7 +216,7 @@ export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, 
     const rule = rulesByName.get(ruleName);
     if (!file || !rule) continue;
     const positives = file.cases.filter((c) => c.label === 'positive');
-    const prepared: Array<{ id: string; output: string; ctx: ReturnType<typeof contextFor>; spans: Array<{ start: number; end: number }> }> = [];
+    const prepared: Array<{ id: string; ctx: ReturnType<typeof contextFor>; targets: TargetedSpans[] }> = [];
     let firedOriginally = 0;
     for (const raw of positives) {
       const c = materialiseCase(raw);
@@ -150,9 +224,9 @@ export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, 
       const base = rule.evaluate(ctx);
       if (base.skipped || base.passed !== false) continue;
       firedOriginally += 1;
-      const spans = outputSpans(base.evidence);
-      if (spans.length === 0) continue;
-      prepared.push({ id: c.id, output: ctx.output, ctx, spans });
+      const targets = spanTargets(base.evidence);
+      if (targets.length === 0) continue;
+      prepared.push({ id: c.id, ctx, targets });
     }
     summaries.push({ rule: ruleName, positives: positives.length, firedOriginally, withSpan: prepared.length });
     for (const t of TRANSFORMS) {
@@ -160,10 +234,10 @@ export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, 
       let caught = 0;
       const dropped: string[] = [];
       for (const p of prepared) {
-        const transformed = transformOutput(p.output, p.spans, t);
+        const transformed = transformContext(p.ctx, p.targets, t);
         if (transformed === null) continue;
         n += 1;
-        const after = rule.evaluate({ ...p.ctx, output: transformed });
+        const after = rule.evaluate(transformed);
         if (!after.skipped && after.passed === false) caught += 1;
         else dropped.push(p.id);
       }
@@ -173,7 +247,7 @@ export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, 
   }
   return {
     method:
-      'for each positive the rule caught untransformed with a span into the raw output, the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted',
+      'for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing',
     transforms: TRANSFORMS.map((t) => ({ id: t.id, describe: t.describe })),
     rules: summaries,
     rows,

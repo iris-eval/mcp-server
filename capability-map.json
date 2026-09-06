@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "What Iris can judge, cell by cell: ten evaluation questions against six subjects. `has` means at least one shipped, measured thing answers the question for that subject; `partial` means something answers it with a stated limit; `gap` means nothing does yet; `n/a` means the question does not apply to the subject. Every `has` or `partial` cell names its evidence \u2014 a rule, a tool, a resource, a route, a proof row or a judge template \u2014 and each name resolves to something registered in this release (tests/capability-map-contract.test.ts). `needs` lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so.",
+  "about": "What Iris can judge, cell by cell: ten evaluation questions against six subjects. `has` means at least one shipped, measured thing answers the question for that subject; `partial` means something answers it with a stated limit; `gap` means nothing does yet; `n/a` means the question does not apply to the subject. Every `has` or `partial` cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (tests/capability-map-contract.test.ts). `needs` lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so.",
   "questions": [
     {
       "id": "Q1",
@@ -144,9 +144,18 @@
       "id": "Q1xS3",
       "question": "Q1",
       "subject": "S3",
-      "status": "gap",
-      "summary": "Tool outputs are never scanned for injected directives, and no rule relates a directive in a tool result to a later action.",
-      "evidence": [],
+      "status": "has",
+      "summary": "A directive found in a tool result is related to what the agent did next: no_injection_compliance matches directive wording as literal phrases over a capped, normalised slice — never a regular expression, because a tool result is attacker-controlled — and fails when a later call carries terms the directive introduced and the ask never used. Merely repeating those terms is reported on a passing result, because measured on its own family that weaker signal cannot tell reporting an injection from complying with one.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "no_injection_compliance"
+        },
+        {
+          "kind": "proof",
+          "name": "no_injection_compliance"
+        }
+      ],
       "needs": [
         "output",
         "tool_calls"
@@ -230,7 +239,7 @@
       "question": "Q2",
       "subject": "S2",
       "status": "has",
-      "summary": "A deterministic detector with context-grounded contradiction signals, measured with intervals; keyed judge templates for accuracy, correctness against a reference and faithfulness to sources, plus a citation verifier, cover what patterns cannot \u2014 on a key the user supplies.",
+      "summary": "A deterministic detector with context-grounded contradiction signals, measured with intervals; keyed judge templates for accuracy, correctness against a reference and faithfulness to sources, plus a citation verifier, cover what patterns cannot — on a key the user supplies.",
       "evidence": [
         {
           "kind": "rule",
@@ -271,7 +280,7 @@
       "question": "Q2",
       "subject": "S3",
       "status": "has",
-      "summary": "Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged \u2014 a code identifier or a number belongs to the hallucination signals \u2014 and the rule declines rather than guesses when a read was truncated.",
+      "summary": "Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged — a code identifier or a number belongs to the hallucination signals — and the rule declines rather than guesses when a read was truncated.",
       "evidence": [
         {
           "kind": "rule",
@@ -330,7 +339,7 @@
       "question": "Q3",
       "subject": "S1",
       "status": "partial",
-      "summary": "Form is measured \u2014 length, sentence count, non-empty, and stub or placeholder markers \u2014 not whether the ask was answered.",
+      "summary": "Form is measured — length, sentence count, non-empty, and stub or placeholder markers — not whether the ask was answered.",
       "evidence": [
         {
           "kind": "rule",
@@ -537,7 +546,7 @@
       "question": "Q5",
       "subject": "S2",
       "status": "has",
-      "summary": "An ask that declares its parts \u2014 a bullet list, a numbered or lettered enumeration, a first/second/finally sequence \u2014 is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing.",
+      "summary": "An ask that declares its parts — a bullet list, a numbered or lettered enumeration, a first/second/finally sequence — is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing.",
       "evidence": [
         {
           "kind": "rule",
@@ -615,7 +624,7 @@
       "question": "Q6",
       "subject": "S3",
       "status": "has",
-      "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool\u2019s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE \u2014 whether a valid call was the right one \u2014 still has no deterministic evaluator.",
+      "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — still has no deterministic evaluator.",
       "evidence": [
         {
           "kind": "rule",
@@ -686,7 +695,7 @@
       "question": "Q7",
       "subject": "S1",
       "status": "has",
-      "summary": "Trace cost and token usage are captured and judged by the cost bundle, and the evaluator's own spend \u2014 the judge's tokens and cost \u2014 is stored on the evaluation.",
+      "summary": "Trace cost and token usage are captured and judged by the cost bundle, and the evaluator's own spend — the judge's tokens and cost — is stored on the evaluation.",
       "evidence": [
         {
           "kind": "tool",
@@ -846,7 +855,7 @@
       "question": "Q8",
       "subject": "S6",
       "status": "partial",
-      "summary": "The verdict a gate keys on is measured on a composite corpus, and a candidate composer is scored beside the shipped arithmetic with an interval on the difference and a held-out split, so a change to the composer is measured before it ships; nothing yet compares one release\u2019s evaluator with the previous release\u2019s on the same corpus across versions.",
+      "summary": "The verdict a gate keys on is measured on a composite corpus, and a candidate composer is scored beside the shipped arithmetic with an interval on the difference and a held-out split, so a change to the composer is measured before it ships; nothing yet compares one release’s evaluator with the previous release’s on the same corpus across versions.",
       "evidence": [
         {
           "kind": "resource",
@@ -860,7 +869,7 @@
       "question": "Q9",
       "subject": "S1",
       "status": "has",
-      "summary": "Every fired detection carries typed evidence \u2014 offsets into the raw output, never a paraphrase \u2014 and a message naming the pattern; the stored evaluation reads back the same way.",
+      "summary": "Every fired detection carries typed evidence — offsets into the raw output, never a paraphrase — and a message naming the pattern; the stored evaluation reads back the same way.",
       "evidence": [
         {
           "kind": "rule",
@@ -983,7 +992,7 @@
       "question": "Q10",
       "subject": "S1",
       "status": "has",
-      "summary": "Every rule result carries what kind of claim it is, what it saw, where in the raw text it found it, and how wrong it tends to be; the verdict names which layer decided \u2014 a configured policy, a high-precision detector, a check that could not answer, or the combined risk against the deployment's stated loss ratio \u2014 and one definition of passed covers the deterministic rules, the judge and the citation verifier alike.",
+      "summary": "Every rule result carries what kind of claim it is, what it saw, where in the raw text it found it, and how wrong it tends to be; the verdict names which layer decided — a configured policy, a high-precision detector, a check that could not answer, or the combined risk against the deployment's stated loss ratio — and one definition of passed covers the deterministic rules, the judge and the citation verifier alike.",
       "evidence": [
         {
           "kind": "tool",
@@ -1011,7 +1020,7 @@
       "question": "Q10",
       "subject": "S2",
       "status": "has",
-      "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean \u2014 a state a gate can fail closed on, and a setting the deployment chooses.",
+      "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses.",
       "evidence": [
         {
           "kind": "tool",
@@ -1061,7 +1070,7 @@
       "question": "Q10",
       "subject": "S4",
       "status": "gap",
-      "summary": "A verdict over repeats \u2014 vote, mean, variance \u2014 has no composer, and the judge has no repeat harness.",
+      "summary": "A verdict over repeats — vote, mean, variance — has no composer, and the judge has no repeat harness.",
       "evidence": [],
       "needs": []
     },
@@ -1079,7 +1088,7 @@
       "question": "Q10",
       "subject": "S6",
       "status": "has",
-      "summary": "Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; beside them, what a fire is worth at field prevalence, a credible interval that does not collapse at zero errors, the verdict\u2019s own accuracy on a composite corpus, conformance of every custom rule type to its definition, and a matrix that asks thirteen trust questions of every evaluator and answers each cell from the proof files; the corpus is model-labelled until the blind human label lands, and every number says so.",
+      "summary": "Precision, recall and intervals per rule are published and reproducible with one command, served to agents as a resource and on every rule result as its uncertainty; beside them, what a fire is worth at field prevalence, a credible interval that does not collapse at zero errors, the verdict’s own accuracy on a composite corpus, conformance of every custom rule type to its definition, and a matrix that asks thirteen trust questions of every evaluator and answers each cell from the proof files; the corpus is model-labelled until the blind human label lands, and every number says so.",
       "evidence": [
         {
           "kind": "resource",

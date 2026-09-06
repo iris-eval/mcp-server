@@ -814,12 +814,28 @@ export class SqliteAdapter implements IStorageAdapter {
    * evidence offsets are left as computed — they index the text the caller
    * saw, which is what a reader of the evidence needs — and the option's
    * documentation says so.
+   *
+   * ONLY spans into the agent's own output, and from 0.11.0 that is a
+   * decision rather than an accident. `no_injection_compliance` is the first
+   * rule to report a span whose source is `tool_outputs[i]`, and those
+   * offsets index a TOOL RESULT, not this text — splicing them here would
+   * corrupt stored output at meaningless positions. The filter below is what
+   * stops that, and the test in tests/unit/storage/redact.test.ts is what
+   * keeps it stopped.
+   *
+   * The trace itself is deliberately NOT redacted, and this is a stated
+   * non-goal rather than an omission: an injected payload inside a stored
+   * tool result is the RECORD OF THE ATTACK. Stripping it would destroy the
+   * evidence that the verdict points at, leaving a finding whose subject no
+   * longer exists. A deployment that must not retain such text deletes the
+   * trace, which erases it.
    */
   private storedOutputText(result: EvalResult): string | null {
     const text = result.output_text;
     if (this.redact !== 'critical_spans' || !text) return text ?? null;
     const spans = result.rule_results
       .filter((r) => r.critical === true && !r.passed && !r.skipped)
+      // `source === 'output'` is load-bearing: see the note above.
       .flatMap((r) => (r.evidence ?? []).filter((e): e is Extract<Evidence, { type: 'span' }> => e.type === 'span' && e.source === 'output'));
     if (spans.length === 0) return text;
     const seen = new Set<string>();
