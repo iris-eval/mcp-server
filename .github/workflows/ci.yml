@@ -301,6 +301,12 @@ jobs:
         run: npm run proof -- --check
       - name: Proof — the verdict on the composite corpus (regen vs committed)
         run: npm run proof -- --check --composite
+      # The only OUT-OF-SAMPLE line: 24 agent runs captured before the rules
+      # that judge them existed. It also regenerates the GAP SET that
+      # tests/real-transcripts.test.ts reads, so a gap that closes cannot
+      # stay recorded as open.
+      - name: Proof — the 24 real transcripts (regen vs committed)
+        run: npm run proof -- --check --transcripts
       - name: Publish the table to the job summary
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"

@@ -36,6 +36,57 @@ function Pending({ what, command, file }: { what: string; command: string; file:
   );
 }
 
+export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactElement {
+  const t = proof.transcripts;
+  return (
+    <section>
+      <h2 className={h2}>Out of sample: 24 real agent runs</h2>
+      <p>
+        Every other number on this page is measured on a corpus written alongside the rule it measures. These are not: they are agent runs against this repository, captured before any of the rules that judge them existed, with an answer key written at capture time. It is the only out-of-sample evidence here, and it is small — twenty-four traces — which is a limit rather than a caveat.
+      </p>
+      {t ? (
+        <>
+          <div className="mt-4 overflow-x-auto rounded-xl border border-border-default bg-bg-card">
+            <table className="w-full min-w-[640px] border-collapse text-left text-[14px]">
+              <thead>
+                <tr className="border-b border-border-default">
+                  <th className="px-4 py-3 font-semibold">Question</th>
+                  <th className="px-4 py-3 font-semibold">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border-subtle">
+                  <td className="px-4 py-3">Failure classes present that some rule caught</td>
+                  <td className="px-4 py-3 font-mono">{t.totals.classesCaught} of {t.totals.classesPresent}</td>
+                </tr>
+                <tr className="border-b border-border-subtle">
+                  <td className="px-4 py-3">Ship/no-ship verdicts agreeing with the key</td>
+                  <td className="px-4 py-3 font-mono">{t.totals.shipAgrees} of {t.totals.transcripts}</td>
+                </tr>
+                <tr className="border-b border-border-subtle">
+                  <td className="px-4 py-3">Transcripts whose four bundle verdicts all agree</td>
+                  <td className="px-4 py-3 font-mono">{t.totals.allBundlesAgree} of {t.totals.transcripts}</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3">Bundle verdicts agreeing</td>
+                  <td className="px-4 py-3 font-mono">{t.totals.bundleVerdictsAgree} of {t.totals.bundleVerdicts}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-[14px] text-text-secondary">
+            The three are not the same question. Classes caught is the one to read: it needs no relabelling as rules are added. A bundle verdict is a weighted mean, so one failing non-critical rule in a bundle of six does not move it — the weakest of the three, and kept for continuity. {t.gaps.length} of the {t.totals.transcripts} transcripts have at least one bundle verdict that disagrees with the key; those gaps are <em>measured</em> and read back by the test suite, so a gap that closes cannot stay recorded as open. Transcripts <span className="font-mono">{t.transcriptsVersion}</span> ·{" "}
+            <FileLink path="proof/TRANSCRIPTS.md" /> · <FileLink path="proof/transcript-results.json" /> ·{" "}
+            <code className={code}>npm run proof -- --transcripts</code>.
+          </p>
+        </>
+      ) : (
+        <Pending what="The out-of-sample measurement" command="npm run proof -- --transcripts" file="proof/transcript-results.json" />
+      )}
+    </section>
+  );
+}
+
 export function VerdictMeasured({ proof }: { proof: ProofClaims }): React.ReactElement {
   const c = proof.composite;
   return (
@@ -312,6 +363,7 @@ export function ArcTwoSections({ proof }: { proof: ProofClaims | null }): React.
   return (
     <>
       <VerdictMeasured proof={proof} />
+      <OutOfSample proof={proof} />
       <Transforms proof={proof} />
       <ByEntity proof={proof} />
       <CustomTypes proof={proof} />

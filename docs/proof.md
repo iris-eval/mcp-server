@@ -214,6 +214,52 @@ The composed cases are built from the same synthetic, same-model-labelled
 families as the per-rule numbers, so the accuracy here is conditional on that
 corpus. The real-transcript line is the only out-of-sample one.
 
+## The 24 real transcripts
+
+`npm run proof -- --transcripts` writes `proof/transcript-results.json` and
+`proof/TRANSCRIPTS.md`, and `--check --transcripts` diffs both against what
+the code produces. These are agent runs against this repository, captured
+before any of the rules that judge them existed, with an answer key written
+at capture time — the only measurement here that is not conditional on a
+corpus authored alongside the rule it measures.
+
+It reports three numbers, and they are **not the same number**:
+
+| Number | What it says |
+|---|---|
+| **failure classes present that some rule caught** | of the classes a person said were in these traces, how many a rule declaring that class actually failed on. The headline, because it needs no relabelling as rules are added |
+| **ship verdicts agreeing** | whether the verdict a gate keys on matched "no failure class is present" |
+| **bundle verdicts agreeing** | the legacy per-bundle arithmetic, and the weakest of the three: a bundle is a weighted mean, so one failing non-critical rule in a bundle of six does not move it |
+
+**The gap set is measured, not typed.** A bundle verdict that disagrees with
+the answer key is a *gap*, and until arc 4 the gaps lived in a hand-written
+table in `tests/real-transcripts.test.ts`. A table like that can only rot in
+one direction: a gap that CLOSES stays recorded as open, because nothing
+re-derives it and closing it is invisible. The runner now measures the gaps,
+the test reads what it wrote, and a drift-lock asserts the two agree exactly
+— so a stale reason and an unexplained new gap both go red.
+
+**Two limits, stated rather than discovered.** The transcripts cap tool
+output at 600 characters, which is a fixture artefact: `grounded_in_reads`
+declines an incomplete read set on purpose, so this set is a weak instrument
+for that rule. And they use exactly two tools, both always well formed, so
+`valid_tool_arguments` finds nothing here and contributes nothing to the
+number — its measurement comes entirely from its own family and the composed
+cases.
+
+## Skips, and why a family may not have many
+
+This runner scores a **skipped** case as *not failed*. So a skip on a
+NEGATIVE case is a free true negative: it inflates specificity, which
+inflates the published positive predictive value — which, since 0.10.0, is
+arithmetic inside the verdict. A family carrying skips has been quietly
+overstating its precision.
+
+The fix is discipline rather than arithmetic, and the runner enforces it: a
+family may skip at most **20%** of its cases, and one that skips at all must
+say why in its own header, so a reader meets the caveat beside the number.
+Skip-path behaviour is proved in unit tests, never in a family.
+
 ## The evaluator of evaluators
 
 `docs/evaluators.md` asks the thirteen trust questions — does it work, when

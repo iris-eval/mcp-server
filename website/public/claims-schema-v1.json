@@ -184,6 +184,10 @@
         "composite": {
           "type": "object",
           "description": "The verdict measured on the composite corpus: proof/composite-results.json without its per-case list (accuracy, false-block and missed-block rates, the Newcombe difference, calibration, recall by class, the threshold sweep). Absent until npm run proof -- --composite has run."
+        },
+        "transcripts": {
+          "type": "object",
+          "description": "The 24 real agent transcripts, measured by npm run proof -- --transcripts: the only out-of-sample line Iris has, since every other number is measured on a corpus authored alongside the rule it measures. Carries the totals — failure classes present that some rule caught, ship verdicts agreeing, transcripts whose four bundle verdicts all agree — plus the MEASURED gap set. tests/real-transcripts.test.ts reads the same file, so a gap that closes cannot stay recorded as open. Absent until that mode has run."
         }
       }
     },

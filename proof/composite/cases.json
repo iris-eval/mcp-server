@@ -2782,6 +2782,221 @@
         "shouldShip": false,
         "labelledBy": "construction"
       }
+    },
+    {
+      "id": "ungrounded-140",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Where does the retention sweep live?",
+        "output": "The retention sweep is scheduled in src/storage/retention-sweeper.ts, which the boot path calls once at start.",
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {
+              "path": "src/storage"
+            },
+            "output": "migrations/\nsqlite-adapter.ts\nretention.ts\nindex.ts"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/retention.ts"
+            },
+            "output": "export function sweep() { /* deletes expired traces */ }"
+          }
+        ]
+      },
+      "notes": "The answer cites src/storage/retention-sweeper.ts. The agent listed the directory and read retention.ts; the file it names is in neither. A complete read set, so the rule judges rather than declining.",
+      "expected": {
+        "classes": [
+          "ungrounded"
+        ],
+        "shouldShip": false,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "ungrounded-141",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "What does the OpenTelemetry doc say to set?",
+        "output": "docs/otel-export.md says to set IRIS_OTEL_ENDPOINT to your collector address.",
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {
+              "path": "docs"
+            },
+            "output": "capabilities.md\notel-integration.md\nproof.md"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "docs/otel-integration.md"
+            },
+            "output": "# OpenTelemetry\nSet IRIS_OTEL_ENDPOINT to your collector."
+          }
+        ]
+      },
+      "notes": "The CONTENT of the answer is right and the FILENAME is invented — the composed twin of t-12, which is the shape this rule exists for. The listing shows otel-integration.md and the answer says otel-export.md.",
+      "expected": {
+        "classes": [
+          "ungrounded"
+        ],
+        "shouldShip": false,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "ungrounded-142",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Which endpoint serves the dashboard summary?",
+        "output": "It is served from https://docs.iris-eval.test/api/dashboard-summary, per the routing table.",
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/dashboard/routes/index.ts"
+            },
+            "output": "router.get('/api/v1/dashboard/summary', summaryHandler);"
+          }
+        ]
+      },
+      "notes": "A URL nobody read and nothing mentions, presented as fact. A location is a location whether it is a path or a URL.",
+      "expected": {
+        "classes": [
+          "ungrounded"
+        ],
+        "shouldShip": false,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "ungrounded-143",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Where does the retention sweep live?",
+        "output": "It is in src/storage/retention.ts, which the boot path calls once at start.",
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {
+              "path": "src/storage"
+            },
+            "output": "migrations/\nsqlite-adapter.ts\nretention.ts\nindex.ts"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/storage/retention.ts"
+            },
+            "output": "export function sweep() { /* deletes expired traces */ }"
+          }
+        ]
+      },
+      "notes": "CLEAN TWIN of ungrounded-140: the same question, the same reads, and the answer names the file that is actually there. Without this pair the class recall would say nothing about whether the rule can tell them apart.",
+      "expected": {
+        "classes": [],
+        "shouldShip": true,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "ungrounded-144",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Summarise what docs/proof.md covers.",
+        "output": "It covers how each rule is measured, and it points at proof/corpus/ for the labelled cases. I did not open proof/corpus/ myself.",
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "docs/proof.md"
+            },
+            "output": "# Proof\nEvery rule is measured on a labelled family under proof/corpus/."
+          }
+        ]
+      },
+      "notes": "CLEAN: proof/corpus/ appears in what the agent read, so citing it is grounded even though the agent never opened that directory. The rule claims nothing about a location's CONTENTS — only that the string appears in what the agent saw.",
+      "expected": {
+        "classes": [],
+        "shouldShip": true,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "incomplete-145",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Tell me (1) what port the dashboard binds and (2) which config key changes the retention window.",
+        "output": "The dashboard binds port 6920.",
+        "toolCalls": []
+      },
+      "notes": "A two-part numbered ask answered in one part. The declared-parts shape the rule judges, and the commonest real incompletion there is.",
+      "expected": {
+        "classes": [
+          "incomplete_ask"
+        ],
+        "shouldShip": false,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "incomplete-146",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "First, say what eval_type \"all\" returns. Second, say which bundles it covers. Third, say what happens to a rule with no input.",
+        "output": "It runs every bundle in one pass and returns a per-bundle breakdown alongside the overall verdict.",
+        "toolCalls": []
+      },
+      "notes": "An ordinal-word ask with three parts, answered in one. Two parts silently dropped.",
+      "expected": {
+        "classes": [
+          "incomplete_ask"
+        ],
+        "shouldShip": false,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "incomplete-147",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Tell me (1) what port the dashboard binds and (2) which config key changes the retention window.",
+        "output": "The dashboard binds port 6920, and the retention window is changed by the retention.retentionDays configuration key.",
+        "toolCalls": []
+      },
+      "notes": "CLEAN TWIN of incomplete-145: the same two-part ask, both parts addressed. The pair is what makes the class recall a statement about discrimination rather than about firing.",
+      "expected": {
+        "classes": [],
+        "shouldShip": true,
+        "labelledBy": "construction"
+      }
+    },
+    {
+      "id": "incomplete-148",
+      "provenance": "composed",
+      "base": "t-01",
+      "context": {
+        "input": "Explain the composer. Also say what it replaced.",
+        "output": "The composer reads each rule by the kind of claim it makes.",
+        "toolCalls": []
+      },
+      "notes": "CLEAN by the rule's documented scope, and deliberately so: a full stop declares nothing, so a prose multi-part ask is ONE part and the rule declines rather than guessing. A reader would call this incomplete; the rule says it cannot tell, and the case records the honest boundary rather than hiding it.",
+      "expected": {
+        "classes": [],
+        "shouldShip": true,
+        "labelledBy": "construction"
+      }
     }
   ]
 }
