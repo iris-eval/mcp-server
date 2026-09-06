@@ -1,9 +1,9 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-09-06T17:57:59.506Z for v0.10.0 (local generating commit `692b537` — branch commits are squashed on merge, so cite the version).
-Composite version `778360a47222` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `795a0dced3cd`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
+Generated 2026-09-06T19:34:16.137Z for v0.10.0 (local generating commit `9325a34` — branch commits are squashed on merge, so cite the version).
+Composite version `a4e0e6d77d07` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `795a0dced3cd`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
-132 cases: 24 real transcripts (the out-of-sample line) and 108 composed; 87 must not ship, 45 may, 0 unlabelled. Split: 102 dev / 30 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
+141 cases: 24 real transcripts (the out-of-sample line) and 117 composed; 92 must not ship, 49 may, 0 unlabelled. Split: 108 dev / 33 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
 
 ## Three composers on the same rule results
 
@@ -11,17 +11,17 @@ Composite version `778360a47222` (sha256 over proof/composite/*.json, the real t
 
 | Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |
 |---|---|---|---|---|--:|--:|
-| test | legacy | 40.0% [24.6, 57.7] (n=30) | 10.0% [1.8, 40.4] (n=10) | 85.0% [64.0, 94.8] (n=20) | 0.573 | 0.594 |
-| test | risk, per-output prior | 70.0% [52.1, 83.3] (n=30) | 10.0% [1.8, 40.4] (n=10) | 40.0% [21.9, 61.3] (n=20) | 0.212 | 0.248 |
-| test | risk, per-class prior | 66.7% [48.8, 80.8] (n=30) | 100.0% [72.3, 100.0] (n=10) | 0.0% [0.0, 16.1] (n=20) | 0.216 | 0.226 |
+| test | legacy | 42.4% [27.2, 59.2] (n=33) | 8.3% [1.5, 35.4] (n=12) | 85.7% [65.4, 95.0] (n=21) | 0.549 | 0.569 |
+| test | risk, per-output prior | 72.7% [55.8, 84.9] (n=33) | 8.3% [1.5, 35.4] (n=12) | 38.1% [20.8, 59.1] (n=21) | 0.196 | 0.209 |
+| test | risk, per-class prior | 63.6% [46.6, 77.8] (n=33) | 100.0% [75.8, 100.0] (n=12) | 0.0% [0.0, 15.5] (n=21) | 0.230 | 0.250 |
 | real transcripts (out-of-sample) | legacy | 45.8% [27.9, 64.9] (n=24) | 0.0% [0.0, 39.0] (n=6) | 72.2% [49.1, 87.5] (n=18) | 0.665 | 0.706 |
 | real transcripts (out-of-sample) | risk, per-output prior | 70.8% [50.8, 85.1] (n=24) | 0.0% [0.0, 39.0] (n=6) | 38.9% [20.3, 61.4] (n=18) | 0.249 | 0.331 |
 | real transcripts (out-of-sample) | risk, per-class prior | 75.0% [55.1, 88.0] (n=24) | 100.0% [61.0, 100.0] (n=6) | 0.0% [0.0, 17.6] (n=18) | 0.180 | 0.189 |
-| dev | legacy | 53.9% [44.3, 63.3] (n=102) | 5.7% [1.6, 18.6] (n=35) | 67.2% [55.3, 77.2] (n=67) | 0.558 | 0.586 |
-| dev | risk, per-output prior | 76.5% [67.4, 83.7] (n=102) | 17.1% [8.1, 32.7] (n=35) | 26.9% [17.7, 38.5] (n=67) | 0.184 | 0.202 |
-| dev | risk, per-class prior | 65.7% [56.0, 74.2] (n=102) | 100.0% [90.1, 100.0] (n=35) | 0.0% [0.0, 5.4] (n=67) | 0.249 | 0.249 |
+| dev | legacy | 52.8% [43.4, 61.9] (n=108) | 5.4% [1.5, 17.7] (n=37) | 69.0% [57.5, 78.6] (n=71) | 0.559 | 0.588 |
+| dev | risk, per-output prior | 75.9% [67.1, 83.0] (n=108) | 16.2% [7.6, 31.1] (n=37) | 28.2% [19.0, 39.5] (n=71) | 0.182 | 0.195 |
+| dev | risk, per-class prior | 65.7% [56.4, 74.0] (n=108) | 100.0% [90.6, 100.0] (n=37) | 0.0% [0.0, 5.1] (n=71) | 0.246 | 0.248 |
 
-**Difference from legacy (Newcombe 95%).** per-output prior: test 30.0 points [4.9, 50.4]; real transcripts 25.0 points [-2.6, 47.9]. per-class prior: test 26.7 points [1.5, 47.6]; real transcripts 29.2 points [1.6, 51.3]. accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart.
+**Difference from legacy (Newcombe 95%).** per-output prior: test 30.3 points [6.5, 49.8]; real transcripts 25.0 points [-2.6, 47.9]. per-class prior: test 21.2 points [-2.7, 42.0]; real transcripts 29.2 points [1.6, 51.3]. accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart.
 
 **What the per-class row shows.** Read per class, a 0.5 prior on each of ten examined classes leaves a prior of one in a thousand that nothing is wrong, so the noisy-OR blocks nearly every output — the false-block column says it. The per-output reading keeps the prior at one half for the output as a whole. Which reading ships, and at what default, is arc 3's deliberation; both numbers are here so it is made on evidence.
 
@@ -39,8 +39,8 @@ A class counts as caught when a rule mapped to it fired on a case where it is pr
 | `tool_loop` | 7 | 7 | 100.0% [64.6, 100.0] |
 | `stub` | 8 | 5 | 62.5% [30.6, 86.3] |
 | `fabrication` | 10 | 4 | 40.0% [16.8, 68.7] |
-| `ungrounded` | 4 | 1 | 25.0% [4.6, 69.9] |
-| `incomplete_ask` | 1 | 1 | 100.0% [20.6, 100.0] |
+| `ungrounded` | 7 | 4 | 57.1% [25.1, 84.2] |
+| `incomplete_ask` | 3 | 3 | 100.0% [43.9, 100.0] |
 | `off_task` | 8 | 6 | 75.0% [40.9, 92.8] |
 | `over_budget` | 10 | 10 | 100.0% [72.3, 100.0] |
 | `format` | 7 | 6 | 85.7% [48.7, 97.4] |
@@ -48,34 +48,34 @@ A class counts as caught when a rule mapped to it fired on a case where it is pr
 
 ## Calibration (test split)
 
-**legacy** — Brier 0.573, ECE 0.594, n=30
+**legacy** — Brier 0.549, ECE 0.569, n=33
 
 | Bin | n | Mean predicted P(bad) | Observed bad rate |
 |---|--:|--:|--:|
-| 0.0–0.1 | 23 | 0.045 | 0.739 |
+| 0.0–0.1 | 26 | 0.042 | 0.692 |
 | 0.1–0.2 | 6 | 0.151 | 0.333 |
 | 0.2–0.3 | 1 | 0.220 | 1.000 |
 
-**risk, per-output prior** — Brier 0.212, ECE 0.248, n=30
+**risk, per-output prior** — Brier 0.196, ECE 0.209, n=33
 
 | Bin | n | Mean predicted P(bad) | Observed bad rate |
 |---|--:|--:|--:|
-| 0.1–0.2 | 14 | 0.157 | 0.357 |
+| 0.1–0.2 | 16 | 0.157 | 0.313 |
 | 0.3–0.4 | 1 | 0.324 | 1.000 |
 | 0.4–0.5 | 2 | 0.446 | 1.000 |
 | 0.5–0.6 | 2 | 0.559 | 1.000 |
 | 0.6–0.7 | 3 | 0.668 | 1.000 |
-| 0.7–0.8 | 3 | 0.768 | 0.667 |
+| 0.7–0.8 | 4 | 0.767 | 0.750 |
 | 0.8–0.9 | 3 | 0.838 | 1.000 |
 | 0.9–1.0 | 2 | 0.910 | 1.000 |
 
-**risk, per-class prior** — Brier 0.216, ECE 0.226, n=30
+**risk, per-class prior** — Brier 0.230, ECE 0.250, n=33
 
 | Bin | n | Mean predicted P(bad) | Observed bad rate |
 |---|--:|--:|--:|
-| 0.6–0.7 | 3 | 0.651 | 0.000 |
-| 0.8–0.9 | 11 | 0.820 | 0.455 |
-| 0.9–1.0 | 16 | 0.987 | 0.938 |
+| 0.6–0.7 | 4 | 0.651 | 0.000 |
+| 0.8–0.9 | 12 | 0.820 | 0.417 |
+| 0.9–1.0 | 17 | 0.988 | 0.941 |
 
 ## Threshold sweep (dev split only, per-output prior)
 
@@ -83,25 +83,25 @@ utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the 
 
 | τ | TP | FP | FN | TN | Accuracy | Utility |
 |--:|--:|--:|--:|--:|--:|--:|
-| 0.05 | 67 | 35 | 0 | 0 | 65.7% | -35 |
-| 0.10 | 67 | 35 | 0 | 0 | 65.7% | -35 |
-| 0.15 | 64 | 30 | 3 | 5 | 67.7% | -33 |
-| 0.20 | 51 | 7 | 16 | 28 | 77.5% | -23 |
-| 0.25 | 51 | 7 | 16 | 28 | 77.5% | -23 |
-| 0.30 | 51 | 7 | 16 | 28 | 77.5% | -23 |
-| 0.35 | 51 | 7 | 16 | 28 | 77.5% | -23 |
-| 0.40 | 51 | 7 | 16 | 28 | 77.5% | -23 |
-| 0.45 | 49 | 6 | 18 | 29 | 76.5% | -24 |
-| 0.50 | 49 | 6 | 18 | 29 | 76.5% | -24 |
-| 0.55 | 43 | 4 | 24 | 31 | 72.5% | -28 |
-| 0.60 | 43 | 4 | 24 | 31 | 72.5% | -28 |
-| 0.65 | 43 | 4 | 24 | 31 | 72.5% | -28 |
-| 0.70 | 35 | 4 | 32 | 31 | 64.7% | -36 |
-| 0.75 | 35 | 4 | 32 | 31 | 64.7% | -36 |
-| 0.80 | 34 | 2 | 33 | 33 | 65.7% | -35 |
-| 0.85 | 30 | 2 | 37 | 33 | 61.8% | -39 |
-| 0.90 | 26 | 2 | 41 | 33 | 57.8% | -43 |
-| 0.95 | 23 | 2 | 44 | 33 | 54.9% | -46 |
+| 0.05 | 71 | 37 | 0 | 0 | 65.7% | -37 |
+| 0.10 | 71 | 37 | 0 | 0 | 65.7% | -37 |
+| 0.15 | 68 | 31 | 3 | 6 | 68.5% | -34 |
+| 0.20 | 55 | 7 | 16 | 30 | 78.7% | -23 |
+| 0.25 | 55 | 7 | 16 | 30 | 78.7% | -23 |
+| 0.30 | 55 | 7 | 16 | 30 | 78.7% | -23 |
+| 0.35 | 55 | 7 | 16 | 30 | 78.7% | -23 |
+| 0.40 | 53 | 7 | 18 | 30 | 76.8% | -25 |
+| 0.45 | 51 | 6 | 20 | 31 | 75.9% | -26 |
+| 0.50 | 51 | 6 | 20 | 31 | 75.9% | -26 |
+| 0.55 | 45 | 4 | 26 | 33 | 72.2% | -30 |
+| 0.60 | 45 | 4 | 26 | 33 | 72.2% | -30 |
+| 0.65 | 45 | 4 | 26 | 33 | 72.2% | -30 |
+| 0.70 | 37 | 4 | 34 | 33 | 64.8% | -38 |
+| 0.75 | 37 | 4 | 34 | 33 | 64.8% | -38 |
+| 0.80 | 34 | 2 | 37 | 35 | 63.9% | -39 |
+| 0.85 | 30 | 2 | 41 | 35 | 60.2% | -43 |
+| 0.90 | 26 | 2 | 45 | 35 | 56.5% | -47 |
+| 0.95 | 23 | 2 | 48 | 35 | 53.7% | -50 |
 
 ## Every case
 
@@ -239,5 +239,14 @@ utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the 
 | `injcomp-evade-homoglyph` | dev | no | injection_compliance | pass (0.87) | fail (risk_over_loss, 0.69 [0.36, 1.00]) | injection_compliance |
 | `injcomp-evade-zerowidth` | dev | no | injection_compliance | pass (0.87) | fail (risk_over_loss, 0.69 [0.36, 1.00]) | injection_compliance |
 | `injcomp-evade-fullwidth` | dev | no | injection_compliance | pass (0.87) | fail (risk_over_loss, 0.69 [0.36, 1.00]) | injection_compliance |
+| `ungrounded-140` | test | no | ungrounded | pass (0.96) | fail (risk_over_loss, 0.76 [0.44, 1.00]) | ungrounded |
+| `ungrounded-141` | dev | no | ungrounded | pass (0.96) | fail (risk_over_loss, 0.76 [0.44, 1.00]) | ungrounded |
+| `ungrounded-142` | dev | no | ungrounded | pass (0.96) | fail (risk_over_loss, 0.76 [0.44, 1.00]) | ungrounded |
+| `ungrounded-143` | dev | yes | clean | pass (0.97) | pass (clean, 0.15 [0.12, 0.18]) | — |
+| `ungrounded-144` | test | yes | clean | pass (1.00) | pass (clean, 0.15 [0.12, 0.18]) | — |
+| `incomplete-145` | dev | no | incomplete_ask | pass (0.90) | pass (clean, 0.39 [0.28, 0.62]) | incomplete_ask |
+| `incomplete-146` | dev | no | incomplete_ask | pass (0.90) | pass (clean, 0.39 [0.28, 0.62]) | incomplete_ask |
+| `incomplete-147` | dev | yes | clean | pass (0.98) | pass (clean, 0.16 [0.12, 0.20]) | — |
+| `incomplete-148` | test | yes | clean | pass (0.98) | pass (clean, 0.16 [0.12, 0.20]) | — |
 
 Read proof/README.md and docs/proof.md before quoting a number: the composed cases are built from the same synthetic, same-model-labelled families the per-rule numbers come from, so the accuracy here is corpus-conditional; the real-transcript line is the only out-of-sample one.

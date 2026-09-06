@@ -200,6 +200,22 @@ export interface ProofCustom {
   method: string;
   types: Array<{ type: string; config: Record<string, unknown>; n: number; positives: number; negatives: number; skipped: number; tp: number; fp: number; fn: number; tn: number; precision: number | null; recall: number | null; f1: number | null; ci95: ProofInterval }>;
 }
+export interface ProofTranscripts {
+  transcriptsVersion: string;
+  version: string;
+  method: string;
+  totals: {
+    transcripts: number;
+    allBundlesAgree: number;
+    bundleVerdictsAgree: number;
+    bundleVerdicts: number;
+    shipAgrees: number;
+    classesPresent: number;
+    classesCaught: number;
+  };
+  gaps: Array<{ id: string; bundles: string[] }>;
+}
+
 export interface ProofClaims {
   schemaVersion: number;
   corpusVersion: string;
@@ -217,6 +233,7 @@ export interface ProofClaims {
   entities?: ProofEntities[];
   custom?: ProofCustom;
   composite?: ProofComposite;
+  transcripts?: ProofTranscripts;
 }
 export const PROOF: ProofClaims | null =
   (claimsRaw as unknown as { proof?: ProofClaims }).proof ?? null;

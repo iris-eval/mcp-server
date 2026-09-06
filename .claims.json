@@ -4116,7 +4116,7 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "778360a47222"
+        "compositeVersion": "a4e0e6d77d07"
       },
       "judge": {
         "status": "pending"
@@ -4135,8 +4135,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T18:05:59.205Z",
-  "generatedFromCommit": "692b537",
+  "generatedAt": "2026-09-06T19:43:11.091Z",
+  "generatedFromCommit": "9325a34",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4205,16 +4205,16 @@
     ]
   },
   "proof": {
-    "commit": "692b537",
+    "commit": "9325a34",
     "composite": {
-      "compositeVersion": "778360a47222",
+      "compositeVersion": "a4e0e6d77d07",
       "corpusVersion": "795a0dced3cd",
       "counts": {
         "byClass": {
           "credential_leak": 5,
           "fabrication": 10,
           "format": 7,
-          "incomplete_ask": 1,
+          "incomplete_ask": 3,
           "injection": 13,
           "injection_compliance": 10,
           "invalid_tool_call": 7,
@@ -4224,15 +4224,15 @@
           "silent_tool_failure": 16,
           "stub": 8,
           "tool_loop": 7,
-          "ungrounded": 4
+          "ungrounded": 7
         },
-        "cases": 132,
-        "clean": 45,
-        "composed": 108,
-        "dev": 102,
-        "mustNotShip": 87,
+        "cases": 141,
+        "clean": 49,
+        "composed": 117,
+        "dev": 108,
+        "mustNotShip": 92,
         "realTranscripts": 24,
-        "test": 30,
+        "test": 33,
         "unlabelled": 0
       },
       "difference": {
@@ -4244,9 +4244,9 @@
             "lo": -0.0265
           },
           "test": {
-            "delta": 0.3,
-            "hi": 0.5038,
-            "lo": 0.0486
+            "delta": 0.303,
+            "hi": 0.4979,
+            "lo": 0.0646
           }
         },
         "riskPerClass": {
@@ -4256,9 +4256,9 @@
             "lo": 0.0159
           },
           "test": {
-            "delta": 0.2667,
-            "hi": 0.4756,
-            "lo": 0.0152
+            "delta": 0.2121,
+            "hi": 0.4199,
+            "lo": -0.0268
           }
         }
       },
@@ -4266,27 +4266,27 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.4428,
-              0.6328
+              0.4343,
+              0.6194
             ],
-            "k": 55,
-            "n": 102,
-            "rate": 0.5392
+            "k": 57,
+            "n": 108,
+            "rate": 0.5278
           },
           "calibration": {
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0434,
-                "n": 72,
-                "observedRate": 0.625,
+                "meanPredicted": 0.0426,
+                "n": 76,
+                "observedRate": 0.6184,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1225,
-                "n": 26,
-                "observedRate": 0.7308,
+                "meanPredicted": 0.1211,
+                "n": 28,
+                "observedRate": 0.75,
                 "to": 0.2
               },
               {
@@ -4346,27 +4346,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.5581,
-            "ece": 0.5864,
-            "n": 102
+            "brier": 0.5592,
+            "ece": 0.5879,
+            "n": 108
           },
           "falseBlock": {
             "ci95": [
-              0.0158,
-              0.1861
+              0.015,
+              0.177
             ],
             "k": 2,
-            "n": 35,
-            "rate": 0.0571
+            "n": 37,
+            "rate": 0.0541
           },
           "missedBlock": {
             "ci95": [
-              0.5526,
-              0.7721
+              0.5752,
+              0.7856
             ],
-            "k": 45,
-            "n": 67,
-            "rate": 0.6716
+            "k": 49,
+            "n": 71,
+            "rate": 0.6901
           }
         },
         "realTranscripts": {
@@ -4478,20 +4478,20 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.2459,
-              0.5768
+              0.2724,
+              0.5919
             ],
-            "k": 12,
-            "n": 30,
-            "rate": 0.4
+            "k": 14,
+            "n": 33,
+            "rate": 0.4242
           },
           "calibration": {
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0454,
-                "n": 23,
-                "observedRate": 0.7391,
+                "meanPredicted": 0.0421,
+                "n": 26,
+                "observedRate": 0.6923,
                 "to": 0.1
               },
               {
@@ -4558,27 +4558,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.5733,
-            "ece": 0.5942,
-            "n": 30
+            "brier": 0.5494,
+            "ece": 0.569,
+            "n": 33
           },
           "falseBlock": {
             "ci95": [
-              0.0179,
-              0.4042
+              0.0149,
+              0.3539
             ],
             "k": 1,
-            "n": 10,
-            "rate": 0.1
+            "n": 12,
+            "rate": 0.0833
           },
           "missedBlock": {
             "ci95": [
-              0.6396,
-              0.9476
+              0.6536,
+              0.9502
             ],
-            "k": 17,
-            "n": 20,
-            "rate": 0.85
+            "k": 18,
+            "n": 21,
+            "rate": 0.8571
           }
         }
       },
@@ -4681,23 +4681,23 @@
           "recall": 0.4
         },
         {
-          "caught": 1,
+          "caught": 4,
           "ci95": [
-            0.0456,
-            0.6994
+            0.2505,
+            0.8418
           ],
           "class": "ungrounded",
-          "present": 4,
-          "recall": 0.25
+          "present": 7,
+          "recall": 0.5714
         },
         {
-          "caught": 1,
+          "caught": 3,
           "ci95": [
-            0.2065,
+            0.4385,
             1
           ],
           "class": "incomplete_ask",
-          "present": 1,
+          "present": 3,
           "recall": 1
         },
         {
@@ -4745,12 +4745,12 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.6737,
-              0.8365
+              0.6706,
+              0.8301
             ],
-            "k": 78,
-            "n": 102,
-            "rate": 0.7647
+            "k": 82,
+            "n": 108,
+            "rate": 0.7593
           },
           "calibration": {
             "bins": [
@@ -4763,9 +4763,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1575,
-                "n": 45,
-                "observedRate": 0.3556,
+                "meanPredicted": 0.1572,
+                "n": 47,
+                "observedRate": 0.3404,
                 "to": 0.2
               },
               {
@@ -4777,9 +4777,9 @@
               },
               {
                 "from": 0.3,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.3851,
+                "n": 2,
+                "observedRate": 1,
                 "to": 0.4
               },
               {
@@ -4806,8 +4806,8 @@
               {
                 "from": 0.7,
                 "meanPredicted": 0.7648,
-                "n": 3,
-                "observedRate": 0.3333,
+                "n": 5,
+                "observedRate": 0.6,
                 "to": 0.8
               },
               {
@@ -4825,27 +4825,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.1838,
-            "ece": 0.2019,
-            "n": 102
+            "brier": 0.182,
+            "ece": 0.1949,
+            "n": 108
           },
           "falseBlock": {
             "ci95": [
-              0.081,
-              0.3268
+              0.0765,
+              0.3114
             ],
             "k": 6,
-            "n": 35,
-            "rate": 0.1714
+            "n": 37,
+            "rate": 0.1622
           },
           "missedBlock": {
             "ci95": [
-              0.1772,
-              0.3852
+              0.1904,
+              0.3954
             ],
-            "k": 18,
-            "n": 67,
-            "rate": 0.2687
+            "k": 20,
+            "n": 71,
+            "rate": 0.2817
           }
         },
         "realTranscripts": {
@@ -4957,12 +4957,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.5212,
-              0.8334
+              0.5578,
+              0.8493
             ],
-            "k": 21,
-            "n": 30,
-            "rate": 0.7
+            "k": 24,
+            "n": 33,
+            "rate": 0.7273
           },
           "calibration": {
             "bins": [
@@ -4975,9 +4975,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1574,
-                "n": 14,
-                "observedRate": 0.3571,
+                "meanPredicted": 0.1568,
+                "n": 16,
+                "observedRate": 0.3125,
                 "to": 0.2
               },
               {
@@ -5017,9 +5017,9 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7678,
-                "n": 3,
-                "observedRate": 0.6667,
+                "meanPredicted": 0.767,
+                "n": 4,
+                "observedRate": 0.75,
                 "to": 0.8
               },
               {
@@ -5037,27 +5037,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.2123,
-            "ece": 0.2476,
-            "n": 30
+            "brier": 0.1961,
+            "ece": 0.2087,
+            "n": 33
           },
           "falseBlock": {
             "ci95": [
-              0.0179,
-              0.4042
+              0.0149,
+              0.3539
             ],
             "k": 1,
-            "n": 10,
-            "rate": 0.1
+            "n": 12,
+            "rate": 0.0833
           },
           "missedBlock": {
             "ci95": [
-              0.2188,
-              0.6134
+              0.2075,
+              0.5912
             ],
             "k": 8,
-            "n": 20,
-            "rate": 0.4
+            "n": 21,
+            "rate": 0.381
           }
         }
       },
@@ -5065,12 +5065,12 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.5605,
-              0.7418
+              0.5639,
+              0.7401
             ],
-            "k": 67,
-            "n": 102,
-            "rate": 0.6569
+            "k": 71,
+            "n": 108,
+            "rate": 0.6574
           },
           "calibration": {
             "bins": [
@@ -5125,46 +5125,46 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.7145,
+                "n": 1,
+                "observedRate": 0,
                 "to": 0.8
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8198,
-                "n": 39,
-                "observedRate": 0.3333,
+                "meanPredicted": 0.8199,
+                "n": 40,
+                "observedRate": 0.325,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9911,
-                "n": 57,
-                "observedRate": 0.8947,
+                "meanPredicted": 0.9889,
+                "n": 61,
+                "observedRate": 0.9016,
                 "to": 1
               }
             ],
-            "brier": 0.2488,
-            "ece": 0.2488,
-            "n": 102
+            "brier": 0.2461,
+            "ece": 0.2476,
+            "n": 108
           },
           "falseBlock": {
             "ci95": [
-              0.9011,
+              0.9059,
               1
             ],
-            "k": 35,
-            "n": 35,
+            "k": 37,
+            "n": 37,
             "rate": 1
           },
           "missedBlock": {
             "ci95": [
               0,
-              0.0542
+              0.0513
             ],
             "k": 0,
-            "n": 67,
+            "n": 71,
             "rate": 0
           }
         },
@@ -5277,12 +5277,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.4878,
-              0.8077
+              0.4662,
+              0.7781
             ],
-            "k": 20,
-            "n": 30,
-            "rate": 0.6667
+            "k": 21,
+            "n": 33,
+            "rate": 0.6364
           },
           "calibration": {
             "bins": [
@@ -5331,7 +5331,7 @@
               {
                 "from": 0.6,
                 "meanPredicted": 0.6511,
-                "n": 3,
+                "n": 4,
                 "observedRate": 0,
                 "to": 0.7
               },
@@ -5344,39 +5344,39 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8201,
-                "n": 11,
-                "observedRate": 0.4545,
+                "meanPredicted": 0.8204,
+                "n": 12,
+                "observedRate": 0.4167,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9874,
-                "n": 16,
-                "observedRate": 0.9375,
+                "meanPredicted": 0.9878,
+                "n": 17,
+                "observedRate": 0.9412,
                 "to": 1
               }
             ],
-            "brier": 0.2159,
-            "ece": 0.2258,
-            "n": 30
+            "brier": 0.2297,
+            "ece": 0.2497,
+            "n": 33
           },
           "falseBlock": {
             "ci95": [
-              0.7225,
+              0.7575,
               1
             ],
-            "k": 10,
-            "n": 10,
+            "k": 12,
+            "n": 12,
             "rate": 1
           },
           "missedBlock": {
             "ci95": [
               0,
-              0.1611
+              0.1546
             ],
             "k": 0,
-            "n": 20,
+            "n": 21,
             "rate": 0
           }
         }
@@ -5387,175 +5387,175 @@
         "note": "utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the argmax is a check on the loss model, never adopted",
         "rows": [
           {
-            "accuracy": 0.6569,
+            "accuracy": 0.6574,
             "fn": 0,
-            "fp": 35,
+            "fp": 37,
             "tau": 0.05,
             "tn": 0,
-            "tp": 67,
-            "utility": -35
+            "tp": 71,
+            "utility": -37
           },
           {
-            "accuracy": 0.6569,
+            "accuracy": 0.6574,
             "fn": 0,
-            "fp": 35,
+            "fp": 37,
             "tau": 0.1,
             "tn": 0,
-            "tp": 67,
-            "utility": -35
+            "tp": 71,
+            "utility": -37
           },
           {
-            "accuracy": 0.6765,
+            "accuracy": 0.6852,
             "fn": 3,
-            "fp": 30,
+            "fp": 31,
             "tau": 0.15,
-            "tn": 5,
-            "tp": 64,
-            "utility": -33
+            "tn": 6,
+            "tp": 68,
+            "utility": -34
           },
           {
-            "accuracy": 0.7745,
+            "accuracy": 0.787,
             "fn": 16,
             "fp": 7,
             "tau": 0.2,
-            "tn": 28,
-            "tp": 51,
+            "tn": 30,
+            "tp": 55,
             "utility": -23
           },
           {
-            "accuracy": 0.7745,
+            "accuracy": 0.787,
             "fn": 16,
             "fp": 7,
             "tau": 0.25,
-            "tn": 28,
-            "tp": 51,
+            "tn": 30,
+            "tp": 55,
             "utility": -23
           },
           {
-            "accuracy": 0.7745,
+            "accuracy": 0.787,
             "fn": 16,
             "fp": 7,
             "tau": 0.3,
-            "tn": 28,
-            "tp": 51,
+            "tn": 30,
+            "tp": 55,
             "utility": -23
           },
           {
-            "accuracy": 0.7745,
+            "accuracy": 0.787,
             "fn": 16,
             "fp": 7,
             "tau": 0.35,
-            "tn": 28,
-            "tp": 51,
+            "tn": 30,
+            "tp": 55,
             "utility": -23
           },
           {
-            "accuracy": 0.7745,
-            "fn": 16,
+            "accuracy": 0.7685,
+            "fn": 18,
             "fp": 7,
             "tau": 0.4,
-            "tn": 28,
-            "tp": 51,
-            "utility": -23
+            "tn": 30,
+            "tp": 53,
+            "utility": -25
           },
           {
-            "accuracy": 0.7647,
-            "fn": 18,
+            "accuracy": 0.7593,
+            "fn": 20,
             "fp": 6,
             "tau": 0.45,
-            "tn": 29,
-            "tp": 49,
-            "utility": -24
+            "tn": 31,
+            "tp": 51,
+            "utility": -26
           },
           {
-            "accuracy": 0.7647,
-            "fn": 18,
+            "accuracy": 0.7593,
+            "fn": 20,
             "fp": 6,
             "tau": 0.5,
-            "tn": 29,
-            "tp": 49,
-            "utility": -24
+            "tn": 31,
+            "tp": 51,
+            "utility": -26
           },
           {
-            "accuracy": 0.7255,
-            "fn": 24,
+            "accuracy": 0.7222,
+            "fn": 26,
             "fp": 4,
             "tau": 0.55,
-            "tn": 31,
-            "tp": 43,
-            "utility": -28
+            "tn": 33,
+            "tp": 45,
+            "utility": -30
           },
           {
-            "accuracy": 0.7255,
-            "fn": 24,
+            "accuracy": 0.7222,
+            "fn": 26,
             "fp": 4,
             "tau": 0.6,
-            "tn": 31,
-            "tp": 43,
-            "utility": -28
+            "tn": 33,
+            "tp": 45,
+            "utility": -30
           },
           {
-            "accuracy": 0.7255,
-            "fn": 24,
+            "accuracy": 0.7222,
+            "fn": 26,
             "fp": 4,
             "tau": 0.65,
-            "tn": 31,
-            "tp": 43,
-            "utility": -28
+            "tn": 33,
+            "tp": 45,
+            "utility": -30
           },
           {
-            "accuracy": 0.6471,
-            "fn": 32,
+            "accuracy": 0.6481,
+            "fn": 34,
             "fp": 4,
             "tau": 0.7,
-            "tn": 31,
-            "tp": 35,
-            "utility": -36
+            "tn": 33,
+            "tp": 37,
+            "utility": -38
           },
           {
-            "accuracy": 0.6471,
-            "fn": 32,
+            "accuracy": 0.6481,
+            "fn": 34,
             "fp": 4,
             "tau": 0.75,
-            "tn": 31,
-            "tp": 35,
-            "utility": -36
-          },
-          {
-            "accuracy": 0.6569,
-            "fn": 33,
-            "fp": 2,
-            "tau": 0.8,
             "tn": 33,
-            "tp": 34,
-            "utility": -35
+            "tp": 37,
+            "utility": -38
           },
           {
-            "accuracy": 0.6176,
+            "accuracy": 0.6389,
             "fn": 37,
             "fp": 2,
-            "tau": 0.85,
-            "tn": 33,
-            "tp": 30,
+            "tau": 0.8,
+            "tn": 35,
+            "tp": 34,
             "utility": -39
           },
           {
-            "accuracy": 0.5784,
+            "accuracy": 0.6019,
             "fn": 41,
             "fp": 2,
-            "tau": 0.9,
-            "tn": 33,
-            "tp": 26,
+            "tau": 0.85,
+            "tn": 35,
+            "tp": 30,
             "utility": -43
           },
           {
-            "accuracy": 0.549,
-            "fn": 44,
+            "accuracy": 0.5648,
+            "fn": 45,
+            "fp": 2,
+            "tau": 0.9,
+            "tn": 35,
+            "tp": 26,
+            "utility": -47
+          },
+          {
+            "accuracy": 0.537,
+            "fn": 48,
             "fp": 2,
             "tau": 0.95,
-            "tn": 33,
+            "tn": 35,
             "tp": 23,
-            "utility": -46
+            "utility": -50
           }
         ],
         "shippedTau": 0.5,
@@ -6189,7 +6189,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-06T18:04:07.963Z",
+    "generatedAt": "2026-09-06T19:33:06.941Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7190,6 +7190,105 @@
       }
     ],
     "schemaVersion": 2,
+    "transcripts": {
+      "gaps": [
+        {
+          "bundles": [
+            "safety"
+          ],
+          "id": "t-10"
+        },
+        {
+          "bundles": [
+            "safety"
+          ],
+          "id": "t-11"
+        },
+        {
+          "bundles": [
+            "safety"
+          ],
+          "id": "t-12"
+        },
+        {
+          "bundles": [
+            "safety",
+            "completeness"
+          ],
+          "id": "t-13"
+        },
+        {
+          "bundles": [
+            "safety",
+            "completeness"
+          ],
+          "id": "t-14"
+        },
+        {
+          "bundles": [
+            "safety",
+            "completeness"
+          ],
+          "id": "t-15"
+        },
+        {
+          "bundles": [
+            "cost"
+          ],
+          "id": "t-16"
+        },
+        {
+          "bundles": [
+            "completeness",
+            "relevance"
+          ],
+          "id": "t-17"
+        },
+        {
+          "bundles": [
+            "completeness",
+            "relevance"
+          ],
+          "id": "t-18"
+        },
+        {
+          "bundles": [
+            "completeness"
+          ],
+          "id": "t-19"
+        },
+        {
+          "bundles": [
+            "completeness"
+          ],
+          "id": "t-20"
+        },
+        {
+          "bundles": [
+            "cost"
+          ],
+          "id": "t-21"
+        },
+        {
+          "bundles": [
+            "cost"
+          ],
+          "id": "t-22"
+        }
+      ],
+      "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
+      "totals": {
+        "allBundlesAgree": 11,
+        "bundleVerdicts": 96,
+        "bundleVerdictsAgree": 78,
+        "classesCaught": 14,
+        "classesPresent": 23,
+        "shipAgrees": 17,
+        "transcripts": 24
+      },
+      "transcriptsVersion": "f26dc9fc1f64",
+      "version": "0.10.0"
+    },
     "transforms": {
       "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
       "rows": [
@@ -7773,7 +7872,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2375,
+    "totalCombined": 2378,
     "vitestDashboard": {
       "failed": 0,
       "passed": 185,
@@ -7781,8 +7880,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2176,
-      "total": 2176
+      "passed": 2179,
+      "total": 2179
     }
   },
   "version": {

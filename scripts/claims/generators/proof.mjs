@@ -29,6 +29,11 @@ const JUDGE_PATH = resolve(root, 'proof/judge-results.json');
 // composer and the risk composer. Carried without its per-case list (the
 // file holds it); absent until the first run lands.
 const COMPOSITE_PATH = resolve(root, 'proof/composite-results.json');
+// `npm run proof -- --transcripts` writes proof/transcript-results.json: the
+// only OUT-OF-SAMPLE line Iris has, since every other number is measured on
+// a corpus authored alongside the rule it measures. Carried as totals plus
+// the per-row gap set — the per-rule detail stays in the file.
+const TRANSCRIPTS_PATH = resolve(root, 'proof/transcript-results.json');
 
 export async function generate() {
   const results = JSON.parse(await readFile(RESULTS_PATH, 'utf-8'));
@@ -45,5 +50,21 @@ export async function generate() {
   } catch (err) {
     if (err && err.code !== 'ENOENT') throw err;
   }
-  return { ...results, judge, ...(composite ? { composite } : {}) };
+  let transcripts = null;
+  try {
+    const raw = JSON.parse(await readFile(TRANSCRIPTS_PATH, 'utf-8'));
+    if (raw.schemaVersion !== 1) throw new Error(`proof/transcript-results.json is schemaVersion ${raw.schemaVersion}, expected 1`);
+    transcripts = {
+      transcriptsVersion: raw.transcriptsVersion,
+      version: raw.version,
+      method: raw.method,
+      totals: raw.totals,
+      // The gap SET, so a public surface can say which bundle verdicts
+      // disagree without restating the reasons a reader would have to trust.
+      gaps: raw.rows.filter((r) => r.gaps.length > 0).map((r) => ({ id: r.id, bundles: r.gaps })),
+    };
+  } catch (err) {
+    if (err && err.code !== 'ENOENT') throw err;
+  }
+  return { ...results, judge, ...(composite ? { composite } : {}), ...(transcripts ? { transcripts } : {}) };
 }
