@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-06T15:42:13.255Z for v0.10.0 (local generating commit `c301b24` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-06T17:15:08.699Z for v0.10.0 (local generating commit `51211b7` — branch commits are squashed on merge, so cite the version).
 Corpus version `aa42f895a309` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -126,6 +126,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 
 | Type | config | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) |
 |---|---|--:|--:|--:|--:|--:|--:|--:|---|---|
+| `action_policy` | `{"allow":[{"tool":"read_file","args":{"/path":"/workspace/**"}},{"tool":"list_dir","args":{"/path":"/workspace/**"}},{"tool":"web_fetch","args":{"/url":"https://docs.vendor.test/**"}}],"deny":[{"tool":"read_file","args":{"/path":"/workspace/.env*"}},{"tool":"bash"},{"tool":"http_post"}]}` | 30 | 16 | 0 | 16 | 0 | 0 | 14 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] |
 | `contains_keywords` | `{"keywords":["refund","policy","days"],"threshold":1}` | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] |
 | `cost_threshold` | `{"max_cost":0.05}` | 24 | 12 | 2 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] |
 | `excludes_keywords` | `{"keywords":["guarantee","risk-free"]}` | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] |

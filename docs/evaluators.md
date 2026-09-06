@@ -1,6 +1,6 @@
 # Evaluator of evaluators — the thirteen trust questions, asked of every evaluator Iris ships
 
-Rendered from `.claims.json → evaluators` by `npm run llms:render`; do not edit `docs/evaluators.md` by hand. Evaluators with three or more of the thirteen trust questions measured: 28 of 34 (the built-in rules 19 of 19; the custom rule types 8 of 8; the LLM-judge templates 0 of 5; the citation verifier 0 of 1; the verdict composer 1 of 1) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.
+Rendered from `.claims.json → evaluators` by `npm run llms:render`; do not edit `docs/evaluators.md` by hand. Evaluators with three or more of the thirteen trust questions measured: 29 of 35 (the built-in rules 19 of 19; the custom rule types 9 of 9; the LLM-judge templates 0 of 5; the citation verifier 0 of 1; the verdict composer 1 of 1) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.
 
 Every cell is derived from the committed proof files by `scripts/claims/generators/evaluators.mjs` — never typed. A cell reads **measured** only when a number for it exists in `proof/results.json`, `proof/composite-results.json` or `proof/judge-results.json`, and the evidence list below names the file and key. The other statuses: **partial** (part of the question has a number — the misses are named by id, but no rate), **stated** (the answer is a declaration in code or a corpus definition, not a measurement), **measurable** (the harness that would measure it is named; no number yet), **n/a** (the question does not apply — a deterministic rule has no prompt or model sensitivity). The judge templates and the citation verifier stay measurable until a judge key that the founder or a user supplies runs `npm run proof:judge`; every other row moves only when a release roll regenerates the proof files.
 
@@ -46,7 +46,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `verbosity_ratio` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `no_tool_loop` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 
-## The custom rule types — 8 of 8 with three or more questions measured
+## The custom rule types — 9 of 9 with three or more questions measured
 
 | Evaluator | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Q12 | Q13 | measured |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|--:|
@@ -58,6 +58,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `excludes_keywords` | ● | ≡ | ≡ | ≡ | — | — | — | ● | ○ | ● | — | — | ○ | 3 |
 | `json_schema` | ● | ≡ | ≡ | ≡ | — | — | — | ● | — | ● | — | — | ○ | 3 |
 | `cost_threshold` | ● | ≡ | ≡ | ≡ | — | — | — | ● | — | ● | — | — | ○ | 3 |
+| `action_policy` | ● | ≡ | ≡ | ≡ | — | — | — | ● | — | ● | — | — | ○ | 3 |
 
 ## The LLM-judge templates — 0 of 5 with three or more questions measured
 
@@ -513,6 +514,22 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 - **Q8** measured — npm run proof -- --check regenerates the file byte for byte in CI on every pull request (deterministic)
 - **Q9** n/a (arithmetic over the whole output)
 - **Q10** measured — proof/results.json → custom.types[cost_threshold].ci95.precision (a pass that is wrong is a conformance miss; the precision interval bounds it)
+- **Q11** n/a (the outcome is the constraint itself)
+- **Q12** n/a (not model-based)
+- **Q13** measurable — a second implementation of the same constraint over the same family
+
+### `action_policy` (the custom rule types)
+
+- **Q1** measured — proof/results.json → custom.types[action_policy] (conformance to the documented definition under a declared config on 30 cases)
+- **Q2** stated — proof/corpus/custom/action_policy.json → definition and boundary cases (the definition names the limit; the family holds the boundary cases)
+- **Q3** stated — proof/corpus/custom/action_policy.json → definition, config (the author's own constraint under the config the family declares)
+- **Q4** stated — proof/corpus/custom/action_policy.json → definition (a constraint, not a detector)
+- **Q5** n/a (a constraint is not a probability)
+- **Q6** n/a (deterministic)
+- **Q7** n/a (deterministic)
+- **Q8** measured — npm run proof -- --check regenerates the file byte for byte in CI on every pull request (deterministic)
+- **Q9** n/a (arithmetic over the whole output)
+- **Q10** measured — proof/results.json → custom.types[action_policy].ci95.precision (a pass that is wrong is a conformance miss; the precision interval bounds it)
 - **Q11** n/a (the outcome is the constraint itself)
 - **Q12** n/a (not model-based)
 - **Q13** measurable — a second implementation of the same constraint over the same family

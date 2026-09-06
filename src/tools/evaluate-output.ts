@@ -30,7 +30,7 @@ const CustomRuleSchema = strictNested(
     name: z.string().min(1).describe('Rule name as it will appear in rule_results'),
     type: z.enum([
       'regex_match', 'regex_no_match', 'min_length', 'max_length',
-      'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold',
+      'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold', 'action_policy',
     ]).describe('Check type — decides which config keys the rule reads'),
     config: z.record(z.string(), z.unknown()).describe('Check configuration; keys depend on type (pattern, min_length, keywords, max_cost, …)'),
     weight: z.number().positive().optional().describe('Weight in the weighted score (default 1; must be > 0)'),

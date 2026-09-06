@@ -161,12 +161,27 @@ https://iris-eval.com/proof.
 `evaluate_output` of its `evalType`. `list_rules` enumerates; `delete_rule`
 removes. A definition is `{ name, type, config, weight? }` where `type` is one
 of `regex_match`, `regex_no_match`, `min_length`, `max_length`,
-`contains_keywords`, `excludes_keywords`, `json_schema`, `cost_threshold`, and
-`config` holds that type's keys (`pattern`/`flags`, `min_length`, `max_length`,
-`keywords`/`threshold`, `max_cost`). Severity `high`/`critical` makes the rule
+`contains_keywords`, `excludes_keywords`, `json_schema`, `cost_threshold`,
+`action_policy`, and `config` holds that type's keys (`pattern`/`flags`,
+`min_length`, `max_length`, `keywords`/`threshold`, `max_cost`, `schema`,
+`allow`/`deny`). Severity `high`/`critical` makes the rule
 a hard veto; `low`/`medium` only affects the score. Use custom rules to encode
 product-specific quality bars — a required disclaimer, banned phrases, output
 length bands, a per-agent cost ceiling.
+
+`action_policy` is the one that judges what the agent DID rather than what it
+wrote: `{ "allow": [{ "tool": "read_file", "args": { "/path": "/workspace/**" } }],
+"deny": [{ "tool": "bash" }] }`. A tool is named by glob; an argument is
+addressed by JSON Pointer (the same notation `valid_tool_arguments` reports
+errors in) and matched by glob, with a `-` segment meaning any array element.
+Deny is evaluated first and wins, and **`allow` being present means a tool it
+does not name is DENIED** — the thing an author who wrote `allow` meaning
+"these are especially fine" most needs to know. Argument values are
+canonicalised before matching, so `/workspace/../etc/passwd`, its
+percent-encoded form and its fullwidth-dot form all fail an
+`allow` on `/workspace/**`. **Like every custom rule, it ADVISES until you
+deploy it at severity `high` or `critical`** — its own message says so on every
+result, including a passing one.
 
 ## Patterns worth suggesting
 

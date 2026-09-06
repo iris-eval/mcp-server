@@ -1,10 +1,12 @@
 import isSafeRegex from 'safe-regex2';
-import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, CustomRuleType, Mechanism, Need } from '../../types/eval.js';
+import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, CustomRuleType, Evidence, Mechanism, Need } from '../../types/eval.js';
 import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
 import { MAX_PATTERN_LENGTH } from './regex-budget.js';
 import { checkArguments, compileToolSchema } from '../schema-validator.js';
+import { compileActionPolicy, matchPolicyRule } from '../action-policy.js';
+import { stepsOf, stepStatsOf } from '../steps.js';
 
 
 // A rule whose CONFIG is invalid has not evaluated the output — it could not
@@ -259,6 +261,7 @@ const CUSTOM_TYPE_META: Record<CustomRuleType, { mechanism: Mechanism; needs: re
   excludes_keywords: { mechanism: 'pattern', needs: ['output'] },
   json_schema: { mechanism: 'formula', needs: ['output'] },
   cost_threshold: { mechanism: 'formula', needs: ['cost'] },
+  action_policy: { mechanism: 'formula', needs: ['tool_calls'] },
 };
 
 export function createCustomRule(definition: CustomRuleDefinition, severity?: RuleSeverity): EvalRule {
@@ -405,6 +408,141 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           const cost = context.costUsd;
           const passed = cost <= max;
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? `Cost ($${cost}) within threshold ($${max})` : `Cost ($${cost}) exceeds threshold ($${max})` };
+        }
+        /*
+         * action_policy — the tools this agent may call, and with what.
+         *
+         * THE THING AN AUTHOR WILL GET WRONG, so the message says it on
+         * every result including a passing one: a custom rule ADVISES
+         * unless it is deployed at severity high or critical. That is
+         * `compose.decides()` working correctly — a custom rule's severity
+         * is the deployment's own statement about its policy — but a
+         * security-minded author writing a `deny` list will assume it
+         * blocks. Better to read it on the first passing verdict than to
+         * discover it after a build shipped.
+         *
+         * The matcher and the path normalisation are in action-policy.ts,
+         * including why neither goes near the regex sandbox.
+         */
+        case 'action_policy': {
+          const compiled = compileActionPolicy(definition.config);
+          if ('error' in compiled) return configError(definition, `action_policy ${compiled.error}`);
+          const { policy } = compiled;
+
+          const steps = stepsOf(context);
+          if (steps.length === 0) {
+            const stats = stepStatsOf(context);
+            return {
+              ruleName: definition.name,
+              passed: false,
+              score: 0,
+              skipped: true,
+              skipReason:
+                stats.source === 'none'
+                  ? 'context.toolCalls not provided — a policy over what the agent did needs the trajectory'
+                  : 'the trajectory carried no tool calls to hold to the policy',
+              message: 'No tool calls to check against the policy',
+            };
+          }
+
+          const gates = severity === 'high' || severity === 'critical';
+          const posture = gates
+            ? `this rule GATES: it is deployed at severity ${severity}`
+            : 'this rule ADVISES and does not block on its own — deploy it at severity high or critical to gate';
+          const modeNote = policy.modeInferred
+            ? `${policy.mode} mode, inferred from what you wrote${policy.mode === 'allow_list' ? ': a tool that matches no allow rule is DENIED' : ''}`
+            : `${policy.mode} mode, as declared`;
+
+          const evidence: Evidence[] = [];
+          const denied: Array<{ index: number; tool: string; why: string }> = [];
+          let escaping = 0;
+          let truncated = 0;
+
+          for (const [index, step] of steps.entries()) {
+            // Deny is evaluated FIRST and wins. An author who lists a tool
+            // in both meant the exception, not the permission.
+            let verdict: { why: string; match: ReturnType<typeof matchPolicyRule> | null } | null = null;
+            for (const [at, rule] of policy.deny.entries()) {
+              const match = matchPolicyRule(rule, at, step.name, step.input, true);
+              for (const binding of match.bindings) {
+                if (binding.escaping) escaping += 1;
+                if (binding.truncated) truncated += 1;
+              }
+              if (match.matched) {
+                verdict = { why: `deny[${at}] (tool ${JSON.stringify(rule.tool)})`, match };
+                break;
+              }
+            }
+            if (verdict === null && policy.allow.length > 0) {
+              let allowed = false;
+              for (const [at, rule] of policy.allow.entries()) {
+                const match = matchPolicyRule(rule, at, step.name, step.input, false);
+                for (const binding of match.bindings) {
+                  if (binding.escaping) escaping += 1;
+                  if (binding.truncated) truncated += 1;
+                }
+                if (match.matched) {
+                  allowed = true;
+                  break;
+                }
+              }
+              if (!allowed) {
+                verdict = { why: 'no allow rule matched it', match: null };
+              }
+            }
+            if (verdict === null) continue;
+
+            denied.push({ index, tool: step.name, why: verdict.why });
+            if (evidence.length < 25) {
+              evidence.push({ type: 'toolCall', index, toolName: step.name, label: `denied by ${verdict.why}` });
+              /*
+               * The POINTER and the GLOB, never the value. Argument values
+               * are attacker-influenced in exactly the way ajv's messages
+               * are, and evidence is stored and rendered.
+               */
+              for (const binding of verdict.match?.bindings ?? []) {
+                if (!binding.matched) continue;
+                evidence.push({
+                  type: 'count',
+                  stat: `argument ${binding.pointer} matched ${binding.glob}`,
+                  unit: 'bindings',
+                  value: 1,
+                });
+              }
+            }
+          }
+
+          evidence.push({ type: 'count', stat: 'tool_calls_checked', unit: 'calls', value: steps.length });
+          /*
+           * A traversal ATTEMPT is surfaced even when the policy permits the
+           * call. Denying on it would invent a policy the author did not
+           * write; staying silent would hide the one signal that says an
+           * argument was built to be read two ways.
+           */
+          if (escaping > 0) evidence.push({ type: 'count', stat: 'arguments_climbing_out_of_their_root', unit: 'arguments', value: escaping });
+          if (truncated > 0) evidence.push({ type: 'count', stat: 'arguments_too_long_to_match_whole', unit: 'arguments', value: truncated });
+
+          const suffix = `${escaping > 0 ? `; ${escaping} argument${escaping === 1 ? '' : 's'} used \`..\` to climb out of its own root` : ''}${truncated > 0 ? `; ${truncated} argument${truncated === 1 ? '' : 's'} exceeded the match length and only the head was checked` : ''}`;
+
+          if (denied.length > 0) {
+            const first = denied[0];
+            return {
+              ruleName: definition.name,
+              passed: false,
+              score: 0,
+              value: { stat: 'denied_tool_calls', unit: 'calls', value: denied.length },
+              evidence,
+              message: `Action policy: ${denied.length} of ${steps.length} tool call${steps.length === 1 ? '' : 's'} denied — tool_calls[${first.index}] (${first.tool}) by ${first.why}. ${modeNote}; ${posture}${suffix}`,
+            };
+          }
+          return {
+            ruleName: definition.name,
+            passed: true,
+            score: 1,
+            value: { stat: 'denied_tool_calls', unit: 'calls', value: 0 },
+            evidence,
+            message: `Action policy: all ${steps.length} tool call${steps.length === 1 ? '' : 's'} permitted. ${modeNote}; ${posture}${suffix}`,
+          };
         }
         default:
           return configError(definition, `Unknown rule type: ${definition.type}`);

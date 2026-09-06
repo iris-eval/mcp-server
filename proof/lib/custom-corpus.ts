@@ -22,7 +22,7 @@ import { summarise, type Observation, type RuleSummary } from './metrics.js';
 
 export const CUSTOM_CORPUS_DIR = 'proof/corpus/custom';
 
-export const CUSTOM_RULE_TYPES: readonly CustomRuleType[] = ['regex_match', 'regex_no_match', 'min_length', 'max_length', 'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold'];
+export const CUSTOM_RULE_TYPES: readonly CustomRuleType[] = ['regex_match', 'regex_no_match', 'min_length', 'max_length', 'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold', 'action_policy'];
 
 export interface CustomCorpusFile {
   schemaVersion: 1;
