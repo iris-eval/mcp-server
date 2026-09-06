@@ -95,7 +95,25 @@ function listProse(items) {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
 
-/** The one-line proof status — truthful before AND after the numbers land. */
+/**
+ * The one-line proof status — truthful before AND after the numbers land,
+ * and truthful BETWEEN releases, which is the part that was wrong.
+ *
+ * This line used to end "generated <date> for v<version>", taking the
+ * version `npm run proof` stamped from package.json. That is only accurate
+ * on a release commit, because the release roll bumps the version BEFORE it
+ * regenerates the proof. The website deploys from `main`, so on every other
+ * commit the line attributed measurements of unreleased code to the last
+ * RELEASED version — and on 2026-09-06 iris-eval.com said, in these words,
+ * "for 20 built-in rules … for v0.10.0" while the published v0.10.0 had
+ * fifteen. A reader who installed the version named would not have found
+ * the rules counted.
+ *
+ * The numbers are pinned to `corpusVersion`, which a roll regenerates and
+ * `proof --check` diffs; that is the honest anchor and it is already here.
+ * The released version is stated on its own line and is not joined to these
+ * numbers, because between releases they describe different code.
+ */
 export function proofSummary(claims) {
   const proof = claims.proof;
   if (!proof || !Array.isArray(proof.rules) || proof.rules.length === 0) {
@@ -110,7 +128,7 @@ export function proofSummary(claims) {
   return (
     `Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 ` +
     `with 95% confidence intervals for ${measured} built-in rules, corpus ${proof.corpusVersion}, ` +
-    `generated ${date} for v${proof.version ?? claims.version.mcpServer}; reproduce with \`npm run proof\`.`
+    `generated ${date} from the source these numbers were measured on; reproduce with \`npm run proof\`.`
   );
 }
 

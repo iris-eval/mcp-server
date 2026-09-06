@@ -680,5 +680,63 @@ jobs:
           else
             echo "✗ registry latest = '${got:-?}' (isLatest='${is_latest:-?}'), expected $WANT" && exit 1
           fi
-          echo
-          echo "All external surfaces agree with $GITHUB_REF_NAME. Human follow-ups: docs/launch/release-checklist.md → Post-release."
+
+      # F5 — the website. THE ONE SURFACE NOTHING WAS CHECKING.
+      #
+      # The site redeploys when a commit lands on main, and until 0.11.0 the
+      # release trusted that. On 2026-09-06 it silently did not fire: twelve
+      # merges that day each produced a Vercel Production deployment and the
+      # release commit produced none, so npm, GHCR, the signed release and the
+      # registry were all correct and current while iris-eval.com kept serving
+      # the previous build. Nothing here noticed; it was found by hand
+      # afterwards.
+      #
+      # That is worse than a stale page. The site renders whatever is on main,
+      # so a frozen deploy leaves the PUBLIC numbers describing one commit
+      # under another commit's version — the claims law's exact failure mode.
+      #
+      # A third party has to build and propagate, so this waits rather than
+      # sampling once, and it names the clearing action when it gives up.
+      # `?rel=` busts the CDN cache; the file is served with must-revalidate
+      # but an edge that already answered can hold an old copy for minutes.
+      - name: Website — the live pages carry this version (F5)
+        if: steps.rt.outputs.prerelease == 'false'
+        env:
+          WANT: ${{ steps.rt.outputs.version }}
+        run: |
+          deadline=$(( $(date +%s) + 900 ))
+          got=""
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            got=$(curl -fsSL --max-time 20 "https://iris-eval.com/.well-known/mcp.json?rel=${WANT}" 2>/dev/null | jq -r '.version // empty')
+            [ "$got" = "$WANT" ] && break
+            sleep 20
+          done
+          if [ "$got" != "$WANT" ]; then
+            echo "✗ iris-eval.com/.well-known/mcp.json = '${got:-unreachable}', expected $WANT after 15 minutes"
+            echo ""
+            echo "  The package, the image, the signatures and the registry are already verified above;"
+            echo "  this is the website alone. The site deploys from main and that deploy did not land."
+            echo ""
+            echo "  CAUSAL FACT to check first — is there a Production deployment for this commit?"
+            echo "    gh api repos/$GITHUB_REPOSITORY/deployments?environment=Production --jq '.[0] | \"\\(.sha) \\(.created_at)\"'"
+            echo "  If it names an older commit, the deploy was never created and the fix is a redeploy"
+            echo "  from the Vercel dashboard (Deployments → Redeploy, build cache OFF). Do NOT reach for"
+            echo "  the vercel CLI: this repo deploys by merge to main, and that rule is not suspended by"
+            echo "  an incident."
+            echo ""
+            echo "  CLEARING EVIDENCE: this step green, or the same URL returning $WANT by hand."
+            exit 1
+          fi
+          echo "✓ iris-eval.com serves $got"
+          for path in llms.txt proof capabilities; do
+            if curl -fsSL --max-time 20 "https://iris-eval.com/$path?rel=${WANT}" 2>/dev/null | grep -qF "$WANT"; then
+              echo "✓ /$path names $WANT"
+            else
+              echo "✗ /$path does not name $WANT — the deploy landed but a page disagrees with it" && exit 1
+            fi
+          done
+      - name: All external surfaces agree
+        if: steps.rt.outputs.prerelease == 'false'
+        run: |
+          echo "npm, GHCR, the signed release, the registry AND the website all agree with $GITHUB_REF_NAME."
+          echo "Human follow-ups: docs/launch/release-checklist.md → Post-release."
