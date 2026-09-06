@@ -20,6 +20,7 @@
  *     its own data.
  */
 import Database from 'better-sqlite3';
+import { toolsHash } from '../eval/catalogue.js';
 import { ensureOwnerOnly } from '../utils/write-atomic.js';
 import type {
   IStorageAdapter,
@@ -117,8 +118,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
     assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertSpanStmt = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
@@ -139,6 +140,10 @@ export class SqliteAdapter implements IStorageAdapter {
         t.cost_usd ?? null,
         t.metadata ? JSON.stringify(t.metadata) : null,
         t.timestamp,
+        t.tools ? JSON.stringify(t.tools) : null,
+        // Derived on write so "same toolset?" is an indexed question rather
+        // than a parse of every stored blob. Hashes only what a rule reads.
+        toolsHash(t.tools) ?? null,
       );
 
       if (t.spans) {
@@ -858,6 +863,7 @@ export class SqliteAdapter implements IStorageAdapter {
       metadata: row.metadata ? JSON.parse(row.metadata as string) : undefined,
       timestamp: row.timestamp as string,
       created_at: row.created_at as string,
+      tools: row.tools ? JSON.parse(row.tools as string) : undefined,
     };
   }
 

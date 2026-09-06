@@ -68,6 +68,7 @@ export function registerTraceRoutes(
         cost_usd: body.cost_usd,
         metadata: body.metadata as Record<string, unknown> | undefined,
         timestamp,
+        tools: body.tools,
         spans: body.spans?.map((s) => ({
           ...s,
           span_id: s.span_id ?? generateSpanId(),
@@ -110,6 +111,7 @@ export function registerTraceRoutes(
         // reached when tool_calls is absent, so forwarding them costs a
         // reference and buys trajectory evaluation for a span-only capture.
         spans: trace.spans,
+        tools: trace.tools,
       };
       // An omitted eval_type runs every bundle — the same default, from the
       // same constant, as the MCP tool — and says so in the response.

@@ -13,6 +13,7 @@ import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticali
 import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
 import { inputsPresent, stampRuleResult } from './stamp.js';
 import { toSteps } from './steps.js';
+import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, deriveVerdict, rulesetHash } from './verdict.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
@@ -366,6 +367,7 @@ export class EvalEngine {
      * that day" without a backfill. Changes no verdict.
      */
     const provenance = buildProvenance({
+      toolsHash: toolsHash(context.tools),
       irisVersion: PKG_VERSION,
       rulesetHash: rulesetHash(rules, (r) => this.criticality(r)),
       configHash: configHash({

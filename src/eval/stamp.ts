@@ -35,6 +35,7 @@ export function inputsPresent(context: EvalContext): Set<Need> {
     present.add('tool_calls');
     if (steps.some((s) => s.output !== undefined)) present.add('tool_outputs');
   }
+  if (Array.isArray(context.tools) && context.tools.length > 0) present.add('tools_catalogue');
   if (typeof context.costUsd === 'number') present.add('cost');
   if (context.tokenUsage && (context.tokenUsage.prompt_tokens !== undefined || context.tokenUsage.completion_tokens !== undefined || context.tokenUsage.total_tokens !== undefined)) {
     present.add('tokens');

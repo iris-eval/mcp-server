@@ -107,6 +107,43 @@ export interface Step {
   costUsd?: number;
 }
 
+/**
+ * One entry of an MCP `tools/list` result, carried verbatim.
+ *
+ * Verbatim is the design. JSON Schema is already the wire format of an MCP
+ * tool's arguments, so an agent that wants its calls checked pastes the
+ * result it already holds and no translation step exists to disagree with
+ * itself. The three fields Iris READS are `name`, `inputSchema` and
+ * `annotations.readOnlyHint`; everything else is carried so a catalogue
+ * survives a round trip unchanged.
+ */
+export interface ToolDescriptor {
+  name: string;
+  title?: string;
+  description?: string;
+  /** JSON Schema for the tool's arguments. Free-form here: it IS a document. */
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  annotations?: {
+    title?: string;
+    /**
+     * The MCP hint that a tool does not modify anything.
+     *
+     * A HINT. The specification says a client must not rely on it for
+     * security, so it may inform a cost or behaviour signal and may never
+     * inform a safety veto.
+     */
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    openWorldHint?: boolean;
+    [key: string]: unknown;
+  };
+  /** Carried, never read. The SDK advertises it on every tool. */
+  execution?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
+}
+
 export interface Trace {
   trace_id: string;
   agent_name: string;
@@ -121,4 +158,6 @@ export interface Trace {
   timestamp: string;
   created_at?: string;
   spans?: Span[];
+  /** What the agent could have called — the MCP tools/list result, verbatim. */
+  tools?: ToolDescriptor[];
 }

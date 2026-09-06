@@ -10,7 +10,7 @@ import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
 import { INJECTION_SCOPE_SENTENCE } from '../eval/rules/safety.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
-import { toolCallSchema } from './log-trace.js';
+import { toolCallSchema, toolDescriptorSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
@@ -64,6 +64,7 @@ const inputSchema = {
   // Same schema log_trace validates tool_calls with, imported rather than
   // restated: the trajectory rules read `error`, and a second declaration
   // is how that field goes missing on one path and not the other.
+  tools: z.array(toolDescriptorSchema).max(200).optional().describe('What the agent COULD have called — your MCP tools/list result, pasted verbatim. Needed to judge whether a call carried valid arguments; without it the rules that check that SKIP rather than pass. Loaded from the trace when trace_id names one that carries it'),
   tool_calls: z.array(toolCallSchema).optional().describe('What the agent DID — the tool calls it made, in order, each { tool_name, input?, output?, latency_ms?, error? } exactly as log_trace records them. Read by the trajectory rules — the rules that judge what the agent DID rather than what it wrote. Omit it and those rules SKIP rather than pass — an evaluation with no trajectory data reports "not judged", never "clean". When trace_id names a stored trace and this argument is omitted, the tool_calls stored on that trace are loaded and used, so a caller who already logged them need not resend them'),
 };
 
@@ -129,6 +130,7 @@ export function registerEvaluateOutputTool(
         ? await getTraceOrThrow(storage, LOCAL_TENANT, args.trace_id)
         : undefined;
       const toolCalls = args.tool_calls ?? trace?.tool_calls;
+      const tools = args.tools ?? trace?.tools;
       /*
        * Spans are a separate read: getTrace returns the traces row and the
        * spans live in their own table, so rowToTrace has never carried
@@ -155,6 +157,7 @@ export function registerEvaluateOutputTool(
         tokenUsage: args.token_usage,
         toolCalls,
         spans,
+        tools,
       };
       const customRules = args.custom_rules as CustomRuleDefinition[] | undefined;
 

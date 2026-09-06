@@ -67,7 +67,7 @@ export async function loadCorpus(root: string): Promise<LoadedCorpus> {
 
 const LABELS: readonly Label[] = ['positive', 'negative'];
 const CATEGORIES: readonly EvalType[] = ['completeness', 'relevance', 'safety', 'cost', 'custom'];
-const CONTEXT_KEYS = new Set(['costUsd', 'tokenUsage', 'customConfig', 'toolCalls', 'metadata']);
+const CONTEXT_KEYS = new Set(['costUsd', 'tokenUsage', 'customConfig', 'toolCalls', 'tools', 'spans', 'metadata']);
 
 /**
  * What a positive case CONTAINS, named by the case author (never by the

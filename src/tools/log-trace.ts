@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_TOOLS, MAX_TOOLS_BYTES } from '../eval/catalogue.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
@@ -72,6 +73,76 @@ const SpanSchema = z.object({
   })).optional(),
 });
 
+/*
+ * One tools/list entry.
+ *
+ * The strictness question here has a principle rather than a preference:
+ * STRICTNESS PROTECTS THE FIELDS IRIS READS; PERMISSIVENESS IS CORRECT FOR
+ * THE FIELDS IT ONLY CARRIES. Exactly three things can change a verdict —
+ * name, inputSchema, annotations.readOnlyHint — and a misspelled
+ * "inputSchma" must be caught, because the tool would otherwise be treated
+ * as schemaless and every call to it would silently pass. A vendor key Iris
+ * never reads changes nothing, and a real tools/list result carries several.
+ *
+ * So: a strict envelope over an allowlist that is already a SUPERSET of the
+ * MCP specification (a verbatim paste passes), loose inside annotations
+ * (clients may add hints), free-form inside the three document fields.
+ */
+export const toolDescriptorSchema = strictNested(
+  {
+    name: z.string().min(1).max(128),
+    title: z.string().max(512).optional(),
+    description: z.string().max(4096).optional(),
+    inputSchema: z.record(z.string(), z.unknown()).optional(),
+    outputSchema: z.record(z.string(), z.unknown()).optional(),
+    annotations: z
+      .looseObject({
+        title: z.string().optional(),
+        readOnlyHint: z.boolean().optional(),
+        destructiveHint: z.boolean().optional(),
+        idempotentHint: z.boolean().optional(),
+        openWorldHint: z.boolean().optional(),
+      })
+      .optional(),
+    /*
+     * Carried, never read. Found by the drift-lock on its first run: the
+     * SDK puts an execution block on every tool it advertises, so a
+     * verbatim paste of a real tools/list result would have been rejected
+     * with a message about a misspelled key. That is the whole reason the
+     * allowlist is checked against a live tools/list rather than against
+     * the specification as read by a person.
+     */
+    execution: z.record(z.string(), z.unknown()).optional(),
+    _meta: z.record(z.string(), z.unknown()).optional(),
+  },
+  'a tools entry',
+);
+
+/*
+ * The catalogue, with the two limits that are REJECTIONS rather than
+ * truncations. A truncated catalogue makes "not in the catalogue" a lie,
+ * and that sentence is evidence on a security-relevant class. Duplicate
+ * names are refused for the same reason: a duplicate silently decides which
+ * schema a call is validated against.
+ */
+const toolsCatalogueSchema = z
+  .array(toolDescriptorSchema)
+  .max(MAX_TOOLS, { message: `a tools catalogue may carry at most ${MAX_TOOLS} entries` })
+  .superRefine((tools, ctx) => {
+    const bytes = Buffer.byteLength(JSON.stringify(tools), 'utf8');
+    if (bytes > MAX_TOOLS_BYTES) {
+      ctx.addIssue({ code: 'custom', message: `the tools catalogue is ${bytes} bytes; the limit is ${MAX_TOOLS_BYTES}. Send the tools this agent can actually call, not every tool on the server` });
+    }
+    const seen = new Set<string>();
+    for (const tool of tools) {
+      if (seen.has(tool.name)) {
+        ctx.addIssue({ code: 'custom', message: `the tools catalogue names "${tool.name}" twice; a duplicate decides silently which schema a call is checked against` });
+        break;
+      }
+      seen.add(tool.name);
+    }
+  });
+
 const TokenUsageSchema = z.object({
   prompt_tokens: z.number().optional(),
   completion_tokens: z.number().optional(),
@@ -95,6 +166,7 @@ export const logTraceInputShape = {
   token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
   cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
   metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
+  tools: toolsCatalogueSchema.optional().describe('What the agent COULD have called — your MCP tools/list result, pasted verbatim: [{ name, description?, inputSchema, annotations? }]. Stored on the trace and reused by evaluate_output when given this trace_id. Without it a tool call can be seen but not CHECKED, and the rules that judge argument validity skip rather than pass'),
   spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events); a span without start_time takes the trace timestamp'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
 };

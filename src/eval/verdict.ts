@@ -125,6 +125,7 @@ export function buildProvenance(input: {
   configHash: string;
   threshold: number;
   ruleThresholds?: Record<string, unknown>;
+  toolsHash?: string;
   judgedAt: string;
 }): Provenance {
   return {
@@ -132,6 +133,7 @@ export function buildProvenance(input: {
     rulesetHash: input.rulesetHash,
     configHash: input.configHash,
     thresholds: { default: input.threshold, ...(input.ruleThresholds ? { perRule: input.ruleThresholds } : {}) },
+    ...(input.toolsHash !== undefined ? { toolsHash: input.toolsHash } : {}),
     corpusVersion: publishedProvenance().corpusVersion,
     judgedAt: input.judgedAt,
   };

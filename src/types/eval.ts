@@ -1,4 +1,4 @@
-import type { Span, Step, ToolCallRecord } from './trace.js';
+import type { Span, Step, ToolCallRecord, ToolDescriptor } from './trace.js';
 
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
@@ -124,6 +124,16 @@ export interface EvalContext {
    * that read the field would skip on every corpus case.
    */
   steps?: readonly Step[];
+  /**
+   * The tools the agent could have called, in the MCP tools/list shape.
+   *
+   * Without it a call can be seen but not CHECKED: argument validity is a
+   * question about a call against the schema its tool declares, and until
+   * this field existed nothing held that schema. A rule that needs it
+   * declares `tools_catalogue` in its needs and skips without it, so an
+   * evaluation that could not check arguments says so rather than passing.
+   */
+  tools?: ToolDescriptor[];
   tokenUsage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   costUsd?: number;
   metadata?: Record<string, unknown>;
@@ -275,6 +285,16 @@ export interface Provenance {
   configHash: string;
   thresholds: { default: number; perRule?: Record<string, unknown> };
   corpusVersion: string;
+  /**
+   * Which toolset the calls were checked against, when one was supplied.
+   *
+   * Its own field rather than a term of `configHash`: that hash answers
+   * "under what configuration", and the catalogue is an INPUT to the
+   * evaluation, like the output text. Folding it in would break the
+   * invariant the (tenant, engine, ruleset) index exists to exploit — the
+   * same configuration must produce the same hash.
+   */
+  toolsHash?: string;
   judgedAt: string;
 }
 
