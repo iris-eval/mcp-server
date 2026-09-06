@@ -39,6 +39,14 @@ import { sandboxedRegexTest } from './regex-sandbox.js';
  * busy host a 1ms match can take 60ms of wall time — the original wall-clock
  * budget rejected perfectly ordinary patterns whenever the machine was loaded
  * (every parallel test run reproduced it). */
+/**
+ * The longest pattern any caller may supply — a custom rule's `pattern`, or
+ * a `pattern` inside a tool's JSON Schema. Lives here rather than with the
+ * custom-rule factory because it is a fact about regex limits, and because
+ * both consumers importing it from the factory would make a cycle.
+ */
+export const MAX_PATTERN_LENGTH = 1000;
+
 const BUDGET_MS = 50;
 /** Wall-clock ceiling per single probe call — the hang-killer, not the
  * meter. Generous so scheduling noise can never trip it; a genuinely

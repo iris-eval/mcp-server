@@ -291,7 +291,7 @@ When `eval_type` is `custom`, rules are built from `CustomRuleDefinition` object
 | `max_length`         | `length`               | Output char length <= value |
 | `contains_keywords`  | `keywords`, `threshold` | Fraction of keywords present >= threshold |
 | `excludes_keywords`  | `keywords`             | None of the keywords present |
-| `json_schema`        | (none)                 | Output must be valid JSON |
+| `json_schema`        | `schema` (optional)    | Output must be valid JSON, and match `config.schema` when one is given |
 | `cost_threshold`     | `max_cost`             | Cost USD <= max_cost |
 
 Regex rules are protected against ReDoS in two layers, and only the second one is a boundary:

@@ -26,6 +26,8 @@ import {
   compileToolSchema,
   resetSchemaCache,
 } from '../../../src/eval/schema-validator.js';
+import { createCustomRule } from '../../../src/eval/rules/custom.js';
+import type { EvalContext } from '../../../src/types/eval.js';
 
 const root = resolve(__dirname, '..', '..', '..');
 const readJson = (rel: string): Record<string, unknown> => JSON.parse(readFileSync(resolve(root, rel), 'utf-8')) as Record<string, unknown>;
@@ -190,5 +192,48 @@ describe('the ajv dependency does not fork', () => {
     const ours = readJson('package.json') as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
     expect(ours.dependencies['ajv-formats']).toBeUndefined();
     expect(ours.devDependencies['ajv-formats']).toBeUndefined();
+  });
+});
+
+describe('the json_schema custom rule type honours a configured schema', () => {
+  it('with no schema it keeps exactly the pre-0.11.0 behaviour, and says the shape was not checked', () => {
+    const rule = createCustomRule({ name: 'j', type: 'json_schema', config: {} });
+    const r = rule.evaluate({ output: '{"anything": [1,2,3]}' } as EvalContext);
+    expect(r.passed).toBe(true);
+    // A deployment that has relied on this for months keeps its meaning, and
+    // the message stops the pass from reading as a shape guarantee.
+    expect(r.message).toContain('not checked');
+  });
+
+  it('with a schema it decides on the shape, naming the pointer and the keyword', () => {
+    const rule = createCustomRule({
+      name: 'j',
+      type: 'json_schema',
+      config: { schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+    });
+    expect(rule.evaluate({ output: '{"id":"a"}' } as EvalContext).passed).toBe(true);
+    const bad = rule.evaluate({ output: '{"id":7}' } as EvalContext);
+    expect(bad.passed).toBe(false);
+    expect(bad.message).toContain('/id');
+    expect(bad.message).toContain('type');
+  });
+
+  it('a schema Iris will not compile is a config error, not a silent pass', () => {
+    resetSchemaCache();
+    const rule = createCustomRule({
+      name: 'j',
+      type: 'json_schema',
+      config: { schema: { type: 'object', properties: { s: { type: 'string', pattern: '^(a+)+$' } } } },
+    });
+    const r = rule.evaluate({ output: '{"s":"aaa"}' } as EvalContext);
+    expect(r.passed).toBe(false);
+    expect(r.configInvalid ?? r.skipped).toBeTruthy();
+  });
+
+  it('an unparseable output still fails on the parse clause before the schema is consulted', () => {
+    const rule = createCustomRule({ name: 'j', type: 'json_schema', config: { schema: { type: 'object' } } });
+    const r = rule.evaluate({ output: 'not json' } as EvalContext);
+    expect(r.passed).toBe(false);
+    expect(r.message).toContain('not valid JSON');
   });
 });

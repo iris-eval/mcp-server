@@ -1413,19 +1413,21 @@ Scoring: Binary -- 1 if none found, 0 if any found. Case-insensitive matching.
 
 ### json_schema
 
-Output must be valid JSON. Parses the output with `JSON.parse()`.
+Output must be valid JSON, and — when `config.schema` is supplied — must match it.
 
 | Config Key | Type | Required | Description |
 |------------|------|----------|-------------|
-| (none) | -- | -- | No configuration required |
+| `schema` | `object` | No | A JSON Schema the parsed output must satisfy. Omit it and any parseable JSON passes, which is what the rule did before v0.11.0. A schema Iris will not compile is refused when the rule is deployed |
 
-Scoring: Binary -- 1 if valid JSON, 0 if parse fails.
+Scoring: Binary -- 1 when the output parses and matches the configured schema, 0 otherwise. The message names the JSON Pointer and the keyword that rejected the output, never the value. `format` is an annotation and is not enforced.
 
 ```json
 {
   "name": "valid_json_output",
   "type": "json_schema",
-  "config": {}
+  "config": {
+    "schema": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+  }
 }
 ```
 
