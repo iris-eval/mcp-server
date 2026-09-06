@@ -171,6 +171,37 @@ export function toSteps(context: Pick<EvalContext, 'toolCalls' | 'spans'>): Step
 }
 
 /**
+ * Literal markers a harness leaves when it cuts an output.
+ *
+ * Literal, not a pattern: this is read over tool output, and the trajectory
+ * law forbids a regular expression there. A bare "..." is idiomatic in the
+ * MIDDLE of code and is only a truncation signal at the very end, which is
+ * why it is checked against the tail rather than the whole slice.
+ */
+export const ELISION_MARKERS: readonly string[] = [
+  '…', '[truncated', '<truncated', '(truncated', '[output truncated', '... (truncated',
+  '[snip', '<snip', '[cut]', '… (', 'output truncated',
+];
+
+/**
+ * Did this step's output get cut before it was recorded?
+ *
+ * Three-valued in effect, and the `undefined` case is the important one:
+ * Iris truncates nothing on ingest, so only the producer knows, and a rule
+ * that treated unknown as complete would call an elided read a fabrication.
+ * `truncated` from the producer is authoritative; the markers are a
+ * courtesy for harnesses that do not set it.
+ */
+export function looksTruncated(step: Step): boolean {
+  if (step.truncated === true) return true;
+  if (typeof step.output !== 'string') return false;
+  const text = step.output;
+  const tail = text.slice(-12);
+  if (tail.includes('...')) return true;
+  return ELISION_MARKERS.some((m) => text.includes(m));
+}
+
+/**
  * The trajectory as a rule sees it.
  *
  * Reads what the engine already derived, derives it otherwise. Every rule

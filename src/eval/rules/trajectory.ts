@@ -323,7 +323,7 @@ export function acknowledgesFailure(output: string): string | null {
 /** Longest normalised input kept in a loop key; longer inputs keep their length as a discriminator. */
 export const INPUT_KEY_CHARS = 500;
 
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   const entries = Object.entries(value as Record<string, unknown>)

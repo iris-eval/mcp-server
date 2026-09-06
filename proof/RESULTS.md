@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-06T04:14:49.268Z for v0.10.0 (local generating commit `f19f871` — branch commits are squashed on merge, so cite the version).
-Corpus version `d280c2ee0858` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-06T04:42:57.012Z for v0.10.0 (local generating commit `1aa1fd3` — branch commits are squashed on merge, so cite the version).
+Corpus version `b15dd3d73b3e` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -20,6 +20,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
 | `no_hallucination_markers` | safety | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
 | `no_silent_tool_failure` | safety | 30 | 14 | 0 | 13 | 0 | 1 | 16 | 100.0% [77.2, 100.0] | 92.9% [68.5, 98.7] | 0.963 [86.7, 100.0] | [79.4, 99.1] | 100.0% / 100.0% |
+| `grounded_in_reads` | safety | 32 | 16 | 0 | 16 | 0 | 0 | 16 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] | 1.000 [100.0, 100.0] | [89.4, 99.9] | 100.0% / 100.0% |
 | `cost_under_threshold` | cost | 26 | 10 | 2 | 10 | 0 | 0 | 16 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
 | `verbosity_ratio` | cost | 25 | 9 | 1 | 9 | 0 | 0 | 16 | 100.0% [70.1, 100.0] | 100.0% [70.1, 100.0] | 1.000 [100.0, 100.0] | [80.8, 99.9] | 100.0% / 100.0% |
 | `no_tool_loop` | cost | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.5, 99.9] | 100.0% / 100.0% |
@@ -41,6 +42,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
 - `no_silent_tool_failure` — FP: none · FN: silent-012
+- `grounded_in_reads` — FP: none · FN: none
 - `cost_under_threshold` — FP: none · FN: none
 - `verbosity_ratio` — FP: none · FN: none
 - `no_tool_loop` — FP: none · FN: none

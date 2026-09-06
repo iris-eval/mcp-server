@@ -1,13 +1,13 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 16 are answered by a shipped, measured thing, 17 are answered with a stated limit, 23 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 17 are answered by a shipped, measured thing, 17 are answered with a stated limit, 22 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
 | Question | single output | output with input / context | trajectory (tool calls) | multi-run of one input | population / dataset / baseline | the evaluator itself |
 |---|---|---|---|---|---|---|
 | **is it safe** | has | has | gap | gap | partial | has |
-| **is it grounded / correct** | partial | has | gap | gap | gap | partial |
+| **is it grounded / correct** | partial | has | has | gap | gap | partial |
 | **is it complete** | partial | partial | gap | gap | partial | has |
 | **is it on-task** | gap | partial | gap | gap | partial | partial |
 | **did it complete the task** | gap | gap | gap | gap | gap | gap |
@@ -29,7 +29,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 
 - **single output** — *partial*. Without an input only two context-free fabrication signals run, and the result says so; the grounded signals need the material the agent was given. Evidence: rule `no_hallucination_markers`. Needs: `output`.
 - **output with input / context** — *has*. A deterministic detector with context-grounded contradiction signals, measured with intervals; keyed judge templates for accuracy, correctness against a reference and faithfulness to sources, plus a citation verifier, cover what patterns cannot — on a key the user supplies. Evidence: rule `no_hallucination_markers`, proof `no_hallucination_markers`, tool `evaluate_with_llm_judge`, tool `verify_citations`, template `accuracy`, template `correctness`, template `faithfulness`. Needs: `output`, `input`.
-- **trajectory (tool calls)** — *gap*. Tool outputs are not yet read as grounding material, so a claim that contradicts what the agent itself read goes unjudged. Needs: `output`, `tool_calls`.
+- **trajectory (tool calls)** — *has*. Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged — a code identifier or a number belongs to the hallucination signals — and the rule declines rather than guesses when a read was truncated. Evidence: rule `grounded_in_reads`, rule `no_hallucination_markers`, tool `log_trace`. Needs: `output`, `input`, `tool_calls`, `tool_outputs`.
 - **multi-run of one input** — *gap*. Consistency of claims across repeated runs of one input is not evaluated.
 - **population / dataset / baseline** — *gap*. No cohort or baseline; only per-rule failure rates over time.
 - **the evaluator itself** — *partial*. The fabrication detector is measured on its corpus; the judge templates are unmeasured until a user-supplied key runs the judge harness, and the page says pending until then. Evidence: proof `no_hallucination_markers`.

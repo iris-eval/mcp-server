@@ -91,13 +91,14 @@ export const CATEGORY_ORDER: RuleCategory[] = [
  * Total: 15 rules (6 safety + 2 relevance + 4 completeness + 3 cost).
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
-  // safety (6)
+  // safety (7)
   no_pii: 'safety',
   no_blocklist_words: 'safety',
   no_injection_patterns: 'safety',
   no_stub_output: 'safety',
   no_hallucination_markers: 'safety',
   no_silent_tool_failure: 'safety',
+  grounded_in_reads: 'safety',
   // relevance (2)
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
@@ -121,6 +122,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'no_stub_output', category: 'safety' },
   { name: 'no_hallucination_markers', category: 'safety' },
   { name: 'no_silent_tool_failure', category: 'safety' },
+  { name: 'grounded_in_reads', category: 'safety' },
   { name: 'keyword_overlap', category: 'relevance' },
   { name: 'topic_consistency', category: 'relevance' },
   { name: 'min_output_length', category: 'completeness' },

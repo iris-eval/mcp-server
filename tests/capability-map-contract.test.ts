@@ -136,16 +136,31 @@ describe('capability map — needs are real', () => {
   };
   const NEED_TO_CONTEXT: Record<string, keyof typeof FULL> = { input: 'input', expected: 'expected', tool_calls: 'toolCalls', tools_catalogue: 'tools', cost: 'costUsd', tokens: 'tokenUsage' };
 
+  /*
+   * `tool_outputs` is not a context KEY — it is a property of the tool calls
+   * (arc 1's stamp adds it when some call carries an output), so withholding
+   * it means supplying the calls with their outputs stripped rather than
+   * deleting a field. Without this branch the contract could only check
+   * needs that happen to map one-to-one onto a context field, which would
+   * quietly exempt exactly the need a grounding rule declares.
+   */
+  const withhold = (need: string): Record<string, unknown> => {
+    const ctx = { ...FULL } as Record<string, unknown>;
+    if (need === 'tool_outputs') {
+      ctx.toolCalls = FULL.toolCalls.map(({ output: _output, ...rest }) => rest);
+      return ctx;
+    }
+    delete ctx[NEED_TO_CONTEXT[need]];
+    return ctx;
+  };
+
   it('for every cell need beyond output, each cited rule that declares that need skips when the engine is called without it', async () => {
     let checked = 0;
     for (const c of answering) {
       const rules = c.evidence.filter((e) => e.kind === 'rule').map((e) => RULE_BY_NAME.get(e.name)!);
       for (const need of c.needs.filter((n) => n !== 'output')) {
-        const ctxKey = NEED_TO_CONTEXT[need];
-        expect(ctxKey, `${c.id}: need "${need}" is not an input the engine takes`).toBeDefined();
-        const without = { ...FULL } as Record<string, unknown>;
-        delete without[ctxKey];
-        const result = await engine.evaluateAll(without as typeof FULL);
+        expect(need === 'tool_outputs' || NEED_TO_CONTEXT[need] !== undefined, `${c.id}: need "${need}" is not an input the engine takes`).toBe(true);
+        const result = await engine.evaluateAll(withhold(need) as typeof FULL);
         for (const rule of rules.filter((r) => (r.needs as readonly Need[]).includes(need as Need))) {
           const row = result.rule_results.find((x) => x.ruleName === rule.name);
           // Either the rule skipped, or it ran on less and its `saw` says it

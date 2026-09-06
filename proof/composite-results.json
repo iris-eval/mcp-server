@@ -14,8 +14,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -23,8 +23,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -45,8 +45,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -54,8 +54,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -76,8 +76,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -85,8 +85,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -107,18 +107,18 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
+        "hi": 0.1486,
+        "lo": 0.0837,
+        "pBad": 0.1153,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 0.7888,
+        "lo": 0.5947,
+        "pBad": 0.7047,
         "state": "fail"
       },
       "shouldShip": true,
@@ -138,8 +138,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -147,8 +147,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -169,8 +169,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -178,8 +178,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -199,7 +199,7 @@
           "no_pii"
         ],
         "passed": false,
-        "score": 0.889
+        "score": 0.897
       },
       "provenance": "real-transcript",
       "risk": {
@@ -208,9 +208,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
-        "pBad": 0.6788,
+        "hi": 0.8711,
+        "lo": 0.4484,
+        "pBad": 0.6387,
         "state": "fail"
       },
       "riskPerClass": {
@@ -219,9 +219,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9744,
-        "pBad": 0.9915,
+        "hi": 0.9988,
+        "lo": 0.974,
+        "pBad": 0.9918,
         "state": "fail"
       },
       "shouldShip": false,
@@ -249,8 +249,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -261,7 +261,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -290,8 +290,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -302,7 +302,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -325,8 +325,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -334,8 +334,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -358,8 +358,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -367,8 +367,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -379,30 +379,36 @@
       "classes": [
         "ungrounded"
       ],
-      "classesCaught": [],
+      "classesCaught": [
+        "ungrounded"
+      ],
       "id": "rt-12",
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 1
+        "score": 0.923
       },
       "provenance": "real-transcript",
       "risk": {
-        "basis": "clean",
-        "by": [],
-        "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
-        "state": "pass"
+        "basis": "risk_over_loss",
+        "by": [
+          "ungrounded"
+        ],
+        "confidence": "marginal",
+        "hi": 0.9995,
+        "lo": 0.4557,
+        "pBad": 0.7775,
+        "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
-        "by": [],
+        "by": [
+          "ungrounded"
+        ],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 1,
+        "lo": 0.9574,
+        "pBad": 0.9911,
         "state": "fail"
       },
       "shouldShip": false,
@@ -420,7 +426,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.94
+        "score": 0.944
       },
       "provenance": "real-transcript",
       "risk": {
@@ -430,8 +436,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -441,8 +447,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -460,29 +466,31 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.958
+        "score": 0.885
       },
       "provenance": "real-transcript",
       "risk": {
         "basis": "risk_over_loss",
         "by": [
-          "silent_tool_failure"
+          "silent_tool_failure",
+          "ungrounded"
         ],
-        "confidence": "marginal",
-        "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "confidence": "decisive",
+        "hi": 1,
+        "lo": 0.7935,
+        "pBad": 0.9404,
         "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [
-          "silent_tool_failure"
+          "silent_tool_failure",
+          "ungrounded"
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9979,
+        "pBad": 0.9997,
         "state": "fail"
       },
       "shouldShip": false,
@@ -500,7 +508,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.944
+        "score": 0.949
       },
       "provenance": "real-transcript",
       "risk": {
@@ -510,8 +518,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -521,8 +529,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -539,7 +547,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.958
+        "score": 0.962
       },
       "provenance": "real-transcript",
       "risk": {
@@ -548,9 +556,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 0.9995,
-        "lo": 0.474,
-        "pBad": 0.8012,
+        "hi": 0.9996,
+        "lo": 0.4534,
+        "pBad": 0.7757,
         "state": "fail"
       },
       "riskPerClass": {
@@ -560,8 +568,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9589,
-        "pBad": 0.9906,
+        "lo": 0.9594,
+        "pBad": 0.9909,
         "state": "fail"
       },
       "shouldShip": false,
@@ -584,8 +592,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -593,8 +601,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -618,18 +626,18 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
+        "hi": 0.1486,
+        "lo": 0.0837,
+        "pBad": 0.1153,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 0.7888,
+        "lo": 0.5947,
+        "pBad": 0.7047,
         "state": "fail"
       },
       "shouldShip": false,
@@ -651,8 +659,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -660,8 +668,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -686,8 +694,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.7516,
-        "lo": 0.3918,
+        "hi": 0.7529,
+        "lo": 0.3951,
         "pBad": 0.5412,
         "state": "fail"
       },
@@ -697,8 +705,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.9757,
-        "lo": 0.8799,
+        "hi": 0.9742,
+        "lo": 0.878,
         "pBad": 0.9355,
         "state": "fail"
       },
@@ -723,8 +731,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -732,8 +740,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -758,8 +766,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -767,8 +775,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -788,7 +796,7 @@
           "no_injection_patterns"
         ],
         "passed": false,
-        "score": 0.88
+        "score": 0.889
       },
       "provenance": "real-transcript",
       "risk": {
@@ -798,8 +806,8 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
-        "pBad": 0.9193,
+        "lo": 0.6635,
+        "pBad": 0.9072,
         "state": "fail"
       },
       "riskPerClass": {
@@ -809,8 +817,8 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9838,
-        "pBad": 0.9967,
+        "lo": 0.9845,
+        "pBad": 0.9968,
         "state": "fail"
       },
       "shouldShip": false,
@@ -839,7 +847,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -873,8 +881,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -882,8 +890,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -906,8 +914,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -915,8 +923,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -945,8 +953,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -957,7 +965,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -977,7 +985,7 @@
           "no_pii"
         ],
         "passed": false,
-        "score": 0.889
+        "score": 0.897
       },
       "provenance": "composed",
       "risk": {
@@ -986,9 +994,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
-        "pBad": 0.6788,
+        "hi": 0.8711,
+        "lo": 0.4484,
+        "pBad": 0.6387,
         "state": "fail"
       },
       "riskPerClass": {
@@ -997,9 +1005,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9744,
-        "pBad": 0.9915,
+        "hi": 0.9988,
+        "lo": 0.974,
+        "pBad": 0.9918,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1027,8 +1035,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1039,7 +1047,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1068,8 +1076,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1080,7 +1088,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1109,8 +1117,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1121,7 +1129,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1150,8 +1158,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1162,7 +1170,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1191,8 +1199,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1203,7 +1211,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1223,7 +1231,7 @@
           "no_pii"
         ],
         "passed": false,
-        "score": 0.883
+        "score": 0.892
       },
       "provenance": "composed",
       "risk": {
@@ -1232,9 +1240,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
-        "pBad": 0.6788,
+        "hi": 0.8711,
+        "lo": 0.4484,
+        "pBad": 0.6387,
         "state": "fail"
       },
       "riskPerClass": {
@@ -1243,9 +1251,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9987,
-        "lo": 0.9744,
-        "pBad": 0.9915,
+        "hi": 0.9988,
+        "lo": 0.974,
+        "pBad": 0.9918,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1273,8 +1281,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1285,7 +1293,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1314,8 +1322,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -1326,7 +1334,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -1356,7 +1364,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1397,7 +1405,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1438,7 +1446,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1465,25 +1473,29 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.983
+        "score": 0.958
       },
       "provenance": "composed",
       "risk": {
-        "basis": "clean",
-        "by": [],
-        "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
-        "state": "pass"
+        "basis": "risk_over_loss",
+        "by": [
+          "ungrounded"
+        ],
+        "confidence": "marginal",
+        "hi": 0.9995,
+        "lo": 0.4557,
+        "pBad": 0.7775,
+        "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
-        "by": [],
+        "by": [
+          "ungrounded"
+        ],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 1,
+        "lo": 0.9574,
+        "pBad": 0.9911,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1512,7 +1524,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1553,7 +1565,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1596,7 +1608,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.8878,
+        "lo": 0.8857,
         "pBad": 0.9703,
         "state": "fail"
       },
@@ -1608,7 +1620,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9993,
+        "lo": 0.9994,
         "pBad": 0.9999,
         "state": "fail"
       },
@@ -1638,7 +1650,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1674,8 +1686,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6792,
-        "lo": 0.319,
+        "hi": 0.6979,
+        "lo": 0.3115,
         "pBad": 0.4518,
         "state": "pass"
       },
@@ -1685,8 +1697,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.978,
-        "lo": 0.8943,
+        "hi": 0.9792,
+        "lo": 0.8941,
         "pBad": 0.9438,
         "state": "fail"
       },
@@ -1709,8 +1721,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -1718,8 +1730,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -1744,8 +1756,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6792,
-        "lo": 0.319,
+        "hi": 0.6979,
+        "lo": 0.3115,
         "pBad": 0.4518,
         "state": "pass"
       },
@@ -1755,8 +1767,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.978,
-        "lo": 0.8943,
+        "hi": 0.9792,
+        "lo": 0.8941,
         "pBad": 0.9438,
         "state": "fail"
       },
@@ -1772,25 +1784,25 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.958
+        "score": 0.962
       },
       "provenance": "composed",
       "risk": {
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
+        "hi": 0.1486,
+        "lo": 0.0837,
+        "pBad": 0.1153,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 0.7888,
+        "lo": 0.5947,
+        "pBad": 0.7047,
         "state": "fail"
       },
       "shouldShip": false,
@@ -1814,8 +1826,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6792,
-        "lo": 0.319,
+        "hi": 0.6979,
+        "lo": 0.3115,
         "pBad": 0.4518,
         "state": "pass"
       },
@@ -1825,8 +1837,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.978,
-        "lo": 0.8943,
+        "hi": 0.9792,
+        "lo": 0.8941,
         "pBad": 0.9438,
         "state": "fail"
       },
@@ -1849,8 +1861,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -1858,8 +1870,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -1882,8 +1894,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -1891,8 +1903,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -1915,8 +1927,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -1924,8 +1936,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -1953,7 +1965,7 @@
         ],
         "confidence": "decisive",
         "hi": 0.9999,
-        "lo": 0.7136,
+        "lo": 0.6954,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -1964,7 +1976,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9696,
+        "lo": 0.9681,
         "pBad": 0.9934,
         "state": "fail"
       },
@@ -1992,7 +2004,7 @@
         ],
         "confidence": "decisive",
         "hi": 0.9999,
-        "lo": 0.7136,
+        "lo": 0.6954,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -2003,7 +2015,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9696,
+        "lo": 0.9681,
         "pBad": 0.9934,
         "state": "fail"
       },
@@ -2031,7 +2043,7 @@
         ],
         "confidence": "decisive",
         "hi": 0.9999,
-        "lo": 0.7136,
+        "lo": 0.6954,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -2042,7 +2054,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9696,
+        "lo": 0.9681,
         "pBad": 0.9934,
         "state": "fail"
       },
@@ -2070,7 +2082,7 @@
         ],
         "confidence": "decisive",
         "hi": 0.9999,
-        "lo": 0.7136,
+        "lo": 0.6954,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -2081,7 +2093,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9696,
+        "lo": 0.9681,
         "pBad": 0.9934,
         "state": "fail"
       },
@@ -2099,7 +2111,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.934
+        "score": 0.94
       },
       "provenance": "composed",
       "risk": {
@@ -2109,8 +2121,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2120,8 +2132,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2138,29 +2150,31 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.955
+        "score": 0.875
       },
       "provenance": "composed",
       "risk": {
         "basis": "risk_over_loss",
         "by": [
-          "silent_tool_failure"
+          "silent_tool_failure",
+          "ungrounded"
         ],
-        "confidence": "marginal",
-        "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "confidence": "decisive",
+        "hi": 1,
+        "lo": 0.7935,
+        "pBad": 0.9404,
         "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [
-          "silent_tool_failure"
+          "silent_tool_failure",
+          "ungrounded"
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9979,
+        "pBad": 0.9997,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2177,7 +2191,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.939
+        "score": 0.944
       },
       "provenance": "composed",
       "risk": {
@@ -2187,8 +2201,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2198,8 +2212,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2216,7 +2230,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.939
+        "score": 0.944
       },
       "provenance": "composed",
       "risk": {
@@ -2226,8 +2240,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2237,8 +2251,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2255,7 +2269,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.939
+        "score": 0.944
       },
       "provenance": "composed",
       "risk": {
@@ -2265,8 +2279,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2276,8 +2290,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2294,7 +2308,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.919
+        "score": 0.926
       },
       "provenance": "composed",
       "risk": {
@@ -2304,8 +2318,8 @@
         ],
         "confidence": "marginal",
         "hi": 0.9997,
-        "lo": 0.4583,
-        "pBad": 0.7895,
+        "lo": 0.426,
+        "pBad": 0.7631,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2315,8 +2329,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9514,
-        "pBad": 0.9894,
+        "lo": 0.9558,
+        "pBad": 0.9897,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2333,7 +2347,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.955
+        "score": 0.958
       },
       "provenance": "composed",
       "risk": {
@@ -2342,9 +2356,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 0.9995,
-        "lo": 0.474,
-        "pBad": 0.8012,
+        "hi": 0.9996,
+        "lo": 0.4534,
+        "pBad": 0.7757,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2354,8 +2368,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9589,
-        "pBad": 0.9906,
+        "lo": 0.9594,
+        "pBad": 0.9909,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2372,7 +2386,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.968
+        "score": 0.971
       },
       "provenance": "composed",
       "risk": {
@@ -2381,9 +2395,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 0.9995,
-        "lo": 0.474,
-        "pBad": 0.8012,
+        "hi": 0.9996,
+        "lo": 0.4534,
+        "pBad": 0.7757,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2393,8 +2407,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9589,
-        "pBad": 0.9906,
+        "lo": 0.9594,
+        "pBad": 0.9909,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2420,8 +2434,8 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 0.9995,
-        "lo": 0.474,
+        "hi": 0.9998,
+        "lo": 0.477,
         "pBad": 0.8012,
         "state": "fail"
       },
@@ -2432,7 +2446,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9589,
+        "lo": 0.9557,
         "pBad": 0.9906,
         "state": "fail"
       },
@@ -2450,7 +2464,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.952
+        "score": 0.956
       },
       "provenance": "composed",
       "risk": {
@@ -2459,9 +2473,9 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 0.9995,
-        "lo": 0.474,
-        "pBad": 0.8012,
+        "hi": 0.9996,
+        "lo": 0.4534,
+        "pBad": 0.7757,
         "state": "fail"
       },
       "riskPerClass": {
@@ -2471,8 +2485,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9589,
-        "pBad": 0.9906,
+        "lo": 0.9594,
+        "pBad": 0.9909,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2498,8 +2512,8 @@
           "tool_loop"
         ],
         "confidence": "marginal",
-        "hi": 0.9995,
-        "lo": 0.474,
+        "hi": 0.9998,
+        "lo": 0.477,
         "pBad": 0.8012,
         "state": "fail"
       },
@@ -2510,7 +2524,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9589,
+        "lo": 0.9557,
         "pBad": 0.9906,
         "state": "fail"
       },
@@ -2535,8 +2549,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2544,8 +2558,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2570,8 +2584,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2579,8 +2593,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2605,8 +2619,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2614,8 +2628,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2633,25 +2647,25 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.994
+        "score": 0.995
       },
       "provenance": "composed",
       "risk": {
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
+        "hi": 0.1486,
+        "lo": 0.0837,
+        "pBad": 0.1153,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 0.7888,
+        "lo": 0.5947,
+        "pBad": 0.7047,
         "state": "fail"
       },
       "shouldShip": false,
@@ -2675,8 +2689,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2684,8 +2698,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2710,8 +2724,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2719,8 +2733,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2745,8 +2759,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2754,8 +2768,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2780,8 +2794,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2789,8 +2803,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2815,8 +2829,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2824,8 +2838,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2843,25 +2857,25 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.87
+        "score": 0.881
       },
       "provenance": "composed",
       "risk": {
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
+        "hi": 0.1486,
+        "lo": 0.0837,
+        "pBad": 0.1153,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 0.7888,
+        "lo": 0.5947,
+        "pBad": 0.7047,
         "state": "fail"
       },
       "shouldShip": true,
@@ -2885,8 +2899,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2894,8 +2908,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2920,8 +2934,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -2929,8 +2943,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -2955,8 +2969,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -2964,8 +2978,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -2990,8 +3004,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -2999,8 +3013,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -3025,8 +3039,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -3034,8 +3048,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -3060,8 +3074,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -3069,8 +3083,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -3095,8 +3109,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -3104,8 +3118,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -3130,8 +3144,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.2045,
-        "lo": 0.1178,
+        "hi": 0.2052,
+        "lo": 0.1195,
         "pBad": 0.1598,
         "state": "pass"
       },
@@ -3139,8 +3153,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.733,
-        "lo": 0.5492,
+        "hi": 0.7379,
+        "lo": 0.5415,
         "pBad": 0.6511,
         "state": "fail"
       },
@@ -3171,7 +3185,7 @@
         ],
         "confidence": null,
         "hi": 0.9999,
-        "lo": 0.7029,
+        "lo": 0.7126,
         "pBad": 0.9193,
         "state": "fail"
       },
@@ -3208,8 +3222,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3217,8 +3231,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3245,8 +3259,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6792,
-        "lo": 0.319,
+        "hi": 0.6979,
+        "lo": 0.3115,
         "pBad": 0.4518,
         "state": "pass"
       },
@@ -3256,8 +3270,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.978,
-        "lo": 0.8943,
+        "hi": 0.9792,
+        "lo": 0.8941,
         "pBad": 0.9438,
         "state": "fail"
       },
@@ -3274,25 +3288,29 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.889
+        "score": 0.871
       },
       "provenance": "composed",
       "risk": {
-        "basis": "clean",
-        "by": [],
-        "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
-        "state": "pass"
+        "basis": "risk_over_loss",
+        "by": [
+          "ungrounded"
+        ],
+        "confidence": "marginal",
+        "hi": 0.9995,
+        "lo": 0.4557,
+        "pBad": 0.7775,
+        "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
-        "by": [],
+        "by": [
+          "ungrounded"
+        ],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 1,
+        "lo": 0.9574,
+        "pBad": 0.9911,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3313,7 +3331,7 @@
           "no_pii"
         ],
         "passed": false,
-        "score": 0.795
+        "score": 0.729
       },
       "provenance": "composed",
       "risk": {
@@ -3322,9 +3340,9 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9999,
-        "lo": 0.7771,
-        "pBad": 0.9224,
+        "hi": 1,
+        "lo": 0.9176,
+        "pBad": 0.9757,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3334,8 +3352,8 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.998,
-        "pBad": 0.9997,
+        "lo": 0.9999,
+        "pBad": 1,
         "state": "fail"
       },
       "shouldShip": false,
@@ -3356,7 +3374,7 @@
           "no_injection_patterns"
         ],
         "passed": false,
-        "score": 0.742
+        "score": 0.764
       },
       "provenance": "composed",
       "risk": {
@@ -3366,8 +3384,8 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9097,
-        "pBad": 0.9816,
+        "lo": 0.9016,
+        "pBad": 0.9765,
         "state": "fail"
       },
       "riskPerClass": {
@@ -3377,7 +3395,7 @@
         ],
         "confidence": null,
         "hi": 1,
-        "lo": 0.9992,
+        "lo": 0.9994,
         "pBad": 0.9999,
         "state": "fail"
       },
@@ -3398,8 +3416,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "marginal",
-        "hi": 0.6792,
-        "lo": 0.319,
+        "hi": 0.6979,
+        "lo": 0.3115,
         "pBad": 0.4518,
         "state": "pass"
       },
@@ -3409,8 +3427,8 @@
           "stub"
         ],
         "confidence": "decisive",
-        "hi": 0.978,
-        "lo": 0.8943,
+        "hi": 0.9792,
+        "lo": 0.8941,
         "pBad": 0.9438,
         "state": "fail"
       },
@@ -3431,8 +3449,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3440,8 +3458,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3462,8 +3480,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3471,8 +3489,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3486,25 +3504,29 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 1
+        "score": 0.948
       },
       "provenance": "composed",
       "risk": {
-        "basis": "clean",
-        "by": [],
-        "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
-        "state": "pass"
+        "basis": "risk_over_loss",
+        "by": [
+          "ungrounded"
+        ],
+        "confidence": "marginal",
+        "hi": 0.9995,
+        "lo": 0.4557,
+        "pBad": 0.7775,
+        "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
-        "by": [],
+        "by": [
+          "ungrounded"
+        ],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 1,
+        "lo": 0.9574,
+        "pBad": 0.9911,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3528,8 +3550,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.9469,
-        "lo": 0.6649,
+        "hi": 0.9376,
+        "lo": 0.6637,
         "pBad": 0.798,
         "state": "fail"
       },
@@ -3540,7 +3562,7 @@
         ],
         "confidence": null,
         "hi": 0.9998,
-        "lo": 0.9946,
+        "lo": 0.9945,
         "pBad": 0.9984,
         "state": "fail"
       },
@@ -3561,8 +3583,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3570,8 +3592,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3592,8 +3614,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3601,8 +3623,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3623,8 +3645,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3632,8 +3654,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3654,8 +3676,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3663,8 +3685,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3685,18 +3707,18 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
+        "hi": 0.1486,
+        "lo": 0.0837,
+        "pBad": 0.1153,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 0.7888,
+        "lo": 0.5947,
+        "pBad": 0.7047,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3720,8 +3742,8 @@
           "no_pii"
         ],
         "confidence": null,
-        "hi": 0.8882,
-        "lo": 0.4956,
+        "hi": 0.8948,
+        "lo": 0.502,
         "pBad": 0.6788,
         "state": "fail"
       },
@@ -3732,7 +3754,7 @@
         ],
         "confidence": null,
         "hi": 0.9987,
-        "lo": 0.9744,
+        "lo": 0.9725,
         "pBad": 0.9915,
         "state": "fail"
       },
@@ -3753,8 +3775,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3762,8 +3784,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3784,8 +3806,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3793,8 +3815,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3815,8 +3837,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3824,8 +3846,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3846,8 +3868,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3855,8 +3877,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3870,25 +3892,29 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.997
+        "score": 0.921
       },
       "provenance": "composed",
       "risk": {
-        "basis": "clean",
-        "by": [],
-        "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
-        "pBad": 0.1284,
-        "state": "pass"
+        "basis": "risk_over_loss",
+        "by": [
+          "ungrounded"
+        ],
+        "confidence": "marginal",
+        "hi": 0.9995,
+        "lo": 0.4557,
+        "pBad": 0.7775,
+        "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
-        "by": [],
+        "by": [
+          "ungrounded"
+        ],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
-        "pBad": 0.6957,
+        "hi": 1,
+        "lo": 0.9574,
+        "pBad": 0.9911,
         "state": "fail"
       },
       "shouldShip": true,
@@ -3908,8 +3934,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3917,8 +3943,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3943,8 +3969,8 @@
           "no_blocklist_words"
         ],
         "confidence": null,
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "fail"
       },
@@ -3954,8 +3980,8 @@
           "no_blocklist_words"
         ],
         "confidence": null,
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -3976,8 +4002,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -3985,8 +4011,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -4007,8 +4033,8 @@
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1654,
-        "lo": 0.0926,
+        "hi": 0.1634,
+        "lo": 0.0954,
         "pBad": 0.1284,
         "state": "pass"
       },
@@ -4016,8 +4042,8 @@
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7821,
-        "lo": 0.5933,
+        "hi": 0.7809,
+        "lo": 0.5818,
         "pBad": 0.6957,
         "state": "fail"
       },
@@ -4037,31 +4063,33 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.908
+        "score": 0.89
       },
       "provenance": "composed",
       "risk": {
         "basis": "risk_over_loss",
         "by": [
           "silent_tool_failure",
+          "ungrounded",
           "invalid_tool_call"
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7979,
-        "pBad": 0.9452,
+        "lo": 0.938,
+        "pBad": 0.9817,
         "state": "fail"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [
           "silent_tool_failure",
+          "ungrounded",
           "invalid_tool_call"
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9981,
-        "pBad": 0.9997,
+        "lo": 0.9999,
+        "pBad": 1,
         "state": "fail"
       },
       "shouldShip": false,
@@ -4080,7 +4108,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.908
+        "score": 0.915
       },
       "provenance": "composed",
       "risk": {
@@ -4091,8 +4119,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7979,
-        "pBad": 0.9452,
+        "lo": 0.7842,
+        "pBad": 0.9336,
         "state": "fail"
       },
       "riskPerClass": {
@@ -4103,7 +4131,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9981,
+        "lo": 0.998,
         "pBad": 0.9997,
         "state": "fail"
       },
@@ -4123,7 +4151,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.895
+        "score": 0.902
       },
       "provenance": "composed",
       "risk": {
@@ -4134,8 +4162,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7979,
-        "pBad": 0.9452,
+        "lo": 0.7842,
+        "pBad": 0.9336,
         "state": "fail"
       },
       "riskPerClass": {
@@ -4146,7 +4174,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9981,
+        "lo": 0.998,
         "pBad": 0.9997,
         "state": "fail"
       },
@@ -4165,7 +4193,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.947
+        "score": 0.951
       },
       "provenance": "composed",
       "risk": {
@@ -4174,9 +4202,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 0.9996,
-        "lo": 0.4441,
-        "pBad": 0.7631,
+        "hi": 0.9995,
+        "lo": 0.3891,
+        "pBad": 0.7385,
         "state": "fail"
       },
       "riskPerClass": {
@@ -4186,8 +4214,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.951,
-        "pBad": 0.9897,
+        "lo": 0.9559,
+        "pBad": 0.99,
         "state": "fail"
       },
       "shouldShip": true,
@@ -4205,7 +4233,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.908
+        "score": 0.915
       },
       "provenance": "composed",
       "risk": {
@@ -4214,9 +4242,9 @@
           "silent_tool_failure"
         ],
         "confidence": "marginal",
-        "hi": 0.9996,
-        "lo": 0.4441,
-        "pBad": 0.7631,
+        "hi": 0.9995,
+        "lo": 0.3891,
+        "pBad": 0.7385,
         "state": "fail"
       },
       "riskPerClass": {
@@ -4226,8 +4254,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.951,
-        "pBad": 0.9897,
+        "lo": 0.9559,
+        "pBad": 0.99,
         "state": "fail"
       },
       "shouldShip": true,
@@ -4242,25 +4270,25 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.987
+        "score": 0.988
       },
       "provenance": "composed",
       "risk": {
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1473,
-        "lo": 0.0848,
-        "pBad": 0.1154,
+        "hi": 0.1362,
+        "lo": 0.0768,
+        "pBad": 0.1051,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7878,
-        "lo": 0.5911,
-        "pBad": 0.7052,
+        "hi": 0.7994,
+        "lo": 0.5979,
+        "pBad": 0.7139,
         "state": "fail"
       },
       "shouldShip": true,
@@ -4273,25 +4301,25 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.987
+        "score": 0.988
       },
       "provenance": "composed",
       "risk": {
         "basis": "clean",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.1473,
-        "lo": 0.0848,
-        "pBad": 0.1154,
+        "hi": 0.1362,
+        "lo": 0.0768,
+        "pBad": 0.1051,
         "state": "pass"
       },
       "riskPerClass": {
         "basis": "risk_over_loss",
         "by": [],
         "confidence": "decisive",
-        "hi": 0.7878,
-        "lo": 0.5911,
-        "pBad": 0.7052,
+        "hi": 0.7994,
+        "lo": 0.5979,
+        "pBad": 0.7139,
         "state": "fail"
       },
       "shouldShip": true,
@@ -4310,7 +4338,7 @@
       "legacy": {
         "criticalFailures": [],
         "passed": true,
-        "score": 0.908
+        "score": 0.915
       },
       "provenance": "composed",
       "risk": {
@@ -4321,8 +4349,8 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.7979,
-        "pBad": 0.9452,
+        "lo": 0.7842,
+        "pBad": 0.9336,
         "state": "fail"
       },
       "riskPerClass": {
@@ -4333,7 +4361,7 @@
         ],
         "confidence": "decisive",
         "hi": 1,
-        "lo": 0.9981,
+        "lo": 0.998,
         "pBad": 0.9997,
         "state": "fail"
       },
@@ -4341,9 +4369,9 @@
       "split": "dev"
     }
   ],
-  "commit": "b62cade",
-  "compositeVersion": "8194ee800e59",
-  "corpusVersion": "d280c2ee0858",
+  "commit": "1aa1fd3",
+  "compositeVersion": "86b890e4c919",
+  "corpusVersion": "b15dd3d73b3e",
   "counts": {
     "byClass": {
       "credential_leak": 5,
@@ -4373,14 +4401,14 @@
     "reads": "accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart",
     "risk": {
       "realTranscripts": {
-        "delta": 0.2083,
-        "hi": 0.4445,
-        "lo": -0.0679
+        "delta": 0.25,
+        "hi": 0.4791,
+        "lo": -0.0265
       },
       "test": {
-        "delta": 0.2143,
-        "hi": 0.4366,
-        "lo": -0.0446
+        "delta": 0.2857,
+        "hi": 0.4976,
+        "lo": 0.0253
       }
     },
     "riskPerClass": {
@@ -4396,7 +4424,7 @@
       }
     }
   },
-  "generatedAt": "2026-09-06T03:40:38.642Z",
+  "generatedAt": "2026-09-06T04:43:26.237Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -4413,20 +4441,20 @@
           {
             "from": 0,
             "meanPredicted": 0.0298,
-            "n": 54,
-            "observedRate": 0.5926,
+            "n": 51,
+            "observedRate": 0.5686,
             "to": 0.1
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.124,
-            "n": 33,
-            "observedRate": 0.697,
+            "meanPredicted": 0.1224,
+            "n": 36,
+            "observedRate": 0.7222,
             "to": 0.2
           },
           {
             "from": 0.2,
-            "meanPredicted": 0.2398,
+            "meanPredicted": 0.2508,
             "n": 4,
             "observedRate": 0.75,
             "to": 0.3
@@ -4481,8 +4509,8 @@
             "to": 1
           }
         ],
-        "brier": 0.54,
-        "ece": 0.5642,
+        "brier": 0.537,
+        "ece": 0.5612,
         "n": 91
       },
       "falseBlock": {
@@ -4518,15 +4546,15 @@
         "bins": [
           {
             "from": 0,
-            "meanPredicted": 0.0237,
-            "n": 19,
-            "observedRate": 0.6842,
+            "meanPredicted": 0.0263,
+            "n": 18,
+            "observedRate": 0.6667,
             "to": 0.1
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1172,
-            "n": 5,
+            "meanPredicted": 0.114,
+            "n": 6,
             "observedRate": 1,
             "to": 0.2
           },
@@ -4587,8 +4615,8 @@
             "to": 1
           }
         ],
-        "brier": 0.6676,
-        "ece": 0.7068,
+        "brier": 0.6582,
+        "ece": 0.7018,
         "n": 24
       },
       "falseBlock": {
@@ -4624,16 +4652,16 @@
         "bins": [
           {
             "from": 0,
-            "meanPredicted": 0.0329,
-            "n": 17,
-            "observedRate": 0.7059,
+            "meanPredicted": 0.0398,
+            "n": 18,
+            "observedRate": 0.7222,
             "to": 0.1
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1399,
-            "n": 10,
-            "observedRate": 0.6,
+            "meanPredicted": 0.1448,
+            "n": 9,
+            "observedRate": 0.5556,
             "to": 0.2
           },
           {
@@ -4693,8 +4721,8 @@
             "to": 1
           }
         ],
-        "brier": 0.5791,
-        "ece": 0.5997,
+        "brier": 0.5748,
+        "ece": 0.5975,
         "n": 28
       },
       "falseBlock": {
@@ -4813,14 +4841,14 @@
       "recall": 0.4
     },
     {
-      "caught": 0,
+      "caught": 1,
       "ci95": [
-        0,
-        0.4899
+        0.0456,
+        0.6994
       ],
       "class": "ungrounded",
       "present": 4,
-      "recall": 0
+      "recall": 0.25
     },
     {
       "caught": 0,
@@ -4877,12 +4905,12 @@
     "dev": {
       "accuracy": {
         "ci95": [
-          0.661,
-          0.8346
+          0.6492,
+          0.8253
         ],
-        "k": 69,
+        "k": 68,
         "n": 91,
-        "rate": 0.7582
+        "rate": 0.7473
       },
       "calibration": {
         "bins": [
@@ -4895,9 +4923,9 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1323,
-            "n": 45,
-            "observedRate": 0.3556,
+            "meanPredicted": 0.1308,
+            "n": 42,
+            "observedRate": 0.3571,
             "to": 0.2
           },
           {
@@ -4930,65 +4958,65 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6788,
+            "meanPredicted": 0.6688,
             "n": 12,
             "observedRate": 0.9167,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": 0.7836,
-            "n": 9,
-            "observedRate": 0.7778,
+            "meanPredicted": 0.7655,
+            "n": 13,
+            "observedRate": 0.6923,
             "to": 0.8
           },
           {
             "from": 0.8,
             "meanPredicted": 0.8012,
-            "n": 4,
+            "n": 1,
             "observedRate": 1,
             "to": 0.9
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9307,
-            "n": 17,
+            "meanPredicted": 0.935,
+            "n": 19,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.1849,
-        "ece": 0.1762,
+        "brier": 0.1906,
+        "ece": 0.1755,
         "n": 91
       },
       "falseBlock": {
         "ci95": [
-          0.0482,
-          0.2733
+          0.0861,
+          0.3439
         ],
-        "k": 4,
+        "k": 6,
         "n": 33,
-        "rate": 0.1212
+        "rate": 0.1818
       },
       "missedBlock": {
         "ci95": [
-          0.2062,
-          0.438
+          0.1918,
+          0.4201
         ],
-        "k": 18,
+        "k": 17,
         "n": 58,
-        "rate": 0.3103
+        "rate": 0.2931
       }
     },
     "realTranscripts": {
       "accuracy": {
         "ci95": [
-          0.4671,
-          0.8203
+          0.5083,
+          0.8509
         ],
-        "k": 16,
+        "k": 17,
         "n": 24,
-        "rate": 0.6667
+        "rate": 0.7083
       },
       "calibration": {
         "bins": [
@@ -5001,9 +5029,9 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1306,
-            "n": 14,
-            "observedRate": 0.5714,
+            "meanPredicted": 0.1288,
+            "n": 13,
+            "observedRate": 0.5385,
             "to": 0.2
           },
           {
@@ -5036,35 +5064,35 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6788,
+            "meanPredicted": 0.6654,
             "n": 3,
             "observedRate": 1,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": 0.7895,
-            "n": 3,
+            "meanPredicted": 0.7699,
+            "n": 4,
             "observedRate": 1,
             "to": 0.8
           },
           {
             "from": 0.8,
-            "meanPredicted": 0.8012,
-            "n": 1,
-            "observedRate": 1,
+            "meanPredicted": null,
+            "n": 0,
+            "observedRate": null,
             "to": 0.9
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9193,
-            "n": 2,
+            "meanPredicted": 0.9223,
+            "n": 3,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.2845,
-        "ece": 0.3577,
+        "brier": 0.2567,
+        "ece": 0.3309,
         "n": 24
       },
       "falseBlock": {
@@ -5078,23 +5106,23 @@
       },
       "missedBlock": {
         "ci95": [
-          0.2456,
-          0.6628
+          0.2031,
+          0.6138
         ],
-        "k": 8,
+        "k": 7,
         "n": 18,
-        "rate": 0.4444
+        "rate": 0.3889
       }
     },
     "test": {
       "accuracy": {
         "ci95": [
-          0.4241,
-          0.7643
+          0.4934,
+          0.8207
         ],
-        "k": 17,
+        "k": 19,
         "n": 28,
-        "rate": 0.6071
+        "rate": 0.6786
       },
       "calibration": {
         "bins": [
@@ -5107,9 +5135,9 @@
           },
           {
             "from": 0.1,
-            "meanPredicted": 0.1335,
-            "n": 16,
-            "observedRate": 0.5,
+            "meanPredicted": 0.1325,
+            "n": 14,
+            "observedRate": 0.4286,
             "to": 0.2
           },
           {
@@ -5149,28 +5177,28 @@
           },
           {
             "from": 0.7,
-            "meanPredicted": 0.7923,
-            "n": 3,
-            "observedRate": 0.6667,
+            "meanPredicted": 0.7758,
+            "n": 6,
+            "observedRate": 0.8333,
             "to": 0.8
           },
           {
             "from": 0.8,
             "meanPredicted": 0.8012,
-            "n": 2,
+            "n": 1,
             "observedRate": 1,
             "to": 0.9
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9279,
+            "meanPredicted": 0.92,
             "n": 3,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.2808,
-        "ece": 0.3069,
+        "brier": 0.2321,
+        "ece": 0.2381,
         "n": 28
       },
       "falseBlock": {
@@ -5184,12 +5212,12 @@
       },
       "missedBlock": {
         "ci95": [
-          0.3171,
-          0.7267
+          0.2314,
+          0.6372
         ],
-        "k": 10,
+        "k": 8,
         "n": 19,
-        "rate": 0.5263
+        "rate": 0.4211
       }
     }
   },
@@ -5250,16 +5278,16 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6896,
-            "n": 44,
-            "observedRate": 0.3636,
+            "meanPredicted": 0.6883,
+            "n": 36,
+            "observedRate": 0.3611,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": 0.7052,
-            "n": 1,
-            "observedRate": 0,
+            "meanPredicted": 0.7062,
+            "n": 6,
+            "observedRate": 0.3333,
             "to": 0.8
           },
           {
@@ -5271,14 +5299,14 @@
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9888,
-            "n": 46,
-            "observedRate": 0.913,
+            "meanPredicted": 0.9895,
+            "n": 49,
+            "observedRate": 0.8776,
             "to": 1
           }
         ],
-        "brier": 0.2119,
-        "ece": 0.2037,
+        "brier": 0.2223,
+        "ece": 0.2143,
         "n": 91
       },
       "falseBlock": {
@@ -5356,16 +5384,16 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6925,
-            "n": 14,
-            "observedRate": 0.5714,
+            "meanPredicted": 0.6916,
+            "n": 11,
+            "observedRate": 0.5455,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": null,
-            "n": 0,
-            "observedRate": null,
+            "meanPredicted": 0.7047,
+            "n": 2,
+            "observedRate": 0.5,
             "to": 0.8
           },
           {
@@ -5377,14 +5405,14 @@
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9862,
-            "n": 10,
+            "meanPredicted": 0.9877,
+            "n": 11,
             "observedRate": 1,
             "to": 1
           }
         ],
-        "brier": 0.1533,
-        "ece": 0.0764,
+        "brier": 0.1497,
+        "ece": 0.0897,
         "n": 24
       },
       "falseBlock": {
@@ -5462,16 +5490,16 @@
           },
           {
             "from": 0.6,
-            "meanPredicted": 0.6868,
-            "n": 15,
-            "observedRate": 0.5333,
+            "meanPredicted": 0.6845,
+            "n": 12,
+            "observedRate": 0.4167,
             "to": 0.7
           },
           {
             "from": 0.7,
-            "meanPredicted": 0.7052,
-            "n": 1,
-            "observedRate": 0,
+            "meanPredicted": 0.7093,
+            "n": 2,
+            "observedRate": 0.5,
             "to": 0.8
           },
           {
@@ -5483,14 +5511,14 @@
           },
           {
             "from": 0.9,
-            "meanPredicted": 0.9849,
-            "n": 12,
-            "observedRate": 0.9167,
+            "meanPredicted": 0.9859,
+            "n": 14,
+            "observedRate": 0.9286,
             "to": 1
           }
         ],
-        "brier": 0.1946,
-        "ece": 0.1366,
+        "brier": 0.1883,
+        "ece": 0.1584,
         "n": 28
       },
       "falseBlock": {
@@ -5537,157 +5565,157 @@
         "utility": -33
       },
       {
-        "accuracy": 0.7692,
-        "fn": 13,
-        "fp": 8,
+        "accuracy": 0.7582,
+        "fn": 12,
+        "fp": 10,
         "tau": 0.15,
-        "tn": 25,
-        "tp": 45,
-        "utility": -21
+        "tn": 23,
+        "tp": 46,
+        "utility": -22
       },
       {
-        "accuracy": 0.7692,
-        "fn": 16,
-        "fp": 5,
+        "accuracy": 0.7582,
+        "fn": 15,
+        "fp": 7,
         "tau": 0.2,
-        "tn": 28,
-        "tp": 42,
-        "utility": -21
+        "tn": 26,
+        "tp": 43,
+        "utility": -22
       },
       {
-        "accuracy": 0.7692,
-        "fn": 16,
-        "fp": 5,
+        "accuracy": 0.7582,
+        "fn": 15,
+        "fp": 7,
         "tau": 0.25,
-        "tn": 28,
-        "tp": 42,
-        "utility": -21
+        "tn": 26,
+        "tp": 43,
+        "utility": -22
       },
       {
-        "accuracy": 0.7692,
-        "fn": 16,
-        "fp": 5,
+        "accuracy": 0.7582,
+        "fn": 15,
+        "fp": 7,
         "tau": 0.3,
-        "tn": 28,
-        "tp": 42,
-        "utility": -21
+        "tn": 26,
+        "tp": 43,
+        "utility": -22
       },
       {
-        "accuracy": 0.7692,
-        "fn": 16,
-        "fp": 5,
+        "accuracy": 0.7582,
+        "fn": 15,
+        "fp": 7,
         "tau": 0.35,
-        "tn": 28,
-        "tp": 42,
-        "utility": -21
+        "tn": 26,
+        "tp": 43,
+        "utility": -22
       },
       {
-        "accuracy": 0.7692,
-        "fn": 16,
-        "fp": 5,
+        "accuracy": 0.7582,
+        "fn": 15,
+        "fp": 7,
         "tau": 0.4,
-        "tn": 28,
-        "tp": 42,
-        "utility": -21
+        "tn": 26,
+        "tp": 43,
+        "utility": -22
       },
       {
-        "accuracy": 0.7692,
-        "fn": 16,
-        "fp": 5,
+        "accuracy": 0.7582,
+        "fn": 15,
+        "fp": 7,
         "tau": 0.45,
-        "tn": 28,
-        "tp": 42,
-        "utility": -21
+        "tn": 26,
+        "tp": 43,
+        "utility": -22
+      },
+      {
+        "accuracy": 0.7473,
+        "fn": 17,
+        "fp": 6,
+        "tau": 0.5,
+        "tn": 27,
+        "tp": 41,
+        "utility": -23
+      },
+      {
+        "accuracy": 0.7363,
+        "fn": 18,
+        "fp": 6,
+        "tau": 0.55,
+        "tn": 27,
+        "tp": 40,
+        "utility": -24
+      },
+      {
+        "accuracy": 0.7363,
+        "fn": 18,
+        "fp": 6,
+        "tau": 0.6,
+        "tn": 27,
+        "tp": 40,
+        "utility": -24
+      },
+      {
+        "accuracy": 0.7363,
+        "fn": 18,
+        "fp": 6,
+        "tau": 0.65,
+        "tn": 27,
+        "tp": 40,
+        "utility": -24
+      },
+      {
+        "accuracy": 0.7363,
+        "fn": 18,
+        "fp": 6,
+        "tau": 0.7,
+        "tn": 27,
+        "tp": 40,
+        "utility": -24
       },
       {
         "accuracy": 0.7582,
         "fn": 18,
         "fp": 4,
-        "tau": 0.5,
+        "tau": 0.75,
         "tn": 29,
         "tp": 40,
         "utility": -22
       },
       {
-        "accuracy": 0.7473,
-        "fn": 19,
-        "fp": 4,
-        "tau": 0.55,
-        "tn": 29,
-        "tp": 39,
-        "utility": -23
-      },
-      {
-        "accuracy": 0.7473,
-        "fn": 19,
-        "fp": 4,
-        "tau": 0.6,
-        "tn": 29,
-        "tp": 39,
-        "utility": -23
-      },
-      {
-        "accuracy": 0.7473,
-        "fn": 19,
-        "fp": 4,
-        "tau": 0.65,
-        "tn": 29,
-        "tp": 39,
-        "utility": -23
-      },
-      {
-        "accuracy": 0.7473,
-        "fn": 19,
-        "fp": 4,
-        "tau": 0.7,
-        "tn": 29,
-        "tp": 39,
-        "utility": -23
-      },
-      {
-        "accuracy": 0.7473,
-        "fn": 19,
-        "fp": 4,
-        "tau": 0.75,
-        "tn": 29,
-        "tp": 39,
-        "utility": -23
-      },
-      {
-        "accuracy": 0.6923,
-        "fn": 26,
+        "accuracy": 0.6813,
+        "fn": 27,
         "fp": 2,
         "tau": 0.8,
         "tn": 31,
-        "tp": 32,
-        "utility": -28
+        "tp": 31,
+        "utility": -29
       },
       {
-        "accuracy": 0.6484,
-        "fn": 30,
+        "accuracy": 0.6703,
+        "fn": 28,
         "fp": 2,
         "tau": 0.85,
         "tn": 31,
-        "tp": 28,
-        "utility": -32
+        "tp": 30,
+        "utility": -30
       },
       {
-        "accuracy": 0.6484,
-        "fn": 30,
+        "accuracy": 0.6703,
+        "fn": 28,
         "fp": 2,
         "tau": 0.9,
         "tn": 31,
-        "tp": 28,
-        "utility": -32
+        "tp": 30,
+        "utility": -30
       },
       {
-        "accuracy": 0.5824,
-        "fn": 36,
+        "accuracy": 0.5934,
+        "fn": 35,
         "fp": 2,
         "tau": 0.95,
         "tn": 31,
-        "tp": 22,
-        "utility": -38
+        "tp": 23,
+        "utility": -37
       }
     ],
     "shippedTau": 0.5,

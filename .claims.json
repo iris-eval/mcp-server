@@ -207,16 +207,31 @@
         "summary": "A deterministic detector with context-grounded contradiction signals, measured with intervals; keyed judge templates for accuracy, correctness against a reference and faithfulness to sources, plus a citation verifier, cover what patterns cannot — on a key the user supplies."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "grounded_in_reads"
+          },
+          {
+            "kind": "rule",
+            "name": "no_hallucination_markers"
+          },
+          {
+            "kind": "tool",
+            "name": "log_trace"
+          }
+        ],
         "id": "Q2xS3",
         "needs": [
           "output",
-          "tool_calls"
+          "input",
+          "tool_calls",
+          "tool_outputs"
         ],
         "question": "Q2",
-        "status": "gap",
+        "status": "has",
         "subject": "S3",
-        "summary": "Tool outputs are not yet read as grounding material, so a claim that contradicts what the agent itself read goes unjudged."
+        "summary": "Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged — a code identifier or a number belongs to the hallucination signals — and the rule declines rather than guesses when a read was truncated."
       },
       {
         "evidence": [],
@@ -1014,8 +1029,8 @@
       }
     ],
     "counts": {
-      "gap": 23,
-      "has": 16,
+      "gap": 22,
+      "has": 17,
       "n/a": 4,
       "partial": 17
     },
@@ -1101,7 +1116,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 16,
+    "builtInCount": 17,
     "categories": [
       "completeness",
       "relevance",
@@ -1126,6 +1141,7 @@
     "names": [
       "costUnderThreshold",
       "expectedCoverage",
+      "groundedInReads",
       "keywordOverlap",
       "minOutputLength",
       "noBlocklistWords",
@@ -1220,6 +1236,22 @@
           "expected"
         ],
         "question": "complete",
+        "version": 1
+      },
+      {
+        "classes": [
+          "ungrounded"
+        ],
+        "kind": "inference",
+        "mechanism": "heuristic",
+        "name": "grounded_in_reads",
+        "needs": [
+          "output",
+          "input",
+          "tool_calls",
+          "tool_outputs"
+        ],
+        "question": "grounded",
         "version": 1
       },
       {
@@ -1443,19 +1475,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 16,
-          "measuredThreeOrMore": 16
+          "evaluators": 17,
+          "measuredThreeOrMore": 17
         }
       },
       "byStatus": {
-        "measurable": 149,
-        "measured": 100,
-        "n/a": 78,
-        "partial": 13,
-        "stated": 63
+        "measurable": 153,
+        "measured": 104,
+        "n/a": 80,
+        "partial": 14,
+        "stated": 65
       },
-      "evaluators": 31,
-      "measuredThreeOrMore": 25,
+      "evaluators": 32,
+      "measuredThreeOrMore": 26,
       "questions": 13
     },
     "evaluators": [
@@ -2345,6 +2377,74 @@
         "id": "rule:no_silent_tool_failure",
         "measured": 4,
         "name": "no_silent_tool_failure"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[grounded_in_reads]",
+            "note": "precision, recall and F1 on 32 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[grounded_in_reads].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[ungrounded]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:grounded_in_reads",
+        "measured": 4,
+        "name": "grounded_in_reads"
       },
       {
         "cells": {
@@ -3677,13 +3777,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "8194ee800e59"
+        "compositeVersion": "86b890e4c919"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "d280c2ee0858",
+        "corpusVersion": "b15dd3d73b3e",
         "customCorpusVersion": "e2451fcc02d6"
       }
     },
@@ -3696,8 +3796,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T04:25:16.396Z",
-  "generatedFromCommit": "f19f871",
+  "generatedAt": "2026-09-06T04:49:12.717Z",
+  "generatedFromCommit": "1aa1fd3",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -3766,10 +3866,10 @@
     ]
   },
   "proof": {
-    "commit": "f19f871",
+    "commit": "1aa1fd3",
     "composite": {
-      "compositeVersion": "8194ee800e59",
-      "corpusVersion": "d280c2ee0858",
+      "compositeVersion": "86b890e4c919",
+      "corpusVersion": "b15dd3d73b3e",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -3799,14 +3899,14 @@
         "reads": "accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart",
         "risk": {
           "realTranscripts": {
-            "delta": 0.2083,
-            "hi": 0.4445,
-            "lo": -0.0679
+            "delta": 0.25,
+            "hi": 0.4791,
+            "lo": -0.0265
           },
           "test": {
-            "delta": 0.2143,
-            "hi": 0.4366,
-            "lo": -0.0446
+            "delta": 0.2857,
+            "hi": 0.4976,
+            "lo": 0.0253
           }
         },
         "riskPerClass": {
@@ -3838,20 +3938,20 @@
               {
                 "from": 0,
                 "meanPredicted": 0.0298,
-                "n": 54,
-                "observedRate": 0.5926,
+                "n": 51,
+                "observedRate": 0.5686,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.124,
-                "n": 33,
-                "observedRate": 0.697,
+                "meanPredicted": 0.1224,
+                "n": 36,
+                "observedRate": 0.7222,
                 "to": 0.2
               },
               {
                 "from": 0.2,
-                "meanPredicted": 0.2398,
+                "meanPredicted": 0.2508,
                 "n": 4,
                 "observedRate": 0.75,
                 "to": 0.3
@@ -3906,8 +4006,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.54,
-            "ece": 0.5642,
+            "brier": 0.537,
+            "ece": 0.5612,
             "n": 91
           },
           "falseBlock": {
@@ -3943,15 +4043,15 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0237,
-                "n": 19,
-                "observedRate": 0.6842,
+                "meanPredicted": 0.0263,
+                "n": 18,
+                "observedRate": 0.6667,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1172,
-                "n": 5,
+                "meanPredicted": 0.114,
+                "n": 6,
                 "observedRate": 1,
                 "to": 0.2
               },
@@ -4012,8 +4112,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.6676,
-            "ece": 0.7068,
+            "brier": 0.6582,
+            "ece": 0.7018,
             "n": 24
           },
           "falseBlock": {
@@ -4049,16 +4149,16 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0329,
-                "n": 17,
-                "observedRate": 0.7059,
+                "meanPredicted": 0.0398,
+                "n": 18,
+                "observedRate": 0.7222,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1399,
-                "n": 10,
-                "observedRate": 0.6,
+                "meanPredicted": 0.1448,
+                "n": 9,
+                "observedRate": 0.5556,
                 "to": 0.2
               },
               {
@@ -4118,8 +4218,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.5791,
-            "ece": 0.5997,
+            "brier": 0.5748,
+            "ece": 0.5975,
             "n": 28
           },
           "falseBlock": {
@@ -4238,14 +4338,14 @@
           "recall": 0.4
         },
         {
-          "caught": 0,
+          "caught": 1,
           "ci95": [
-            0,
-            0.4899
+            0.0456,
+            0.6994
           ],
           "class": "ungrounded",
           "present": 4,
-          "recall": 0
+          "recall": 0.25
         },
         {
           "caught": 0,
@@ -4302,12 +4402,12 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.661,
-              0.8346
+              0.6492,
+              0.8253
             ],
-            "k": 69,
+            "k": 68,
             "n": 91,
-            "rate": 0.7582
+            "rate": 0.7473
           },
           "calibration": {
             "bins": [
@@ -4320,9 +4420,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1323,
-                "n": 45,
-                "observedRate": 0.3556,
+                "meanPredicted": 0.1308,
+                "n": 42,
+                "observedRate": 0.3571,
                 "to": 0.2
               },
               {
@@ -4355,65 +4455,65 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6788,
+                "meanPredicted": 0.6688,
                 "n": 12,
                 "observedRate": 0.9167,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7836,
-                "n": 9,
-                "observedRate": 0.7778,
+                "meanPredicted": 0.7655,
+                "n": 13,
+                "observedRate": 0.6923,
                 "to": 0.8
               },
               {
                 "from": 0.8,
                 "meanPredicted": 0.8012,
-                "n": 4,
+                "n": 1,
                 "observedRate": 1,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9307,
-                "n": 17,
+                "meanPredicted": 0.935,
+                "n": 19,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.1849,
-            "ece": 0.1762,
+            "brier": 0.1906,
+            "ece": 0.1755,
             "n": 91
           },
           "falseBlock": {
             "ci95": [
-              0.0482,
-              0.2733
+              0.0861,
+              0.3439
             ],
-            "k": 4,
+            "k": 6,
             "n": 33,
-            "rate": 0.1212
+            "rate": 0.1818
           },
           "missedBlock": {
             "ci95": [
-              0.2062,
-              0.438
+              0.1918,
+              0.4201
             ],
-            "k": 18,
+            "k": 17,
             "n": 58,
-            "rate": 0.3103
+            "rate": 0.2931
           }
         },
         "realTranscripts": {
           "accuracy": {
             "ci95": [
-              0.4671,
-              0.8203
+              0.5083,
+              0.8509
             ],
-            "k": 16,
+            "k": 17,
             "n": 24,
-            "rate": 0.6667
+            "rate": 0.7083
           },
           "calibration": {
             "bins": [
@@ -4426,9 +4526,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1306,
-                "n": 14,
-                "observedRate": 0.5714,
+                "meanPredicted": 0.1288,
+                "n": 13,
+                "observedRate": 0.5385,
                 "to": 0.2
               },
               {
@@ -4461,35 +4561,35 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6788,
+                "meanPredicted": 0.6654,
                 "n": 3,
                 "observedRate": 1,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7895,
-                "n": 3,
+                "meanPredicted": 0.7699,
+                "n": 4,
                 "observedRate": 1,
                 "to": 0.8
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8012,
-                "n": 1,
-                "observedRate": 1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9193,
-                "n": 2,
+                "meanPredicted": 0.9223,
+                "n": 3,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.2845,
-            "ece": 0.3577,
+            "brier": 0.2567,
+            "ece": 0.3309,
             "n": 24
           },
           "falseBlock": {
@@ -4503,23 +4603,23 @@
           },
           "missedBlock": {
             "ci95": [
-              0.2456,
-              0.6628
+              0.2031,
+              0.6138
             ],
-            "k": 8,
+            "k": 7,
             "n": 18,
-            "rate": 0.4444
+            "rate": 0.3889
           }
         },
         "test": {
           "accuracy": {
             "ci95": [
-              0.4241,
-              0.7643
+              0.4934,
+              0.8207
             ],
-            "k": 17,
+            "k": 19,
             "n": 28,
-            "rate": 0.6071
+            "rate": 0.6786
           },
           "calibration": {
             "bins": [
@@ -4532,9 +4632,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1335,
-                "n": 16,
-                "observedRate": 0.5,
+                "meanPredicted": 0.1325,
+                "n": 14,
+                "observedRate": 0.4286,
                 "to": 0.2
               },
               {
@@ -4574,28 +4674,28 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7923,
-                "n": 3,
-                "observedRate": 0.6667,
+                "meanPredicted": 0.7758,
+                "n": 6,
+                "observedRate": 0.8333,
                 "to": 0.8
               },
               {
                 "from": 0.8,
                 "meanPredicted": 0.8012,
-                "n": 2,
+                "n": 1,
                 "observedRate": 1,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9279,
+                "meanPredicted": 0.92,
                 "n": 3,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.2808,
-            "ece": 0.3069,
+            "brier": 0.2321,
+            "ece": 0.2381,
             "n": 28
           },
           "falseBlock": {
@@ -4609,12 +4709,12 @@
           },
           "missedBlock": {
             "ci95": [
-              0.3171,
-              0.7267
+              0.2314,
+              0.6372
             ],
-            "k": 10,
+            "k": 8,
             "n": 19,
-            "rate": 0.5263
+            "rate": 0.4211
           }
         }
       },
@@ -4675,16 +4775,16 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6896,
-                "n": 44,
-                "observedRate": 0.3636,
+                "meanPredicted": 0.6883,
+                "n": 36,
+                "observedRate": 0.3611,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7052,
-                "n": 1,
-                "observedRate": 0,
+                "meanPredicted": 0.7062,
+                "n": 6,
+                "observedRate": 0.3333,
                 "to": 0.8
               },
               {
@@ -4696,14 +4796,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9888,
-                "n": 46,
-                "observedRate": 0.913,
+                "meanPredicted": 0.9895,
+                "n": 49,
+                "observedRate": 0.8776,
                 "to": 1
               }
             ],
-            "brier": 0.2119,
-            "ece": 0.2037,
+            "brier": 0.2223,
+            "ece": 0.2143,
             "n": 91
           },
           "falseBlock": {
@@ -4781,16 +4881,16 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6925,
-                "n": 14,
-                "observedRate": 0.5714,
+                "meanPredicted": 0.6916,
+                "n": 11,
+                "observedRate": 0.5455,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.7047,
+                "n": 2,
+                "observedRate": 0.5,
                 "to": 0.8
               },
               {
@@ -4802,14 +4902,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9862,
-                "n": 10,
+                "meanPredicted": 0.9877,
+                "n": 11,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.1533,
-            "ece": 0.0764,
+            "brier": 0.1497,
+            "ece": 0.0897,
             "n": 24
           },
           "falseBlock": {
@@ -4887,16 +4987,16 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6868,
-                "n": 15,
-                "observedRate": 0.5333,
+                "meanPredicted": 0.6845,
+                "n": 12,
+                "observedRate": 0.4167,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7052,
-                "n": 1,
-                "observedRate": 0,
+                "meanPredicted": 0.7093,
+                "n": 2,
+                "observedRate": 0.5,
                 "to": 0.8
               },
               {
@@ -4908,14 +5008,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9849,
-                "n": 12,
-                "observedRate": 0.9167,
+                "meanPredicted": 0.9859,
+                "n": 14,
+                "observedRate": 0.9286,
                 "to": 1
               }
             ],
-            "brier": 0.1946,
-            "ece": 0.1366,
+            "brier": 0.1883,
+            "ece": 0.1584,
             "n": 28
           },
           "falseBlock": {
@@ -4962,157 +5062,157 @@
             "utility": -33
           },
           {
-            "accuracy": 0.7692,
-            "fn": 13,
-            "fp": 8,
+            "accuracy": 0.7582,
+            "fn": 12,
+            "fp": 10,
             "tau": 0.15,
-            "tn": 25,
-            "tp": 45,
-            "utility": -21
+            "tn": 23,
+            "tp": 46,
+            "utility": -22
           },
           {
-            "accuracy": 0.7692,
-            "fn": 16,
-            "fp": 5,
+            "accuracy": 0.7582,
+            "fn": 15,
+            "fp": 7,
             "tau": 0.2,
-            "tn": 28,
-            "tp": 42,
-            "utility": -21
+            "tn": 26,
+            "tp": 43,
+            "utility": -22
           },
           {
-            "accuracy": 0.7692,
-            "fn": 16,
-            "fp": 5,
+            "accuracy": 0.7582,
+            "fn": 15,
+            "fp": 7,
             "tau": 0.25,
-            "tn": 28,
-            "tp": 42,
-            "utility": -21
+            "tn": 26,
+            "tp": 43,
+            "utility": -22
           },
           {
-            "accuracy": 0.7692,
-            "fn": 16,
-            "fp": 5,
+            "accuracy": 0.7582,
+            "fn": 15,
+            "fp": 7,
             "tau": 0.3,
-            "tn": 28,
-            "tp": 42,
-            "utility": -21
+            "tn": 26,
+            "tp": 43,
+            "utility": -22
           },
           {
-            "accuracy": 0.7692,
-            "fn": 16,
-            "fp": 5,
+            "accuracy": 0.7582,
+            "fn": 15,
+            "fp": 7,
             "tau": 0.35,
-            "tn": 28,
-            "tp": 42,
-            "utility": -21
+            "tn": 26,
+            "tp": 43,
+            "utility": -22
           },
           {
-            "accuracy": 0.7692,
-            "fn": 16,
-            "fp": 5,
+            "accuracy": 0.7582,
+            "fn": 15,
+            "fp": 7,
             "tau": 0.4,
-            "tn": 28,
-            "tp": 42,
-            "utility": -21
+            "tn": 26,
+            "tp": 43,
+            "utility": -22
           },
           {
-            "accuracy": 0.7692,
-            "fn": 16,
-            "fp": 5,
+            "accuracy": 0.7582,
+            "fn": 15,
+            "fp": 7,
             "tau": 0.45,
-            "tn": 28,
-            "tp": 42,
-            "utility": -21
+            "tn": 26,
+            "tp": 43,
+            "utility": -22
+          },
+          {
+            "accuracy": 0.7473,
+            "fn": 17,
+            "fp": 6,
+            "tau": 0.5,
+            "tn": 27,
+            "tp": 41,
+            "utility": -23
+          },
+          {
+            "accuracy": 0.7363,
+            "fn": 18,
+            "fp": 6,
+            "tau": 0.55,
+            "tn": 27,
+            "tp": 40,
+            "utility": -24
+          },
+          {
+            "accuracy": 0.7363,
+            "fn": 18,
+            "fp": 6,
+            "tau": 0.6,
+            "tn": 27,
+            "tp": 40,
+            "utility": -24
+          },
+          {
+            "accuracy": 0.7363,
+            "fn": 18,
+            "fp": 6,
+            "tau": 0.65,
+            "tn": 27,
+            "tp": 40,
+            "utility": -24
+          },
+          {
+            "accuracy": 0.7363,
+            "fn": 18,
+            "fp": 6,
+            "tau": 0.7,
+            "tn": 27,
+            "tp": 40,
+            "utility": -24
           },
           {
             "accuracy": 0.7582,
             "fn": 18,
             "fp": 4,
-            "tau": 0.5,
+            "tau": 0.75,
             "tn": 29,
             "tp": 40,
             "utility": -22
           },
           {
-            "accuracy": 0.7473,
-            "fn": 19,
-            "fp": 4,
-            "tau": 0.55,
-            "tn": 29,
-            "tp": 39,
-            "utility": -23
-          },
-          {
-            "accuracy": 0.7473,
-            "fn": 19,
-            "fp": 4,
-            "tau": 0.6,
-            "tn": 29,
-            "tp": 39,
-            "utility": -23
-          },
-          {
-            "accuracy": 0.7473,
-            "fn": 19,
-            "fp": 4,
-            "tau": 0.65,
-            "tn": 29,
-            "tp": 39,
-            "utility": -23
-          },
-          {
-            "accuracy": 0.7473,
-            "fn": 19,
-            "fp": 4,
-            "tau": 0.7,
-            "tn": 29,
-            "tp": 39,
-            "utility": -23
-          },
-          {
-            "accuracy": 0.7473,
-            "fn": 19,
-            "fp": 4,
-            "tau": 0.75,
-            "tn": 29,
-            "tp": 39,
-            "utility": -23
-          },
-          {
-            "accuracy": 0.6923,
-            "fn": 26,
+            "accuracy": 0.6813,
+            "fn": 27,
             "fp": 2,
             "tau": 0.8,
             "tn": 31,
-            "tp": 32,
-            "utility": -28
+            "tp": 31,
+            "utility": -29
           },
           {
-            "accuracy": 0.6484,
-            "fn": 30,
+            "accuracy": 0.6703,
+            "fn": 28,
             "fp": 2,
             "tau": 0.85,
             "tn": 31,
-            "tp": 28,
-            "utility": -32
+            "tp": 30,
+            "utility": -30
           },
           {
-            "accuracy": 0.6484,
-            "fn": 30,
+            "accuracy": 0.6703,
+            "fn": 28,
             "fp": 2,
             "tau": 0.9,
             "tn": 31,
-            "tp": 28,
-            "utility": -32
+            "tp": 30,
+            "utility": -30
           },
           {
-            "accuracy": 0.5824,
-            "fn": 36,
+            "accuracy": 0.5934,
+            "fn": 35,
             "fp": 2,
             "tau": 0.95,
             "tn": 31,
-            "tp": 22,
-            "utility": -38
+            "tp": 23,
+            "utility": -37
           }
         ],
         "shippedTau": 0.5,
@@ -5121,7 +5221,7 @@
       },
       "version": "0.10.0"
     },
-    "corpusVersion": "d280c2ee0858",
+    "corpusVersion": "b15dd3d73b3e",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -5668,7 +5768,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-06T04:14:49.268Z",
+    "generatedAt": "2026-09-06T04:42:57.012Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -6325,6 +6425,55 @@
         "tp": 13
       },
       {
+        "category": "safety",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.8064,
+            1
+          ],
+          "recall": [
+            0.8064,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8939,
+            0.9993
+          ],
+          "precision": [
+            0.8592,
+            1
+          ],
+          "recall": [
+            0.8599,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 32,
+        "name": "grounded_in_reads",
+        "negatives": 16,
+        "positives": 16,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 16,
+        "tp": 16
+      },
+      {
         "category": "cost",
         "ci95": {
           "f1": [
@@ -6962,7 +7111,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2217,
+    "totalCombined": 2230,
     "vitestDashboard": {
       "failed": 0,
       "passed": 152,
@@ -6970,8 +7119,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2051,
-      "total": 2051
+      "passed": 2064,
+      "total": 2064
     }
   },
   "version": {
