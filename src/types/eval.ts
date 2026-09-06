@@ -405,6 +405,19 @@ export interface EvalRuleResult {
   // skips as failures on its own terms. Without this flag, "the pattern
   // was defeated" is indistinguishable from "nothing to evaluate".
   budgetExceeded?: boolean;
+
+  /**
+   * The rule was asked, and the evidence it needed was incomplete.
+   *
+   * Distinct from a missing input, which is coverage, and from a budget
+   * breach, which is our own limit. This one says the caller supplied the
+   * input and it was cut: a negative claim over a partial read is unsound
+   * rather than merely uncertain, so the honest answer is that the rule
+   * could not answer. It maps to skipClass "defeated", which is what makes
+   * a deployment that promotes such a rule to critical get `unknown`
+   * instead of a clean bill of health.
+   */
+  evidenceIncomplete?: boolean;
 }
 
 /**

@@ -3,7 +3,7 @@ import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, Custo
 import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
-import { MAX_PATTERN_LENGTH, regexBacktrackingBudgetExceeded } from './regex-budget.js';
+import { MAX_PATTERN_LENGTH } from './regex-budget.js';
 import { checkArguments, compileToolSchema } from '../schema-validator.js';
 
 

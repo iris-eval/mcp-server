@@ -270,12 +270,27 @@
       "id": "Q2xS3",
       "question": "Q2",
       "subject": "S3",
-      "status": "gap",
-      "summary": "Tool outputs are not yet read as grounding material, so a claim that contradicts what the agent itself read goes unjudged.",
-      "evidence": [],
+      "status": "has",
+      "summary": "Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged \u2014 a code identifier or a number belongs to the hallucination signals \u2014 and the rule declines rather than guesses when a read was truncated.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "grounded_in_reads"
+        },
+        {
+          "kind": "rule",
+          "name": "no_hallucination_markers"
+        },
+        {
+          "kind": "tool",
+          "name": "log_trace"
+        }
+      ],
       "needs": [
         "output",
-        "tool_calls"
+        "input",
+        "tool_calls",
+        "tool_outputs"
       ]
     },
     {

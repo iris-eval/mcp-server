@@ -45,7 +45,7 @@ export function inputsPresent(context: EvalContext): Set<Need> {
 
 export function skipClassOf(raw: EvalRuleResult): SkipClass | undefined {
   if (!raw.skipped) return undefined;
-  if (raw.budgetExceeded) return 'defeated';
+  if (raw.budgetExceeded || raw.evidenceIncomplete) return 'defeated';
   if (raw.configInvalid) return 'config_invalid';
   return 'not_applicable';
 }

@@ -2620,8 +2620,39 @@ function validToolArguments(ctx: EvalContext): EvalRuleResult {
   };
 }
 
+/*
+ * grounded_in_reads — vendored as a skip, for the same reason as
+ * valid_tool_arguments: the playground collects no tool calls, and the
+ * server rule's scanner and ground index would be real weight in a browser
+ * bundle for a path that cannot be taken. The parity test compares
+ * VERDICTS, and a skip on both sides is a match.
+ */
+function groundedInReads(ctx: EvalContext): EvalRuleResult {
+  const calls = ctx.toolCalls;
+  if (calls === undefined || calls.length === 0) {
+    return {
+      ruleName: 'grounded_in_reads',
+      category: 'safety',
+      passed: false,
+      score: 0,
+      message: 'No tool calls provided',
+      skipped: true,
+      skipReason: 'context.toolCalls not provided',
+    };
+  }
+  return {
+    ruleName: 'grounded_in_reads',
+    category: 'safety',
+    passed: true,
+    score: 1,
+    message: 'Grounding is judged by the installed server, which reads the trajectory',
+    skipped: true,
+    skipReason: 'grounding is not evaluated in the playground',
+  };
+}
+
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
-  safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure],
+  safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads],
   relevance: [keywordOverlap, topicConsistency],
   completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments],
   cost: [costUnderThreshold, verbosityRatio, noToolLoop],

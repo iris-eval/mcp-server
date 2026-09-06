@@ -194,6 +194,20 @@ describe('real agent transcripts — the acceptance pass\'s findings hold', () =
 const TRAJECTORY_FAILURES: Record<string, string[]> = {
   no_silent_tool_failure: ['t-13', 't-14', 't-15'],
   no_tool_loop: ['t-16'],
+  /*
+   * grounded_in_reads fires on two rows and it is worth saying which two it
+   * does NOT reach, because the reason is a property of this fixture set
+   * rather than of the rule. t-12 is the case it exists for: the answer
+   * cites docs/otel-export.md while the agent's own listing names
+   * otel-integration.md. t-14 invents three filenames after a listing that
+   * failed. t-10 made no tool calls at all and t-17 carries the same defect
+   * as t-12 — but these transcripts cap every tool output at 600 characters
+   * for file size, and the rule declines to judge an incomplete read set,
+   * so it skips on t-17 and on ten others. That is the corpus limiting the
+   * measurement, not the rule limiting itself, and it is why this rule's
+   * accuracy comes from its own family rather than from here.
+   */
+  grounded_in_reads: ['t-12', 't-14'],
 };
 
 /* Rows with no tool calls at all: the rules must SKIP there, never pass. */
@@ -248,9 +262,21 @@ describe('real agent transcripts — the trajectory rules fire on exactly the na
     const scores = Object.fromEntries(
       rows.map(({ id, result }) => [id, { safety: result.categories?.safety?.score, cost: result.categories?.cost?.score }]),
     );
-    expect(scores['t-13'].safety).toBeCloseTo(0.925, 3);
-    expect(scores['t-14'].safety).toBeCloseTo(0.925, 3);
-    expect(scores['t-15'].safety).toBeCloseTo(0.925, 3);
+    /*
+     * All three were 0.925 until arc 4 put grounded_in_reads in the
+     * safety bundle, and the three now differ because the new rule has a
+     * different opinion of each. It PASSES t-13 and t-15, whose
+     * fabrications are an invented environment variable and a count —
+     * neither is a location — so the mean only moves by the weight of an
+     * extra passing rule. It FIRES on t-14, where the answer names three
+     * filenames after a listing that failed, which is exactly the case
+     * the rule exists for. Pinned rather than computed on purpose: a
+     * bundle score that drifts silently stops meaning what a reader
+     * thinks it means.
+     */
+    expect(scores['t-13'].safety).toBeCloseTo(0.935, 3);
+    expect(scores['t-14'].safety).toBeCloseTo(0.804, 3);
+    expect(scores['t-15'].safety).toBeCloseTo(0.935, 3);
     expect(scores['t-16'].cost).toBeCloseTo(0.8, 3);
     for (const id of ['t-13', 't-14', 't-15', 't-16']) {
       const row = rows.find((r) => r.id === id)!;
