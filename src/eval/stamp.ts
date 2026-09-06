@@ -16,6 +16,7 @@
  */
 import type { EvalContext, EvalRule, EvalRuleResult, Need, Role, SkipClass, Uncertainty } from '../types/eval.js';
 import type { EffectiveCriticality } from './criticality.js';
+import { stepsOf } from './steps.js';
 import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
 
 /** Which needs the call actually carried. `tools_catalogue` and `citations` arrive with later releases. */
@@ -23,9 +24,16 @@ export function inputsPresent(context: EvalContext): Set<Need> {
   const present = new Set<Need>(['output']);
   if (typeof context.input === 'string' && context.input.length > 0) present.add('input');
   if (typeof context.expected === 'string' && context.expected.length > 0) present.add('expected');
-  if (Array.isArray(context.toolCalls) && context.toolCalls.length > 0) {
+  /*
+   * The DERIVED trajectory, not the raw field: a trace captured as
+   * OpenTelemetry TOOL spans supplied its trajectory just as surely as one
+   * that sent tool_calls, and coverage that said otherwise would report a
+   * question as unjudged when a rule had in fact judged it.
+   */
+  const steps = stepsOf(context);
+  if (steps.length > 0) {
     present.add('tool_calls');
-    if (context.toolCalls.some((c) => c && c.output !== undefined)) present.add('tool_outputs');
+    if (steps.some((s) => s.output !== undefined)) present.add('tool_outputs');
   }
   if (typeof context.costUsd === 'number') present.add('cost');
   if (context.tokenUsage && (context.tokenUsage.prompt_tokens !== undefined || context.tokenUsage.completion_tokens !== undefined || context.tokenUsage.total_tokens !== undefined)) {

@@ -1,5 +1,6 @@
 import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
-import { callKey, describeInput, skipWithoutTrajectory } from './trajectory.js';
+import { describeInput, skipWithoutTrajectory, stepKey } from './trajectory.js';
+import { stepScopeNote, stepsOf } from '../steps.js';
 
 export const costUnderThreshold: EvalRule = {
   name: 'cost_under_threshold',
@@ -110,7 +111,7 @@ function longestTwoCallCycle(keys: string[]): { a: string; b: string; cycles: nu
 export const noToolLoop: EvalRule = {
   name: 'no_tool_loop',
   description:
-    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when two calls alternate for more than two complete A,B,A,B cycles. Skips when no tool calls are provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit',
+    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when two calls alternate for more than two complete A,B,A,B cycles. Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit',
   evalType: 'cost',
   weight: 1,
   kind: 'detection',
@@ -123,14 +124,15 @@ export const noToolLoop: EvalRule = {
     const skip = skipWithoutTrajectory('no_tool_loop', context);
     if (skip) return skip;
 
-    const calls = context.toolCalls ?? [];
+    const calls = stepsOf(context);
+    const scope = stepScopeNote(context);
     const configured = context.customConfig?.max_tool_repeats;
     const maxRepeats =
       typeof configured === 'number' && Number.isFinite(configured) && configured >= 1
         ? Math.floor(configured)
         : DEFAULT_MAX_TOOL_REPEATS;
 
-    const keys = calls.map(callKey);
+    const keys = calls.map(stepKey);
     const counts = new Map<string, number>();
     for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1);
 
@@ -150,7 +152,7 @@ export const noToolLoop: EvalRule = {
       const call = calls[keys.indexOf(worstKey)];
       const evidence: Evidence[] = [...repeatsEvidence];
       keys.forEach((key, index) => {
-        if (key === worstKey && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].tool_name, label: 'repeated call' });
+        if (key === worstKey && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'repeated call' });
       });
       return {
         ruleName: 'no_tool_loop',
@@ -158,7 +160,7 @@ export const noToolLoop: EvalRule = {
         score: Math.max(0, 1 - (worstCount - maxRepeats) * 0.25),
         value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
         evidence,
-        message: `Tool loop: ${call.tool_name} called ${worstCount} times with the same input — ${describeInput(call.input)} — over ${calls.length} call${calls.length === 1 ? '' : 's'} (max ${maxRepeats})`,
+        message: `Tool loop: ${call.name} called ${worstCount} times with the same input — ${describeInput(call.input)} — over ${calls.length} call${calls.length === 1 ? '' : 's'} (max ${maxRepeats})${scope}`,
       };
     }
 
@@ -170,7 +172,7 @@ export const noToolLoop: EvalRule = {
         { type: 'count', stat: 'two_call_cycles', unit: 'cycles', value: cycle.cycles, threshold: MAX_TWO_CALL_CYCLES, thresholdSource: 'rule' },
       ];
       keys.forEach((key, index) => {
-        if ((key === cycle.a || key === cycle.b) && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].tool_name, label: 'alternating call' });
+        if ((key === cycle.a || key === cycle.b) && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'alternating call' });
       });
       return {
         ruleName: 'no_tool_loop',
@@ -178,7 +180,7 @@ export const noToolLoop: EvalRule = {
         score: Math.max(0, 1 - (cycle.cycles - MAX_TWO_CALL_CYCLES) * 0.25),
         value: { stat: 'two_call_cycles', unit: 'cycles', value: cycle.cycles },
         evidence,
-        message: `Tool loop: ${a.tool_name} (${describeInput(a.input)}) and ${b.tool_name} (${describeInput(b.input)}) alternate for ${cycle.cycles} cycles (max ${MAX_TWO_CALL_CYCLES})`,
+        message: `Tool loop: ${a.name} (${describeInput(a.input)}) and ${b.name} (${describeInput(b.input)}) alternate for ${cycle.cycles} cycles (max ${MAX_TWO_CALL_CYCLES})${scope}`,
       };
     }
 
@@ -186,7 +188,7 @@ export const noToolLoop: EvalRule = {
       ruleName: 'no_tool_loop',
       passed: true,
       score: 1,
-      message: `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})`,
+      message: `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})${scope}`,
       value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
       evidence: repeatsEvidence,
     };

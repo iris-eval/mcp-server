@@ -197,6 +197,27 @@ export function stepStatsOf(context: EvalContext): { source: StepSource | 'none'
 }
 
 /**
+ * WHY the trajectory is empty, which is three different situations.
+ *
+ * A rule needs to tell them apart to write an honest skip reason, and it
+ * must do that WITHOUT reading context.spans: the raw spans are transport,
+ * exactly one module knows their shape, and the alternative is an
+ * exemption in the grep that keeps rules from growing a second reading.
+ * So the question is answered here and the answer is a word.
+ */
+export type TrajectoryAbsence = 'none' | 'empty_calls' | 'spans_without_tool';
+
+export function trajectoryAbsence(context: EvalContext): TrajectoryAbsence {
+  const calls = context.toolCalls;
+  const spans = context.spans;
+  if ((calls === undefined || calls === null) && Array.isArray(spans) && spans.length > 0) {
+    return 'spans_without_tool';
+  }
+  if (calls === undefined || calls === null) return 'none';
+  return 'empty_calls';
+}
+
+/**
  * The sentence a rule appends when it judged less than it was handed.
  *
  * Empty when nothing was dropped, so a message that says nothing about
