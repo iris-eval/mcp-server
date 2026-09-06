@@ -114,7 +114,7 @@ function customCells(type, row, meta) {
     q1: cell('measured', `${RESULTS} → custom.types[${type}]`, `conformance to the documented definition under a declared config on ${row.n} cases`),
     q2: cell('stated', `proof/corpus/custom/${type}.json → definition and boundary cases`, 'the definition names the limit; the family holds the boundary cases'),
     q3: cell('stated', `proof/corpus/custom/${type}.json → definition, config`, 'the author\'s own constraint under the config the family declares'),
-    q4: cell('stated', `proof/corpus/custom/${type}.json → definition`, type === 'json_schema' ? 'the definition says the schema is not consulted in this version' : 'a constraint, not a detector'),
+    q4: cell('stated', `proof/corpus/custom/${type}.json → definition`, 'a constraint, not a detector'),
     q5: cell('n/a', undefined, 'a constraint is not a probability'),
     q6: cell('n/a', undefined, 'deterministic'),
     q7: cell('n/a', undefined, 'deterministic'),

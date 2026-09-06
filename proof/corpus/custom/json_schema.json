@@ -3,191 +3,239 @@
   "type": "json_schema",
   "family": "json_schema",
   "positiveClass": "fail",
-  "definition": "json_schema — in this version passes when the output parses as JSON (JSON.parse succeeds) and fails when it does not; the schema in config is not consulted (README: config `{}`; validating against a schema is on the roadmap). Positive = the rule should FAIL the output.",
-  "source": "authored 2026-09-05 by proof/tools/compose-custom-v1.ts — do not hand-edit; every case is written against the documented definition under `config`",
-  "labelling": "by the documented definition (conformance): a positive is an output the rule should fail under this config; no judgement is involved, so a disagreement is a rule defect or a definition error, never an opinion",
+  "definition": "json_schema — the output must parse as JSON, and when `config.schema` is present it must also VALIDATE against that schema. The rule FAILS when JSON.parse throws, or when the parsed value does not satisfy the configured schema. When `config.schema` is absent the rule passes any parseable JSON and says in its message that the shape was not checked — which is exactly the behaviour every already-deployed rule had before 0.11.0, so none of them changes meaning. A schema Iris declines to compile (the guard ladder in src/eval/schema-validator.ts) is a CONFIG ERROR reported at deploy time, not a silent pass. Validation runs through the same hardened validator a tools catalogue goes through: formats are annotations and are not enforced, and the instance is never mutated. Rule: src/eval/rules/custom.ts. Positive = the output should FAIL under the config declared below.",
+  "source": "LLM-authored on 2026-09-05 for arc 4, REWRITTEN rather than extended. The previous family was labelled against a definition that ignored the schema (\"passes when the output parses\"), so every one of its cases measured a question the type no longer asks. One config is declared here and every case is read against it: two required properties of different types, an optional array of strings, an optional nested object with its own required boolean, and additionalProperties false — which between them exercise required, type, integer-versus-number, array items, nesting and the closed-object clause.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-05, by reading each output against the declared config rather than by running the rule. Each note states which clause decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled.",
   "authored": "2026-09-05",
-  "config": {},
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nested": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
   "counts": {
-    "n": 25,
-    "positive": 12,
-    "negative": 13
+    "n": 27,
+    "positive": 15,
+    "negative": 12
   },
   "cases": [
     {
       "id": "custom-json_schema-001",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "{}",
-      "notes": "an empty object"
+      "label": "positive",
+      "output": "not json at all",
+      "notes": "Not parseable. The first clause still decides before the schema is consulted."
     },
     {
       "id": "custom-json_schema-002",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "[]",
-      "notes": "an empty array"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1,}",
+      "notes": "A trailing comma: JSON.parse rejects it, so it fails on the parse clause."
     },
     {
       "id": "custom-json_schema-003",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "{\"ok\": true, \"items\": [1, 2, 3]}",
-      "notes": "a nested document"
+      "label": "positive",
+      "output": "{\"count\": 1}",
+      "notes": "Parses, but `id` is required and absent."
     },
     {
       "id": "custom-json_schema-004",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "\"a bare string\"",
-      "notes": "a JSON string is valid JSON"
+      "label": "positive",
+      "output": "{\"id\": \"a\"}",
+      "notes": "Parses, but `count` is required and absent."
     },
     {
       "id": "custom-json_schema-005",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "42",
-      "notes": "a bare number"
+      "label": "positive",
+      "output": "{\"id\": 7, \"count\": 1}",
+      "notes": "`id` is declared a string and the output carries a number."
     },
     {
       "id": "custom-json_schema-006",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "null",
-      "notes": "the null literal"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": \"1\"}",
+      "notes": "`count` is declared an integer and the output carries a string."
     },
     {
       "id": "custom-json_schema-007",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "true",
-      "notes": "a boolean"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1.5}",
+      "notes": "`count` is declared an integer and 1.5 is not one."
     },
     {
       "id": "custom-json_schema-008",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "  {\"padded\": 1}  \n",
-      "notes": "surrounding whitespace is allowed"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1, \"extra\": true}",
+      "notes": "additionalProperties is false, so an undeclared key is a violation."
     },
     {
       "id": "custom-json_schema-009",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "{\"unicode\": \"caf\\u00e9\"}",
-      "notes": "an escaped code point"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1, \"tags\": \"one\"}",
+      "notes": "`tags` is declared an array and the output carries a string."
     },
     {
       "id": "custom-json_schema-010",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "[[[[1]]]]",
-      "notes": "deep nesting"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1, \"tags\": [\"one\", 2]}",
+      "notes": "The array items are declared strings and the second is a number."
     },
     {
       "id": "custom-json_schema-011",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "{\"a\": {\"b\": {\"c\": null}}}",
-      "notes": "nested nulls"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1, \"nested\": {}}",
+      "notes": "`nested.ok` is required by the nested schema and is absent."
     },
     {
       "id": "custom-json_schema-012",
       "rule": "proof_json_schema",
-      "label": "negative",
-      "output": "{\"n\": -1.5e10}",
-      "notes": "an exponent number"
+      "label": "positive",
+      "output": "{\"id\": \"a\", \"count\": 1, \"nested\": {\"ok\": \"yes\"}}",
+      "notes": "`nested.ok` is declared a boolean and the output carries a string."
     },
     {
       "id": "custom-json_schema-013",
       "rule": "proof_json_schema",
       "label": "positive",
-      "output": "",
-      "notes": "empty output is not JSON"
+      "output": "[]",
+      "notes": "An array parses as JSON but the schema declares an object at the root."
     },
     {
       "id": "custom-json_schema-014",
       "rule": "proof_json_schema",
       "label": "positive",
-      "output": "{\"trailing\": 1,}",
-      "notes": "a trailing comma"
+      "output": "\"a string\"",
+      "notes": "A bare string parses as JSON but is not the declared object."
     },
     {
       "id": "custom-json_schema-015",
       "rule": "proof_json_schema",
       "label": "positive",
-      "output": "{'single': 'quotes'}",
-      "notes": "single quotes"
+      "output": "{\"id\": \"a\", \"count\": 1, \"nested\": []}",
+      "notes": "`nested` is declared an object and the output carries an array."
     },
     {
       "id": "custom-json_schema-016",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "{unquoted: 1}",
-      "notes": "an unquoted key"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": 1}",
+      "notes": "Both required properties present and correctly typed; the optional ones absent."
     },
     {
       "id": "custom-json_schema-017",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "NaN",
-      "notes": "NaN is not a JSON literal"
+      "label": "negative",
+      "output": "{\"id\": \"\", \"count\": 0}",
+      "notes": "An empty string and a zero are still a string and an integer; the schema sets no minimums."
     },
     {
       "id": "custom-json_schema-018",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "undefined",
-      "notes": "undefined is not a JSON literal"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": -3}",
+      "notes": "A negative integer is an integer; the schema declares no bound."
     },
     {
       "id": "custom-json_schema-019",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "{\"a\": 1} // comment",
-      "notes": "a comment"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": 1, \"tags\": []}",
+      "notes": "An empty array satisfies an array of strings."
     },
     {
       "id": "custom-json_schema-020",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "```json\n{\"fenced\": true}\n```",
-      "notes": "a markdown fence around valid JSON is not JSON"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": 1, \"tags\": [\"one\", \"two\"]}",
+      "notes": "Every item is a string."
     },
     {
       "id": "custom-json_schema-021",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "{\"a\": 1} {\"b\": 2}",
-      "notes": "two documents"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": 1, \"nested\": {\"ok\": true}}",
+      "notes": "The nested object carries its required boolean."
     },
     {
       "id": "custom-json_schema-022",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "Here is the result: {\"a\": 1}",
-      "notes": "prose before the object"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": 1, \"nested\": {\"ok\": false}}",
+      "notes": "false is a boolean; a falsy value is not a missing one."
     },
     {
       "id": "custom-json_schema-023",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "[1, 2, 3",
-      "notes": "an unclosed array"
+      "label": "negative",
+      "output": "{\"count\": 1, \"id\": \"a\"}",
+      "notes": "Key order is not meaning."
     },
     {
       "id": "custom-json_schema-024",
       "rule": "proof_json_schema",
-      "label": "positive",
-      "output": "{\"a\": 0x1F}",
-      "notes": "a hex literal"
+      "label": "negative",
+      "output": "{\"id\": \"a\", \"count\": 1000000}",
+      "notes": "A large integer is an integer."
     },
     {
       "id": "custom-json_schema-025",
       "rule": "proof_json_schema",
       "label": "negative",
-      "output": "{\"schema\": \"ignored\", \"extra\": true}",
-      "notes": "valid JSON that a schema might reject: passes, because the schema is not consulted in this version"
+      "output": "  {\"id\": \"a\", \"count\": 1}  ",
+      "notes": "Surrounding whitespace: JSON.parse handles it and the shape is unchanged."
+    },
+    {
+      "id": "custom-json_schema-026",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"id\": \"a\\nb\", \"count\": 1}",
+      "notes": "An escaped newline inside a string value is still a string."
+    },
+    {
+      "id": "custom-json_schema-027",
+      "rule": "proof_json_schema",
+      "label": "negative",
+      "output": "{\"id\": \"ünïcode\", \"count\": 2, \"tags\": [\"ä\"]}",
+      "notes": "Non-ASCII text is a string like any other."
     }
   ]
 }

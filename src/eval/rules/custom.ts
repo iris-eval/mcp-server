@@ -3,8 +3,9 @@ import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, Custo
 import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
+import { MAX_PATTERN_LENGTH, regexBacktrackingBudgetExceeded } from './regex-budget.js';
+import { checkArguments, compileToolSchema } from '../schema-validator.js';
 
-export const MAX_PATTERN_LENGTH = 1000;
 
 // A rule whose CONFIG is invalid has not evaluated the output — it could not
 // run at all. Returning `passed:false, score:0` for that case conflates "your
@@ -330,12 +331,51 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? 'No excluded keywords found' : `Found excluded keywords: ${found.join(', ')}` };
         }
         case 'json_schema': {
+          /*
+           * The name promised something the code did not do: until 0.11.0
+           * this parsed the output and passed ANY valid JSON, so a
+           * deployment relying on the rule to gate a structured output got
+           * passed:true on a wrong shape. Arc zero ranked that tier A — the
+           * name stated a capability the code did not have.
+           *
+           * `config.schema` ABSENT keeps exactly the old behaviour, so every
+           * already-deployed rule goes on meaning what it meant. Only a
+           * schema that is PRESENT is applied, through the same hardened
+           * path a tools catalogue goes through.
+           */
+          let parsed: unknown;
           try {
-            JSON.parse(context.output);
-            return { ruleName: definition.name, passed: true, score: 1, message: 'Output is valid JSON' };
+            parsed = JSON.parse(context.output);
           } catch {
             return { ruleName: definition.name, passed: false, score: 0, message: 'Output is not valid JSON' };
           }
+          const schema = definition.config.schema;
+          if (schema === undefined || schema === null) {
+            return { ruleName: definition.name, passed: true, score: 1, message: 'Output is valid JSON (no config.schema supplied, so its shape was not checked)' };
+          }
+          const compiled = compileToolSchema(schema);
+          if (!compiled.ok) {
+            return configError(definition, `json_schema rule config.schema was not compiled: ${compiled.reason}`);
+          }
+          const check = checkArguments(compiled, parsed);
+          if (check.state === 'unchecked') {
+            return { ruleName: definition.name, passed: false, score: 0, skipped: true, skipReason: `the output could not be checked: ${check.reason ?? 'unknown'}`, message: 'Output shape not judged' };
+          }
+          if (check.state === 'valid') {
+            return { ruleName: definition.name, passed: true, score: 1, message: 'Output matches the configured JSON Schema' };
+          }
+          /*
+           * The pointer and the keyword, never ajv's message: a message can
+           * carry schema-supplied text, which is author-controlled and would
+           * be echoed into a stored row and onto a dashboard.
+           */
+          return {
+            ruleName: definition.name,
+            passed: false,
+            score: 0,
+            evidence: [{ type: 'count', stat: 'schema_violations', unit: 'violations', value: 1, threshold: 0, thresholdSource: 'rule' }],
+            message: `Output does not match the configured JSON Schema: ${check.instancePath ?? '(root)'} ${check.keyword ?? 'schema'}`,
+          };
         }
         case 'cost_threshold': {
           const max = readNumericConfig(definition.config, 'cost_threshold');

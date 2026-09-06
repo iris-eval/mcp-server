@@ -30,8 +30,7 @@
 import { createHash } from 'node:crypto';
 import { Ajv, type ErrorObject, type ValidateFunction } from 'ajv';
 import isSafeRegex from 'safe-regex2';
-import { MAX_PATTERN_LENGTH } from './rules/custom.js';
-import { regexBacktrackingBudgetExceeded } from './rules/regex-budget.js';
+import { MAX_PATTERN_LENGTH, regexBacktrackingBudgetExceeded } from './rules/regex-budget.js';
 
 /** Bytes of serialised schema. Bounds every walk and every compile after it. */
 export const MAX_TOOL_SCHEMA_BYTES = 32_768;

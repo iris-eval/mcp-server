@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-06T03:41:58.755Z for v0.10.0 (local generating commit `b62cade` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-06T04:14:49.268Z for v0.10.0 (local generating commit `f19f871` — branch commits are squashed on merge, so cite the version).
 Corpus version `d280c2ee0858` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -115,7 +115,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 | `contains_keywords` | `{"keywords":["refund","policy","days"],"threshold":1}` | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] |
 | `cost_threshold` | `{"max_cost":0.05}` | 24 | 12 | 2 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] |
 | `excludes_keywords` | `{"keywords":["guarantee","risk-free"]}` | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] |
-| `json_schema` | `{}` | 25 | 12 | 0 | 12 | 0 | 0 | 13 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] |
+| `json_schema` | `{"schema":{"type":"object","properties":{"id":{"type":"string"},"count":{"type":"integer"},"tags":{"type":"array","items":{"type":"string"}},"nested":{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"]}},"required":["id","count"],"additionalProperties":false}}` | 27 | 15 | 0 | 15 | 0 | 0 | 12 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] |
 | `max_length` | `{"max_length":120}` | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] |
 | `min_length` | `{"min_length":80}` | 24 | 13 | 0 | 13 | 0 | 0 | 11 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] |
 | `regex_match` | `{"pattern":"^Ticket #[0-9]{6}\\b"}` | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] |

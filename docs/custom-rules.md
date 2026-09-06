@@ -279,17 +279,26 @@ Output must NOT contain any of the specified keywords. Case-insensitive matching
 
 ### json_schema
 
-Output must be valid JSON. Parses the output with `JSON.parse()`.
+Output must be valid JSON, and — when you supply one — must match the schema you supply.
 
-**Config:** No configuration required. Pass an empty object.
+**Config:** `schema` (optional). Omit it and the rule passes any parseable JSON and says so in its message; this is exactly what the rule did before v0.11.0, so a rule you already deployed goes on meaning what it meant. Supply one and the parsed output is validated against it.
 
-**Scoring:** Binary. 1 if the output is valid JSON, 0 if `JSON.parse()` throws.
+**Scoring:** Binary. 1 when the output parses and (if a schema is configured) matches it; 0 otherwise. The message names the JSON Pointer and the keyword that rejected the output, never the value.
+
+**A schema Iris will not compile is refused when you deploy the rule**, not silently ignored while it runs. Schemas go through the same guard ladder a tools catalogue does: size, depth and node caps, local `$ref` only, star height and a backtracking probe on every `pattern`. `format` is treated as an annotation and is not enforced, so `format: "email"` documents the field without deciding the verdict.
 
 ```json
 {
   "name": "valid_json_response",
   "type": "json_schema",
-  "config": {}
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": { "id": { "type": "string" }, "count": { "type": "integer" } },
+      "required": ["id", "count"],
+      "additionalProperties": false
+    }
+  }
 }
 ```
 

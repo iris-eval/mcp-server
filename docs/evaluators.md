@@ -436,10 +436,10 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `json_schema` (the custom rule types)
 
-- **Q1** measured — proof/results.json → custom.types[json_schema] (conformance to the documented definition under a declared config on 25 cases)
+- **Q1** measured — proof/results.json → custom.types[json_schema] (conformance to the documented definition under a declared config on 27 cases)
 - **Q2** stated — proof/corpus/custom/json_schema.json → definition and boundary cases (the definition names the limit; the family holds the boundary cases)
 - **Q3** stated — proof/corpus/custom/json_schema.json → definition, config (the author's own constraint under the config the family declares)
-- **Q4** stated — proof/corpus/custom/json_schema.json → definition (the definition says the schema is not consulted in this version)
+- **Q4** stated — proof/corpus/custom/json_schema.json → definition (a constraint, not a detector)
 - **Q5** n/a (a constraint is not a probability)
 - **Q6** n/a (deterministic)
 - **Q7** n/a (deterministic)

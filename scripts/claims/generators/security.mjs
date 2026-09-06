@@ -27,6 +27,9 @@ const root = resolve(here, '..', '..', '..');
 const DEFAULTS_PATH = 'src/config/defaults.ts';
 const SANDBOX_PATH = 'src/eval/rules/regex-sandbox.ts';
 const CUSTOM_RULES_PATH = 'src/eval/rules/custom.ts';
+/* MAX_PATTERN_LENGTH moved here in 0.11.0: it is a fact about regex limits and
+   two modules now read it, so it could not stay in the custom-rule factory. */
+const REGEX_BUDGET_PATH = 'src/eval/rules/regex-budget.ts';
 
 // Pull `api:`/`mcp:` out of the rateLimit literal only — matching the whole
 // file would happily read a number out of a comment (the mistake that made
@@ -66,10 +69,11 @@ function readConst(src, name, file) {
 }
 
 export async function generate() {
-  const [defaults, sandbox, customRules] = await Promise.all([
+  const [defaults, sandbox, customRules, regexBudget] = await Promise.all([
     readFile(resolve(root, DEFAULTS_PATH), 'utf-8'),
     readFile(resolve(root, SANDBOX_PATH), 'utf-8'),
     readFile(resolve(root, CUSTOM_RULES_PATH), 'utf-8'),
+    readFile(resolve(root, REGEX_BUDGET_PATH), 'utf-8'),
   ]);
   return {
     // Requests per minute, per limiter. windowMs is 60_000 in
@@ -94,7 +98,7 @@ export async function generate() {
       // remaining regex rules in that evaluation skip.
       regexBreachesPerEvaluation: readConst(customRules, 'MAX_REGEX_BREACHES_PER_EVAL', CUSTOM_RULES_PATH),
       // Longest custom regex source accepted (fast-path rejection, not the boundary).
-      customRegexMaxLength: readConst(customRules, 'MAX_PATTERN_LENGTH', CUSTOM_RULES_PATH),
+      customRegexMaxLength: readConst(regexBudget, 'MAX_PATTERN_LENGTH', REGEX_BUDGET_PATH),
     },
     // Parsed from SECURITY.md — one policy, one set of numbers.
     disclosure: await disclosure(),

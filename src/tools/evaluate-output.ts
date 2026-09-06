@@ -85,14 +85,14 @@ export function registerEvaluateOutputTool(
       title: 'Evaluate Output',
       description: describeTool({
         summary:
-          'Score an agent output against the deterministic rule bundles: the ship verdict with its basis, every rule result with evidence and uncertainty, and what was not judged.',
+          'Score an agent output against the deterministic rule bundles: the ship verdict and its basis, every rule result with evidence and uncertainty, and what was not judged.',
         does:
-          'In-process, no network, no key. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown in categories. ' +
-          'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it and skip without it) and grounds the hallucination signals; ' +
-          'tool_calls, or a trace_id whose stored tool_calls are reused, feed the trajectory rules; cost_usd and token_usage feed the cost rules; expected feeds only expected_coverage. ' +
-          'A rule without its input SKIPS, is named, and never counts as a pass. custom_rules always fire. One row is stored, linked to trace_id when given.',
+          'In-process, no network, no key. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, broken down in categories. ' +
+          'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it) and grounds the hallucination signals; ' +
+          'tool_calls (or a trace_id that stored them) feed the trajectory rules, and tools — your MCP tools/list result — lets them check argument validity; cost_usd and token_usage feed the cost rules; expected feeds expected_coverage. ' +
+          'A rule without its input SKIPS, is named, and never counts as a pass. custom_rules always fire. One row is stored, linked to trace_id.',
         whenNot:
-          'To validate arbitrary JSON Schema (the json_schema custom type asserts an output\'s shape only). ' +
+          'To validate a document that is not an agent output (the json_schema custom rule does that). ' +
           `To screen inputs before they reach an agent: ${INJECTION_SCOPE_SENTENCE} ` +
           'For semantic judgment, evaluate_with_llm_judge and verify_citations need a key you supply.',
         returns: evaluateOutputResponseSchema,

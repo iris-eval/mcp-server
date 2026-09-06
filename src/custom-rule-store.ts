@@ -31,6 +31,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import isSafeRegex from 'safe-regex2';
 import { regexBacktrackingBudgetExceeded } from './eval/rules/regex-budget.js';
+import { compileToolSchema } from './eval/schema-validator.js';
 import { normalizeRegexSource } from './eval/rules/custom.js';
 import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
@@ -165,6 +166,26 @@ const DefinitionSchema = z
               message: budgetIssue,
             });
           }
+        }
+        break;
+      }
+      /*
+       * A json_schema rule may now carry a schema, and a schema Iris cannot
+       * compile would otherwise skip silently for the life of the
+       * deployment. Refuse it where the regex patterns are already refused —
+       * at DEPLOY, when the author is still looking at it — rather than at
+       * evaluation, where nobody is.
+       */
+      case 'json_schema': {
+        const schema = (config as Record<string, unknown>).schema;
+        if (schema === undefined || schema === null) break;
+        const compiled = compileToolSchema(schema);
+        if (!compiled.ok) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['config', 'schema'],
+            message: `config.schema was not compiled: ${compiled.reason}`,
+          });
         }
         break;
       }
