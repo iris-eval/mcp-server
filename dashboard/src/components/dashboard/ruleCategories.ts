@@ -102,12 +102,13 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   // relevance (2)
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
-  // completeness (5)
+  // completeness (6)
   min_output_length: 'completeness',
   non_empty_output: 'completeness',
   sentence_count: 'completeness',
   expected_coverage: 'completeness',
   valid_tool_arguments: 'completeness',
+  ask_coverage: 'completeness',
   // cost (3)
   cost_under_threshold: 'cost',
   verbosity_ratio: 'cost',
@@ -130,6 +131,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'sentence_count', category: 'completeness' },
   { name: 'expected_coverage', category: 'completeness' },
   { name: 'valid_tool_arguments', category: 'completeness' },
+  { name: 'ask_coverage', category: 'completeness' },
   { name: 'cost_under_threshold', category: 'cost' },
   { name: 'verbosity_ratio', category: 'cost' },
   { name: 'no_tool_loop', category: 'cost' },

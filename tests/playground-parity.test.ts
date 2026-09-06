@@ -77,6 +77,15 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
   ['src/eval/text/normalise.ts', ['DROPPED', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'toRawSpan']],
   ['src/eval/text/checksums.ts', ['luhn', 'iban', 'ssnStructure']],
   ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
+  /*
+   * ask_coverage is the one act-layer rule that RUNS in the playground —
+   * it reads only the input and the output — so its whole module is
+   * vendored and pinned rather than stubbed. A splitter that drifted would
+   * make the two libraries disagree about how many things an ask asks for,
+   * which is the sort of divergence a verdict comparison would show only
+   * on the one input where it mattered.
+   */
+  ['src/eval/text/asks.ts', ['MAX_ASK_CHARS', 'MAX_ASK_PARTS', 'MIN_MEASURABLE_TERMS', 'GENERIC_ASK_TERMS', 'COVER_MAX_REQUIRED', 'PREFIX_MATCH_CHARS', 'LIST_MARKERS', 'ASK_VERBS', 'MANNER_PREFIXES', 'isManner', 'PRODUCE_VERBS', 'MIN_PRODUCED_WORDS', 'isProduceAsk', 'askFencedSpans', 'withinAskSpan', 'enumerationRuns', 'ORDINAL_WORDS', 'ordinalWordRuns', 'splitAsk', 'measurableParts', 'answerIndex', 'askSubjectTerms', 'hitsPart', 'requiredHits', 'coversPart']],
 ];
 
 const CATEGORIES: EvalCategory[] = ['safety', 'relevance', 'completeness', 'cost'];

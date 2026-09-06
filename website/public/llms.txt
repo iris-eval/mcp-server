@@ -4,11 +4,11 @@
 
 Current release: v0.10.0 (2026-09-05) — The verdict.
 
-Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 17 built-in eval rules across completeness, relevance, safety, and cost. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
+Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 18 built-in eval rules across completeness, relevance, safety, and cost. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 17 built-in rules, corpus b15dd3d73b3e, generated 2026-09-06 for v0.10.0; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 18 built-in rules, corpus 02fb6dff0a73, generated 2026-09-06 for v0.10.0; reproduce with `npm run proof`.
 
-Of 60 capability cells (10 evaluation questions by 6 subjects), 17 are answered by a shipped, measured thing, 17 are answered with a stated limit, 22 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it. The full map: https://iris-eval.com/capabilities.
+Of 60 capability cells (10 evaluation questions by 6 subjects), 18 are answered by a shipped, measured thing, 17 are answered with a stated limit, 21 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it. The full map: https://iris-eval.com/capabilities.
 
 ## Getting Started
 

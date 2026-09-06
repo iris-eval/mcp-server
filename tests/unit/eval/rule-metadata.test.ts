@@ -73,8 +73,6 @@ describe('rule metadata — the registry declares everything, in registered voca
   it('every rule-answered question has at least one rule, and no rule names a non-rule question', () => {
     const answered = new Set(builtIns.map((r) => r.question));
     for (const id of RULE_QUESTION_IDS) {
-      // task_completed has no deterministic rule until arc 4; it is declared so the map can say so.
-      if (id === 'task_completed') continue;
       expect(answered.has(id), `no rule answers ${id}`).toBe(true);
     }
     const nonRule = new Set(QUESTIONS.filter((q) => q.answeredBy !== 'rule').map((q) => q.id));

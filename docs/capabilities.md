@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 17 are answered by a shipped, measured thing, 17 are answered with a stated limit, 22 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 18 are answered by a shipped, measured thing, 17 are answered with a stated limit, 21 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -10,7 +10,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **is it grounded / correct** | partial | has | has | gap | gap | partial |
 | **is it complete** | partial | partial | gap | gap | partial | has |
 | **is it on-task** | gap | partial | gap | gap | partial | partial |
-| **did it complete the task** | gap | gap | gap | gap | gap | gap |
+| **did it complete the task** | gap | has | gap | gap | gap | gap |
 | **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | has | gap | partial | has |
 | **what did it cost** | has | partial | partial | gap | partial | has |
 | **is it better or worse than before** | n/a | n/a | gap | gap | partial | partial |
@@ -52,7 +52,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 ### did it complete the task
 
 - **single output** — *gap*. Task completion cannot be judged from the output alone, and no rule attempts it. Needs: `output`.
-- **output with input / context** — *gap*. No rule reads the structure of the ask, so an answer that addresses one part of three and drops the rest reads as complete. Needs: `output`, `input`.
+- **output with input / context** — *has*. An ask that declares its parts — a bullet list, a numbered or lettered enumeration, a first/second/finally sequence — is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing. Evidence: rule `ask_coverage`, proof `ask_coverage`. Needs: `output`, `input`.
 - **trajectory (tool calls)** — *gap*. No rule judges whether the trajectory completed the task; the real-transcript acceptance record names this as open. Needs: `output`, `tool_calls`.
 - **multi-run of one input** — *gap*. No grouping over repeated runs; completes the task seven of ten runs is not expressible.
 - **population / dataset / baseline** — *gap*. No cohort or baseline.

@@ -1,6 +1,6 @@
 {
-  "commit": "1aa1fd3",
-  "corpusVersion": "b15dd3d73b3e",
+  "commit": "6493b87",
+  "corpusVersion": "02fb6dff0a73",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -547,7 +547,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-06T04:42:57.012Z",
+  "generatedAt": "2026-09-06T05:29:31.357Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -805,6 +805,55 @@
       "skipped": 0,
       "tn": 18,
       "tp": 15
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          0.6087,
+          0.9333
+        ],
+        "precision": [
+          0.505,
+          0.8982
+        ],
+        "recall": [
+          0.6006,
+          0.9599
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.591,
+          0.9067
+        ],
+        "precision": [
+          0.4977,
+          0.9066
+        ],
+        "recall": [
+          0.6209,
+          0.9676
+        ]
+      },
+      "f1": 0.8,
+      "fn": 2,
+      "fp": 4,
+      "n": 31,
+      "name": "ask_coverage",
+      "negatives": 17,
+      "positives": 14,
+      "ppvAt": {
+        "0.01": 0.0355,
+        "0.05": 0.1609,
+        "0.2": 0.4766,
+        "0.5": 0.7846
+      },
+      "precision": 0.75,
+      "recall": 0.8571,
+      "skipped": 5,
+      "tn": 13,
+      "tp": 12
     },
     {
       "category": "relevance",

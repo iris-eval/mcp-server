@@ -70,17 +70,17 @@ Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris.
 8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). 5 templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
 9. `verify_citations` — Extract citations (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded, domain-allowlisted resolver, and use an LLM judge to check whether each source supports the cited claim. Opt-in outbound HTTP; same BYOK requirement. Fails closed — an error, not a passing verdict — when citations resolved but the judge never ran.
 
-## Built-in eval rules (17, across 4 categories)
+## Built-in eval rules (18, across 4 categories)
 
 Categories: completeness, relevance, safety, cost.
 
-Rules: costUnderThreshold, expectedCoverage, groundedInReads, keywordOverlap, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, sentenceCount, topicConsistency, validToolArguments, verbosityRatio.
+Rules: askCoverage, costUnderThreshold, expectedCoverage, groundedInReads, keywordOverlap, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, sentenceCount, topicConsistency, validToolArguments, verbosityRatio.
 
 Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 37 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Evaluator accuracy
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 17 built-in rules, corpus b15dd3d73b3e, generated 2026-09-06 for v0.10.0; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 18 built-in rules, corpus 02fb6dff0a73, generated 2026-09-06 for v0.10.0; reproduce with `npm run proof`.
 
 ## Trust signals
 

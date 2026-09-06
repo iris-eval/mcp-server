@@ -1,6 +1,7 @@
 import type { EvalRule, EvalContext, EvalRuleResult, Evidence } from '../../types/eval.js';
 import { MAX_EVIDENCE_ITEMS } from '../../types/eval.js';
 import { countSentences } from '../text/sentences.js';
+import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, measurableParts, splitAsk } from '../text/asks.js';
 import { catalogueIndex } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
@@ -332,4 +333,143 @@ export const validToolArguments: EvalRule = {
   },
 };
 
-export const completenessRules: EvalRule[] = [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments];
+/*
+ * Did the answer address everything the ask asked for?
+ *
+ * The commonest real agent incompletion, and until now the whole "did it
+ * complete the task" row of the capability map was a gap in every subject
+ * because no rule read the structure of an ask. Transcript t-19 drops parts
+ * two and three of a three-part question and every bundle passed it.
+ *
+ * TYPED AS AN INFERENCE, and the alternative is worth stating because it
+ * looks like the safer one. Typed as a MEASUREMENT this rule would be inert
+ * AND misdescribed: measurements never enter the risk estimate, so it could
+ * not move a verdict — and `interpretations[]` would still hand it the line
+ * about its published accuracy not carrying the risk past the loss
+ * threshold, which is false for a rule that has no published accuracy in the
+ * risk at all. Meanwhile the class it detects would stay at zero recall
+ * while a rule for it existed. The splitting is a formula, but the covering
+ * test is a signal standing in for something unobservable — did the agent
+ * address this — and that is what an inference is.
+ *
+ * The obligation that makes the typing honest is the family: its cases are
+ * labelled by READING the ask against the answer, never by whether the term
+ * arithmetic comes out a particular way. Labelled on the arithmetic, the
+ * measured precision would be the probability that the arithmetic agrees
+ * with itself — a number near one that then becomes arithmetic in every
+ * verdict.
+ */
+export const askCoverage: EvalRule = {
+  name: 'ask_coverage',
+  description:
+    'A multi-part ask must be answered in every part. Splits the input on enumerations, bullet lists and multi-word connectors — a bare "and" never splits, so "review and merge" is one ask — then reports the parts the output never engages with. Measures only parts carrying at least two content terms and says how many it could not measure, because a one-term part makes any lexical test a coin flip. Skips when the input is absent, when it is longer than 1500 characters (an input that long usually carries source material rather than an ask), or when fewer than two parts can be measured',
+  evalType: 'completeness',
+  weight: 1.5,
+  kind: 'inference',
+  mechanism: 'heuristic',
+  needs: ['output', 'input'],
+  question: 'task_completed',
+  classes: ['incomplete_ask'],
+  version: 1,
+  /*
+   * Not critical. A lexical covering test has an honest false-positive
+   * surface — an answer in wholly different words with no ordinal to mirror
+   * reads as uncovered — and a heuristic that can be wrong degrades the
+   * score rather than vetoing the verdict.
+   */
+  evaluate(context: EvalContext): EvalRuleResult {
+    const input = context.input ?? '';
+    if (input.trim().length === 0) {
+      return {
+        ruleName: 'ask_coverage',
+        passed: false,
+        score: 0,
+        skipped: true,
+        skipReason: 'context.input not provided — the parts of an ask cannot be counted without the ask',
+        message: 'No input provided',
+      };
+    }
+    if (context.output.trim().length === 0) {
+      /*
+       * non_empty_output owns an empty answer. Firing here as well would put
+       * one output in two failure classes and double-count it in the risk.
+       */
+      return {
+        ruleName: 'ask_coverage',
+        passed: false,
+        score: 0,
+        skipped: true,
+        skipReason: 'the output is empty — non_empty_output judges that, and one output should not carry two failure classes',
+        message: 'Empty output',
+      };
+    }
+    if (input.length > MAX_ASK_CHARS) {
+      return {
+        ruleName: 'ask_coverage',
+        passed: false,
+        score: 0,
+        skipped: true,
+        skipReason: `the input is ${input.length} characters; above ${MAX_ASK_CHARS} it usually carries source material rather than an ask, and splitting a pasted document into "parts" would fire on every summarisation`,
+        message: 'Input too long to read as an ask',
+      };
+    }
+
+    const parts = splitAsk(input);
+    const measurable = measurableParts(parts);
+    if (measurable.length < 2) {
+      return {
+        ruleName: 'ask_coverage',
+        passed: false,
+        score: 0,
+        skipped: true,
+        skipReason:
+          parts.length < 2
+            ? 'the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part'
+            : `only ${measurable.length} of ${parts.length} parts carry enough content to measure; a one-term part makes any lexical test a coin flip`,
+        message: 'Not a multi-part ask this rule can measure',
+      };
+    }
+
+    const index = answerIndex(context.output);
+    const uncovered = measurable.filter((p) => !coversPart(p, context.output, index));
+    const covered = measurable.length - uncovered.length;
+    const unmeasured = parts.length - measurable.length;
+
+    const value = { stat: 'uncovered_ask_parts', unit: 'parts', value: uncovered.length };
+    const evidence: Evidence[] = [
+      { type: 'count', stat: 'uncovered_ask_parts', unit: 'parts', value: uncovered.length, threshold: 0, thresholdSource: 'rule' },
+      { type: 'count', stat: 'measurable_ask_parts', unit: 'parts', value: measurable.length },
+      { type: 'count', stat: 'ask_parts', unit: 'parts', value: parts.length },
+    ];
+    for (const p of uncovered) {
+      if (evidence.length >= MAX_EVIDENCE_ITEMS) break;
+      // A span into the INPUT: the best evidence either new inference
+      // produces, because it points at the sentence that was ignored.
+      evidence.push({ type: 'span', source: 'input', start: p.start, end: p.end, label: 'uncovered ask part' });
+    }
+    const unmeasuredNote = unmeasured > 0 ? `; ${unmeasured} part${unmeasured === 1 ? '' : 's'} not measurable (fewer than ${MIN_MEASURABLE_TERMS} content terms)` : '';
+
+    if (uncovered.length === 0) {
+      return {
+        ruleName: 'ask_coverage',
+        passed: true,
+        score: 1,
+        value,
+        evidence,
+        message: `All ${measurable.length} measurable parts of the ask are addressed${unmeasuredNote}`,
+      };
+    }
+
+    const named = uncovered.slice(0, 2).map((p) => `"${p.text.length > 70 ? `${p.text.slice(0, 69)}…` : p.text}"`).join('; ');
+    return {
+      ruleName: 'ask_coverage',
+      passed: false,
+      score: measurable.length === 0 ? 0 : covered / measurable.length,
+      value,
+      evidence,
+      message: `Ask coverage: ${covered}/${measurable.length} measurable parts addressed${unmeasuredNote}. Unaddressed: ${named}`,
+    };
+  },
+};
+
+export const completenessRules: EvalRule[] = [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage];
