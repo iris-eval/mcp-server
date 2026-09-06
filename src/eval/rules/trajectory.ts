@@ -21,7 +21,8 @@
  */
 
 import type { EvalContext, EvalRuleResult } from '../../types/eval.js';
-import type { ToolCallRecord } from '../../types/trace.js';
+import type { Step, ToolCallRecord } from '../../types/trace.js';
+import { stepsOf, trajectoryAbsence } from '../steps.js';
 
 /** How much of a string tool output is inspected. Bounds the work per call. */
 export const OUTPUT_SCAN_CHARS = 400;
@@ -35,6 +36,16 @@ export const NO_TRAJECTORY_SKIP_REASON =
 export const EMPTY_TRAJECTORY_SKIP_REASON =
   'context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge';
 
+/*
+ * Spans arrived and none of them is a tool call. Worth its own sentence
+ * because "no trajectory" would send that operator looking in the wrong
+ * place: they DID instrument, and either the calls are not spans or the
+ * emitter names its attributes differently (src/eval/steps.ts carries the
+ * precedence list that decides).
+ */
+export const SPANS_WITHOUT_TOOL_SKIP_REASON =
+  'spans were supplied but none has kind TOOL — a tool call reaches the trajectory rules as a TOOL span or as a tool_calls entry';
+
 /**
  * The honest no-data result.
  *
@@ -47,14 +58,60 @@ export function skipWithoutTrajectory(
   ruleName: string,
   context: EvalContext,
 ): EvalRuleResult | null {
-  const calls = context.toolCalls;
-  if (calls === undefined || calls === null) {
-    return { ruleName, passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipReason: NO_TRAJECTORY_SKIP_REASON };
+  /*
+   * Asks the derived trajectory, not the raw field, so a trace captured as
+   * OpenTelemetry TOOL spans is judged instead of reported as "not judged".
+   * The three reasons below are the three different things an absent
+   * trajectory can mean, and telling them apart is the whole point: two of
+   * them are the caller's data and one is a wiring problem on their side.
+   */
+  if (stepsOf(context).length > 0) return null;
+
+  switch (trajectoryAbsence(context)) {
+    case 'spans_without_tool':
+      return { ruleName, passed: false, score: 0, message: 'No tool calls found among the supplied spans', skipped: true, skipReason: SPANS_WITHOUT_TOOL_SKIP_REASON };
+    case 'none':
+      return { ruleName, passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipReason: NO_TRAJECTORY_SKIP_REASON };
+    default:
+      return { ruleName, passed: false, score: 0, message: 'No tool calls were made', skipped: true, skipReason: EMPTY_TRAJECTORY_SKIP_REASON };
   }
-  if (!Array.isArray(calls) || calls.length === 0) {
-    return { ruleName, passed: false, score: 0, message: 'No tool calls were made', skipped: true, skipReason: EMPTY_TRAJECTORY_SKIP_REASON };
-  }
-  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Steps, read through the definitions above
+ * ------------------------------------------------------------------ *
+ *
+ * A Step can come from a tool_calls entry or from a TOOL span, and the
+ * question "did this fail" must have ONE answer either way. These three
+ * adapters project a Step back onto the record shape and delegate, so the
+ * definitions the two corpora were labelled against — isFailedCall,
+ * failureReason, callKey — stay the only definitions. A second
+ * implementation here would re-mean fifty-eight labelled cases without
+ * touching one of them.
+ */
+
+/** A Step as the record shape the definitions above are written against. */
+export function asCallRecord(step: Step): ToolCallRecord {
+  const call: ToolCallRecord = { tool_name: step.name };
+  if (step.input !== undefined) call.input = step.input;
+  if (step.output !== undefined) call.output = step.output;
+  if (step.error !== undefined) call.error = step.error;
+  return call;
+}
+
+/** Did this step fail? The shipped definition, reached through a Step. */
+export function isFailedStep(step: Step): boolean {
+  return isFailedCall(asCallRecord(step));
+}
+
+/** Why it failed, in the words the message uses. */
+export function stepFailureReason(step: Step): string {
+  return failureReason(asCallRecord(step));
+}
+
+/** Two steps are the SAME call when this key matches. */
+export function stepKey(step: Step): string {
+  return callKey(asCallRecord(step));
 }
 
 /* ------------------------------------------------------------------ *

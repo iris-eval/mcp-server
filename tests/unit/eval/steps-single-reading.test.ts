@@ -22,7 +22,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MAX_STEPS_DERIVED, stepScopeNote, stepStatsOf, stepsOf, toSteps } from '../../../src/eval/steps.js';
-import type { Span } from '../../../src/types/trace.js';
+import type { Span } from '../../../src/types/trace.js';
+import { EvalEngine } from '../../../src/eval/engine.js';
+import { defaultConfig } from '../../../src/config/defaults.js';
 
 const root = resolve(__dirname, '..', '..', '..');
 
@@ -178,5 +180,73 @@ describe('the step layer — one derived reading of the trajectory', () => {
     expect(stepsOf({ output: '', steps: derived, toolCalls: [{ tool_name: 'ignored' }] })).toBe(derived);
     expect(stepsOf({ output: '', toolCalls: [{ tool_name: 'read' }] })[0].name).toBe('read');
     expect(stepsOf({ output: '' })).toEqual([]);
+  });
+});
+
+/*
+ * The migration (A4-2): the two shipped trajectory rules now read the
+ * derived list, so a trajectory captured as OpenTelemetry TOOL spans is
+ * judged instead of reported as "not judged". Every corpus case still
+ * carries tool_calls, which is why `npm run proof -- --check` comes back
+ * byte-identical — that byte-identity IS the proof that nothing else moved.
+ */
+describe('the shipped trajectory rules, reading the derived list', () => {
+  const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+
+  const failingSpan = span({
+    span_id: 's1',
+    start_time: '2026-09-05T00:00:00Z',
+    status_code: 'ERROR',
+    status_message: 'No such file or directory',
+    attributes: { 'tool.name': 'bash', 'tool.input': { command: 'ls src/eval/judges' } },
+  });
+
+  it('a span-only trajectory is JUDGED, where it used to be reported as not judged', async () => {
+    const result = await engine.evaluateAll({
+      output: 'The judges directory holds anthropic.ts, openai.ts and client.ts.',
+      spans: [failingSpan],
+    });
+    const silent = result.rule_results.find((r) => r.ruleName === 'no_silent_tool_failure');
+    expect(silent?.skipped ?? false, silent?.skipReason).toBe(false);
+    expect(silent?.passed).toBe(false);
+    expect(silent?.message).toContain('bash');
+  });
+
+  it('a span-only trajectory makes coverage say the trajectory question WAS judged', async () => {
+    const result = await engine.evaluateAll({ output: 'done', spans: [failingSpan] });
+    const silent = result.rule_results.find((r) => r.ruleName === 'no_silent_tool_failure');
+    expect(silent?.saw).toContain('tool_calls');
+  });
+
+  it('tool_calls still win outright when both are supplied', async () => {
+    const result = await engine.evaluateAll({
+      output: 'All good.',
+      toolCalls: [{ tool_name: 'read', output: 'fine' }],
+      spans: [failingSpan],
+    });
+    const silent = result.rule_results.find((r) => r.ruleName === 'no_silent_tool_failure');
+    expect(silent?.passed).toBe(true);
+    expect(silent?.message).toContain('1 call examined');
+  });
+
+  it('the three ways a trajectory can be absent get three different reasons', async () => {
+    const none = await engine.evaluateAll({ output: 'x' });
+    const empty = await engine.evaluateAll({ output: 'x', toolCalls: [] });
+    const noTool = await engine.evaluateAll({
+      output: 'x',
+      spans: [span({ span_id: 'l', start_time: '2026-09-05T00:00:00Z', kind: 'LLM', name: 'chat' })],
+    });
+    const reason = (r: Awaited<ReturnType<typeof engine.evaluateAll>>): string =>
+      r.rule_results.find((x) => x.ruleName === 'no_tool_loop')?.skipReason ?? '';
+    expect(reason(none)).toContain('not provided');
+    expect(reason(empty)).toContain('empty');
+    expect(reason(noTool)).toContain('kind TOOL');
+  });
+
+  it('an over-cap trajectory says what it examined instead of judging a slice in silence', async () => {
+    const many = Array.from({ length: MAX_STEPS_DERIVED + 3 }, () => ({ tool_name: 'read', input: { path: 'a.ts' } }));
+    const result = await engine.evaluateAll({ output: 'x', toolCalls: many });
+    const loop = result.rule_results.find((r) => r.ruleName === 'no_tool_loop');
+    expect(loop?.message).toContain(`of ${MAX_STEPS_DERIVED + 3} steps`);
   });
 });
