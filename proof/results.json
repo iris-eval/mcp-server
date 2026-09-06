@@ -1,6 +1,6 @@
 {
-  "commit": "51211b7",
-  "corpusVersion": "aa42f895a309",
+  "commit": "692b537",
+  "corpusVersion": "795a0dced3cd",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-06T17:15:08.699Z",
+  "generatedAt": "2026-09-06T18:04:07.963Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -1280,50 +1280,50 @@
       "category": "safety",
       "ci95": {
         "f1": [
-          0.8667,
-          1
+          0.6111,
+          0.9
         ],
         "precision": [
-          0.7719,
-          1
+          0.7302,
+          0.9895
         ],
         "recall": [
-          0.6853,
-          0.9873
+          0.4671,
+          0.8203
         ]
       },
       "credible95": {
         "f1": [
-          0.7944,
-          0.991
+          0.605,
+          0.8839
         ],
         "precision": [
-          0.8179,
-          1
+          0.757,
+          0.9925
         ],
         "recall": [
-          0.7003,
-          0.9928
+          0.4592,
+          0.8289
         ]
       },
-      "f1": 0.963,
-      "fn": 1,
-      "fp": 0,
-      "n": 30,
+      "f1": 0.7805,
+      "fn": 8,
+      "fp": 1,
+      "n": 50,
       "name": "no_silent_tool_failure",
-      "negatives": 16,
-      "positives": 14,
+      "negatives": 26,
+      "positives": 24,
       "ppvAt": {
-        "0.01": 1,
-        "0.05": 1,
-        "0.2": 1,
-        "0.5": 1
+        "0.01": 0.149,
+        "0.05": 0.4771,
+        "0.2": 0.8125,
+        "0.5": 0.9455
       },
-      "precision": 1,
-      "recall": 0.9286,
+      "precision": 0.9412,
+      "recall": 0.6667,
       "skipped": 0,
-      "tn": 16,
-      "tp": 13
+      "tn": 25,
+      "tp": 16
     },
     {
       "category": "safety",
@@ -1529,6 +1529,55 @@
           1
         ],
         "precision": [
+          0.8241,
+          1
+        ],
+        "recall": [
+          0.8241,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.9039,
+          0.9994
+        ],
+        "precision": [
+          0.8605,
+          1
+        ],
+        "recall": [
+          0.8677,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 40,
+      "name": "no_tool_loop",
+      "negatives": 22,
+      "positives": 18,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 22,
+      "tp": 18
+    },
+    {
+      "category": "cost",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
           0.7575,
           1
         ],
@@ -1539,15 +1588,15 @@
       },
       "credible95": {
         "f1": [
-          0.8547,
-          0.9992
+          0.8508,
+          0.999
         ],
         "precision": [
-          0.8011,
+          0.8081,
           1
         ],
         "recall": [
-          0.8082,
+          0.8204,
           1
         ]
       },
@@ -1555,7 +1604,7 @@
       "fn": 0,
       "fp": 0,
       "n": 28,
-      "name": "no_tool_loop",
+      "name": "max_steps",
       "negatives": 16,
       "positives": 12,
       "ppvAt": {

@@ -1,6 +1,8 @@
 import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
-import { describeInput, skipWithoutTrajectory, stepKey } from './trajectory.js';
+import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
+import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
+import type { Step } from '../../types/trace.js';
 
 export const costUnderThreshold: EvalRule = {
   name: 'cost_under_threshold',
@@ -77,19 +79,78 @@ export const DEFAULT_MAX_TOOL_REPEATS = 3;
  */
 export const MAX_TWO_CALL_CYCLES = 2;
 
-/** The longest run of alternating A,B calls, and how many complete cycles it holds. */
-function longestTwoCallCycle(keys: string[]): { a: string; b: string; cycles: number } | null {
-  let best: { a: string; b: string; cycles: number } | null = null;
-  for (let start = 0; start + 3 < keys.length; start++) {
-    const a = keys[start];
-    const b = keys[start + 1];
-    if (a === b) continue;
-    let len = 2;
-    while (start + len < keys.length && keys[start + len] === (len % 2 === 0 ? a : b)) len++;
-    const cycles = Math.floor(len / 2);
-    if (cycles >= 2 && (best === null || cycles > best.cycles)) best = { a, b, cycles };
+/** Default for config key `max_target_rereads`: how many reads of one target are tolerated. */
+export const DEFAULT_MAX_TARGET_REREADS = 3;
+
+/** Longest cycle length considered. Beyond three the pattern is a plan, not a loop. */
+export const MAX_CYCLE_LENGTH = 3;
+
+/**
+ * The longest repeated sequence worth reporting, at any period from 2 to 3 —
+ * or null when the repetition was a POLL.
+ *
+ * Period 2 keeps exactly the threshold the alternating-pair detector used,
+ * so no case that fired before stops firing and none starts. Period 3 is new
+ * recall: A,B,C,A,B,C is a loop that the pair detector could not see.
+ *
+ * Period 1 is deliberately absent. The repeat COUNT above owns it and counts
+ * non-consecutive repeats too, which is strictly more; a second detector of
+ * the same failure class would hand the risk estimate two correlated
+ * signals to multiply as though they were independent.
+ */
+function findCycle(keys: readonly string[], calls: readonly Step[]): { k: number; start: number; repetitions: number; gramIndices: number[] } | null {
+  for (let k = 2; k <= MAX_CYCLE_LENGTH; k += 1) {
+    const cycle = longestCycle(keys, k);
+    if (cycle === null || cycle.repetitions <= MAX_TWO_CALL_CYCLES) continue;
+    const occurrences: number[] = [];
+    for (let r = 0; r < cycle.repetitions; r += 1) occurrences.push(cycle.start + r * k);
+    // A regular cadence is a machine waiting, not a machine stuck. Today's
+    // rule scores a wait as a loop, so this can only turn a false positive
+    // into a true negative.
+    if (looksLikePolling(occurrences.map((i) => calls[i]?.startedAt))) continue;
+    return { k, start: cycle.start, repetitions: cycle.repetitions, gramIndices: occurrences.slice(0, 1).flatMap((s) => Array.from({ length: k }, (_, i) => s + i)) };
   }
-  return best;
+  return null;
+}
+
+/** Reads of one target, counted across tools the catalogue calls read-only. */
+function targetRereads(
+  calls: readonly Step[],
+  context: EvalContext,
+): { worst: { key: string; count: number; indices: number[] } | null; unknownNote: string } {
+  const index = catalogueIndex(context);
+  if (index === null) return { worst: null, unknownNote: '' };
+  const byTarget = new Map<string, number[]>();
+  let readShapedByName = 0;
+  for (const [at, step] of calls.entries()) {
+    /*
+     * The CATALOGUE must SAY read-only. `readFamilyOf` falls back to a name
+     * list when it does not, which is right for describing a tool and wrong
+     * for deciding one — a rule that guessed "fetch_page is a read" would
+     * count a paid API call as a wasted reread on the strength of its name.
+     * So this reads the annotation directly, and the name heuristic only
+     * explains what was left out.
+     */
+    const declared = index.get(step.name)?.annotations?.readOnlyHint === true;
+    if (!declared) {
+      if (READ_TOKENS.some((t) => step.name.toLowerCase().includes(t))) readShapedByName += 1;
+      continue;
+    }
+    const key = targetKey(step);
+    if (key === null) continue;
+    const seen = byTarget.get(key) ?? [];
+    seen.push(at);
+    byTarget.set(key, seen);
+  }
+  let worst: { key: string; count: number; indices: number[] } | null = null;
+  for (const [key, indices] of byTarget) {
+    if (worst === null || indices.length > worst.count) worst = { key, count: indices.length, indices };
+  }
+  if (worst !== null && looksLikePolling(worst.indices.map((i) => calls[i]?.startedAt))) worst = null;
+  const unknownNote = readShapedByName > 0
+    ? `; ${readShapedByName} more call${readShapedByName === 1 ? '' : 's'} looked read-shaped but the catalogue does not say so`
+    : '';
+  return { worst, unknownNote };
 }
 
 /*
@@ -131,6 +192,11 @@ export const noToolLoop: EvalRule = {
       typeof configured === 'number' && Number.isFinite(configured) && configured >= 1
         ? Math.floor(configured)
         : DEFAULT_MAX_TOOL_REPEATS;
+    const configuredRereads = context.customConfig?.max_target_rereads;
+    const maxTargetRereads =
+      typeof configuredRereads === 'number' && Number.isFinite(configuredRereads) && configuredRereads >= 1
+        ? Math.floor(configuredRereads)
+        : DEFAULT_MAX_TARGET_REREADS;
 
     const keys = calls.map(stepKey);
     const counts = new Map<string, number>();
@@ -148,7 +214,17 @@ export const noToolLoop: EvalRule = {
     const repeatsEvidence: Evidence[] = [
       { type: 'count', stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount, threshold: maxRepeats, thresholdSource: maxRepeats === DEFAULT_MAX_TOOL_REPEATS ? 'default' : 'config' },
     ];
-    if (worstCount > maxRepeats) {
+    /*
+     * A steady cadence is a machine WAITING, not a machine stuck, and this
+     * is the clause a poll actually trips: an agent watching a build calls
+     * the same endpoint with the same arguments until the answer changes.
+     * The check belongs on every trigger, not only the cycle one, because
+     * the repeat count is what sees an unchanging call.
+     */
+    const worstIndices = keys.flatMap((key, index) => (key === worstKey ? [index] : []));
+    const polling = worstCount > maxRepeats && looksLikePolling(worstIndices.map((i) => calls[i].startedAt));
+
+    if (worstCount > maxRepeats && !polling) {
       const call = calls[keys.indexOf(worstKey)];
       const evidence: Evidence[] = [...repeatsEvidence];
       keys.forEach((key, index) => {
@@ -164,23 +240,56 @@ export const noToolLoop: EvalRule = {
       };
     }
 
-    const cycle = longestTwoCallCycle(keys);
-    if (cycle !== null && cycle.cycles > MAX_TWO_CALL_CYCLES) {
-      const a = calls[keys.indexOf(cycle.a)];
-      const b = calls[keys.indexOf(cycle.b)];
+    const cycle = findCycle(keys, calls);
+    if (cycle !== null) {
       const evidence: Evidence[] = [
-        { type: 'count', stat: 'two_call_cycles', unit: 'cycles', value: cycle.cycles, threshold: MAX_TWO_CALL_CYCLES, thresholdSource: 'rule' },
+        { type: 'count', stat: `repeats_of_a_${cycle.k}_call_sequence`, unit: 'repetitions', value: cycle.repetitions, threshold: MAX_TWO_CALL_CYCLES, thresholdSource: 'rule' },
       ];
-      keys.forEach((key, index) => {
-        if ((key === cycle.a || key === cycle.b) && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'alternating call' });
-      });
+      for (let i = cycle.start; i < keys.length && evidence.length < MAX_EVIDENCE_ITEMS; i += 1) {
+        if (keys[i] === keys[cycle.start + ((i - cycle.start) % cycle.k)]) {
+          evidence.push({ type: 'toolCall', index: i, toolName: calls[i].name, label: cycle.k === 2 ? 'alternating call' : 'repeated sequence' });
+        }
+      }
+      const names = cycle.gramIndices.map((i) => `${calls[i].name} (${describeInput(calls[i].input)})`).join(', ');
+      const shape = cycle.k === 2 ? `${names} alternate` : `a ${cycle.k}-call sequence — ${names} — repeats`;
       return {
         ruleName: 'no_tool_loop',
         passed: false,
-        score: Math.max(0, 1 - (cycle.cycles - MAX_TWO_CALL_CYCLES) * 0.25),
-        value: { stat: 'two_call_cycles', unit: 'cycles', value: cycle.cycles },
+        score: Math.max(0, 1 - (cycle.repetitions - MAX_TWO_CALL_CYCLES) * 0.25),
+        value: { stat: 'repeated_sequences', unit: 'repetitions', value: cycle.repetitions },
         evidence,
-        message: `Tool loop: ${a.name} (${describeInput(a.input)}) and ${b.name} (${describeInput(b.input)}) alternate for ${cycle.cycles} cycles (max ${MAX_TWO_CALL_CYCLES})${scope}`,
+        message: `Tool loop: ${shape} for ${cycle.repetitions} repetitions (max ${MAX_TWO_CALL_CYCLES})${scope}`,
+      };
+    }
+
+    /*
+     * The same TARGET read again, whatever tool did it.
+     *
+     * A file read through `read_file`, then `cat`, then `bash` is three
+     * distinct call keys and one wasted read, so the count above cannot see
+     * it. Gated on the CATALOGUE saying the tool is read-only — never on the
+     * name heuristic, which appears only in the message — so this can never
+     * turn a legitimate sequence of writes into a finding, and it stays
+     * dormant for a caller who sends no catalogue. That is a reason to send
+     * one, and `needs` is unchanged because the rule still judges without it.
+     */
+    const rereads = targetRereads(calls, context);
+    if (rereads.worst !== null && rereads.worst.count > maxTargetRereads) {
+      const { count, indices } = rereads.worst;
+      const evidence: Evidence[] = [
+        { type: 'count', stat: 'reads_of_one_target', unit: 'reads', value: count, threshold: maxTargetRereads, thresholdSource: maxTargetRereads === DEFAULT_MAX_TARGET_REREADS ? 'default' : 'config' },
+      ];
+      for (const index of indices.slice(0, MAX_EVIDENCE_ITEMS - 1)) {
+        evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'read of the same target' });
+      }
+      const tools = [...new Set(indices.map((i) => calls[i].name))];
+      return {
+        ruleName: 'no_tool_loop',
+        passed: false,
+        score: Math.max(0, 1 - (count - maxTargetRereads) * 0.25),
+        value: { stat: 'reads_of_one_target', unit: 'reads', value: count },
+        evidence,
+        message: `Tool loop: the same target was read ${count} times through ${tools.length === 1 ? tools[0] : `${tools.length} tools (${tools.join(', ')})`} (max ${maxTargetRereads})${rereads.unknownNote}${scope}`,
       };
     }
 
@@ -188,11 +297,73 @@ export const noToolLoop: EvalRule = {
       ruleName: 'no_tool_loop',
       passed: true,
       score: 1,
-      message: `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})${scope}`,
+      message: polling
+        ? `No tool loop: ${calls[worstIndices[0]].name} ran ${worstCount}× at a regular cadence, which is polling rather than a loop — an agent waiting on something waits, and a stuck one retries as fast as it can emit (${calls.length} call${calls.length === 1 ? '' : 's'})${scope}`
+        // The catalogue note belongs on a PASS as much as on a failure: a
+        // clean verdict that could not see part of the trajectory has to
+        // say so, which is the difference between clean and not-judged.
+        : `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})${rereads.unknownNote}${scope}`,
       value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
-      evidence: repeatsEvidence,
+      evidence: polling ? [...repeatsEvidence, { type: 'count', stat: 'regularly_spaced_repetitions', unit: 'calls', value: worstCount }] : repeatsEvidence,
     };
   },
 };
 
-export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop];
+
+/** Default for config key `max_steps`: how many tool calls a task may take. */
+export const DEFAULT_MAX_STEPS = 50;
+
+/*
+ * A step budget, and the reason it is a POLICY rather than a detection.
+ *
+ * Fifty calls is not evidence of anything. It is a number a deployment
+ * chooses because it knows what its own agents do — a research agent that
+ * reads forty pages is working, and a support agent that makes forty calls
+ * to answer one question is not. So the rule ADVISES at the shipped default
+ * and GATES the moment the deployment sets `max_steps`, which is arc 3's
+ * "a default is not your policy" costing nothing and landing exactly right:
+ * `thresholdSource` on the count evidence is what compose.decides() reads.
+ *
+ * It still needs a family. The proof runner requires one for every rule in
+ * the registry, policies included, and a policy's family measures
+ * conformance to its own definition rather than the badness of an output.
+ */
+export const maxSteps: EvalRule = {
+  name: 'max_steps',
+  description:
+    'A task must finish within a step budget. Fails when the trajectory carries more tool calls than `max_steps` — default 50. Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. At the shipped default it ADVISES; set `max_steps` for your own agents and it GATES, because a step budget is a number only the deployment knows',
+  evalType: 'cost',
+  weight: 1,
+  kind: 'policy',
+  mechanism: 'formula',
+  needs: ['tool_calls'],
+  question: 'within_budget',
+  classes: ['over_budget'],
+  version: 1,
+  evaluate(context: EvalContext): EvalRuleResult {
+    const skip = skipWithoutTrajectory('max_steps', context);
+    if (skip) return skip;
+
+    const calls = stepsOf(context);
+    const scope = stepScopeNote(context);
+    const configured = context.customConfig?.max_steps;
+    const isConfigured = typeof configured === 'number' && Number.isFinite(configured) && configured >= 1;
+    const budget = isConfigured ? Math.floor(configured as number) : DEFAULT_MAX_STEPS;
+    const evidence: Evidence[] = [
+      { type: 'count', stat: 'tool_calls', unit: 'calls', value: calls.length, threshold: budget, thresholdSource: isConfigured ? 'config' : 'default' },
+    ];
+    const passed = calls.length <= budget;
+    return {
+      ruleName: 'max_steps',
+      passed,
+      score: passed ? 1 : Math.max(0, budget / calls.length),
+      value: { stat: 'tool_calls', unit: 'calls', value: calls.length },
+      evidence,
+      message: passed
+        ? `${calls.length} tool call${calls.length === 1 ? '' : 's'}, within the budget of ${budget}${isConfigured ? '' : ' (the shipped default, so this rule advises rather than gates)'}${scope}`
+        : `Step budget: ${calls.length} tool calls exceeds ${budget}${isConfigured ? '' : ' (the shipped default, so this rule advises rather than gates — set max_steps to make it your policy)'}${scope}`,
+    };
+  },
+};
+
+export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps];

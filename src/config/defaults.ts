@@ -50,6 +50,15 @@ export const defaultConfig: IrisConfig = {
       // Identical tool calls tolerated before no_tool_loop fires. Three
       // allows a legitimate retry-with-backoff; the fourth is a loop.
       max_tool_repeats: 3,
+      // Reads of ONE target tolerated before no_tool_loop fires, counted
+      // across every tool your catalogue marks readOnlyHint — a file read,
+      // edited elsewhere and read again is three; a fourth is a loop.
+      // Dormant unless you send `tools`.
+      max_target_rereads: 3,
+      // Tool calls a task may take. Fifty is not evidence of anything, which
+      // is why max_steps advises at this default and gates the moment you
+      // set it: only the deployment knows what its own agents do.
+      max_steps: 50,
     },
     /*
      * Which built-in rules veto is a deployment's call, and the shipped

@@ -46,6 +46,8 @@ export interface IrisConfig {
       cost_threshold?: number;
       max_token_ratio?: number;
       max_tool_repeats?: number;
+      max_target_rereads?: number;
+      max_steps?: number;
     };
     /**
      * Built-in rule names promoted to CRITICAL — a failure vetoes `passed`

@@ -100,6 +100,7 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   no_silent_tool_failure: 'safety',
   grounded_in_reads: 'safety',
   no_injection_compliance: 'safety',
+  max_steps: 'cost',
   // relevance (2)
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
@@ -126,6 +127,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'no_silent_tool_failure', category: 'safety' },
   { name: 'grounded_in_reads', category: 'safety' },
   { name: 'no_injection_compliance', category: 'safety' },
+  { name: 'max_steps', category: 'cost' },
   { name: 'keyword_overlap', category: 'relevance' },
   { name: 'topic_consistency', category: 'relevance' },
   { name: 'min_output_length', category: 'completeness' },

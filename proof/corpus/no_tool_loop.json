@@ -4,14 +4,14 @@
   "category": "cost",
   "family": "no_tool_loop",
   "positiveClass": "fail",
-  "definition": "no_tool_loop — the agent must not repeat itself. Two calls are the SAME call when their tool_name is equal and their inputs normalise to the same string: object keys sorted and undefined values dropped, strings taken as written, then whitespace runs collapsed to single spaces, trimmed, and capped at 500 characters (longer values keep their length as a discriminator). An absent input is its own key, so two argument-less calls to one tool are repeats of each other. The rule FAILS when (a) any one call is made more than max_tool_repeats times (default 3, config key `max_tool_repeats`), or (b) two DISTINCT calls alternate consecutively (A,B,A,B,…) for more than two complete cycles. It SKIPS when context.toolCalls is absent or empty. Definitions: src/eval/rules/trajectory.ts; rule: src/eval/rules/cost.ts. Positive = a loop under that definition (the rule should FAIL).",
+  "definition": "no_tool_loop — the agent must not repeat itself. Two calls are the SAME call when their tool_name is equal and their inputs normalise to the same string: object keys sorted and undefined values dropped, strings taken as written, then whitespace runs collapsed to single spaces, trimmed, and capped at 500 characters (longer values keep their length as a discriminator). An absent input is its own key, so two argument-less calls to one tool are repeats of each other. The rule FAILS when (a) any one call is made more than max_tool_repeats times (default 3, config key `max_tool_repeats`), or (b) a sequence of 2 or 3 distinct calls repeats consecutively (A,B,A,B,… or A,B,C,A,B,C,…) for more than two repetitions — a sequence whose own period is shorter is counted at that shorter period, so A,A,A,A is clause (a) and not clause (b) — or (c) one TARGET is read more than `max_target_rereads` times (default 3) through tools the supplied `tools` catalogue marks `readOnlyHint: true`, whatever tool did each read; clause (c) is dormant without a catalogue, and the target is the first of path, file, file_path, filename, url, uri, query, command, cmd, pattern, name, id that the call carries. A repetition whose calls are regularly spaced in time is a POLL and not a loop: at least three repetitions, a median gap of at least one second, and every gap within 35% of that median. Polling needs start times, which arrive with OpenTelemetry spans and not with tool_calls, so a trajectory that carries no timing is judged exactly as it was before. It SKIPS when context.toolCalls is absent or empty. Definitions: src/eval/rules/trajectory.ts; rule: src/eval/rules/cost.ts. Positive = a loop under that definition (the rule should FAIL).",
   "source": "LLM-authored on 2026-09-04. Cases marked \"real transcript t-NN\" carry the real input, output and tool_calls from the 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0 (tests/fixtures/real-transcripts). The rest are authored around the boundaries the definition draws: three repeats versus four, two alternating cycles versus three, key order, whitespace, absent inputs, and long trajectories that are merely long.",
-  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-04, by counting each trajectory against the definition rather than by running the rule. Each note states the count and the clause that decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-04, by counting each trajectory against the definition rather than by running the rule. Each note states the count and the clause that decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled. Re-derived on 2026-09-06 against the definition above after arc 4 generalised the repetition clause, added the target clause and taught the rule to recognise polling; loop-023 moved from negative to positive because its own note recorded the narrowness that was removed, and its note now says so.",
   "authored": "2026-09-04",
   "counts": {
-    "n": 28,
-    "positive": 12,
-    "negative": 16
+    "n": 40,
+    "positive": 18,
+    "negative": 22
   },
   "cases": [
     {
@@ -1071,7 +1071,7 @@
     {
       "id": "loop-023",
       "rule": "no_tool_loop",
-      "label": "negative",
+      "label": "positive",
       "input": "Cross-check three files for the retention default.",
       "output": "All three agree on 30 days.",
       "context": {
@@ -1141,7 +1141,7 @@
           }
         ]
       },
-      "notes": "A,B,C repeated three times. Each key appears three times, inside the allowance, and a three-call cycle is not the two-call alternation the cycle clause detects. The definition is deliberately narrow here, and this case records that."
+      "notes": "A,B,C repeated three times. RELABELLED 2026-09-06 by a definition change, not by a number: this case was authored as a negative because the cycle clause read only two-call alternation, and its note recorded that narrowness as a limitation. Arc 4 generalised the clause to any period from 2 to 3, so three grep calls cycling three times is now what the rule calls a loop, and the label follows the definition. FAILS."
     },
     {
       "id": "loop-024",
@@ -1489,6 +1489,828 @@
         ]
       },
       "notes": "three calls that normalise to one key because key order is ignored — exactly at the allowance, so the rule passes. The companion positive (loop-003) is the same shape with a fourth call."
+    },
+    {
+      "id": "loop-029",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "q": "x"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "q": "x"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "q": "x"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls"
+            },
+            "output": "result"
+          }
+        ]
+      },
+      "notes": "A three-call sequence across three DIFFERENT tools, repeated three times. No single call exceeds the repeat allowance, and no two calls alternate, so only the period-3 clause sees it. FAILS."
+    },
+    {
+      "id": "loop-030",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "q": "x"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "q": "x"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls"
+            },
+            "output": "result"
+          }
+        ]
+      },
+      "notes": "The same three-call sequence repeated only TWICE — at the allowance, not over it. An agent that does a thing and checks its work has done nothing wrong, and the threshold is what separates that from a loop. PASSES."
+    },
+    {
+      "id": "loop-031",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "a",
+            "input": {
+              "i": 1
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "b",
+            "input": {
+              "i": 2
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "c",
+            "input": {
+              "i": 3
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "d",
+            "input": {
+              "i": 4
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "e",
+            "input": {
+              "i": 5
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "f",
+            "input": {
+              "i": 6
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "g",
+            "input": {
+              "i": 7
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "h",
+            "input": {
+              "i": 8
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "i",
+            "input": {
+              "i": 9
+            },
+            "output": "result"
+          }
+        ]
+      },
+      "notes": "Nine distinct calls with no repetition at any period. The generalised clause must not invent a cycle out of a plan. PASSES."
+    },
+    {
+      "id": "loop-032",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "spans": [
+          {
+            "span_id": "s2026-09-06T12:00:00.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:00.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:10.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:10.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:20.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:20.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:30.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:30.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:40.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:40.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          }
+        ]
+      },
+      "notes": "POLLING: the same call five times at a steady ten-second cadence. An agent waiting for a build to finish is working, not stuck, and the regular gaps are the whole signal — a loop retries as fast as the model can emit. This case was a FALSE POSITIVE before arc 4 and is a true negative now. PASSES."
+    },
+    {
+      "id": "loop-033",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "output": "The answer.",
+      "context": {
+        "spans": [
+          {
+            "span_id": "s2026-09-06T12:00:00.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:00.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:00.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:00.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:01.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:01.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:01.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:01.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:02.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:02.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          }
+        ]
+      },
+      "notes": "The same call five times with NO wait between them. Sub-second gaps are a burst, not a poll. FAILS."
+    },
+    {
+      "id": "loop-034",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "output": "The answer.",
+      "context": {
+        "spans": [
+          {
+            "span_id": "s2026-09-06T12:00:00.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:00.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:03.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:03.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:40.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:40.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:00:44.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:00:44.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          },
+          {
+            "span_id": "s2026-09-06T12:02:00.000Z",
+            "name": "tool.check_build",
+            "kind": "TOOL",
+            "start_time": "2026-09-06T12:02:00.000Z",
+            "status_code": "OK",
+            "attributes": {
+              "gen_ai.tool.name": "check_build",
+              "gen_ai.tool.call.arguments": "{\"id\":7}",
+              "gen_ai.tool.call.result": "result"
+            }
+          }
+        ]
+      },
+      "notes": "The same call five times at wildly irregular gaps. Irregularity is what distinguishes a stuck agent from a waiting one, so this stays a loop. FAILS."
+    },
+    {
+      "id": "loop-035",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "check_build",
+            "input": {
+              "id": 7
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "check_build",
+            "input": {
+              "id": 7
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "check_build",
+            "input": {
+              "id": 7
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "check_build",
+            "input": {
+              "id": 7
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "check_build",
+            "input": {
+              "id": 7
+            },
+            "output": "result"
+          }
+        ]
+      },
+      "notes": "The same five calls with NO TIMESTAMPS at all, arriving as tool_calls rather than spans. Without timing nothing can be shown to be a poll, so everything stays a loop — which is why sending spans can only ever remove a false positive here and never add one. FAILS."
+    },
+    {
+      "id": "loop-036",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "cat",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "view_source",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts",
+              "encoding": "utf8"
+            },
+            "output": "result"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "cat",
+            "description": "Print a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "view_source",
+            "description": "Show a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Write a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": false
+            }
+          }
+        ]
+      },
+      "notes": "The SAME FILE read four times through three different tools. Every call has a distinct key, so the repeat count cannot see it, and no sequence repeats, so the cycle clause cannot either — only counting by TARGET makes one wasted read visible as one wasted read. FAILS."
+    },
+    {
+      "id": "loop-037",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "cat",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "view_source",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts",
+              "encoding": "utf8"
+            },
+            "output": "result"
+          }
+        ]
+      },
+      "notes": "The identical trajectory with NO CATALOGUE. The target clause is gated on the catalogue saying a tool is read-only, so without one it stays dormant: a rule must not guess that a tool is safe to call a repeat. This is what \"sending a catalogue is a reason in itself\" means, and it is a KNOWN MISS rather than a design accident. PASSES."
+    },
+    {
+      "id": "loop-038",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "out.txt",
+              "chunk": 0
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "out.txt",
+              "chunk": 1
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "out.txt",
+              "chunk": 2
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "out.txt",
+              "chunk": 3
+            },
+            "output": "result"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "cat",
+            "description": "Print a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "view_source",
+            "description": "Show a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Write a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": false
+            }
+          }
+        ]
+      },
+      "notes": "Four writes to the same file, which the catalogue marks NOT read-only. Appending four chunks to one file is ordinary work; counting it as a reread would turn every streaming write into a finding. PASSES."
+    },
+    {
+      "id": "loop-039",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "cat",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "view_source",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "result"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "cat",
+            "description": "Print a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "view_source",
+            "description": "Show a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Write a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": false
+            }
+          }
+        ]
+      },
+      "notes": "Three reads of one target — at the allowance, not over it. A file read, edited elsewhere and read again is a normal shape. PASSES."
+    },
+    {
+      "id": "loop-040",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "output": "The answer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "cat",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "view_source",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "result"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "d.ts"
+            },
+            "output": "result"
+          }
+        ],
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "cat",
+            "description": "Print a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "view_source",
+            "description": "Show a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Write a file",
+            "inputSchema": {
+              "type": "object"
+            },
+            "annotations": {
+              "readOnlyHint": false
+            }
+          }
+        ]
+      },
+      "notes": "Four reads through read-only tools, every one of a DIFFERENT target. Reading is not the problem; reading the same thing again is. PASSES."
     }
   ]
 }

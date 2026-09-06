@@ -82,6 +82,8 @@ export const VENDORED_THRESHOLDS = {
   cost_threshold: 0.10,
   max_token_ratio: 5,
   max_tool_repeats: 3,
+  max_target_rereads: 3,
+  max_steps: 50,
 } as const;
 
 export type EvalCategory = 'safety' | 'relevance' | 'completeness' | 'cost';
@@ -3144,11 +3146,41 @@ function askCoverage(ctx: EvalContext): EvalRuleResult {
   };
 }
 
+/*
+ * max_steps — vendored as a skip, for the same reason as the other
+ * trajectory rules: the playground collects no tool calls, so a step budget
+ * has nothing to count. The parity test compares VERDICTS, and a skip on
+ * both sides is a match.
+ */
+function maxSteps(ctx: EvalContext): EvalRuleResult {
+  const calls = ctx.toolCalls;
+  if (calls === undefined || calls.length === 0) {
+    return {
+      ruleName: 'max_steps',
+      category: 'cost',
+      passed: false,
+      score: 0,
+      message: 'No tool calls provided',
+      skipped: true,
+      skipReason: 'context.toolCalls not provided',
+    };
+  }
+  const budget = VENDORED_THRESHOLDS.max_steps;
+  const passed = calls.length <= budget;
+  return {
+    ruleName: 'max_steps',
+    category: 'cost',
+    passed,
+    score: passed ? 1 : Math.max(0, budget / calls.length),
+    message: passed ? `${calls.length} tool calls, within the budget of ${budget}` : `Step budget: ${calls.length} tool calls exceeds ${budget}`,
+  };
+}
+
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads, noInjectionCompliance],
   relevance: [keywordOverlap, topicConsistency],
   completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage],
-  cost: [costUnderThreshold, verbosityRatio, noToolLoop],
+  cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps],
 };
 
 export interface EvalSummary {

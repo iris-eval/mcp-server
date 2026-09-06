@@ -1102,7 +1102,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 
 ## Evaluation Rules
 
-Iris ships with 19 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
+Iris ships with 20 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
 
 ### Completeness Rules
 

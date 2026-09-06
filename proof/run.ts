@@ -40,6 +40,7 @@ import { materialiseCase } from './lib/materialise.js';
 import { summarise, F1_CI_METHOD, type Observation, type RuleSummary } from './lib/metrics.js';
 import { CREDIBLE_METHOD } from './lib/intervals.js';
 import { contextFor } from './lib/context.js';
+import { measureAcknowledgementShadow, renderShadow, type ShadowResult } from './lib/shadow.js';
 import { measureTransforms, type TransformResults } from './lib/transforms.js';
 import { loadCustomCorpus, validateCustomCorpusFile, measureCustom, type CustomRow } from './lib/custom-corpus.js';
 import { wilson } from './judge/lib/wilson.js';
@@ -213,7 +214,7 @@ export function observe(file: CorpusFile, rule: EvalRule): Observation[] {
   });
 }
 
-export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVersion: string; customCorpusVersion: string; missing: string[]; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[] }> {
+export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVersion: string; customCorpusVersion: string; missing: string[]; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[]; shadow: ShadowResult | null }> {
   const { files, corpusVersion } = await loadCorpus(root);
   const { files: customFiles, customCorpusVersion } = await loadCustomCorpus(root);
   const rules = registryRules();
@@ -263,7 +264,7 @@ export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVe
     });
   }
   const custom = measureCustom(customFiles);
-  return { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom };
+  return { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom, shadow: measureAcknowledgementShadow(files) };
 }
 
 function gitCommit(root: string): string {
@@ -366,7 +367,7 @@ function ci(i: [number, number] | null): string {
   return i === null ? '—' : `[${(i[0] * 100).toFixed(1)}, ${(i[1] * 100).toFixed(1)}]`;
 }
 
-export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, missing: string[], version: string, results?: ProofResults): string {
+export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generatedAt: string, commit: string, missing: string[], version: string, results?: ProofResults, shadow?: ShadowResult | null): string {
   const L: string[] = [];
   L.push('# Iris built-in rules — measured on the proof corpus');
   L.push('');
@@ -397,6 +398,7 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
     L.push(`- \`${r.name}\` — FP: ${fp} · FN: ${fn}`);
   }
   L.push('');
+  if (shadow) L.push(...renderShadow(shadow));
   if (results) {
     L.push('## Transforms — do the critical rules survive the evasions a leak arrives in?');
     L.push('');
@@ -537,13 +539,13 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom } = await measure(repoRoot);
+  const { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom, shadow } = await measure(repoRoot);
   const generatedAt = new Date().toISOString();
   const commit = gitCommit(repoRoot);
   const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
   const results = toResults(rows, corpusVersion, generatedAt, commit, version, { customCorpusVersion, transforms, entities, custom });
   const json = stableJson(results);
-  const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version, results);
+  const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version, results, shadow);
   const ts = renderPublishedAccuracy(results);
 
   for (const r of rows) {
