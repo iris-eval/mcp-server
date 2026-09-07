@@ -2,7 +2,7 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
-Current release: v0.11.0 (2026-09-06) — The act layer.
+Current release: v0.12.0 (2026-09-07) — Compare.
 
 ## What Iris is
 
