@@ -1,4 +1,4 @@
-import type { CaseResultRow, RunResultRow } from '../storage/sqlite-adapter.js';
+import type { CaseResultRow, RunResultRow, RunSummaryRow } from '../storage/sqlite-adapter.js';
 import type { Trace, Span } from './trace.js';
 import type { EvalResult } from './eval.js';
 import type { TenantId } from './tenant.js';
@@ -64,7 +64,21 @@ export interface EvalStatsTrendBucket {
   avgScore: number;
   passRate: number;
   evalCount: number;
+  /**
+   * Which cohort this bucket belongs to, when the caller asked for a split.
+   * Null in the ungrouped view and for evaluations that belong to no run.
+   *
+   * A trend line drawn over everything at once hides the thing a reader is
+   * usually looking for: two runs whose rates moved in opposite directions
+   * average into a flat line. Splitting by run is what makes that visible,
+   * and it is the same grouping compare_runs tests — so the picture and the
+   * test agree rather than being two different notions of "before".
+   */
+  cohort?: string | null;
 }
+
+/** How to split a trend. Only 'run' today; the shape leaves room without inviting a free-text group-by. */
+export type TrendCohort = 'run';
 
 export interface EvalStatsRuleBreakdown {
   rule: string;
@@ -126,6 +140,14 @@ export interface IStorageAdapter {
   /** One stored evaluation by id, in the same derived-on-read shape as every other reader; null when absent. */
   getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null>;
   /** Every evaluation in a run, one per trace, newest first — what a comparison counts. */
+  /** Register a run's label, or the fact that it re-evaluated another. Everything else about a run is derived. */
+  upsertRun(tenantId: TenantId, run: { runId: string; label?: string | null; agentName?: string | null; reevaluationOf?: string | null }): Promise<void>;
+  /** Every run, newest first — registered ones and ones that exist only because a trace carried the id. */
+  listRuns(tenantId: TenantId, limit?: number): Promise<RunSummaryRow[]>;
+  /** One run, or null when nothing mentions it. */
+  getRun(tenantId: TenantId, runId: string): Promise<RunSummaryRow | null>;
+  /** Each trace in a run and whether its latest evaluation already came from the given ruleset. */
+  getRunTraceEvaluationState(tenantId: TenantId, runId: string, rulesetHash: string): Promise<Array<{ traceId: string; evaluatedUnderRuleset: boolean }>>;
   getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]>;
   /** Every attempt at every case, optionally narrowed — repeats kept, because they are the measurement. */
   getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string }): Promise<CaseResultRow[]>;
@@ -175,7 +197,7 @@ export interface IStorageAdapter {
   deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean>;
   getDistinctValues(tenantId: TenantId, column: string): Promise<string[]>;
   getEvalStats(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStats>;
-  getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsTrendBucket[]>;
+  getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod, cohortBy?: TrendCohort): Promise<EvalStatsTrendBucket[]>;
   getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]>;
   getEvalStatsFailures(tenantId: TenantId, period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]>;
 }

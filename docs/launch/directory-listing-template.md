@@ -12,11 +12,11 @@ Stop shipping agents on vibes. An MCP server that scores every agent run for qua
 
 ## Medium Description (short paragraph — Block B)
 
-Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 11 tools any MCP-compatible agent discovers automatically — no SDK, no code changes. 20 built-in rules (19 PII patterns, 37 prompt-injection patterns, 25 hallucination signals, cost thresholds, and 6 that read the agent's tool calls) score deterministically and free; a detected PII leak, injection, or blocklist hit fails the eval outright. Optional LLM judge and citation verification for the semantic questions. Self-hosted on SQLite, MIT-licensed core.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 12 tools any MCP-compatible agent discovers automatically — no SDK, no code changes. 20 built-in rules (19 PII patterns, 37 prompt-injection patterns, 25 hallucination signals, cost thresholds, and 6 that read the agent's tool calls) score deterministically and free; a detected PII leak, injection, or blocklist hit fails the eval outright. Optional LLM judge and citation verification for the semantic questions. Self-hosted on SQLite, MIT-licensed core.
 
 ## Long Description (full paragraph — Block C)
 
-Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 11 tools automatically — no SDK, no code changes. 20 built-in rules across completeness, relevance, safety, and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds, and 6 trajectory rules that read the agent's tool calls. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (5 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 12 tools automatically — no SDK, no code changes. 20 built-in rules across completeness, relevance, safety, and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds, and 6 trajectory rules that read the agent's tool calls. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (5 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
 
 ## Config Snippet (include in every listing)
 
@@ -33,7 +33,7 @@ Stop shipping agents on vibes. Iris is an open-source MCP server that scores eve
 
 ## Key Stats (for listings that show features)
 
-- 11 MCP tools: compare_runs, compare_traces, delete_rule, delete_trace, deploy_rule, evaluate_output, evaluate_with_llm_judge, get_traces, list_rules, log_trace, verify_citations
+- 12 MCP tools: compare_runs, compare_traces, delete_rule, delete_trace, deploy_rule, evaluate_output, evaluate_runs, evaluate_with_llm_judge, get_traces, list_rules, log_trace, verify_citations
 - 20 built-in eval rules across 4 categories (completeness, relevance, safety, cost)
 - 19 PII patterns · 37 prompt-injection patterns · 25 context-grounded hallucination signals
 - A detected PII leak, injection, or blocklist hit fails the eval regardless of the weighted score

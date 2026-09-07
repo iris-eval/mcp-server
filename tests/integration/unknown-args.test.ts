@@ -191,6 +191,7 @@ describe('unknown tool arguments are rejected (strict schemas)', () => {
       verify_citations: { output: 'cited text', model: 'claude-haiku-4-5' },
       compare_runs: { before: 'run-a', after: 'run-b' },
       compare_traces: {},
+      evaluate_runs: { run: 'nightly-1' },
     };
 
     // Guard against drift: if a tool is added or renamed, this matrix must

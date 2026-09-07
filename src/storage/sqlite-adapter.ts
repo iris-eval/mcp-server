@@ -31,6 +31,7 @@ import type {
   EvalStatsPeriod,
   EvalStats,
   EvalStatsTrendBucket,
+  TrendCohort,
   EvalStatsRuleBreakdown,
   EvalStatsFailure,
 } from '../types/query.js';
@@ -64,6 +65,34 @@ export interface SqliteAdapterOptions {
 }
 /** What every text field of an erased evaluation reads afterwards. */
 export const ERASED_MESSAGE = 'erased with the trace';
+
+/**
+ * A run as a reader sees it.
+ *
+ * Almost every field here is DERIVED from the rows in the run rather than
+ * read out of the `runs` table, and that is deliberate. Two sources for one
+ * fact is how a registry starts disagreeing with the data it describes: a
+ * stored `n` drifts the moment a trace is deleted, and a stored
+ * `rulesetHash` is wrong the moment one trace in the run is re-evaluated.
+ * The registry therefore stores only what CANNOT be derived — the caller's
+ * own label, and the fact that a run was produced by re-evaluating another
+ * one — and everything countable is counted at read time.
+ */
+export interface RunSummaryRow {
+  runId: string;
+  /** The caller's name for this batch; null when it was never registered. */
+  label: string | null;
+  /** Set when this run came from re-evaluating another, so a rules change is never read as an agent change. */
+  reevaluationOf: string | null;
+  traces: number;
+  evaluated: number;
+  passed: number;
+  agentNames: string[];
+  engineVersions: string[];
+  rulesetHashes: string[];
+  startedAt: string | null;
+  lastActivityAt: string | null;
+}
 
 /** One trace's latest evaluation inside a run — the unit a comparison counts. */
 export interface RunResultRow {
@@ -347,8 +376,8 @@ export class SqliteAdapter implements IStorageAdapter {
      * rule_results plus that threshold, so they are not columns.
      */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -372,6 +401,9 @@ export class SqliteAdapter implements IStorageAdapter {
       result.provenance?.thresholds.default ?? null,
       result.eval_cost_usd ?? null,
       result.eval_tokens ?? null,
+      // Set only by a re-evaluation. Left null, the evaluation belongs to
+      // whatever run its trace does — which is right for every normal call.
+      result.run_id ?? null,
     );
   }
 
@@ -401,6 +433,128 @@ export class SqliteAdapter implements IStorageAdapter {
    * RE-EVALUATION belongs to a batch its trace never saw, and that is the
    * case the column exists for.
    */
+  /**
+   * Register (or update) a run. Only the two facts that cannot be derived
+   * are written: the caller's label and, for a re-evaluation, what it re-ran.
+   * Everything else a reader wants about a run is counted from its rows.
+   */
+  async upsertRun(
+    tenantId: TenantId,
+    run: { runId: string; label?: string | null; agentName?: string | null; reevaluationOf?: string | null },
+  ): Promise<void> {
+    assertTenant(tenantId);
+    this.db
+      .prepare(
+        `INSERT INTO runs (run_id, tenant_id, label, agent_name, reevaluation_of)
+              VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(run_id) DO UPDATE SET
+           label = COALESCE(excluded.label, runs.label),
+           agent_name = COALESCE(excluded.agent_name, runs.agent_name),
+           reevaluation_of = COALESCE(excluded.reevaluation_of, runs.reevaluation_of)`,
+      )
+      .run(run.runId, tenantId, run.label ?? null, run.agentName ?? null, run.reevaluationOf ?? null);
+  }
+
+  /**
+   * Every run this tenant has, newest first.
+   *
+   * The listing is the UNION of registered runs and run ids found on traces
+   * or evaluations, because a run id arrives on a log_trace call long before
+   * anything registers it — a caller who passes `run` and nothing else must
+   * still see their run here. A registered run with no rows yet is listed
+   * too, so a re-evaluation that produced nothing is visible rather than
+   * silently absent.
+   */
+  async listRuns(tenantId: TenantId, limit = 50): Promise<RunSummaryRow[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `WITH ids(run_id) AS (
+             SELECT run_id FROM runs WHERE tenant_id = ? AND run_id IS NOT NULL
+             UNION SELECT run_id FROM traces WHERE tenant_id = ? AND run_id IS NOT NULL
+             UNION SELECT run_id FROM eval_results WHERE tenant_id = ? AND run_id IS NOT NULL
+           )
+           SELECT i.run_id                                                                              AS run_id,
+                  r.label                                                                               AS label,
+                  r.reevaluation_of                                                                     AS reevaluation_of,
+                  (SELECT COUNT(*) FROM traces t WHERE t.tenant_id = ? AND t.run_id = i.run_id)         AS traces,
+                  COALESCE(r.started_at,
+                           (SELECT MIN(t.timestamp) FROM traces t WHERE t.tenant_id = ? AND t.run_id = i.run_id)) AS started_at,
+                  (SELECT MAX(t.timestamp) FROM traces t WHERE t.tenant_id = ? AND t.run_id = i.run_id) AS last_trace_at
+             FROM ids i
+             LEFT JOIN runs r ON r.run_id = i.run_id AND r.tenant_id = ?
+            ORDER BY started_at DESC, i.run_id DESC
+            LIMIT ?`,
+      )
+      .all(tenantId, tenantId, tenantId, tenantId, tenantId, tenantId, tenantId, limit) as Array<Record<string, unknown>>;
+
+    const out: RunSummaryRow[] = [];
+    for (const row of rows) {
+      const runId = String(row.run_id);
+      // Counted through the same collapsed view a comparison uses, so a run's
+      // listed `evaluated` can never disagree with what compare_runs read.
+      const results = await this.getRunResults(tenantId, runId);
+      const lastEval = results.reduce<string | null>((acc, r) => (acc === null || r.createdAt > acc ? r.createdAt : acc), null);
+      const lastTrace = (row.last_trace_at as string | null) ?? null;
+      out.push({
+        runId,
+        label: (row.label as string | null) ?? null,
+        reevaluationOf: (row.reevaluation_of as string | null) ?? null,
+        traces: Number(row.traces ?? 0),
+        evaluated: results.length,
+        passed: results.filter((r) => r.passed).length,
+        agentNames: [...new Set(results.map((r) => r.agentName).filter((v): v is string => v !== null))].sort(),
+        engineVersions: [...new Set(results.map((r) => r.engineVersion).filter((v): v is string => v !== null))].sort(),
+        rulesetHashes: [...new Set(results.map((r) => r.rulesetHash).filter((v): v is string => v !== null))].sort(),
+        startedAt: (row.started_at as string | null) ?? null,
+        lastActivityAt: lastEval !== null && (lastTrace === null || lastEval > lastTrace) ? lastEval : lastTrace,
+      });
+    }
+    return out;
+  }
+
+  /** One run, or null when no trace, evaluation or registration mentions it. */
+  async getRun(tenantId: TenantId, runId: string): Promise<RunSummaryRow | null> {
+    assertTenant(tenantId);
+    const known = this.db
+      .prepare(
+        `SELECT 1 AS hit FROM runs WHERE tenant_id = ? AND run_id = ?
+          UNION SELECT 1 FROM traces WHERE tenant_id = ? AND run_id = ?
+          UNION SELECT 1 FROM eval_results WHERE tenant_id = ? AND run_id = ?
+          LIMIT 1`,
+      )
+      .get(tenantId, runId, tenantId, runId, tenantId, runId);
+    if (known === undefined) return null;
+    const all = await this.listRuns(tenantId, 1000);
+    return all.find((r) => r.runId === runId) ?? null;
+  }
+
+  /**
+   * Every trace in a run, with whether its latest evaluation was produced
+   * under a given ruleset. This is the question `evaluate_runs` asks:
+   * re-evaluating a trace whose verdict already came from the current rules
+   * would spend work to reproduce a row that exists.
+   */
+  async getRunTraceEvaluationState(
+    tenantId: TenantId,
+    runId: string,
+    rulesetHash: string,
+  ): Promise<Array<{ traceId: string; evaluatedUnderRuleset: boolean }>> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `SELECT t.trace_id AS trace_id,
+                (SELECT e.ruleset_hash FROM eval_results e
+                  WHERE e.tenant_id = t.tenant_id AND e.trace_id = t.trace_id
+                  ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS latest_ruleset
+           FROM traces t
+          WHERE t.tenant_id = ? AND t.run_id = ?
+          ORDER BY t.timestamp ASC`,
+      )
+      .all(tenantId, runId) as Array<{ trace_id: string; latest_ruleset: string | null }>;
+    return rows.map((r) => ({ traceId: r.trace_id, evaluatedUnderRuleset: r.latest_ruleset === rulesetHash }));
+  }
+
   async getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]> {
     assertTenant(tenantId);
     const rows = this.db
@@ -705,34 +859,48 @@ export class SqliteAdapter implements IStorageAdapter {
     };
   }
 
-  async getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsTrendBucket[]> {
+  async getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod, cohortBy?: TrendCohort): Promise<EvalStatsTrendBucket[]> {
     assertTenant(tenantId);
     const since = this.periodToSince(period);
 
     let bucketExpr: string;
     if (period === '24h') {
-      bucketExpr = "strftime('%Y-%m-%dT%H:00:00Z', created_at)";
+      bucketExpr = "strftime('%Y-%m-%dT%H:00:00Z', e.created_at)";
     } else if (period === '7d') {
       bucketExpr =
-        "strftime('%Y-%m-%dT', created_at) || printf('%02d', (CAST(strftime('%H', created_at) AS INTEGER) / 6) * 6) || ':00:00Z'";
+        "strftime('%Y-%m-%dT', e.created_at) || printf('%02d', (CAST(strftime('%H', e.created_at) AS INTEGER) / 6) * 6) || ':00:00Z'";
     } else {
-      bucketExpr = "strftime('%Y-%m-%dT00:00:00Z', created_at)";
+      bucketExpr = "strftime('%Y-%m-%dT00:00:00Z', e.created_at)";
     }
+
+    /*
+     * The cohort of an evaluation is its own run when it has one, and its
+     * trace's run otherwise — the same COALESCE every run read uses. A
+     * re-evaluation carries its own run_id precisely so it lands in the new
+     * cohort rather than back in the run whose traces it re-scored.
+     *
+     * 'run' is the only value the type admits, so this is a fixed string
+     * chosen by a closed union rather than caller text reaching SQL.
+     */
+    const cohortExpr = cohortBy === 'run' ? 'COALESCE(e.run_id, t.run_id)' : 'NULL';
 
     const rows = this.db.prepare(`
       SELECT
         ${bucketExpr}                                  AS bucket,
-        COALESCE(AVG(score), 0)                        AS avg_score,
+        ${cohortExpr}                                  AS cohort,
+        COALESCE(AVG(e.score), 0)                      AS avg_score,
         CASE WHEN COUNT(*) > 0
-          THEN CAST(SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS REAL) / COUNT(*)
+          THEN CAST(SUM(CASE WHEN e.passed = 1 THEN 1 ELSE 0 END) AS REAL) / COUNT(*)
           ELSE 0 END                                   AS pass_rate,
         COUNT(*)                                       AS eval_count
-      FROM eval_results
-      WHERE tenant_id = ? AND created_at >= ?
-      GROUP BY bucket
-      ORDER BY bucket
+      FROM eval_results e
+      LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+      WHERE e.tenant_id = ? AND e.created_at >= ?
+      GROUP BY bucket, cohort
+      ORDER BY bucket, cohort
     `).all(tenantId, since) as Array<{
       bucket: string;
+      cohort: string | null;
       avg_score: number;
       pass_rate: number;
       eval_count: number;
@@ -743,6 +911,7 @@ export class SqliteAdapter implements IStorageAdapter {
       avgScore: Math.round(r.avg_score * 1000) / 1000,
       passRate: Math.round(r.pass_rate * 1000) / 1000,
       evalCount: r.eval_count,
+      ...(cohortBy === undefined ? {} : { cohort: r.cohort }),
     }));
   }
 

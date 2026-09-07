@@ -115,12 +115,30 @@ export const evalQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+export const runsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+});
+
+export const caseQuerySchema = z.object({
+  run: z.string().min(1).max(200).optional(),
+});
+
 export const summaryQuerySchema = z.object({
   hours: z.coerce.number().int().min(1).max(8760).default(24),
 });
 
 export const evalStatsPeriodSchema = z.object({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
+});
+
+/*
+ * The trend, optionally split. `cohort` is a closed enum rather than a
+ * column name: a free-text group-by would put caller text into a SQL
+ * expression, and there is exactly one grouping that means anything here.
+ */
+export const evalStatsTrendSchema = z.object({
+  period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
+  cohort: z.enum(['run']).optional(),
 });
 
 export const evalStatsFailuresSchema = z.object({

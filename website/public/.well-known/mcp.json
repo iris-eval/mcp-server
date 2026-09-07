@@ -54,6 +54,10 @@
     {
       "name": "compare_traces",
       "description": "Group stored evaluations by case and report per-case pass rates, flakiness and an interval that respects repeats"
+    },
+    {
+      "name": "evaluate_runs",
+      "description": "Re-score every trace in a run under the current rules, into a new run, so a rules change can be compared instead of overwriting the old verdicts"
     }
   ],
   "resources": [

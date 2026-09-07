@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
-import { evalStatsPeriodSchema, evalStatsFailuresSchema } from '../validation.js';
+import { evalStatsPeriodSchema, evalStatsFailuresSchema, evalStatsTrendSchema } from '../validation.js';
 
 export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter): void {
   /**
@@ -30,8 +30,10 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
   router.get('/eval-stats/trend', async (req, res) => {
     try {
       const tenantId = requireTenant(req);
-      const { period } = evalStatsPeriodSchema.parse(req.query);
-      const trend = await storage.getEvalStatsTrend(tenantId, period);
+      // `?cohort=run` splits the line per run. Ungrouped by default, so
+      // every existing caller sees exactly the response it saw before.
+      const { period, cohort } = evalStatsTrendSchema.parse(req.query);
+      const trend = await storage.getEvalStatsTrend(tenantId, period, cohort);
       res.json(trend);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {

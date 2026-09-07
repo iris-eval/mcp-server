@@ -221,6 +221,28 @@ export class EvalEngine {
    * that ran (weighted score against the threshold, critical veto across
    * all bundles); `categories` carries the same arithmetic per bundle.
    */
+  /**
+   * The ruleset hash a call of this shape would stamp, without running one.
+   *
+   * `evaluate_runs` has to decide which stored traces still need scoring
+   * BEFORE it scores anything, and "has this trace been judged by the
+   * current rules?" is exactly a question about this hash. The alternative
+   * — evaluate one throwaway trace to read the hash off its provenance —
+   * works, but it makes a decision about the whole run depend on whichever
+   * trace happened to be first.
+   *
+   * It gathers rules the same way evaluateAll does, because a hash derived
+   * any other way would be a second definition of the ruleset and would
+   * disagree the first time the two drifted.
+   */
+  rulesetHashForAll(): string {
+    const rules: EvalRule[] = [];
+    for (const type of ALL_EVAL_TYPES) {
+      rules.push(...getRulesForType(type), ...(this.additionalRules.get(type) ?? []));
+    }
+    return rulesetHash(rules, (r) => this.criticality(r));
+  }
+
   async evaluateAll(context: EvalContext, customRules?: CustomRuleDefinition[]): Promise<EvalResult> {
     const rules: EvalRule[] = [];
     const categories: EvalType[] = [];
