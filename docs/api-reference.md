@@ -476,6 +476,120 @@ Remove a single stored trace by ID. Tenant-scoped: only deletes traces the calle
 
 ---
 
+### compare_runs
+
+Did this change make the agent worse? Reads every evaluation in each run — the most recent per trace, so a re-evaluated case is not counted twice — and compares their pass rates.
+
+When the two runs share case keys it **pairs** them and runs McNemar exact on the cases that disagreed, which sees a change an unpaired test of the same data cannot. Otherwise it compares two independent proportions with a Newcombe hybrid-score interval.
+
+It is allowed to say it cannot tell, and says so with a number attached: when the evidence cannot exclude "no change" it reports the smallest change that many cases could have detected. `worse` and `better` are separate booleans rather than one direction field, so *neither* is representable and is the default.
+
+Runs that measure different things — a different ruleset, configuration, engine minor or agent — are refused, naming which. `force` compares anyway and still names what changed: a pass rate that moved because the RULES changed is not a regression in your agent.
+
+Deterministic, local, no model call. Tag traces with `run` and `case_key` on `log_trace` to create the runs this reads.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `before` | `string` | Yes | The run id to treat as the baseline |
+| `after` | `string` | Yes | The run id to compare against it |
+| `force` | `boolean` | No | Compare even when the runs are not strictly comparable. The response still names what changed |
+
+#### Response
+
+```json
+{
+  "comparable": true,
+  "incomparable_because": [],
+  "forced": false,
+  "method": "paired-mcnemar",
+  "before": { "run_id": "nightly-1", "n": 40, "passed": 38, "rate": 0.95, "interval": { "lo": 0.84, "hi": 0.99 }, "superseded": 0 },
+  "after":  { "run_id": "nightly-2", "n": 40, "passed": 29, "rate": 0.725, "interval": { "lo": 0.57, "hi": 0.84 }, "superseded": 0 },
+  "difference": { "delta": -0.225, "lo": -0.39, "hi": -0.05, "significant": true },
+  "paired": { "method": "mcnemar-exact", "b": 9, "c": 0, "concordant": 31, "pairs": 40, "p_value": 0.004, "significant": true },
+  "worse": true,
+  "better": false,
+  "smallest_detectable": null,
+  "regressions": [{ "rule": "no_silent_tool_failure", "failed_before": 0, "failed_after": 9, "delta": 9 }],
+  "improvements": [],
+  "summary": "…"
+}
+```
+
+---
+
+### compare_traces
+
+How reliably does the agent answer the same question? Groups every evaluation by `case_key` — supplied on `log_trace`, or derived from the input — and reports how often each case passed, with a 95% Wilson interval per case.
+
+A case answered **both ways** is reported as FLAKY, least reliable first: that is where determinism is worth buying, and a single run cannot show it.
+
+The overall rate comes from a **cluster bootstrap over cases**, not by pooling attempts. Ten repeats of one question are one question, and pooling would claim an *n* the data never earned. The pooled figure is reported beside it so the gap is visible rather than argued.
+
+Deterministic, local, no model call.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `run` | `string` | No | Narrow to one run; omit to read every evaluation that carries a case key |
+| `case_key` | `string` | No | Narrow to a single case — the fastest way to ask "is this one question flaky?" |
+| `min_attempts` | `number` | No | Ignore cases asked fewer than this many times (default 1). A case asked once cannot be shown to be flaky |
+
+#### Response
+
+```json
+{
+  "case_key": null,
+  "cases": 12,
+  "attempts": 60,
+  "overall": { "rate": 0.78, "lo": 0.61, "hi": 0.91 },
+  "pooled":  { "rate": 0.78, "lo": 0.66, "hi": 0.87 },
+  "flaky_cases": [{ "case_key": "refund-policy", "attempts": 5, "passed": 2, "rate": 0.4, "flaky": true, "runs": ["nightly-1"] }],
+  "by_case": [],
+  "summary": "…"
+}
+```
+
+---
+
+### evaluate_runs
+
+Re-score every trace in a run under the current rules, into a **new** run — so a rules change can be compared against the old verdicts instead of overwriting them.
+
+The source run is never modified. Overwriting yesterday's verdicts would destroy the baseline the comparison needs, and the loss would be silent: the numbers afterwards still look reasonable, they just answer a different question.
+
+A trace whose latest verdict already came from the current ruleset is skipped and counted, so a second call does no work. The default target run is derived from the ruleset hash, so a repeat lands in the same run rather than spawning one per invocation. A trace that cannot be scored is listed with its reason and the rest still run.
+
+Deterministic, local, no model call, nothing spent.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `run` | `string` | Yes | The run to re-score |
+| `into` | `string` | No | Run id for the new verdicts. Defaults to `<run>+reeval-<ruleset hash>`, which is stable across repeat calls |
+| `label` | `string` | No | A name for the new run, shown in listings |
+
+#### Response
+
+```json
+{
+  "source_run": "nightly-1",
+  "run": "nightly-1+reeval-3f2a91c04b7d",
+  "ruleset_hash": "3f2a91c04b7d…",
+  "traces": 40,
+  "evaluated": 40,
+  "already_current": 0,
+  "failed": [],
+  "passed": 31,
+  "summary": "…"
+}
+```
+
+---
+
 ### evaluate_with_llm_judge
 
 Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Cost-capped.
@@ -924,6 +1038,61 @@ Get distinct filter values for the dashboard UI dropdowns.
   "frameworks": ["langchain", "autogen", "crewai"]
 }
 ```
+
+---
+
+### GET /api/v1/runs
+
+Every run, newest first — registered runs and runs that exist only because a trace carried the id, so a caller who passed `run` on `log_trace` and nothing else still finds their run.
+
+Every countable field is derived from the run's rows rather than stored beside them: a stored count goes wrong the moment a trace is deleted, and nobody finds out from the number itself.
+
+```json
+{ "runs": [{ "runId": "nightly-1", "label": null, "reevaluationOf": null, "traces": 40, "evaluated": 40, "passed": 38,
+             "agentNames": ["support-bot"], "engineVersions": ["0.12.0"], "rulesetHashes": ["3f2a91c0"],
+             "startedAt": "2026-09-06T02:00:00Z", "lastActivityAt": "2026-09-06T02:14:31Z" }], "count": 1 }
+```
+
+Query: `limit` (1–500, default 50).
+
+---
+
+### GET /api/v1/runs/:id
+
+One run with its counts and provenance, plus the evaluations in it — **collapsed to one per trace**, exactly as a comparison counts them, so this route and `compare_runs` report the same *n*. 404 when nothing mentions the run.
+
+---
+
+### GET /api/v1/cases/:key
+
+Every attempt at one case, across runs. Deliberately **not** collapsed: here the repetition is the measurement. Reports `attempts`, `passed`, `flaky` (answered both ways) and the runs involved. 404 when no evaluation carries the key.
+
+Query: `run` narrows to one run.
+
+---
+
+### GET /api/v1/eval-stats/drift
+
+This window against the one before it, with both denominators and a 95% interval on the difference — computed by the same `newcombeDifference` the proof harness and `compare_runs` use.
+
+Below `minimumPerWindow` evaluations on either side no direction is offered: `difference` is null and `enoughEvidence` is false. When the interval cannot exclude zero, `smallestDetectable` reports the smallest change that much data could have seen.
+
+```json
+{
+  "period": "7d",
+  "run": null,
+  "current": { "since": "…", "until": null, "evaluated": 40, "passed": 29, "passRate": 0.725 },
+  "prior":   { "since": "…", "until": "…",  "evaluated": 38, "passed": 36, "passRate": 0.947 },
+  "difference": { "delta": -0.222, "lo": -0.38, "hi": -0.05, "significant": true },
+  "enoughEvidence": true,
+  "minimumPerWindow": 10,
+  "smallestDetectable": null
+}
+```
+
+Query: `period` (`24h`…`180d`, default `7d`), `run` — which narrows **both** windows, never one.
+
+An empty window reports `passRate: null`, not zero: "0 of 0" is unknown.
 
 ---
 
