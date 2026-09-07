@@ -1,5 +1,5 @@
 {
-  "commit": "b494f49",
+  "commit": "2f727e9",
   "corpusVersion": "795a0dced3cd",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-06T22:03:04.091Z",
+  "generatedAt": "2026-09-07T03:03:43.521Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -1621,6 +1621,59 @@
     }
   ],
   "schemaVersion": 2,
+  "shadow": {
+    "candidate": {
+      "fn": 4,
+      "fp": 8,
+      "label": "candidate — an acknowledgement phrase within 200 characters of the failed call's subject",
+      "precision": 0.7143,
+      "precisionCi": [
+        0.5294,
+        0.8475
+      ],
+      "recall": 0.8333,
+      "recallCi": [
+        0.6415,
+        0.9332
+      ],
+      "tn": 9,
+      "tp": 20
+    },
+    "clears": false,
+    "disagreements": [
+      "silent-020",
+      "silent-027",
+      "silent-030",
+      "silent-031",
+      "silent-035",
+      "silent-036",
+      "silent-038",
+      "silent-039",
+      "silent-040",
+      "silent-046",
+      "silent-047"
+    ],
+    "n": 41,
+    "rule": "no_silent_tool_failure",
+    "shipped": {
+      "fn": 8,
+      "fp": 1,
+      "label": "shipped — an acknowledgement phrase anywhere in the output",
+      "precision": 0.9412,
+      "precisionCi": [
+        0.7302,
+        0.9895
+      ],
+      "recall": 0.6667,
+      "recallCi": [
+        0.4671,
+        0.8203
+      ],
+      "tn": 16,
+      "tp": 16
+    },
+    "verdict": "the candidate does NOT clear the bar (precision lower bound at least 0.85, recall no lower than the shipped rule), so it does not ship and this block stands as a published negative result"
+  },
   "transforms": {
     "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
     "rows": [

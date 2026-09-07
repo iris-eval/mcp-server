@@ -4135,8 +4135,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-06T22:03:21.590Z",
-  "generatedFromCommit": "b494f49",
+  "generatedAt": "2026-09-07T03:04:04.204Z",
+  "generatedFromCommit": "2f727e9",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4205,7 +4205,7 @@
     ]
   },
   "proof": {
-    "commit": "b494f49",
+    "commit": "2f727e9",
     "composite": {
       "compositeVersion": "a4e0e6d77d07",
       "corpusVersion": "795a0dced3cd",
@@ -6189,7 +6189,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-06T22:03:04.091Z",
+    "generatedAt": "2026-09-07T03:03:43.521Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7190,6 +7190,59 @@
       }
     ],
     "schemaVersion": 2,
+    "shadow": {
+      "candidate": {
+        "fn": 4,
+        "fp": 8,
+        "label": "candidate — an acknowledgement phrase within 200 characters of the failed call's subject",
+        "precision": 0.7143,
+        "precisionCi": [
+          0.5294,
+          0.8475
+        ],
+        "recall": 0.8333,
+        "recallCi": [
+          0.6415,
+          0.9332
+        ],
+        "tn": 9,
+        "tp": 20
+      },
+      "clears": false,
+      "disagreements": [
+        "silent-020",
+        "silent-027",
+        "silent-030",
+        "silent-031",
+        "silent-035",
+        "silent-036",
+        "silent-038",
+        "silent-039",
+        "silent-040",
+        "silent-046",
+        "silent-047"
+      ],
+      "n": 41,
+      "rule": "no_silent_tool_failure",
+      "shipped": {
+        "fn": 8,
+        "fp": 1,
+        "label": "shipped — an acknowledgement phrase anywhere in the output",
+        "precision": 0.9412,
+        "precisionCi": [
+          0.7302,
+          0.9895
+        ],
+        "recall": 0.6667,
+        "recallCi": [
+          0.4671,
+          0.8203
+        ],
+        "tn": 16,
+        "tp": 16
+      },
+      "verdict": "the candidate does NOT clear the bar (precision lower bound at least 0.85, recall no lower than the shipped rule), so it does not ship and this block stands as a published negative result"
+    },
     "transcripts": {
       "gaps": [
         {

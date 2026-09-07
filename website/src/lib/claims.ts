@@ -39,6 +39,16 @@ export const MCP_TOOL_NAMES = claimsRaw.mcpTools.names as readonly string[];
 
 // Eval rules
 export const RULE_COUNT_BUILT_IN = claimsRaw.evalRules.builtInCount as number;
+/**
+ * How many built-in rules read the agent's own tool calls.
+ *
+ * Derived from the roster's declared `needs`, never typed: it went from
+ * two to six in one release, and the playground page told readers "the two
+ * that read an agent's tool calls" long after there were six.
+ */
+export const RULE_COUNT_TRAJECTORY = (claimsRaw.evalRules.roster as Array<{ needs?: string[] }> | undefined ?? []).filter(
+  (r) => (r.needs ?? []).includes('tool_calls'),
+).length;
 export const RULE_CATEGORIES = claimsRaw.evalRules.categories as readonly string[];
 export const RULE_CATEGORY_COUNT = claimsRaw.evalRules.categoryCount as number;
 export const RULE_NAMES = claimsRaw.evalRules.names as readonly string[];
@@ -200,6 +210,25 @@ export interface ProofCustom {
   method: string;
   types: Array<{ type: string; config: Record<string, unknown>; n: number; positives: number; negatives: number; skipped: number; tp: number; fp: number; fn: number; tn: number; precision: number | null; recall: number | null; f1: number | null; ci95: ProofInterval }>;
 }
+export interface ProofShadowArm {
+  label: string;
+  tp: number; fp: number; fn: number; tn: number;
+  precision: number | null;
+  precisionCi: [number, number] | null;
+  recall: number | null;
+  recallCi: [number, number] | null;
+}
+
+export interface ProofShadow {
+  rule: string;
+  n: number;
+  shipped: ProofShadowArm;
+  candidate: ProofShadowArm;
+  disagreements: string[];
+  clears: boolean;
+  verdict: string;
+}
+
 export interface ProofTranscripts {
   transcriptsVersion: string;
   version: string;
@@ -234,6 +263,7 @@ export interface ProofClaims {
   custom?: ProofCustom;
   composite?: ProofComposite;
   transcripts?: ProofTranscripts;
+  shadow?: ProofShadow | null;
 }
 export const PROOF: ProofClaims | null =
   (claimsRaw as unknown as { proof?: ProofClaims }).proof ?? null;

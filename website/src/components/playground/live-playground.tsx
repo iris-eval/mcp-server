@@ -9,6 +9,7 @@
  */
 import { useState } from "react";
 import { PRESETS } from "./presets";
+import { RULE_COUNT_BUILT_IN, RULE_COUNT_TRAJECTORY } from "@/lib/claims";
 
 type EvalCategory = "safety" | "relevance" | "completeness" | "cost" | "all";
 
@@ -108,7 +109,8 @@ export function LivePlayground({ ruleCounts }: { ruleCounts: RuleCounts }): Reac
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-text-secondary">
           Runs the same Iris rule library that ships in the npm package — server-side,
-          no install, instant. 15 rules across safety, relevance, completeness, and cost — the two that read an agent’s tool calls skip here, because this page takes text only.
+          no install, instant. {RULE_COUNT_BUILT_IN} rules across safety, relevance, completeness, and cost. {RULE_COUNT_TRAJECTORY} of them read an
+          agent’s tool calls to judge what it did rather than what it wrote, and those skip here, because this page takes text only — install Iris to run them.
         </p>
       </div>
 

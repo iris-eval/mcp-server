@@ -36,6 +36,53 @@ function Pending({ what, command, file }: { what: string; command: string; file:
   );
 }
 
+export function CandidateNotShipped({ proof }: { proof: ProofClaims }): React.ReactElement | null {
+  const s = proof.shadow;
+  if (!s) return null;
+  const pct = (x: number | null) => (x === null ? "n/a" : `${(x * 100).toFixed(1)}%`);
+  const ci = (x: [number, number] | null) => (x === null ? "" : ` [${(x[0] * 100).toFixed(1)}, ${(x[1] * 100).toFixed(1)}]`);
+  return (
+    <section>
+      <h2 className={h2}>A change we measured and did not ship</h2>
+      <p>
+        Some changes to a rule can only move one number the right way and the other the wrong way. When that is true the honest order is to write down what would make the change worth shipping, measure it, and abide by the answer — so this one was measured against a bar set <em>before</em> the cases that would judge it existed, and it did not clear it. The rule is unchanged. It is here because &ldquo;we tried this and it was worse&rdquo; is something you have no other way to learn about an evaluator, and a negative result kept in a repository is one nobody reads.
+      </p>
+      <div className="mt-4 overflow-x-auto rounded-xl border border-border-default bg-bg-card">
+        <table className="w-full min-w-[640px] border-collapse text-left text-[14px]">
+          <thead>
+            <tr className="border-b border-border-default">
+              <th className="px-4 py-3 font-semibold">Definition of <code className={code}>{s.rule}</code></th>
+              <th className="px-4 py-3 font-semibold">TP</th>
+              <th className="px-4 py-3 font-semibold">FP</th>
+              <th className="px-4 py-3 font-semibold">FN</th>
+              <th className="px-4 py-3 font-semibold">TN</th>
+              <th className="px-4 py-3 font-semibold">Precision</th>
+              <th className="px-4 py-3 font-semibold">Recall</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[s.shipped, s.candidate].map((a) => (
+              <tr key={a.label} className="border-b border-border-subtle last:border-0">
+                <td className="px-4 py-3">{a.label}</td>
+                <td className="px-4 py-3 font-mono">{a.tp}</td>
+                <td className="px-4 py-3 font-mono">{a.fp}</td>
+                <td className="px-4 py-3 font-mono">{a.fn}</td>
+                <td className="px-4 py-3 font-mono">{a.tn}</td>
+                <td className="px-4 py-3 font-mono">{pct(a.precision)}{ci(a.precisionCi)}</td>
+                <td className="px-4 py-3 font-mono">{pct(a.recall)}{ci(a.recallCi)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-4 text-[14px] text-text-secondary">
+        Measured over the {s.n} cases of that rule&rsquo;s family carrying a failed tool call; the two definitions disagree on {s.disagreements.length}. <strong>{s.clears ? "It cleared the bar." : "It did not clear the bar, so it did not ship."}</strong> {s.verdict.charAt(0).toUpperCase() + s.verdict.slice(1)}. ·{" "}
+        <FileLink path="proof/RESULTS.md" /> · <code className={code}>npm run proof</code>.
+      </p>
+    </section>
+  );
+}
+
 export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactElement {
   const t = proof.transcripts;
   return (
@@ -364,6 +411,7 @@ export function ArcTwoSections({ proof }: { proof: ProofClaims | null }): React.
     <>
       <VerdictMeasured proof={proof} />
       <OutOfSample proof={proof} />
+      <CandidateNotShipped proof={proof} />
       <Transforms proof={proof} />
       <ByEntity proof={proof} />
       <CustomTypes proof={proof} />
