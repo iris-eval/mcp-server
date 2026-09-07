@@ -222,6 +222,16 @@ export function slotsFrom(claims) {
     ruleCount: claims.evalRules.builtInCount,
     ruleCategoryCount: claims.evalRules.categoryCount,
     ruleCategoriesProse: listProse(claims.evalRules.categories),
+    /*
+     * How many rules read the agent's own tool calls.
+     *
+     * Derived from the roster's declared `needs` rather than typed, because
+     * it moved 2 -> 6 in one release and a hand-written number would have
+     * gone stale the moment it was written. The playground page made exactly
+     * that mistake and told readers "the two that read an agent's tool
+     * calls" long after there were six.
+     */
+    trajectoryRuleCount: (claims.evalRules.roster ?? []).filter((r) => (r.needs ?? []).includes('tool_calls')).length,
     ruleCategoriesList: claims.evalRules.categories.join(', '),
     ruleNamesList: claims.evalRules.names.join(', '),
     piiPatterns: claims.evalRules.piiPatterns,

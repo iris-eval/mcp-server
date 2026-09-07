@@ -116,7 +116,7 @@ describe('proof runner', () => {
     // can resolve (a squash-merge erases the branch commit); the committed file carries it, so
     // the comparison has to use the same value rather than a placeholder.
     const version = (JSON.parse(await readFile(resolve(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-    const extraOf = (m: typeof one) => ({ customCorpusVersion: m.customCorpusVersion, transforms: m.transforms, entities: m.entities, custom: m.custom });
+    const extraOf = (m: typeof one) => ({ customCorpusVersion: m.customCorpusVersion, transforms: m.transforms, entities: m.entities, custom: m.custom, shadow: m.shadow });
     const j1 = stableJson(toResults(one.rows, one.corpusVersion, 'T', 'C', version, extraOf(one)));
     const j2 = stableJson(toResults(two.rows, two.corpusVersion, 'T', 'C', version, extraOf(two)));
     expect(j1).toBe(j2);

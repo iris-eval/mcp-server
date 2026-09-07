@@ -188,6 +188,13 @@
         "transcripts": {
           "type": "object",
           "description": "The 24 real agent transcripts, measured by npm run proof -- --transcripts: the only out-of-sample line Iris has, since every other number is measured on a corpus authored alongside the rule it measures. Carries the totals — failure classes present that some rule caught, ship verdicts agreeing, transcripts whose four bundle verdicts all agree — plus the MEASURED gap set. tests/real-transcripts.test.ts reads the same file, so a gap that closes cannot stay recorded as open. Absent until that mode has run."
+        },
+        "shadow": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "A rule change that was measured against a bar set beforehand and NOT shipped: both confusion matrices, the cases where the two definitions disagree, and the verdict. Carried so a negative result reaches the public proof page rather than living only in the repository — \"we tried it and it was worse\" is something a reader deciding whether to trust this evaluator has no other way to learn. Absent when no candidate is under measurement."
         }
       }
     },

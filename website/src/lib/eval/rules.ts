@@ -10,7 +10,7 @@
  * behaviours ship in v0.7.0, which VENDORED_FROM_VERSION names; until that
  * tag exists the playground (deployed from main) runs exactly those fixes
  * ahead of the npm package.
- * Matching: 15 rules across 4 categories; no_hallucination_markers is
+ * Matching: 20 rules across 4 categories; no_hallucination_markers is
  * context-grounded and lives in `safety`; thresholds come from
  * VENDORED_THRESHOLDS, which a root test pins to the server's defaults.
  *

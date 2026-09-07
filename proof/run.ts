@@ -119,6 +119,16 @@ export interface ProofResults {
     ppvAt: Record<string, number | null>;
   }>;
   transforms: TransformResults;
+  /*
+   * A rule change that was measured and NOT shipped.
+   *
+   * Carried into results.json so it reaches the truthbase and the public
+   * proof page, not just RESULTS.md. A negative result that lives only in
+   * the repository is one the people deciding whether to trust this
+   * evaluator never see, and "we tried it and it was worse" is exactly the
+   * kind of thing they have no other way to learn.
+   */
+  shadow?: ShadowResult | null;
   entities: Array<{ rule: string; method: string; rows: EntityRow[] }>;
   custom: {
     method: string;
@@ -291,12 +301,13 @@ export function toResults(
   generatedAt: string,
   commit: string,
   version: string,
-  extra: { customCorpusVersion: string; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[] },
+  extra: { customCorpusVersion: string; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[]; shadow?: ShadowResult | null },
 ): ProofResults {
   return {
     schemaVersion: 2,
     corpusVersion,
     customCorpusVersion: extra.customCorpusVersion,
+    ...(extra.shadow ? { shadow: extra.shadow } : {}),
     generatedAt,
     commit,
     version,
@@ -603,7 +614,7 @@ async function main(): Promise<void> {
   const generatedAt = new Date().toISOString();
   const commit = gitCommit(repoRoot);
   const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-  const results = toResults(rows, corpusVersion, generatedAt, commit, version, { customCorpusVersion, transforms, entities, custom });
+  const results = toResults(rows, corpusVersion, generatedAt, commit, version, { customCorpusVersion, transforms, entities, custom, shadow });
   const json = stableJson(results);
   const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version, results, shadow);
   const ts = renderPublishedAccuracy(results);
