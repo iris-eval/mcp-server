@@ -69,6 +69,8 @@ export function registerTraceRoutes(
         metadata: body.metadata as Record<string, unknown> | undefined,
         timestamp,
         tools: body.tools,
+        run_id: body.run,
+        case_key: body.case_key,
         spans: body.spans?.map((s) => ({
           ...s,
           span_id: s.span_id ?? generateSpanId(),

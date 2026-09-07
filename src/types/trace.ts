@@ -160,4 +160,17 @@ export interface Trace {
   spans?: Span[];
   /** What the agent could have called — the MCP tools/list result, verbatim. */
   tools?: ToolDescriptor[];
+  /**
+   * The batch this execution belongs to, if the caller named one.
+   *
+   * Never inferred from timestamps: two deployments' notions of "a run"
+   * differ, and a guessed grouping produces a comparison nobody can act on.
+   */
+  run_id?: string;
+  /**
+   * What makes this the same QUESTION as another trace. The caller's when it
+   * sent one, else derived from the input — see src/eval/case-key.ts for why
+   * the caller's always wins.
+   */
+  case_key?: string;
 }

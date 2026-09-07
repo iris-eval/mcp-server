@@ -167,6 +167,8 @@ export const logTraceInputShape = {
   cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
   metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
   tools: toolsCatalogueSchema.optional().describe('What the agent COULD have called — your MCP tools/list result, pasted verbatim: [{ name, description?, inputSchema, annotations? }]. Stored on the trace and reused by evaluate_output when given this trace_id. Without it a tool call can be seen but not CHECKED, and the rules that judge argument validity skip rather than pass'),
+  run: z.string().optional().describe('Name the batch this execution belongs to — a CI job id, a nightly sweep, an afternoon of manual pokes. Two runs of the same agent can then be compared with compare_runs. Never inferred: a guessed grouping produces a comparison nobody can act on'),
+  case_key: z.string().optional().describe('What makes this the same QUESTION as a trace in another run — a fixture name, a test id. Supplying it PAIRS the two, and a paired comparison sees a regression an unpaired one cannot. Omit it and a key is derived from the input, so pairing still works'),
   spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events); a span without start_time takes the trace timestamp'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
 };
@@ -231,6 +233,22 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         cost_usd: args.cost_usd,
         metadata: args.metadata as Record<string, unknown> | undefined,
         timestamp,
+        /*
+         * THE CATALOGUE WAS BEING DROPPED HERE.
+         *
+         * `tools` has been in this tool's input schema since 0.11.0, with a
+         * description telling callers it is "stored on the trace and reused
+         * by evaluate_output when given this trace_id" — and this object
+         * never carried it, so every catalogue sent through the MCP path
+         * was accepted and silently discarded. The HTTP ingest route did
+         * carry it, which is how two paths came to honour one contract
+         * differently. valid_tool_arguments and no_tool_loop's target
+         * clause were dormant for anyone who logged a trace and then
+         * evaluated it by id.
+         */
+        tools: args.tools,
+        run_id: args.run,
+        case_key: args.case_key,
         spans: args.spans?.map((s) => ({
           ...s,
           span_id: s.span_id ?? generateSpanId(),
