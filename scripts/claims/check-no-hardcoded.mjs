@@ -88,6 +88,39 @@ const PATTERNS = [
     fix: 'Import BUILT_IN_RULE_COUNT from ~/lib/claims (or state the current count from .claims.json)',
   },
   /*
+   * THE SAME CLAIM, WITH THE NUMBER PRISED APART FROM ITS NOUN.
+   *
+   * Every pattern above matches a count ADJACENT to the thing it counts,
+   * because that is how prose says it. A website does not always say it in
+   * prose. The homepage stats band said it like this:
+   *
+   *   { value: 13, suffix: "", label: "Built-in eval rules", ... }
+   *
+   * — one line, both halves present, and twenty-odd characters of object
+   * syntax between them. No adjacency pattern can pair those, so the most
+   * prominent number on the site sat three releases out of date while this
+   * scanner reported green and its own coverage line said 0 flagged.
+   *
+   * This pattern reads a bounded window instead: a small integer, then up
+   * to sixty characters that contain no other digit, then the noun. The
+   * digit-free window is what keeps it from pairing a number with an
+   * unrelated label further down the line.
+   */
+  {
+    name: 'builtin-rule-count-in-a-field',
+    re: /\b(\d{1,2})\b(?:(?!(?:label|title|name)\s*:)[^\d\n]){0,60}(?:label|title|name)\s*:\s*["'][^"'\n]{0,24}?(?:built-?in|heuristic|deterministic)[ _-]?(?:eval[ _-]?)?rules?\b/gi,
+    skipPrefixes: ['docs/'],
+    expected: c => [c.evalRules?.builtInCount],
+    fix: 'Import BUILT_IN_RULE_COUNT from ~/lib/claims — a literal here is a number the adjacency patterns cannot see',
+  },
+  {
+    name: 'mcp-tool-count-in-a-field',
+    re: /\b(\d{1,2})\b(?:(?!(?:label|title|name)\s*:)[^\d\n]){0,60}(?:label|title|name)\s*:\s*["'][^"'\n]{0,24}?MCP tools?\b/gi,
+    skipPrefixes: ['docs/'],
+    expected: c => [c.mcpTools?.count],
+    fix: 'Import MCP_TOOL_COUNT from ~/lib/claims — a literal here is a number the adjacency patterns cannot see',
+  },
+  /*
    * The custom-rule type count. Six compare pages carried "4 custom-rule
    * types" against a union of eight; the truthbase never held the number, so
    * neither claims gate could disagree. evalRules.customRuleTypeCount is read
