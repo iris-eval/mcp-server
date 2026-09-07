@@ -83,6 +83,16 @@ export interface RunResultRow {
   supersededInRun?: number;
 }
 
+/** One attempt at one case — every attempt, because repetition is what is being measured. */
+export interface CaseResultRow {
+  evalId: string;
+  traceId: string | null;
+  caseKey: string | null;
+  runId: string | null;
+  passed: boolean;
+  createdAt: string;
+}
+
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
   private readonly dbPath: string;
@@ -430,6 +440,47 @@ export class SqliteAdapter implements IStorageAdapter {
     }
     if (superseded > 0) out.forEach((r) => (r.supersededInRun = superseded));
     return out;
+  }
+
+  /**
+   * Every evaluation that carries a case key, optionally narrowed.
+   *
+   * Deliberately NOT collapsed to one row per trace, unlike getRunResults.
+   * There the question is "how did this run do", and a trace evaluated
+   * twice is one case that would otherwise be weighted twice. Here the
+   * question is "how reliably does the agent answer this", and every
+   * attempt is a real attempt — collapsing them would erase the very
+   * repetition being measured.
+   */
+  async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string } = {}): Promise<CaseResultRow[]> {
+    assertTenant(tenantId);
+    const where: string[] = ['e.tenant_id = ?', 't.case_key IS NOT NULL'];
+    const params: unknown[] = [tenantId];
+    if (filter.run !== undefined) {
+      where.push('COALESCE(e.run_id, t.run_id) = ?');
+      params.push(filter.run);
+    }
+    if (filter.caseKey !== undefined) {
+      where.push('t.case_key = ?');
+      params.push(filter.caseKey);
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT e.id, e.trace_id, e.passed, e.created_at, t.case_key, COALESCE(e.run_id, t.run_id) AS run_id
+           FROM eval_results e
+           JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+          WHERE ${where.join(' AND ')}
+          ORDER BY e.created_at ASC, e.id ASC`,
+      )
+      .all(...params) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      evalId: String(row.id),
+      traceId: (row.trace_id as string | null) ?? null,
+      caseKey: (row.case_key as string | null) ?? null,
+      runId: (row.run_id as string | null) ?? null,
+      passed: row.passed === 1 || row.passed === true,
+      createdAt: String(row.created_at),
+    }));
   }
 
   async getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null> {

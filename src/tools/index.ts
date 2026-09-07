@@ -5,6 +5,8 @@ import type { CustomRuleStore } from '../custom-rule-store.js';
 import { registerLogTraceTool } from './log-trace.js';
 import { registerEvaluateOutputTool } from './evaluate-output.js';
 import { registerGetTracesTool } from './get-traces.js';
+import { registerCompareRunsTool } from './compare-runs.js';
+import { registerCompareTracesTool } from './compare-traces.js';
 import { registerListRulesTool } from './list-rules.js';
 import { registerDeployRuleTool } from './deploy-rule.js';
 import { registerDeleteRuleTool } from './delete-rule.js';
@@ -30,6 +32,8 @@ export const TOOL_NAMES = [
   'delete_trace',
   'evaluate_with_llm_judge',
   'verify_citations',
+  'compare_runs',
+  'compare_traces',
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
@@ -44,6 +48,8 @@ export function registerAllTools(
     dormant: () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT)),
   });
   registerGetTracesTool(server, storage);
+  registerCompareRunsTool(server, storage);
+  registerCompareTracesTool(server, storage);
   registerListRulesTool(server, customRuleStore, evalEngine);
   registerDeployRuleTool(server, customRuleStore, evalEngine);
   registerDeleteRuleTool(server, customRuleStore, evalEngine);

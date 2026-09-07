@@ -46,6 +46,14 @@
     {
       "name": "delete_rule",
       "description": "Remove a deployed custom evaluation rule; past eval results are preserved"
+    },
+    {
+      "name": "compare_runs",
+      "description": "Compare two runs of stored evaluations and report whether the pass rate moved, with an interval"
+    },
+    {
+      "name": "compare_traces",
+      "description": "Group stored evaluations by case and report per-case pass rates, flakiness and an interval that respects repeats"
     }
   ],
   "resources": [

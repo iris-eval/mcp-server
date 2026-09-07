@@ -4,11 +4,11 @@
 
 Current release: v0.11.0 (2026-09-06) — The act layer.
 
-Iris registers 9 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 20 built-in eval rules across completeness, relevance, safety, and cost. 6 of those rules read the agent's own tool calls and judge what it DID, not only what it wrote: a failed call the answer never acknowledges, a repeated one, a call its own tool's schema rejects, a file or URL cited that appears in nothing the agent read, an instruction obeyed out of a tool result, and a step budget. A ninth custom rule type, action_policy, states which tools an agent may call and with what arguments. All of it is deterministic and runs locally — no model call, nothing leaves the machine. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
+Iris registers 11 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 20 built-in eval rules across completeness, relevance, safety, and cost. 6 of those rules read the agent's own tool calls and judge what it DID, not only what it wrote: a failed call the answer never acknowledges, a repeated one, a call its own tool's schema rejects, a file or URL cited that appears in nothing the agent read, an instruction obeyed out of a tool result, and a step budget. A ninth custom rule type, action_policy, states which tools an agent may call and with what arguments. All of it is deterministic and runs locally — no model call, nothing leaves the machine. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
 
 Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 20 built-in rules, corpus 795a0dced3cd, generated 2026-09-07 from the source these numbers were measured on; reproduce with `npm run proof`.
 
-Of 60 capability cells (10 evaluation questions by 6 subjects), 20 are answered by a shipped, measured thing, 16 are answered with a stated limit, 20 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it. The full map: https://iris-eval.com/capabilities.
+Of 60 capability cells (10 evaluation questions by 6 subjects), 22 are answered by a shipped, measured thing, 16 are answered with a stated limit, 18 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it. The full map: https://iris-eval.com/capabilities.
 
 ## Getting Started
 
