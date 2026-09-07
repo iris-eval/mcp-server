@@ -91,21 +91,14 @@ export function credibleIntervals(c: Confusion, seed: string, draws: number = CR
   };
 }
 
-/**
- * Newcombe hybrid score interval (method 10) for p1 − p2, two independent
- * proportions k1/n1 and k2/n2. Null when either has no trials.
+/*
+ * Newcombe's hybrid score interval used to be defined here as well as in
+ * src/eval/stats.ts. Two implementations of one statistic is how a published
+ * number and a shipped number start disagreeing — and here they would have
+ * disagreed silently, because both are correct-looking and differ only in
+ * rounding. The product's copy is the one that survives; this module rounds
+ * at the report boundary instead, which is where rounding belongs.
  */
-export function newcombeDifference(k1: number, n1: number, k2: number, n2: number): { delta: number; lo: number; hi: number } | null {
-  const w1 = wilson(k1, n1);
-  const w2 = wilson(k2, n2);
-  if (!w1 || !w2) return null;
-  const p1 = k1 / n1;
-  const p2 = k2 / n2;
-  const delta = p1 - p2;
-  const lo = delta - Math.sqrt((p1 - w1.lo) ** 2 + (w2.hi - p2) ** 2);
-  const hi = delta + Math.sqrt((w1.hi - p1) ** 2 + (p2 - w2.lo) ** 2);
-  return { delta: round4(delta), lo: round4(Math.max(-1, lo)), hi: round4(Math.min(1, hi)) };
-}
 
 export interface CalibrationBin {
   /** Lower edge of the bin, inclusive; the last bin includes 1. */

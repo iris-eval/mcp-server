@@ -4,7 +4,9 @@
  * right on a known table.
  */
 import { describe, expect, it } from 'vitest';
-import { calibration, credibleIntervals, gammaVariate, newcombeDifference } from '../../proof/lib/intervals.js';
+import { calibration, credibleIntervals, gammaVariate } from '../../proof/lib/intervals.js';
+// One implementation, in the product — see tests/proof/one-statistics-implementation.test.ts.
+import { newcombeDifference } from '../../src/eval/stats.js';
 import { mulberry32, fnv1a } from '../../proof/lib/materialise.js';
 
 describe('Dirichlet credible intervals', () => {

@@ -35,7 +35,8 @@ import { EvalEngine } from '../../src/eval/engine.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { FAILURE_CLASS_IDS } from '../../src/eval/failure-classes.js';
 import { wilson } from '../judge/lib/wilson.js';
-import { calibration, newcombeDifference, type Calibration } from './intervals.js';
+import { calibration, type Calibration } from './intervals.js';
+import { newcombeDifference } from '../../src/eval/stats.js';
 import { compositeContext, loadComposite, splitOf, validateComposite, type CompositeCase, type LoadedComposite, type Split } from './composite.js';
 import { riskVerdict, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from '../../src/eval/risk.js';
 import { legacyWouldShip } from './legacy-composer.js';
@@ -216,7 +217,16 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
   const legacy = slices(rows, legacyShip, legacyProb);
   const risk = slices(rows, riskShipOf((r) => r.risk), riskProbOf((r) => r.risk));
   const riskPerClass = slices(rows, riskShipOf((r) => r.riskPerClass), riskProbOf((r) => r.riskPerClass));
-  const diff = (a: ComposerSlice, b: ComposerSlice): Difference => newcombeDifference(a.accuracy.k, a.accuracy.n, b.accuracy.k, b.accuracy.n);
+  /*
+   * One implementation of the statistic, shared with the product — the
+   * comparison a reader checks on /proof is computed by the same function
+   * the shipped compare_runs uses. Rounded here rather than inside it: a
+   * statistic that rounds is a statistic with a display decision baked in.
+   */
+  const diff = (a: ComposerSlice, b: ComposerSlice): Difference => {
+    const d = newcombeDifference(a.accuracy.k, a.accuracy.n, b.accuracy.k, b.accuracy.n);
+    return d === null ? null : { delta: round4(d.delta), lo: round4(d.lo), hi: round4(d.hi) };
+  };
 
   const perClass = FAILURE_CLASS_IDS.map((cls) => {
     const present = rows.filter((r) => r.classes.includes(cls));
