@@ -47,7 +47,7 @@ export interface CriticalityOverrides {
    * by the criticality resolver; declared here so a caller that builds an
    * engine directly passes one object and not two.
    */
-  composer?: 'risk' | 'legacy';
+  composer?: 'risk';
   falsePassCost?: number;
   onCriticalSkipped?: 'unknown' | 'fail' | 'pass';
   requiredEvidence?: string[];
@@ -130,6 +130,23 @@ export function criticalityIssues(overrides: CriticalityOverrides | undefined): 
  * path can build an engine that silently ignores an override).
  */
 export function assertValidCriticality(overrides: CriticalityOverrides | undefined): void {
+  /*
+   * `eval.composer: "legacy"` was removed in 0.12.0, two minors after
+   * 0.10.0 announced it would be. Refused loudly rather than ignored: a
+   * deployment that pinned the old arithmetic chose which outputs ship, and
+   * defaulting them into the risk composer without a word would change that
+   * silently on an upgrade. The message says what changed and where the
+   * numbers are, so the choice is made again rather than made for them.
+   */
+  if ((overrides as { composer?: string } | undefined)?.composer === 'legacy') {
+    throw new Error(
+      'eval.composer: "legacy" was removed in 0.12.0. It ran the pre-0.10.0 arithmetic and 0.10.0 announced it would last two minors.\n' +
+        '  Remove the key (or set it to "risk") to use the composer that has shipped as the default since 0.10.0.\n' +
+        '  What changes: on the held-out split of the composite corpus the risk composer is right about shipping 57.7% of the time against legacy\'s 38.5%, at an identical false-block rate, missing 55.6% of bad outputs against 83.3%. The numbers regenerate every release in proof/COMPOSITE.md.\n' +
+        '  Tune it with eval.falsePassCost rather than by reverting: what a false pass costs you relative to a false block is the knob the threshold is derived from.',
+    );
+  }
+
   const issues = criticalityIssues(overrides);
   if (issues.length === 0) return;
   throw new Error(

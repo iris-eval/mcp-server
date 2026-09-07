@@ -164,7 +164,17 @@ describe('the agent-native contract', () => {
     for (const uri of mentioned) expect(registered.has(uri), uri).toBe(true);
     for (const rule of ['no_pii', 'no_injection_patterns', 'no_blocklist_words']) expect(got).toContain(rule);
     expect(got).toContain('not enabled');
-    expect(got).toContain(String(defaultConfig.eval.defaultThreshold));
+    /*
+     * The instructions used to quote the server's threshold, and told every
+     * agent that `passed` was "true only when score clears the threshold AND
+     * no critical rule failed" — the PRE-0.10.0 rule, still being taught two
+     * minors after the composer replaced it. The composer never consults the
+     * score. So the assertion is now the true statement rather than the
+     * presence of a number that decides nothing.
+     */
+    expect(got).toContain('passed is verdict.state === "pass"');
+    expect(got).toContain('score is never consulted');
+    expect(got).not.toContain('score_below_threshold');
   });
 
   it('resources/list and resources/templates/list equal the registry; a missing trace is the protocol error, not a 200 body', async () => {

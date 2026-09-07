@@ -43,8 +43,18 @@ import type { EvalResult, EvalRuleResult, Interpretation, Need, Verdict } from '
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 
 export interface ComposeConfig {
-  /** `risk` composes by kind; `legacy` runs the pre-0.10.0 arithmetic. */
-  composer: 'risk' | 'legacy';
+  /**
+   * How the verdict is composed. `risk` is the only value from 0.12.0.
+   *
+   * `legacy` ran the pre-0.10.0 arithmetic and was announced in 0.10.0 as
+   * lasting two minors so an upgrade had somewhere to stand. Those two
+   * minors were 0.11.0 and 0.12.0. The key stays rather than disappearing,
+   * because a config that still names `legacy` must be REFUSED with a
+   * sentence rather than silently switched: a deployment pinned to the old
+   * arithmetic made a choice, and quietly re-meaning what passes on their
+   * next upgrade is the exact confusion this product exists to prevent.
+   */
+  composer: 'risk';
   /** How many wrongly blocked builds one shipped failure is worth. τ = 1 / (1 + c). */
   falsePassCost: number;
   /** What a critical rule that could not answer does to the verdict. */

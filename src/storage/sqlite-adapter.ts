@@ -39,7 +39,7 @@ import type {
 } from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
-import { deriveCoverage, deriveCriticalSkipped, deriveVerdict } from '../eval/verdict.js';
+import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
 import { compose, DEFAULT_COMPOSE } from '../eval/compose.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
@@ -1355,16 +1355,12 @@ export class SqliteAdapter implements IStorageAdapter {
      * Read back with the SAME composer that wrote it, or a stored row would
      * report a different verdict than the one the caller was given. The
      * config is not stored (only its hash), so this composes under the
-     * shipped defaults — which is what a default-configured server used, and
-     * what `eval.composer: "legacy"` selects for a deployment that has not
-     * moved yet. A row written before the verdict existed still reads back
-     * with none: absent, never fabricated.
+     * shipped defaults — which from 0.12.0 is the only composer there is. A
+     * row written before the verdict existed still reads back with none:
+     * absent, never fabricated.
      */
     if (result.provenance) {
-      result.verdict =
-        DEFAULT_COMPOSE.composer === 'legacy'
-          ? deriveVerdict(result, result.provenance.thresholds.default)
-          : compose(result, DEFAULT_COMPOSE);
+      result.verdict = compose(result, DEFAULT_COMPOSE);
     }
     return result;
   }

@@ -219,4 +219,25 @@ describe('loadConfig validates the lists before anything runs', () => {
     writeConfig({ criticalRules: ['no_stub_output'] });
     expect(loadConfig().eval.criticalRules).toEqual(['no_stub_output']);
   });
+
+  /*
+   * `eval.composer: "legacy"` was removed in 0.12.0, two minors after 0.10.0
+   * announced it would be. The removal has to be LOUD: a deployment that
+   * pinned the old arithmetic chose which outputs ship, and defaulting them
+   * into the risk composer without a word would change that silently on an
+   * upgrade — a verdict moving underneath someone is the one failure this
+   * whole product exists to prevent.
+   */
+  it('refuses a config that still selects the removed legacy composer, and says what changed', () => {
+    writeConfig({ composer: 'legacy' } as unknown as Record<string, unknown>);
+    expect(() => loadConfig()).toThrow(/eval\.composer: "legacy" was removed in 0\.12\.0/);
+    // Not just a refusal: the message has to leave them able to decide again.
+    expect(() => loadConfig()).toThrow(/falsePassCost/);
+    expect(() => loadConfig()).toThrow(/proof\/COMPOSITE\.md/);
+  });
+
+  it('accepts the composer key at its only remaining value', () => {
+    writeConfig({ composer: 'risk' } as unknown as Record<string, unknown>);
+    expect(loadConfig().eval.composer).toBe('risk');
+  });
 });

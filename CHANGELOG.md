@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`eval.composer: "legacy"` is gone, on the schedule 0.10.0 announced.** It ran the pre-0.10.0 arithmetic — a weighted mean against a threshold plus the critical veto — and 0.10.0 said it would last two minors so an upgrade had somewhere to stand. Those two minors were 0.11.0 and 0.12.0. A config that still names it is **refused at startup** with a sentence saying what changed and where the numbers are, rather than being switched silently: a deployment that pinned the old arithmetic chose which outputs ship, and quietly re-meaning that on an upgrade is the exact confusion this product exists to prevent. Tune the shipped composer with `eval.falsePassCost` instead — what a false pass costs you relative to a false block is the knob the threshold is derived from.
+- **`verdict.basis` can no longer be `score_below_threshold`.** Only the legacy composer produced it, so leaving it in the published union would have left a value nothing can emit — a filter option that returns nothing forever, which is the defect this release also added a guard against. The remaining bases are `policy_gate`, `detector_veto`, `critical_unknown`, `required_evidence_missing`, `risk_over_loss`, `clean` and `no_rules`.
+- **The legacy arithmetic survives as a yardstick, in `proof/`, not in the package.** The claim that the composer is better is a comparison against exactly that baseline, and a baseline nobody can compute is a number nobody can check — so `proof/lib/legacy-composer.ts` keeps it, outside the npm artifact. Not one published number moved: `proof --check --composite` differs only in the sentence naming where the yardstick lives.
+
+### Fixed
+
+- **The instructions told every agent the pre-0.10.0 rule, two minors after it stopped being true.** They said `passed` is "true only when score clears the threshold AND no critical rule failed" and listed `score_below_threshold` among the bases. The composer never consults the score. They now say `passed` is `verdict.state === "pass"`, that the score is not what decides it, and list the bases that exist.
+
 ## [0.11.0] - 2026-09-06
 
 **The act layer.** Iris scored what an agent wrote and had almost nothing to say about what it DID. Of the sixty cells in the public capability map, the trajectory column held one `has` in ten, and two failure classes the registry declared — an invalid tool call, an injected instruction obeyed — had never been measured at all. An agent that fetched a poisoned page, did what the page said, and wrote a clean summary passed every bundle.

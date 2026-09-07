@@ -10,40 +10,21 @@
  * ruleset or thresholds that produced it — "why did this pass on that day"
  * was unanswerable from Iris alone.
  *
- * This module answers those from what the engine already knows. It changes
- * no verdict: `deriveVerdict` names the basis of today's arithmetic
- * (`passed` here equals the engine's `passed`, and a test proves it); the
- * compose-by-kind release replaces the arithmetic and keeps the shape.
+ * This module answers those from what the engine already knows: coverage,
+ * provenance, and the hashes that let one verdict be compared with another.
+ *
+ * The verdict itself is composed in compose.ts. `deriveVerdict` used to
+ * live here — the pre-0.10.0 weighted-mean arithmetic, kept for the two
+ * minors 0.10.0 promised — and went in 0.12.0 with the composer that
+ * selected it. Its one exclusive basis, `score_below_threshold`, went with
+ * it rather than staying in the union as a value nothing can produce.
  */
 import { createHash } from 'node:crypto';
-import type { Coverage, EvalResult, EvalRule, EvalRuleResult, Need, Provenance, Verdict } from '../types/eval.js';
+import type { Coverage, EvalRule, EvalRuleResult, Need, Provenance } from '../types/eval.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { RULE_QUESTION_IDS } from './questions.js';
 import { NEEDS } from './failure-classes.js';
 import { publishedProvenance } from './accuracy.js';
-
-/**
- * The basis of the verdict under the shipped composer (a weighted mean plus
- * the critical veto). `passed` is `state === 'pass'` and equals the engine's
- * own `passed` for every result; the basis says which layer decided.
- */
-export function deriveVerdict(result: Pick<EvalResult, 'passed' | 'score' | 'rule_results' | 'insufficient_data' | 'critical_failures' | 'rules_evaluated'>, threshold: number): Verdict {
-  const evaluated = result.rules_evaluated ?? result.rule_results.filter((r) => !r.skipped).length;
-  if (result.insufficient_data || evaluated === 0) {
-    return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
-  }
-  const vetoes = result.critical_failures ?? [];
-  if (vetoes.length > 0) {
-    const kinds = new Map(result.rule_results.map((r) => [r.ruleName, r.kind]));
-    const allPolicies = vetoes.every((name) => kinds.get(name) === 'policy');
-    return { state: 'fail', passed: false, basis: allPolicies ? 'policy_gate' : 'detector_veto', by: [...vetoes], risk: null };
-  }
-  if (result.score < threshold) {
-    const by = result.rule_results.filter((r) => !r.skipped && !r.passed).map((r) => r.ruleName);
-    return { state: 'fail', passed: false, basis: 'score_below_threshold', by, risk: null };
-  }
-  return { state: 'pass', passed: true, basis: 'clean', by: [], risk: null };
-}
 
 /**
  * Which evaluation questions were judged, which were not and why. At write

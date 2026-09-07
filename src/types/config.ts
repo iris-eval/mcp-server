@@ -68,8 +68,16 @@ export interface IrisConfig {
      * every surface that shows one says so until it is ruled. The record is
      * in the arc-2 council report.
      */
-    /** `risk` composes by kind (gates, vetoes, unknown, then the risk); `legacy` runs the pre-0.10.0 weighted mean. */
-    composer?: 'risk' | 'legacy';
+    /**
+     * How the verdict is composed: by kind — gates, vetoes, unknown, then the
+     * risk. `risk` is the only value from 0.12.0; `legacy` ran the pre-0.10.0
+     * weighted mean and was announced in 0.10.0 as lasting two minors.
+     *
+     * The key survives its only alternative on purpose: a config that still
+     * names `legacy` is refused at startup with a sentence, rather than
+     * silently switched. Tune the shipped composer with `falsePassCost`.
+     */
+    composer?: 'risk';
     /**
      * How many wrongly blocked builds one shipped failure is worth. The risk
      * threshold is 1 / (1 + this), so 1 means a false pass and a false block
