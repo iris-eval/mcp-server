@@ -7,6 +7,7 @@ import * as migration005 from './005-normalize-created-at.js';
 import * as migration006 from './006-eval-critical-failures.js';
 import * as migration007 from './007-eval-provenance.js';
 import * as migration008 from './008-trace-tools-catalogue.js';
+import * as migration009 from './009-runs-and-case-keys.js';
 import { PKG_VERSION } from '../../config/defaults.js';
 
 interface Migration {
@@ -23,6 +24,7 @@ const migrations: Migration[] = [
   migration006,
   migration007,
   migration008,
+  migration009,
 ];
 
 export function runMigrations(db: Database.Database): void {
