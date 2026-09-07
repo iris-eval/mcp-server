@@ -29,7 +29,7 @@
  * pins the model id and A6 is the only row graded on wording alone.
  *
  * Usage:
- *   node tests/acceptance/stranger/run.mjs --spec @iris-eval/mcp-server@0.9.0 --out <dir> [--phase all|http|mcp1|mcp2|a8]
+ *   node tests/acceptance/stranger/run.mjs --spec @iris-eval/mcp-server@0.9.0 --out <dir> [--phase all|http|mcp1|mcp2|a8|a9]
  *   node tests/acceptance/stranger/run.mjs --tarball ./iris-eval-mcp-server-0.9.0.tgz --out <dir>
  *
  * The phases can be run separately against one record dir: `--phase mcp2`
@@ -81,6 +81,28 @@ const ENV_NOTE_HTTP = `${ENV_NOTE_COMMON} No MCP servers are available to this s
 const ENV_NOTE_MCP1 = `${ENV_NOTE_COMMON} No MCP servers are attached to this session and none can be attached mid-run. Do the discovery and installation work now: find how Iris is installed and write, to ./mcp-config.json, the exact MCP server config you would attach for a client like Claude Code, then stop and say what you would do next once it is connected. Do not evaluate the outputs in this session.`;
 const ENV_NOTE_MCP2 = `${ENV_NOTE_COMMON} Iris is connected to this session as an MCP server named iris-eval; use it.`;
 const A8_DRIVER = "Before I decide, double-check output 2 with Iris's LLM judge as well, and tell me what it says.";
+/*
+ * A9 (0.12.0). The question a single verdict cannot answer, asked the way a
+ * user would ask it — no tool named, no run ids supplied, no hint that runs
+ * exist. The agent has to find that comparison is possible, tag the two
+ * cohorts, and read back a result that includes an interval.
+ *
+ * Graded on the interval, not on the direction: with three outputs a side
+ * the honest answer is "not enough evidence", and an agent that reports a
+ * confident regression from six cases has failed the row rather than passed
+ * it. This is the one acceptance row where the RIGHT answer is a refusal.
+ *
+ * FIXTURE FIDELITY, found by the 0.12.0 run and fixed after it. The cohort
+ * was byte-identical to the first, and the prompt called it "the new
+ * answers" — so the prompt asserted something false, and the stranger
+ * caught it on md5 and on latency_ms matching to the millisecond. It still
+ * passed the row, and its reasoning was better for having caught it, but an
+ * acceptance instrument must not lie to the agent it is measuring. The
+ * cohort is now genuinely re-answered: the same three prompts, with the
+ * answers perturbed so pairing still works on the input-derived case key.
+ */
+const A9_DRIVER =
+  "I re-ran the same three prompts after a prompt change — the new answers are in ./outputs-v2/. Has my agent regressed since yesterday? Log both sets so you can compare them properly, and tell me how confident the answer is.";
 
 const ALLOWED_TOOLS = [
   'Bash(npx:*)',
@@ -103,6 +125,38 @@ const FIXTURES = [
   ['t-07-support-ticket-ssn.json', 'output-2.json'],
   ['t-13-grep-no-match.json', 'output-3.json'],
 ];
+/*
+ * The A9 cohort: the same three PROMPTS answered again, so "did it regress?"
+ * has two sets to compare and the pairing key (derived from the input) still
+ * matches. The answers are perturbed rather than copied — a re-run that
+ * reproduces its own wall-clock latency to the millisecond is not a re-run,
+ * and the 0.12.0 stranger said so.
+ *
+ * The perturbation is deliberately SMALL and not a planted regression: the
+ * row measures whether the agent can compare at all and whether it carries
+ * the confidence through, not whether it can spot a difference the fixture
+ * author chose. A planted regression would grade the fixture.
+ */
+function makeA9Cohort(dir) {
+  const outputs = join(dir, 'outputs-v2');
+  mkdirSync(outputs, { recursive: true });
+  FIXTURES.forEach(([src, dst], i) => {
+    const fixture = JSON.parse(readFileSync(join(repo, 'tests', 'fixtures', 'real-transcripts', src), 'utf8'));
+    delete fixture.metadata;
+    // A second run of the same prompt: same question, a differently-worded
+    // answer, and timings that are not the first run's to the millisecond.
+    if (typeof fixture.output === 'string') {
+      fixture.output = `${fixture.output}
+
+(Re-run after the prompt change.)`;
+    }
+    if (typeof fixture.latency_ms === 'number') fixture.latency_ms = Math.round(fixture.latency_ms * (0.82 + i * 0.11));
+    if (typeof fixture.cost_usd === 'number') fixture.cost_usd = Number((fixture.cost_usd * (0.94 + i * 0.05)).toFixed(6));
+    writeFileSync(join(outputs, dst), JSON.stringify(fixture, null, 2));
+  });
+  return outputs;
+}
+
 function makePhaseDir(phase) {
   const dir = mkdtempSync(join(tmpdir(), `iris-stranger-${phase}-`));
   const outputs = join(dir, 'outputs');
@@ -233,7 +287,7 @@ function summarise(phase, d, wallMs, substitution) {
 }
 
 /* ── grading ── */
-function grade({ mcp1, mcp2, a8, http }) {
+function grade({ mcp1, mcp2, a8, a9, http }) {
   const rows = {};
   const row = (id, pass, evidence, note) => { rows[id] = { pass, evidence: quote(evidence), ...(note ? { note } : {}) }; };
 
@@ -300,6 +354,19 @@ function grade({ mcp1, mcp2, a8, http }) {
     const t = d.finalText;
     row('A8', refused.length >= 1 && searched.length === 0 && /IRIS_(ANTHROPIC|OPENAI)_API_KEY/.test(t) && /restart/i.test(t), t, `refused ×${refused.length}, web ×${searched.length}`);
   }
+  if (a9) {
+    const d = a9.d;
+    const compared = d.calls.filter((c) => /compare_(runs|traces)/.test(irisName(c.name) ?? ''));
+    const t = d.finalText;
+    /*
+     * An interval in the answer, in any of the forms the tool prints it —
+     * a bracketed pair, a ± , or the words. Graded on the CONFIDENCE being
+     * carried through to the user, because a comparison quoted without one
+     * is the failure mode this arc exists to prevent.
+     */
+    const carriesInterval = /\[\s*-?\d|±|\binterval\b|not enough evidence|cannot tell|too few|smallest detectable/i.test(t);
+    row('A9', compared.length >= 1 && carriesInterval, t, `compare calls ×${compared.length}`);
+  }
   if (http) {
     const d = http.d;
     const started = d.calls.find((c) => /Bash/.test(c.name) && /--dashboard|--transport http/.test(JSON.stringify(c.input)));
@@ -323,13 +390,41 @@ function grade({ mcp1, mcp2, a8, http }) {
 function prepareConfig(written) {
   const config = JSON.parse(JSON.stringify(written));
   let substitution = null;
+  const keyRemovals = [];
   for (const [name, server] of Object.entries(config.mcpServers ?? {})) {
     if (Array.isArray(server.args)) {
       const before = [...server.args];
       server.args = server.args.map((a) => (/^@iris-eval\/mcp-server(@.*)?$/.test(a) ? PACKAGE_SPEC : a));
       if (JSON.stringify(before) !== JSON.stringify(server.args)) substitution = `${name}: args ${JSON.stringify(before)} → ${JSON.stringify(server.args)}`;
     }
+    /*
+     * A judge key the stranger wrote into its own config is REMOVED, and the
+     * removal is recorded.
+     *
+     * A8's entire premise is "ask for the judge with no key". The process
+     * environment is already scrubbed before spawning, but the MCP config's
+     * own env block is passed by the client to the server process and was
+     * not — so on the 0.12.0 run the stranger's phase-1 config carried
+     * "IRIS_ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}", the judge came up
+     * enabled with a value that was not a key, and A8 was graded against an
+     * IRIS_PROVIDER_ERROR it was never written for. The row measured the
+     * harness rather than the product.
+     *
+     * Writing that env line is CORRECT behaviour by the stranger — it is
+     * what the docs tell a user to do — so the fix belongs here, not in the
+     * prompt. Recorded rather than silent, because a run whose config was
+     * altered must say so.
+     */
+    for (const key of Object.keys(server.env ?? {})) {
+      if (/^IRIS_(ANTHROPIC|OPENAI)_API_KEY$/.test(key)) {
+        delete server.env[key];
+        keyRemovals.push(`${name}.env.${key}`);
+      }
+    }
     server.env = { ...(server.env ?? {}), IRIS_HOME: '${IRIS_HOME}' };
+  }
+  if (keyRemovals.length > 0) {
+    substitution = [substitution, `judge key removed so A8 asks with none: ${keyRemovals.join(', ')}`].filter(Boolean).join('; ');
   }
   return { config, substitution };
 }
@@ -370,6 +465,14 @@ async function phaseA8(mcp2) {
   return { d, rec };
 }
 
+async function phaseA9(mcp2) {
+  makeA9Cohort(mcp2.dir);
+  const r = await runClaude({ phase: 'a9', cwd: mcp2.dir, home: mcp2.home, prompt: A9_DRIVER, mcpConfig: mcp2.cfgPath, resume: mcp2.rec.sessionId });
+  const d = digest(parseStream(r.out));
+  const rec = summarise('a9', d, r.wallMs, null);
+  return { d, rec };
+}
+
 async function phaseHttp() {
   const { dir, home } = makePhaseDir('http');
   const r = await runClaude({ phase: 'http', cwd: dir, home, prompt: `${PROMPT}\n\n${ENV_NOTE_HTTP}` });
@@ -387,7 +490,7 @@ if (want('mcp1')) {
   results.mcp1 = await phaseMcp1();
   line('mcp1', results.mcp1.rec);
   connectedConfig = results.mcp1.config;
-} else if ((want('mcp2') || want('a8')) && existsSync(savedConfig)) {
+} else if ((want('mcp2') || want('a8') || want('a9')) && existsSync(savedConfig)) {
   // Reuse the config phase 1 wrote on an earlier run of this record dir.
   connectedConfig = prepareConfig(JSON.parse(readFileSync(savedConfig, 'utf8'))).config;
 }
@@ -404,11 +507,17 @@ if (PHASE === 'a8' && existsSync(join(OUT, 'mcp2.jsonl')) && existsSync(join(OUT
   if (!mcp2.dir || !mcp2.rec.sessionId || !existsSync(mcp2.dir)) throw new Error('a8 needs the connected phase\'s directory and session; run --phase mcp2 first');
   results.a8 = await phaseA8(mcp2);
   line('a8', results.a8.rec);
-} else if (connectedConfig && (want('mcp2') || want('a8'))) {
+  if (want('a9') || PHASE === 'a8') {
+    results.a9 = await phaseA9(mcp2);
+    line('a9', results.a9.rec);
+  }
+} else if (connectedConfig && (want('mcp2') || want('a8') || want('a9'))) {
   results.mcp2 = await phaseMcp2(connectedConfig);
   line('mcp2', results.mcp2.rec);
   results.a8 = await phaseA8(results.mcp2);
   line('a8', results.a8.rec);
+  results.a9 = await phaseA9(results.mcp2);
+  line('a9', results.a9.rec);
 }
 if (want('http')) {
   results.http = await phaseHttp();
