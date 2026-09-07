@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 22 are answered by a shipped, measured thing, 16 are answered with a stated limit, 18 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 23 are answered by a shipped, measured thing, 15 are answered with a stated limit, 18 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -13,7 +13,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **did it complete the task** | gap | has | gap | gap | gap | gap |
 | **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | has | gap | partial | has |
 | **what did it cost** | has | partial | has | gap | partial | has |
-| **is it better or worse than before** | n/a | n/a | partial | has | has | partial |
+| **is it better or worse than before** | n/a | n/a | partial | has | has | has |
 | **where and why does it fail** | has | has | has | gap | partial | has |
 | **can this verdict be trusted** | has | has | partial | gap | gap | has |
 
@@ -80,7 +80,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 - **trajectory (tool calls)** — *partial*. A trajectory regression shows as its rule failing more often between two runs, reported per rule, worst first, once traces are logged with tool calls and a run id. The trajectories themselves are not compared step by step. Evidence: tool `compare_runs`.
 - **multi-run of one input** — *has*. Evaluations of the same case across runs are grouped by case key and reported as a per-case pass rate with a 95% interval; a case answered both ways is reported as flaky. The run-level rate is a cluster bootstrap over cases, so ten repeats of one question are not counted as ten questions. Evidence: tool `compare_traces`.
 - **population / dataset / baseline** — *has*. Two runs are compared on pass rate with a 95% interval on the difference; when the runs share case keys they are paired and the discordant cases are tested exactly. When the evidence cannot exclude "no change" it says so and reports the smallest change that many cases could have detected. Runs measuring different things are refused unless forced, naming what differs. Scores bucketed over time still feed the drift view. Evidence: tool `compare_runs`, route `/api/v1/eval-stats`.
-- **the evaluator itself** — *partial*. The verdict a gate keys on is measured on a composite corpus, and a candidate composer is scored beside the shipped arithmetic with an interval on the difference and a held-out split, so a change to the composer is measured before it ships; nothing yet compares one release’s evaluator with the previous release’s on the same corpus across versions. Evidence: resource `iris://proof`.
+- **the evaluator itself** — *has*. The verdict a gate keys on is measured on a composite corpus, and a candidate composer is scored beside the shipped one with an interval on the difference and a held-out split, so a change to the composer is measured before it ships. On a deployment’s own traces the same question is answerable directly: re-scoring a run under the current rules writes the new verdicts into a new run marked as a re-evaluation, and comparing the two isolates the rules change — the executions are identical, so any difference is the evaluator. Evidence: tool `evaluate_runs`, tool `compare_runs`, resource `iris://proof`.
 ### where and why does it fail
 
 - **single output** — *has*. Every fired detection carries typed evidence — offsets into the raw output, never a paraphrase — and a message naming the pattern; the stored evaluation reads back the same way. Evidence: rule `no_pii`, rule `no_stub_output`, resource `iris://evaluations/{id}`. Needs: `output`.

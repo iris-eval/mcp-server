@@ -445,6 +445,18 @@ export interface EvalCategoryResult {
 export interface EvalResult {
   id: string;
   trace_id?: string;
+  /**
+   * The run this EVALUATION belongs to, when it differs from the run of the
+   * trace it evaluated.
+   *
+   * Normally a run is a property of the execution and is read off the trace.
+   * A re-evaluation breaks that: the same traces are scored again under new
+   * rules, and those verdicts belong to a new run while the traces keep
+   * pointing at the old one. Without this field the new verdicts would land
+   * inside the original run and a comparison would be reading one run
+   * against itself.
+   */
+  run_id?: string;
   eval_type: EvalResultType;
   output_text: string;
   expected_text?: string;
