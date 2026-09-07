@@ -9,9 +9,9 @@ tags: [evaluation, heuristic, llm-as-judge, performance, cost, safety, mcp]
 relatedPosts: [how-to-evaluate-agent-output-without-llm, iris-v0-4-release-notes, eval-driven-development]
 ---
 
-> **Editor's note (2026-07):** Updated to reflect the current rule library — Iris ships **13** built-in rules (v0.3.1 added `no_stub_output`, making Safety a four-rule category), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.
+> **Editor's note (2026-07):** Updated to reflect the current rule library — Iris shipped **13** built-in rules at the time (v0.3.1 added `no_stub_output`, making Safety a four-rule category), and LLM-as-Judge shipped in v0.4 as `evaluate_with_llm_judge`. The original text described the 12-rule library and a roadmapped judge.
 >
-> **Editor's note (2026-09):** Iris now ships **15** built-in rules. The trajectory release added `no_silent_tool_failure` (safety) and `no_tool_loop` (cost), which read the agent's `tool_calls` rather than its text, so they judge what an agent DID rather than what it wrote. The category lists below are also corrected: `no_hallucination_markers` moved from relevance to safety in v0.5.0 when its context-grounded rewrite made it a content-safety check, and this post still listed it under relevance.
+> **Editor's note (2026-09):** Iris shipped **15** built-in rules when this note was written. The trajectory release added `no_silent_tool_failure` (safety) and `no_tool_loop` (cost), which read the agent's `tool_calls` rather than its text, so they judge what an agent DID rather than what it wrote. The category lists below are also corrected: `no_hallucination_markers` moved from relevance to safety in v0.5.0 when its context-grounded rewrite made it a content-safety check, and this post still listed it under relevance.
 >
 > **Editor's note (2026-08):** Pattern counts and two completeness defaults refreshed for v0.5.0. `no_pii` now runs **19** patterns and `no_injection_patterns` **37** — both were measured against a labeled corpus and rebuilt, so the earlier 10/13 figures understate coverage by a wide margin. `min_output_length` defaults to 50 characters and `sentence_count` to 2 sentences (both configurable via `config.eval.ruleThresholds`); this post previously quoted the pre-0.4 defaults of 10 and 1.
 
@@ -105,9 +105,9 @@ The 20% (semantic): factual accuracy against source documents, nuanced quality s
 
 Iris implements both sides today: the heuristic rules below run on every evaluation, and LLM-as-Judge (shipped in v0.4 as `evaluate_with_llm_judge`) slots in alongside them as a complementary layer -- not a replacement.
 
-## The 15 Built-in Rules
+## The Built-in Rules
 
-Iris ships with 15 heuristic eval rules across 4 categories. Here is what each category covers and why it does not need an LLM.
+Iris ships a library of heuristic eval rules across four categories. Here is what each category covers and why it does not need an LLM.
 
 ### Completeness (4 rules)
 
@@ -177,7 +177,7 @@ If you can express the check as a pattern, a threshold, or a string comparison, 
 
 The question of how to standardize these evaluation interfaces across the ecosystem is one we explore in [Toward an MCP Observability Specification](/blog/toward-an-mcp-observability-specification).
 
-Iris is open-source and MIT licensed. The 15 built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
+Iris is open-source and MIT licensed. The built-in rules are ready to use today — try them in the [Iris Playground](/playground), or add Iris to your MCP config and start evaluating your agent output in <1ms.
 
 ```bash
 npx @iris-eval/mcp-server --dashboard

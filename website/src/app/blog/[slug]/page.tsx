@@ -9,6 +9,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { RelatedPosts } from "@/components/related-posts";
+import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, RULE_CATEGORY_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -199,6 +200,33 @@ export default async function BlogPost({
           </div>
         </div>
 
+        {/*
+          * A DATED POST, SAID BY THE PAGE RATHER THAN BY HAND.
+          *
+          * These essays state product counts in their bodies, and for two
+          * years the fix was an "Editor's note" written into the markdown
+          * each time a number moved. That is a freshness note maintained by
+          * memory, and it rotted exactly as you would expect: the notes were
+          * updated twice as the roster grew, then it grew again and four live
+          * posts went on quoting a count three releases old.
+          *
+          * This banner reads the truthbase, so it cannot go stale, and it
+          * runs on every post rather than on the ones someone remembered.
+          * The bodies keep their period voice; the page says what is true
+          * today, directly above them.
+          */}
+        <div className="mb-8 rounded-xl border border-border-default bg-bg-card px-5 py-4 text-[14px] leading-relaxed text-text-secondary">
+          <strong className="text-text-primary">
+            Written {new Date(String(post.date)).toLocaleDateString("en-US", { month: "long", year: "numeric" })}.
+          </strong>{" "}
+          Any product counts below describe Iris as it was then. It now ships{" "}
+          <strong className="text-text-primary">{RULE_COUNT_BUILT_IN} built-in rules</strong> across {RULE_CATEGORY_COUNT} categories and{" "}
+          <strong className="text-text-primary">{MCP_TOOL_COUNT} MCP tools</strong>. The live numbers, each with the measurement behind it, are on the{" "}
+          <Link href="/proof" className="underline underline-offset-2 hover:text-text-primary">
+            proof page
+          </Link>
+          .
+        </div>
         {/* Content */}
         <div className="prose-iris">
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
