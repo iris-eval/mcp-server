@@ -20,7 +20,7 @@
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
-import { useMoments } from '../../api/hooks';
+import { useMoments, useDrift } from '../../api/hooks';
 import { useRuleCategoryMap } from '../../hooks/useRuleCategoryMap';
 import {
   resolvePeriod,
@@ -75,6 +75,9 @@ export function DriftView() {
     since: priorPeriodStartIso,
     until: periodStartIso,
   });
+  // The pass-rate comparison is computed server-side, with both
+  // denominators and an interval — see ChangeBanner's header.
+  const { data: drift } = useDrift({ period });
   const ruleCategories = useRuleCategoryMap();
 
   const costBars = useMemo(() => {
@@ -120,6 +123,7 @@ export function DriftView() {
         currentMoments={currentMoments?.moments}
         priorMoments={priorMoments?.moments}
         periodLabel={period}
+        drift={drift ?? undefined}
       />
 
       {/* §2 PATTERN OVER TIME */}

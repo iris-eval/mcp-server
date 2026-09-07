@@ -14,10 +14,18 @@
  *
  * Empty / first-period state: shows a "no comparison yet" placeholder
  * banner — Drift is meaningless without a prior window to compare to.
+ *
+ * The pass-rate delta is TESTED, not eyeballed. It used to be a bare
+ * subtraction between two windows, which reads as a finding at any sample
+ * size: "pass rate down 33 points" over three traces is one trace. The
+ * server now returns both denominators and a 95% interval on the difference
+ * — from the same newcombeDifference the proof harness uses — and below a
+ * minimum per window it returns no direction at all. This component renders
+ * that answer and never computes its own.
  */
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Sparkles } from 'lucide-react';
 import { Icon } from '../../shared/Icon';
-import type { DecisionMoment } from '../../../api/types';
+import type { DecisionMoment, DriftComparison } from '../../../api/types';
 
 const styles = {
   banner: {
@@ -51,6 +59,11 @@ const styles = {
     fontWeight: 600,
     margin: '0 2px',
     verticalAlign: 'baseline',
+  } as const,
+  qualifier: {
+    color: 'var(--text-muted)',
+    fontSize: 'var(--text-body-sm)',
+    fontFamily: 'var(--font-mono)',
   } as const,
   empty: {
     color: 'var(--text-muted)',
@@ -88,10 +101,11 @@ function presentDelta(delta?: number, asPct = true): {
   return { icon: Minus, label: `0${asPct ? '%' : ''}`, fg: 'var(--text-muted)', bg: 'var(--bg-surface)' };
 }
 
-function passRate(moments: DecisionMoment[]): number {
-  if (moments.length === 0) return 0;
-  return moments.filter((m) => m.verdict === 'pass').length / moments.length;
-}
+/*
+ * The local passRate() that used to live here is gone on purpose. It was a
+ * second definition of a number the server now owns, and leaving it would
+ * invite exactly the fallback this change exists to remove.
+ */
 
 function totalCost(moments: DecisionMoment[]): number {
   return moments.reduce((acc, m) => acc + (m.costUsd ?? 0), 0);
@@ -111,9 +125,11 @@ export interface ChangeBannerProps {
   currentMoments?: DecisionMoment[];
   priorMoments?: DecisionMoment[];
   periodLabel: string;
+  /** The server's tested pass-rate comparison. Absent while loading. */
+  drift?: DriftComparison;
 }
 
-export function ChangeBanner({ currentMoments, priorMoments, periodLabel }: ChangeBannerProps) {
+export function ChangeBanner({ currentMoments, priorMoments, periodLabel, drift }: ChangeBannerProps) {
   const cur = currentMoments ?? [];
   const pri = priorMoments ?? [];
 
@@ -138,23 +154,46 @@ export function ChangeBanner({ currentMoments, priorMoments, periodLabel }: Chan
     );
   }
 
-  const passDelta = passRate(cur) - passRate(pri);
   const costDelta = pri.length > 0 && totalCost(pri) > 0 ? (totalCost(cur) - totalCost(pri)) / totalCost(pri) : undefined;
   const newCategories = failureCategoryCount(cur) - failureCategoryCount(pri);
 
-  const passPres = presentDelta(passDelta, true);
+  /*
+   * The pass rate is the server's answer or nothing. Falling back to a
+   * locally computed delta when the server withholds one would put the
+   * untested number back on screen in exactly the situation the test exists
+   * to catch — too little data — which is worse than showing none.
+   */
+  const passPres = drift?.difference ? presentDelta(drift.difference.delta, true) : undefined;
   const costPres = presentDelta(costDelta, true);
   const catPres = presentDelta(newCategories, false);
+  const pct = (v: number): string => `${(v * 100).toFixed(1)}%`;
 
   return (
     <div style={styles.banner} role="status">
       <Icon as={Sparkles} size={20} style={styles.icon} />
       <p style={styles.prose}>
         Compared to the prior {periodLabel}: pass rate{' '}
-        <span style={{ ...styles.delta, color: passPres.fg, background: passPres.bg }}>
-          <Icon as={passPres.icon} size={14} />
-          {passPres.label}
-        </span>
+        {passPres && drift?.difference ? (
+          <>
+            <span style={{ ...styles.delta, color: passPres.fg, background: passPres.bg }}>
+              <Icon as={passPres.icon} size={14} />
+              {passPres.label}
+            </span>
+            <span style={styles.qualifier}>
+              {' '}
+              (95% interval {pct(drift.difference.lo)} to {pct(drift.difference.hi)}, n={drift.current.evaluated} vs{' '}
+              {drift.prior.evaluated}
+              {drift.difference.significant
+                ? ''
+                : `; not enough to call — a change smaller than ${drift.smallestDetectable === null ? 'this' : pct(drift.smallestDetectable)} would not show`}
+              )
+            </span>
+          </>
+        ) : (
+          <span style={styles.qualifier}>
+            not compared — {drift ? `${drift.current.evaluated} and ${drift.prior.evaluated} evaluations, below the ${drift.minimumPerWindow} each side needs` : 'still loading'}
+          </span>
+        )}
         , cost{' '}
         <span style={{ ...styles.delta, color: costPres.fg, background: costPres.bg }}>
           <Icon as={costPres.icon} size={14} />

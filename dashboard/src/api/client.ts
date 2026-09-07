@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../utils/constants';
 import type {
+  DriftComparison,
   TraceQueryResult,
   TraceDetail,
   DashboardSummary,
@@ -141,6 +142,10 @@ export const api = {
 
   getEvalFailures(limit?: number): Promise<EvalFailure[]> {
     return fetchJson<EvalFailure[]>(`${API_BASE_URL}/eval-stats/failures`, limit ? { limit: String(limit) } : undefined);
+  },
+
+  getDrift(params?: Record<string, string>): Promise<DriftComparison> {
+    return fetchJson<DriftComparison>(`${API_BASE_URL}/eval-stats/drift`, params);
   },
 
   getMoments(params?: Record<string, string>): Promise<MomentQueryResult> {

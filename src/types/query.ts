@@ -77,6 +77,53 @@ export interface EvalStatsTrendBucket {
   cohort?: string | null;
 }
 
+/**
+ * Two windows of evaluations, counted so a comparison can be TESTED rather
+ * than eyeballed.
+ *
+ * The Drift view has always shown a raw delta: "pass rate down 6 points".
+ * With eleven evaluations on one side that sentence is noise wearing the
+ * clothes of a finding, and nothing on screen said which it was. These are
+ * the four numbers that settle it — both counts, both denominators — and
+ * the interval is computed from them by the same `newcombeDifference` the
+ * proof harness uses, so the picture and the measurement cannot disagree.
+ */
+/**
+ * What this agent has failed before — the context that makes "first" and
+ * "novel" mean anything.
+ *
+ * Two of the moment classes have been declared since v0.4 and could never
+ * fire, because the classifier only ever saw one trace and its own
+ * evaluations. Novelty is not a property of a trace; it is a property of a
+ * trace against a history, and without the history the honest thing was to
+ * let them fall through. This is that history.
+ */
+/** One evaluated trace of an agent, and the rules that failed in it. */
+export interface AgentFailureLogEntry {
+  traceId: string;
+  timestamp: string;
+  /** Sorted, skips excluded — skips are not failures anywhere in this codebase. */
+  failed: string[];
+}
+
+export interface AgentFailureHistory {
+  /** Traces this agent has evaluated before the one under test. The baseline that makes "first" a claim rather than "early". */
+  priorTraces: number;
+  /** Every rule that has failed for this agent before. */
+  rulesEverFailed: string[];
+  /** Every combination of simultaneously-failing rules seen before, each a sorted, joined key. */
+  combinationsSeen: string[];
+}
+
+export interface DriftWindow {
+  since: string;
+  until: string | null;
+  evaluated: number;
+  passed: number;
+  /** Null when the window is empty — a rate of "0 of 0" is not zero, it is unknown. */
+  passRate: number | null;
+}
+
 /** How to split a trend. Only 'run' today; the shape leaves room without inviting a free-text group-by. */
 export type TrendCohort = 'run';
 
@@ -198,6 +245,10 @@ export interface IStorageAdapter {
   getDistinctValues(tenantId: TenantId, column: string): Promise<string[]>;
   getEvalStats(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStats>;
   getEvalStatsTrend(tenantId: TenantId, period: EvalStatsPeriod, cohortBy?: TrendCohort): Promise<EvalStatsTrendBucket[]>;
+  /** Pass counts for one window of evaluations, optionally narrowed to a run. */
+  getDriftWindow(tenantId: TenantId, since: string, until: string | null, run?: string): Promise<DriftWindow>;
+  /** This agent's recent evaluated traces and what failed in each — read once per agent, then filtered per trace in memory. */
+  getAgentFailureLog(tenantId: TenantId, agentName: string, limit?: number): Promise<AgentFailureLogEntry[]>;
   getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]>;
   getEvalStatsFailures(tenantId: TenantId, period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]>;
 }
