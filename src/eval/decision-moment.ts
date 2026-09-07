@@ -6,13 +6,16 @@
  * whether this trace is moment-worthy (safety violation, cost spike, etc.)
  * or normal operational data.
  *
- * The classifier is intentionally simple in v0.4: rules-based, deterministic,
- * no learned baselines. The "first-failure" and "novel-pattern" classes need
- * agent-history context that we add in v0.4.1 — for now they fall through to
- * the simpler categories.
+ * The classifier is rules-based and deterministic — no learned baselines.
+ * "first-failure" and "novel-pattern" need context a single trace cannot
+ * carry, because novelty is a property of a trace AGAINST A HISTORY. From
+ * 0.12.0 that history is supplied by the caller (storage.getAgentFailureHistory)
+ * and the two classes fire. Omit it and they fall through exactly as before,
+ * which is what keeps every existing caller of deriveMoment correct.
  */
 
 import type { Trace } from '../types/trace.js';
+import type { AgentFailureHistory, AgentFailureLogEntry } from '../types/query.js';
 import type { EvalResult } from '../types/eval.js';
 import type {
   DecisionMoment,
@@ -39,7 +42,47 @@ const COST_SPIKE_USD_THRESHOLD = 0.10;
  * without a second edit here. */
 const SAFETY_RULE_NAMES = new Set(safetyRules.map((rule) => rule.name));
 
-export function deriveMoment(trace: Trace, evals: EvalResult[]): DecisionMoment {
+/**
+ * The smallest history that makes "first" mean more than "early".
+ *
+ * On a brand-new agent every failure is the first of its kind, so without
+ * this guard the novelty classes would outrank real safety findings for the
+ * whole of a user's first afternoon — and the one time they most need the
+ * ranking to be about severity is the first afternoon. Below the floor both
+ * classes stay silent and the trace is ranked on what it actually did.
+ */
+const MIN_HISTORY_TRACES_FOR_NOVELTY = 5;
+
+/**
+ * What this agent had failed BEFORE a given trace, from its log.
+ *
+ * Pure, so the novelty classes are testable without a database, and so the
+ * moments list can read one log per agent and ask it two hundred times.
+ *
+ * "Before" is by the trace's own timestamp, never by insertion order: a
+ * backfilled or re-read old trace must not make every later failure look
+ * novel. A tie in timestamp is excluded by trace id, so a trace is never
+ * part of its own history.
+ */
+export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: string, timestamp: string): AgentFailureHistory {
+  const rulesEverFailed = new Set<string>();
+  const combinationsSeen = new Set<string>();
+  let priorTraces = 0;
+  for (const entry of log) {
+    if (entry.traceId === traceId) continue;
+    if (entry.timestamp >= timestamp) continue;
+    priorTraces += 1;
+    for (const name of entry.failed) rulesEverFailed.add(name);
+    if (entry.failed.length > 0) combinationsSeen.add(entry.failed.join('+'));
+  }
+  return {
+    priorTraces,
+    rulesEverFailed: [...rulesEverFailed].sort(),
+    combinationsSeen: [...combinationsSeen].sort(),
+  };
+}
+
+export function deriveMoment(trace: Trace, evals: EvalResult[], history?: AgentFailureHistory): DecisionMoment {
   const ruleSnapshot = computeRuleSnapshot(evals);
   const verdict = computeVerdict(evals, ruleSnapshot);
   const overallScore = computeOverallScore(evals);
@@ -48,6 +91,7 @@ export function deriveMoment(trace: Trace, evals: EvalResult[]): DecisionMoment 
     evals,
     ruleSnapshot,
     verdict,
+    history,
   });
 
   return {
@@ -78,8 +122,9 @@ export function deriveMomentDetail(
     start_time: string;
     end_time?: string;
   }>,
+  history?: AgentFailureHistory,
 ): DecisionMomentDetail {
-  const moment = deriveMoment(trace, evals);
+  const moment = deriveMoment(trace, evals, history);
   return {
     ...moment,
     evals: evals.map((e) => ({
@@ -170,6 +215,8 @@ interface SignificanceInput {
   evals: EvalResult[];
   ruleSnapshot: MomentRuleSnapshot;
   verdict: MomentVerdict;
+  /** Absent for a caller with no history to offer; the two novelty classes then stay silent. */
+  history?: AgentFailureHistory;
 }
 
 function classifySignificance({
@@ -177,6 +224,7 @@ function classifySignificance({
   evals,
   ruleSnapshot,
   verdict,
+  history,
 }: SignificanceInput): MomentSignificance {
   /*
    * 1. Safety violation — a rule that VETOES failed, or a safety-bundle rule
@@ -208,6 +256,47 @@ function classifySignificance({
       label: `Cost: $${trace.cost_usd.toFixed(4)}`,
       reason: `Trace cost ($${trace.cost_usd.toFixed(4)}) crossed the $${COST_SPIKE_USD_THRESHOLD} per-trace threshold. Investigate prompt size, token efficiency, or model-tier choice.`,
     };
+  }
+
+  /*
+   * 3. First failure — a rule that has never failed for this agent before.
+   *
+   * Ranked above rule-collision, and the reason is what a reader does with
+   * each: a multi-category failure seen every day is routine, while a rule
+   * failing for the first time in five hundred traces is the thing to look
+   * at today. Severity still wins — safety and cost are above this — but
+   * among ordinary failures, novelty is the more useful sort order.
+   *
+   * Requires a history and a floor: see MIN_HISTORY_TRACES_FOR_NOVELTY.
+   */
+  if (history !== undefined && history.priorTraces >= MIN_HISTORY_TRACES_FOR_NOVELTY && ruleSnapshot.failed.length > 0) {
+    const known = new Set(history.rulesEverFailed);
+    const firstTime = ruleSnapshot.failed.filter((name) => !known.has(name));
+    if (firstTime.length > 0) {
+      return {
+        kind: 'first-failure',
+        score: 0.8,
+        label: `First failure: ${firstTime.join(', ')}`,
+        reason: `${firstTime.join(', ')} failed for the first time on this agent across its last ${history.priorTraces} evaluated traces. A rule that has never fired before is a change in behaviour, not a known weakness.`,
+      };
+    }
+
+    /*
+     * 4. Novel pattern — every rule has failed before, but never TOGETHER.
+     *
+     * Deliberately checked second and defined as the leftover: a first
+     * failure is necessarily also a new combination, so testing this first
+     * would swallow the stronger signal and report the weaker one.
+     */
+    const combination = [...ruleSnapshot.failed].sort().join('+');
+    if (combination.length > 0 && !new Set(history.combinationsSeen).has(combination)) {
+      return {
+        kind: 'novel-pattern',
+        score: 0.75,
+        label: `New combination: ${ruleSnapshot.failed.join(' + ')}`,
+        reason: `Each of ${ruleSnapshot.failed.join(', ')} has failed before on this agent, but never in the same trace. A combination that has not occurred before is worth reading even when each half is familiar.`,
+      };
+    }
   }
 
   // 3. Rule collision — failures spanning multiple eval_types simultaneously.

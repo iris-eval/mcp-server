@@ -447,3 +447,35 @@ export interface AuditQueryResult {
   limit: number;
   offset: number;
 }
+
+
+/**
+ * The drift comparison as the server computes it.
+ *
+ * Every number here is served rather than derived in the browser, and that
+ * is the point: the interval comes from the same newcombeDifference the
+ * proof harness and compare_runs use, so the picture and the measurement
+ * cannot disagree. A second implementation in the SPA would be a second
+ * definition of "significant".
+ */
+export interface DriftComparison {
+  period: string;
+  run: string | null;
+  current: DriftWindowSummary;
+  prior: DriftWindowSummary;
+  /** Null when either window is below the minimum — no direction is offered. */
+  difference: { delta: number; lo: number; hi: number; significant: boolean } | null;
+  enoughEvidence: boolean;
+  minimumPerWindow: number;
+  /** When the interval cannot exclude zero: the smallest change this much data could have seen. */
+  smallestDetectable: number | null;
+}
+
+export interface DriftWindowSummary {
+  since: string;
+  until: string | null;
+  evaluated: number;
+  passed: number;
+  /** Null for an empty window — "0 of 0" is unknown, not zero. */
+  passRate: number | null;
+}

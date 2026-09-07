@@ -136,6 +136,17 @@ export const evalStatsPeriodSchema = z.object({
  * column name: a free-text group-by would put caller text into a SQL
  * expression, and there is exactly one grouping that means anything here.
  */
+/*
+ * The drift comparison: this window against the one before it, optionally
+ * narrowed to a run. `run` narrows BOTH windows — comparing one run's
+ * current week against everything's previous week would be a comparison
+ * between two different populations dressed as a trend.
+ */
+export const driftSchema = z.object({
+  period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d']).default('7d'),
+  run: z.string().min(1).max(200).optional(),
+});
+
 export const evalStatsTrendSchema = z.object({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
   cohort: z.enum(['run']).optional(),

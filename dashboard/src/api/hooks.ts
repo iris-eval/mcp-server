@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, RateLimitError } from './client';
 import { usePolling } from '../hooks/usePolling';
 import type {
+  DriftComparison,
   TraceQueryResult,
   TraceDetail,
   DashboardSummary,
@@ -194,6 +195,16 @@ export function useEvalRules() {
 export function useEvalFailures(limit?: number) {
   const fetcher = useCallback(() => api.getEvalFailures(limit), [limit]);
   return useApiData<EvalFailure[]>(fetcher, CADENCE.NORMAL);
+}
+
+export function useDrift(params?: Record<string, string>) {
+  const paramsKey = JSON.stringify(params);
+  const fetcher = useCallback(
+    () => api.getDrift(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
+  return useApiData<DriftComparison>(fetcher, CADENCE.NORMAL);
 }
 
 export function useMoments(params?: Record<string, string>) {

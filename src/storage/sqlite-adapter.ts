@@ -30,6 +30,8 @@ import type {
   TraceQueryResult,
   EvalStatsPeriod,
   EvalStats,
+  AgentFailureLogEntry,
+  DriftWindow,
   EvalStatsTrendBucket,
   TrendCohort,
   EvalStatsRuleBreakdown,
@@ -393,7 +395,14 @@ export class SqliteAdapter implements IStorageAdapter {
       result.rules_skipped ?? null,
       result.insufficient_data ? 1 : 0,
       result.critical_failures?.length ? JSON.stringify(result.critical_failures) : null,
-      new Date().toISOString(),
+      /*
+       * EvalResult has declared `created_at` since the type existed and this
+       * insert discarded it, so an imported or backdated evaluation silently
+       * became "now" — the same accepted-and-dropped shape as log_trace's
+       * tools catalogue. Honoured when supplied, and still defaulted to now,
+       * which is what every caller in this package relies on.
+       */
+      result.created_at ?? new Date().toISOString(),
       result.provenance ? JSON.stringify(result.provenance) : null,
       result.provenance?.irisVersion ?? null,
       result.provenance?.rulesetHash ?? null,
@@ -913,6 +922,97 @@ export class SqliteAdapter implements IStorageAdapter {
       evalCount: r.eval_count,
       ...(cohortBy === undefined ? {} : { cohort: r.cohort }),
     }));
+  }
+
+  /**
+   * One window's pass counts, so a drift comparison has denominators.
+   *
+   * Counts EVALUATIONS, not traces: an evaluation is the unit that passed
+   * or failed, which is what the rate is a rate of. A run filter joins the
+   * traces table for the same COALESCE every run read uses, so a
+   * re-evaluation lands in the cohort it was written into.
+   */
+  /**
+   * This agent's recent evaluated traces and what failed in each.
+   *
+   * Returned as a LOG rather than a collapsed "has this ever failed" answer,
+   * because the moments list needs the answer AS OF each of up to two hundred
+   * traces. Collapsing in SQL would mean one query per trace — two hundred
+   * scans on a page render, each parsing a JSON blob per row. One query per
+   * distinct agent, filtered by timestamp in memory, is the same answer for a
+   * fraction of the work.
+   *
+   * Bounded, and the bound is real rather than defensive: this runs on a page
+   * render and an agent with a hundred thousand evaluations would otherwise
+   * make the list slower the longer someone has used the product. The cost is
+   * that a rule which last failed very long ago can read as a first failure.
+   * That is the right trade for a ranking signal, and it is why this drives
+   * presentation and never a verdict.
+   */
+  async getAgentFailureLog(tenantId: TenantId, agentName: string, limit = 500): Promise<AgentFailureLogEntry[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `SELECT e.rule_results AS rule_results, t.trace_id AS trace_id, t.timestamp AS timestamp
+           FROM eval_results e
+           JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+          WHERE e.tenant_id = ? AND t.agent_name = ?
+          ORDER BY t.timestamp DESC, e.created_at DESC
+          LIMIT ?`,
+      )
+      .all(tenantId, agentName, limit) as Array<{ rule_results: string | null; trace_id: string; timestamp: string }>;
+
+    // A trace evaluated more than once contributes ONE entry, its newest —
+    // the same collapse every run read performs, for the same reason: a
+    // re-evaluated trace is one trace, not two.
+    const seen = new Set<string>();
+    const out: AgentFailureLogEntry[] = [];
+    for (const row of rows) {
+      if (seen.has(row.trace_id)) continue;
+      seen.add(row.trace_id);
+      const results = row.rule_results === null ? [] : (JSON.parse(row.rule_results) as Array<{ ruleName: string; passed: boolean; skipped?: boolean }>);
+      out.push({
+        traceId: row.trace_id,
+        timestamp: row.timestamp,
+        failed: results.filter((r) => r.skipped !== true && r.passed === false).map((r) => r.ruleName).sort(),
+      });
+    }
+    return out;
+  }
+
+  async getDriftWindow(tenantId: TenantId, since: string, until: string | null, run?: string): Promise<DriftWindow> {
+    assertTenant(tenantId);
+    const where: string[] = ['e.tenant_id = ?', 'e.created_at >= ?'];
+    const params: unknown[] = [tenantId, since];
+    if (until !== null) {
+      where.push('e.created_at < ?');
+      params.push(until);
+    }
+    if (run !== undefined) {
+      where.push('COALESCE(e.run_id, t.run_id) = ?');
+      params.push(run);
+    }
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS evaluated,
+                SUM(CASE WHEN e.passed = 1 THEN 1 ELSE 0 END) AS passed
+           FROM eval_results e
+           LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+          WHERE ${where.join(' AND ')}`,
+      )
+      .get(...params) as { evaluated: number; passed: number | null };
+
+    const evaluated = Number(row.evaluated ?? 0);
+    const passed = Number(row.passed ?? 0);
+    return {
+      since,
+      until,
+      evaluated,
+      passed,
+      // "0 of 0" is unknown, not zero. A window with nothing in it that
+      // reported a rate of 0 would draw a cliff on the chart.
+      passRate: evaluated > 0 ? passed / evaluated : null,
+    };
   }
 
   async getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]> {

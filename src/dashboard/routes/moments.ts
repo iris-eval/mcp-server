@@ -8,7 +8,8 @@ import type {
   MomentSignificanceKind,
   MomentVerdict,
 } from '../../types/decision-moment.js';
-import { deriveMoment, deriveMomentDetail } from '../../eval/decision-moment.js';
+import { deriveMoment, deriveMomentDetail, historyBefore } from '../../eval/decision-moment.js';
+import type { AgentFailureLogEntry } from '../../types/query.js';
 
 const VERDICT_VALUES: MomentVerdict[] = ['pass', 'fail', 'partial', 'unevaluated'];
 const SIGNIFICANCE_KINDS: MomentSignificanceKind[] = [
@@ -63,10 +64,22 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
 
       // Hydrate moments by fetching evals per trace. Acceptable for limit ≤ 200;
       // batching is a later optimization once we have moment-volume data.
+      /*
+       * One failure log per distinct agent on this page, not one per trace.
+       * "Has this rule failed before" has to be answered as of each trace,
+       * and asking SQL that question two hundred times is two hundred scans
+       * on a page render. Read once, filter by timestamp in memory.
+       */
+      const logs = new Map<string, AgentFailureLogEntry[]>();
+      for (const agent of new Set(traceResult.traces.map((t) => t.agent_name))) {
+        logs.set(agent, await storage.getAgentFailureLog(tenantId, agent));
+      }
+
       const moments: DecisionMoment[] = [];
       for (const trace of traceResult.traces) {
         const evals = await storage.getEvalsByTraceId(tenantId, trace.trace_id);
-        const moment = deriveMoment(trace, evals);
+        const history = historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp);
+        const moment = deriveMoment(trace, evals, history);
 
         if (query.verdict && moment.verdict !== query.verdict) continue;
         if (
@@ -115,11 +128,14 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
         res.status(404).json({ error: 'Decision moment not found' });
         return;
       }
-      const [evals, spans] = await Promise.all([
+      const [evals, spans, log] = await Promise.all([
         storage.getEvalsByTraceId(tenantId, req.params.id),
         storage.getSpansByTraceId(tenantId, req.params.id),
+        storage.getAgentFailureLog(tenantId, trace.agent_name),
       ]);
-      const detail = deriveMomentDetail(trace, evals, spans);
+      // The same history the list used, so a moment does not change class
+      // between the row someone clicked and the page it opened.
+      const detail = deriveMomentDetail(trace, evals, spans, historyBefore(log, trace.trace_id, trace.timestamp));
       res.json(detail);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
