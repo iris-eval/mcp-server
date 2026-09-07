@@ -132,7 +132,15 @@ async function main() {
       process.exit(0);
     } else {
       console.error('[claims:check] FAIL — claims.json drifted from generator output');
-      console.error('Run `npm run claims:generate` and commit the result.');
+      /*
+       * Name BOTH commands, in order. The test totals in this file come
+       * from capture-tests, not from generate, so a PR that adds a test
+       * fails here and the old one-line message sent you to the command
+       * that cannot fix it. Capture runs the suite, so it must come first
+       * and it must come from a GREEN run.
+       */
+      console.error('Run `node scripts/claims/capture-tests.mjs` (from a green suite) then `npm run claims:generate`, and commit the result.');
+      console.error('If only the test counts moved, capture-tests is the one you need — generate alone will not change them.');
       process.exit(2);
     }
   }
