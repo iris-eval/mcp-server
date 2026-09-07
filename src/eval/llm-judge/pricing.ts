@@ -16,7 +16,7 @@ export interface ModelPricing {
 
 export const MODEL_PRICING: readonly ModelPricing[] = [
   // Anthropic — Claude 4 family
-  { provider: 'anthropic', model: 'claude-opus-4-7', inputUsdPer1M: 15, outputUsdPer1M: 75 },
+  { provider: 'anthropic', model: 'claude-opus-4-7', inputUsdPer1M: 5, outputUsdPer1M: 25 },
   { provider: 'anthropic', model: 'claude-sonnet-4-6', inputUsdPer1M: 3, outputUsdPer1M: 15 },
   { provider: 'anthropic', model: 'claude-haiku-4-5', inputUsdPer1M: 1, outputUsdPer1M: 5 },
   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', inputUsdPer1M: 1, outputUsdPer1M: 5 },

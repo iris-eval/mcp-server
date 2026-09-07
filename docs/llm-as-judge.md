@@ -96,7 +96,7 @@ Iris carries a curated pricing table. Using an unknown model is an immediate err
 
 | Provider  | Model                            | Input $/1M | Output $/1M | Notes                           |
 |-----------|----------------------------------|------------|-------------|---------------------------------|
-| anthropic | claude-opus-4-7                  | 15.00      | 75.00       | Highest quality, slowest        |
+| anthropic | claude-opus-4-7                  | 5.00       | 25.00       | Highest quality, slowest        |
 | anthropic | claude-sonnet-4-6                | 3.00       | 15.00       | Good default for prod eval      |
 | anthropic | claude-haiku-4-5-20251001        | 1.00       | 5.00        | Recommended for high-volume     |
 | openai    | gpt-4o                           | 2.50       | 10.00       |                                 |
