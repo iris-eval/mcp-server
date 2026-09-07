@@ -17,7 +17,10 @@ import { DESCRIPTION_HEADINGS, DESCRIPTION_WORD_CAP, describeTool, wordCount } f
 import { z } from 'zod';
 
 const root = resolve(__dirname, '..', '..', '..');
-const claims = JSON.parse(readFileSync(resolve(root, '.claims.json'), 'utf8')) as { proof?: { judge?: { status?: string } } };
+const claims = JSON.parse(readFileSync(resolve(root, '.claims.json'), 'utf8')) as {
+  proof?: { judge?: { status?: string } };
+  mcpTools: { count: number };
+};
 const judgeMeasured = claims.proof?.judge?.status === 'measured';
 
 describe('tool descriptions', () => {
@@ -40,8 +43,10 @@ describe('tool descriptions', () => {
     await storage.close();
   });
 
-  it('nine of nine carry the five headings in order', () => {
-    expect(tools.length).toBe(9);
+  it('every registered tool carries the five headings in order', () => {
+    // Read from the truthbase, never typed: a literal here passes today and
+    // rots at the next tool, which is the exact drift this repo keeps finding.
+    expect(tools.length).toBe(claims.mcpTools.count);
     for (const t of tools) {
       const d = t.description ?? '';
       let last = -1;

@@ -826,27 +826,41 @@
       "id": "Q8xS3",
       "question": "Q8",
       "subject": "S3",
-      "status": "gap",
-      "summary": "No comparison of trajectories across runs.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "A trajectory regression shows as its rule failing more often between two runs, reported per rule, worst first, once traces are logged with tool calls and a run id. The trajectories themselves are not compared step by step.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_runs"
+        }
+      ],
       "needs": []
     },
     {
       "id": "Q8xS4",
       "question": "Q8",
       "subject": "S4",
-      "status": "gap",
-      "summary": "Nothing evaluates several runs of one input; the only canonicalisation of an input serves the loop detector.",
-      "evidence": [],
+      "status": "has",
+      "summary": "Evaluations of the same case across runs are grouped by case key and reported as a per-case pass rate with a 95% interval; a case answered both ways is reported as flaky. The run-level rate is a cluster bootstrap over cases, so ten repeats of one question are not counted as ten questions.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        }
+      ],
       "needs": []
     },
     {
       "id": "Q8xS5",
       "question": "Q8",
       "subject": "S5",
-      "status": "partial",
-      "summary": "Scores bucketed over time are served to the dashboard's drift view; no interval and no cohort key, so a change is shown, not tested.",
+      "status": "has",
+      "summary": "Two runs are compared on pass rate with a 95% interval on the difference; when the runs share case keys they are paired and the discordant cases are tested exactly. When the evidence cannot exclude \"no change\" it says so and reports the smallest change that many cases could have detected. Runs measuring different things are refused unless forced, naming what differs. Scores bucketed over time still feed the drift view.",
       "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_runs"
+        },
         {
           "kind": "route",
           "name": "/api/v1/eval-stats"

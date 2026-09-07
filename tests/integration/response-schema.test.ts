@@ -79,7 +79,7 @@ describe('the agent-native contract', () => {
     }
   });
 
-  it('tools/list advertises an output schema on nine of nine, and the names equal the registry', async () => {
+  it('tools/list advertises an output schema on every tool, and the names equal the registry', async () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([...TOOL_NAMES].sort());
     for (const t of tools) {

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -51,7 +53,9 @@ describe('MCP Protocol Integration', () => {
     expect(toolNames).toContain('verify_citations');
     // Snapshot — if this changes, Glama Server Coherence dimension
     // may reshuffle. Update check-product-claims.sh alongside.
-    expect(result.tools.length).toBe(9);
+    // From the truthbase, so adding a tool cannot leave this quietly wrong.
+    const TOOL_COUNT = (JSON.parse(readFileSync(resolve(__dirname, '..', '..', '.claims.json'), 'utf8')) as { mcpTools: { count: number } }).mcpTools.count;
+    expect(result.tools.length).toBe(TOOL_COUNT);
   });
 
   it('every tool exposes behavioral annotations for agent discovery', async () => {

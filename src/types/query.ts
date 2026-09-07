@@ -1,3 +1,4 @@
+import type { CaseResultRow, RunResultRow } from '../storage/sqlite-adapter.js';
 import type { Trace, Span } from './trace.js';
 import type { EvalResult } from './eval.js';
 import type { TenantId } from './tenant.js';
@@ -124,6 +125,10 @@ export interface IStorageAdapter {
   getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]>;
   /** One stored evaluation by id, in the same derived-on-read shape as every other reader; null when absent. */
   getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null>;
+  /** Every evaluation in a run, one per trace, newest first — what a comparison counts. */
+  getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]>;
+  /** Every attempt at every case, optionally narrowed — repeats kept, because they are the measurement. */
+  getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string }): Promise<CaseResultRow[]>;
   queryEvalResults(
     tenantId: TenantId,
     options: {

@@ -58,7 +58,7 @@ Docker:
 
 Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx @iris-eval/mcp-server`.
 
-## MCP tools (9)
+## MCP tools (11)
 
 1. `log_trace` — Log an agent execution with spans, tool calls, token usage, and cost in USD. Emits optional OTLP/HTTP export to any OpenTelemetry collector when `IRIS_OTEL_ENDPOINT` is set.
 2. `evaluate_output` — Score output against a rule bundle chosen by `eval_type` (completeness | relevance | safety | cost | custom | all). Defaults to `all` when omitted — every bundle runs, safety included, with a per-category `categories` breakdown and a note in the response saying the default ran; pass a single bundle name to run only that one. Heuristic, deterministic, free. Inline `custom_rules` are additive and fire alongside whichever bundle you chose. A failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`) forces `passed: false` regardless of the weighted `score` and names itself in `critical_failures`. Worked example: `evaluate_output({output: "<agent text>", eval_type: "safety"})` on output containing an SSN returns `{score: 0.765, passed: false, critical_failures: ["no_pii"]}` — the score stays a quality gradient, `passed` is the verdict.

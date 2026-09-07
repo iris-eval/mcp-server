@@ -66,6 +66,11 @@ export const TARGETS = [
   // evaluators (derived from the proof files by its generator).
   { template: 'docs/evaluators.template.md', output: 'docs/evaluators.md' },
   { template: 'website/llms-full.template.txt', output: 'website/public/llms-full.txt' },
+  { template: '.claude-plugin/marketplace.template.json', output: '.claude-plugin/marketplace.json' },
+  {
+    template: 'docs/launch/directory-listing-template.template.md',
+    output: 'docs/launch/directory-listing-template.md',
+  },
   {
     template: SKILL_TEMPLATE,
     output: 'skills/iris-eval/SKILL.md',
@@ -219,6 +224,7 @@ export function slotsFrom(claims) {
     tagline,
     taglineLower: tagline.charAt(0).toLowerCase() + tagline.slice(1),
     mcpToolCount: claims.mcpTools.count,
+    mcpToolNamesList: claims.mcpTools.names.join(', '),
     ruleCount: claims.evalRules.builtInCount,
     ruleCategoryCount: claims.evalRules.categoryCount,
     ruleCategoriesProse: listProse(claims.evalRules.categories),
