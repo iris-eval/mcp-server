@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { rulesByType } from '../../../src/eval/rules/index.js';
-import { configHash, deriveCoverage, deriveCriticalSkipped, deriveVerdict, rulesetHash } from '../../../src/eval/verdict.js';
+import { configHash, deriveCoverage, deriveCriticalSkipped, rulesetHash } from '../../../src/eval/verdict.js';
+import { legacyWouldShip } from '../../../proof/lib/legacy-composer.js';
 import { RULE_QUESTION_IDS } from '../../../src/eval/questions.js';
 import type { EvalRuleResult } from '../../../src/types/eval.js';
 
@@ -34,19 +35,27 @@ describe('deriveVerdict — the basis of today\'s arithmetic, with passed unchan
     expect(r.verdict).toMatchObject({ state: 'pass', passed: true, basis: 'clean', by: [], risk: null });
   });
 
-  it('a low score is score_below_threshold under the legacy composer, and names the rules that failed', async () => {
+  it('a thin output no longer fails on the weighted mean alone, and the yardstick shows the divergence', async () => {
     /*
-     * score_below_threshold is the LEGACY basis: the composer that shipped
-     * from 0.10.0 never consults the weighted mean, so this asserts the
-     * composer a deployment selects with eval.composer = "legacy" (kept for
-     * two minors so an upgrade has somewhere to stand).
+     * `eval.composer: "legacy"` was removed in 0.12.0, two minors after
+     * 0.10.0 announced it. There is one composer now and it never consults
+     * the score, so this is the clearest case of what that changed: "ok"
+     * scores below the default threshold and the old arithmetic would have
+     * refused it, while the composer passes it because the rules that object
+     * are MEASUREMENTS — advisory at the shipped defaults until a deployment
+     * sets their thresholds — and nothing gated, vetoed, or carried the risk
+     * past the loss threshold.
+     *
+     * Asserting both sides is the point: the divergence is deliberate and
+     * published (proof/COMPOSITE.md), not an accident of the removal.
      */
-    const legacy = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { composer: 'legacy' });
-    const r = await legacy.evaluate('completeness', { output: 'ok' });
-    expect(r.passed).toBe(false);
-    expect(r.verdict!.basis).toBe('score_below_threshold');
-    expect(r.verdict!.by.length).toBeGreaterThan(0);
-    for (const name of r.verdict!.by) expect(r.rule_results.find((x) => x.ruleName === name)!.passed).toBe(false);
+    const r = await engine.evaluate('completeness', { output: 'ok' });
+    expect(r.score).toBeLessThan(defaultConfig.eval.defaultThreshold);
+    expect(legacyWouldShip(r, defaultConfig.eval.defaultThreshold)).toBe(false);
+    expect(r.passed).toBe(true);
+    expect(r.verdict!.basis).toBe('clean');
+    // The value the old arithmetic alone could produce is gone from the union.
+    expect(r.verdict!.basis).not.toBe('score_below_threshold');
   });
 
   it('nothing judged is unknown, and unknown reads as passed:false', async () => {
@@ -147,11 +156,11 @@ describe('deriveCriticalSkipped and the hashes', () => {
     expect(r.provenance!.corpusVersion).toMatch(/^[0-9a-f]{12}$/);
     expect(new Date(r.provenance!.judgedAt).toISOString()).toBe(r.provenance!.judgedAt);
     /*
-     * The result's verdict is the COMPOSED one from 0.10.0; deriveVerdict is
-     * the legacy arithmetic and is no longer what the engine puts there. On
-     * a clean output both agree that it passed, which is the property worth
-     * asserting: the two composers do not disagree about nothing being wrong.
+     * The legacy arithmetic left the product in 0.12.0 and survives only as
+     * the proof harness's yardstick. On a clean output it and the composer
+     * agree that it passed, which is the property worth asserting: the two
+     * do not disagree about nothing being wrong.
      */
-    expect(deriveVerdict(r, r.provenance!.thresholds.default).passed).toBe(r.verdict!.passed);
+    expect(legacyWouldShip(r, r.provenance!.thresholds.default)).toBe(r.verdict!.passed);
   });
 });

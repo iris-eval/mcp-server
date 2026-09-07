@@ -41,8 +41,8 @@ export function buildInstructions(i: InstructionsInput): string {
       'Pass input so the relevance and hallucination rules can judge; pass tool_calls or a trace_id so the trajectory rules can judge; pass cost_usd so the cost rules can judge. ' +
       'A rule with nothing to judge SKIPS and is named; it is never counted as a pass. INSPECT with get_traces and list_rules, or read a resource.',
 
-    `Reading a verdict. passed is the ship verdict: true only when score clears the threshold (${i.threshold} on this server) AND no critical rule failed. ` +
-      'verdict.basis says which layer decided (policy_gate, detector_veto, score_below_threshold, clean, or no_rules when nothing could be judged) and verdict.by names the rules. ' +
+    'Reading a verdict. passed is verdict.state === "pass". It is NOT the score against a threshold: the composer decides by kind, and score is never consulted. ' +
+      'verdict.basis says which layer decided (policy_gate, detector_veto, critical_unknown, required_evidence_missing, risk_over_loss, clean, or no_rules when nothing could be judged) and verdict.by names the rules. ' +
       `Critical on this server: ${critical} (configurable; list_rules shows the effective value). ` +
       'coverage says which evaluation questions were judged and why the others were not. A critical rule that could not judge is named in critical_skipped: treat that as UNKNOWN, not clean. ' +
       'score is a quality gradient over the rules that ran; never read it alone as a safety signal.',

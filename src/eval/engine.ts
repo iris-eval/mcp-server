@@ -14,7 +14,7 @@ import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from '.
 import { inputsPresent, stampRuleResult } from './stamp.js';
 import { toSteps } from './steps.js';
 import { toolsHash } from './catalogue.js';
-import { buildProvenance, configHash, deriveCoverage, deriveVerdict, rulesetHash } from './verdict.js';
+import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
 
@@ -122,7 +122,7 @@ export class EvalEngine {
    * safety signal was reading a number that arc zero measured as inert.
    */
   private decide(result: EvalResult): EvalResult {
-    const verdict = this.compose.composer === 'legacy' ? deriveVerdict(result, this.threshold) : compose(result, this.compose);
+    const verdict = compose(result, this.compose);
     result.verdict = verdict;
     result.passed = verdict.passed;
     const notes = interpretations(result, verdict, this.compose);

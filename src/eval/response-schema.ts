@@ -102,7 +102,7 @@ export const coverageSchema = z.looseObject({
 export const verdictSchema = z.looseObject({
   state: z.enum(['pass', 'fail', 'unknown']),
   passed: z.boolean(),
-  basis: z.enum(['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'score_below_threshold', 'clean', 'no_rules']),
+  basis: z.enum(['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'clean', 'no_rules']),
   by: z.array(z.string()),
   risk: z.looseObject({ pBad: z.number(), lo: z.number(), hi: z.number() }).nullable(),
   confidence: z.enum(['decisive', 'marginal']).optional(),

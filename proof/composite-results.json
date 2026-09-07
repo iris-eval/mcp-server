@@ -5143,7 +5143,7 @@
       "split": "test"
     }
   ],
-  "commit": "b494f49",
+  "commit": "dc3035f",
   "compositeVersion": "a4e0e6d77d07",
   "corpusVersion": "795a0dced3cd",
   "counts": {
@@ -5199,7 +5199,7 @@
       }
     }
   },
-  "generatedAt": "2026-09-06T22:03:17.934Z",
+  "generatedAt": "2026-09-07T19:55:28.140Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -5525,7 +5525,7 @@
     "calibration": "Brier score and expected calibration error over ten equal-width bins; the legacy score read as P(bad) = 1 − score, the risk as p_bad",
     "differenceCi": "newcombe-hybrid-score-95",
     "falsePassCost": 1,
-    "legacy": "the pre-0.10.0 arithmetic, computed explicitly by deriveVerdict: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result",
+    "legacy": "the pre-0.10.0 arithmetic, computed explicitly by proof/lib/legacy-composer.ts: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result; from 0.12.0 it is no longer a product behaviour and this file is the only place it survives",
     "prior": 0.5,
     "priorMode": "per-output",
     "priorModes": {

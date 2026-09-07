@@ -272,7 +272,12 @@ export interface Interpretation {
 export interface Verdict {
   state: 'pass' | 'fail' | 'unknown';
   passed: boolean;
-  basis: 'policy_gate' | 'detector_veto' | 'critical_unknown' | 'required_evidence_missing' | 'risk_over_loss' | 'score_below_threshold' | 'clean' | 'no_rules';
+  /**
+   * Which layer decided. `score_below_threshold` was removed in 0.12.0 with
+   * the legacy composer that alone produced it: a value in this union that
+   * nothing can emit is a filter option that returns nothing forever.
+   */
+  basis: 'policy_gate' | 'detector_veto' | 'critical_unknown' | 'required_evidence_missing' | 'risk_over_loss' | 'clean' | 'no_rules';
   by: string[];
   risk: { pBad: number; lo: number; hi: number; perClass: Partial<Record<FailureClass, number | null>>; assumptions: string[] } | null;
   confidence?: 'decisive' | 'marginal';

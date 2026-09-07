@@ -184,8 +184,13 @@ published positive predictive values, gates and vetoes first, then the risk
 against a loss-derived threshold — under two readings of its prior. The risk
 composer is the one in the package (`src/eval/risk.ts`), and the harness
 imports the module that ships rather than a copy of it, so this table measures
-the code you run. `eval.composer: "legacy"` selects the old arithmetic for two
-minor releases, which is why it is still scored here.
+the code you run. The legacy column is the pre-0.10.0 arithmetic, and it is
+still scored here for one reason: the claim that the composer is better is a
+comparison against exactly that, and a baseline nobody can compute is a number
+nobody can check. `eval.composer: "legacy"` selected it as a product behaviour
+for the two minors 0.10.0 promised and was removed in 0.12.0; the yardstick
+now lives in `proof/lib/legacy-composer.ts`, which ships with the repository
+and not with the package.
 
 It writes `proof/composite-results.json` and `proof/COMPOSITE.md`; CI runs
 `npm run proof -- --check --composite` and fails on any difference, so the
