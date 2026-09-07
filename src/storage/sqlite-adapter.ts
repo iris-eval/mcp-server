@@ -65,6 +65,24 @@ export interface SqliteAdapterOptions {
 /** What every text field of an erased evaluation reads afterwards. */
 export const ERASED_MESSAGE = 'erased with the trace';
 
+/** One trace's latest evaluation inside a run — the unit a comparison counts. */
+export interface RunResultRow {
+  evalId: string;
+  traceId: string | null;
+  /** What makes this the same question as a row in another run; null when nothing supplied or derived one. */
+  caseKey: string | null;
+  agentName: string | null;
+  passed: boolean;
+  /** Rules that fired, for the per-rule breakdown. Skips are not failures. */
+  failedRules: string[];
+  engineVersion: string | null;
+  rulesetHash: string | null;
+  configHash: string | null;
+  createdAt: string;
+  /** How many older evaluations of these traces were collapsed away. */
+  supersededInRun?: number;
+}
+
 export class SqliteAdapter implements IStorageAdapter {
   private db: Database.Database;
   private readonly dbPath: string;
@@ -353,6 +371,65 @@ export class SqliteAdapter implements IStorageAdapter {
       .prepare('SELECT * FROM eval_results WHERE tenant_id = ? AND trace_id = ? ORDER BY created_at DESC')
       .all(tenantId, traceId) as Array<Record<string, unknown>>;
     return rows.map((row) => this.rowToEvalResult(row));
+  }
+
+  /**
+   * Every evaluation in a run, one per trace, newest first.
+   *
+   * A trace can be evaluated more than once — re-run the rules and there
+   * are two rows for one execution. Counting both would double a case and
+   * quietly weight it twice in a pass rate, so this keeps the MOST RECENT
+   * evaluation per trace and says how many it collapsed. That number is
+   * reported rather than hidden: a run whose traces were each evaluated
+   * three times is a run somebody re-ran, and a reader comparing it to
+   * another should know.
+   *
+   * The run of an evaluation is `eval_results.run_id` when set, and the
+   * run of its TRACE otherwise. Both exist for a reason: an ordinary
+   * evaluation belongs to whatever batch its execution belonged to, and
+   * deriving that from the trace keeps one source of truth. A
+   * RE-EVALUATION belongs to a batch its trace never saw, and that is the
+   * case the column exists for.
+   */
+  async getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `SELECT e.id, e.trace_id, e.passed, e.rule_results, e.engine_version, e.ruleset_hash, e.config_hash, e.created_at,
+                t.case_key, t.agent_name
+           FROM eval_results e
+           LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+          WHERE e.tenant_id = ? AND COALESCE(e.run_id, t.run_id) = ?
+          ORDER BY e.created_at DESC, e.id DESC`,
+      )
+      .all(tenantId, runId) as Array<Record<string, unknown>>;
+
+    const seen = new Set<string>();
+    const out: RunResultRow[] = [];
+    let superseded = 0;
+    for (const row of rows) {
+      const traceId = (row.trace_id as string | null) ?? `eval:${String(row.id)}`;
+      if (seen.has(traceId)) {
+        superseded += 1;
+        continue;
+      }
+      seen.add(traceId);
+      const ruleResults = row.rule_results ? (JSON.parse(row.rule_results as string) as Array<{ ruleName: string; passed: boolean; skipped?: boolean }>) : [];
+      out.push({
+        evalId: String(row.id),
+        traceId: (row.trace_id as string | null) ?? null,
+        caseKey: (row.case_key as string | null) ?? null,
+        agentName: (row.agent_name as string | null) ?? null,
+        passed: row.passed === 1 || row.passed === true,
+        failedRules: ruleResults.filter((r) => r.skipped !== true && r.passed === false).map((r) => r.ruleName),
+        engineVersion: (row.engine_version as string | null) ?? null,
+        rulesetHash: (row.ruleset_hash as string | null) ?? null,
+        configHash: (row.config_hash as string | null) ?? null,
+        createdAt: String(row.created_at),
+      });
+    }
+    if (superseded > 0) out.forEach((r) => (r.supersededInRun = superseded));
+    return out;
   }
 
   async getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null> {
