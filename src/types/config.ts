@@ -50,6 +50,13 @@ export interface IrisConfig {
       max_steps?: number;
     };
     /**
+     * Internal, set by loadConfig: the threshold keys the config FILE
+     * supplied, so a rule can say whether its threshold is the deployment's
+     * policy or our shipped guess without comparing values. Never written by
+     * a user; a strict config validator (arc 8) treats it as reserved.
+     */
+    configuredThresholdKeys?: string[];
+    /**
      * Built-in rule names promoted to CRITICAL — a failure vetoes `passed`
      * regardless of the weighted score. Validated against the rule registry
      * when the config loads; an unknown name is a startup error naming the

@@ -37,6 +37,8 @@ import { rulesByType } from './rules/index.js';
 export type CriticalitySource = 'default' | 'config';
 
 export interface CriticalityOverrides {
+  /** The threshold keys the deployment's config file set (loadConfig records them); the engine installs them on every context. */
+  configuredThresholdKeys?: readonly string[];
   /** Built-in rule names promoted to critical. */
   criticalRules?: string[];
   /** Built-in rule names demoted from critical. */

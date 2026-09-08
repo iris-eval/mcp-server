@@ -78,7 +78,7 @@ describe('response shape — every built-in result carries its receipt', () => {
       const x = byName.get(name);
       expect(x, `${name} missing from rule_results`).toBeDefined();
       expect(x!.kind, `${name}.kind`).toBeDefined();
-      expect(['veto', 'term'], `${name}.role`).toContain(x!.role);
+      expect(['gate', 'veto', 'risk', 'advisory'], `${name}.role`).toContain(x!.role);
       expect(x!.question, `${name}.question`).toBeDefined();
       expect(x!.ruleVersion, `${name}.ruleVersion`).toBeGreaterThanOrEqual(1);
       expect(Array.isArray(x!.saw), `${name}.saw`).toBe(true);

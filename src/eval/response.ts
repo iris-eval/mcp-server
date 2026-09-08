@@ -46,6 +46,17 @@ export function toEvaluationResponse(result: EvalResult, options: EvaluationResp
     ...(result.coverage ? { coverage: options.dormant?.length ? { ...result.coverage, dormant: options.dormant } : result.coverage } : {}),
     ...(result.erased_at ? { erased_at: result.erased_at } : {}),
     ...(result.provenance ? { provenance: result.provenance } : {}),
+    ...(result.run_id ? { run_id: result.run_id } : {}),
+    /*
+     * THE SENTENCES WERE BEING DROPPED HERE. compose.interpretations() has
+     * built them since 0.10.0 — its docblock calls the one for a rule that
+     * fired without deciding mandatory — and the engine attached them, and
+     * this serializer never emitted them, the schema had no field, no read
+     * path carried them. Every reader saw cost_under_threshold: failed
+     * beside passed: true and nothing else. Invariant 13: nothing the
+     * composer computes is dropped on the way out.
+     */
+    ...(result.interpretations?.length ? { interpretations: result.interpretations } : {}),
     // Per-bundle breakdown — eval_type="all" only.
     ...(result.categories ? { categories: result.categories } : {}),
     ...(options.note ? { note: options.note } : {}),

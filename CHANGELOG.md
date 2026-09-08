@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Every evaluation now carries `interpretations[]` — the sentence that says why a rule that failed did not decide.** The composer has built it since 0.10.0 (its own docblock called it mandatory), the engine attached it, and the serializer never emitted it, the schema had no field for it, and no read path carried it — so every reader saw `cost_under_threshold: failed` beside `passed: true` and nothing else. It now rides the tool, the resource and both routes, and is derived on read from the composer facts the provenance now stores. A new note, addressed to the agent, names each question that was not judged and the input that would let it be.
+- **A threshold you set that happens to equal the shipped default now gates.** Three rules decided `thresholdSource` by comparing the value to the shipped number, so a deployment that deliberately set `cost_threshold: 0.10` was stamped "default" and demoted to advisory. The source now comes from the engine — which keys this call supplied, which the config file supplied — and never from value equality.
+- **`max_steps` at the shipped default now advises, as every surface said it did.** It read presence in `customConfig`, which the engine defeats by merging the shipped thresholds into every call, so it gated at the default while its own message said it advised. Same fix.
+- **`role` reports `gate`, `veto`, `risk` or `advisory`** — the four values the schema has advertised since 0.9.0. The stamp could only produce `veto` or `term`; a gating policy reported `term`. The engine now sets the role from the composer's own predicates, so the two cannot disagree, and `term` leaves the vocabulary.
+- **A stored evaluation reads back under the composer facts that wrote it.** Reads re-composed the verdict under the shipped defaults; a deployment with its own `falsePassCost` saw one verdict on the tool and another on the dashboard. `provenance.composer` now carries `defaultsGate`, `falsePassCost` and `onCriticalSkipped`.
+- `coverage.questions[]` carries `evaluated` of `of`: "judged" used to mean "at least one rule ran"; 1 of 3 now says so, and names what the others lacked.
+
 ### Added
 
 - **`log_trace` can evaluate in the same call.** `evaluate: true` (with `output`, and optionally `eval_type`) scores the stored trace under exactly the rules `evaluate_output` runs and returns the full evaluation — verdict, basis, every rule result, coverage — linked to the trace. It is the opt-in `POST /api/v1/traces` has carried since 0.5.0, and the MCP path lacked it: two calls where one would do taught agents to log and forget, and a trace with no verdict looks like a dead server. Both doors now share one store-and-evaluate primitive (`src/eval/ingest.ts`), so they cannot disagree about what "evaluate on write" means. Without an output, or on a server with no eval engine, the call is refused with `IRIS_INVALID_ARGUMENT` before anything is stored.
