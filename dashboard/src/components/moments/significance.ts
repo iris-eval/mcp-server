@@ -75,7 +75,17 @@ const VISUALS: Record<MomentSignificanceKind, SignificanceVisual> = {
     name: 'Pass',
     description: 'All fired rules passed.',
   },
+  unevaluated: {
+    color: 'var(--text-muted)',
+    bg: 'oklch(28% 0.02 260 / 0.14)',
+    glyph: '?',
+    name: 'No verdict',
+    description: 'Nothing was judged: no evaluation was recorded, every rule skipped, or a critical rule could not judge. Unknown, not clean.',
+  },
 };
+
+/** Kinds that are neither failures nor worth a review: hidden from significance lists, never counted as failures. */
+export const LOW_SIGNAL_KINDS: ReadonlySet<MomentSignificanceKind> = new Set<MomentSignificanceKind>(['normal-pass', 'unevaluated']);
 
 export function getSignificanceVisual(kind: MomentSignificanceKind): SignificanceVisual {
   return VISUALS[kind] ?? VISUALS['normal-pass'];

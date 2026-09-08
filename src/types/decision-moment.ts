@@ -1,3 +1,5 @@
+import type { Coverage, EvalRuleResult, Interpretation, Provenance, Verdict } from './eval.js';
+
 /*
  * Decision Moment — the new primary unit of the Iris dashboard.
  *
@@ -17,14 +19,29 @@
 
 export type MomentVerdict = 'pass' | 'fail' | 'partial' | 'unevaluated';
 
-export type MomentSignificanceKind =
-  | 'safety-violation'   // any safety rule failed — highest priority
-  | 'cost-spike'         // trace cost exceeds threshold or deviates from agent baseline
-  | 'first-failure'      // this rule failure first observed for this agent
-  | 'novel-pattern'      // failure-rule combination not seen before for this agent
-  | 'rule-collision'     // multiple eval_types failed simultaneously
-  | 'normal-pass'        // happy path; not a moment worth dedicated attention
-  | 'normal-fail';       // a fail that doesn't elevate to one of the above
+/**
+ * The one list every kind enumeration derives from (D-0). Three hand-typed
+ * copies of this union lived in the moments route, the preferences route
+ * and the preference store; a kind added to the type alone would be
+ * refused by every filter. The type is derived from the array.
+ */
+export const MOMENT_SIGNIFICANCE_KINDS = [
+  'safety-violation', // any safety rule failed — highest priority
+  'cost-spike', // trace cost exceeds threshold or deviates from agent baseline
+  'first-failure', // this rule failure first observed for this agent
+  'novel-pattern', // failure-rule combination not seen before for this agent
+  'rule-collision', // multiple eval_types failed simultaneously
+  'normal-pass', // happy path; not a moment worth dedicated attention
+  'normal-fail', // a fail that doesn't elevate to one of the above
+  /*
+   * Nothing was judged (D-0): no evaluation recorded, every rule skipped, or
+   * the verdict was unknown. Until 0.14.0 this was labelled `normal-pass`
+   * with the reason "no rules fired" — a trace nobody had judged read as a
+   * pass on every list. It is its own kind, and it is not a pass.
+   */
+  'unevaluated',
+] as const;
+export type MomentSignificanceKind = (typeof MOMENT_SIGNIFICANCE_KINDS)[number];
 
 export interface MomentSignificance {
   /** Classifier kind. */
@@ -89,14 +106,25 @@ export interface DecisionMomentDetail extends DecisionMoment {
     evalType: string;
     score: number;
     passed: boolean;
-    ruleResults: Array<{
-      ruleName: string;
-      passed: boolean;
-      score: number;
-      message: string;
-      skipped?: boolean;
-      skipReason?: string;
-    }>;
+    /**
+     * The rule results WHOLE (D-0). Until 0.14.0 this was a six-field remap
+     * — name, passed, score, message, skipped, skipReason — and the stamp
+     * the engine puts on every rule since 0.9.0 (kind, role, evidence,
+     * uncertainty, criticality with its source, the question, the classes)
+     * was dropped before it reached the screen. The same object the tool
+     * returns, so the dashboard cannot render a different rule.
+     */
+    ruleResults: EvalRuleResult[];
+    /** The composed verdict with its basis and the rules that decided (0.10.0+; absent on older rows). */
+    verdict?: Verdict;
+    /** Which inputs were present and which questions were judged, with counts (0.9.0+). */
+    coverage?: Coverage;
+    /** Why a rule that fired did not decide, and what was not judged (0.13.0+). */
+    interpretations?: Interpretation[];
+    /** Version, ruleset, config and corpus the verdict was computed under. */
+    provenance?: Provenance;
+    /** Critical rules that could not judge — unknown, not clean. */
+    criticalSkipped?: string[];
     suggestions: string[];
     /**
      * Rules that HARD-FAILED this evaluation — a critical safety rule

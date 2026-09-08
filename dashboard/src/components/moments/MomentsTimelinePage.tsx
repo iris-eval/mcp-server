@@ -20,7 +20,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { useMoments, useFilters } from '../../api/hooks';
 import { usePreferences } from '../../hooks/usePreferences';
 import { api } from '../../api/client';
-import type { DecisionMoment, DecisionMomentDetail } from '../../api/types';
+import type { DecisionMoment, DecisionMomentDetail, MomentSignificanceKind } from '../../api/types';
 import { Activity } from 'lucide-react';
 import { MomentCard } from './MomentCard';
 import { BulkActionsBar } from './BulkActionsBar';
@@ -216,7 +216,7 @@ export function MomentsTimelinePage() {
      * significance kinds — safety-violation/cost-spike/rule-collision/
      * first-failure/novel-pattern) are almost always intentional and
      * still restore. */
-    const lowSignalKinds = new Set(['normal-pass', 'normal-fail']);
+    const lowSignalKinds = new Set(['normal-pass', 'normal-fail', 'unevaluated']);
     const safeKind = persisted.significanceKind && !lowSignalKinds.has(persisted.significanceKind)
       ? persisted.significanceKind
       : undefined;
@@ -263,15 +263,7 @@ export function MomentsTimelinePage() {
         | 'partial'
         | 'unevaluated'
         | null) ?? undefined,
-      significanceKind: (searchParams.get('kind') as
-        | 'safety-violation'
-        | 'cost-spike'
-        | 'first-failure'
-        | 'novel-pattern'
-        | 'rule-collision'
-        | 'normal-pass'
-        | 'normal-fail'
-        | null) ?? undefined,
+      significanceKind: (searchParams.get('kind') as MomentSignificanceKind | null) ?? undefined,
     };
     const current = preferences.momentFilters;
     const equal =

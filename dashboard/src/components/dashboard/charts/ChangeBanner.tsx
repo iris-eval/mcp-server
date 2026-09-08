@@ -26,6 +26,7 @@
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Sparkles } from 'lucide-react';
 import { Icon } from '../../shared/Icon';
 import type { DecisionMoment, DriftComparison } from '../../../api/types';
+import { LOW_SIGNAL_KINDS } from '../../moments/significance';
 
 const styles = {
   banner: {
@@ -114,7 +115,7 @@ function totalCost(moments: DecisionMoment[]): number {
 function failureCategoryCount(moments: DecisionMoment[]): number {
   const kinds = new Set<string>();
   for (const m of moments) {
-    if (m.verdict !== 'pass' && m.significance.kind !== 'normal-pass') {
+    if (m.verdict !== 'pass' && !LOW_SIGNAL_KINDS.has(m.significance.kind)) {
       kinds.add(m.significance.kind);
     }
   }

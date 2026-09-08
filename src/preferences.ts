@@ -23,22 +23,13 @@ import { writeAtomic } from './utils/write-atomic.js';
 import { irisHome } from './utils/iris-home.js';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { MOMENT_SIGNIFICANCE_KINDS } from './types/decision-moment.js';
 
 const MomentFiltersSchema = z
   .object({
     agentName: z.string().max(200).optional(),
     verdict: z.enum(['pass', 'fail', 'partial', 'unevaluated']).optional(),
-    significanceKind: z
-      .enum([
-        'safety-violation',
-        'cost-spike',
-        'first-failure',
-        'novel-pattern',
-        'rule-collision',
-        'normal-pass',
-        'normal-fail',
-      ])
-      .optional(),
+    significanceKind: z.enum(MOMENT_SIGNIFICANCE_KINDS).optional(),
   })
   .strict();
 

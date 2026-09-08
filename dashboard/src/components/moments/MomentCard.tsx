@@ -13,6 +13,7 @@ const SIG_TOOLTIP: Record<string, string> = {
   'rule-collision': TT.sigRuleCollision,
   'normal-fail': TT.sigNormalFail,
   'normal-pass': TT.sigNormalPass,
+  unevaluated: TT.sigUnevaluated,
   'first-failure': TT.sigFirstFailure,
   'novel-pattern': TT.sigNovelPattern,
 };

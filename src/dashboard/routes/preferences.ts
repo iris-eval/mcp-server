@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { MOMENT_SIGNIFICANCE_KINDS } from '../../types/decision-moment.js';
 import { basename, isAbsolute, relative, sep } from 'node:path';
 import type { PreferenceStore } from '../../preferences.js';
 import { irisHome } from '../../utils/iris-home.js';
@@ -10,17 +11,7 @@ const MomentFiltersPatchSchema = z
   .object({
     agentName: z.string().max(200).optional(),
     verdict: z.enum(['pass', 'fail', 'partial', 'unevaluated']).optional(),
-    significanceKind: z
-      .enum([
-        'safety-violation',
-        'cost-spike',
-        'first-failure',
-        'novel-pattern',
-        'rule-collision',
-        'normal-pass',
-        'normal-fail',
-      ])
-      .optional(),
+    significanceKind: z.enum(MOMENT_SIGNIFICANCE_KINDS).optional(),
   })
   .strict();
 

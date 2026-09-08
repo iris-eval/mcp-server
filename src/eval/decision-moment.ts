@@ -132,14 +132,14 @@ export function deriveMomentDetail(
       evalType: e.eval_type,
       score: e.score,
       passed: e.passed,
-      ruleResults: e.rule_results.map((r) => ({
-        ruleName: r.ruleName,
-        passed: r.passed,
-        score: r.score,
-        message: r.message,
-        skipped: r.skipped,
-        skipReason: r.skipReason,
-      })),
+      // Whole, not remapped: the stamp on every rule result is what the
+      // dashboard exists to show (D-0).
+      ruleResults: e.rule_results,
+      ...(e.verdict ? { verdict: e.verdict } : {}),
+      ...(e.coverage ? { coverage: e.coverage } : {}),
+      ...(e.interpretations?.length ? { interpretations: e.interpretations } : {}),
+      ...(e.provenance ? { provenance: e.provenance } : {}),
+      ...(e.critical_skipped?.length ? { criticalSkipped: e.critical_skipped } : {}),
       suggestions: e.suggestions ?? [],
       /*
        * Carried through so the moment detail can say WHY an eval failed.
@@ -332,13 +332,16 @@ function classifySignificance({
     };
   }
 
-  // 5. Unevaluated trace (no eval recorded).
+  // 5. Nothing was judged: its own kind, never a pass (D-0).
   if (verdict === 'unevaluated') {
     return {
-      kind: 'normal-pass',
+      kind: 'unevaluated',
       score: 0.1,
-      label: 'No eval recorded',
-      reason: 'No eval was recorded for this trace. The agent ran but no rules fired.',
+      label: 'No verdict',
+      reason:
+        evals.length === 0
+          ? 'No evaluation was recorded for this trace: nothing here was judged.'
+          : 'An evaluation was recorded but reached no verdict: every rule skipped, or a critical rule could not judge. Unknown, not clean.',
     };
   }
 
