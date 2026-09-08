@@ -37,6 +37,8 @@
     "proof:review": "tsx proof/human-review.ts",
     "llms:render": "node scripts/claims/render-llms.mjs",
     "llms:check": "node scripts/claims/render-llms.mjs --check",
+    "mcp-json:render": "tsx scripts/claims/render-mcp-json.ts",
+    "mcp-json:check": "tsx scripts/claims/render-mcp-json.ts --check",
     "proof:judge": "tsx proof/judge/run.ts",
     "proof:judge:typecheck": "tsc -p proof/judge/tsconfig.json",
     "clean": "rm -rf dist coverage",

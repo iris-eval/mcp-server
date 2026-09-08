@@ -177,7 +177,13 @@ export interface ProofComposerSlice {
   accuracy: ProofRate;
   falseBlock: ProofRate;
   missedBlock: ProofRate;
-  calibration: { n: number; brier: number; ece: number } | null;
+  calibration: {
+    n: number;
+    brier: number;
+    ece: number;
+    /** Ten equal-width reliability bins (schemaVersion 1 carries them; the type lagged). */
+    bins?: Array<{ from: number; to: number; n: number; meanPredicted: number | null; observedRate: number | null }>;
+  } | null;
 }
 export interface ProofComposerSlices {
   test: ProofComposerSlice;

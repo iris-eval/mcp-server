@@ -23,7 +23,7 @@ const TAGLINE = 'Stop shipping agents on vibes';
  * exporter that ships traces off-box when configured. A fact stated in
  * many places is a fact that drifts; these are stated once.
  */
-const DISCOVERY_SENTENCE = "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, or when you POST a trace to its HTTP API.";
+const DISCOVERY_SENTENCE = "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, when a host hook or `iris-eval ingest` hands it a trace, or when you POST one to its HTTP API.";
 const DATA_RESIDENCY = "Nothing leaves your machine unless you set IRIS_OTEL_ENDPOINT, which exports traces to the collector you name, or enable the LLM judge with your own key.";
 
 export async function generate() {

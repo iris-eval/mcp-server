@@ -113,6 +113,23 @@ describe('capability map — evidence', () => {
     }
   });
 
+  it('a gap or n/a cell names no registered tool, rule, route or resource — what ships answers a cell, so the cell cites it (A6-8)', () => {
+    /*
+     * The S4 column said "no grouping over repeated runs" in nine cells for a
+     * release after compare_traces shipped exactly that, and Q10xS5 said
+     * intervals "appear nowhere on the dashboard" after the change banner
+     * rendered one: a `gap` cell was never re-read against what shipped. A
+     * cell that names something registered is not a gap; it is partial with
+     * that evidence.
+     */
+    const registered = [...TOOLS, ...RULES, ...ROUTES, ...RESOURCES];
+    for (const c of cells.filter((c) => c.status === 'gap' || c.status === 'n/a')) {
+      for (const name of registered) {
+        expect(c.summary.includes(name), `${c.id} (${c.status}) names "${name}"`).toBe(false);
+      }
+    }
+  });
+
   it('every registered rule, evaluating tool, judge template and resource appears in a has or partial cell', () => {
     const seen = { rule: new Set<string>(), tool: new Set<string>(), template: new Set<string>(), resource: new Set<string>() };
     for (const c of answering) for (const e of c.evidence) if (e.kind in seen) seen[e.kind as keyof typeof seen].add(e.name);

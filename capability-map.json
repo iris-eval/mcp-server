@@ -165,9 +165,18 @@
       "id": "Q1xS4",
       "question": "Q1",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs of one input exists, so nothing can say safe on nine of ten runs.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "Safe on nine of ten runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -395,9 +404,18 @@
       "id": "Q3xS4",
       "question": "Q3",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "Complete on most runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -493,9 +511,18 @@
       "id": "Q4xS4",
       "question": "Q4",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "On-task on most runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -578,9 +605,18 @@
       "id": "Q5xS4",
       "question": "Q5",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs; completes the task seven of ten runs is not expressible.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "Completes the task seven of ten runs is readable only as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -596,9 +632,18 @@
       "id": "Q5xS6",
       "question": "Q5",
       "subject": "S6",
-      "status": "gap",
-      "summary": "No completion evaluator exists to measure.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "The ask-coverage reading of completion — were the parts of the ask addressed — has a published family (precision and recall per rule at https://iris-eval.com/proof); no end-to-end task-completion evaluator exists, so nothing measures completion beyond that reading.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "ask_coverage"
+        },
+        {
+          "kind": "proof",
+          "name": "ask_coverage"
+        }
+      ],
       "needs": []
     },
     {
@@ -653,9 +698,18 @@
       "id": "Q6xS4",
       "question": "Q6",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "Acts well on most runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -763,9 +817,18 @@
       "id": "Q7xS4",
       "question": "Q7",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs, and no rule reads an agent's own cost distribution.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "Cost across repeats of one input is readable only through the case's pass rate under the cost rules: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself. No rule reads an agent's own cost distribution.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -964,9 +1027,18 @@
       "id": "Q9xS4",
       "question": "Q9",
       "subject": "S4",
-      "status": "gap",
-      "summary": "No grouping over repeated runs.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "Where it fails across repeats: a case answered both ways is reported as flaky, least reliable first. compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
@@ -1095,18 +1167,36 @@
       "id": "Q10xS4",
       "question": "Q10",
       "subject": "S4",
-      "status": "gap",
-      "summary": "A verdict over repeats — vote, mean, variance — has no composer, and the judge has no repeat harness.",
-      "evidence": [],
+      "status": "has",
+      "summary": "Trust over repeats is a case's pass rate with a 95% Wilson interval and a flaky flag, and a run-level rate by a cluster bootstrap over cases so ten repeats of one question are not ten questions; the interval is the trust statement. No composer votes over repeats — the rate is reported, not turned into one verdict — and the judge has no repeat harness.",
+      "evidence": [
+        {
+          "kind": "tool",
+          "name": "compare_traces"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/cases/:key"
+        }
+      ],
       "needs": []
     },
     {
       "id": "Q10xS5",
       "question": "Q10",
       "subject": "S5",
-      "status": "gap",
-      "summary": "No population-level trust statement; intervals on pass rates appear nowhere on the dashboard.",
-      "evidence": [],
+      "status": "has",
+      "summary": "Population-level trust: two windows are compared with both denominators and a 95% interval on the difference in pass rate, shown on the dashboard's change banner; two runs are compared with a Newcombe interval on the difference (McNemar on the discordant pairs when the cases pair). An interval that straddles zero is reported as not distinguishable, with the sample that would distinguish it.",
+      "evidence": [
+        {
+          "kind": "route",
+          "name": "/api/v1/eval-stats/drift"
+        },
+        {
+          "kind": "tool",
+          "name": "compare_runs"
+        }
+      ],
       "needs": []
     },
     {
