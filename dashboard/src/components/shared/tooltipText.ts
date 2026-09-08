@@ -41,6 +41,7 @@ export const TT = {
   sigRuleCollision: 'Failures span multiple eval categories — output failed in more than one dimension.',
   sigNormalFail: 'A rule failed; the failure does not elevate to a higher significance category.',
   sigNormalPass: 'All fired rules passed — operational data, not a moment requiring review.',
+  sigUnevaluated: 'No verdict: nothing was judged. No evaluation was recorded, every rule skipped, or a critical rule could not judge — unknown, not clean.',
   sigFirstFailure: 'First time this rule has failed for this agent recently.',
   sigNovelPattern: 'Failure-rule combination has not been seen for this agent before.',
 

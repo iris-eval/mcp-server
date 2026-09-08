@@ -30,6 +30,7 @@ import { EmptyState } from '../shared/EmptyState';
 import { StatTile } from './StatTile';
 import { SectionHeader } from './SectionHeader';
 import { RecentMomentsRow } from './RecentMomentsRow';
+import { LOW_SIGNAL_KINDS } from '../moments/significance';
 import { RecentAuditRow } from './RecentAuditRow';
 import { LiveTraceTail } from './charts/LiveTraceTail';
 
@@ -60,7 +61,7 @@ export function StreamView() {
     stats.passRate >= 0.9 ? 'pass' : stats.passRate >= 0.7 ? 'warn' : 'fail';
 
   const significantCount = significantMoments
-    ? significantMoments.moments.filter((m) => m.significance.kind !== 'normal-pass').length
+    ? significantMoments.moments.filter((m) => !LOW_SIGNAL_KINDS.has(m.significance.kind)).length
     : 0;
   const safetyCount = significantMoments
     ? significantMoments.moments.filter((m) => m.significance.kind === 'safety-violation').length

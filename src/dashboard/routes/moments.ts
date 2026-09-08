@@ -9,18 +9,11 @@ import type {
   MomentVerdict,
 } from '../../types/decision-moment.js';
 import { deriveMoment, deriveMomentDetail, historyBefore } from '../../eval/decision-moment.js';
+import { MOMENT_SIGNIFICANCE_KINDS } from '../../types/decision-moment.js';
 import type { AgentFailureLogEntry } from '../../types/query.js';
 
 const VERDICT_VALUES: MomentVerdict[] = ['pass', 'fail', 'partial', 'unevaluated'];
-const SIGNIFICANCE_KINDS: MomentSignificanceKind[] = [
-  'safety-violation',
-  'cost-spike',
-  'first-failure',
-  'novel-pattern',
-  'rule-collision',
-  'normal-pass',
-  'normal-fail',
-];
+const SIGNIFICANCE_KINDS: readonly MomentSignificanceKind[] = MOMENT_SIGNIFICANCE_KINDS;
 
 const momentQuerySchema = z.object({
   agent_name: z.string().min(1).max(200).optional(),

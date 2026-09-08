@@ -13,7 +13,7 @@ import { Activity, ChevronRight } from 'lucide-react';
 import { useMoments } from '../../api/hooks';
 import { Icon } from '../shared/Icon';
 import { Tooltip } from '../shared/Tooltip';
-import { getSignificanceVisual, getVerdictVisual } from '../moments/significance';
+import { getSignificanceVisual, getVerdictVisual, LOW_SIGNAL_KINDS } from '../moments/significance';
 import { formatTimeAgo, formatCost } from '../../utils/formatters';
 import { TT } from '../shared/tooltipText';
 
@@ -139,7 +139,7 @@ export function RecentMomentsRow() {
 
   // Filter to true significance (not normal-fail), take MAX_ROWS by recency
   const moments = (data?.moments ?? [])
-    .filter((m) => m.significance.kind !== 'normal-pass')
+    .filter((m) => !LOW_SIGNAL_KINDS.has(m.significance.kind))
     .slice(0, MAX_ROWS);
 
   return (

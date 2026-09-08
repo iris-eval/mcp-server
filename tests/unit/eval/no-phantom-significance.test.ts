@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { deriveMoment, historyBefore } from '../../../src/eval/decision-moment.js';
 import type { Trace } from '../../../src/types/trace.js';
 import type { EvalResult } from '../../../src/types/eval.js';
-import type { MomentSignificanceKind } from '../../../src/types/decision-moment.js';
+import { MOMENT_SIGNIFICANCE_KINDS, type MomentSignificanceKind } from '../../../src/types/decision-moment.js';
 
 /*
  * Every value the moments filter accepts must be a value the classifier can
@@ -19,15 +19,8 @@ import type { MomentSignificanceKind } from '../../../src/types/decision-moment.
  * produce fails here, and so does a kind that quietly stops being reachable.
  */
 
-const KINDS_THE_FILTER_ACCEPTS: MomentSignificanceKind[] = [
-  'safety-violation',
-  'cost-spike',
-  'first-failure',
-  'novel-pattern',
-  'rule-collision',
-  'normal-pass',
-  'normal-fail',
-];
+// The one list the routes and the preference store derive their enums from (D-0).
+const KINDS_THE_FILTER_ACCEPTS: readonly MomentSignificanceKind[] = MOMENT_SIGNIFICANCE_KINDS;
 
 const trace = (over: Partial<Trace> = {}): Trace => ({
   trace_id: 'subject',
@@ -60,6 +53,8 @@ const quietHistory = (failedBefore: string[][] = [[], [], [], [], []]) =>
 /** One producer per kind. Adding a filter value means adding a producer here. */
 const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = {
   'safety-violation': () => deriveMoment(trace(), [evalOf(['no_pii'], false)]).significance.kind,
+  // Nothing judged (D-0): no evaluation at all.
+  unevaluated: () => deriveMoment(trace(), []).significance.kind,
   'cost-spike': () => deriveMoment(trace({ cost_usd: 5 }), [evalOf([], true)]).significance.kind,
   'first-failure': () =>
     deriveMoment(trace(), [evalOf(['keyword_overlap'], false)], quietHistory()).significance.kind,
@@ -73,7 +68,9 @@ const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = 
     deriveMoment(trace(), [evalOf(['keyword_overlap'], false, 'relevance'), evalOf(['min_output_length'], false, 'completeness')])
       .significance.kind,
   'normal-fail': () => deriveMoment(trace(), [evalOf(['keyword_overlap'], false)]).significance.kind,
-  'normal-pass': () => deriveMoment(trace(), [evalOf([], true)]).significance.kind,
+  // A pass needs a rule that ran and passed: an evaluation with no rules is nothing judged (D-0).
+  'normal-pass': () =>
+    deriveMoment(trace(), [{ ...evalOf([], true), rule_results: [{ ruleName: 'no_pii', passed: true, score: 1, message: 'clean' }] }]).significance.kind,
 };
 
 describe('no filter value is a phantom', () => {

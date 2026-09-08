@@ -69,7 +69,13 @@ export interface EvalRuleResult {
    * release; never fabricated.
    */
   kind?: 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
-  role?: 'gate' | 'veto' | 'risk' | 'advisory' | 'term';
+  role?: 'gate' | 'veto' | 'risk' | 'advisory';
+  /** Built-in or deployed by a user. */
+  origin?: 'built-in' | 'custom';
+  /** What the rule saw: offsets into the caller's text, a pattern count, a tool call, a citation, a measured count. */
+  evidence?: Evidence[];
+  /** A measurement's number, with its unit. */
+  value?: MeasuredValue;
   question?: string;
   classes?: string[];
   ruleVersion?: number;
@@ -94,16 +100,104 @@ export interface EvalCategoryResult {
   critical_skipped?: string[];
 }
 
+/* ── The verdict's own vocabulary, mirrored from the server's src/types/eval.ts (D-0). ── */
+
+export type VerdictBasis =
+  | 'policy_gate'
+  | 'detector_veto'
+  | 'critical_unknown'
+  | 'required_evidence_missing'
+  | 'risk_over_loss'
+  | 'clean'
+  | 'no_rules';
+
+export interface Verdict {
+  state: 'pass' | 'fail' | 'unknown';
+  passed: boolean;
+  /** Which layer of the composer decided. */
+  basis: VerdictBasis;
+  /** The rules (or failure classes, under risk_over_loss) that decided. */
+  by: string[];
+  risk: { pBad: number; lo: number; hi: number; perClass: Record<string, number | null>; assumptions: string[] } | null;
+  confidence?: 'decisive' | 'marginal';
+}
+
+export type QuestionId = 'safe_output' | 'grounded' | 'complete' | 'relevant' | 'task_completed' | 'tool_use_correct' | 'within_budget';
+
+export interface CoverageQuestion {
+  id: QuestionId;
+  status: 'judged' | 'unjudged' | 'not_applicable';
+  /** What was missing when a question was not judged. */
+  why?: string;
+  /** How many of the question's rules ran, of how many. */
+  evaluated?: number;
+  of?: number;
+}
+
+export interface Coverage {
+  inputs: Record<string, boolean>;
+  questions: CoverageQuestion[];
+  dormant?: Array<{ ruleId: string; name: string; reason: string }>;
+}
+
+export interface Interpretation {
+  severity: 'block' | 'warn' | 'note';
+  addressee: 'agent' | 'operator' | 'author';
+  rule?: string;
+  text: string;
+  /** The setting that would change the outcome. */
+  configKey?: string;
+}
+
+export interface Provenance {
+  irisVersion: string;
+  rulesetHash: string;
+  configHash: string;
+  thresholds: { default: number; perRule?: Record<string, unknown> };
+  corpusVersion: string;
+  composer?: { defaultsGate: boolean; falsePassCost: number; onCriticalSkipped: 'unknown' | 'fail' | 'pass' };
+  [key: string]: unknown;
+}
+
+export type Evidence =
+  | { type: 'span'; source: string; start: number; end: number; label: string }
+  | { type: 'pattern'; name: string; count: number }
+  | { type: 'toolCall'; index: number; toolName: string; label: string }
+  | { type: 'citation'; url: string; status: string }
+  | { type: 'count'; stat: string; unit: string; value: number; threshold?: number; thresholdSource?: 'default' | 'config' | 'call' | 'rule' }
+  | { type: string; [key: string]: unknown };
+
+export interface MeasuredValue {
+  stat: string;
+  unit: string;
+  value: number;
+}
+
 export interface EvalResult {
   id: string;
   trace_id?: string;
+  run_id?: string;
   eval_type: string;
   output_text: string;
   expected_text?: string;
   score: number;
   passed: boolean;
+  /** The composed verdict (0.10.0+); absent on rows older than that. */
+  verdict?: Verdict;
   rule_results: EvalRuleResult[];
   suggestions: string[];
+  rules_evaluated?: number;
+  rules_skipped?: number;
+  insufficient_data?: boolean;
+  /** Which inputs were present and which questions were judged, with counts. */
+  coverage?: Coverage;
+  /** Why a rule that fired did not decide, and what was not judged. */
+  interpretations?: Interpretation[];
+  provenance?: Provenance;
+  /** Critical rules that could not judge — unknown, not clean. */
+  critical_skipped?: string[];
+  /** Set when the text of this evaluation was erased by retention or a delete. */
+  erased_at?: string;
   /**
    * Rules that HARD-FAILED this evaluation — a critical safety rule
    * (no_pii / no_injection_patterns / no_blocklist_words) or a deployed rule
@@ -201,7 +295,9 @@ export type MomentSignificanceKind =
   | 'novel-pattern'
   | 'rule-collision'
   | 'normal-pass'
-  | 'normal-fail';
+  | 'normal-fail'
+  /** Nothing was judged: no evaluation, every rule skipped, or an unknown verdict. Not a pass. */
+  | 'unevaluated';
 
 export interface MomentSignificance {
   kind: MomentSignificanceKind;
@@ -240,14 +336,13 @@ export interface DecisionMomentDetail extends DecisionMoment {
     evalType: string;
     score: number;
     passed: boolean;
-    ruleResults: Array<{
-      ruleName: string;
-      passed: boolean;
-      score: number;
-      message: string;
-      skipped?: boolean;
-      skipReason?: string;
-    }>;
+    /** Whole rule results, the same object the tool returns (D-0). */
+    ruleResults: EvalRuleResult[];
+    verdict?: Verdict;
+    coverage?: Coverage;
+    interpretations?: Interpretation[];
+    provenance?: Provenance;
+    criticalSkipped?: string[];
     suggestions: string[];
     /** See EvalResult.critical_failures — the rules that vetoed this eval. */
     criticalFailures?: string[];

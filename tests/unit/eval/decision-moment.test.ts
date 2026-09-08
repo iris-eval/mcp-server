@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deriveMoment, deriveMomentDetail } from '../../../src/eval/decision-moment.js';
+import { MOMENT_SIGNIFICANCE_KINDS } from '../../../src/types/decision-moment.js';
 import type { Trace } from '../../../src/types/trace.js';
 import type { EvalResult } from '../../../src/types/eval.js';
 
@@ -35,8 +36,9 @@ describe('deriveMoment', () => {
     const m = deriveMoment(makeTrace(), []);
     expect(m.verdict).toBe('unevaluated');
     expect(m.evalCount).toBe(0);
-    expect(m.significance.kind).toBe('normal-pass');
-    expect(m.significance.label).toBe('No eval recorded');
+    // D-0: nothing judged is its own kind, never a pass.
+    expect(m.significance.kind).toBe('unevaluated');
+    expect(m.significance.label).toBe('No verdict');
   });
 
   it('returns pass verdict when all rules pass', () => {
@@ -200,5 +202,62 @@ describe('deriveMomentDetail', () => {
     expect(detail.evals[0].suggestions).toEqual(['Looks clean']);
     expect(detail.toolCalls?.[0].tool_name).toBe('search');
     expect(detail.spans?.[0].span_id).toBe('s1');
+  });
+});
+
+/*
+ * D-0 (0.14.0): the server stops dropping the stamp.
+ *
+ * Until 0.14.0 deriveMomentDetail remapped every rule result to six fields
+ * — name, passed, score, message, skipped, skipReason — and the stamp the
+ * engine has put on each rule since 0.9.0 (kind, role, evidence,
+ * uncertainty, criticality with its source) was dropped before the screen,
+ * along with the evaluation's verdict, coverage, interpretations and
+ * provenance. And a trace nobody had judged was labelled `normal-pass`.
+ */
+describe('deriveMomentDetail carries the stamp whole (D-0)', () => {
+  const stamped = {
+    ruleName: 'cost_under_threshold',
+    passed: false,
+    score: 0,
+    message: 'over budget',
+    kind: 'policy' as const,
+    role: 'advisory' as const,
+    question: 'within_budget' as const,
+    critical: false,
+    criticalSource: 'default' as const,
+    evidence: [{ type: 'count' as const, stat: 'cost_usd', unit: 'usd', value: 1.33, threshold: 0.1, thresholdSource: 'default' as const }],
+    uncertainty: { basis: 'measurement' },
+  };
+  const verdict = { state: 'pass' as const, passed: true, basis: 'clean' as const, by: [], risk: null };
+  const coverage = { inputs: { output: true } as never, questions: [{ id: 'within_budget' as const, status: 'judged' as const, evaluated: 1, of: 1 }] };
+  const interpretations = [{ severity: 'note' as const, addressee: 'operator' as const, rule: 'cost_under_threshold', text: 'advises at the default', configKey: 'eval.defaultsGate' }];
+  const provenance = { irisVersion: '0.14.0', rulesetHash: 'r', configHash: 'c', thresholds: { default: 0.7 }, corpusVersion: 'x', composer: { defaultsGate: false, falsePassCost: 1, onCriticalSkipped: 'unknown' as const } };
+
+  it('every field of a rule result and of the evaluation reaches the detail unchanged', () => {
+    const evals = [makeEval({ rule_results: [stamped as never], verdict, coverage: coverage as never, interpretations, provenance: provenance as never, critical_skipped: ['no_pii'] })];
+    const detail = deriveMomentDetail(makeTrace(), evals, []);
+    expect(detail.evals[0].ruleResults[0]).toEqual(stamped);
+    expect(detail.evals[0].verdict).toEqual(verdict);
+    expect(detail.evals[0].coverage).toEqual(coverage);
+    expect(detail.evals[0].interpretations).toEqual(interpretations);
+    expect(detail.evals[0].provenance).toEqual(provenance);
+    expect(detail.evals[0].criticalSkipped).toEqual(['no_pii']);
+  });
+
+  it('a trace nobody judged is `unevaluated`, never `normal-pass`', () => {
+    const noEvals = deriveMoment(makeTrace(), []);
+    expect(noEvals.verdict).toBe('unevaluated');
+    expect(noEvals.significance.kind).toBe('unevaluated');
+    expect(noEvals.significance.label).toBe('No verdict');
+    const allSkipped = deriveMoment(makeTrace(), [makeEval({ rule_results: [{ ruleName: 'no_pii', passed: false, score: 0, message: 'no output', skipped: true, skipReason: 'no output' }] })]);
+    expect(allSkipped.verdict).toBe('unevaluated');
+    expect(allSkipped.significance.kind).toBe('unevaluated');
+    expect(allSkipped.significance.reason).toMatch(/Unknown, not clean/);
+  });
+
+  it('the one kind list carries every kind the type admits, including the new one', () => {
+    expect(MOMENT_SIGNIFICANCE_KINDS).toContain('unevaluated');
+    expect(new Set(MOMENT_SIGNIFICANCE_KINDS).size).toBe(MOMENT_SIGNIFICANCE_KINDS.length);
   });
 });
