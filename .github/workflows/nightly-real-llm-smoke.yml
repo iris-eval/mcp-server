@@ -74,7 +74,10 @@ jobs:
       - if: steps.keycheck.outputs.present == 'true'
         run: npm ci
       - if: steps.keycheck.outputs.present == 'true'
-        run: npm run build
+        # The server alone: this smoke never serves the UI, and the one
+        # `npm run build` (dashboard, then server since A6-9) would need the
+        # dashboard's dependencies installed for nothing.
+        run: npm run build:server
       # Run the real-LLM smoke. Script reads OPENAI_API_KEY from env.
       # Cost cap enforced inside the script + the llm-judge evaluator's
       # pessimistic pre-check (< $0.05 total).
