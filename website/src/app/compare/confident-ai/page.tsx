@@ -4,7 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
-import { PII_PATTERN_COUNT } from "@/lib/claims";
+import { DATA_RESIDENCY, PII_PATTERN_COUNT } from "@/lib/claims";
 
 function sanitizeText(value: unknown): string {
   return String(value ?? "")
@@ -147,7 +147,7 @@ export default function CompareConfidentAI(): React.ReactElement {
           <div className="rounded-2xl border border-border-default bg-bg-card p-8 text-[15px] leading-relaxed text-text-secondary">
             <strong className="text-text-primary">Iris</strong> is a self-hosted
             MCP server that evaluates every agent output inline in production —
-            your data stays on your machine, no API keys needed.{" "}
+            no API keys needed for the deterministic rules. {DATA_RESIDENCY}{" "}
             <strong className="text-text-primary">Confident AI</strong> is the
             commercial cloud platform built on top of DeepEval, offering
             LLM-as-Judge evaluation, team dashboards, regression testing, and

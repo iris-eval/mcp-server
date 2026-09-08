@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-09-07
+
+**Truth patch 3.** Words only — no rule, no verdict and no measured number changed. Several public surfaces had stopped being true, and the guard that should have caught the loudest one could not see it.
+
+The README, the architecture guide, the website's product section, a learn page and the Claude Code plugin manifest all said Iris registers **nine** tools. Twelve have shipped since 0.12.0, released the day before. The claims scanner that guards public counts matched a digit beside the literal word "MCP" and nothing else, so "nine tools" and "(9 tools)" both passed it. The README and the API reference, further down, still described how `passed` was decided *before* 0.10.0 — "true only when the score clears the threshold" — two minors after the composer replaced that rule. Every correction below ships with the lock that would have caught it.
+
+### Fixed
+
+- **The tool count on seven surfaces** — `README.md` (twice), `docs/architecture.md` (twice), the site's product section, the agent-eval learn page and the plugin manifest — now states twelve, and the plugin manifest the marketplace serves renders from the truthbase like the marketplace index does. The README's tool list gained the three comparison tools it was missing.
+- **The README and the API reference described the composer 0.10.0 deleted.** Both now describe the verdict as it is composed — by the kind of claim each rule makes, in ordered layers — and the API reference documents `verdict.basis`, `risk_over_loss`, `eval.falsePassCost`, `eval.defaultsGate`, `eval.onCriticalSkipped` and `eval.requiredEvidence` for the first time. The reference also said the trajectory rules "do not veto `passed`"; they cannot veto, but their fires enter the risk layer and can decide the verdict through it, which the sentence now says.
+- **"Your agent discovers it automatically"** on five compare pages, a listing template, the SDK spec and two dated posts is replaced by the sentence that is true, stated once in the truthbase: the client lists Iris's tools on connect; Iris never intercepts; it runs when the agent calls one of its tools or when you POST a trace to its HTTP API. Nothing auto-installs Iris and nothing makes the model call it.
+- **"Your data never leaves your machine"** on five surfaces now carries its two exceptions in the same sentence, from one truthbase fact: the OpenTelemetry exporter you configure, and the LLM judge you key.
+- **The security exposure record** said no cookie is set anywhere in the server; the dashboard sign-in has set one since 0.6.0. The advisory's disposition is unchanged — Hono's helpers are still never on the path — and the line now says why.
+- **The roadmap, in the docs and on the site,** listed as unshipped the threshold sweep, calibration, adversarial transforms, argument validity, ask coverage, injection compliance and run comparison — all shipped. `docs/roadmap.md` is now a pointer to the capability map plus only the items that are open, and each track on the site says what shipped, with its version, and what is not.
+- A launch draft and the architecture guide's resource list carried the 0.4-era surface; both now name what ships.
+
+### Added
+
+- **The claims scanner reads a count spelled as a word** ("nine tools") and a count without the word "MCP" beside it ("(9 tools)"), and compares either to the truthbase. Proven by planting "nine tools" in the README once and watching it go red.
+- **The docs contract** now asserts, keyed on the shipped composer: no prose says `passed` is decided by the score against a threshold; no surface lists run comparison as planned while `compare_runs` is registered; the rule-by-category tables in the skill template and the architecture guide match the bundles the engine ships; and the residency and discovery sentences on the site and in the README are the truthbase's. Its tool-verb vocabulary is now derived from the registered names — the hand-typed list said "only the nine verbs" and could not see `compare_runs` or `compare_traces`.
+- The response-shape test no longer accepts `score_below_threshold`, a basis 0.12.0 removed.
+
+**Verify:** `npm run claims:check-hardcoded`, `npm run llms:check`, `npm test`; after deploy, https://iris-eval.com and https://iris-eval.com/capabilities.
+
 ## [0.12.0] - 2026-09-07
 
 **Compare.** Iris could tell you whether one output was good. It could not tell you whether *this week* was worse than last week — the question every team actually asks, and the one a single verdict cannot answer.

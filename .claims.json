@@ -10,6 +10,8 @@
       "Eval-Driven Development",
       "Eval Loop"
     ],
+    "dataResidency": "Nothing leaves your machine unless you set IRIS_OTEL_ENDPOINT, which exports traces to the collector you name, or enable the LLM judge with your own key.",
+    "discoverySentence": "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, or when you POST a trace to its HTTP API.",
     "npmPackage": "@iris-eval/mcp-server",
     "publicRepoUrl": "https://github.com/iris-eval/mcp-server",
     "securityEmail": "security@iris-eval.com",
@@ -4157,8 +4159,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-07T20:46:58.745Z",
-  "generatedFromCommit": "9e5c736",
+  "generatedAt": "2026-09-08T03:04:57.376Z",
+  "generatedFromCommit": "ec28195",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4230,7 +4232,7 @@
     ]
   },
   "proof": {
-    "commit": "9e5c736",
+    "commit": "ec28195",
     "composite": {
       "compositeVersion": "a4e0e6d77d07",
       "corpusVersion": "795a0dced3cd",
@@ -5587,7 +5589,7 @@
         "split": "dev",
         "variant": "per-output"
       },
-      "version": "0.12.0"
+      "version": "0.12.1"
     },
     "corpusVersion": "795a0dced3cd",
     "custom": {
@@ -6214,7 +6216,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-07T20:46:21.603Z",
+    "generatedAt": "2026-09-08T03:02:15.520Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7365,7 +7367,7 @@
         "transcripts": 24
       },
       "transcriptsVersion": "f26dc9fc1f64",
-      "version": "0.12.0"
+      "version": "0.12.1"
     },
     "transforms": {
       "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
@@ -7902,12 +7904,12 @@
         }
       ]
     },
-    "version": "0.12.0"
+    "version": "0.12.1"
   },
   "release": {
     "currentReleaseDate": "2026-09-07",
-    "currentReleaseHeadline": "Compare",
-    "currentReleaseVersion": "0.12.0",
+    "currentReleaseHeadline": "Truth patch 3",
+    "currentReleaseVersion": "0.12.1",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -7950,7 +7952,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2502,
+    "totalCombined": 2506,
     "vitestDashboard": {
       "failed": 0,
       "passed": 185,
@@ -7958,15 +7960,15 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2303,
-      "total": 2303
+      "passed": 2307,
+      "total": 2307
     }
   },
   "version": {
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.12.0",
+    "mcpServer": "0.12.1",
     "published": {
       "initPackage": false,
       "langchainPackage": false,

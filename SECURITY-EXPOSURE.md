@@ -131,7 +131,7 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Severity:** medium
 - **Package:** `hono`
 - **Vulnerable:** 4.12.18 installed — fixed via Dependabot #188 (→ 4.12.23)
-- **Load-graph reachable:** **No** (same evidence as GHSA-xrhx-7g5j-rcj5). iris's source has zero uses of Hono's cookie helpers (`setCookie`/`getCookie`/`deleteCookie`); dashboard auth is a bearer token in the `Authorization` header, no cookies are set anywhere in iris's server code.
+- **Load-graph reachable:** **No** (same evidence as GHSA-xrhx-7g5j-rcj5). iris's source has zero uses of Hono's cookie helpers (`setCookie`/`getCookie`/`deleteCookie`); dashboard API auth is a bearer token in the `Authorization` header, and the one cookie iris sets — the `iris_session` HttpOnly, SameSite=Lax browser session cookie in `src/dashboard/session-auth.ts` — is written as a raw `Set-Cookie` header by Express, never through Hono. *(Corrected 2026-09-07: this line said no cookies are set anywhere; that stopped being true when the dashboard sign-in shipped in v0.6.0.)*
 - **Decision:** **Patch** — Dependabot #188; `not_used` analysis on record as above.
 - **Assessed:** 2026-06-09 against iris commit `1d14cfc`.
 

@@ -2,7 +2,7 @@
 
 Define your own evaluation criteria. Iris ships with 20 built-in rules across completeness, relevance, safety, and cost. Custom rules let you enforce domain-specific requirements — regulatory compliance, output format constraints, brand guidelines, budget limits — evaluated with the same weighted scoring engine.
 
-**How it works:** Pass a `custom_rules` array to `evaluate_output` with `eval_type: "custom"`. Each rule runs against the output, produces a score between 0 and 1, and the engine computes a weighted average. The evaluation passes when the score meets the configured threshold (default: `0.7`) and no critical rule failed — rules deployed with severity `high`/`critical` hard-fail the evaluation when they fail (inline `custom_rules` carry no severity and never hard-fail). A critical rule that SKIPPED — missing context, a broken definition, or a regex killed at the sandbox budget — has not judged the output and does not veto; every such rule is named in `critical_skipped`. A gate that must fail closed treats a non-empty `critical_skipped` as unknown, not clean, and may treat any `budgetExceeded` skip in `rule_results` the same way.
+**How it works:** Pass a `custom_rules` array to `evaluate_output` with `eval_type: "custom"`. Each rule runs against the output and produces a score between 0 and 1; the engine reports their weighted average as `score`. The verdict (`passed`) is composed by kind, never by that score: rules deployed with severity `high`/`critical` gate the evaluation when they fail (inline `custom_rules` carry no severity and advise), and the rest of the verdict is decided as the API reference describes under "Scoring and the verdict". A critical rule that SKIPPED — missing context, a broken definition, or a regex killed at the sandbox budget — has not judged the output and does not veto; every such rule is named in `critical_skipped`. A gate that must fail closed treats a non-empty `critical_skipped` as unknown, not clean, and may treat any `budgetExceeded` skip in `rule_results` the same way.
 
 ---
 
@@ -376,7 +376,7 @@ Final score: `(2.0 + 0.6 + 1.125) / (2 + 1 + 1.5)` = `3.725 / 4.5` = **0.828**
 
 ### Pass/Fail Threshold
 
-An evaluation passes when the score is `>= threshold`. The default threshold is `0.7`. Configure it at server initialization:
+`eval.defaultThreshold` (default `0.7`) governs only the legacy `score` gradient; since 0.10.0 it does not decide `passed` (see the API reference, "Scoring and the verdict"). Configure it at server initialization:
 
 ```typescript
 const evalEngine = new EvalEngine(0.85); // stricter threshold

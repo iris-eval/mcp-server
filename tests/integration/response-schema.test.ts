@@ -1,7 +1,7 @@
 /*
  * The agent-native contract, driven over a real in-memory transport.
  *
- * Nine of nine tools advertise an output schema; every success carries
+ * Every registered tool advertises an output schema; every success carries
  * structuredContent that deep-equals the parsed text; every resource_link
  * a response emits reads back through resources/read; the instructions
  * are present, true to the registrations, and under the ceiling; the

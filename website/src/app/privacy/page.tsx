@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DATA_RESIDENCY } from "@/lib/claims";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { OG_IMAGE_URL } from "@/lib/og";
@@ -53,7 +54,7 @@ export default function Privacy(): React.ReactElement {
             </ul>
             <h3 className="mb-2 mt-4 text-[16px] font-semibold text-text-primary">Self-hosted Iris software</h3>
             <ul className="list-disc space-y-2 pl-6">
-              <li><strong>All data stays on your machine.</strong> The self-hosted version stores traces, evaluations, and metrics in a local SQLite database. No data is sent to us or any third party.</li>
+              <li><strong>{DATA_RESIDENCY}</strong> The self-hosted version stores traces, evaluations, and metrics in a local SQLite database. No data is sent to us or any third party by default; the OpenTelemetry exporter, when you configure it, sends traces to the collector you name.</li>
               <li>We do not collect telemetry, usage data, or analytics from the self-hosted software.</li>
             </ul>
           </section>

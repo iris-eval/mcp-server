@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DATA_RESIDENCY } from "@/lib/claims";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { Nav } from "@/components/nav";
@@ -174,7 +175,7 @@ export default function CompareIndex() {
             </li>
             <li>
               <span className="font-medium text-text-primary">Self-hosted</span>{" "}
-              — Your data stays on your machine. Free forever for the open-source core.
+              — {DATA_RESIDENCY} Free forever for the open-source core.
             </li>
           </ul>
         </div>

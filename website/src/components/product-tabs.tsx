@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RULE_COUNT_BUILT_IN, PII_PATTERN_COUNT, INJECTION_PATTERN_COUNT, HALLUCINATION_MARKER_COUNT } from "@/lib/claims";
+import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, PII_PATTERN_COUNT, INJECTION_PATTERN_COUNT, HALLUCINATION_MARKER_COUNT } from "@/lib/claims";
 import * as Tabs from "@radix-ui/react-tabs";
 
 const EVAL_ROWS = [
@@ -44,7 +44,7 @@ export function ProductTabs(): React.ReactElement {
             Product
           </p>
           <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
-            Nine tools.{" "}
+            {MCP_TOOL_COUNT} tools.{" "}
             <span className="text-gradient">One quality standard.</span>
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">

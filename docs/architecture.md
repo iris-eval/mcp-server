@@ -8,7 +8,7 @@ This document describes the internal architecture of Iris, the MCP-native agent 
 
 Iris is an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that provides observability and evaluation capabilities for AI agents. It runs as a standalone process that any MCP-compatible client (Claude Desktop, an IDE plugin, a custom agent framework) can connect to over **stdio** or **HTTP**.
 
-Iris exposes nine MCP tools — full rule + trace lifecycle + LLM-as-judge + semantic citation verification: `log_trace`, `evaluate_output`, `get_traces`, `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge`, `verify_citations`. It also exposes MCP resources (`dashboard-summary`, `trace-detail`), a best-effort OpenTelemetry trace exporter (OTLP/HTTP JSON to `IRIS_OTEL_ENDPOINT` when configured), and an optional REST API that powers a web dashboard.
+Iris exposes twelve MCP tools — trace and rule lifecycle, comparison across runs, LLM-as-judge and semantic citation verification: `log_trace`, `evaluate_output`, `get_traces`, `list_rules`, `deploy_rule`, `delete_rule`, `delete_trace`, `evaluate_with_llm_judge`, `verify_citations`, `compare_runs`, `compare_traces`, `evaluate_runs`. It also exposes MCP resources (`iris://capabilities`, `iris://proof`, `iris://dashboard/summary`, `iris://traces/{trace_id}`, `iris://evaluations/{id}`), a best-effort OpenTelemetry trace exporter (OTLP/HTTP JSON to `IRIS_OTEL_ENDPOINT` when configured), and an optional REST API that powers a web dashboard.
 
 ```
 +-------------------+        MCP (stdio or HTTP)        +-------------------+
@@ -131,7 +131,7 @@ src/
     delete-rule.ts      delete_rule: remove a custom rule
     evaluate-with-llm-judge.ts  evaluate_with_llm_judge: semantic scoring (BYOK, cost-capped)
     verify-citations.ts verify_citations: resolve citations behind an SSRF guard + judge support
-    index.ts            Registers all nine tools on the MCP server
+    index.ts            Registers all twelve tools on the MCP server
   eval/
     engine.ts           EvalEngine class: orchestrates rules, computes scores
     rules/

@@ -30,7 +30,8 @@ const root = resolve(here, '..', '..');
 
 /*
  * The two skill files are one rendered source. skills/iris-eval/SKILL.md is
- * what the npm package ships; claude-plugin/skills/agent-eval/SKILL.md is
+ * the copy in the repository's skills/ directory (the npm package ships dist,
+ * LICENSE, README.md and server.json only); claude-plugin/skills/agent-eval/SKILL.md is
  * what the Claude Code plugin marketplace serves, and the plugin manifest
  * cannot reference a file outside claude-plugin/. They were hand-mirrored
  * with a comment saying "edit both together", and drifted: one carried three
@@ -67,6 +68,11 @@ export const TARGETS = [
   { template: 'docs/evaluators.template.md', output: 'docs/evaluators.md' },
   { template: 'website/llms-full.template.txt', output: 'website/public/llms-full.txt' },
   { template: '.claude-plugin/marketplace.template.json', output: '.claude-plugin/marketplace.json' },
+  // The manifest the marketplace actually serves (the index above points
+  // installs at ./claude-plugin). It carried "(9 tools)" by hand for a day
+  // after twelve shipped, and the scanner could not see it because the
+  // number had no "MCP" beside it. Rendered now, like the index.
+  { template: 'claude-plugin/.claude-plugin/plugin.template.json', output: 'claude-plugin/.claude-plugin/plugin.json' },
   {
     template: 'docs/launch/directory-listing-template.template.md',
     output: 'docs/launch/directory-listing-template.md',
@@ -256,6 +262,8 @@ export function slotsFrom(claims) {
     repoUrl: claims.brand.publicRepoUrl,
     websiteUrl: claims.brand.websiteUrl,
     securityEmail: claims.brand.securityEmail,
+    discoverySentence: claims.brand.discoverySentence,
+    dataResidency: claims.brand.dataResidency,
     disclosureAckHours: claims.security.disclosure.acknowledgeWithinHours,
     disclosureResponseBusinessDays: claims.security.disclosure.detailedResponseWithinBusinessDays,
     proofSummary: proofSummary(claims),

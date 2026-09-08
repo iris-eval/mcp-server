@@ -203,6 +203,8 @@
       "required": [
         "categoryName",
         "coinedTerms",
+        "dataResidency",
+        "discoverySentence",
         "npmPackage",
         "publicRepoUrl",
         "securityEmail",
@@ -241,6 +243,14 @@
         "websiteUrl": {
           "type": "string",
           "format": "uri"
+        },
+        "discoverySentence": {
+          "type": "string",
+          "minLength": 40
+        },
+        "dataResidency": {
+          "type": "string",
+          "minLength": 40
         }
       },
       "additionalProperties": false

@@ -4,7 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
-import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
+import { DISCOVERY_SENTENCE, RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -63,7 +63,7 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: sanitizeText(
-              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. Arize AI is an enterprise ML observability platform with Phoenix (open-source) for tracing and Arize AX (cloud) for advanced monitoring with embedding drift detection. Iris focuses on zero-code simplicity with MIT licensing, while Arize offers comprehensive ML monitoring across traditional and LLM applications."
+              `Iris is an MCP-native agent eval tool that needs no SDK. ${DISCOVERY_SENTENCE} Arize AI is an enterprise ML observability platform with Phoenix (open-source) for tracing and Arize AX (cloud) for advanced monitoring with embedding drift detection. Iris focuses on zero-code simplicity with MIT licensing, while Arize offers comprehensive ML monitoring across traditional and LLM applications.`
             ),
           },
         },

@@ -78,6 +78,37 @@ const PATTERNS = [
     expected: c => [c.mcpTools?.count],
     fix: 'Import MCP_TOOL_COUNT from ~/lib/claims',
   },
+  /*
+   * THE SAME CLAIM, SPELLED OUT — or with the noun's qualifier missing.
+   *
+   * The pattern above needs a DIGIT beside the literal word "MCP". On
+   * 2026-09-07 the README said "nine tools" twice, the architecture guide
+   * "nine MCP tools", the site's product section "Nine tools.", a learn page
+   * "nine MCP tools" and the plugin manifest "(9 tools)" — twelve had
+   * shipped — and every one of them passed, because "nine" is not a digit
+   * and "(9 tools)" has no MCP. A guard is evidence only for the exact
+   * proposition it tests; this one tests the proposition a reader actually
+   * meets: a small number, in digits or in words, next to "tools".
+   *
+   * Qualified sub-counts ("three core tools", "two distinct tools") do not
+   * match — a word sits between the number and the noun — and that is
+   * correct: they count something else. A bare count of some OTHER agent's
+   * tools in live prose therefore takes a qualifier; if it must stay bare,
+   * it takes an allow-list entry with the reason (the confident-ai row).
+   */
+  {
+    name: 'tool-count-in-words',
+    re: /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|\d{1,2})\s+(?:MCP\s+)?tools\b(?!\/)/gi,
+    toValue: raw => WORD_NUMBERS[raw.toLowerCase()] ?? Number(raw),
+    skipComments: true, // "One tools/list entry" in a code comment is not a count
+    // Dated artifacts keep their period voice (the same carve-out as
+    // retired-positioning): a v0.4 release post that says "9 tools" is a
+    // record of v0.4, and the posts that are still read carry a dated
+    // editor's note at the top instead of a rewrite.
+    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    expected: c => [c.mcpTools?.count],
+    fix: 'Import MCP_TOOL_COUNT from ~/lib/claims (code), or state the current count from .claims.json mcpTools.count (prose) — in digits or words, it must be the shipped one',
+  },
   {
     name: 'builtin-rule-count',
     // "deterministic rules" is an anchor too: a compare page said "13
@@ -383,6 +414,13 @@ const MEASUREMENT_LINK_RE = /\/proof\b|docs\/proof\.md|proof\/results\.json/;
 
 const CODE_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
+// A count spelled as a word, for patterns whose capture may be either.
+const WORD_NUMBERS = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20,
+};
+
 // The truthful spellings of a shipped version in prose: "0.5.0" and "0.5".
 function versionForms(v) {
   if (typeof v !== 'string') return [];
@@ -452,7 +490,12 @@ function matchFlags(pattern, m, relPath, claims) {
     return truthful.length === 0 || !truthful.includes(captured);
   }
   if (strictBecauseCode || !pattern.expected || !claims) return true;
-  const captured = Number(m.slice(1).find(g => g !== undefined));
+  const rawCaptured = m.slice(1).find(g => g !== undefined);
+  // A pattern may capture a word ("nine") as well as a digit; `toValue` turns
+  // either into the number the truthbase is compared against. (Not named
+  // valueOf: every object already has one, and the first draft of this hook
+  // compared every count on every surface against the pattern object.)
+  const captured = pattern.toValue ? pattern.toValue(rawCaptured) : Number(rawCaptured);
   const truthful = pattern.expected(claims).filter(v => typeof v === 'number');
   return truthful.length === 0 || !truthful.includes(captured);
 }

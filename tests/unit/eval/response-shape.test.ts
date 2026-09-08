@@ -91,11 +91,11 @@ describe('response shape — every built-in result carries its receipt', () => {
     // The whole-evaluation receipt: verdict with its basis, coverage by question, provenance.
     expect(r.verdict).toBeDefined();
     expect(r.verdict!.passed).toBe(r.passed);
-    // Every basis the composer can reach. score_below_threshold belongs to
-    // the legacy composer and stays in the list while that path is selectable.
+    // Every basis the composer can reach. score_below_threshold left the
+    // union in 0.12.0 with the legacy composer; a list that still allowed it
+    // would let the basis come back without a test noticing.
     expect([
       'clean',
-      'score_below_threshold',
       'detector_veto',
       'policy_gate',
       'no_rules',

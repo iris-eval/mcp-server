@@ -203,15 +203,24 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | `config` | `Record<string, unknown>` | Yes | -- | Rule-specific configuration (see [Custom Rules](#custom-rules)) |
 | `weight` | `number` | No | `1` | Weight in the final score calculation |
 
-#### Scoring
+#### Scoring and the verdict
 
-The final score is a weighted average of all rule scores:
+`score` is the weighted average of the rule scores that ran — a quality gradient, **never consulted for `passed`**:
 
 ```
 score = sum(rule_score * rule_weight) / sum(rule_weight)
 ```
 
-An evaluation passes when the score meets or exceeds the configured threshold (default: `0.7`) **and no critical rule failed**. The threshold is set via `config.eval.defaultThreshold` at server initialization.
+Since 0.10.0 the verdict is composed by the *kind* of claim each rule makes, in ordered layers; `verdict.basis` names the layer that decided and `verdict.by` the rules:
+
+1. `no_rules` — nothing could be judged: `verdict.state: "unknown"`, `passed: false`.
+2. `policy_gate` — a policy the deployment configured failed: a threshold **you** set (every count evidence carries `thresholdSource`, and a shipped default advises rather than gates unless `eval.defaultsGate` is `true`), a custom rule deployed at severity `high` or `critical`, or a judgment you asked for.
+3. `detector_veto` — a critical detector fired (`no_pii`, `no_injection_patterns`, `no_blocklist_words` by default; `eval.criticalRules` / `eval.nonCriticalRules` change the set).
+4. `critical_unknown` — a critical check was asked and could not answer (a regex killed at the sandbox budget, a broken definition): `unknown`, `passed: false`, unless `eval.onCriticalSkipped` is `"pass"` or `"fail"`.
+5. `required_evidence_missing` — `eval.requiredEvidence` named an input no evaluated rule saw: `unknown`.
+6. `risk_over_loss` or `clean` — every remaining detector and inference with a published error rate combines into one probability that the output is bad (`verdict.risk.pBad`, with a credible interval), weighed against the loss ratio the deployment states: the verdict fails when `pBad > 1 / (1 + eval.falsePassCost)` (default 1, so the cut is 0.5). `verdict.confidence` is `"marginal"` when the interval straddles that cut.
+
+`eval.defaultThreshold` governs only the legacy `score` gradient. The published error rates, the composer's arithmetic and its measured accuracy on a held-out corpus are on https://iris-eval.com/proof.
 
 **Critical rules hard-fail.** `score` is a quality gradient; `passed` is the verdict. A failing (non-skipped) critical rule forces `passed: false` regardless of the weighted score, and the response lists the culprits in `critical_failures`. The critical rules are `no_pii`, `no_injection_patterns`, and `no_blocklist_words`, plus any deployed custom rule with severity `high` or `critical` — a leaked SSN cannot be averaged away by the other rules passing.
 
@@ -1402,7 +1411,7 @@ A call counts as FAILED when its `error` is a non-empty string, or its `output` 
 
 The output ACKNOWLEDGES a failure when it contains any failure-acknowledging phrase (`failed`, `could not`, `no matches`, `does not exist`, `threw`, …) as a case-insensitive substring. Bare negations are deliberately excluded: "nothing else references it" is a claim about a search, not an admission that it failed.
 
-Both rules are **non-critical**: they degrade the weighted score and are listed in `suggestions`, but they do not veto `passed`. Read `rule_results` when you need the trajectory verdict on its own.
+Both rules are **non-critical** at the shipped defaults, so neither can veto `passed` on its own; their fires enter the risk layer with their published precision (https://iris-eval.com/proof), and a fire can decide the verdict through `risk_over_loss` when the estimated probability clears the deployment's loss cut. Read `rule_results` when you need the trajectory verdict on its own.
 
 ---
 
