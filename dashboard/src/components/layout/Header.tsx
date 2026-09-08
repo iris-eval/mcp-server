@@ -11,7 +11,11 @@
  * Theme toggle moved from header into AccountMenu per R2.5 spec.
  */
 import { useLocation } from 'react-router';
-import { Tooltip } from '../shared/Tooltip';
+import { useHealth, useCapabilities } from '../../api/hooks';
+import { useConnection } from '../../api/connection';
+import { useDocumentVisible } from '../../hooks/useDocumentVisible';
+import { shellStatus } from './shellStatus';
+import { StatusPill, JudgeChip, DemoChip } from './StatusChips';
 import { CommandPaletteTrigger } from '../command/CommandPaletteTrigger';
 import { NotificationsPopover } from './NotificationsPopover';
 import { AccountMenu } from './AccountMenu';
@@ -58,24 +62,6 @@ const styles = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   } as const,
-  statusPill: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 'var(--space-1_5)',
-    padding: '2px var(--space-2)',
-    borderRadius: 'var(--radius-pill)',
-    background: 'rgba(34, 197, 94, 0.12)',
-    color: 'var(--eval-pass)',
-    fontSize: 'var(--text-caption-xs)',
-    fontFamily: 'var(--font-mono)',
-    fontWeight: 600,
-  } as const,
-  statusDot: {
-    width: '6px',
-    height: '6px',
-    borderRadius: '50%',
-    background: 'var(--eval-pass)',
-  } as const,
   rightCluster: {
     display: 'flex',
     alignItems: 'center',
@@ -87,17 +73,32 @@ export function Header() {
   const location = useLocation();
   const meta = resolveRouteMeta(location.pathname);
 
+  /*
+   * The header reads the server, not a constant (D-2). One health poll and
+   * the client's own record of its last answer decide the pill; the judge
+   * chip and the DEMO chip come from the same answers; capabilities is read
+   * once for the judge's enable steps and the retention window.
+   */
+  const health = useHealth();
+  const capabilities = useCapabilities();
+  const connection = useConnection();
+  const visible = useDocumentVisible();
+  const status = shellStatus({
+    connection: connection.state,
+    visible,
+    rateLimitedUntil: health.rateLimitedUntil,
+    health: health.data,
+    error: health.error,
+  });
+
   return (
     <header style={styles.header}>
       <div style={styles.titleBlock}>
         <div style={styles.titleRow}>
           <h1 style={styles.title}>{meta?.title ?? 'Iris'}</h1>
-          <Tooltip content="Auto-refreshing. Cadence varies per view (live tail ~3s, trends ~30s).">
-            <span style={styles.statusPill} aria-label="Auto-refreshing" tabIndex={0}>
-              <span style={styles.statusDot} aria-hidden="true" />
-              live
-            </span>
-          </Tooltip>
+          <StatusPill status={status} />
+          <JudgeChip health={health.data} capabilities={capabilities.data} />
+          {health.data?.mode === 'demo' && <DemoChip />}
         </div>
         {meta?.subtitle && <span style={styles.subtitle}>{meta.subtitle}</span>}
       </div>
@@ -105,7 +106,7 @@ export function Header() {
       <div style={styles.rightCluster}>
         <CommandPaletteTrigger />
         <NotificationsPopover />
-        <AccountMenu />
+        <AccountMenu serverVersion={health.data?.version ?? null} retention={capabilities.data?.retention ?? null} />
       </div>
     </header>
   );

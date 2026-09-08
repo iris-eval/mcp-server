@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The header reads the server, not a constant.** The status pill used to be the word "live" typed into the layout; it could not go red. It now comes from one health poll and the client's own record of its last answer — `live`, `paused` (the tab is in the background, or the server asked the page to slow down), `degraded` (the server's own word when its storage is down), `unreachable`, `signed out` — each with a sentence behind it. A judge chip says whether the LLM judge is on and, when it is off, lists the server's own steps to enable it; a `DEMO` chip appears on a server started with `--demo`; the account menu shows the retention window once, and the running server's version beside the UI's build when the two differ.
+
 ### Fixed
 
 - **The moment detail carries every rule result whole, and the evaluation's verdict, coverage, interpretations and provenance with it.** The server's moments route remapped each rule result to six fields — name, passed, score, message, skipped, skipReason — so the stamp the engine has put on every rule since 0.9.0 (kind, role, evidence, uncertainty, criticality with its source, the question, the classes) never reached the dashboard, and the dashboard's own evaluation type had no field for the verdict, the coverage or the reasons. It now receives the same object the tool returns, and a test holds the dashboard's types to every key the server sends (`tests/dashboard-types-contract.test.ts`).
