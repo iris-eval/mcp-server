@@ -10,6 +10,11 @@
       "name": "iris-eval",
       "source": "./claude-plugin",
       "description": "Stop shipping agents on vibes — agent eval for any MCP workflow. Score output quality, catch PII and prompt injection, verify citations, and enforce cost budgets. {{mcpToolCount}} MCP tools + the iris-eval skill."
+    },
+    {
+      "name": "iris-eval-capture",
+      "source": "./claude-plugin-capture",
+      "description": "Opt-in: record every Claude Code turn into Iris without the model calling a tool — prompt, tool calls and final answer, stored and evaluated locally, with critical spans redacted in the stored evaluation text. Install beside iris-eval or on its own."
     }
   ]
 }

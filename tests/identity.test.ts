@@ -42,7 +42,8 @@ describe('one identifier', () => {
     expect(JSON.parse(read('claude-plugin/.claude-plugin/plugin.json')).name).toBe(PUBLIC_ID);
     const marketplace = JSON.parse(read('.claude-plugin/marketplace.json')) as { name: string; plugins: Array<{ name: string }> };
     expect(marketplace.name).toBe(PUBLIC_ID);
-    expect(marketplace.plugins.map((p) => p.name)).toContain(PUBLIC_ID);
+    expect(marketplace.plugins.map((p) => p.name).sort()).toEqual([PUBLIC_ID, `${PUBLIC_ID}-capture`]);
+    expect(JSON.parse(read('claude-plugin-capture/.claude-plugin/plugin.json')).name).toBe(`${PUBLIC_ID}-capture`);
     expect(frontMatterName(read('skills/iris-eval/SKILL.md'))).toBe(PUBLIC_ID);
     expect(frontMatterName(read('claude-plugin/skills/iris-eval/SKILL.md'))).toBe(PUBLIC_ID);
     expect(read('docker-compose.yml')).toMatch(new RegExp(`^  ${PUBLIC_ID}:`, 'm'));
@@ -56,7 +57,7 @@ describe('one identifier', () => {
     const files = [
       join(root, 'README.md'),
       join(root, '.mcp.json'),
-      ...['docs', 'website/src', 'examples', 'skills', 'claude-plugin', '.claude-plugin'].flatMap((d) => walk(join(root, d))),
+      ...['docs', 'website/src', 'examples', 'skills', 'claude-plugin', 'claude-plugin-capture', '.claude-plugin'].flatMap((d) => walk(join(root, d))),
     ].filter((f) => /\.(md|mdx|json|tsx?|txt|ya?ml|py)$/.test(f) && !/\.template\./.test(f));
     expect(files.length).toBeGreaterThan(40); // the extractor found the surfaces
     const stale = files.filter((f) => /"iris"\s*:/.test(readFileSync(f, 'utf8'))).map(rel);
@@ -69,6 +70,7 @@ describe('one identifier', () => {
       ...readdirSync(join(root, 'docs')).filter((f) => f.endsWith('.md')).map((f) => `docs/${f}`),
       ...walk(join(root, 'website', 'src')).map(rel),
       ...walk(join(root, 'claude-plugin')).map(rel),
+      ...walk(join(root, 'claude-plugin-capture')).map(rel),
       ...walk(join(root, '.claude-plugin')).map(rel),
     ];
     expect(live.length).toBeGreaterThan(20);

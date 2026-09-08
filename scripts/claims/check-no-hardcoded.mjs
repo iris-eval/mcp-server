@@ -34,6 +34,7 @@ const SCAN_DIRS = [
   'packages/langchain',
   'packages/init',
   'claude-plugin',
+  'claude-plugin-capture',
   // The DOT-prefixed one, which is where the real manifests live —
   // plugin.json and marketplace.json, the public plugin description Claude
   // Code users read. 'claude-plugin' above is the skills payload directory;

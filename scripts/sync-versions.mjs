@@ -58,6 +58,10 @@ const FILES = [
     description: "Claude Code plugin manifest the marketplace serves",
   },
   {
+    path: "claude-plugin-capture/.claude-plugin/plugin.json",
+    description: "Claude Code capture plugin manifest (its version pins the package the Stop hook installs)",
+  },
+  {
     path: "package-lock.json",
     description: "npm lockfile (root + packages[\"\"] version metadata only — never runs npm install; surgical write avoids the rolldown lockfile trap)",
   },

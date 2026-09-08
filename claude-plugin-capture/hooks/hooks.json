@@ -1,0 +1,14 @@
+{
+  "description": "Iris capture: the prompt, every tool call and the final answer of each turn, stored and evaluated locally by iris-eval ingest. No stdout — a Stop hook's stdout becomes model context.",
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt.mjs\"", "timeout": 5 } ] }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/tool.mjs\"", "timeout": 5 } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop.mjs\"", "timeout": 10 } ] }
+    ]
+  }
+}

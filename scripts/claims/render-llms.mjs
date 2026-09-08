@@ -73,6 +73,9 @@ export const TARGETS = [
   // after twelve shipped, and the scanner could not see it because the
   // number had no "MCP" beside it. Rendered now, like the index.
   { template: 'claude-plugin/.claude-plugin/plugin.template.json', output: 'claude-plugin/.claude-plugin/plugin.json' },
+  // The capture plugin's manifest: its version pins the package its Stop
+  // hook installs, so it renders from the truthbase like the others.
+  { template: 'claude-plugin-capture/.claude-plugin/plugin.template.json', output: 'claude-plugin-capture/.claude-plugin/plugin.json' },
   {
     template: 'docs/launch/directory-listing-template.template.md',
     output: 'docs/launch/directory-listing-template.md',
