@@ -88,11 +88,10 @@ describe('discovery manifests name only environment variables the server reads',
     expect(unknown).toEqual([]);
   });
 
-  it('smithery.yaml does not describe IRIS_PORT as the dashboard port', () => {
+  it('smithery.yaml offers no port field: its start command is stdio, where IRIS_PORT is never read (A6-7)', () => {
     const y = readFileSync(join(root, 'smithery.yaml'), 'utf8');
-    const portBlock = y.slice(y.indexOf('irisPort:'), y.indexOf('commandFunction:'));
-    expect(portBlock).not.toMatch(/transport or dashboard/i);
-    expect(portBlock).toMatch(/IRIS_DASHBOARD_PORT/);
-    expect(portBlock).toMatch(/3000/);
+    expect(y).toMatch(/type:\s*stdio/);
+    expect(y).not.toMatch(/irisPort/);
+    expect(y).not.toMatch(/IRIS_PORT\b/);
   });
 });

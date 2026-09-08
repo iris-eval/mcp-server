@@ -57,6 +57,8 @@ export interface Capabilities {
     httpRateLimitPerMin: number;
     citationsPerCall: number;
   };
+  /** What the sweep deletes and how often; 0 days disables it. A data-loss surprise unless said here. */
+  retention: { days: number; sweepIntervalHours: number };
   tools: readonly string[];
   resources: readonly string[];
   prompts: readonly string[];
@@ -116,6 +118,7 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
       httpRateLimitPerMin: config.security.rateLimit.mcp,
       citationsPerCall: MAX_CITATIONS_PER_CALL,
     },
+    retention: { days: config.retention.days, sweepIntervalHours: config.retention.sweepIntervalHours },
     tools: TOOL_NAMES,
     resources: RESOURCE_URIS,
     prompts: [EVALUATE_MY_AGENT_PROMPT],

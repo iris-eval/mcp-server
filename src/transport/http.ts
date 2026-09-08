@@ -8,6 +8,8 @@ import type { Logger } from '../utils/logger.js';
 import { createAuthMiddleware } from '../middleware/auth.js';
 import { createErrorHandler } from '../middleware/error-handler.js';
 import { createMcpRateLimiter } from '../middleware/rate-limit.js';
+import { createRebindingGuard } from '../middleware/rebinding-guard.js';
+import { assertAuthenticatedBind } from '../utils/bind-policy.js';
 
 export interface HttpTransportResult {
   transport: StreamableHTTPServerTransport;
@@ -19,6 +21,20 @@ export async function createHttpTransport(
   config: IrisConfig,
   logger: Logger,
 ): Promise<HttpTransportResult> {
+  /*
+   * Refuse, don't warn (A6-7): a bind beyond loopback with no API key is
+   * refused here — before the app is built, before any port is taken —
+   * unless the operator set security.allowUnauthenticated on purpose. The
+   * CLI pre-flight (validateBindPolicy) says the same sentence earlier;
+   * this is the defence for embedders that call this function directly.
+   */
+  assertAuthenticatedBind({
+    surface: 'HTTP transport',
+    host: config.transport.host,
+    apiKey: config.security.apiKey,
+    allowUnauthenticated: config.security.allowUnauthenticated,
+  });
+
   const app = express();
 
   // Security headers — API-only server, restrictive CSP
@@ -30,6 +46,25 @@ export async function createHttpTransport(
       },
     },
   }));
+
+  /*
+   * DNS-rebinding guard BEFORE the body parser (A6-7). The SDK transport
+   * validates Origin and Host too (below), but it runs inside the /mcp
+   * handler — after express.json() has read and parsed up to the request
+   * size limit from a page the server is about to refuse. The rejection is
+   * the cheapest response and it must come first; the same middleware the
+   * dashboard uses, built from the port actually bound (see the resolver
+   * note in rebinding-guard.ts — the configured port is 0 for tests and
+   * embedders).
+   */
+  let boundPort: number | undefined;
+  app.use(
+    createRebindingGuard({
+      port: () => boundPort ?? config.transport.port,
+      host: config.transport.host,
+      allowedOrigins: config.security.allowedOrigins,
+    }),
+  );
 
   // Body parser with size limit
   app.use(express.json({ limit: config.security.requestSizeLimit }));
@@ -109,6 +144,7 @@ export async function createHttpTransport(
   });
   const address = httpServer.address();
   const port = typeof address === 'object' && address ? address.port : config.transport.port;
+  boundPort = port;
 
   const loopbackOrigins = [
     `http://127.0.0.1:${port}`,

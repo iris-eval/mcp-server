@@ -77,8 +77,10 @@ USER iris
 # every published port into a connection refused. The exposure control here
 # is the container boundary plus whatever the operator publishes with `-p`,
 # not the in-container bind address. The DNS-rebinding guard still applies,
-# and the startup warning for binding beyond loopback without an API key
-# still fires — which is exactly what an operator should see.
+# and since 0.13.0 a bind beyond loopback with no API key is REFUSED at boot
+# (src/utils/bind-policy.ts): a bare `docker run` of this image stops with
+# one sentence naming IRIS_API_KEY. Run it with `-e IRIS_API_KEY=...`, or
+# `-e IRIS_ALLOW_UNAUTHENTICATED=1` to run open on purpose.
 ENV IRIS_TRANSPORT=http \
     IRIS_PORT=3000 \
     IRIS_HOST=0.0.0.0 \

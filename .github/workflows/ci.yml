@@ -222,7 +222,23 @@ jobs:
         # reachable, since loopback inside a container is not.
         run: |
           set -euo pipefail
-          docker run -d --name iris-ci -p 3000:3000 -p 6920:6920 iris-eval/mcp-server:ci
+          echo "--- bare run must REFUSE: the image binds 0.0.0.0 and carries no key (A6-7) ---"
+          # The image's own ENV puts both servers on 0.0.0.0; with no
+          # IRIS_API_KEY the process must stop at boot with one sentence
+          # naming the variable, not serve. `|| true` captures the exit
+          # code instead of tripping -e; the assertion is the next line.
+          bare_rc=0
+          bare_log=$(docker run --rm iris-eval/mcp-server:ci 2>&1) || bare_rc=$?
+          echo "$bare_log" | tail -3
+          if [ "$bare_rc" -eq 0 ]; then
+            echo "::error::a bare docker run served without a key — the bind policy did not refuse"
+            exit 1
+          fi
+          echo "$bare_log" | grep -q "IRIS_API_KEY" || { echo "::error::the refusal does not name IRIS_API_KEY"; exit 1; }
+          echo "$bare_log" | grep -q "IRIS_ALLOW_UNAUTHENTICATED" || { echo "::error::the refusal does not name the override"; exit 1; }
+          echo "bare run refused with exit $bare_rc, naming both variables"
+          echo "--- keyed run must SERVE: both documented ports through the published mapping ---"
+          docker run -d --name iris-ci -p 3000:3000 -p 6920:6920 -e IRIS_API_KEY=ci-smoke-key iris-eval/mcp-server:ci
           ready=""
           for _ in $(seq 1 30); do
             if curl -fsS -o /dev/null "http://127.0.0.1:6920/api/v1/health"; then ready=1; break; fi

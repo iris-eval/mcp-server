@@ -137,6 +137,12 @@ function loadEnvVars(): Partial<IrisConfig> {
   if (process.env.IRIS_API_KEY) {
     config.security = { ...(config.security as object), apiKey: process.env.IRIS_API_KEY };
   }
+  if (process.env.IRIS_ALLOW_UNAUTHENTICATED) {
+    config.security = {
+      ...(config.security as object),
+      allowUnauthenticated: ['1', 'true', 'yes', 'on'].includes(process.env.IRIS_ALLOW_UNAUTHENTICATED.trim().toLowerCase()),
+    };
+  }
   if (process.env.IRIS_ALLOWED_ORIGINS) {
     config.security = {
       ...(config.security as object),

@@ -29,6 +29,7 @@ import { registerRuleRoutes } from './routes/rules.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { createSessionAuth } from './session-auth.js';
+import { assertAuthenticatedBind } from '../utils/bind-policy.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
@@ -52,6 +53,20 @@ export function createDashboardServer(
   logger: Logger,
   options?: DashboardServerOptions,
 ): DashboardServer {
+  /*
+   * Refuse, don't warn (A6-7): a bind beyond loopback with no API key is
+   * refused here — before the app is built — unless the operator set
+   * security.allowUnauthenticated on purpose. The CLI pre-flight
+   * (validateBindPolicy) says the same sentence earlier; this is the
+   * defence for embedders that call this factory directly.
+   */
+  assertAuthenticatedBind({
+    surface: 'dashboard',
+    host: config.dashboard.host,
+    apiKey: config.security.apiKey,
+    allowUnauthenticated: config.security.allowUnauthenticated,
+  });
+
   const app = express();
 
   // Security headers
@@ -72,14 +87,14 @@ export function createDashboardServer(
     },
   }));
 
-  // Body parser with size limit
-  app.use(express.json({ limit: config.security.requestSizeLimit }));
-
   /*
-   * DNS-rebinding guard BEFORE anything that reads or writes state. CORS
-   * runs after it and only decorates responses the guard already allowed —
-   * on its own CORS cannot stop a rebound page, because the write executes
-   * before the browser withholds the reply.
+   * DNS-rebinding guard BEFORE anything that reads or writes state —
+   * including the body parser (A6-7: until 0.13.0 express.json() was
+   * mounted first, so a request from a rejected Origin still had up to the
+   * size limit read and parsed before the 403). CORS runs after it and
+   * only decorates responses the guard already allowed — on its own CORS
+   * cannot stop a rebound page, because the write executes before the
+   * browser withholds the reply.
    */
   let boundPort: number | undefined;
   app.use(
@@ -89,6 +104,9 @@ export function createDashboardServer(
       allowedOrigins: config.security.allowedOrigins,
     }),
   );
+
+  // Body parser with size limit
+  app.use(express.json({ limit: config.security.requestSizeLimit }));
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));

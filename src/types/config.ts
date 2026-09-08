@@ -131,6 +131,11 @@ export interface IrisConfig {
   };
   security: {
     apiKey?: string;
+    /**
+     * Run a non-loopback bind with no API key on purpose (IRIS_ALLOW_UNAUTHENTICATED=1).
+     * Without it such a bind is refused at startup — see src/utils/bind-policy.ts.
+     */
+    allowUnauthenticated: boolean;
     allowedOrigins: string[];
     rateLimit: {
       api: number;

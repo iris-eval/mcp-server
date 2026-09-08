@@ -26,10 +26,6 @@ startCommand:
         type: boolean
         description: Enable the built-in web dashboard.
         default: false
-      irisPort:
-        type: number
-        description: Port for the MCP HTTP transport (IRIS_PORT). The dashboard listens on IRIS_DASHBOARD_PORT, 6920 by default.
-        default: 3000
   commandFunction:
     |-
     (config) => ({
@@ -39,8 +35,7 @@ startCommand:
         IRIS_API_KEY: config.irisApiKey || undefined,
         IRIS_DB_PATH: config.irisDbPath || undefined,
         IRIS_LOG_LEVEL: config.irisLogLevel || undefined,
-        IRIS_DASHBOARD: config.irisDashboard ? 'true' : undefined,
-        IRIS_PORT: config.irisPort ? String(config.irisPort) : undefined
+        IRIS_DASHBOARD: config.irisDashboard ? 'true' : undefined
       }
     })
   exampleConfig:
