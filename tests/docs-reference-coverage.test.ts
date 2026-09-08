@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { TOOL_NAMES } from '../src/tools/index.js';
+import { logTraceInputShape } from '../src/tools/log-trace.js';
 
 /*
  * The API reference must cover what the server actually registers.
@@ -40,6 +41,16 @@ const ROUTES_THAT_MUST_BE_DOCUMENTED = [
 ];
 
 describe('the API reference covers what ships', () => {
+  it('the log_trace parameter table names every argument the tool accepts', () => {
+    // The table lacked tools, run and case_key for two releases: a heading
+    // check cannot see a missing row. Read the shape, not a list.
+    const start = reference.indexOf('### log_trace');
+    const end = reference.indexOf('\n### ', start + 1);
+    const section = reference.slice(start, end === -1 ? undefined : end);
+    const missing = Object.keys(logTraceInputShape).filter((key) => !section.includes(`| \`${key}\` |`));
+    expect(missing).toEqual([]);
+  });
+
   it.each([...TOOL_NAMES])('documents the tool %s under its own heading', (name) => {
     expect(reference, `docs/api-reference.md has no "### ${name}" section`).toContain(`### ${name}`);
   });

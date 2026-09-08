@@ -207,7 +207,7 @@ Every built-in rule has a published precision, recall and F1 with 95% confidence
 
 Iris registers twelve tools that any MCP-compatible agent can invoke — trace and rule lifecycle, comparison across runs, LLM-as-judge and semantic citation verification:
 
-- **`log_trace`** — Log an agent execution with spans, tool calls, token usage, and cost
+- **`log_trace`** — Log an agent execution with spans, tool calls, token usage, and cost; pass `evaluate: true` to score it in the same call
 - **`evaluate_output`** — Score output quality against completeness, relevance, safety, and cost rules (heuristic, deterministic, free)
 - **`get_traces`** — Query stored traces with filtering, pagination, and time-range support
 - **`list_rules`** — Enumerate deployed custom eval rules (read-only)

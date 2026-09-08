@@ -77,8 +77,13 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown |
 | `cost_usd` | `number` | No | -- | Total cost in USD |
 | `metadata` | `Record<string, unknown>` | No | -- | Arbitrary metadata key-value pairs |
+| `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output` |
+| `run` | `string` | No | -- | The batch this execution belongs to, for `compare_runs`; never inferred |
+| `case_key` | `string` | No | derived from `input` | What makes this the same question as a trace in another run |
 | `spans` | `Span[]` | No | -- | Detailed execution spans |
 | `timestamp` | `string` | No | Current time | Trace timestamp (ISO 8601) |
+| `evaluate` | `boolean` | No | `false` | Score the stored trace in the same call, under exactly the rules `evaluate_output` runs; requires `output`. The response gains an `evaluation` — the same object `evaluate_output` returns — and links it |
+| `eval_type` | `string` | No | `"all"` | With `evaluate: true`, the bundle to run (`completeness` \| `relevance` \| `safety` \| `cost` \| `custom` \| `all`) |
 
 #### Nested Types
 
