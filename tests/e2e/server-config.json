@@ -1,0 +1,7 @@
+{
+  "security": {
+    "rateLimit": {
+      "api": 6000
+    }
+  }
+}

@@ -19,6 +19,8 @@ import type {
   DeployedCustomRule,
   AuditQueryResult,
   BuiltInRuleMeta,
+  HealthResponse,
+  CapabilitiesSummary,
 } from './types';
 
 /**
@@ -172,6 +174,25 @@ export function useTraceDetail(traceId: string) {
 export function useSummary(hours?: number) {
   const fetcher = useCallback(() => api.getSummary(hours), [hours]);
   return useApiData<DashboardSummary>(fetcher, CADENCE.NORMAL);
+}
+
+/**
+ * The shell's health poll (D-2): one query behind the header's pill, judge
+ * chip and DEMO chip. SLOW on purpose: the connection store turns the pill
+ * red on the first request that fails anywhere, so this poll only refines
+ * `degraded`, the judge state and the mode — none of which changes by the
+ * second — and every request the shell adds counts against the server's
+ * per-minute budget (the CI e2e run tripped it at 10 s).
+ */
+export function useHealth() {
+  const fetcher = useCallback(() => api.getHealth(), []);
+  return useApiData<HealthResponse>(fetcher, CADENCE.SLOW);
+}
+
+/** Read once: the server's own enable steps for the judge and its retention window (D-2). */
+export function useCapabilities() {
+  const fetcher = useCallback(() => api.getCapabilities(), []);
+  return useApiData<CapabilitiesSummary>(fetcher);
 }
 
 export function useFilters() {

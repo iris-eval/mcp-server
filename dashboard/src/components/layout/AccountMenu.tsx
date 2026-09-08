@@ -116,7 +116,14 @@ const styles = {
 type ThemeOption = 'dark' | 'light';
 type DensityOption = 'compact' | 'comfortable';
 
-export function AccountMenu() {
+export interface AccountMenuProps {
+  /** The running server's version from the health poll (D-2); the UI's own build shows beside it when they differ. */
+  serverVersion?: string | null;
+  /** The retention window from capabilities (D-2) — shown here, once. */
+  retention?: { days: number; sweepIntervalHours: number } | null;
+}
+
+export function AccountMenu({ serverVersion = null, retention = null }: AccountMenuProps = {}) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -229,7 +236,18 @@ export function AccountMenu() {
 
           <div style={styles.divider} />
           <div style={styles.footer}>
-            <span>Iris v{VERSION}</span>
+            <span data-server-version={serverVersion ?? undefined}>
+              Iris v{serverVersion ?? VERSION}
+              {serverVersion && serverVersion !== VERSION ? ` · UI v${VERSION}` : ''}
+            </span>
+            {retention && (
+              <span
+                data-retention-days={retention.days}
+                title={`Traces older than ${retention.days} days are deleted; the sweep runs every ${retention.sweepIntervalHours} hours.`}
+              >
+                keeps {retention.days} days
+              </span>
+            )}
             <span>local</span>
           </div>
         </div>
