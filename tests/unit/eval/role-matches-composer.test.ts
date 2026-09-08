@@ -34,6 +34,7 @@ describe('role matches the composer', () => {
   const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
   const files = readdirSync(corpusDir).filter((f) => f.endsWith('.json'));
 
+  // Drives every corpus positive through the engine: ~6 s on a loaded machine, past vitest's 5 s default.
   it('over every corpus positive, the stamped role is the composer\'s own predicate', async () => {
     expect(files.length).toBeGreaterThan(10);
     const seen = new Set<string>();
@@ -53,7 +54,7 @@ describe('role matches the composer', () => {
     }
     expect(checked).toBeGreaterThan(100);
     expect([...seen].sort()).toEqual(['advisory', 'gate', 'risk', 'veto']); // every role the schema advertises is produced by something real
-  });
+  }, 30_000);
 
   it('a configured policy is a gate, and the role says so', async () => {
     const withPolicy = new EvalEngine(0.7, { ...defaultConfig.eval.ruleThresholds, cost_threshold: 0.05 }, { ...defaultConfig.eval, configuredThresholdKeys: ['cost_threshold'] });

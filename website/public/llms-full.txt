@@ -2,7 +2,7 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
-Current release: v0.12.1 (2026-09-07) — Truth patch 3.
+Current release: v0.13.0 (2026-09-08) — Found and fed.
 
 ## What Iris is
 

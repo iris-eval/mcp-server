@@ -2,7 +2,7 @@
 
 > Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx @iris-eval/mcp-server`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
 
-Current release: v0.12.1 (2026-09-07) — Truth patch 3.
+Current release: v0.13.0 (2026-09-08) — Found and fed.
 
 Iris registers 12 MCP tools (trace logging, heuristic eval, LLM-as-judge, semantic citation verification, rule lifecycle) and ships 20 built-in eval rules across completeness, relevance, safety, and cost. 6 of those rules read the agent's own tool calls and judge what it DID, not only what it wrote: a failed call the answer never acknowledges, a repeated one, a call its own tool's schema rejects, a file or URL cited that appears in nothing the agent read, an instruction obeyed out of a tool result, and a step budget. A ninth custom rule type, action_policy, states which tools an agent may call and with what arguments. All of it is deterministic and runs locally — no model call, nothing leaves the machine. It works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI, and any other MCP client.
 

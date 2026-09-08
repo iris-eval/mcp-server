@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-09-08
+
+**Found and fed.** The engine, the proof and the release gate were already held to a higher standard than the doors that introduce the product. This release is the doors: one name on every surface, capture that does not depend on the model choosing to call a tool, the verdict's own reasons reaching every reader, and a container that cannot expose an unauthenticated eval API by accident.
+
+The test for the release is the reviewer's, adopted verbatim: a stranger following the README gets a non-empty dashboard and a verdict with coverage that includes safety, without reading the blog — and, with the capture plugin, without asking the model to use Iris.
+
+**Check before upgrading.** Three behaviours change; each is one sentence.
+
+- **A non-loopback bind without an API key is refused at startup.** `--transport http` or `--dashboard` on `0.0.0.0`, a LAN address or a container now stops with one sentence naming `IRIS_API_KEY`; a bare `docker run` of the image stops too, and `docker compose up` requires `IRIS_API_KEY`. Set the key, bind to `127.0.0.1`, or set `IRIS_ALLOW_UNAUTHENTICATED=1` to run open on purpose. Loopback without a key keeps working.
+- **A threshold you set that equals the shipped default now gates.** A deployment that deliberately set `cost_threshold: 0.10` (the shipped number) was stamped "default" and demoted to advisory; it now gates as configured. `max_steps` at the shipped default now advises, as every surface said it did.
+- **`role` reports `gate`, `veto`, `risk` or `advisory`** — the values the schema advertised since 0.9.0; `term` leaves the vocabulary.
+
+Nothing in the measured verdict moves: the proof files regenerate with the version and commit only.
+
 ### Added
 
 - **A new command, `iris-eval ingest`, stores and evaluates traces from stdin or a file and can fail a CI job on a named verdict basis.** The third door, after the MCP tools and `POST /api/v1/traces`, and the one that needs no server: one JSON trace or NDJSON in, one JSON line per trace out (`trace_id`, `evaluation_id`, `passed`, `verdict.basis`, what was not judged), `--fail-on <basis|fail|unknown|any>` for the exit code. The same ingest schema and the same store-and-evaluate primitive as the other two doors. It never sweeps retention. Recipe: `docs/ci-gate.md`.
@@ -18,18 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The API reference's `log_trace` table gained the `tools`, `run` and `case_key` rows it had lacked since 0.11.0 and 0.12.0, and a test now reads the table against the tool's own input shape.
 - **The discovery manifest at `/.well-known/mcp.json` is rendered from the built server.** Tools with their one-sentence summaries, every resource and template, the prompt, and install blocks for Claude Code, Claude Desktop, Cursor and Docker, all keyed `iris-eval` (`npm run mcp-json:render`; `mcp-json:check` fails CI when the committed file differs). It was hand-maintained and listed one resource of five, no prompt and one install block.
 - Paste-ready listing copy per directory — Glama, mcp.so, PulseMCP, Smithery, cursor.directory, awesome-mcp-servers — under `docs/launch/listings/`, rendered from the truthbase like `llms.txt`, so a refresh is a paste and the numbers are the day's.
+
 ### Fixed
 
 - **Every evaluation now carries `interpretations[]` — the sentence that says why a rule that failed did not decide.** The composer has built it since 0.10.0 (its own docblock called it mandatory), the engine attached it, and the serializer never emitted it, the schema had no field for it, and no read path carried it — so every reader saw `cost_under_threshold: failed` beside `passed: true` and nothing else. It now rides the tool, the resource and both routes, and is derived on read from the composer facts the provenance now stores. A new note, addressed to the agent, names each question that was not judged and the input that would let it be.
-- **A threshold you set that happens to equal the shipped default now gates.** Three rules decided `thresholdSource` by comparing the value to the shipped number, so a deployment that deliberately set `cost_threshold: 0.10` was stamped "default" and demoted to advisory. The source now comes from the engine — which keys this call supplied, which the config file supplied — and never from value equality.
+- **BREAKING — A threshold you set that happens to equal the shipped default now gates.** Three rules decided `thresholdSource` by comparing the value to the shipped number, so a deployment that deliberately set `cost_threshold: 0.10` was stamped "default" and demoted to advisory. The source now comes from the engine — which keys this call supplied, which the config file supplied — and never from value equality.
 - **`max_steps` at the shipped default now advises, as every surface said it did.** It read presence in `customConfig`, which the engine defeats by merging the shipped thresholds into every call, so it gated at the default while its own message said it advised. Same fix.
-- **`role` reports `gate`, `veto`, `risk` or `advisory`** — the four values the schema has advertised since 0.9.0. The stamp could only produce `veto` or `term`; a gating policy reported `term`. The engine now sets the role from the composer's own predicates, so the two cannot disagree, and `term` leaves the vocabulary.
+- **BREAKING — `role` reports `gate`, `veto`, `risk` or `advisory`** — the four values the schema has advertised since 0.9.0. The stamp could only produce `veto` or `term`; a gating policy reported `term`. The engine now sets the role from the composer's own predicates, so the two cannot disagree, and `term` leaves the vocabulary.
 - **A stored evaluation reads back under the composer facts that wrote it.** Reads re-composed the verdict under the shipped defaults; a deployment with its own `falsePassCost` saw one verdict on the tool and another on the dashboard. `provenance.composer` now carries `defaultsGate`, `falsePassCost` and `onCriticalSkipped`.
 - `coverage.questions[]` carries `evaluated` of `of`: "judged" used to mean "at least one rule ran"; 1 of 3 now says so, and names what the others lacked.
 
 ### Security
 
-- **Binding the HTTP transport or the dashboard to a non-loopback address without an API key is refused at startup — this includes a bare `docker run` of the image, which binds `0.0.0.0` inside the container; set `IRIS_ALLOW_UNAUTHENTICATED=1` to run open on purpose. `docker compose up` requires `IRIS_API_KEY`.** Both servers used to warn and serve: every trace, verdict and rule reachable by anyone who could route to the host, with the warning scrolling past in a container log. One policy (`src/utils/bind-policy.ts`) now decides for the CLI pre-flight and both server factories, so they cannot disagree. Loopback with no key keeps its warning.
+- **BREAKING — Binding the HTTP transport or the dashboard to a non-loopback address without an API key is refused at startup — this includes a bare `docker run` of the image, which binds `0.0.0.0` inside the container; set `IRIS_ALLOW_UNAUTHENTICATED=1` to run open on purpose. `docker compose up` requires `IRIS_API_KEY`.** Both servers used to warn and serve: every trace, verdict and rule reachable by anyone who could route to the host, with the warning scrolling past in a container log. One policy (`src/utils/bind-policy.ts`) now decides for the CLI pre-flight and both server factories, so they cannot disagree. Loopback with no key keeps its warning.
 - **The DNS-rebinding guard runs before the body parser on both servers.** A request from a rejected Origin used to have up to the 1 MB request limit read and parsed before the 403; the rejection now comes first. The MCP transport gains the same guard middleware the dashboard has had since 0.6.0, ahead of the SDK's own check.
 - **The dashboard's session map no longer evicts a live session at its cap.** The 257th sign-in used to drop the oldest session whether or not it was still valid, so a burst of sign-ins — or one holder of the key — silently logged every live browser out. Expired sessions are swept first; a sign-in that still finds every slot live is refused with `503` and no cookie.
 
@@ -49,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stranger harness grades its HTTP-route rows on the outcome — the must-not-ship outputs named with their rules, a verdict quoted with its basis — on whichever route the agent found (REST ingest, MCP over HTTP, the CLI), and its twelve-call ceiling carries the measurement it comes from.
 - `scripts/verify-release.mjs` (`npm run verify:release`) reads F1–F6 from outside — npm, GHCR, the GitHub release, the registry, the live site, a fresh `npx … --self-test` — so a release record quotes an instrument instead of restating the workflow by hand.
 - The discovery sentence on every surface names the three ways a trace reaches Iris: the agent calls a tool, a host hook or `iris-eval ingest` hands it one, or you POST it to the HTTP API.
+
+**Verify:** `npm run verify:release -- --version 0.13.0` (F1–F6 from outside), `npm run mcp-json:check`, `npm run llms:check`, `npm test`; the stranger record for this release is linked from the README of `tests/acceptance/stranger/`.
 
 ## [0.12.1] - 2026-09-07
 
