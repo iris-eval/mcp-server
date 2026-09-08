@@ -50,6 +50,10 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run clean
+      # The one build (dashboard, then server) needs the dashboard's deps:
+      # v0.13.0's first release run failed here, in validate, before any
+      # publish job ran — the site A6-9's sweep of build steps missed.
+      - run: cd dashboard && npm install --no-audit --no-fund
       - run: npm run build
       # The tag IS the release identity — everything downstream (npm dist-tag,
       # GHCR :vX + :latest, the GitHub release) is named from it. Nothing here
