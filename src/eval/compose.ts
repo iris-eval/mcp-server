@@ -39,7 +39,7 @@
  * COUNCIL-REPORT.md; each surface that shows a default says it is a
  * recommendation until it is ruled.
  */
-import type { EvalResult, EvalRuleResult, Interpretation, Need, Verdict } from '../types/eval.js';
+import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict } from '../types/eval.js';
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 
 export interface ComposeConfig {
@@ -115,6 +115,19 @@ export function decides(r: EvalRuleResult, defaultsGate: boolean): boolean {
     (e) => e.type === 'count' && e.threshold !== undefined && (e.thresholdSource ?? 'default') === 'default',
   );
   return !ourDefault;
+}
+
+/**
+ * The role a result plays under this configuration — resolved from the SAME
+ * predicates compose() decides with, so the stamp and the verdict cannot
+ * disagree. A skipped rule played no role and keeps none.
+ */
+export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
+  if (r.kind === 'judgment') return 'gate';
+  if (r.kind === 'policy') return decides(r, cfg.defaultsGate) ? 'gate' : 'advisory';
+  if (isCritical(r)) return 'veto';
+  if (r.kind === 'detection' || r.kind === 'inference') return 'risk';
+  return 'advisory';
 }
 
 /** The inputs at least one evaluated rule actually read. */
@@ -213,8 +226,22 @@ export function compose(
  * and that is the first thing a builder who never opens a config file will
  * meet.
  */
-export function interpretations(result: Pick<EvalResult, 'rule_results'>, verdict: Verdict, cfg: ComposeConfig): Interpretation[] {
+export function interpretations(result: Pick<EvalResult, 'rule_results' | 'coverage'>, verdict: Verdict, cfg: ComposeConfig): Interpretation[] {
   const out: Interpretation[] = [];
+  /*
+   * To the agent, first: a question that was not judged because the call
+   * did not carry what it needs. An agent that reads this passes the input
+   * next time; one that does not read it reports "clean" about a question
+   * nobody asked. One sentence per question, naming the input.
+   */
+  for (const q of result.coverage?.questions ?? []) {
+    if (q.status !== 'unjudged' || !q.why?.startsWith('not supplied')) continue;
+    out.push({
+      severity: 'note',
+      addressee: 'agent',
+      text: `${q.id} was not judged — ${q.why}. Supply it to have this question judged.`,
+    });
+  }
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
     if (verdict.by.includes(r.ruleName)) continue;

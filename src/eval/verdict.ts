@@ -45,8 +45,18 @@ export function deriveCoverage(ruleResults: readonly EvalRuleResult[], present?:
       questions.push({ id, status: 'not_applicable', why: 'no rule that answers this question ran in the selected bundles' });
       continue;
     }
-    if (rows.some((r) => !r.skipped)) {
-      questions.push({ id, status: 'judged' });
+    const evaluated = rows.filter((r) => !r.skipped).length;
+    if (evaluated > 0) {
+      // "judged" used to mean "at least one rule ran". With the counts a
+      // reader can see 1 of 3, and the sentence names what the others lacked.
+      const lacking = [...new Set(rows.filter((r) => r.skipped).map((r) => r.skipReason ?? r.skipClass ?? 'skipped'))];
+      questions.push({
+        id,
+        status: 'judged',
+        evaluated,
+        of: rows.length,
+        ...(evaluated < rows.length ? { why: `partial: ${rows.length - evaluated} of ${rows.length} rules skipped (${lacking.join('; ')})` } : {}),
+      });
       continue;
     }
     const defeated = rows.filter((r) => r.skipClass === 'defeated').map((r) => r.ruleName);
@@ -107,6 +117,7 @@ export function buildProvenance(input: {
   threshold: number;
   ruleThresholds?: Record<string, unknown>;
   toolsHash?: string;
+  composer?: Provenance['composer'];
   judgedAt: string;
 }): Provenance {
   return {
@@ -115,6 +126,7 @@ export function buildProvenance(input: {
     configHash: input.configHash,
     thresholds: { default: input.threshold, ...(input.ruleThresholds ? { perRule: input.ruleThresholds } : {}) },
     ...(input.toolsHash !== undefined ? { toolsHash: input.toolsHash } : {}),
+    ...(input.composer !== undefined ? { composer: input.composer } : {}),
     corpusVersion: publishedProvenance().corpusVersion,
     judgedAt: input.judgedAt,
   };

@@ -1,4 +1,5 @@
 import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
+import { thresholdSourceOf } from '../thresholds.js';
 import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
@@ -27,7 +28,7 @@ export const costUnderThreshold: EvalRule = {
       passed,
       score: passed ? 1 : Math.max(0, 1 - (cost - threshold) / threshold),
       value: { stat: 'cost', unit: 'usd', value: cost },
-      evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: cost, threshold, thresholdSource: threshold === 0.10 ? 'default' : 'config' }],
+      evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: cost, threshold, thresholdSource: thresholdSourceOf(context, 'cost_threshold') }],
       message: passed
         ? `Cost ($${cost.toFixed(4)}) is under threshold ($${threshold.toFixed(4)})`
         : `Cost ($${cost.toFixed(4)}) exceeds threshold ($${threshold.toFixed(4)})`,
@@ -61,7 +62,7 @@ export const verbosityRatio: EvalRule = {
       passed,
       score: passed ? 1 : Math.max(0, 1 - (ratio - maxRatio) / maxRatio),
       value: { stat: 'completion_to_prompt_ratio', unit: 'ratio', value: ratio },
-      evidence: [{ type: 'count', stat: 'completion_to_prompt_ratio', unit: 'ratio', value: ratio, threshold: maxRatio, thresholdSource: maxRatio === 5 ? 'default' : 'config' }],
+      evidence: [{ type: 'count', stat: 'completion_to_prompt_ratio', unit: 'ratio', value: ratio, threshold: maxRatio, thresholdSource: thresholdSourceOf(context, 'max_token_ratio') }],
       message: passed
         ? `Token ratio (${ratio.toFixed(2)}) is within limits (max ${maxRatio})`
         : `Token ratio (${ratio.toFixed(2)}) exceeds max (${maxRatio})`,
@@ -212,7 +213,7 @@ export const noToolLoop: EvalRule = {
     }
 
     const repeatsEvidence: Evidence[] = [
-      { type: 'count', stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount, threshold: maxRepeats, thresholdSource: maxRepeats === DEFAULT_MAX_TOOL_REPEATS ? 'default' : 'config' },
+      { type: 'count', stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount, threshold: maxRepeats, thresholdSource: thresholdSourceOf(context, 'max_tool_repeats') },
     ];
     /*
      * A steady cadence is a machine WAITING, not a machine stuck, and this
@@ -277,7 +278,7 @@ export const noToolLoop: EvalRule = {
     if (rereads.worst !== null && rereads.worst.count > maxTargetRereads) {
       const { count, indices } = rereads.worst;
       const evidence: Evidence[] = [
-        { type: 'count', stat: 'reads_of_one_target', unit: 'reads', value: count, threshold: maxTargetRereads, thresholdSource: maxTargetRereads === DEFAULT_MAX_TARGET_REREADS ? 'default' : 'config' },
+        { type: 'count', stat: 'reads_of_one_target', unit: 'reads', value: count, threshold: maxTargetRereads, thresholdSource: thresholdSourceOf(context, 'max_target_rereads') },
       ];
       for (const index of indices.slice(0, MAX_EVIDENCE_ITEMS - 1)) {
         evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'read of the same target' });
@@ -347,10 +348,15 @@ export const maxSteps: EvalRule = {
     const calls = stepsOf(context);
     const scope = stepScopeNote(context);
     const configured = context.customConfig?.max_steps;
-    const isConfigured = typeof configured === 'number' && Number.isFinite(configured) && configured >= 1;
-    const budget = isConfigured ? Math.floor(configured as number) : DEFAULT_MAX_STEPS;
+    const budget = typeof configured === 'number' && Number.isFinite(configured) && configured >= 1 ? Math.floor(configured) : DEFAULT_MAX_STEPS;
+    // Presence in customConfig is NOT "the deployment set it": the engine
+    // merges the shipped thresholds in on every call, so this rule gated at
+    // the shipped default for as long as max_steps sat in defaults.ts while
+    // its own message said it advised. The source comes from the engine.
+    const source = thresholdSourceOf(context, 'max_steps');
+    const isConfigured = source !== 'default';
     const evidence: Evidence[] = [
-      { type: 'count', stat: 'tool_calls', unit: 'calls', value: calls.length, threshold: budget, thresholdSource: isConfigured ? 'config' : 'default' },
+      { type: 'count', stat: 'tool_calls', unit: 'calls', value: calls.length, threshold: budget, thresholdSource: source },
     ];
     const passed = calls.length <= budget;
     return {

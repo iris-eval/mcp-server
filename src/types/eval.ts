@@ -147,6 +147,15 @@ export interface EvalContext {
    * main-thread stall scale linearly with N.
    */
   regexBudget?: { breaches: number };
+  /**
+   * Where a rule's threshold came from, installed by the engine on the one
+   * path every evaluation takes: 'config' when the deployment's config file
+   * or the caller's context set it, 'default' otherwise. Rules read it
+   * through thresholdSourceOf() (src/eval/thresholds.ts) and NEVER by
+   * comparing the value to the shipped number — a deployment that sets the
+   * shipped number has set it.
+   */
+  thresholdSourceOf?: (key: string) => 'default' | 'config';
 
   /**
 
@@ -174,7 +183,16 @@ export interface EvalContext {
  * `risk` (a detection or inference feeding the risk estimate) and
  * `advisory` (reported, deciding nothing).
  */
-export type Role = 'gate' | 'veto' | 'risk' | 'advisory' | 'term';
+/**
+ * What the composer DID with a result under this deployment's configuration.
+ * gate: a policy the deployment configured (or a judgment it paid for) that
+ * decides; veto: a critical detector; risk: a detection or inference whose
+ * published accuracy enters the risk estimate; advisory: everything else —
+ * measurements, a policy at a shipped default, a custom rule at medium or
+ * low severity. Until 0.13.0 the stamp could only say veto or "term", and
+ * the schema advertised four values nothing produced.
+ */
+export type Role = 'gate' | 'veto' | 'risk' | 'advisory';
 
 /**
  * Why a rule skipped. `not_applicable`: the evidence it needs was not
@@ -237,7 +255,8 @@ export const MAX_EVIDENCE_ITEMS = 25;
  */
 export interface Coverage {
   inputs: Record<Need, boolean>;
-  questions: Array<{ id: QuestionId; status: 'judged' | 'unjudged' | 'not_applicable'; why?: string }>;
+  /** `evaluated` of `of` rules answering the question ran; "judged" with 1 of 3 is a partial answer and says so in `why`. */
+  questions: Array<{ id: QuestionId; status: 'judged' | 'unjudged' | 'not_applicable'; why?: string; evaluated?: number; of?: number }>;
   /** Quarantined critical rules that did not run (surfaced by the rule-store release). */
   dormant?: Array<{ ruleId: string; name: string; reason: string }>;
 }
@@ -290,6 +309,15 @@ export interface Provenance {
   configHash: string;
   thresholds: { default: number; perRule?: Record<string, unknown> };
   corpusVersion: string;
+  /**
+   * The composer facts a read needs to re-derive the verdict and its
+   * interpretations exactly as they were given: the shipped defaults are not
+   * the deployment's, and a row read back under the wrong ones would report
+   * a different verdict than the caller was handed. Absent on rows written
+   * before 0.13.0, which then read back under the defaults and say so with
+   * an empty interpretations list rather than a fabricated one.
+   */
+  composer?: { defaultsGate: boolean; falsePassCost: number; onCriticalSkipped: 'unknown' | 'fail' | 'pass' };
   /**
    * Which toolset the calls were checked against, when one was supplied.
    *

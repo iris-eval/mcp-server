@@ -10,11 +10,13 @@
  * through (EvalEngine.run) from the rule's declared metadata, the inputs the
  * call carried, and the published accuracy that ships in the package.
  *
- * Nothing here changes a verdict. `role` describes what today's composer
- * does with the result (veto, or a term of the weighted score); the
- * compose-by-kind release adds the other roles and starts deciding by them.
+ * Nothing here changes a verdict. `role` is NOT stamped here: it is what the
+ * composer did with the result, so the engine sets it from compose.roleOf()
+ * once the composer's configuration is in hand (0.13.0 — until then the
+ * stamp could only say veto or "term", and the schema advertised four
+ * values nothing produced).
  */
-import type { EvalContext, EvalRule, EvalRuleResult, Need, Role, SkipClass, Uncertainty } from '../types/eval.js';
+import type { EvalContext, EvalRule, EvalRuleResult, Need, SkipClass, Uncertainty } from '../types/eval.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { stepsOf } from './steps.js';
 import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
@@ -94,15 +96,13 @@ export function stampRuleResult(
   rule: EvalRule,
   raw: EvalRuleResult,
   context: EvalContext,
-  effective: EffectiveCriticality,
-): Pick<EvalRuleResult, 'kind' | 'role' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty' | 'origin'> {
+  _effective: EffectiveCriticality,
+): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty' | 'origin'> {
   const present = inputsPresent(context);
-  const role: Role = effective.critical ? 'veto' : 'term';
   const skipClass = skipClassOf(raw);
   const uncertainty = uncertaintyOf(rule, raw);
   return {
     ...(rule.kind !== undefined ? { kind: rule.kind } : {}),
-    role,
     ...(rule.question !== undefined ? { question: rule.question } : {}),
     ...(rule.classes !== undefined ? { classes: [...rule.classes] } : {}),
     ...(rule.version !== undefined ? { ruleVersion: rule.version } : {}),

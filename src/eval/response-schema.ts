@@ -54,7 +54,7 @@ export const evidenceSchema = z.discriminatedUnion('type', [
 export const measuredValueSchema = z.looseObject({ stat: z.string(), unit: z.string(), value: z.number() });
 
 export const claimKindSchema = z.enum(['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification']);
-export const roleSchema = z.enum(['gate', 'veto', 'risk', 'advisory', 'term']);
+export const roleSchema = z.enum(['gate', 'veto', 'risk', 'advisory']);
 export const skipClassSchema = z.enum(['not_applicable', 'defeated', 'config_invalid']);
 export const needSchema = z.enum(['output', 'input', 'expected', 'tool_calls', 'tool_outputs', 'tools_catalogue', 'cost', 'tokens', 'citations']);
 export const questionIdSchema = z.enum(['safe_output', 'grounded', 'complete', 'relevant', 'task_completed', 'tool_use_correct', 'within_budget']);
@@ -96,7 +96,7 @@ export const evalCategoryResultSchema = z.looseObject({
 
 export const coverageSchema = z.looseObject({
   inputs: z.record(z.string(), z.boolean()),
-  questions: z.array(z.looseObject({ id: questionIdSchema, status: z.enum(['judged', 'unjudged', 'not_applicable']), why: z.string().optional() })),
+  questions: z.array(z.looseObject({ id: questionIdSchema, status: z.enum(['judged', 'unjudged', 'not_applicable']), why: z.string().optional(), evaluated: z.number().int().optional(), of: z.number().int().optional() })),
   dormant: z.array(z.looseObject({ ruleId: z.string(), name: z.string(), reason: z.string() })).optional(),
 });
 export const verdictSchema = z.looseObject({
@@ -112,8 +112,17 @@ export const provenanceSchema = z.looseObject({
   rulesetHash: z.string(),
   configHash: z.string(),
   thresholds: z.looseObject({ default: z.number(), perRule: z.record(z.string(), z.unknown()).optional() }),
+  composer: z.looseObject({ defaultsGate: z.boolean(), falsePassCost: z.number(), onCriticalSkipped: z.enum(['unknown', 'fail', 'pass']) }).optional(),
   corpusVersion: z.string(),
   judgedAt: z.string(),
+});
+
+export const interpretationSchema = z.looseObject({
+  severity: z.enum(['block', 'warn', 'note']),
+  addressee: z.enum(['agent', 'operator', 'author']),
+  rule: z.string().optional(),
+  text: z.string(),
+  configKey: z.string().optional(),
 });
 
 /** The `evaluate_output` response — the same object the engine returns plus the tool's own fields. */
@@ -122,7 +131,9 @@ export const evaluateOutputResponseSchema = z.looseObject({
     trace_id: z.string().optional().describe('the linked trace, when named'),
     verdict: verdictSchema.optional().describe('state, passed, basis (which layer decided), by (the rules), risk'),
     coverage: coverageSchema.optional().describe('per question: judged, unjudged and why, or not_applicable; plus the inputs carried'),
-    provenance: provenanceSchema.optional().describe('Iris version, ruleset and config hashes, thresholds, corpus version, time'),
+    provenance: provenanceSchema.optional().describe('Iris version, ruleset and config hashes, thresholds, composer facts, corpus version, time'),
+    run_id: z.string().optional().describe('the run this belongs to'),
+    interpretations: interpretationSchema.array().optional().describe('why a failed rule did not decide; unjudged questions; close calls'),
     erased_at: z.string().optional().describe('set once the linked trace was deleted'),
     eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).describe('the bundle that ran'),
     score: z.number().describe('0..1 weighted quality over the rules that ran'),

@@ -198,6 +198,10 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   let config = deepMerge(defaultConfig, fileConfig);
   config = deepMerge(config, envConfig);
   config = deepMerge(config, argsConfig);
+  // Which thresholds the deployment SET, recorded before the merge erases
+  // the difference between "set to the shipped number" and "left alone".
+  // Environment and CLI carry no rule thresholds, so the file is the source.
+  config.eval.configuredThresholdKeys = Object.keys((fileConfig as Partial<IrisConfig>).eval?.ruleThresholds ?? {});
 
   ensureIrisDirectory(dirname(config.storage.path), 'the database directory (IRIS_DB_PATH / --db-path)');
 

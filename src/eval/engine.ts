@@ -10,7 +10,7 @@ import type {
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
-import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
+import { compose, interpretations, roleOf, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
 import { inputsPresent, stampRuleResult } from './stamp.js';
 import { toSteps } from './steps.js';
 import { toolsHash } from './catalogue.js';
@@ -122,6 +122,9 @@ export class EvalEngine {
    * safety signal was reading a number that arc zero measured as inert.
    */
   private decide(result: EvalResult): EvalResult {
+    // The role each result played, from the composer's own predicates — the
+    // one writer, after every stamp and before anything reads it.
+    for (const r of result.rule_results) r.role = roleOf(r, this.compose);
     const verdict = compose(result, this.compose);
     result.verdict = verdict;
     result.passed = verdict.passed;
@@ -274,13 +277,23 @@ export class EvalEngine {
     categories: EvalType[] | undefined,
     context: EvalContext,
   ): Promise<EvalResult> {
-    // Merge system-level thresholds into customConfig (user-provided values take precedence)
-    if (this.ruleThresholds) {
-      context = {
-        ...context,
-        customConfig: { ...this.ruleThresholds, ...context.customConfig },
-      };
-    }
+    // Merge system-level thresholds into customConfig (user-provided values
+    // take precedence) — and record, BEFORE the merge erases it, which keys
+    // this call supplied and which the deployment's config file supplied.
+    // That is what thresholdSourceOf() answers from; the rules never
+    // compare a value to the shipped number (src/eval/thresholds.ts).
+    const callKeys = new Set(Object.keys(context.customConfig ?? {}));
+    // Provenance comes from loadConfig alone (the server passes config.eval,
+    // which it stamped). An engine built directly with ruleThresholds and no
+    // configuredThresholdKeys — the proof runner, a test, an embedder — is
+    // treated as running the shipped defaults: a threshold is the
+    // deployment's only when something recorded that the deployment set it.
+    const fileKeys = new Set(this.criticalityOverrides?.configuredThresholdKeys ?? []);
+    context = {
+      ...context,
+      ...(this.ruleThresholds ? { customConfig: { ...this.ruleThresholds, ...context.customConfig } } : {}),
+      thresholdSourceOf: (key: string) => (callKeys.has(key) || fileKeys.has(key) ? 'config' : 'default'),
+    };
 
     if (rules.length === 0) {
       return {
@@ -400,6 +413,7 @@ export class EvalEngine {
       }),
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
+      composer: { defaultsGate: this.compose.defaultsGate, falsePassCost: this.compose.falsePassCost, onCriticalSkipped: this.compose.onCriticalSkipped },
       judgedAt: new Date().toISOString(),
     });
     const coverage = deriveCoverage(ruleResults, inputsPresent(context));

@@ -40,7 +40,7 @@ import type {
 import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
 import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
-import { compose, DEFAULT_COMPOSE } from '../eval/compose.js';
+import { compose, interpretations, DEFAULT_COMPOSE } from '../eval/compose.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { runMigrations } from './migrations/index.js';
@@ -1352,15 +1352,22 @@ export class SqliteAdapter implements IStorageAdapter {
     if (criticalSkipped) result.critical_skipped = criticalSkipped;
     if (result.rule_results.some((r) => r.question !== undefined)) result.coverage = deriveCoverage(result.rule_results);
     /*
-     * Read back with the SAME composer that wrote it, or a stored row would
-     * report a different verdict than the one the caller was given. The
-     * config is not stored (only its hash), so this composes under the
-     * shipped defaults — which from 0.12.0 is the only composer there is. A
-     * row written before the verdict existed still reads back with none:
-     * absent, never fabricated.
+     * Read back under the SAME composer facts that wrote it, or a stored row
+     * would report a different verdict than the one the caller was given.
+     * Until 0.13.0 the config was not stored (only its hash), so every read
+     * re-composed under the shipped defaults — a deployment with its own
+     * loss ratio saw one verdict on the tool and another on the dashboard.
+     * provenance.composer now carries the three facts the composer needs;
+     * a row written before it exists reads back under the defaults and
+     * with an empty interpretations list — absent, never fabricated.
      */
     if (result.provenance) {
-      result.verdict = compose(result, DEFAULT_COMPOSE);
+      const cfg = { ...DEFAULT_COMPOSE, ...(result.provenance.composer ?? {}) };
+      result.verdict = compose(result, cfg);
+      if (result.provenance.composer) {
+        const notes = interpretations(result, result.verdict, cfg);
+        if (notes.length > 0) result.interpretations = notes;
+      }
     }
     return result;
   }
