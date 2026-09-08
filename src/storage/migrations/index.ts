@@ -8,6 +8,7 @@ import * as migration006 from './006-eval-critical-failures.js';
 import * as migration007 from './007-eval-provenance.js';
 import * as migration008 from './008-trace-tools-catalogue.js';
 import * as migration009 from './009-runs-and-case-keys.js';
+import * as migration010 from './010-trace-source.js';
 import { PKG_VERSION } from '../../config/defaults.js';
 
 interface Migration {
@@ -25,6 +26,7 @@ const migrations: Migration[] = [
   migration007,
   migration008,
   migration009,
+  migration010,
 ];
 
 export function runMigrations(db: Database.Database): void {
@@ -56,14 +58,24 @@ export function runMigrations(db: Database.Database): void {
     );
   }
 
-  const applied = new Set(appliedRows.map((r) => r.id));
+  /*
+   * Two processes on one cold file — a server booting and a hook-driven
+   * `ingest` — both used to read "not applied" and then both try to apply:
+   * the second writer failed on SQLITE_BUSY_SNAPSHOT or a duplicate column.
+   * Each migration now runs under BEGIN IMMEDIATE (the write lock is taken
+   * before anything is read) and re-checks the applied set INSIDE that
+   * lock, so the loser of the race sees the winner's row and skips. The
+   * busy_timeout the adapter sets is what makes the loser wait rather than
+   * fail.
+   */
+  const isApplied = db.prepare('SELECT 1 FROM _iris_migrations WHERE id = ?');
+  const markApplied = db.prepare('INSERT INTO _iris_migrations (id) VALUES (?)');
   for (const migration of migrations) {
-    if (!applied.has(migration.id)) {
-      db.transaction(() => {
-        migration.up(db);
-        db.prepare('INSERT INTO _iris_migrations (id) VALUES (?)').run(migration.id);
-      })();
-    }
+    db.transaction(() => {
+      if (isApplied.get(migration.id)) return;
+      migration.up(db);
+      markApplied.run(migration.id);
+    }).immediate();
   }
   // Every applied migration names the binary that applied it (this one, for
   // rows written before the column existed — the closest true statement).

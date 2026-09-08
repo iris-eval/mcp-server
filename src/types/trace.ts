@@ -173,4 +173,11 @@ export interface Trace {
    * the caller's always wins.
    */
   case_key?: string;
+  /**
+   * Which door the trace came through. Stored so a host hook and a
+   * model-initiated log of the same turn can be told apart, and so a reader
+   * can see which capture path fed a run. Absent on rows written before
+   * 0.13.0.
+   */
+  source?: 'tool' | 'http' | 'cli' | 'hook' | 'otel';
 }

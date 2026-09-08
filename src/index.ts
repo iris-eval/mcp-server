@@ -54,6 +54,13 @@ const CliSchema = z
     purge: z.boolean().optional(),
     version: z.boolean().optional(),
     help: z.boolean().optional(),
+    // ingest only
+    file: z.string().min(1).optional(),
+    evaluate: z.boolean().optional(),
+    'eval-type': z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional(),
+    'fail-on': z.enum(['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any']).optional(),
+    redact: z.enum(['none', 'critical_spans']).optional(),
+    source: z.enum(['cli', 'hook']).optional(),
   })
   .strict();
 
@@ -87,8 +94,16 @@ try {
       purge: { type: 'boolean', default: false },
       version: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
+      // ingest only
+      file: { type: 'string' },
+      evaluate: { type: 'boolean', default: false },
+      'eval-type': { type: 'string' },
+      'fail-on': { type: 'string' },
+      redact: { type: 'string' },
+      source: { type: 'string' },
     },
     strict: true,
+    allowPositionals: true,
   });
 } catch (err) {
   process.stderr.write(`iris-eval: ${(err as Error).message}\nRun \`iris-eval --help\` for usage.\n`);
@@ -121,6 +136,7 @@ if (values.help) {
 Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
 Usage: ${COMMAND} [options]
+       ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--redact <mode>] [--source cli|hook]
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
@@ -151,6 +167,21 @@ Options:
                            Iris server first — the file is compacted in place.
   --version                Print the version and exit
   -h, --help               Show this help message
+
+Ingest (the third door — a CI gate, and the substrate under host hooks; no server needed):
+  ${COMMAND} ingest        Read one JSON trace, or NDJSON (one per line), from stdin or --file,
+                           store each in the configured database, and print one JSON line per
+                           trace: {trace_id, status} or, with --evaluate, {trace_id, evaluation_id,
+                           passed, verdict:{state,basis,by}, unjudged?}. Same schema as
+                           POST /api/v1/traces, same rules as evaluate_output. Never sweeps retention.
+  --file <path>            Read traces from this file instead of stdin
+  --evaluate               Evaluate each trace in the same call (a trace may also carry evaluate: true)
+  --eval-type <bundle>     With --evaluate: completeness | relevance | safety | cost | custom | all (default: all)
+  --fail-on <basis>        Exit 1 when any verdict matches: policy_gate | detector_veto | critical_unknown |
+                           required_evidence_missing | risk_over_loss | fail | unknown | any
+  --redact <mode>          none | critical_spans — override storage.redact for this ingest
+  --source <door>          cli (default) | hook — recorded on each trace as its capture path
+                           Exit codes: 0 stored (nothing tripped), 1 a verdict tripped --fail-on, 2 usage or nothing stored.
 
 Environment variables (CLI flags take precedence):
   IRIS_TRANSPORT                       stdio | http
@@ -190,6 +221,44 @@ Dashboard preferences ($IRIS_HOME/preferences.json, default ~/.iris/preferences.
  * them so a refused combination exits without touching the filesystem —
  * `--self-test --purge` must not quietly run only the first one it sees.
  */
+/*
+ * The one verb. A positional other than `ingest` is refused before anything
+ * runs, and `ingest` cannot be combined with a server mode: it opens the
+ * store, does its work and exits.
+ */
+const verb = parsed.positionals[0];
+if (parsed.positionals.length > 1 || (verb !== undefined && verb !== 'ingest')) {
+  process.stderr.write(`${COMMAND}: unknown command "${parsed.positionals.join(' ')}". The only command is "ingest".\nRun \`${COMMAND} --help\` for usage.\n`);
+  process.exit(2);
+}
+if (verb === 'ingest') {
+  const clashing = (['transport', 'dashboard', 'demo', 'demo-clear', 'self-test', 'purge', 'port', 'dashboard-port', 'dashboard-host'] as const).filter((flag) => values[flag] !== undefined && values[flag] !== false);
+  if (clashing.length > 0) {
+    process.stderr.write(`${COMMAND}: ingest cannot be combined with ${clashing.map((f) => `--${f}`).join(', ')} — it stores, evaluates and exits; it serves nothing.\nRun \`${COMMAND} --help\` for usage.\n`);
+    process.exit(2);
+  }
+  const { runIngest } = await import('./cli/ingest.js');
+  process.exit(
+    await runIngest({
+      cliArgs: { config: values.config, dbPath: values['db-path'] },
+      file: values.file,
+      evaluate: values.evaluate ?? false,
+      evalType: values['eval-type'],
+      failOn: values['fail-on'],
+      redact: values.redact,
+      source: values.source ?? 'cli',
+      stdin: process.stdin,
+      stdout: process.stdout,
+      stderr: process.stderr,
+    }),
+  );
+}
+const ingestOnly = (['file', 'eval-type', 'fail-on', 'redact', 'source'] as const).filter((flag) => values[flag] !== undefined);
+if (ingestOnly.length > 0 || values.evaluate) {
+  process.stderr.write(`${COMMAND}: ${[...ingestOnly.map((f) => `--${f}`), ...(values.evaluate ? ['--evaluate'] : [])].join(', ')} belong to the ingest command: ${COMMAND} ingest [...].\nRun \`${COMMAND} --help\` for usage.\n`);
+  process.exit(2);
+}
+
 const modeFlags = (['demo', 'demo-clear', 'self-test', 'purge'] as const).filter((flag) => values[flag]);
 if (modeFlags.length > 1) {
   process.stderr.write(

@@ -284,6 +284,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         tools: args.tools,
         run_id: args.run,
         case_key: args.case_key,
+        source: 'tool' as const,
         spans: args.spans?.map((s) => ({
           ...s,
           span_id: s.span_id ?? generateSpanId(),

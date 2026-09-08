@@ -70,6 +70,7 @@ export function registerTraceRoutes(
         tools: body.tools,
         run_id: body.run,
         case_key: body.case_key,
+        source: 'http',
         spans: body.spans?.map((s) => ({
           ...s,
           span_id: s.span_id ?? generateSpanId(),
