@@ -350,6 +350,10 @@ const LEGACY_VERDICT_PHRASES = [
   'score meets or exceeds the configured threshold',
   'true only when the score',
   'they do not veto `passed`',
+  // The skill template's form, missed by the first list: "`score >= threshold` (default 0.7) AND no critical rule failed".
+  'score >= threshold',
+  'score ≥ threshold',
+  'score >= the threshold',
 ];
 
 /*

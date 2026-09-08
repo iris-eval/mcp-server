@@ -243,13 +243,16 @@ Which of these rules VETO the verdict is per-deployment: `config.eval.criticalRu
 ### Scoring algorithm
 
 ```
-score  = SUM(rule[i].score * rule[i].weight) / SUM(rule[i].weight)   # evaluated rules only
-passed = score >= threshold AND no critical rule failed              (default threshold: 0.7)
+score  = SUM(rule[i].score * rule[i].weight) / SUM(rule[i].weight)   # evaluated rules only — a quality gradient
+passed = verdict.state == "pass"                                     # composed by KIND, in layers; score is never consulted:
+         policy_gate (a policy you configured failed) → detector_veto (a critical detector fired)
+         → critical_unknown (a critical check could not answer → unknown) → required_evidence_missing
+         → risk_over_loss (p_bad > 1 / (1 + eval.falsePassCost); default cut 0.5) → clean
 ```
 
-Each rule returns a score between 0 and 1. The final score is the weighted average across the rules that actually ran, rounded to three decimal places.
+Each rule returns a score between 0 and 1. The final score is the weighted average across the rules that actually ran, rounded to three decimal places. The verdict is composed in `src/eval/compose.ts` by the kind of claim each rule makes; `verdict.basis` names the layer that decided and `interpretations[]` says why a rule that failed did not (see `docs/api-reference.md` § Scoring and the verdict).
 
-**`score` and `passed` answer different questions.** `score` is a quality gradient; `passed` is the ship/no-ship verdict. A failing (non-skipped) **critical** rule forces `passed: false` regardless of how high the weighted score is, and the response names the culprits in `critical_failures`. By default the critical rules are `no_pii`, `no_injection_patterns` and `no_blocklist_words`, plus any deployed custom rule with severity `high`/`critical`; a deployment changes the built-in set with `eval.criticalRules` / `eval.nonCriticalRules`, and every rule result carries the effective `critical` flag with its `criticalSource`. A leaked SSN scores 0.765 against a 0.7 threshold and still fails — that is the point (see §Scoring semantics in `docs/api-reference.md`).
+**`score` and `passed` answer different questions.** `score` is a quality gradient; `passed` is the ship/no-ship verdict. A failing (non-skipped) **critical** rule forces `passed: false` regardless of how high the weighted score is, and the response names the culprits in `critical_failures`. By default the critical rules are `no_pii`, `no_injection_patterns` and `no_blocklist_words`, plus any deployed custom rule with severity `high`/`critical`; a deployment changes the built-in set with `eval.criticalRules` / `eval.nonCriticalRules`, and every rule result carries the effective `critical` flag with its `criticalSource`. A leaked SSN scores 0.765 and still fails, because the score is never consulted for the verdict — that is the point (see §Scoring semantics in `docs/api-reference.md`).
 
 **Skipped rules are excluded, not scored 1.** A rule that cannot judge the output — `expected_coverage` with no expected output, a missing-context relevance rule, or a regex killed at the sandbox matching budget — returns `score: 0` with `skipped: true` and a `skipReason`, and is left OUT of both the weighted average and the critical-rule veto. A skipped rule therefore neither deflates the score nor vetoes on evidence it never gathered; a skipped *critical* rule is named in `critical_skipped`, and budget-killed rules additionally carry `budgetExceeded: true`. The fail-closed recipe is the same on every surface: treat a non-empty `critical_skipped` as unknown, not clean, and optionally treat any `budgetExceeded` skip as a failure.
 

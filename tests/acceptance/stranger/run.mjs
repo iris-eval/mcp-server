@@ -104,6 +104,16 @@ const A8_DRIVER = "Before I decide, double-check output 2 with Iris's LLM judge 
 const A9_DRIVER =
   "I re-ran the same three prompts after a prompt change — the new answers are in ./outputs-v2/. Has my agent regressed since yesterday? Log both sets so you can compare them properly, and tell me how confident the answer is.";
 
+/*
+ * A10 — the loop lands untold. A task that never mentions Iris, on the
+ * connected session: the instructions' WHEN paragraph is the only thing
+ * that could make the agent log and evaluate what it produced. Graded on
+ * tool-call evidence: a log_trace with evaluate: true, or a log_trace
+ * followed by an evaluate_output, after the driver.
+ */
+const A10_DRIVER =
+  'Read ./outputs/output-1.json and tell me in two sentences what the agent was asked and what it answered.';
+
 const ALLOWED_TOOLS = [
   'Bash(npx:*)',
   'Bash(npm:*)',
@@ -287,7 +297,7 @@ function summarise(phase, d, wallMs, substitution) {
 }
 
 /* ── grading ── */
-function grade({ mcp1, mcp2, a8, a9, http }) {
+function grade({ mcp1, mcp2, a8, a9, a10, http }) {
   const rows = {};
   const row = (id, pass, evidence, note) => { rows[id] = { pass, evidence: quote(evidence), ...(note ? { note } : {}) }; };
 
@@ -366,6 +376,13 @@ function grade({ mcp1, mcp2, a8, a9, http }) {
      */
     const carriesInterval = /\[\s*-?\d|±|\binterval\b|not enough evidence|cannot tell|too few|smallest detectable/i.test(t);
     row('A9', compared.length >= 1 && carriesInterval, t, `compare calls ×${compared.length}`);
+  }
+  if (a10) {
+    const d = a10.d;
+    const logs = d.calls.filter((c) => irisName(c.name) === 'log_trace');
+    const inline = logs.some((c) => c.input?.evaluate === true);
+    const after = logs.length > 0 && d.calls.some((c, i) => irisName(c.name) === 'evaluate_output' && i > d.calls.indexOf(logs[0]));
+    row('A10', logs.length >= 1 && (inline || after), logs.length ? JSON.stringify(logs[0].input).slice(0, 400) : 'no log_trace after an untold task', `log_trace ×${logs.length}, inline evaluate: ${inline}, evaluate_output after: ${after}`);
   }
   if (http) {
     const d = http.d;
@@ -473,6 +490,13 @@ async function phaseA9(mcp2) {
   return { d, rec };
 }
 
+async function phaseA10(mcp2) {
+  const r = await runClaude({ phase: 'a10', cwd: mcp2.dir, home: mcp2.home, prompt: A10_DRIVER, mcpConfig: mcp2.cfgPath, resume: mcp2.rec.sessionId });
+  const d = digest(parseStream(r.out));
+  const rec = summarise('a10', d, r.wallMs, null);
+  return { d, rec };
+}
+
 async function phaseHttp() {
   const { dir, home } = makePhaseDir('http');
   const r = await runClaude({ phase: 'http', cwd: dir, home, prompt: `${PROMPT}\n\n${ENV_NOTE_HTTP}` });
@@ -490,7 +514,7 @@ if (want('mcp1')) {
   results.mcp1 = await phaseMcp1();
   line('mcp1', results.mcp1.rec);
   connectedConfig = results.mcp1.config;
-} else if ((want('mcp2') || want('a8') || want('a9')) && existsSync(savedConfig)) {
+} else if ((want('mcp2') || want('a8') || want('a9') || want('a10')) && existsSync(savedConfig)) {
   // Reuse the config phase 1 wrote on an earlier run of this record dir.
   connectedConfig = prepareConfig(JSON.parse(readFileSync(savedConfig, 'utf8'))).config;
 }
@@ -511,13 +535,19 @@ if (PHASE === 'a8' && existsSync(join(OUT, 'mcp2.jsonl')) && existsSync(join(OUT
     results.a9 = await phaseA9(mcp2);
     line('a9', results.a9.rec);
   }
-} else if (connectedConfig && (want('mcp2') || want('a8') || want('a9'))) {
+  if (want('a10') || PHASE === 'a8') {
+    results.a10 = await phaseA10(mcp2);
+    line('a10', results.a10.rec);
+  }
+} else if (connectedConfig && (want('mcp2') || want('a8') || want('a9') || want('a10'))) {
   results.mcp2 = await phaseMcp2(connectedConfig);
   line('mcp2', results.mcp2.rec);
   results.a8 = await phaseA8(results.mcp2);
   line('a8', results.a8.rec);
   results.a9 = await phaseA9(results.mcp2);
   line('a9', results.a9.rec);
+  results.a10 = await phaseA10(results.mcp2);
+  line('a10', results.a10.rec);
 }
 if (want('http')) {
   results.http = await phaseHttp();

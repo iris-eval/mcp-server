@@ -189,6 +189,16 @@ describe('the agent-native contract', () => {
     }
   });
 
+  it('the instructions say WHEN to call Iris, and how', () => {
+    // The paragraph that turns a registered server into a used one. Graded
+    // for real by stranger row A10 (an untold task ends in a log with
+    // evaluate: true); this is the lock that the words are there.
+    expect(instructions).toMatch(/^WHEN to use it\./m);
+    expect(instructions).toContain('evaluate: true');
+    expect(instructions).toContain('interpretations');
+    expect(instructions).toContain('Do not log every line');
+  });
+
   it('the instructions are present, true to the registrations, quote the effective critical list, and fit the ceiling', async () => {
     const got = client.getInstructions();
     expect(got).toBe(instructions);
