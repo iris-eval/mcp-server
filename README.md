@@ -82,6 +82,15 @@ curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
 
 Returns `201` with the stored `trace_id` and the evaluation result (in `--demo` mode the endpoint refuses writes with `403`, so demo data never mixes with yours). The endpoint accepts the same body as the `log_trace` tool and sits behind the same middleware stack as the rest of the dashboard: loopback bind and the DNS-rebinding guard by default, plus Bearer auth when you set one. **Two plain facts about it:** it accepts unauthenticated writes unless Iris was started with `--api-key` (or `IRIS_API_KEY`) — the loopback bind is what keeps it to your machine by default, so set a key before binding beyond loopback; and what it stores is verbatim — `input` and `output` land in `iris.db` exactly as sent, including any text `no_pii` goes on to flag. Full contract, field reference, and error semantics: [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md).
 
+### Capture every Claude Code turn (optional)
+
+```
+/plugin marketplace add iris-eval/mcp-server
+/plugin install iris-eval-capture@iris-eval
+```
+
+A second, separately installed plugin: three hooks record each turn's prompt, tool calls and final answer and hand them to `iris-eval ingest`, detached, with critical spans redacted in the stored evaluation text — capture that does not depend on the model deciding to call a tool. It never logs a turn the model already logged, never prints, never blocks, never sends anything anywhere. Installing `iris-eval` alone changes nothing about your turn loop. Limits and removal: [claude-plugin-capture/README.md](claude-plugin-capture/README.md).
+
 ### A CI gate, no server needed
 
 ```bash

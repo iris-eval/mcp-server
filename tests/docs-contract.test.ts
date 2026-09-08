@@ -54,6 +54,7 @@ const PROSE_SURFACES: string[] = [
     .map((f) => `docs/${f}`),
   'skills/iris-eval/SKILL.md',
   'claude-plugin/skills/iris-eval/SKILL.md',
+  'claude-plugin-capture/README.md',
   'server.json',
   'smithery.yaml',
   ...readdirSync(join(root, 'src', 'tools'))

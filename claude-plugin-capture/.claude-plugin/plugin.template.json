@@ -1,0 +1,18 @@
+{
+  "name": "iris-eval-capture",
+  "description": "Record every Claude Code turn into Iris without the model calling a tool: the prompt, the tool calls and the final answer, stored and evaluated locally, with critical spans redacted in the stored evaluation text. Opt-in; install beside the iris-eval plugin or on its own. Needs @iris-eval/mcp-server {{version}} on the machine (npx fetches it once).",
+  "version": "{{version}}",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://iris-eval.com"
+  },
+  "keywords": [
+    "eval",
+    "agent-eval",
+    "capture",
+    "observability",
+    "hooks",
+    "mcp"
+  ]
+}
