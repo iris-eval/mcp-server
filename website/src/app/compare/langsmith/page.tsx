@@ -4,7 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
-import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
+import { DISCOVERY_SENTENCE, RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -63,7 +63,7 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: sanitizeText(
-              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. LangSmith is LangChain's cloud-first observability platform with @traceable decorators and broad SDK support. Iris offers simple self-hosting with a single SQLite file, while LangSmith provides advanced evaluation workflows, auto-clustering, and enterprise compliance."
+              `Iris is an MCP-native agent eval tool that needs no SDK. ${DISCOVERY_SENTENCE} LangSmith is LangChain's cloud-first observability platform with @traceable decorators and broad SDK support. Iris offers simple self-hosting with a single SQLite file, while LangSmith provides advanced evaluation workflows, auto-clustering, and enterprise compliance.`
             ),
           },
         },

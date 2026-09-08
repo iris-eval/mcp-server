@@ -14,6 +14,18 @@ const root = resolve(here, '..', '..', '..');
 
 const TAGLINE = 'Stop shipping agents on vibes';
 
+/*
+ * Two sentences every public surface must say the same way, because on
+ * 2026-09-07 they were said ten and five different ways and two of them were
+ * false. "Discovers it automatically" was true only of the client listing
+ * the tools at session start — nothing auto-installs Iris and nothing makes
+ * the model call it — and "never leaves your machine" omitted the OTel
+ * exporter that ships traces off-box when configured. A fact stated in
+ * many places is a fact that drifts; these are stated once.
+ */
+const DISCOVERY_SENTENCE = "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, or when you POST a trace to its HTTP API.";
+const DATA_RESIDENCY = "Nothing leaves your machine unless you set IRIS_OTEL_ENDPOINT, which exports traces to the collector you name, or enable the LLM judge with your own key.";
+
 export async function generate() {
   // Cross-check: package.json.description should start with the tagline.
   const pkgRaw = await readFile(resolve(root, 'package.json'), 'utf-8');
@@ -40,5 +52,7 @@ export async function generate() {
     npmPackage: '@iris-eval/mcp-server',
     supportEmail: 'hello@iris-eval.com',
     securityEmail: 'security@iris-eval.com',
+    discoverySentence: DISCOVERY_SENTENCE,
+    dataResidency: DATA_RESIDENCY,
   };
 }

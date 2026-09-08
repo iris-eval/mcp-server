@@ -73,6 +73,7 @@ const prose = PROSE_SURFACES.map((rel) => ({ rel, text: read(rel) }));
 const claims = JSON.parse(read('.claims.json')) as {
   mcpTools: { names: string[] };
   evalRules: { customRuleTypes: string[] };
+  brand: { dataResidency: string; discoverySentence: string };
 };
 
 /* ── --flags ─────────────────────────────────────────────────────── */
@@ -292,11 +293,16 @@ describe('docs contract — rule names', () => {
   });
 
   it('every tool name the prose quotes in backticks is a registered tool or a known identifier', () => {
-    // Only the nine verbs: a backticked snake_case token that ENDS with _trace,
-    // _traces, _rule, _rules, _output or _citations is a tool-shaped name and
-    // must be one of the registered tools.
+    // A backticked snake_case token that begins with one of the registered
+    // tools' own verbs is a tool-shaped name and must be a registered tool.
+    // The verb set is DERIVED from the registered names: a hand-typed list
+    // here said "only the nine verbs" from 0.4 through 0.12 and could not
+    // see compare_runs or compare_traces at all — a guard is evidence only
+    // for the exact proposition it tests.
     const tools = new Set(claims.mcpTools.names);
-    const toolShaped = /^(?:log|get|delete|evaluate|list|deploy|verify)_[a-z_]+$/;
+    const verbs = [...new Set(claims.mcpTools.names.map((n) => n.split('_')[0]))];
+    expect(verbs.length, 'the verb set read from the registered names').toBeGreaterThanOrEqual(7);
+    const toolShaped = new RegExp(`^(?:${verbs.join('|')})_[a-z_]+$`);
     const unknown: string[] = [];
     for (const { rel, text } of prose) {
       for (const m of text.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)) {
@@ -331,6 +337,21 @@ const PROSPECTIVE_COMPOSER_PHRASES = [
 ];
 
 /*
+ * The rule the risk composer REPLACED, in the words the README and the API
+ * reference used for it until 2026-09-07 — two minors after it stopped
+ * being true. The docs-reference coverage guard checks that every tool and
+ * route has a heading, which is coverage; this is truth. Keyed on the same
+ * runtime fact as the block above.
+ */
+const LEGACY_VERDICT_PHRASES = [
+  'evaluation passes when the score',
+  'clears the pass threshold',
+  'score meets or exceeds the configured threshold',
+  'true only when the score',
+  'they do not veto `passed`',
+];
+
+/*
  * The public /proof page is prose a reader trusts exactly as much as the
  * docs, and it is NOT in PROSE_SURFACES (which stops at the repo's own
  * markdown and the agent-facing strings). These two blocks read it directly.
@@ -355,6 +376,77 @@ describe('docs contract — the composer is described as shipped', () => {
       for (const phrase of PROSPECTIVE_COMPOSER_PHRASES) {
         if (folded.includes(phrase)) stale.push(`${rel}: "${phrase}"`);
       }
+    }
+    expect(stale).toEqual([]);
+  });
+
+  it('no prose surface describes passed as the score against a threshold', () => {
+    if (defaultConfig.eval.composer !== 'risk') return;
+    const stale: string[] = [];
+    for (const { rel, text } of COMPOSER_PROSE) {
+      const folded = text.toLowerCase();
+      for (const phrase of LEGACY_VERDICT_PHRASES) {
+        if (folded.includes(phrase.toLowerCase())) stale.push(`${rel}: "${phrase}"`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
+  it('no surface lists run comparison as planned while compare_runs is registered', () => {
+    // The site roadmap and docs/roadmap.md both said "still planned: datasets
+    // and run comparison" the day after 0.12.0 shipped compare_runs. The
+    // assertion is keyed on the registration, so it cannot go stale in
+    // either direction.
+    expect(claims.mcpTools.names).toContain('compare_runs');
+    const surfaces = [...COMPOSER_PROSE, { rel: 'website/src/components/roadmap.tsx', text: read('website/src/components/roadmap.tsx') }];
+    const stale: string[] = [];
+    for (const { rel, text } of surfaces) {
+      for (const m of text.matchAll(/(?:still planned|not shipped|planned)[^.\n]{0,200}?\b(?:run comparison|compare_runs)\b/gi)) {
+        stale.push(`${rel}: ${m[0].slice(0, 80)}`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
+  it('the rule-by-category tables match the bundles the engine ships', () => {
+    // The truthbase roster carries no category; the skill template and the
+    // architecture guide type the bundle membership by hand, on three
+    // tables. This reads every row and asserts it against rulesByType, the
+    // one place membership is decided.
+    const byBundle = new Map(Object.entries(rulesByType).map(([k, rules]) => [k, new Set(rules.map((r) => r.name))]));
+    const wrong: string[] = [];
+    const skill = read('skills/iris-eval/SKILL.template.md');
+    const skillRows = [...skill.matchAll(/^\| (Completeness|Relevance|Safety|Cost) \| ([a-z_]+) \|/gm)];
+    expect(skillRows.length, 'skill template category rows').toBeGreaterThanOrEqual(15);
+    for (const [, cat, rule] of skillRows) {
+      if (!byBundle.get(cat.toLowerCase())?.has(rule)) wrong.push(`SKILL.template.md: ${rule} is not in the ${cat.toLowerCase()} bundle`);
+    }
+    const arch = read('docs/architecture.md');
+    const archRows = [...arch.matchAll(/^\| `(completeness|relevance|safety|cost)`\s*\| ((?:`[a-z_]+`(?:, )?)+)/gm)];
+    expect(archRows.length, 'architecture guide bundle rows').toBe(4);
+    for (const [, cat, list] of archRows) {
+      for (const [, rule] of list.matchAll(/`([a-z_]+)`/g)) {
+        if (!byBundle.get(cat)?.has(rule)) wrong.push(`architecture.md: ${rule} is not in the ${cat} bundle`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it('the residency and discovery sentences come from the truthbase, and their retired forms are gone', () => {
+    // Said ten and five different ways on 2026-09-07; now one fact each in
+    // .claims.json (brand.dataResidency, brand.discoverySentence). The README
+    // is not a rendered target, so its restatement is asserted equal here.
+    const readme = read('README.md').replace(/`/g, '');
+    expect(readme).toContain(claims.brand.dataResidency);
+    const retired = /stays on your machine|never leaves? your machine|discovers it automatically|discovers automatically/i;
+    const surfaces = [
+      ...prose,
+      ...walk(join(root, 'website', 'src')).map((full) => ({ rel: full.slice(root.length + 1).split('\\').join('/'), text: readFileSync(full, 'utf8') })),
+    ];
+    const stale: string[] = [];
+    for (const { rel, text } of surfaces) {
+      const m = text.match(retired);
+      if (m) stale.push(`${rel}: "${m[0]}"`);
     }
     expect(stale).toEqual([]);
   });

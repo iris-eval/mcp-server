@@ -13,7 +13,7 @@
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
 [![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/server/iris/iris-eval)
 
-**Iris scores every agent run for quality, safety, and cost — on your machine, with no SDK and no account.** Most agent projects check quality by running a few remembered prompts and eyeballing the output. Iris replaces that with numbers you can audit: your agent's runs land in a SQLite database on your disk, 20 built-in rules score them deterministically — PII, prompt injection, hallucination markers, cost thresholds, and the agent's own tool calls — free, with no LLM calls, and an optional LLM judge with a hard per-eval cost cap handles the semantic questions. Every rule is inspectable and editable, because a judge you can't audit is just vibes with a number on it. MIT licensed, no telemetry; your traces never leave your machine.
+**Iris scores every agent run for quality, safety, and cost — on your machine, with no SDK and no account.** Most agent projects check quality by running a few remembered prompts and eyeballing the output. Iris replaces that with numbers you can audit: your agent's runs land in a SQLite database on your disk, 20 built-in rules score them deterministically — PII, prompt injection, hallucination markers, cost thresholds, and the agent's own tool calls — free, with no LLM calls, and an optional LLM judge with a hard per-eval cost cap handles the semantic questions. Every rule is inspectable and editable, because a judge you can't audit is just vibes with a number on it. MIT licensed, no telemetry. Nothing leaves your machine unless you set `IRIS_OTEL_ENDPOINT`, which exports traces to the collector you name, or enable the LLM judge with your own key.
 
 **Requires Node.js 20 or later.** Check with `node --version`.
 
@@ -50,7 +50,7 @@ Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Win
 }
 ```
 
-Your agent discovers Iris's nine tools on connect, and the dashboard serves at **http://localhost:6920**. Now paste this to your agent:
+Your client lists Iris's twelve tools on connect, and the dashboard serves at **http://localhost:6920**. Now paste this to your agent:
 
 > Log that last task to Iris and evaluate the output.
 
@@ -199,7 +199,7 @@ Every built-in rule has a published precision, recall and F1 with 95% confidence
 
 ## MCP Tools
 
-Iris registers nine tools that any MCP-compatible agent can invoke — full rule + trace lifecycle + LLM-as-judge + semantic citation verification:
+Iris registers twelve tools that any MCP-compatible agent can invoke — trace and rule lifecycle, comparison across runs, LLM-as-judge and semantic citation verification:
 
 - **`log_trace`** — Log an agent execution with spans, tool calls, token usage, and cost
 - **`evaluate_output`** — Score output quality against completeness, relevance, safety, and cost rules (heuristic, deterministic, free)
@@ -210,6 +210,9 @@ Iris registers nine tools that any MCP-compatible agent can invoke — full rule
 - **`delete_trace`** — Remove a single stored trace by ID (destructive, tenant-scoped)
 - **`evaluate_with_llm_judge`** — Semantic eval via LLM (Anthropic or OpenAI). Five templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, per-eval pricing disclosed. **Bring your own API key** (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris doesn't proxy or relay LLM calls.
 - **`verify_citations`** — Extract citations from output (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded + domain-allowlisted resolver, and use an LLM judge to check whether each source actually supports the cited claim. Opt-in outbound HTTP. Same BYOK requirement as `evaluate_with_llm_judge`.
+- **`compare_runs`** — Did a change make the agent worse? Compares two runs of stored evaluations: a paired exact test when the runs share case keys, an interval on the difference otherwise, and an honest "cannot tell" with the number of cases it would take
+- **`compare_traces`** — How reliably does the agent answer the same question? Per-case pass rates with intervals, flaky cases first, and an overall rate that respects repeats
+- **`evaluate_runs`** — Re-score every trace in a run under today's rules into a new run, so a rules change is never read as an agent change
 
 **Enable the LLM judge (optional; the deterministic rules never need it)**
 1. Get an API key from Anthropic or OpenAI.
@@ -225,7 +228,7 @@ When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effo
 `evaluate_output` returns both a `score` and a `passed` flag — they answer different questions:
 
 - **`score`** (0..1) is the weighted average across the rules that ran — a quality gradient.
-- **`passed`** is the ship/no-ship verdict: `true` only when the score clears the pass threshold (default **0.7**) **and no critical rule failed**.
+- **`passed`** is the ship/no-ship verdict, and the score is never consulted for it. A composer reads each rule by the kind of claim it makes: a policy you configured gates; a critical detector vetoes; a critical check that was asked and could not answer makes the verdict **unknown** (`passed: false`) rather than clean; every remaining detector combines into one probability that the output is bad, weighed against the loss ratio you state in `eval.falsePassCost` (default 1, so the cut is 0.5). `verdict.basis` names the layer that decided and `verdict.by` the rules.
 
 Genuine safety violations hard-fail. By default `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Which built-in rules are critical is a deployment setting (`eval.criticalRules` / `eval.nonCriticalRules`); every rule result carries the effective `critical` flag and `criticalSource`, and `list_rules` reports the roster this server applies. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know, stated the same way on every surface: a critical rule that **skipped** (missing context, a broken definition, or a regex killed at the sandbox budget) has not judged the output and does not veto — every such rule is named in `critical_skipped`. **A gate that must fail closed treats a non-empty `critical_skipped` as unknown, not clean**, and may treat any `budgetExceeded` skip in `rule_results` the same way.
 

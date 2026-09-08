@@ -247,7 +247,7 @@ the test reads what it wrote, and a drift-lock asserts the two agree exactly
 **Two limits, stated rather than discovered.** The transcripts cap tool
 output at 600 characters, which is a fixture artefact: `grounded_in_reads`
 declines an incomplete read set on purpose, so this set is a weak instrument
-for that rule. And they use exactly two tools, both always well formed, so
+for that rule. And they use exactly two distinct tools, both always well formed, so
 `valid_tool_arguments` finds nothing here and contributes nothing to the
 number — its measurement comes entirely from its own family and the composed
 cases.

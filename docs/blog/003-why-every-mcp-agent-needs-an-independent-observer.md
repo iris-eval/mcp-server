@@ -11,6 +11,8 @@ relatedPosts: [why-your-ai-agents-need-observability, mcp-observability-is-the-n
 
 # Why Every MCP Agent Needs an Independent Observer
 
+> **Editor's note (2026-09-07):** Iris now registers twelve tools; the three this post walks through are unchanged. "Discovers" below means the client lists Iris's tools at session start — Iris never intercepts a run; the model calls it, or you POST a trace to its HTTP API.
+
 There is a sentence I keep coming back to. I first saw it from @aginaut on X:
 
 > "If the agent controls the logs, the logs are fiction."
@@ -74,9 +76,9 @@ This is the distributed systems pattern applied to agents. The observer is indep
 
 ## What This Looks Like in Practice
 
-I built Iris as an MCP server specifically because of this architectural principle. Add it to your MCP config, and every MCP-compatible agent — Claude Desktop, Cursor, Claude Code, custom agents built with the MCP SDK — discovers it on startup.
+I built Iris as an MCP server specifically because of this architectural principle. Add it to your MCP config, and every MCP-compatible agent — Claude Desktop, Cursor, Claude Code, custom agents built with the MCP SDK — lists its tools on startup.
 
-The agent gains nine tools without any code changes. The three core ones:
+The agent gains every Iris tool without any code changes (nine when this was written; the README lists today's). The three core ones:
 
 **`log_trace`** records the full execution path:
 

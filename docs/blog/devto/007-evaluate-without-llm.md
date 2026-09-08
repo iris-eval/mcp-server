@@ -6,6 +6,8 @@ tags: mcp, testing, ai, programming
 canonical_url: https://iris-eval.com/blog/how-to-evaluate-agent-output-without-llm
 ---
 
+> **Editor's note (2026-09-07):** Iris now registers twelve tools. "Discovers" below means the client lists Iris's tools at session start; Iris never intercepts a run — the model calls it, or you POST a trace to its HTTP API.
+
 Here is the default approach to evaluating agent output in 2026: take the output, send it to another LLM, ask that LLM to judge quality, and trust the result.
 
 This is the approach most eval frameworks use. And it has two problems that nobody talks about enough.
@@ -26,7 +28,7 @@ One command:
 npx @iris-eval/mcp-server
 ```
 
-That starts the Iris MCP server locally. But for persistent use, you want to add it to your MCP configuration so every agent session discovers it automatically.
+That starts the Iris MCP server locally. But for persistent use, you want to add it to your MCP configuration so every agent session lists its tools at start (the model still decides when to call them).
 
 ## Add Iris to Your MCP Config
 

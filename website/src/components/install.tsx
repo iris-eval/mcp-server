@@ -1,3 +1,5 @@
+import { DATA_RESIDENCY } from "@/lib/claims";
+
 export function Install(): React.ReactElement {
   return (
     <section className="relative py-32 lg:py-44" id="open-source">
@@ -13,7 +15,7 @@ export function Install(): React.ReactElement {
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
             Install Iris locally and start seeing what your agents are doing.
             Works with Claude Desktop, Cursor, Windsurf, or any MCP-compatible
-            agent. Free, MIT-licensed, your data stays on your machine.
+            agent. Free, MIT-licensed. {DATA_RESIDENCY}
           </p>
         </div>
 

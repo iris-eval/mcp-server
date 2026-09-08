@@ -123,7 +123,7 @@ For shared-deployment scenarios, document the locking model. SQLite WAL handles 
 
 | Surface | Best for |
 |---|---|
-| `@iris-eval/mcp-server` | hosted clients (Claude Code, Cursor, Windsurf, Continue, Cline, Zed, custom MCP clients). One-config-file install. Discovers automatically. |
+| `@iris-eval/mcp-server` | hosted clients (Claude Code, Cursor, Windsurf, Continue, Cline, Zed, custom MCP clients). One-config-file install; the client lists the tools on connect and the model decides when to call them. |
 | `@iris-eval/client` | custom agents written in TypeScript. In-process, sub-millisecond setup, full programmatic API. |
 
 Both share: rule library, dashboard, scoring algorithms, custom-rule format, storage. Migrating between them is a config change, not a rewrite.

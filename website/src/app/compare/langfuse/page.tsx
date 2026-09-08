@@ -4,7 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
-import { RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
+import { DISCOVERY_SENTENCE, RULE_COUNT_BUILT_IN, CUSTOM_RULE_TYPE_COUNT } from "@/lib/claims";
 
 /** Sanitize a string for safe inclusion in JSON-LD structured data. */
 function sanitizeText(value: unknown): string {
@@ -63,7 +63,7 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: sanitizeText(
-              "Iris is an MCP-native agent eval tool that requires zero code changes — your agent discovers it automatically via MCP config. Langfuse is an SDK-based observability platform with @observe decorators, prompt management, and 20+ framework integrations. Iris focuses on zero-code simplicity with a single SQLite file, while Langfuse offers broader framework support and enterprise compliance."
+              `Iris is an MCP-native agent eval tool that needs no SDK. ${DISCOVERY_SENTENCE} Langfuse is an SDK-based observability platform with @observe decorators, prompt management, and 20+ framework integrations. Iris focuses on zero-code simplicity with a single SQLite file, while Langfuse offers broader framework support and enterprise compliance.`
             ),
           },
         },

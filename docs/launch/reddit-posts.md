@@ -51,7 +51,7 @@ Happy to answer questions about the architecture, the eval rule system, or the M
 
 Releasing Iris, an open-source MCP server for evaluating and monitoring AI agent outputs. The core problem: as agents move from demos to production, there is no standard way to automatically evaluate output quality across runs, track cost, or detect safety issues like PII leakage and prompt injection.
 
-Iris is the first eval and observability tool built natively on the Model Context Protocol. It exposes nine MCP tools that any compatible agent discovers and calls automatically — no SDK integration required. Three core tools (log_trace / evaluate_output / get_traces), four lifecycle tools (list_rules / deploy_rule / delete_rule / delete_trace), and two semantic-eval tools (evaluate_with_llm_judge with 5 templates, verify_citations with SSRF-guarded source resolution).
+Iris is an eval and observability tool built natively on the Model Context Protocol. It exposes MCP tools (nine at launch; twelve as of v0.12.0) that any compatible client lists on connect — no SDK integration required. Three core tools (log_trace / evaluate_output / get_traces), four lifecycle tools (list_rules / deploy_rule / delete_rule / delete_trace), and two semantic-eval tools (evaluate_with_llm_judge with 5 templates, verify_citations with SSRF-guarded source resolution).
 
 **Evaluation framework:**
 

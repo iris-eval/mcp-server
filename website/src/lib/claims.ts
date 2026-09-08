@@ -87,6 +87,10 @@ export const PUBLIC_REPO_URL = claimsRaw.brand.publicRepoUrl as string;
 export const NPM_PACKAGE = claimsRaw.brand.npmPackage as string;
 export const SUPPORT_EMAIL = claimsRaw.brand.supportEmail as string;
 export const SECURITY_EMAIL = claimsRaw.brand.securityEmail as string;
+/** How Iris is found and when it runs — one sentence, said the same way everywhere (see the brand generator). */
+export const DISCOVERY_SENTENCE = claimsRaw.brand.discoverySentence as string;
+/** What leaves the machine, with its two exceptions in the same sentence. */
+export const DATA_RESIDENCY = claimsRaw.brand.dataResidency as string;
 
 // Security defaults (src/config/defaults.ts). The security page published a
 // dashboard-API rate limit six times lower than the shipped default for a
