@@ -128,6 +128,50 @@ describe('the agent-native contract', () => {
     }
   });
 
+  it('log_trace with evaluate: true stores, scores and links in one call, identically to evaluate_output', async () => {
+    const logged = await client.callTool({
+      name: 'log_trace',
+      arguments: { agent_name: 'one-call', input: t13.input, output: t13.output, tool_calls: t13.tool_calls, cost_usd: t13.cost_usd, evaluate: true },
+    });
+    const body = JSON.parse((logged.content as Array<{ type: string; text: string }>)[0].text) as {
+      trace_id: string;
+      status: string;
+      evaluation?: { id: string; trace_id?: string; passed: boolean; score: number; eval_type: string; verdict: { basis: string; by: string[] }; coverage: unknown; note?: string };
+    };
+    expect(body.status).toBe('stored');
+    expect(body.evaluation, 'the evaluation rides on the log_trace response').toBeDefined();
+    const ev = body.evaluation!;
+    expect(ev.trace_id).toBe(body.trace_id);
+    expect(ev.eval_type).toBe('all');
+    expect(ev.note, 'an omitted eval_type says the default ran').toBeDefined();
+    // The union validates the evaluated shape (respond() would have thrown otherwise), and it deep-equals the text.
+    expect(logged.structuredContent).toEqual(body);
+    // Links: the evaluation and the trace, each readable.
+    const links = (logged.content as Array<{ type: string; uri?: string }>).filter((c) => c.type === 'resource_link').map((c) => c.uri!);
+    expect(links.some((u) => u.includes(ev.id))).toBe(true);
+    expect(links.some((u) => u.includes(body.trace_id))).toBe(true);
+    for (const uri of links) expect((await client.readResource({ uri })).contents.length).toBeGreaterThan(0);
+    // Identical to evaluate_output on the same stored trace: same verdict, same basis, same score.
+    const again = await client.callTool({ name: 'evaluate_output', arguments: { output: t13.output, input: t13.input, cost_usd: t13.cost_usd, trace_id: body.trace_id } });
+    const ev2 = JSON.parse((again.content as Array<{ type: string; text: string }>)[0].text) as { passed: boolean; score: number; verdict: { basis: string; by: string[] } };
+    expect(ev2.passed).toBe(ev.passed);
+    expect(ev2.score).toBe(ev.score);
+    expect(ev2.verdict.basis).toBe(ev.verdict.basis);
+    expect(ev2.verdict.by).toEqual(ev.verdict.by);
+  });
+
+  it('log_trace with evaluate: true and no output is refused before anything is stored', async () => {
+    const before = (await client.callTool({ name: 'get_traces', arguments: { agent_name: 'refused', limit: 5 } })).content as Array<{ type: string; text: string }>;
+    const refused = await client.callTool({ name: 'log_trace', arguments: { agent_name: 'refused', input: 'x', evaluate: true } });
+    expect(refused.isError).toBe(true);
+    const envelope = JSON.parse((refused.content as Array<{ type: string; text: string }>)[0].text) as { error: { code: string; field?: string; recovery: string[] } };
+    expect(envelope.error.code).toBe('IRIS_INVALID_ARGUMENT');
+    expect(envelope.error.field).toBe('output');
+    expect(envelope.error.recovery.length).toBeGreaterThan(0);
+    const after = (await client.callTool({ name: 'get_traces', arguments: { agent_name: 'refused', limit: 5 } })).content as Array<{ type: string; text: string }>;
+    expect(after[0].text).toBe(before[0].text); // nothing stored
+  });
+
   it('the judge tools advertise their schema and, without a key, return the enablement envelope', async () => {
     for (const name of ['evaluate_with_llm_judge', 'verify_citations'] as const) {
       const args = name === 'evaluate_with_llm_judge' ? { output: 'judge me [1]', template: 'accuracy', model: 'claude-haiku-4-5' } : { output: 'judge me [1]', model: 'claude-haiku-4-5' };

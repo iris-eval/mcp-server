@@ -45,7 +45,9 @@ export function registerAllTools(
   evalEngine: EvalEngine,
   customRuleStore: CustomRuleStore,
 ): void {
-  registerLogTraceTool(server, storage);
+  registerLogTraceTool(server, storage, evalEngine, {
+    dormant: () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT)),
+  });
   registerEvaluateOutputTool(server, storage, evalEngine, {
     dormant: () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT)),
   });

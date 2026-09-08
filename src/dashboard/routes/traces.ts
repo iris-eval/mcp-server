@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { toEvaluationResponse } from '../../eval/response.js';
+import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { IStorageAdapter } from '../../types/query.js';
@@ -9,7 +9,6 @@ import { requireTenant } from '../../middleware/tenant.js';
 import { generateTraceId, generateSpanId } from '../../utils/ids.js';
 import { bestEffortExport } from '../../otel/lazy.js';
 import { traceQuerySchema, ingestTraceSchema } from '../validation.js';
-import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../../eval/engine.js';
 
 export interface TraceRouteOptions {
   /**
@@ -92,52 +91,15 @@ export function registerTraceRoutes(
         return;
       }
 
-      // Deterministic engine, same context evaluate_output builds. The
-      // superRefine on ingestTraceSchema guarantees output is present.
-      // eval_type="all" takes the same every-bundle path the MCP tool
-      // takes (evaluateAll): one pass, one regex budget, the critical veto
-      // spanning every bundle, and a per-category breakdown — stored under
-      // eval_type "all" so the dashboard reads it as the tool's rows.
-      const context = {
-        output: body.output as string,
-        input: body.input,
-        costUsd: body.cost_usd,
-        tokenUsage: body.token_usage,
-        // The trajectory the SAME request just stored. This body already
-        // carries what the agent did; not forwarding it made every
-        // trajectory rule skip on the one path where the data was
-        // guaranteed present — an ingest that captured a failed tool call
-        // and then evaluated as though it had never been told.
-        toolCalls: body.tool_calls,
-        // Whole-source precedence in the step layer means these are only
-        // reached when tool_calls is absent, so forwarding them costs a
-        // reference and buys trajectory evaluation for a span-only capture.
-        spans: trace.spans,
-        tools: trace.tools,
-      };
-      // An omitted eval_type runs every bundle — the same default, from the
-      // same constant, as the MCP tool — and says so in the response.
-      const evalTypeOmitted = body.eval_type === undefined;
-      const evalType = body.eval_type ?? DEFAULT_EVAL_TYPE;
-      const evaluation =
-        evalType === 'all'
-          ? await options.evalEngine.evaluateAll(context)
-          : await options.evalEngine.evaluate(evalType, context);
-      evaluation.trace_id = traceId;
-      await storage.insertEvalResult(tenantId, evaluation);
-
-      // The same serializer as evaluate_output (src/eval/response.ts): the
-      // veto reason, the skipped criticals, the verdict basis, coverage and
-      // provenance travel the ingest path exactly as they travel the tool.
-      res.status(201).json({
-        trace_id: traceId,
-        status: 'stored',
-        evaluation: toEvaluationResponse(evaluation, {
-          traceId,
-          dormant: options?.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
-          ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}),
-        }),
+      // One store-and-evaluate primitive (src/eval/ingest.ts), shared with
+      // the log_trace tool's evaluate: true and the CLI: the same context,
+      // the same bundle default, the same serializer. The superRefine on
+      // ingestTraceSchema guarantees output is present.
+      const { response } = await evaluateStoredTrace(options.evalEngine, storage, tenantId, trace as Trace & { output: string }, {
+        evalType: body.eval_type,
+        dormant: options?.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
       });
+      res.status(201).json({ trace_id: traceId, status: 'stored', evaluation: response });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid trace payload', details: (err as unknown as { issues: unknown }).issues });

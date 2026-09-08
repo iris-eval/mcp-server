@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`log_trace` can evaluate in the same call.** `evaluate: true` (with `output`, and optionally `eval_type`) scores the stored trace under exactly the rules `evaluate_output` runs and returns the full evaluation — verdict, basis, every rule result, coverage — linked to the trace. It is the opt-in `POST /api/v1/traces` has carried since 0.5.0, and the MCP path lacked it: two calls where one would do taught agents to log and forget, and a trace with no verdict looks like a dead server. Both doors now share one store-and-evaluate primitive (`src/eval/ingest.ts`), so they cannot disagree about what "evaluate on write" means. Without an output, or on a server with no eval engine, the call is refused with `IRIS_INVALID_ARGUMENT` before anything is stored.
+- The API reference's `log_trace` table gained the `tools`, `run` and `case_key` rows it had lacked since 0.11.0 and 0.12.0, and a test now reads the table against the tool's own input shape.
+
 ### Changed
 
 - **The config key, plugin name and skill name are `iris-eval` on every surface, and the command is `iris-eval`.** Until now the product answered to five names depending on the door — the repo's own `.mcp.json` said `iris`, the plugin manifest `iris`, the marketplace `iris-eval`, the command `iris-mcp`, the compose service and the OTel default `iris-mcp` — so an agent that copied one door could not match the docs of another, and the bare word lands on three other projects. One identifier now (`src/identity.ts`, locked by `tests/identity.test.ts`); "Iris" stays the product's name in prose. **An entry you named `iris` keeps working — the key is yours — and `iris-mcp` still runs; neither is documented any more.** The plugin's skill is `iris-eval` (it was `agent-eval`); the default `service.name` on exported spans is `iris-eval`; the citation verifier's user agent no longer carries a version that stopped being true in 0.5.

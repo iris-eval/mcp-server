@@ -7,8 +7,13 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 import { bestEffortExport } from '../otel/lazy.js';
 import { strictInput, strictNested } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
-import { guarded, respond } from './respond.js';
+import { evaluationLinks, guarded, respond } from './respond.js';
 import { traceUri } from '../resources/uris.js';
+import type { EvalEngine } from '../eval/engine.js';
+import type { DormantRule } from '../eval/dormant.js';
+import { evaluateStoredTrace } from '../eval/ingest.js';
+import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
+import { irisError } from './errors.js';
 
 /*
  * The tool-call record — one entry of `tool_calls[]`.
@@ -171,14 +176,28 @@ export const logTraceInputShape = {
   case_key: z.string().optional().describe('What makes this the same QUESTION as a trace in another run — a fixture name, a test id. Supplying it PAIRS the two, and a paired comparison sees a regression an unpaired one cannot. Omit it and a key is derived from the input, so pairing still works'),
   spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events); a span without start_time takes the trace timestamp'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
+  /*
+   * Evaluate on write — the same opt-in POST /api/v1/traces has carried
+   * since 0.5.0, and the MCP path lacked. Two calls where one would do
+   * taught agents to log and forget: a trace with no verdict looks like a
+   * dead server. Declared HERE so both doors inherit it.
+   */
+  evaluate: z.boolean().default(false).describe('Score the stored trace in this same call, under exactly the rules evaluate_output runs (every bundle unless eval_type names one). Requires output. The response then carries the full evaluation — verdict, basis, every rule result, coverage — and links it'),
+  eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('With evaluate: true, the bundle to run — completeness | relevance | safety | cost | custom | all. Omitted: every bundle runs and the evaluation carries a note saying the default ran'),
 };
 
 export const logTraceOutputSchema = z.looseObject({
   trace_id: z.string().describe('the stored trace id, 32 hex — pass it to evaluate_output, get_traces or delete_trace'),
   status: z.literal('stored').describe('always "stored" on success'),
+  evaluation: evaluateOutputResponseSchema.optional().describe('present when evaluate was true: the same object evaluate_output returns for this trace, stored and linked'),
 });
 
-export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter): void {
+export interface LogTraceOptions {
+  /** The quarantined gating rules on this server, for coverage.dormant when evaluate is true. */
+  dormant?: () => DormantRule[];
+}
+
+export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter, evalEngine?: EvalEngine, options?: LogTraceOptions): void {
   server.registerTool(
     'log_trace',
     {
@@ -189,13 +208,14 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         does:
           'Writes one trace row to local SQLite and mints a fresh trace_id; nothing is deduplicated, so resubmitting the same payload stores a second trace. ' +
           'Only agent_name is required. Store what you have: tool_calls so the trajectory rules can later judge what the agent did, cost_usd and token_usage so the cost rules can, input and output so everything else can. ' +
+          'Pass evaluate: true (with output) to score the stored trace in this same call under exactly the rules evaluate_output runs; the response then carries the full evaluation and links it. ' +
           'When IRIS_OTEL_ENDPOINT is set the trace is also exported to that collector, best-effort and asynchronous; the local write never waits on it. ' +
           'Traces are immutable: there is no update path. In stdio mode nothing authenticates the caller; over HTTP a Bearer token is required only when an API key is configured.',
         whenNot:
-          'For a transient log line (use your logger). To score an output: log first, then call evaluate_output with the trace_id, which also lets it reuse the stored tool_calls. To change a stored trace: delete_trace and log again.',
+          'For a transient log line (use your logger). To score a trace you already stored: evaluate_output with its trace_id, which reuses the stored tool_calls and tools. To change a stored trace: delete_trace and log again.',
         returns: logTraceOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR when the database cannot be written. An unknown argument or a malformed span or tool_calls entry is refused before the handler runs, naming the valid keys. ' +
+          'IRIS_STORAGE_ERROR when the database cannot be written. IRIS_INVALID_ARGUMENT when evaluate is true without output, or on a server with no eval engine — nothing is stored in either case. An unknown argument or a malformed span or tool_calls entry is refused before the handler runs, naming the valid keys. ' +
           ERROR_ENVELOPE_SENTENCE,
         siblings: {
           evaluate_output: 'score the stored output',
@@ -218,6 +238,21 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       },
     },
     guarded(async (args) => {
+      // Refuse before storing anything: a half-done write — stored, not
+      // evaluated, error returned — is the shape a caller cannot recover
+      // from without reading the database.
+      if (args.evaluate && args.output === undefined) {
+        throw irisError('IRIS_INVALID_ARGUMENT', 'evaluate: true needs an output to score, and none was supplied. Nothing was stored.', {
+          field: 'output',
+          recovery: ['Pass the agent\'s output alongside evaluate: true.', 'Or omit evaluate and call evaluate_output later with the trace_id.'],
+        });
+      }
+      if (args.evaluate && !evalEngine) {
+        throw irisError('IRIS_INVALID_ARGUMENT', 'Evaluation is not available on this server (no eval engine is wired), so evaluate: true cannot be honoured. Nothing was stored.', {
+          field: 'evaluate',
+          recovery: ['Retry without evaluate to store the trace.', 'Start Iris through its own entry point (iris-eval) so the eval engine is wired.'],
+        });
+      }
       const traceId = generateTraceId();
       const timestamp = args.timestamp ?? new Date().toISOString();
 
@@ -267,8 +302,20 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         console.warn(`[iris.otel] ${err.message}`);
       });
 
-      return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored' }, [
-        { uri: traceUri(traceId), name: `trace ${traceId}`, description: 'The stored trace with its spans and, later, its evaluations' },
+      const traceLink = { uri: traceUri(traceId), name: `trace ${traceId}`, description: 'The stored trace with its spans and, later, its evaluations' };
+      if (!args.evaluate || !evalEngine) {
+        return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored' }, [traceLink]);
+      }
+
+      // The same primitive POST /api/v1/traces uses (src/eval/ingest.ts):
+      // one context, one bundle default, one serializer, one linked row.
+      const { result, response } = await evaluateStoredTrace(evalEngine, storage, LOCAL_TENANT, trace as typeof trace & { output: string }, {
+        evalType: args.eval_type,
+        dormant: options?.dormant?.(),
+      });
+      return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored', evaluation: response }, [
+        ...evaluationLinks(result.id, traceId).filter((l) => l.uri !== traceLink.uri),
+        traceLink,
       ]);
     }),
   );
