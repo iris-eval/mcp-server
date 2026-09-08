@@ -25,6 +25,7 @@ import { useCustomRules } from '../../api/hooks';
 import { api } from '../../api/client';
 import type { DeployedCustomRule, RuleSeverity } from '../../api/types';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { QueryError } from '../shared/QueryError';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { Tooltip } from '../shared/Tooltip';
 import { TT } from '../shared/tooltipText';
@@ -160,13 +161,7 @@ export function RulesPage() {
         }
       />
 
-      {error && (
-        <PageEmptyState
-          icon={Sparkles}
-          title="Could not load rules"
-          body={error}
-        />
-      )}
+      {error && <QueryError error={error} what="the deployed rules" onRetry={refetch} />}
 
       {data && data.length === 0 && (
         <PageEmptyState

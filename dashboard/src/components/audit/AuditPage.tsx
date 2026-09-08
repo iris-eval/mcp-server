@@ -17,6 +17,7 @@ import { History, Download } from 'lucide-react';
 import { useAuditLog } from '../../api/hooks';
 import type { AuditAction, AuditLogEntry } from '../../api/types';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { QueryError } from '../shared/QueryError';
 import { Tooltip } from '../shared/Tooltip';
 import { Icon } from '../shared/Icon';
 import { formatTimeAgo, formatTimestamp } from '../../utils/formatters';
@@ -309,15 +310,7 @@ export function AuditPage() {
         }
       />
 
-      {error && (
-        <div style={styles.errorBox} role="alert">
-          <strong>Could not load audit log</strong>
-          <span>{error}</span>
-          <button type="button" style={styles.retryBtn} onClick={refetch}>
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <QueryError error={error} what="the audit log" onRetry={refetch} />}
 
       {loading && !data && <LoadingSpinner />}
 

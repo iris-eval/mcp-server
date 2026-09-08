@@ -18,6 +18,7 @@ export interface RouteMeta {
 }
 
 export const ROUTE_TITLES: RouteMeta[] = [
+  { pattern: '*', title: 'Not found', subtitle: 'No page at this address', kind: 'static' },
   { pattern: '/', title: 'Dashboard', subtitle: 'Output quality across all agents', kind: 'static' },
   {
     pattern: '/moments',
@@ -64,5 +65,6 @@ export function resolveRouteMeta(pathname: string): RouteMeta | undefined {
     );
     if (regex.test(pathname)) return route;
   }
-  return undefined;
+  // The wildcard (D-1): an address the router does not know still gets a title in the header.
+  return ROUTE_TITLES.find((r) => r.pattern === '*');
 }

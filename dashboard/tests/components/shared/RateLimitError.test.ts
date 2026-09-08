@@ -49,7 +49,7 @@ describe('RateLimitError', () => {
     fetchMock.mockResolvedValue(makeResponse(429, { 'ratelimit-reset': '45' }));
     const err = await callGetFilters().catch((e) => e);
     expect(err).toBeInstanceOf(RateLimitError);
-    expect(err.kind).toBe('rate-limit');
+    expect(err.kind).toBe('rate-limited');
     expect(err.retryAfterMs).toBe(45_000);
   });
 

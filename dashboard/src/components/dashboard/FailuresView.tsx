@@ -22,6 +22,7 @@ import { useSeenFailures } from '../../hooks/useSeenFailures';
 import { MomentCard } from '../moments/MomentCard';
 import { SectionHeader } from './SectionHeader';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { QueryError } from '../shared/QueryError';
 import { PageEmptyState } from '../layout/PageEmptyState';
 import { RateLimitBanner } from '../shared/RateLimitBanner';
 
@@ -68,20 +69,7 @@ export function FailuresView() {
         }
       />
 
-      {error && (
-        <div className="iris-error-box" role="alert">
-          <strong>Could not load failures</strong>
-          <span>{error}</span>
-          <button
-            type="button"
-            className="iris-btn iris-btn--danger"
-            style={{ width: 'fit-content' }}
-            onClick={refetch}
-          >
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <QueryError error={error} what="failures" onRetry={refetch} />}
 
       {loading && !data && <LoadingSpinner />}
 

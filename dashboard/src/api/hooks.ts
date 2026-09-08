@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, RateLimitError } from './client';
+import { api } from './client';
+import { asApiError, type ApiError } from './errors';
 import { usePolling } from '../hooks/usePolling';
 import type {
   DriftComparison,
@@ -54,8 +55,8 @@ export const CADENCE = {
 export interface UseApiDataResult<T> {
   data: T | null;
   loading: boolean;
-  /** Human-readable error message, or null if the last fetch was OK. */
-  error: string | null;
+  /** The last fetch's failure, classified (D-1), or null if it succeeded. Render it with <QueryError>. */
+  error: ApiError | null;
   /**
    * Epoch-ms timestamp when the rate limit is expected to reset, or null.
    * While set, polling is paused. The value resets to null on the next
@@ -70,10 +71,22 @@ export interface UseApiDataResult<T> {
 // the right cadence + fetcher. The bare hook is exposed so the
 // stale-data race regression test can drive it directly without
 // mocking the entire api client surface.
+/**
+ * One query, one state (D-1): a widget branches on `status` and never has
+ * to reason about `loading && !data && !error` by hand.
+ */
+export type QueryState<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: ApiError };
+
+export function queryStateOf<T>(r: Pick<UseApiDataResult<T>, 'data' | 'loading' | 'error'>): QueryState<T> {
+  if (r.error) return { status: 'error', error: r.error };
+  if (r.data !== null) return { status: 'ready', data: r.data };
+  return { status: 'loading' };
+}
+
 export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number): UseApiDataResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const resumeTimer = useRef<number | null>(null);
   // Monotonic request id. Each fetchData() call captures its own id; if a
@@ -93,10 +106,12 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
       setRateLimitedUntil(null);
     } catch (err) {
       if (myId !== requestIdRef.current) return; // stale — drop the error too
-      if (err instanceof RateLimitError) {
-        const until = Date.now() + err.retryAfterMs;
+      // Classified, never a bare string (D-1): the widget renders the kind.
+      const apiErr = asApiError(err);
+      setError(apiErr);
+      if (apiErr.kind === 'rate-limited' && apiErr.retryAfterMs) {
+        const until = Date.now() + apiErr.retryAfterMs;
         setRateLimitedUntil(until);
-        setError(err.message);
         // Schedule auto-resume right after the window expires so the next
         // successful fetch clears the banner without user action.
         if (resumeTimer.current !== null) {
@@ -105,9 +120,7 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
         resumeTimer.current = window.setTimeout(() => {
           resumeTimer.current = null;
           setRateLimitedUntil(null);
-        }, err.retryAfterMs + 100);
-      } else {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        }, apiErr.retryAfterMs + 100);
       }
     } finally {
       // Only the latest call clears the loading flag — prevents a stale

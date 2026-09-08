@@ -42,6 +42,13 @@ export default defineConfig({
      */
     command: `node dist/index.js --dashboard --dashboard-port ${E2E_PORT}`,
     url: `${E2E_BASE_URL}/api/v1/health`,
+    /*
+     * Outside CI a server already on the port is reused — and it serves the
+     * bundle IT was started with. A dashboard left running from an earlier
+     * session made two local runs test an old build (S97, D-1) before the
+     * cause was found. If a spec fails on code you just built, check the
+     * port first: `netstat -ano | findstr :6921` (Windows) / `lsof -i :6921`.
+     */
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
     env: {
