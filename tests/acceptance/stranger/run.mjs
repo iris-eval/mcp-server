@@ -291,6 +291,19 @@ const isIris = (name) => /^mcp__iris-eval__/.test(name ?? '');
 const irisName = (name) => name.replace(/^mcp__iris-eval__/, '');
 const denied = (c) => c.isError && /denied|not allowed|permission/i.test(c.result ?? '');
 const readmeRead = (c) => /README/i.test(JSON.stringify(c.input ?? '')) && (c.name === 'WebFetch' || c.name === 'Read' || /Bash/.test(c.name));
+/*
+ * The prompt's own pointer (0.13.0). The fixed prompt ends "Start here:
+ * <the npm page>", and the 0.13.0 stranger fetched exactly that page after
+ * connecting — "the README the user pointed me at", in its own words — once
+ * by WebFetch and twice more retrying `npm view … readme` after a denied
+ * shell. Those reads are the user's instruction, not the product sending the
+ * agent back to the docs; the ceiling and the README-read clause count
+ * reads of anything else. The pointer's URL is the one the PROMPT names.
+ */
+const PROMPT_POINTER = /https?:\/\/(www\.)?npmjs\.com\/package\/@iris-eval\/mcp-server|npm view @iris-eval\/mcp-server readme/;
+const promptPointer = (c) => PROMPT_POINTER.test(JSON.stringify(c.input ?? ''));
+/** A fetch of the pointer by any fetching tool — including a shell call that was denied and retried. */
+const pointerRead = (c) => promptPointer(c) && (c.name === 'WebFetch' || /Bash|PowerShell/.test(c.name));
 const quote = (s, n = 220) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 
 function summarise(phase, d, wallMs, substitution) {
@@ -340,7 +353,8 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
     const connected = (d.init?.mcp_servers ?? []).some((s) => /iris/.test(s.name) && /connect/i.test(s.status));
     row('A3-connected', connected, JSON.stringify(d.init?.mcp_servers ?? []));
     const firstIris = d.calls.findIndex((c) => isIris(c.name));
-    const readmeAfterConnect = d.calls.findIndex((c) => readmeRead(c));
+    const readmeAfterConnect = d.calls.findIndex((c) => readmeRead(c) && !pointerRead(c));
+    const pointerReads = d.calls.filter(pointerRead).length;
     /*
      * "Distinguishes" (re-derived 0.13.0): the answer names a verdict per
      * output in the composer's words — ship / must not ship, passed / failed,
@@ -426,8 +440,8 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
       c.name === 'ToolSearch' ||
       ((c.name === 'Write' || c.name === 'Edit' || c.name === 'Read') && /[\\/]memory[\\/]|MEMORY\.md|[\\/]tool-results[\\/]/.test(JSON.stringify(c.input ?? {})));
     const hostCalls = d.calls.filter(hostCall).length;
-    const afterConnect = d.calls.length - hostCalls;
-    row('within-12-calls', afterConnect <= 12 && readmeAfterConnect < 0, `${afterConnect} tool calls after connection (${d.calls.length} including ${hostCalls} host-side: ToolSearch, auto-memory, spilled results); README reads after connection: ${readmeAfterConnect >= 0 ? 1 : 0}`);
+    const afterConnect = d.calls.length - hostCalls - pointerReads;
+    row('within-12-calls', afterConnect <= 12 && readmeAfterConnect < 0, `${afterConnect} tool calls after connection (${d.calls.length} including ${hostCalls} host-side: ToolSearch, auto-memory, spilled results; and ${pointerReads} read(s) of the prompt's own pointer); README reads after connection beyond the pointer: ${readmeAfterConnect >= 0 ? 1 : 0}`);
   }
   if (a8) {
     const d = a8.d;

@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The stranger harness grades on the 0.13.0 product: an evaluation counts on either door (`log_trace` with `evaluate: true` or `evaluate_output`); an evaluation returned inline satisfies the read-the-verdict row; the untold task is graded in a fresh session; the answer is read in the composer's vocabulary (must not ship, veto, basis) rather than the score era's; the twelve-call ceiling excludes the host's own mechanics (deferred-tool search, auto-memory, spilled results); `--regrade` grades a recorded run under the current rules without running it. Each re-derivation is proven against the 0.13.0 transcript that exposed it.
+- Invariant 13 has its lock: `tests/unit/eval/nothing-dropped.test.ts` holds that every field the engine sets to a value appears in the serialized evaluation unless it is in the documented private set exported beside the serializer (`PRIVATE_RESULT_KEYS`: the caller's own text, the storage timestamp, the judge's spend). `interpretations[]` vanished for three releases because no such lock existed.
+- The stranger harness grades on the 0.13.0 product: an evaluation counts on either door (`log_trace` with `evaluate: true` or `evaluate_output`); an evaluation returned inline satisfies the read-the-verdict row; the untold task is graded in a fresh session; the answer is read in the composer's vocabulary (must not ship, veto, basis) rather than the score era's; the twelve-call ceiling excludes the host's own mechanics (deferred-tool search, auto-memory, spilled results) and fetches of the prompt's own "Start here" pointer; `--regrade` grades a recorded run under the current rules without running it. Each re-derivation is proven against the 0.13.0 transcript that exposed it.
 
 ## [0.13.0] - 2026-09-08
 
