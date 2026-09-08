@@ -51,13 +51,21 @@ Or add to your MCP config:
 
 ## Core workflow (the eval loop)
 
-1. **Log** the agent execution: `log_trace` with spans, tool calls, token
-   usage, and cost. This builds the record everything else reads.
-2. **Score** the output: `evaluate_output`. Omit `eval_type` and every bundle
-   runs; name one to narrow the run. Heuristic, deterministic, free. Pass
-   `input` so the hallucination signals can cross-check the output against the
-   material the agent was given, and `tool_calls` (or a `trace_id`) so the
-   trajectory rules can judge what the agent did.
+**When.** After an answer the user will act on, after a task that used tools,
+and before saying a run was clean — log it and evaluate it. Not every line;
+the outputs that matter. Read `verdict.basis` and `interpretations` before
+you report.
+
+1. **Log** the agent execution: `log_trace` with `input`, `output`,
+   `tool_calls` (and `tools`, your tools/list result), token usage and cost.
+   Pass `evaluate: true` and the same call scores it — the response carries the
+   full evaluation, linked. This builds the record everything else reads.
+2. **Score** a stored output later, or re-score it: `evaluate_output` with the
+   `trace_id`. Omit `eval_type` and every bundle runs; name one to narrow the
+   run. Heuristic, deterministic, free. `input` lets the hallucination signals
+   cross-check the output against the material the agent was given, and
+   `tool_calls` (or the stored trace) let the trajectory rules judge what the
+   agent did.
 3. **Judge** semantically when heuristics aren't enough:
    `evaluate_with_llm_judge` (5 templates: accuracy, helpfulness, safety, correctness, faithfulness).
    Requires the user's own API key — see "LLM judge setup" below. Without a
@@ -89,7 +97,8 @@ A result carries **two** fields that answer different questions. Read both.
 | Field | What it is | How to use it |
 |---|---|---|
 | `score` | Weighted average across the rules that ran — a 0..1 **quality gradient**. | Trend it; compare prompts and models. Never read it alone as a safety signal. |
-| `passed` | The **ship / no-ship verdict**: `score >= threshold` (default 0.7) **AND** no critical rule failed. | This is the field a gate branches on. |
+| `passed` | The **ship / no-ship verdict**, composed by the *kind* of claim each rule makes: a policy you configured gates, a critical detector vetoes, a critical check that could not answer makes it **unknown** (`passed: false`), and the rest is one probability weighed against your loss ratio. The score is never consulted. | This is the field a gate branches on; `verdict.basis` names the layer that decided. |
+| `interpretations` | Why a rule that failed did not decide, and the setting that would change that; which question was not judged and the input that would let it be; whether the verdict was a close call. | Read it before saying "clean". |
 | `critical_failures` | Names of the critical rules that failed. Present only when non-empty. | If present, the eval failed *because of these*, not because of the score. |
 | `critical_skipped` | Critical rules that did not judge the output (e.g. a regex killed at the 100 ms sandbox budget, or a `cost_threshold` rule with no `cost_usd`). Present only when non-empty. | Treat as **unknown**, not clean, if you must fail closed. |
 | `rule_results` | Per-rule `{ ruleName, passed, score, message, skipped?, skipReason?, critical, criticalSource }`. | Tells you exactly what tripped, and which rules could not judge. |
@@ -195,9 +204,11 @@ result, including a passing one.
 - **Regression tracking**: log traces in CI runs; compare score drift across
   versions to catch silent quality decay (eval drift).
 - **Capture that must not depend on the model**: the tools fire when the model
-  calls them. For CI gates or services that must record every run, `POST
-  /api/v1/traces` on the dashboard port (requires `--dashboard`) takes the same
-  body as `log_trace` and can run the deterministic evals in the same request.
+  calls them. For CI gates and batches, `iris-eval ingest --evaluate --fail-on
+  <basis>` reads traces from stdin or a file with no server running; for services,
+  `POST /api/v1/traces` on the dashboard port (requires `--dashboard`) takes the
+  same body as `log_trace` and can evaluate in the same request; for Claude Code,
+  the separate `iris-eval-capture` plugin records every turn through hooks.
 
 ## Configuration
 

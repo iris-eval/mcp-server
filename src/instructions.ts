@@ -14,7 +14,12 @@
 import type { JudgeState } from './judge-enablement.js';
 import { JUDGE_KEY_VARS, judgeStateLine } from './judge-enablement.js';
 
-export const INSTRUCTIONS_MAX_CHARS = 2600;
+/*
+ * 2,600 until 0.13.0. The WHEN paragraph below is the highest-leverage text
+ * in the product — it is what turns a registered server into a used one —
+ * and it earns about a hundred tokens on every session.
+ */
+export const INSTRUCTIONS_MAX_CHARS = 3000;
 
 export interface InstructionsInput {
   ruleCount: number;
@@ -35,22 +40,30 @@ export function buildInstructions(i: InstructionsInput): string {
     : `To enable them, put your own ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai} in the env block of the iris-eval entry in your MCP client config and restart the session; iris://capabilities carries the full steps.`;
   const critical = i.critical.length > 0 ? i.critical.join(', ') : 'none';
   const text = [
-    'Iris evaluates what an AI agent wrote and what it did. It runs locally, stores traces and verdicts in SQLite, and sends nothing anywhere unless you enable the judge.',
+    'Iris evaluates what an AI agent wrote and what it did. It runs locally, stores traces and verdicts in SQLite, and sends nothing anywhere unless you enable the judge or set an OTel endpoint.',
 
-    `Three verbs. LOG an execution with log_trace (input, output, tool_calls, cost). EVALUATE with evaluate_output: ${i.ruleCount} deterministic rules in ${prose(i.categories)}. ` +
-      'Pass input so the relevance and hallucination rules can judge; pass tool_calls or a trace_id so the trajectory rules can judge; pass cost_usd so the cost rules can judge. ' +
-      'A rule with nothing to judge SKIPS and is named; it is never counted as a pass. INSPECT with get_traces and list_rules, or read a resource.',
+    /*
+     * WHEN, before WHAT. Until 0.13.0 this text described three verbs and
+     * left the model to decide whether any of them applied; the stranger
+     * harness showed an agent that connects, lists the tools and never
+     * calls one unless the user names Iris. A policy, not a reflex: not
+     * every line, the outputs that matter.
+     */
+    'WHEN to use it. After you produce an answer the user will act on, after you finish a task that used tools, and before you tell anyone a run was clean: call log_trace with input, output, tool_calls (and tools, your tools/list result), cost_usd if known, and evaluate: true. Read verdict.basis and interpretations before you report. Do not log every line; log the outputs that matter.',
 
-    'Reading a verdict. passed is verdict.state === "pass". It is NOT the score against a threshold: the composer decides by kind, and score is never consulted. ' +
+    `Three verbs. LOG an execution with log_trace (evaluate: true scores it in the same call). EVALUATE a stored one with evaluate_output: ${i.ruleCount} deterministic rules in ${prose(i.categories)}. ` +
+      'input feeds the relevance and hallucination rules; tool_calls (or a trace_id) the trajectory rules; cost_usd the cost rules. ' +
+      'A rule with nothing to judge SKIPS and is named; it is never counted as a pass. INSPECT with get_traces, list_rules and compare_runs, or read a resource.',
+
+    'Reading a verdict. passed is verdict.state === "pass": the composer decides by kind; score is never consulted. ' +
       'verdict.basis says which layer decided (policy_gate, detector_veto, critical_unknown, required_evidence_missing, risk_over_loss, clean, or no_rules when nothing could be judged) and verdict.by names the rules. ' +
       `Critical on this server: ${critical} (configurable; list_rules shows the effective value). ` +
-      'coverage says which evaluation questions were judged and why the others were not. A critical rule that could not judge is named in critical_skipped: treat that as UNKNOWN, not clean. ' +
+      'interpretations[] says why a rule that failed did not decide and which setting would change that, and names any question not judged with the input that would let it be. coverage says which questions were judged. A critical rule that could not judge is named in critical_skipped: treat that as UNKNOWN, not clean. ' +
       'score is a quality gradient over the rules that ran; never read it alone as a safety signal.',
 
     `The LLM judge (evaluate_with_llm_judge) and the citation verifier (verify_citations) are ${judgeStateLine(i.judge)}. ${judgeHowTo}`,
 
-    'Resources: iris://capabilities (what this server can judge, what each rule needs, judge state, limits), iris://proof (measured precision and recall per rule with 95% intervals), ' +
-      'iris://traces/{trace_id}, iris://evaluations/{id}, iris://dashboard/summary. Responses link what they created.',
+    'Resources: iris://capabilities (what this server can judge, each rule\'s needs, judge state, limits), iris://proof (precision and recall per rule, with intervals), iris://traces/{trace_id}, iris://evaluations/{id}, iris://dashboard/summary. Responses link what they created.',
 
     'Do not use Iris to validate arbitrary JSON Schema, to screen inputs before they reach an agent (the injection rule reads output), or for semantic judgment without a key.',
 
@@ -78,8 +91,8 @@ export function evaluateMyAgentPrompt(what: 'output' | 'trace-file', version: st
   return [
     `Evaluate my agent with Iris ${version}. Do these steps and report in plain words.`,
     `1. ${source}`,
-    '2. Log each run with log_trace, then evaluate it with evaluate_output, passing input, tool_calls (or the trace_id) and cost_usd whenever you have them so the relevance, trajectory and cost rules can judge.',
-    '3. Read the verdict: passed is the ship verdict; verdict.basis and verdict.by say which rule decided; coverage says what was not judged and why; critical_skipped means UNKNOWN, not clean.',
+    '2. Log each run with log_trace and evaluate: true, passing input, tool_calls, tools and cost_usd whenever you have them so the relevance, trajectory and cost rules can judge; evaluate_output with a trace_id re-scores a stored run.',
+    '3. Read the verdict: passed is the ship verdict; verdict.basis and verdict.by say which layer and rules decided; interpretations says why a failed rule did not decide and what was not judged; critical_skipped means UNKNOWN, not clean.',
     '4. For anything that failed, follow the resource link to iris://evaluations/{id} and quote the rule, its message and its evidence (offsets into my output, never a paraphrase of what the rule matched).',
     '5. Tell me: what passed, what failed and why, what was not judged and what input would let Iris judge it. If I ask for a semantic judgment and the judge is not enabled, give me the recovery steps from the error instead of searching for them.',
   ].join('\n');
