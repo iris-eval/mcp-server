@@ -66,6 +66,7 @@ const CROSS = '✗';
 export const SELF_TEST_STEPS = {
   configuredHome: 'configured IRIS_HOME is writable',
   judge: 'judge key in this shell',
+  retention: 'retention policy for this install',
   tempHome: 'create isolated temp home',
   storage: 'initialize storage',
   trace: 'log a trace',
@@ -101,6 +102,7 @@ const SCRUBBED_ENV_VARS = [
   'IRIS_DASHBOARD_PORT',
   'IRIS_DASHBOARD_HOST',
   'IRIS_API_KEY',
+  'IRIS_ALLOW_UNAUTHENTICATED',
   'IRIS_ALLOWED_ORIGINS',
   'IRIS_LOG_LEVEL',
 ] as const;
@@ -283,6 +285,27 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   await step(SELF_TEST_STEPS.judge, () => {
     const state = judgeState();
     return `${judgeStateLine(state)}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;
+  }, { independent: true });
+
+  /*
+   * Retention, read from THIS install's config before the scrub (A6-7).
+   * The sweep deletes traces and evaluations older than retention.days at
+   * startup and every retention.sweepIntervalHours — a data-loss surprise
+   * unless the diagnostic says so where the user is already reading.
+   * Informational and independent: a config that fails to load prints a
+   * cross here and the install checks still run.
+   */
+  await step(SELF_TEST_STEPS.retention, () => {
+    const { retention } = loadConfig();
+    const where = `retention.days / retention.sweepIntervalHours in ${join(userHome, 'config.json')}; 0 disables`;
+    if (retention.days === 0) {
+      return `off — nothing is deleted automatically (${where})`;
+    }
+    const cadence =
+      retention.sweepIntervalHours === 0
+        ? 'at startup only'
+        : `at startup and every ${retention.sweepIntervalHours} hours`;
+    return `traces and evaluations older than ${retention.days} days are deleted ${cadence} (${where})`;
   }, { independent: true });
 
   await step(SELF_TEST_STEPS.tempHome, () => {

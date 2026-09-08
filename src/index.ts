@@ -21,6 +21,7 @@ import { createCustomRule } from './eval/rules/custom.js';
 import { EvalEngine } from './eval/engine.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { validatePortConfig } from './utils/validate-port-config.js';
+import { validateBindPolicy } from './utils/bind-policy.js';
 import { irisHome } from './utils/iris-home.js';
 import {
   seedDemoData,
@@ -194,7 +195,10 @@ Environment variables (CLI flags take precedence):
   IRIS_DASHBOARD                       true/1/yes/on enables the web dashboard; false/0/no/off disables it (overrides config.json)
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
   IRIS_DASHBOARD_HOST                  Dashboard bind address (default: 127.0.0.1)
-  IRIS_API_KEY                         API key for HTTP authentication
+  IRIS_API_KEY                         API key for HTTP authentication. Required to bind the HTTP transport or the
+                                       dashboard beyond loopback (0.0.0.0, a LAN address, a container): without it
+                                       the server refuses to start.
+  IRIS_ALLOW_UNAUTHENTICATED           Set to 1 to run a non-loopback bind with NO key on purpose (lifts the refusal)
   IRIS_ALLOWED_ORIGINS                 Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. http://localhost:*).
                                        HTTP transport: exact-match Origin allowlist for DNS-rebinding protection (globs ignored;
                                        this server's own loopback origins are always allowed).
@@ -366,6 +370,8 @@ async function main(): Promise<void> {
 
   // F-006: fail fast on HTTP+dashboard port collision. See validatePortConfig.
   validatePortConfig(config);
+  // A6-7: refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
+  validateBindPolicy(config);
 
   const storage = createStorage(config);
   await storage.initialize();

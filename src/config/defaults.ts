@@ -109,6 +109,7 @@ export const defaultConfig: IrisConfig = {
   },
   security: {
     apiKey: undefined,
+    allowUnauthenticated: false,
     allowedOrigins: ['http://localhost:*'],
     rateLimit: {
       /* Dashboard polls ~6 endpoints every 5–10s (Health view alone hits

@@ -51,6 +51,7 @@ describe('GET /api/v1/capabilities', () => {
       judge: { enabled: boolean; provider: string; providers: string[]; costCapUsd: number; howToEnable: string[] };
       rules: Array<{ name: string; critical: boolean; needs: string[]; proof: { precision: number | null; ppvAt: Record<string, number | null> } | null }>;
       limits: { customRulesPerCall: number; regexBudgetMs: number };
+      retention: { days: number; sweepIntervalHours: number };
       dashboard: { mode: string };
       tools: string[];
       resources: string[];
@@ -63,6 +64,8 @@ describe('GET /api/v1/capabilities', () => {
     expect(pii.critical).toBe(true);
     expect(pii.proof?.ppvAt).toHaveProperty('0.01');
     expect(body.limits).toMatchObject({ customRulesPerCall: 10, regexBudgetMs: 100 });
+    // Retention is a data-loss surprise unless it is said where the agent reads (A6-7).
+    expect(body.retention).toEqual({ days: defaultConfig.retention.days, sweepIntervalHours: defaultConfig.retention.sweepIntervalHours });
     expect(body.dashboard.mode).toBe('demo');
     expect(body.tools.sort()).toEqual([...TOOL_NAMES].sort());
     expect(body.resources.sort()).toEqual([...RESOURCE_URIS].sort());

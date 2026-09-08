@@ -15,6 +15,12 @@ services:
       # 0.0.0.0 inside the container: the process defaults to loopback, which
       # is unreachable through a published port. See the Dockerfile comment.
       - IRIS_HOST=0.0.0.0
+      # Required. Both servers bind 0.0.0.0 inside the container, and the
+      # process refuses a non-loopback bind with no key at boot (0.13.0);
+      # compose refuses here first, before the container starts, so the
+      # failure is one sentence and not a restart loop. Generate one with
+      # `openssl rand -hex 32` and export it (or put it in a .env file).
+      - IRIS_API_KEY=${IRIS_API_KEY:?set IRIS_API_KEY before docker compose up (openssl rand -hex 32)}
       - IRIS_DB_PATH=/data/iris.db
       - IRIS_DASHBOARD=true
       - IRIS_DASHBOARD_PORT=6920

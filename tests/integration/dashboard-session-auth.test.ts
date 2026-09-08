@@ -191,3 +191,4 @@ describe('session auth — without --api-key', () => {
     expect(api.status).toBe(200);
   });
 });
+

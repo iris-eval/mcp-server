@@ -483,8 +483,9 @@ MCP Client (remote)            Iris HTTP Server (Express)
 | Dashboard port | `--dashboard-port 6920` | `IRIS_DASHBOARD_PORT=6920` | `6920` |
 | Dashboard bind address | `--dashboard-host <host>` | `IRIS_DASHBOARD_HOST=127.0.0.1` | `127.0.0.1` |
 | API key | `--api-key <key>` | `IRIS_API_KEY=<key>` | (none) |
+| Run open beyond loopback | (none) | `IRIS_ALLOW_UNAUTHENTICATED=1` | unset — refused |
 
-Both HTTP surfaces bind to loopback by default — nothing is reachable from the network until you deliberately change the bind address. When you do, and no API key is set, the server warns: an unauthenticated non-loopback bind accepts writes from anyone who can route to it.
+Both HTTP surfaces bind to loopback by default — nothing is reachable from the network until you deliberately change the bind address. When you do with no API key set, the server **refuses to start** (`src/utils/bind-policy.ts`, checked before any port is taken and again inside each server factory): an unauthenticated non-loopback bind accepts writes from anyone who can route to it. `IRIS_ALLOW_UNAUTHENTICATED=1` lifts the refusal for a network you have fenced some other way. Loopback with no key keeps its warning.
 
 The dashboard is off by default on both transports — enable it explicitly with `--dashboard` (or `IRIS_DASHBOARD=true`). It runs on its own port (default: 6920), and the `POST /api/v1/traces` HTTP ingest endpoint is served by it, so ingest also requires `--dashboard`.
 
@@ -605,7 +606,7 @@ Request
 
 - **stdio mode**: No auth needed -- the transport is local IPC.
 - **HTTP mode without API key**: Iris logs a warning. All endpoints are open. Suitable for local development only.
-- **HTTP mode with API key**: Set via `--api-key`, `IRIS_API_KEY`, or config file. All requests except `/health` require `Authorization: Bearer <key>`. Comparison uses `timingSafeEqual` to prevent timing side-channels. A browser opening the dashboard cannot send a Bearer header, so the dashboard's session layer (`src/dashboard/session-auth.ts`, in front of the Bearer middleware) lets it present the key once — `?key=<api key>` on any dashboard URL, or the sign-in form at `POST /session` — and exchanges it for a random session token in an HttpOnly, SameSite=Lax, path-scoped cookie (`Secure` over HTTPS), redirecting to the same URL with the key stripped. Sessions live in process memory (30-day TTL, capped at 256) and die with the process; the key exchange is capped at 10 attempts per client address per minute, and the whole layer sits behind the per-address auth-gate limiter. API clients keep sending Bearer; with no key configured both layers are pass-throughs.
+- **HTTP mode with API key**: Set via `--api-key`, `IRIS_API_KEY`, or config file. All requests except `/health` require `Authorization: Bearer <key>`. Comparison uses `timingSafeEqual` to prevent timing side-channels. A browser opening the dashboard cannot send a Bearer header, so the dashboard's session layer (`src/dashboard/session-auth.ts`, in front of the Bearer middleware) lets it present the key once — `?key=<api key>` on any dashboard URL, or the sign-in form at `POST /session` — and exchanges it for a random session token in an HttpOnly, SameSite=Lax, path-scoped cookie (`Secure` over HTTPS), redirecting to the same URL with the key stripped. Sessions live in process memory (30-day TTL, capped at 256 live sessions — expired ones are swept first, and a sign-in at the cap is refused with 503 rather than evicting a live one) and die with the process; the key exchange is capped at 10 attempts per client address per minute, and the whole layer sits behind the per-address auth-gate limiter. API clients keep sending Bearer; with no key configured both layers are pass-throughs.
 
 ### CORS
 

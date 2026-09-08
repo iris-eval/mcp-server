@@ -42,13 +42,15 @@ import rateLimit from 'express-rate-limit';
 
 export const SESSION_COOKIE = 'iris_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const MAX_SESSIONS = 256;
+export const MAX_SESSIONS = 256;
 const SIGN_IN_ATTEMPTS_PER_MINUTE = 10;
 
 export interface SessionAuthOptions {
   apiKey: string | undefined;
   /** The Bearer middleware every non-session request still goes through. */
   bearerAuth: RequestHandler;
+  /** Live-session cap; MAX_SESSIONS unless a test lowers it to reach the refusal path. */
+  maxSessions?: number;
 }
 
 function keyMatches(candidateRaw: string, apiKey: string): boolean {
@@ -128,6 +130,7 @@ function signInPage(error?: string): string {
 
 export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
   const { apiKey, bearerAuth } = opts;
+  const maxSessions = opts.maxSessions ?? MAX_SESSIONS;
   if (!apiKey) {
     // No key configured: the Bearer middleware is a pass-through and so is
     // this. A `?key=` on the URL is left alone — nothing to exchange.
@@ -137,14 +140,23 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
   /** token → expiry (epoch ms). Insertion order doubles as age order. */
   const sessions = new Map<string, number>();
 
-  function createSession(): string {
-    const token = randomBytes(32).toString('base64url');
-    sessions.set(token, Date.now() + SESSION_TTL_MS);
-    while (sessions.size > MAX_SESSIONS) {
-      const oldest = sessions.keys().next().value;
-      if (oldest === undefined) break;
-      sessions.delete(oldest);
+  /*
+   * At the cap, expired sessions are swept first; if the map is still full
+   * the sign-in is refused (null) — a live session is never evicted to make
+   * room. Until 0.13.0 the oldest entry was dropped whether or not it was
+   * still valid, so a burst of sign-ins — or one holder of the key —
+   * silently logged every live browser out.
+   */
+  function createSession(): string | null {
+    const now = Date.now();
+    if (sessions.size >= maxSessions) {
+      for (const [token, expires] of sessions) {
+        if (expires <= now) sessions.delete(token);
+      }
+      if (sessions.size >= maxSessions) return null;
     }
+    const token = randomBytes(32).toString('base64url');
+    sessions.set(token, now + SESSION_TTL_MS);
     return token;
   }
 
@@ -160,8 +172,10 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
     return true;
   }
 
-  function setSessionCookie(req: Request, res: Response): void {
+  /** False when the cap refused the session; nothing is set then. */
+  function setSessionCookie(req: Request, res: Response): boolean {
     const token = createSession();
+    if (token === null) return false;
     const attrs = [
       `${SESSION_COOKIE}=${token}`,
       'HttpOnly',
@@ -171,9 +185,14 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
     ];
     if (req.protocol === 'https') attrs.push('Secure');
     res.append('Set-Cookie', attrs.join('; '));
+    return true;
   }
 
-  function sendSignIn(res: Response, status: 401 | 403, error?: string): void {
+  const SESSION_CAP_MESSAGE =
+    `This server has reached its limit of ${maxSessions} live browser sessions and refuses new sign-ins rather than ` +
+    'evict one. Try again later, or use Authorization: Bearer <api key> for API calls.';
+
+  function sendSignIn(res: Response, status: 401 | 403 | 503, error?: string): void {
     res.status(status).type('html').send(signInPage(error));
   }
 
@@ -194,7 +213,10 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
         sendSignIn(res, 403, 'That API key did not match.');
         return;
       }
-      setSessionCookie(req, res);
+      if (!setSessionCookie(req, res)) {
+        sendSignIn(res, 503, SESSION_CAP_MESSAGE);
+        return;
+      }
       const url = new URL(req.originalUrl, 'http://localhost');
       url.searchParams.delete('key');
       res.redirect(302, `${url.pathname}${url.search}`);
@@ -214,7 +236,10 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
           sendSignIn(res, 403, 'That API key did not match.');
           return;
         }
-        setSessionCookie(req, res);
+        if (!setSessionCookie(req, res)) {
+          sendSignIn(res, 503, SESSION_CAP_MESSAGE);
+          return;
+        }
         res.redirect(303, '/');
       });
       return;

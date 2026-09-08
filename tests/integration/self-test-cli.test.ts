@@ -79,6 +79,10 @@ describe('iris-eval --self-test (CLI)', () => {
     }
     expect(stdout).toContain(SELF_TEST_PASS_VERDICT);
 
+    // The retention line says what will be deleted and where to change it (A6-7).
+    expect(stdout).toMatch(/retention\.days/);
+    expect(stdout).toMatch(/retention\.sweepIntervalHours/);
+
     // The spawned process must not have written anything to the ambient home.
     expect(readdirSync(decoyHome)).toEqual([]);
 

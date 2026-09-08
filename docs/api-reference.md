@@ -850,11 +850,11 @@ The dashboard serves an HTTP API under `/api/v1`. All routes return JSON. Query 
 
 #### Authentication
 
-With no `--api-key` / `IRIS_API_KEY` configured, every route is open — the loopback bind is what keeps the dashboard to your own machine. With a key configured:
+With no `--api-key` / `IRIS_API_KEY` configured, every route is open — the loopback bind is what keeps the dashboard to your own machine, and a bind beyond loopback with no key is refused at startup (`IRIS_ALLOW_UNAUTHENTICATED=1` runs open on purpose). With a key configured:
 
 - **API clients** send `Authorization: Bearer <key>` on every request (a missing header is `401`, a wrong key `403`). `GET /api/v1/health` is always exempt.
 - **Browsers** cannot send a Bearer header, so any dashboard *page* URL accepts the key once as `?key=<api key>`. The server exchanges it for a random 256-bit session token in an `HttpOnly`, `SameSite=Lax`, `Path=/` cookie (`Secure` when the request arrived over HTTPS) and answers `302` to the same URL with `key` stripped from the address bar, so a shared link opens the dashboard without leaving the key in anyone's history. A page opened without a session gets a `401` sign-in form (HTML, only for requests that accept HTML — API paths still get the JSON `401`); the form's `POST /session` does the same exchange and lands on `/`. A wrong key is a `403` sign-in page and sets no cookie. A request carrying a valid session cookie skips the Bearer check; every other request falls through to it unchanged.
-- **Sessions** live in the server process only — 30-day TTL, at most 256 at a time, nothing written to disk, all gone on restart — and the key itself is never stored in the browser. The key exchange is capped at 10 attempts per client address per minute, and the whole session/Bearer layer additionally sits behind a per-address rate limiter, so no authorization decision runs unthrottled.
+- **Sessions** live in the server process only — 30-day TTL, at most 256 live at a time, nothing written to disk, all gone on restart — and the key itself is never stored in the browser. At the cap, expired sessions are swept first; a sign-in that still finds every slot live is refused with `503` and sets no cookie — a live session is never evicted to make room. The key exchange is capped at 10 attempts per client address per minute, and the whole session/Bearer layer additionally sits behind a per-address rate limiter, so no authorization decision runs unthrottled.
 
 ### POST /api/v1/traces
 
@@ -1120,7 +1120,7 @@ The same object as `iris://capabilities`, for the HTTP path. No key is ever incl
 
 ### GET /api/v1/health
 
-Health check endpoint. Reports server status and storage connectivity.
+Health check endpoint. Reports server status and storage connectivity. Unauthenticated by design — no key, no session, no rate limit — because it carries no trace content: status, version, uptime, storage connectivity and whether a judge key is present (the provider name, never the key). The MCP transport's `GET /health` is the same contract on its own port.
 
 #### Response (200 -- healthy)
 

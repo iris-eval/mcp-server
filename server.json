@@ -17,11 +17,18 @@
       },
       "environmentVariables": [
         {
-          "description": "API key for HTTP authentication (optional, recommended for production)",
+          "description": "API key for HTTP authentication. Required to bind the HTTP transport or the dashboard beyond loopback (0.0.0.0, a LAN address, a container): without it the server refuses to start",
           "isRequired": false,
           "format": "string",
           "isSecret": true,
           "name": "IRIS_API_KEY"
+        },
+        {
+          "description": "Set to 1 to run a non-loopback bind with NO API key on purpose (lifts the startup refusal; the network is then your boundary)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_ALLOW_UNAUTHENTICATED"
         },
         {
           "description": "SQLite database path",

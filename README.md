@@ -197,8 +197,10 @@ npm install -g @iris-eval/mcp-server
 iris-eval --dashboard
 
 # Docker — two servers, two ports: 3000 = MCP HTTP transport,
-# 6920 = dashboard (which also serves the POST /api/v1/traces ingest endpoint)
-docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data ghcr.io/iris-eval/mcp-server
+# 6920 = dashboard (which also serves the POST /api/v1/traces ingest endpoint).
+# The image binds 0.0.0.0 inside the container, so a key is required (see Production).
+docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
+  -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server
 ```
 
 > **Tip:** Global install (`npm install -g`) stores traces persistently at `~/.iris/iris.db`. With `npx`, traces persist in the same location, but startup is slower due to package resolution.
@@ -355,7 +357,8 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_DASHBOARD` | `true`/`1`/`yes`/`on` enables the web dashboard; `false`/`0`/`no`/`off` disables it (also overrides `dashboard.enabled` in `config.json`) |
 | `IRIS_DASHBOARD_PORT` | Dashboard port (1-65535, default `6920`) |
 | `IRIS_DASHBOARD_HOST` | Dashboard bind address (default `127.0.0.1`) |
-| `IRIS_API_KEY` | API key for HTTP authentication |
+| `IRIS_API_KEY` | API key for HTTP authentication. Required to bind the HTTP transport or the dashboard beyond loopback (`0.0.0.0`, a LAN address, a container): without it the server refuses to start |
+| `IRIS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a non-loopback bind with **no** key on purpose (lifts the refusal; the network is then your boundary) |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. `http://localhost:*`). HTTP transport: exact-match `Origin` allowlist for DNS-rebinding protection (globs ignored; the server's own loopback origins are always allowed) |
 | `IRIS_NO_AUTO_LAUNCH` | Set to `1` to disable the first-run dashboard auto-launch |
 | `IRIS_ANTHROPIC_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=anthropic` |
@@ -386,7 +389,25 @@ When using HTTP transport, Iris includes:
 iris-eval --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
 ```
 
-With a key set, API clients — MCP clients, capture SDKs, `POST /api/v1/traces` — send `Authorization: Bearer <key>`. To open the dashboard in a browser, append the key once to any dashboard URL, `http://localhost:6920/?key=<api key>`: Iris exchanges it for an HttpOnly, SameSite=Lax session cookie and redirects to the same page with the key removed from the address bar. A page opened without a session shows a sign-in form that does the same exchange. The key is never stored in the browser, and sessions live only in the server process.
+With a key set, API clients — MCP clients, capture SDKs, `POST /api/v1/traces` — send `Authorization: Bearer <key>`. To open the dashboard in a browser, append the key once to any dashboard URL, `http://localhost:6920/?key=<api key>`: Iris exchanges it for an HttpOnly, SameSite=Lax session cookie and redirects to the same page with the key removed from the address bar. A page opened without a session shows a sign-in form that does the same exchange. The key is never stored in the browser, and sessions live only in the server process (at most 256 live at a time; a sign-in that finds them all live is refused rather than evicting one).
+
+### Production
+
+Iris **refuses to start** when the HTTP transport or the dashboard is bound beyond loopback — `0.0.0.0`, a LAN address, a container — with no API key, and says so in one sentence naming `IRIS_API_KEY`. That includes a bare `docker run` of the image, which binds `0.0.0.0` inside the container because loopback is unreachable through a published port. Loopback without a key keeps working (with a warning on the HTTP transport): the machine boundary is the exposure control there.
+
+```bash
+# The image: pass a key
+docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
+  -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server
+
+# Compose: the file requires the variable and refuses before the container starts
+IRIS_API_KEY="$(openssl rand -hex 32)" docker compose up
+
+# A network you have already fenced some other way: run open, on purpose
+IRIS_ALLOW_UNAUTHENTICATED=1 iris-eval --transport http --dashboard
+```
+
+Open by design, on a keyed server: `GET /health` on the transport and `GET /api/v1/health` on the dashboard answer without a key — status, version, uptime, storage connectivity, whether a judge key is present — never the key, never a trace. Everything else needs `Authorization: Bearer <key>` or a browser session. Retention runs on every server: traces and evaluations older than `retention.days` (default `30`) are deleted at startup and every `retention.sweepIntervalHours`; `--self-test` prints this install's policy, and `iris://capabilities` / `GET /api/v1/capabilities` carry it as `retention`.
 
 ### Your data on disk
 

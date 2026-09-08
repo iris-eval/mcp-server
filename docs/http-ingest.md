@@ -20,7 +20,8 @@ Two things to know before pointing production traffic at it:
 - **Writes are unauthenticated unless you set `--api-key` (or `IRIS_API_KEY`).** With
   no key, anything that can reach the dashboard port can store traces. The loopback
   bind and the rebinding guard are what keep that to your own machine by default; if
-  you bind beyond loopback (`--dashboard-host`), set a key. With a key set, API clients
+  you bind beyond loopback (`--dashboard-host`) you must set one — the server refuses
+  to start without it (`IRIS_ALLOW_UNAUTHENTICATED=1` runs open on purpose). With a key set, API clients
   — this endpoint included — send `Authorization: Bearer <key>`; a browser opening the
   dashboard UI signs in once with `?key=<api key>` on any dashboard URL instead (see
   [api-reference.md → Dashboard API Routes](api-reference.md#dashboard-api-routes)).
