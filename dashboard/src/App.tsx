@@ -13,6 +13,8 @@ import { MomentsTimelinePage } from './components/moments/MomentsTimelinePage';
 import { MomentDetailPage } from './components/moments/MomentDetailPage';
 import { RulesPage } from './components/rules/RulesPage';
 import { AuditPage } from './components/audit/AuditPage';
+import { RouteBoundary } from './components/layout/ErrorBoundary';
+import { NotFoundPage } from './components/layout/NotFoundPage';
 
 export function App() {
   return (
@@ -23,16 +25,20 @@ export function App() {
           <TourProvider>
             <CommandPaletteProvider>
               <Shell>
-                <Routes>
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/moments" element={<MomentsTimelinePage />} />
-                  <Route path="/moments/:id" element={<MomentDetailPage />} />
-                  <Route path="/rules" element={<RulesPage />} />
-                  <Route path="/audit" element={<AuditPage />} />
-                  <Route path="/traces" element={<TraceListPage />} />
-                  <Route path="/traces/:id" element={<TraceDetailPage />} />
-                  <Route path="/evals" element={<EvalListPage />} />
-                </Routes>
+                {/* One boundary per route (D-1): a page that throws keeps the shell and says so; the route change resets it. */}
+                <RouteBoundary>
+                  <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/moments" element={<MomentsTimelinePage />} />
+                    <Route path="/moments/:id" element={<MomentDetailPage />} />
+                    <Route path="/rules" element={<RulesPage />} />
+                    <Route path="/audit" element={<AuditPage />} />
+                    <Route path="/traces" element={<TraceListPage />} />
+                    <Route path="/traces/:id" element={<TraceDetailPage />} />
+                    <Route path="/evals" element={<EvalListPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </RouteBoundary>
               </Shell>
             </CommandPaletteProvider>
           </TourProvider>

@@ -16,6 +16,7 @@ import { Link, useParams } from 'react-router';
 import { useMomentDetail } from '../../api/hooks';
 import { CopyableId } from '../shared/CopyableId';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { QueryError } from '../shared/QueryError';
 import { formatCost, formatLatency, formatTimestamp } from '../../utils/formatters';
 import { getSignificanceVisual, getVerdictVisual } from './significance';
 import { MakeRuleModal } from './MakeRuleModal';
@@ -269,13 +270,7 @@ export function MomentDetailPage() {
     return (
       <div style={styles.page}>
         <Link to="/moments" style={styles.back}>← Back to moments</Link>
-        <div style={{ ...styles.panel, borderColor: 'var(--eval-fail)' }}>
-          <h2 style={{ ...styles.panelTitle, color: 'var(--eval-fail)' }}>Could not load moment</h2>
-          <p>{error}</p>
-          <button type="button" onClick={refetch} style={styles.toggle}>
-            Retry
-          </button>
-        </div>
+        <QueryError error={error} what="this moment" onRetry={refetch} />
       </div>
     );
   }

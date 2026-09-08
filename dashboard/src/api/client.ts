@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../utils/constants';
+import { networkError, toApiError } from './errors';
 import type {
   DriftComparison,
   TraceQueryResult,
@@ -31,48 +32,14 @@ import type {
  * dashboard API emits `RateLimit-Reset` (seconds until reset) and
  * `Retry-After` (seconds) — we prefer RateLimit-Reset when present.
  */
-export class RateLimitError extends Error {
-  readonly kind = 'rate-limit' as const;
-  /** Milliseconds until the client should retry. Minimum 1 second. */
-  readonly retryAfterMs: number;
-  /** Policy label from `RateLimit-Policy`, e.g. "100;w=60". Optional. */
-  readonly policy?: string;
-
-  constructor(retryAfterMs: number, policy?: string) {
-    super(`Rate limited — retry in ${Math.round(retryAfterMs / 1000)}s`);
-    this.name = 'RateLimitError';
-    this.retryAfterMs = Math.max(retryAfterMs, 1000);
-    this.policy = policy;
-  }
-}
-
-/** Parse RateLimit-Reset (preferred) or Retry-After into ms. */
-function parseRetryAfter(res: Response): number {
-  // RateLimit-Reset: seconds until reset (RFC draft)
-  const reset = res.headers.get('ratelimit-reset');
-  if (reset) {
-    const n = Number.parseInt(reset, 10);
-    if (Number.isFinite(n) && n >= 0) return n * 1000;
-  }
-  // Retry-After: seconds OR HTTP-date (RFC 9110 §10.2.3)
-  const retryAfter = res.headers.get('retry-after');
-  if (retryAfter) {
-    const n = Number.parseInt(retryAfter, 10);
-    if (Number.isFinite(n) && n >= 0) return n * 1000;
-    const date = Date.parse(retryAfter);
-    if (Number.isFinite(date)) return Math.max(date - Date.now(), 0);
-  }
-  return 30_000; // conservative 30s fallback
-}
-
 /*
- * A 401 from the API means the server has an --api-key and this browser
- * has no session for it (never signed in, or the server restarted and
- * dropped its in-memory sessions). The server renders a sign-in page for
- * any HTML navigation in that state, so the honest recovery is to reload:
- * the user lands on the sign-in form instead of a wall of "API error:
- * 401" tiles. Guarded because jsdom does not implement navigation.
+ * The typed error model lives in ./errors (D-1); RateLimitError is
+ * re-exported so the code that has imported it from here since 0.5 keeps
+ * working. Every throw below is an ApiError with a kind.
  */
+export { ApiError, RateLimitError } from './errors';
+export type { ApiErrorKind } from './errors';
+
 function handleUnauthorized(res: Response): void {
   if (res.status !== 401) return;
   try {
@@ -93,17 +60,14 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
       }
     }
   }
-  const res = await fetch(url.toString());
+  let res: Response;
+  try {
+    res = await fetch(url.toString());
+  } catch (err) {
+    throw networkError(path, err);
+  }
   handleUnauthorized(res);
-  if (res.status === 429) {
-    throw new RateLimitError(
-      parseRetryAfter(res),
-      res.headers.get('ratelimit-policy') ?? undefined,
-    );
-  }
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
-  }
+  if (!res.ok) throw await toApiError(res, path);
   return res.json() as Promise<T>;
 }
 
@@ -200,39 +164,46 @@ export const api = {
 
 async function patchJson<T>(path: string, body: unknown): Promise<T> {
   const url = new URL(path, window.location.origin);
-  const res = await fetch(url.toString(), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  handleUnauthorized(res);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`API error: ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw networkError(path, err);
   }
+  handleUnauthorized(res);
+  if (!res.ok) throw await toApiError(res, path);
   return res.json() as Promise<T>;
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const url = new URL(path, window.location.origin);
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  handleUnauthorized(res);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`API error: ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw networkError(path, err);
   }
+  handleUnauthorized(res);
+  if (!res.ok) throw await toApiError(res, path);
   return res.json() as Promise<T>;
 }
 
 async function deleteRequest(path: string): Promise<void> {
   const url = new URL(path, window.location.origin);
-  const res = await fetch(url.toString(), { method: 'DELETE' });
-  handleUnauthorized(res);
-  if (!res.ok && res.status !== 204) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { method: 'DELETE' });
+  } catch (err) {
+    throw networkError(path, err);
   }
+  handleUnauthorized(res);
+  if (!res.ok && res.status !== 204) throw await toApiError(res, path);
 }

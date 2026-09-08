@@ -31,6 +31,7 @@ import {
   getSignificanceVisual,
 } from './significance';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { QueryError } from '../shared/QueryError';
 import { PageHeader } from '../layout/PageHeader';
 import { PageToolbar } from '../layout/PageToolbar';
 import { PageEmptyState } from '../layout/PageEmptyState';
@@ -495,15 +496,7 @@ export function MomentsTimelinePage() {
         }
       />
 
-      {error && (
-        <div style={styles.errorBox} role="alert">
-          <strong>Could not load decision moments</strong>
-          <span>{error}</span>
-          <button type="button" style={styles.retryBtn} onClick={refetch}>
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <QueryError error={error} what="decision moments" onRetry={refetch} />}
 
       {loading && !data && <LoadingSpinner />}
 
