@@ -42,3 +42,9 @@ jobs:
       # nothing read it.
       - name: llms.txt matches templates + truthbase
         run: npm run llms:check
+      # The discovery manifest is rendered from the BUILT server — tools,
+      # resources, templates and the prompt read over an in-memory MCP
+      # transport — so it cannot describe a server that does not exist. It
+      # was hand-maintained until 0.13.0 and listed one resource of five.
+      - name: .well-known/mcp.json matches the built server
+        run: npm run mcp-json:check

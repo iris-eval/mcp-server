@@ -1,5 +1,6 @@
 {
   "name": "Iris",
+  "id": "iris-eval",
   "description": "Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.",
   "homepage": "https://iris-eval.com",
   "repository": "https://github.com/iris-eval/mcp-server",
@@ -13,70 +14,124 @@
   "tools": [
     {
       "name": "log_trace",
-      "description": "Persist a single agent execution trace (input, output, spans, tool calls, cost, latency, token usage)"
-    },
-    {
-      "name": "get_traces",
-      "description": "Query stored agent-execution traces with filters, pagination, and optional dashboard summary"
-    },
-    {
-      "name": "delete_trace",
-      "description": "Remove a single trace by id; cascades to spans, eval results keep the score history"
+      "description": "Store one agent execution — input, output, tool calls, spans, cost, latency, token usage — and get the trace_id every later call keys on."
     },
     {
       "name": "evaluate_output",
-      "description": "Score agent output against configurable eval rules and return a 0..1 score + per-rule breakdown"
+      "description": "Score an agent output against the deterministic rule bundles: the ship verdict and its basis, every rule result with evidence and uncertainty, and what was not judged."
     },
     {
-      "name": "evaluate_with_llm_judge",
-      "description": "Score agent output using an LLM as the judge (Anthropic or OpenAI) with a 0..1 score and rationale"
-    },
-    {
-      "name": "verify_citations",
-      "description": "Extract citations from agent output, fetch the cited sources, and use an LLM judge to check whether each source supports the claim"
-    },
-    {
-      "name": "deploy_rule",
-      "description": "Deploy a new custom evaluation rule that fires on every future evaluate_output call of its eval category"
-    },
-    {
-      "name": "list_rules",
-      "description": "Enumerate deployed custom evaluation rules from the local rule store"
-    },
-    {
-      "name": "delete_rule",
-      "description": "Remove a deployed custom evaluation rule; past eval results are preserved"
+      "name": "get_traces",
+      "description": "Query stored traces with filters, pagination and sorting; optionally include the dashboard summary in the same response."
     },
     {
       "name": "compare_runs",
-      "description": "Compare two runs of stored evaluations and report whether the pass rate moved, with an interval"
+      "description": "Did this change make the agent worse? Compares two runs of stored evaluations and answers with an interval — or says the data cannot tell."
     },
     {
       "name": "compare_traces",
-      "description": "Group stored evaluations by case and report per-case pass rates, flakiness and an interval that respects repeats"
+      "description": "How reliably does the agent answer the same question? Groups stored evaluations by case and reports per-case pass rates, flakiness, and an interval that respects repeats."
     },
     {
       "name": "evaluate_runs",
-      "description": "Re-score every trace in a run under the current rules, into a new run, so a rules change can be compared instead of overwriting the old verdicts"
+      "description": "Re-score every trace in a run under the current rules, into a new run — so a rules change can be compared against the old verdicts instead of overwriting them."
+    },
+    {
+      "name": "list_rules",
+      "description": "The rule inventory: the built-in roster with what each rule needs, the criticality this server applies and its published accuracy, plus every deployed custom rule."
+    },
+    {
+      "name": "deploy_rule",
+      "description": "Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited."
+    },
+    {
+      "name": "delete_rule",
+      "description": "Remove a deployed custom rule — or, with enabled, disable or re-enable it without removing it — effective on the next evaluate_output call."
+    },
+    {
+      "name": "delete_trace",
+      "description": "Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text."
+    },
+    {
+      "name": "evaluate_with_llm_judge",
+      "description": "Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, per-dimension sub-scores and the exact spend."
+    },
+    {
+      "name": "verify_citations",
+      "description": "Extract the citations in an output, fetch the sources (opt-in, SSRF-guarded) and ask an LLM judge on your key whether each source supports its claim."
     }
   ],
   "resources": [
     {
+      "uri": "iris://capabilities",
+      "name": "capabilities",
+      "description": "What this server can judge: the rule roster with what each rule needs and its published accuracy, the judge state with the steps that enable it, the citation verifier posture, the dashboard address, the limits, and the tools, resources and prompts registered."
+    },
+    {
+      "uri": "iris://proof",
+      "name": "proof",
+      "description": "The published accuracy of every measured built-in rule (the same numbers as https://iris-eval.com/proof): precision and recall on the proof corpus with 95% intervals, the confusion counts, positive predictive value at four prevalences, and the corpus version and labelling the numbers come from."
+    },
+    {
       "uri": "iris://dashboard/summary",
-      "description": "Dashboard summary with key metrics and trends"
+      "name": "dashboard-summary",
+      "description": "Dashboard summary with key metrics and trends for the last hour"
+    },
+    {
+      "uri": "iris://traces/{trace_id}",
+      "name": "trace-detail",
+      "description": "One stored trace with its spans and every evaluation linked to it",
+      "template": true
+    },
+    {
+      "uri": "iris://evaluations/{id}",
+      "name": "evaluation-detail",
+      "description": "One stored evaluation, in the same shape evaluate_output returned it: verdict, coverage, provenance and every rule result with its evidence",
+      "template": true
+    }
+  ],
+  "prompts": [
+    {
+      "name": "evaluate-my-agent",
+      "description": "A walk through logging an agent run, evaluating it and reading the verdict with Iris, in plain words."
     }
   ],
   "install": {
+    "claude_code": {
+      "command": "claude mcp add iris-eval -- npx @iris-eval/mcp-server --dashboard"
+    },
     "claude_desktop": {
       "mcpServers": {
         "iris-eval": {
           "command": "npx",
           "args": [
-            "-y",
-            "@iris-eval/mcp-server"
+            "@iris-eval/mcp-server",
+            "--dashboard"
           ]
         }
       }
+    },
+    "cursor": {
+      "mcpServers": {
+        "iris-eval": {
+          "command": "npx",
+          "args": [
+            "@iris-eval/mcp-server",
+            "--dashboard"
+          ]
+        }
+      }
+    },
+    "docker": {
+      "command": "docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data -e IRIS_API_KEY=<your key> ghcr.io/iris-eval/mcp-server"
     }
-  }
+  },
+  "links": {
+    "capabilities": "https://iris-eval.com/capabilities",
+    "proof": "https://iris-eval.com/proof",
+    "llms": "https://iris-eval.com/llms.txt",
+    "security": "https://iris-eval.com/.well-known/security.txt"
+  },
+  "discovery": "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, when a host hook or `iris-eval ingest` hands it a trace, or when you POST one to its HTTP API.",
+  "dataResidency": "Nothing leaves your machine unless you set IRIS_OTEL_ENDPOINT, which exports traces to the collector you name, or enable the LLM judge with your own key."
 }

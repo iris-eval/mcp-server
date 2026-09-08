@@ -11,7 +11,7 @@
       "Eval Loop"
     ],
     "dataResidency": "Nothing leaves your machine unless you set IRIS_OTEL_ENDPOINT, which exports traces to the collector you name, or enable the LLM judge with your own key.",
-    "discoverySentence": "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, or when you POST a trace to its HTTP API.",
+    "discoverySentence": "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, when a host hook or `iris-eval ingest` hands it a trace, or when you POST one to its HTTP API.",
     "npmPackage": "@iris-eval/mcp-server",
     "publicRepoUrl": "https://github.com/iris-eval/mcp-server",
     "securityEmail": "security@iris-eval.com",
@@ -104,13 +104,22 @@
         "summary": "A directive found in a tool result is related to what the agent did next: no_injection_compliance matches directive wording as literal phrases over a capped, normalised slice — never a regular expression, because a tool result is attacker-controlled — and fails when a later call carries terms the directive introduced and the ask never used. Merely repeating those terms is reported on a passing result, because measured on its own family that weaker signal cannot tell reporting an injection from complying with one."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q1xS4",
         "needs": [],
         "question": "Q1",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs of one input exists, so nothing can say safe on nine of ten runs."
+        "summary": "Safe on nine of ten runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
       },
       {
         "evidence": [
@@ -334,13 +343,22 @@
         "summary": "No completeness rule reads the trajectory to see which parts of the ask were acted on."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q3xS4",
         "needs": [],
         "question": "Q3",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs."
+        "summary": "Complete on most runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
       },
       {
         "evidence": [
@@ -432,13 +450,22 @@
         "summary": "Nothing relates the trajectory to the ask, so a wrong tool for the question goes unjudged on every path."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q4xS4",
         "needs": [],
         "question": "Q4",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs."
+        "summary": "On-task on most runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
       },
       {
         "evidence": [
@@ -517,13 +544,22 @@
         "summary": "No rule judges whether the trajectory completed the task; the real-transcript acceptance record names this as open."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q5xS4",
         "needs": [],
         "question": "Q5",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs; completes the task seven of ten runs is not expressible."
+        "summary": "Completes the task seven of ten runs is readable only as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
       },
       {
         "evidence": [],
@@ -535,13 +571,22 @@
         "summary": "No cohort or baseline."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "ask_coverage"
+          },
+          {
+            "kind": "proof",
+            "name": "ask_coverage"
+          }
+        ],
         "id": "Q5xS6",
         "needs": [],
         "question": "Q5",
-        "status": "gap",
+        "status": "partial",
         "subject": "S6",
-        "summary": "No completion evaluator exists to measure."
+        "summary": "The ask-coverage reading of completion — were the parts of the ask addressed — has a published family (precision and recall per rule at https://iris-eval.com/proof); no end-to-end task-completion evaluator exists, so nothing measures completion beyond that reading."
       },
       {
         "evidence": [],
@@ -592,13 +637,22 @@
         "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — still has no deterministic evaluator."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q6xS4",
         "needs": [],
         "question": "Q6",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs."
+        "summary": "Acts well on most runs is readable as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
       },
       {
         "evidence": [
@@ -702,13 +756,22 @@
         "summary": "A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the budget in force, advising at the shipped default and gating once a deployment sets its own, and no_tool_loop counts the repeated work inside it. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q7xS4",
         "needs": [],
         "question": "Q7",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs, and no rule reads an agent's own cost distribution."
+        "summary": "Cost across repeats of one input is readable only through the case's pass rate under the cost rules: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself. No rule reads an agent's own cost distribution."
       },
       {
         "evidence": [
@@ -903,13 +966,22 @@
         "summary": "A silent tool failure names the failed call by index, why it failed and what the output claimed instead; a loop names every repeated call and the threshold."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q9xS4",
         "needs": [],
         "question": "Q9",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "No grouping over repeated runs."
+        "summary": "Where it fails across repeats: a case answered both ways is reported as flaky, least reliable first. compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
       },
       {
         "evidence": [
@@ -1034,22 +1106,40 @@
         "summary": "When tool calls are absent the trajectory rules skip and coverage names the question as unjudged; both rules are non-critical by default, so their skip never vetoes."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "tool",
+            "name": "compare_traces"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/cases/:key"
+          }
+        ],
         "id": "Q10xS4",
         "needs": [],
         "question": "Q10",
-        "status": "gap",
+        "status": "has",
         "subject": "S4",
-        "summary": "A verdict over repeats — vote, mean, variance — has no composer, and the judge has no repeat harness."
+        "summary": "Trust over repeats is a case's pass rate with a 95% Wilson interval and a flaky flag, and a run-level rate by a cluster bootstrap over cases so ten repeats of one question are not ten questions; the interval is the trust statement. No composer votes over repeats — the rate is reported, not turned into one verdict — and the judge has no repeat harness."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "route",
+            "name": "/api/v1/eval-stats/drift"
+          },
+          {
+            "kind": "tool",
+            "name": "compare_runs"
+          }
+        ],
         "id": "Q10xS5",
         "needs": [],
         "question": "Q10",
-        "status": "gap",
+        "status": "has",
         "subject": "S5",
-        "summary": "No population-level trust statement; intervals on pass rates appear nowhere on the dashboard."
+        "summary": "Population-level trust: two windows are compared with both denominators and a 95% interval on the difference in pass rate, shown on the dashboard's change banner; two runs are compared with a Newcombe interval on the difference (McNemar on the discordant pairs when the cases pair). An interval that straddles zero is reported as not distinguishable, with the sample that would distinguish it."
       },
       {
         "evidence": [
@@ -1075,10 +1165,10 @@
       }
     ],
     "counts": {
-      "gap": 18,
-      "has": 23,
+      "gap": 8,
+      "has": 25,
       "n/a": 4,
-      "partial": 15
+      "partial": 23
     },
     "questions": [
       {
@@ -4159,8 +4249,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-08T05:22:35.357Z",
-  "generatedFromCommit": "48ab82c",
+  "generatedAt": "2026-09-08T05:47:32.484Z",
+  "generatedFromCommit": "11bb6ef",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -7952,7 +8042,7 @@
       "passed": null,
       "total": 14
     },
-    "totalCombined": 2574,
+    "totalCombined": 2581,
     "vitestDashboard": {
       "failed": 0,
       "passed": 185,
@@ -7960,8 +8050,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2375,
-      "total": 2375
+      "passed": 2382,
+      "total": 2382
     }
   },
   "version": {

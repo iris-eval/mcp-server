@@ -80,6 +80,12 @@ export const TARGETS = [
     template: 'docs/launch/directory-listing-template.template.md',
     output: 'docs/launch/directory-listing-template.md',
   },
+  // One paste-ready file per directory (A6-8): the send is the listing
+  // owner's act; the copy is the truthbase's on the day it is pasted.
+  ...['glama', 'mcp-so', 'pulsemcp', 'smithery', 'cursor-directory', 'awesome-mcp-servers'].map((d) => ({
+    template: `docs/launch/listings/${d}.template.md`,
+    output: `docs/launch/listings/${d}.md`,
+  })),
   {
     template: SKILL_TEMPLATE,
     output: 'skills/iris-eval/SKILL.md',

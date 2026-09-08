@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EVALUATORS, PUBLIC_REPO_URL, type ProofClaims } from "@/lib/claims";
+import { EVALUATORS, PUBLIC_REPO_URL, type ProofClaims, type ProofComposite, type ProofRule } from "@/lib/claims";
 
 /*
  * The arc-2 blocks of the proof page. Each renders two-state from the same
@@ -134,6 +134,64 @@ export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactEleme
   );
 }
 
+/*
+ * The calibration answer (masterplan §4.16). Every figure below is computed
+ * here from the proof files: the class prior from the method's prior and
+ * the number of classes, the PPV of one fire from a rule's own confusion
+ * counts, the direction from the reliability bins. Nothing is typed.
+ */
+function tauReading(c: ProofComposite, rules: ProofRule[]) {
+  const classes = c.perClass.length;
+  const prior = typeof c.method.prior === "number" ? c.method.prior : 0.5;
+  // Per-output prior spread over the K classes an output can carry: 1 − (1−π)^(1/K).
+  const classPrior = 1 - Math.pow(1 - prior, 1 / Math.max(1, classes));
+  const rule = rules.find((r) => r.name === "no_stub_output") ?? null;
+  const sensitivity = rule ? rule.tp / (rule.tp + rule.fn) : null;
+  const specificity = rule ? rule.tn / (rule.tn + rule.fp) : null;
+  const ppv =
+    sensitivity !== null && specificity !== null
+      ? (sensitivity * classPrior) / (sensitivity * classPrior + (1 - specificity) * (1 - classPrior))
+      : null;
+  const bins = (c.risk.test.calibration?.bins ?? []).filter(
+    (b): b is { from: number; to: number; n: number; meanPredicted: number; observedRate: number } =>
+      b.n > 0 && b.meanPredicted !== null && b.observedRate !== null,
+  );
+  const above = bins.filter((b) => b.observedRate > b.meanPredicted).length;
+  const total = bins.reduce((acc, b) => acc + b.n, 0);
+  const gap = total > 0 ? bins.reduce((acc, b) => acc + b.n * (b.observedRate - b.meanPredicted), 0) / total : null;
+  const tau = 1 / (1 + c.method.falsePassCost);
+  return { classes, prior, classPrior, rule, sensitivity, specificity, ppv, bins, above, gap, tau };
+}
+
+function WhyTauStays({ c, rules }: { c: ProofComposite; rules: ProofRule[] }): React.ReactElement {
+  const r = tauReading(c, rules);
+  const direction =
+    r.bins.length >= 3 && r.above > r.bins.length / 2
+      ? `In ${r.above} of the ${r.bins.length} populated reliability bins on the test split the observed bad rate sits above the mean predicted P(bad) (n-weighted gap ${r.gap === null ? "—" : `${r.gap >= 0 ? "+" : ""}${(r.gap * 100).toFixed(1)} points`}): the risk estimate is under-confident on bad outputs. That is what the bins say, and it is the direction a local prior corrects.`
+      : `The populated reliability bins on the test split do not agree on a direction (${r.above} of ${r.bins.length} sit above the diagonal), so no direction is claimed here.`;
+  return (
+    <div className="mt-4 rounded-xl border border-border-default bg-bg-card p-4 text-[14px] leading-relaxed text-text-secondary">
+      <p>
+        <strong className="text-text-primary">Why τ stays at {r.tau.toFixed(2)} when the sweep peaks at {c.sweep.argmaxUtility.toFixed(2)}.</strong> The threshold sweep on the dev split ({c.sweep.note}) finds its utility-optimal cut at <span className="font-mono text-text-primary">{c.sweep.argmaxUtility.toFixed(2)}</span>; the shipped cut is <span className="font-mono text-text-primary">{c.sweep.shippedTau.toFixed(2)}</span>, which is 1 / (1 + <code className={code}>eval.falsePassCost</code>) at the shipped cost of {c.method.falsePassCost}. The arithmetic behind the gap: the per-output prior π = {r.prior.toFixed(2)} is spread over the {r.classes} failure classes an output can carry, so one class starts at π<sub>c</sub> = 1 − (1 − π)<sup>1/{r.classes}</sup> ≈ {r.classPrior.toFixed(3)}; a single fire from{" "}
+        {r.rule ? (
+          <>
+            <code className={code}>{r.rule.name}</code> (sensitivity {pct(r.sensitivity)}, specificity {pct(r.specificity)} on the labelled corpus) then has a positive predictive value of about {pct(r.ppv)}
+          </>
+        ) : (
+          <>a typical detector then has a positive predictive value well</>
+        )}{" "}
+        — below τ, so one fire passes, and a corpus that is {pct(c.counts.mustNotShip / Math.max(1, c.counts.cases))} must-not-ship rewards a lower cut.
+      </p>
+      <p className="mt-2">
+        <strong className="text-text-primary">Established:</strong> the sweep&rsquo;s optimum is a fact about this corpus, not about the field; adopting it would fit the threshold to the cases it is scored on, and the prior is a stated assumption about a deployment we have never seen. The honest way to move the number is to let the deployment&rsquo;s own prior in — <code className={code}>eval.prior</code> is a config key today, with its source printed on every result, and the local labels that estimate it are the next arc. <strong className="text-text-primary">From the bins:</strong> {direction}
+      </p>
+      <p className="mt-2">
+        <strong className="text-text-primary">The same idea under another name.</strong> A conformal prediction set for a two-valued verdict is either one label or both. Iris already has the both-labels case: <code className={code}>confidence: &quot;marginal&quot;</code> is stamped when the credible interval on p<sub>bad</sub> straddles τ, which is exactly the set {"{pass, fail}"}; the reliability table above is the diagram that says how far the predicted probabilities can be trusted. No second mechanism is added for it.
+      </p>
+    </div>
+  );
+}
+
 export function VerdictMeasured({ proof }: { proof: ProofClaims }): React.ReactElement {
   const c = proof.composite;
   return (
@@ -198,6 +256,7 @@ export function VerdictMeasured({ proof }: { proof: ProofClaims }): React.ReactE
             <FileLink path="proof/COMPOSITE.md" /> · <FileLink path="proof/composite-results.json" /> ·{" "}
             <code className={code}>npm run proof -- --composite</code>.
           </p>
+          <WhyTauStays c={c} rules={proof.rules} />
         </>
       ) : (
         <Pending what="The composite measurement" command="npm run proof -- --composite" file="proof/composite-results.json" />
