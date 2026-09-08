@@ -216,6 +216,20 @@ function envVarsReadBySrc(): Set<string> {
   return names;
 }
 
+/**
+ * Variables the capture plugin's hooks read (claude-plugin-capture/hooks/*.mjs).
+ * They are the plugin's settings, not the server's: its README may name them,
+ * and server.json — the server's manifest — must not list them.
+ */
+function envVarsReadByCapturePlugin(): Set<string> {
+  const names = new Set<string>();
+  const dir = join(root, 'claude-plugin-capture', 'hooks');
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.mjs'))) {
+    for (const m of readFileSync(join(dir, f), 'utf8').matchAll(/process\.env\.(IRIS_[A-Z0-9_]+)/g)) names.add(m[1]);
+  }
+  return names;
+}
+
 function envVarsInServerJson(): Set<string> {
   const j = JSON.parse(read('server.json')) as { packages: Array<{ environmentVariables?: Array<{ name: string }> }> };
   return new Set(j.packages.flatMap((p) => (p.environmentVariables ?? []).map((e) => e.name)));
@@ -226,6 +240,7 @@ const INTERNAL_ENV_VARS = new Set(['IRIS_NO_AUTO_LAUNCH']);
 
 describe('docs contract — IRIS_* variables', () => {
   const read_ = envVarsReadBySrc();
+  const pluginRead = envVarsReadByCapturePlugin();
   const listed = envVarsInServerJson();
 
   it('the extractor found the variables (guards the regex itself)', () => {
@@ -238,10 +253,15 @@ describe('docs contract — IRIS_* variables', () => {
       for (const m of text.matchAll(/\bIRIS_[A-Z0-9_]+\b/g)) {
         // The error catalogue shares the prefix; a code is not a variable.
         if ((ERROR_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
-        if (!read_.has(m[0])) unknown.push(`${rel}: ${m[0]}`);
+        if (!read_.has(m[0]) && !pluginRead.has(m[0])) unknown.push(`${rel}: ${m[0]}`);
       }
     }
     expect([...new Set(unknown)]).toEqual([]);
+  });
+
+  it('the capture plugin reads its own variables, and none of them is a server setting in server.json', () => {
+    expect(pluginRead.has('IRIS_CAPTURE_WAIT')).toBe(true);
+    expect([...pluginRead].filter((v) => listed.has(v))).toEqual([]);
   });
 
   it('every variable the server reads is listed in server.json (the reverse of manifest-env-parity)', () => {
