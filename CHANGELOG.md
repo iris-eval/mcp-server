@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A new command, `iris-eval ingest`, stores and evaluates traces from stdin or a file and can fail a CI job on a named verdict basis.** The third door, after the MCP tools and `POST /api/v1/traces`, and the one that needs no server: one JSON trace or NDJSON in, one JSON line per trace out (`trace_id`, `evaluation_id`, `passed`, `verdict.basis`, what was not judged), `--fail-on <basis|fail|unknown|any>` for the exit code. The same ingest schema and the same store-and-evaluate primitive as the other two doors. It never sweeps retention. Recipe: `docs/ci-gate.md`.
+- **Two Iris processes can open one database for the first time at once.** Migrations now take the write lock before they read (`BEGIN IMMEDIATE`) and re-check the applied set inside it, so a server booting and a hook-driven `ingest` on a fresh file both succeed; the loser used to fail on `SQLITE_BUSY_SNAPSHOT` or a duplicate column.
+- Every trace records the door it came through — `source`: `tool`, `http`, `cli` or `hook` (migration 010) — so a host hook and a model-initiated log of the same turn can be told apart.
+
 ### Fixed
 
 - **Every evaluation now carries `interpretations[]` — the sentence that says why a rule that failed did not decide.** The composer has built it since 0.10.0 (its own docblock called it mandatory), the engine attached it, and the serializer never emitted it, the schema had no field for it, and no read path carried it — so every reader saw `cost_under_threshold: failed` beside `passed: true` and nothing else. It now rides the tool, the resource and both routes, and is derived on read from the composer facts the provenance now stores. A new note, addressed to the agent, names each question that was not judged and the input that would let it be.

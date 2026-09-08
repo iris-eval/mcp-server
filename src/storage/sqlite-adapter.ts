@@ -178,8 +178,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
     assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertSpanStmt = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
@@ -212,6 +212,7 @@ export class SqliteAdapter implements IStorageAdapter {
          * identity overrule the hash — see src/eval/case-key.ts.
          */
         resolveCaseKey(t.case_key, t.input),
+        t.source ?? null,
       );
 
       if (t.spans) {
@@ -1288,6 +1289,7 @@ export class SqliteAdapter implements IStorageAdapter {
       tools: row.tools ? JSON.parse(row.tools as string) : undefined,
       run_id: (row.run_id as string | null) ?? undefined,
       case_key: (row.case_key as string | null) ?? undefined,
+      ...(row.source != null ? { source: row.source as Trace['source'] } : {}),
     };
   }
 
