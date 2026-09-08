@@ -25,7 +25,7 @@ import type { IStorageAdapter } from '../types/query.js';
 export const DEMO_INGEST_REFUSED_MESSAGE =
   'Demo mode does not accept trace ingest. `--demo` serves a seeded, disposable database (demo.db) — ' +
   '`--demo-clear` deletes everything in it, so real traces stored here would be lost. ' +
-  'Start the real server to store traces: `iris-mcp --dashboard` for HTTP ingest on POST /api/v1/traces, ' +
+  'Start the real server to store traces: `iris-eval --dashboard` for HTTP ingest on POST /api/v1/traces, ' +
   'or the MCP transport for log_trace.';
 
 const REFUSED_METHODS: ReadonlySet<keyof IStorageAdapter> = new Set<keyof IStorageAdapter>([

@@ -697,13 +697,13 @@ Iris can mirror every `log_trace` call out to any OpenTelemetry collector speaki
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `IRIS_OTEL_ENDPOINT` | To enable | Collector base URL. `/v1/traces` auto-appended if omitted |
-| `IRIS_OTEL_SERVICE_NAME` | No | Maps to `service.name` resource attribute (default `iris-mcp`) |
+| `IRIS_OTEL_SERVICE_NAME` | No | Maps to `service.name` resource attribute (default `iris-eval`) |
 | `IRIS_OTEL_HEADERS` | No | Comma-separated `k=v` pairs for auth (e.g. `authorization=Bearer xyz`) |
 | `IRIS_OTEL_TIMEOUT_MS` | No | Per-export timeout (default `15000`) |
 
 ### Wire format
 
-One `ResourceSpans` entry per trace with `service.name`, `telemetry.sdk.name=iris-mcp`, scope `iris.trace.v1`. Span IDs are hex-normalized; non-hex Iris IDs are deterministically hashed to valid OTLP identifiers. Iris-specific span kinds (`LLM`, `TOOL`) map to OTel `INTERNAL` with the original kind surfaced as an `iris.span_kind` attribute. Traces without a span tree get a synthesized root span built from `agent_name`, `framework`, `cost_usd`, token usage, and (truncated) input/output.
+One `ResourceSpans` entry per trace with `service.name`, `telemetry.sdk.name=iris-eval`, scope `iris.trace.v1`. Span IDs are hex-normalized; non-hex Iris IDs are deterministically hashed to valid OTLP identifiers. Iris-specific span kinds (`LLM`, `TOOL`) map to OTel `INTERNAL` with the original kind surfaced as an `iris.span_kind` attribute. Traces without a span tree get a synthesized root span built from `agent_name`, `framework`, `cost_usd`, token usage, and (truncated) input/output.
 
 ---
 

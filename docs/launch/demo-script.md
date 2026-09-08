@@ -44,7 +44,7 @@ Show the config file at `~/Library/Application Support/Claude/claude_desktop_con
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["@iris-eval/mcp-server"]
     }

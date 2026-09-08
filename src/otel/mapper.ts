@@ -11,6 +11,7 @@
 // serializes these plain objects, and the payload shape is the OTLP spec.
 
 import type { Span, Trace, SpanKind } from '../types/trace.js';
+import { PUBLIC_ID } from '../identity.js';
 import { PKG_VERSION } from '../config/defaults.js';
 
 // OTel SpanKind enum values (from opentelemetry-proto/trace/v1/trace.proto).
@@ -164,7 +165,7 @@ export function buildExportPayload(traces: readonly Trace[], serviceName: string
   const resource = {
     attributes: [
       { key: 'service.name', value: { stringValue: serviceName } },
-      { key: 'telemetry.sdk.name', value: { stringValue: 'iris-mcp' } },
+      { key: 'telemetry.sdk.name', value: { stringValue: PUBLIC_ID } },
       { key: 'telemetry.sdk.language', value: { stringValue: 'nodejs' } },
       { key: 'telemetry.sdk.version', value: { stringValue: PKG_VERSION } },
     ],

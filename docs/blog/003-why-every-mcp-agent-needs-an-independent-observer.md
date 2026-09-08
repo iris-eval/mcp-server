@@ -56,7 +56,7 @@ Here is what the configuration looks like:
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["@iris-eval/mcp-server"]
     },
@@ -110,7 +110,7 @@ For networked deployments where you want the observer even further separated fro
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "url": "http://your-iris-host:3000/mcp"
     }
   }

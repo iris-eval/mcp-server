@@ -41,7 +41,7 @@ describe('the judge enable workflow — one source, every surface', () => {
 
   it('the README, the judge doc and both skill files carry the rendered block verbatim', () => {
     const block = judgeEnableBlock();
-    for (const rel of ['README.md', 'docs/llm-as-judge.md', 'skills/iris-eval/SKILL.md', 'claude-plugin/skills/agent-eval/SKILL.md']) {
+    for (const rel of ['README.md', 'docs/llm-as-judge.md', 'skills/iris-eval/SKILL.md', 'claude-plugin/skills/iris-eval/SKILL.md']) {
       expect(read(rel), `${rel} does not carry the enable block verbatim`).toContain(block);
     }
   });

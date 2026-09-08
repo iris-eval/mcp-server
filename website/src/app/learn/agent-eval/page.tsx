@@ -618,7 +618,7 @@ export default function AgentEvalGuide(): React.ReactElement {
               <pre className="my-6 overflow-x-auto rounded-xl border border-border-default bg-bg-card p-5 font-mono text-[13px] leading-relaxed text-text-secondary">
 {`{
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["-y", "@iris-eval/mcp-server"]
     }

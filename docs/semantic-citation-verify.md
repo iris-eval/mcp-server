@@ -117,7 +117,7 @@ out of the output and link numbered refs to it.
 | 8     | Timeout: 10s per URL (configurable). Hard abort via AbortController.        |
 
 Iris does **not** send cookies, authentication headers, or any identifying info beyond a
-`user-agent: iris-mcp-citation-verifier/0.4 (+https://iris-eval.com)` header and a standard
+`user-agent: iris-eval-citation-verifier/0.4 (+https://iris-eval.com)` header and a standard
 `accept` list.
 
 ---

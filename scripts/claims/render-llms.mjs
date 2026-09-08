@@ -31,7 +31,7 @@ const root = resolve(here, '..', '..');
 /*
  * The two skill files are one rendered source. skills/iris-eval/SKILL.md is
  * the copy in the repository's skills/ directory (the npm package ships dist,
- * LICENSE, README.md and server.json only); claude-plugin/skills/agent-eval/SKILL.md is
+ * LICENSE, README.md and server.json only); claude-plugin/skills/iris-eval/SKILL.md is
  * what the Claude Code plugin marketplace serves, and the plugin manifest
  * cannot reference a file outside claude-plugin/. They were hand-mirrored
  * with a comment saying "edit both together", and drifted: one carried three
@@ -53,7 +53,7 @@ metadata:
 ---`;
 
 const PLUGIN_SKILL_FRONT_MATTER = `---
-name: agent-eval
+name: iris-eval
 description: Evaluate AI agent output quality, safety, and cost using the Iris MCP server. Use when building, testing, or shipping agents and the user wants to score output quality, detect PII or prompt injection, verify citations, track cost per query, enforce cost budgets, add tracing/observability to an agent, or set up eval-driven development. Also use when the user asks "is my agent good enough to ship" or wants quality gates on agent responses.
 ---`;
 
@@ -89,7 +89,7 @@ export const TARGETS = [
   },
   {
     template: SKILL_TEMPLATE,
-    output: 'claude-plugin/skills/agent-eval/SKILL.md',
+    output: 'claude-plugin/skills/iris-eval/SKILL.md',
     slots: (base) => ({
       frontMatter: PLUGIN_SKILL_FRONT_MATTER,
       installContext:

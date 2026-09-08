@@ -1,5 +1,5 @@
 /*
- * `iris-mcp --demo` / `--demo-clear` — through the REAL CLI entry point.
+ * `iris-eval --demo` / `--demo-clear` — through the REAL CLI entry point.
  *
  * These tests spawn src/index.ts the way a user runs it, so they cover the
  * flag parsing, the demo-vs-real isolation, and the served dashboard in one
@@ -193,7 +193,7 @@ describe('--demo', () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain('Demo mode does not accept trace ingest');
     expect(body.error).toContain('--demo-clear');
-    expect(body.error).toContain('iris-mcp --dashboard');
+    expect(body.error).toContain('iris-eval --dashboard');
 
     // Nothing landed: the demo database holds exactly what it held before.
     const after = JSON.parse((await get(port, '/api/v1/summary?hours=720', `127.0.0.1:${port}`)).body) as { total_traces: number };

@@ -19,7 +19,7 @@
  * `tenantId` so readers can scope at query time.
  *
  * The v0.4 cut is single-user local. Concurrent writes from multiple
- * iris-mcp instances against the same tenant file are not protected.
+ * iris-eval instances against the same tenant file are not protected.
  * For now we use atomic write-via-rename so a crashed write doesn't
  * leave a half-file.
  */

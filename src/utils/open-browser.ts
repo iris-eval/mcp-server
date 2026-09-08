@@ -1,13 +1,13 @@
 /*
  * open-browser — minimal cross-platform browser launcher.
  *
- * Avoids the `open` npm dep so iris-mcp's install size stays small.
+ * Avoids the `open` npm dep so iris-eval's install size stays small.
  * Uses the platform's default URL handler:
  *   Windows: `cmd /c start "" "<url>"`
  *   macOS:   `open "<url>"`
  *   Linux:   `xdg-open "<url>"`
  *
- * Spawns detached + ignores stdio so the iris-mcp process doesn't depend
+ * Spawns detached + ignores stdio so the iris-eval process doesn't depend
  * on the launched browser staying alive.
  */
 import { spawn } from 'node:child_process';

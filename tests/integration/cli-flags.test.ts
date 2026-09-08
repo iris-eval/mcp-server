@@ -1,5 +1,5 @@
 /*
- * `iris-mcp --version`, the version in `--help`, `--purge`, and the
+ * `iris-eval --version`, the version in `--help`, `--purge`, and the
  * mode-flag exclusivity — through the REAL CLI entry point, the way a user
  * runs it. Every spawned process gets its own scratch IRIS_HOME.
  */

@@ -25,7 +25,7 @@ Companion to the full 3-4 minute demo script (`demo-script.md`). This is a fast,
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["-y", "@iris-eval/mcp-server"]
     }

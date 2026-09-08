@@ -29,6 +29,7 @@ deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code
 ## Quick Start
 
 ```bash
+npx @iris-eval/mcp-server --self-test   # first: offline, exit 0 = healthy
 npx @iris-eval/mcp-server
 ```
 

@@ -130,7 +130,7 @@ Or add Iris to your Claude Desktop MCP config:
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["@iris-eval/mcp-server"]
     }

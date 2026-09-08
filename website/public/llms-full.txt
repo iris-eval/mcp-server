@@ -18,6 +18,8 @@ Iris is an open-source MCP (Model Context Protocol) server for agent evaluation.
 
 ## Quickstart (any MCP client)
 
+First: `npx @iris-eval/mcp-server --self-test` (offline; exit 0 = healthy). Then the config block below; the key is `iris-eval` on every surface.
+
 Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemini CLI):
 
     {

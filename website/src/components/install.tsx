@@ -59,8 +59,10 @@ export function Install(): React.ReactElement {
             <div className="p-6">
               <pre className="overflow-x-auto font-mono text-[13px] leading-[2.2]">
                 <code>
+                  <span className="text-text-muted">$ </span><span className="text-text-primary">npx @iris-eval/mcp-server --self-test</span>{"\n"}
+                  <span className="text-eval-pass">✓ PASS — this install works</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npm install -g @iris-eval/mcp-server</span>{"\n"}
-                  <span className="text-text-muted">$ </span><span className="text-text-primary">iris-mcp --dashboard</span>{"\n"}
+                  <span className="text-text-muted">$ </span><span className="text-text-primary">iris-eval --dashboard</span>{"\n"}
                   <span className="text-eval-pass">✓ Dashboard running at http://localhost:6920</span>
                 </code>
               </pre>

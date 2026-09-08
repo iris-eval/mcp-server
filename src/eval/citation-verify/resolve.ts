@@ -348,7 +348,7 @@ async function doFetch(url: string, opts: ResolveOptions, redirectsLeft: number)
       signal: controller.signal,
       redirect: 'manual',
       headers: {
-        'user-agent': 'iris-mcp-citation-verifier/0.4 (+https://iris-eval.com)',
+        'user-agent': 'iris-eval-citation-verifier (+https://iris-eval.com)',
         accept: 'text/html, text/plain, application/pdf, application/xhtml+xml, */*;q=0.1',
       },
     });
