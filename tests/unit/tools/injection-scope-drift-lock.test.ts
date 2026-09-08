@@ -28,7 +28,7 @@ const DOC_SURFACES = [
   'docs/api-reference.md',
   'docs/architecture.md',
   'skills/iris-eval/SKILL.md',
-  'claude-plugin/skills/agent-eval/SKILL.md',
+  'claude-plugin/skills/iris-eval/SKILL.md',
 ];
 
 describe('injection scope — one sentence, every surface', () => {

@@ -224,7 +224,7 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
   it('the two skill files are one rendered source and differ only where the targets differ', async () => {
     const rendered = (await renderAll(root)) as Array<{ template: string; output: string; text: string }>;
     const skills = rendered.filter(r => r.template === 'skills/iris-eval/SKILL.template.md');
-    expect(skills.map(r => r.output).sort()).toEqual(['claude-plugin/skills/agent-eval/SKILL.md', 'skills/iris-eval/SKILL.md']);
+    expect(skills.map(r => r.output).sort()).toEqual(['claude-plugin/skills/iris-eval/SKILL.md', 'skills/iris-eval/SKILL.md']);
     for (const r of skills) expect(read(r.output)).toBe(r.text);
     // Front matter names differ (the plugin manifest keys on agent-eval, the
     // npm skill on iris-eval); the body below the front matter is the same

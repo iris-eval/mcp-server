@@ -53,7 +53,7 @@ const PROSE_SURFACES: string[] = [
     .filter((f) => f.endsWith('.md'))
     .map((f) => `docs/${f}`),
   'skills/iris-eval/SKILL.md',
-  'claude-plugin/skills/agent-eval/SKILL.md',
+  'claude-plugin/skills/iris-eval/SKILL.md',
   'server.json',
   'smithery.yaml',
   ...readdirSync(join(root, 'src', 'tools'))
@@ -275,7 +275,7 @@ describe('docs contract — rule names', () => {
   });
 
   it('both skill files name every shipped rule and every custom-rule type', () => {
-    for (const rel of ['skills/iris-eval/SKILL.md', 'claude-plugin/skills/agent-eval/SKILL.md']) {
+    for (const rel of ['skills/iris-eval/SKILL.md', 'claude-plugin/skills/iris-eval/SKILL.md']) {
       const text = read(rel);
       for (const name of ruleNames) expect(text, `${rel} lacks ${name}`).toContain(name);
       for (const type of customTypes) expect(text, `${rel} lacks ${type}`).toContain(`\`${type}\``);

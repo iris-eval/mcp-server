@@ -16,11 +16,14 @@
 // avoids accidentally leaking a process-wide interval in tests.
 
 import { buildExportPayload } from './mapper.js';
+import { PUBLIC_ID } from '../identity.js';
 import type { Trace } from '../types/trace.js';
 
+/** service.name on exported spans when IRIS_OTEL_SERVICE_NAME is unset — the public identifier, never a second name. */
+export const DEFAULT_OTEL_SERVICE_NAME = PUBLIC_ID;
 export interface OtelExporterConfig {
   endpoint: string;                           // e.g. https://otel.company.com:4318
-  serviceName: string;                        // e.g. iris-mcp
+  serviceName: string;                        // e.g. iris-eval
   headers?: Record<string, string>;           // e.g. { authorization: 'Bearer ...' }
   timeoutMs?: number;
   pathPrefix?: string;                        // default '/v1/traces' per OTLP spec
@@ -111,7 +114,7 @@ export function exporterFromEnv(): OtelExporter | null {
   const endpoint = process.env.IRIS_OTEL_ENDPOINT;
   if (!endpoint) return null;
 
-  const serviceName = process.env.IRIS_OTEL_SERVICE_NAME ?? 'iris-mcp';
+  const serviceName = process.env.IRIS_OTEL_SERVICE_NAME ?? DEFAULT_OTEL_SERVICE_NAME;
 
   // IRIS_OTEL_HEADERS is a comma-separated list of key=value pairs —
   // the OTel Collector convention. e.g. "authorization=Bearer xyz,x-tenant=foo".

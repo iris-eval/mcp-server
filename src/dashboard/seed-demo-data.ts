@@ -1,5 +1,5 @@
 /*
- * seed-demo-data — the data layer behind `iris-mcp --demo`.
+ * seed-demo-data — the data layer behind `iris-eval --demo`.
  *
  * Seeds a self-contained demo database with a week of realistic traffic
  * from a small agent project: five task-shaped agents (support triage,

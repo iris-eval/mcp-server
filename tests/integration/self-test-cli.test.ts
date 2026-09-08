@@ -10,7 +10,7 @@ import {
 } from '../../src/self-test.js';
 
 /*
- * The CLI contract for `iris-mcp --self-test`: a spawned process, a
+ * The CLI contract for `iris-eval --self-test`: a spawned process, a
  * report on stdout, and an exit code a shell script can trust (0 =
  * healthy, 1 = a check failed). Everything here runs the REAL entry
  * point — if the flag were removed from index.ts, the success test dies
@@ -49,7 +49,7 @@ function runSelfTestCli(
   });
 }
 
-describe('iris-mcp --self-test (CLI)', () => {
+describe('iris-eval --self-test (CLI)', () => {
   let decoyHome: string;
 
   beforeAll(() => {

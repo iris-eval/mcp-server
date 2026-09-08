@@ -1,5 +1,5 @@
 /*
- * seed-demo-data — the data layer behind `iris-mcp --demo`.
+ * seed-demo-data — the data layer behind `iris-eval --demo`.
  *
  * The contract under test:
  *   1. Seeding produces a real database with the click-worthy failures

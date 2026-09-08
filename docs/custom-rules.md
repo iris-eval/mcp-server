@@ -594,7 +594,7 @@ interface EvalRuleResult {
 ### Example: Add a Custom Completeness Rule
 
 ```typescript
-import { EvalEngine } from 'iris-mcp/eval';
+import { EvalEngine } from 'iris-eval/eval';
 
 const engine = new EvalEngine(0.7);
 
@@ -651,7 +651,7 @@ Group related rules into a function that registers them all at once. This patter
 ### Pattern: Rule Package Function
 
 ```typescript
-import type { EvalEngine } from 'iris-mcp/eval';
+import type { EvalEngine } from 'iris-eval/eval';
 
 export function registerHipaaRules(engine: EvalEngine): void {
   engine.registerRule('safety', {
@@ -703,7 +703,7 @@ export function registerHipaaRules(engine: EvalEngine): void {
 ### Usage
 
 ```typescript
-import { EvalEngine } from 'iris-mcp/eval';
+import { EvalEngine } from 'iris-eval/eval';
 import { registerHipaaRules } from './rules/hipaa.js';
 
 const engine = new EvalEngine(0.8);
@@ -717,7 +717,7 @@ registerHipaaRules(engine);
 For teams that prefer JSON configuration over code, export rule definitions as `CustomRuleDefinition[]` arrays:
 
 ```typescript
-import type { CustomRuleDefinition } from 'iris-mcp/types/eval';
+import type { CustomRuleDefinition } from 'iris-eval/types/eval';
 
 export const financialAccuracyRules: CustomRuleDefinition[] = [
   {

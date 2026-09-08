@@ -13,14 +13,14 @@ the tool response.
 # Point at any OTLP/HTTP collector
 export IRIS_OTEL_ENDPOINT=https://otel.your-company.com:4318
 
-# Optional: service name (defaults to iris-mcp)
+# Optional: service name (defaults to iris-eval)
 export IRIS_OTEL_SERVICE_NAME=iris-prod
 
 # Optional: auth headers (for Datadog, Honeycomb, Grafana Cloud, etc.)
 export IRIS_OTEL_HEADERS="authorization=Bearer sk-abc, x-team=platform"
 
 # Run Iris normally
-iris-mcp --transport http --dashboard
+iris-eval --transport http --dashboard
 ```
 
 Every `log_trace` now also emits an OTLP `ExportTraceServiceRequest` to
@@ -52,7 +52,7 @@ configured to accept HTTP and forward to gRPC. This keeps Iris's dependency surf
 
 Each Iris trace becomes one OTLP `ResourceSpans` entry with:
 
-- **Resource attributes**: `service.name`, `telemetry.sdk.name=iris-mcp`, `telemetry.sdk.language=nodejs`, `telemetry.sdk.version=<running release>` (sourced from `package.json` at runtime)
+- **Resource attributes**: `service.name`, `telemetry.sdk.name=iris-eval`, `telemetry.sdk.language=nodejs`, `telemetry.sdk.version=<running release>` (sourced from `package.json` at runtime)
 - **Scope**: `iris.trace.v1`
 - **Spans**: either the `spans[]` tree you sent (hierarchical), or a synthesized root span built from trace-level fields when no span tree is present
 

@@ -36,7 +36,7 @@ describe('withDemoIngestGuard', () => {
       expect(err.status).toBe(403);
       expect(err.message).toBe(DEMO_INGEST_REFUSED_MESSAGE);
       expect(err.message).toContain('--demo-clear');
-      expect(err.message).toContain('iris-mcp --dashboard');
+      expect(err.message).toContain('iris-eval --dashboard');
 
       // Nothing landed.
       expect((await guarded.queryTraces(LOCAL_TENANT, {})).total).toBe(0);

@@ -45,7 +45,7 @@ export function registerTraceRoutes(
 
       if (body.evaluate && !options?.evalEngine) {
         res.status(501).json({
-          error: 'Evaluation is not available on this server — trace was NOT stored. Retry without "evaluate", or start the dashboard via iris-mcp so the eval engine is wired.',
+          error: 'Evaluation is not available on this server — trace was NOT stored. Retry without "evaluate", or start the dashboard via iris-eval so the eval engine is wired.',
         });
         return;
       }

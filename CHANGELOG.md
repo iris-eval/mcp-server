@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The config key, plugin name and skill name are `iris-eval` on every surface, and the command is `iris-eval`.** Until now the product answered to five names depending on the door — the repo's own `.mcp.json` said `iris`, the plugin manifest `iris`, the marketplace `iris-eval`, the command `iris-mcp`, the compose service and the OTel default `iris-mcp` — so an agent that copied one door could not match the docs of another, and the bare word lands on three other projects. One identifier now (`src/identity.ts`, locked by `tests/identity.test.ts`); "Iris" stays the product's name in prose. **An entry you named `iris` keeps working — the key is yours — and `iris-mcp` still runs; neither is documented any more.** The plugin's skill is `iris-eval` (it was `agent-eval`); the default `service.name` on exported spans is `iris-eval`; the citation verifier's user agent no longer carries a version that stopped being true in 0.5.
+- **`--self-test` is the first line of every install snippet** (README, the site, the skill, `llms-full.txt`): prove the install works on this machine before pasting a config block.
+- **The LangChain example sends.** It pointed at the MCP transport port, built a request and printed it; it now POSTs to `/api/v1/traces` on the dashboard port with `evaluate: true` and prints the verdict, the basis and what was not judged.
+
 ## [0.12.1] - 2026-09-07
 
 **Truth patch 3.** Words only — no rule, no verdict and no measured number changed. Several public surfaces had stopped being true, and the guard that should have caught the loudest one could not see it.

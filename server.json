@@ -143,7 +143,7 @@
           "name": "IRIS_OTEL_HEADERS"
         },
         {
-          "description": "service.name resource attribute on exported spans (default iris-mcp)",
+          "description": "service.name resource attribute on exported spans (default iris-eval)",
           "isRequired": false,
           "format": "string",
           "isSecret": false,

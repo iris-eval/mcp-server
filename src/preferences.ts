@@ -1,5 +1,5 @@
 /*
- * preferences — first-run + per-user dashboard preferences for iris-mcp.
+ * preferences — first-run + per-user dashboard preferences for iris-eval.
  *
  * State lives at ~/.iris/preferences.json. The file is created on first
  * dashboard launch with `autoLaunch: true` and `firstSeen` set to the
@@ -16,7 +16,7 @@
  *
  * v0.4 expansions (B8.2): theme, momentFilters (last filter set used on
  * /moments), dismissedTours, archivedMoments. These let the dashboard
- * remember the user's last view across reloads + across iris-mcp restarts.
+ * remember the user's last view across reloads + across iris-eval restarts.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { writeAtomic } from './utils/write-atomic.js';
@@ -68,7 +68,7 @@ export type Preferences = z.infer<typeof PreferencesSchema>;
 export type MomentFilters = z.infer<typeof MomentFiltersSchema>;
 
 export interface PreferenceState {
-  /** True if `~/.iris/preferences.json` did not exist when iris-mcp started. */
+  /** True if `~/.iris/preferences.json` did not exist when iris-eval started. */
   isFirstRun: boolean;
   /** Resolved preferences (defaulted + validated). */
   preferences: Preferences;

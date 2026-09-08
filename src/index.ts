@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { loadConfig } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
+import { COMMAND } from './identity.js';
 import { createStorage } from './storage/index.js';
 import { withDemoIngestGuard } from './storage/demo-guard.js';
 import { createIrisServer } from './server.js';
@@ -90,14 +91,14 @@ try {
     strict: true,
   });
 } catch (err) {
-  process.stderr.write(`iris-mcp: ${(err as Error).message}\nRun \`iris-mcp --help\` for usage.\n`);
+  process.stderr.write(`iris-eval: ${(err as Error).message}\nRun \`iris-eval --help\` for usage.\n`);
   process.exit(2);
 }
 
 /*
  * --version answers on stdout, bare, before anything else: the README's
  * "check your version" recipe pointed at a flag that did not exist and a
- * --help banner that printed no version (#369). Bare so `iris-mcp
+ * --help banner that printed no version (#369). Bare so `iris-eval
  * --version` composes in scripts the way `npm --version` does.
  */
 if (parsed.values.version) {
@@ -110,7 +111,7 @@ if (!validation.success) {
   const issues = validation.error.issues
     .map((i) => `  --${i.path.join('.')}: ${i.message}`)
     .join('\n');
-  process.stderr.write(`iris-mcp: invalid argument(s):\n${issues}\nRun \`iris-mcp --help\` for usage.\n`);
+  process.stderr.write(`iris-eval: invalid argument(s):\n${issues}\nRun \`iris-eval --help\` for usage.\n`);
   process.exit(2);
 }
 const values = validation.data;
@@ -119,7 +120,7 @@ if (values.help) {
   process.stderr.write(`
 Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
-Usage: iris-mcp [options]
+Usage: ${COMMAND} [options]
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
@@ -173,7 +174,7 @@ Environment variables (CLI flags take precedence):
   IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default)
   IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match)
   IRIS_OTEL_ENDPOINT                   Enable best-effort OTLP/HTTP JSON trace export to this collector URL
-  IRIS_OTEL_SERVICE_NAME               service.name resource attribute for OTel export (default: iris-mcp)
+  IRIS_OTEL_SERVICE_NAME               service.name resource attribute for OTel export (default: iris-eval)
   IRIS_OTEL_HEADERS                    Comma-separated k=v headers for OTel export (e.g. "authorization=Bearer abc")
   IRIS_OTEL_TIMEOUT_MS                 Per-export timeout (default: 15000)
   RATE_LIMIT_SALT                      (waitlist API only — required when website is deployed)
@@ -192,7 +193,7 @@ Dashboard preferences ($IRIS_HOME/preferences.json, default ~/.iris/preferences.
 const modeFlags = (['demo', 'demo-clear', 'self-test', 'purge'] as const).filter((flag) => values[flag]);
 if (modeFlags.length > 1) {
   process.stderr.write(
-    `iris-mcp: ${modeFlags.map((flag) => `--${flag}`).join(' and ')} cannot be combined.\nRun \`iris-mcp --help\` for usage.\n`,
+    `iris-eval: ${modeFlags.map((flag) => `--${flag}`).join(' and ')} cannot be combined.\nRun \`iris-eval --help\` for usage.\n`,
   );
   process.exit(2);
 }
@@ -204,7 +205,7 @@ if (modeFlags.length > 1) {
  */
 if (values.purge && values.dashboard) {
   process.stderr.write(
-    'iris-mcp: --purge exits as soon as the purge finishes and cannot be combined with --dashboard (nothing would be served).\nRun `iris-mcp --help` for usage.\n',
+    'iris-eval: --purge exits as soon as the purge finishes and cannot be combined with --dashboard (nothing would be served).\nRun `iris-eval --help` for usage.\n',
   );
   process.exit(2);
 }
@@ -222,8 +223,8 @@ if (values['self-test']) {
 
 if (values.demo && values['db-path']) {
   process.stderr.write(
-    'iris-mcp: --demo always serves its own database (demo.db under your iris home) and cannot be combined with --db-path.\n' +
-      'Run `iris-mcp --demo` alone, or drop --demo to use your own database.\n',
+    'iris-eval: --demo always serves its own database (demo.db under your iris home) and cannot be combined with --db-path.\n' +
+      'Run `iris-eval --demo` alone, or drop --demo to use your own database.\n',
   );
   process.exit(2);
 }
@@ -231,12 +232,12 @@ if (values.demo && values['db-path']) {
 if (values['demo-clear']) {
   const { removed } = clearDemoData();
   if (removed.length === 0) {
-    process.stderr.write(`iris-mcp: no demo data found under "${irisHome()}" — nothing to remove.\n`);
+    process.stderr.write(`iris-eval: no demo data found under "${irisHome()}" — nothing to remove.\n`);
   } else {
     for (const path of removed) {
-      process.stderr.write(`iris-mcp: removed "${path}"\n`);
+      process.stderr.write(`iris-eval: removed "${path}"\n`);
     }
-    process.stderr.write('iris-mcp: demo data cleared. Your real traces were not touched.\n');
+    process.stderr.write('iris-eval: demo data cleared. Your real traces were not touched.\n');
   }
   process.exit(0);
 }
@@ -273,7 +274,7 @@ async function runPurge(): Promise<void> {
   try {
     const { traces, evalResults } = await storage.purge(LOCAL_TENANT);
     process.stderr.write(
-      `iris-mcp: purged ${traces} trace(s) and ${evalResults} evaluation(s) from "${config.storage.path}" ` +
+      `iris-eval: purged ${traces} trace(s) and ${evalResults} evaluation(s) from "${config.storage.path}" ` +
         '(database compacted, write-ahead log truncated). Deployed rules, audit log and preferences were kept.\n',
     );
   } finally {
@@ -286,7 +287,7 @@ if (values.purge) {
     await runPurge();
     process.exit(0);
   } catch (err) {
-    process.stderr.write(`iris-mcp: purge failed: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.stderr.write(`iris-eval: purge failed: ${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
   }
 }
@@ -440,7 +441,7 @@ ${counts}
   Demo database: "${summary.dbPath}"
   Your real trace database is untouched — demo data never mixes with it.
   Trace ingest (POST /api/v1/traces) is refused in demo mode: start the
-  real server (iris-mcp --dashboard) to store your own traces.
+  real server (iris-eval --dashboard) to store your own traces.
 
   Worth clicking into:
     - a PII leak (a synthetic SSN in an agent reply) caught by the safety rules

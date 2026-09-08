@@ -37,7 +37,13 @@ npx @iris-eval/mcp-server --demo-clear
 
 ## Hook up your own agent
 
-Add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent. One block, dashboard included:
+First, prove the install works on this machine — it runs offline and opens nothing of yours:
+
+```bash
+npx @iris-eval/mcp-server --self-test   # exit 0 = healthy
+```
+
+Then add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent. One block, dashboard included:
 
 ```json
 {
@@ -171,7 +177,7 @@ Iris is a standard stdio MCP server — one `npx @iris-eval/mcp-server` command,
 ```bash
 # Global install (recommended for persistent data and faster startup)
 npm install -g @iris-eval/mcp-server
-iris-mcp --dashboard
+iris-eval --dashboard
 
 # Docker — two servers, two ports: 3000 = MCP HTTP transport,
 # 6920 = dashboard (which also serves the POST /api/v1/traces ingest endpoint)
@@ -216,7 +222,7 @@ Iris registers twelve tools that any MCP-compatible agent can invoke — trace a
 
 **Enable the LLM judge (optional; the deterministic rules never need it)**
 1. Get an API key from Anthropic or OpenAI.
-2. Put it in the environment of the process that runs Iris, not only your shell. Claude Code, Claude Desktop, Cursor and most MCP clients: the "env" block of the iris-eval entry in your MCP config — "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server"], "env": { "IRIS_ANTHROPIC_API_KEY": "sk-ant-..." } } (IRIS_OPENAI_API_KEY for an OpenAI key). Docker: -e IRIS_ANTHROPIC_API_KEY=... on the run command. HTTP or CI: export it before starting iris-mcp.
+2. Put it in the environment of the process that runs Iris, not only your shell. Claude Code, Claude Desktop, Cursor and most MCP clients: the "env" block of the iris-eval entry in your MCP config — "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server"], "env": { "IRIS_ANTHROPIC_API_KEY": "sk-ant-..." } } (IRIS_OPENAI_API_KEY for an OpenAI key). Docker: -e IRIS_ANTHROPIC_API_KEY=... on the run command. HTTP or CI: export it before starting iris-eval.
 3. Restart the MCP session. A running process never sees a variable set after it started.
 4. Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. A key exported in your shell is not passed to the process your client spawns unless its config lists it. On a machine, `npx @iris-eval/mcp-server --self-test` prints the judge line for that shell, and GET /api/v1/health reports judge.enabled on a running dashboard.
 5. Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it.
@@ -341,7 +347,7 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_CITATION_ALLOW_FETCH` | Set to `1` to permit outbound HTTP in `verify_citations` (off by default) |
 | `IRIS_CITATION_DOMAINS` | Comma-separated hostname allowlist for `verify_citations` (suffix match) |
 | `IRIS_OTEL_ENDPOINT` | Enable best-effort OTLP/HTTP JSON trace export to this collector URL |
-| `IRIS_OTEL_SERVICE_NAME` | `service.name` resource attribute for OTel export (default `iris-mcp`) |
+| `IRIS_OTEL_SERVICE_NAME` | `service.name` resource attribute for OTel export (default `iris-eval`) |
 | `IRIS_OTEL_HEADERS` | Comma-separated `k=v` headers for OTel export (e.g. `authorization=Bearer abc`) |
 | `IRIS_OTEL_TIMEOUT_MS` | Per-export timeout (default `15000`) |
 | `RATE_LIMIT_SALT` | Website waitlist API only — required when the iris-eval.com site is deployed; the server never reads it |
@@ -360,7 +366,7 @@ When using HTTP transport, Iris includes:
 
 ```bash
 # Production deployment
-iris-mcp --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
+iris-eval --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --dashboard
 ```
 
 With a key set, API clients — MCP clients, capture SDKs, `POST /api/v1/traces` — send `Authorization: Bearer <key>`. To open the dashboard in a browser, append the key once to any dashboard URL, `http://localhost:6920/?key=<api key>`: Iris exchanges it for an HttpOnly, SameSite=Lax session cookie and redirects to the same page with the key removed from the address bar. A page opened without a session shows a sign-in form that does the same exchange. The key is never stored in the browser, and sessions live only in the server process.

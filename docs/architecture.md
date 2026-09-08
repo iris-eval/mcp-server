@@ -683,8 +683,8 @@ Eight rule types are supported (see section 4). Weights control relative importa
 If you import Iris as a library (rather than running it as a CLI), you can register rules on the `EvalEngine` instance:
 
 ```typescript
-import { createIrisServer } from 'iris-mcp/server';
-import { createStorage } from 'iris-mcp/storage';
+import { createIrisServer } from 'iris-eval/server';
+import { createStorage } from 'iris-eval/storage';
 
 const storage = createStorage(config);
 const { evalEngine } = createIrisServer(config, storage);

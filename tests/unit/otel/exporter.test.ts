@@ -160,11 +160,11 @@ describe('exporterFromEnv', () => {
     expect(exporter!.timeoutMs).toBe(5000);
   });
 
-  it('uses default service name iris-mcp when IRIS_OTEL_SERVICE_NAME unset', () => {
+  it('uses the public identifier as the default service name when IRIS_OTEL_SERVICE_NAME is unset', () => {
     process.env.IRIS_OTEL_ENDPOINT = 'https://otel.example.com';
     delete process.env.IRIS_OTEL_SERVICE_NAME;
     const exporter = exporterFromEnv();
     // @ts-expect-error — reading private for test
-    expect(exporter!.serviceName).toBe('iris-mcp');
+    expect(exporter!.serviceName).toBe('iris-eval');
   });
 });

@@ -48,7 +48,7 @@ Add this to your Claude Desktop MCP config and it works immediately:
 ```json
 {
   "mcpServers": {
-    "iris": {
+    "iris-eval": {
       "command": "npx",
       "args": ["@iris-eval/mcp-server"]
     }
