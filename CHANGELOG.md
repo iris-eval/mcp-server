@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The `iris-eval-capture` plugin records turns again.** Its Stop hook spawned the ingest itself, detached, with the trace on a stdin pipe and stderr on another, and exited a millisecond later; on the published package the ingest died with those pipes and no turn was ever stored — found by the stranger harness at the 0.13.0 release (row V1), which passed only when the hook was made to wait. The hook now writes the turn to a file under its data directory and detaches a pipe-free runner (`hooks/ingest-runner.mjs`) that hands the file to `iris-eval ingest`, treats exit 0 alone as success, logs the outcome, and keeps a payload it could not ingest under `pending/`. The plugin is served from this repository, so the fix reaches every new install without a package release.
+
+### Changed
+
+- The stranger harness grades on the 0.13.0 product: an evaluation counts on either door (`log_trace` with `evaluate: true` or `evaluate_output`); an evaluation returned inline satisfies the read-the-verdict row; the untold task is graded in a fresh session; the answer is read in the composer's vocabulary (must not ship, veto, basis) rather than the score era's; the twelve-call ceiling excludes the host's own mechanics (deferred-tool search, auto-memory, spilled results); `--regrade` grades a recorded run under the current rules without running it. Each re-derivation is proven against the 0.13.0 transcript that exposed it.
+
 ## [0.13.0] - 2026-09-08
 
 **Found and fed.** The engine, the proof and the release gate were already held to a higher standard than the doors that introduce the product. This release is the doors: one name on every surface, capture that does not depend on the model choosing to call a tool, the verdict's own reasons reaching every reader, and a container that cannot expose an unauthenticated eval API by accident.

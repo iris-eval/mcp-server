@@ -1,9 +1,18 @@
-// Stop — the turn ended: assemble the trace and hand it to `iris-eval ingest`,
-// detached, so the user's turn never waits on the evaluation.
-import { spawn } from 'node:child_process';
-import { IRIS_TOOL, clearSession, log, pinnedVersion, readSession, readStdin } from './common.mjs';
-
-const INGEST_ARGS = ['ingest', '--evaluate', '--redact', 'critical_spans', '--source', 'hook'];
+// Stop — the turn ended: assemble the trace, write it to a file, and detach
+// the ingest runner so the user's turn never waits on the evaluation.
+//
+// Why a file and a runner, not a pipe (0.13.0 → 0.13.1 of this plugin): the
+// first version spawned `npx … ingest` itself, detached, with the trace on a
+// stdin pipe and stderr on another, and exited a millisecond later — and on
+// the published package the ingest died with those pipes, so no turn was
+// ever recorded. Measured by the stranger harness's capture phase, which
+// passed only when the hook was made to wait. A detached child must own
+// nothing of the process that spawned it: the payload lives in a file, and
+// hooks/ingest-runner.mjs is started with every stdio ignored.
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { IRIS_TOOL, clearSession, dataDir, here, log, readSession, readStdin } from './common.mjs';
 
 function assemble(input, session) {
   const calls = Array.isArray(session.tool_calls) ? session.tool_calls : [];
@@ -29,43 +38,6 @@ function assemble(input, session) {
   };
 }
 
-function ingestCommand() {
-  // Tests point this at the repo's own entry point (a JSON argv, so a path
-  // with a space survives); users get the published package.
-  const override = process.env.IRIS_CAPTURE_INGEST_ARGV;
-  if (override) {
-    const parts = JSON.parse(override);
-    return [{ cmd: parts[0], args: [...parts.slice(1), ...INGEST_ARGS], shell: false }];
-  }
-  const version = pinnedVersion();
-  // On Windows npx is a .cmd shim, which Node refuses to spawn without a
-  // shell. Every argument here is our own literal or the pinned version.
-  const shell = process.platform === 'win32';
-  return [
-    { cmd: 'npx', args: ['--no-install', '@iris-eval/mcp-server', ...INGEST_ARGS], shell },
-    { cmd: 'npx', args: ['-y', version ? `@iris-eval/mcp-server@${version}` : '@iris-eval/mcp-server', ...INGEST_ARGS], shell },
-  ];
-}
-
-function run(candidate, payload) {
-  return new Promise((resolve) => {
-    let child;
-    try {
-      child = spawn(candidate.cmd, candidate.args, { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true, shell: candidate.shell, detached: process.env.IRIS_CAPTURE_WAIT !== '1' });
-    } catch (err) {
-      resolve({ ok: false, why: err instanceof Error ? err.message : String(err) });
-      return;
-    }
-    let stderr = '';
-    child.stderr?.on('data', (c) => { stderr += c.toString(); });
-    child.once('error', (err) => resolve({ ok: false, why: err.message }));
-    child.once('close', (code) => resolve({ ok: code === 0 || code === 1, code, why: stderr.trim() }));
-    child.stdin.write(JSON.stringify(payload));
-    child.stdin.end();
-    if (process.env.IRIS_CAPTURE_WAIT !== '1') child.unref();
-  });
-}
-
 try {
   const input = await readStdin();
   const session = readSession(input.session_id);
@@ -80,22 +52,23 @@ try {
     log(`stop hook: skipped — ${built.skipped}`);
     process.exit(0);
   }
-  // Fire and forget by default: the user's turn never waits on the evaluation.
-  // A failed first candidate (no cached package) falls through to the pinned install.
-  const candidates = ingestCommand();
+  // The payload goes to a file under the plugin's data directory; the runner
+  // removes it once the ingest has stored the turn, and leaves it in place
+  // when it could not (the evidence, and the retry).
+  const pending = join(dataDir(), 'pending');
+  mkdirSync(pending, { recursive: true });
+  const file = join(pending, `${Date.now()}-${process.pid}.json`);
+  writeFileSync(file, JSON.stringify(built.trace));
+  const runner = join(here, 'ingest-runner.mjs');
   if (process.env.IRIS_CAPTURE_WAIT === '1') {
-    let last;
-    for (const candidate of candidates) {
-      last = await run(candidate, built.trace);
-      if (last.ok) break;
-    }
-    if (!last?.ok) log(`stop hook: ingest failed — ${last?.why ?? 'unknown'}`);
+    // Tests (and a host that reaps detached children) wait for the outcome.
+    const r = spawnSync(process.execPath, [runner, file], { stdio: 'ignore', windowsHide: true });
+    if (r.status !== 0) log(`stop hook: the ingest runner exited ${r.status ?? r.error?.message ?? '?'}`);
   } else {
-    void run(candidates[0], built.trace).then((r) => {
-      if (!r.ok && candidates[1]) return run(candidates[1], built.trace).then((r2) => { if (!r2.ok) log(`stop hook: ingest failed — ${r2.why}`); });
-    });
+    // Fire and forget: no pipe, no shell, nothing of this process for the
+    // runner to lose when it exits a moment from now.
+    spawn(process.execPath, [runner, file], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
   }
 } catch (err) {
   log(`stop hook: ${err instanceof Error ? err.message : String(err)}`);
 }
-process.exit(0);

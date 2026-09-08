@@ -316,6 +316,14 @@ function summarise(phase, d, wallMs, substitution) {
 }
 
 /* ── grading ── */
+/*
+ * A10 (0.13.0): the untold task must be a fresh session. Resumed on the
+ * connected phase, the agent already had the file in context, used no tool,
+ * and — exactly as the when-clause says ("not every line") — logged nothing:
+ * 0 calls. The same prompt in a fresh session with iris-eval attached (the
+ * capture-both phase) produced a self-initiated log_trace with evaluate. So
+ * A10 grades that session when it exists, and the resumed driver otherwise.
+ */
 function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
   const rows = {};
   const row = (id, pass, evidence, note) => { rows[id] = { pass, evidence: quote(evidence), ...(note ? { note } : {}) }; };
@@ -333,11 +341,28 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
     row('A3-connected', connected, JSON.stringify(d.init?.mcp_servers ?? []));
     const firstIris = d.calls.findIndex((c) => isIris(c.name));
     const readmeAfterConnect = d.calls.findIndex((c) => readmeRead(c));
-    const distinguishes = /\bpassed\b/i.test(d.finalText) && /\bscore\b/i.test(d.finalText);
+    /*
+     * "Distinguishes" (re-derived 0.13.0): the answer names a verdict per
+     * output in the composer's words — ship / must not ship, passed / failed,
+     * veto, basis — not the score era's "passed" AND "score". The 0.13.0
+     * stranger wrote "Output 2 must not ship. Iris vetoed it on the critical
+     * no_pii rule" and the old regex, wanting the word "score", failed it.
+     */
+    const distinguishes =
+      /(must not ship|should not ship|don't ship|do not ship)/i.test(d.finalText) &&
+      /\b(pass|passed|passes|clean|ship)\b/i.test(d.finalText) &&
+      /(output[- ]?[123]|first|second|third)/i.test(d.finalText);
     row('A2', firstIris >= 0 && (readmeAfterConnect < 0 || firstIris < readmeAfterConnect) && distinguishes, d.finalText, readmeAfterConnect >= 0 ? `README read at call #${readmeAfterConnect + 1}` : undefined);
-    const evals = d.calls.filter((c) => irisName(c.name) === 'evaluate_output');
+    /*
+     * A4 counts EVALUATIONS, not one tool (0.13.0). `log_trace` with
+     * `evaluate: true` scores the trace in the same call — the path the
+     * instructions now recommend — and the 0.13.0 stranger used it three
+     * times; a row that counted `evaluate_output` alone graded the route.
+     */
+    const evalOutputs = d.calls.filter((c) => irisName(c.name) === 'evaluate_output');
+    const logEvals = d.calls.filter((c) => irisName(c.name) === 'log_trace' && c.input?.evaluate === true);
     const judges = d.calls.filter((c) => /evaluate_with_llm_judge|verify_citations/.test(irisName(c.name)));
-    row('A4', evals.length >= 3 && judges.length === 0, `evaluate_output ×${evals.length}, judge ×${judges.length}`);
+    row('A4', evalOutputs.length + logEvals.length >= 3 && judges.length === 0, `evaluate_output ×${evalOutputs.length}, log_trace with evaluate ×${logEvals.length}, judge ×${judges.length}`);
     const invalid = d.calls.filter((c) => isIris(c.name) && /IRIS_INVALID_ARGUMENT|Invalid arguments/.test(c.result ?? ''));
     const corrected = invalid.every((c) => { const i = d.calls.indexOf(c); return d.calls.slice(i + 1).some((n) => n.name === c.name && !/IRIS_INVALID_ARGUMENT|Invalid arguments/.test(n.result ?? '')); });
     row('A5', invalid.length === 0 || (invalid.length === 1 && corrected), invalid.length ? invalid[0].result : 'zero invalid-argument results');
@@ -370,9 +395,16 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
       /\b(passed|clean)\b/i.test(t) &&
       /(not judged|unjudged|skipped|cost_usd|no cost|coverage)/i.test(t);
     row('A6', out2 && out3 && out1, t, `out2:${out2} out3:${out3} out1:${out1}`);
+    /*
+     * A7 (0.13.0): with `evaluate: true` the evaluation comes back inline and
+     * there is no link to follow — the row's proposition ("the agent logged
+     * and read the evaluation") is met by the inline result as much as by a
+     * resource read. Either counts; a log with neither still fails.
+     */
     const logged = d.calls.some((c) => irisName(c.name) === 'log_trace');
     const followed = d.calls.some((c) => /ReadMcpResource|readResource|iris:\/\//.test(`${c.name} ${JSON.stringify(c.input)}`)) || /iris:\/\/(evaluations|traces)\//.test(t);
-    row('A7', logged && followed, logged ? 'log_trace called' : 'no log_trace', followed ? undefined : 'no resource followed');
+    const inline = logEvals.length > 0;
+    row('A7', logged && (followed || inline), logged ? `log_trace called (${inline ? 'evaluated inline' : 'no inline evaluation'})` : 'no log_trace', followed || inline ? undefined : 'no resource followed and no inline evaluation');
     /*
      * The ceiling is a measurement, not a wish (A6-9). 0.9.0 measured 14
      * calls after connection (3 logs, 3 evaluations, 8 reads); 0.10.0
@@ -383,8 +415,19 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
      * same call (0.13.0) the same work is six calls; the bar stays at twelve
      * until a release measures under it, and then moves to that number.
      */
-    const afterConnect = d.calls.length;
-    row('within-12-calls', afterConnect <= 12 && readmeAfterConnect < 0, `${afterConnect} tool calls after connection; README reads after connection: ${readmeAfterConnect >= 0 ? 1 : 0}`);
+    /*
+     * Host mechanics do not count (0.13.0): Claude Code now defers MCP tools
+     * behind ToolSearch, keeps an auto-memory the agent writes to, and spills
+     * long tool results to files it then reads back. None of those calls is
+     * the product making the agent read more; the 0.13.0 run had 7 of them
+     * in 20. They are named in the evidence and excluded from the count.
+     */
+    const hostCall = (c) =>
+      c.name === 'ToolSearch' ||
+      ((c.name === 'Write' || c.name === 'Edit' || c.name === 'Read') && /[\\/]memory[\\/]|MEMORY\.md|[\\/]tool-results[\\/]/.test(JSON.stringify(c.input ?? {})));
+    const hostCalls = d.calls.filter(hostCall).length;
+    const afterConnect = d.calls.length - hostCalls;
+    row('within-12-calls', afterConnect <= 12 && readmeAfterConnect < 0, `${afterConnect} tool calls after connection (${d.calls.length} including ${hostCalls} host-side: ToolSearch, auto-memory, spilled results); README reads after connection: ${readmeAfterConnect >= 0 ? 1 : 0}`);
   }
   if (a8) {
     const d = a8.d;
@@ -406,6 +449,7 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
     const carriesInterval = /\[\s*-?\d|±|\binterval\b|not enough evidence|cannot tell|too few|smallest detectable/i.test(t);
     row('A9', compared.length >= 1 && carriesInterval, t, `compare calls ×${compared.length}`);
   }
+  if (captureBoth) a10 = { d: captureBoth.d, rec: captureBoth.rec, fresh: true };
   if (a10) {
     const d = a10.d;
     const logs = d.calls.filter((c) => irisName(c.name) === 'log_trace');
@@ -622,7 +666,10 @@ async function waitForTraces(home, ms) {
 
 /** Whatever the capture plugin logged: under CLAUDE_PLUGIN_DATA if the host set it, else its tmpdir fallback. */
 function captureLog(pluginData) {
-  for (const dir of [pluginData, join(tmpdir(), 'iris-eval-capture')]) {
+  // Claude Code sets CLAUDE_PLUGIN_DATA itself (…/.claude/plugins/data/<plugin>-inline for --plugin-dir);
+  // the harness's own dir and the plugin's tmpdir fallback are read as well.
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  for (const dir of [join(home, '.claude', 'plugins', 'data', 'iris-eval-capture-inline'), join(home, '.claude', 'plugins', 'data', 'iris-eval-capture'), pluginData, join(tmpdir(), 'iris-eval-capture')]) {
     const f = join(dir, 'capture.log');
     if (existsSync(f)) return readFileSync(f, 'utf8').split('\n').slice(-12).join('\n');
   }
@@ -660,6 +707,32 @@ async function phaseCapture(kind, connectedConfig) {
 
 const results = {};
 const want = (p) => PHASE === 'all' || PHASE === p;
+/*
+ * --regrade: re-read every phase transcript already in --out and grade it
+ * under the CURRENT rules, running nothing. A grading fix (A4, A7, A10 and
+ * the H rows have each been re-derived after a run) is proven against the
+ * transcript that exposed it, not against a fresh run that may differ.
+ */
+if (args.get('regrade') === 'true') {
+  const load = (phase) => (existsSync(join(OUT, `${phase}.jsonl`)) ? { d: digest(parseStream(readFileSync(join(OUT, `${phase}.jsonl`), 'utf8'))), rec: {} } : null);
+  const re = {};
+  const m1 = load('mcp1');
+  if (m1) re.mcp1 = { ...m1, config: existsSync(join(OUT, 'mcp-config-as-written.json')) ? JSON.parse(readFileSync(join(OUT, 'mcp-config-as-written.json'), 'utf8')) : null, substitution: null };
+  for (const phase of ['mcp2', 'a8', 'a9', 'a10', 'http']) { const r = load(phase); if (r) re[phase] = r; }
+  for (const [phase, key] of [['capture', 'capture'], ['capture-both', 'captureBoth']]) {
+    const r = load(phase);
+    if (!r) continue;
+    const traces = existsSync(join(OUT, `${phase}-traces.json`)) ? JSON.parse(readFileSync(join(OUT, `${phase}-traces.json`), 'utf8')) : [];
+    const log = existsSync(join(OUT, `${phase}-capture.log`)) ? readFileSync(join(OUT, `${phase}-capture.log`), 'utf8') : '';
+    re[key] = { ...r, traces, log };
+  }
+  const rows = grade(re);
+  const previous = existsSync(join(OUT, 'rows.json')) ? JSON.parse(readFileSync(join(OUT, 'rows.json'), 'utf8')) : {};
+  const record = { ...previous, regradedAt: new Date().toISOString(), rows: { ...(previous.rows ?? {}), ...rows } };
+  writeFileSync(join(OUT, 'rows.json'), JSON.stringify(record, null, 2));
+  console.log(JSON.stringify(record, null, 2));
+  process.exit(0);
+}
 const line = (name, rec) => console.log(`${name}: ${rec.toolCalls} calls, $${rec.costUsd}, ${Math.round(rec.wallMs / 1000)}s, denials ${rec.denials}${rec.irisCalls.length ? `, iris ${rec.irisCalls.join(',')}` : ''}`);
 const savedConfig = join(OUT, 'mcp-config-as-written.json');
 let connectedConfig = null;

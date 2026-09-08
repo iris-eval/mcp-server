@@ -15,7 +15,7 @@ Three hooks, one turn: `UserPromptSubmit` remembers the prompt, `PostToolUse` ap
 
 - **It never logs a turn twice.** If the model called `log_trace` itself during the turn (the `iris-eval` plugin's instructions ask it to, for answers you will act on), this hook does nothing for that turn. Iris's own tool calls are also filtered out of the recorded trajectory.
 - **It never prints.** A Stop hook's stdout becomes context the model sees. Everything this plugin has to say goes to `capture.log` in its data directory.
-- **It never blocks.** The ingest runs detached with a ten-second hook timeout as a backstop; a failure is a line in `capture.log`, never a stuck turn.
+- **It never blocks.** The Stop hook writes the turn to a file under the plugin's data directory (`pending/`) and detaches a small runner that hands the file to `iris-eval ingest` and exits; the hook itself returns in a few milliseconds. A turn the runner could not ingest stays in `pending/` with the reason in `capture.log` — never a stuck turn, and never a silently lost one. (`IRIS_CAPTURE_WAIT=1` makes the hook wait for the runner instead, for tests and for hosts that reap detached children.)
 - **It never sends anything anywhere.** `ingest` is local; nothing leaves the machine unless you have configured Iris to export.
 
 ## Named limits
