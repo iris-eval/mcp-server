@@ -4249,8 +4249,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-08T05:59:45.255Z",
-  "generatedFromCommit": "5e2ae89",
+  "generatedAt": "2026-09-08T06:43:58.260Z",
+  "generatedFromCommit": "be8e1f3",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4322,7 +4322,7 @@
     ]
   },
   "proof": {
-    "commit": "ec28195",
+    "commit": "be8e1f3",
     "composite": {
       "compositeVersion": "a4e0e6d77d07",
       "corpusVersion": "795a0dced3cd",
@@ -5679,7 +5679,7 @@
         "split": "dev",
         "variant": "per-output"
       },
-      "version": "0.12.1"
+      "version": "0.13.0"
     },
     "corpusVersion": "795a0dced3cd",
     "custom": {
@@ -6306,7 +6306,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-08T03:02:15.520Z",
+    "generatedAt": "2026-09-08T06:35:56.065Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7457,7 +7457,7 @@
         "transcripts": 24
       },
       "transcriptsVersion": "f26dc9fc1f64",
-      "version": "0.12.1"
+      "version": "0.13.0"
     },
     "transforms": {
       "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
@@ -7994,12 +7994,12 @@
         }
       ]
     },
-    "version": "0.12.1"
+    "version": "0.13.0"
   },
   "release": {
-    "currentReleaseDate": "2026-09-07",
-    "currentReleaseHeadline": "Truth patch 3",
-    "currentReleaseVersion": "0.12.1",
+    "currentReleaseDate": "2026-09-08",
+    "currentReleaseHeadline": "Found and fed",
+    "currentReleaseVersion": "0.13.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -8058,7 +8058,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.12.1",
+    "mcpServer": "0.13.0",
     "published": {
       "initPackage": false,
       "langchainPackage": false,

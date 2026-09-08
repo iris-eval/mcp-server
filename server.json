@@ -6,12 +6,12 @@
     "url": "https://github.com/iris-eval/mcp-server",
     "source": "github"
   },
-  "version": "0.12.1",
+  "version": "0.13.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@iris-eval/mcp-server",
-      "version": "0.12.1",
+      "version": "0.13.0",
       "transport": {
         "type": "stdio"
       },
