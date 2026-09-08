@@ -22,6 +22,21 @@ export interface EvaluationResponseOptions {
 }
 
 /** The response body for an evaluation — what the tool returns as text and, later, as structured content. */
+/**
+ * The EvalResult fields the response deliberately does NOT carry — the
+ * documented private set of invariant 13 ("nothing the composer computes is
+ * dropped on the way out"). Each is either the caller's own text echoed
+ * back or storage metadata:
+ *   output_text / expected_text — the text the caller sent (the resource
+ *     iris://evaluations/{id} carries it for a later reader);
+ *   created_at — the storage timestamp;
+ *   eval_cost_usd / eval_tokens — the judge's own spend, reported by the
+ *     judge tool's envelope, not by the deterministic evaluation.
+ * Every other field the engine sets appears in the response when it has a
+ * value; tests/unit/eval/nothing-dropped.test.ts holds the two sets equal.
+ */
+export const PRIVATE_RESULT_KEYS = ['output_text', 'expected_text', 'created_at', 'eval_cost_usd', 'eval_tokens'] as const;
+
 export function toEvaluationResponse(result: EvalResult, options: EvaluationResponseOptions = {}): Record<string, unknown> {
   const traceId = options.traceId ?? result.trace_id;
   return {
