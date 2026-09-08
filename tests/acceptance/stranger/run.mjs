@@ -354,6 +354,16 @@ function grade({ mcp1, mcp2, a8, a9, a10, http }) {
     const logged = d.calls.some((c) => irisName(c.name) === 'log_trace');
     const followed = d.calls.some((c) => /ReadMcpResource|readResource|iris:\/\//.test(`${c.name} ${JSON.stringify(c.input)}`)) || /iris:\/\/(evaluations|traces)\//.test(t);
     row('A7', logged && followed, logged ? 'log_trace called' : 'no log_trace', followed ? undefined : 'no resource followed');
+    /*
+     * The ceiling is a measurement, not a wish (A6-9). 0.9.0 measured 14
+     * calls after connection (3 logs, 3 evaluations, 8 reads); 0.10.0
+     * measured 12 for the same work with fewer reads, because the verdict
+     * had started to carry its basis. Twelve is the 0.10.0 measurement held
+     * as the bar: a run above it means the surfaces made the agent read more
+     * than the verdict should require. With `log_trace` evaluating in the
+     * same call (0.13.0) the same work is six calls; the bar stays at twelve
+     * until a release measures under it, and then moves to that number.
+     */
     const afterConnect = d.calls.length;
     row('within-12-calls', afterConnect <= 12 && readmeAfterConnect < 0, `${afterConnect} tool calls after connection; README reads after connection: ${readmeAfterConnect >= 0 ? 1 : 0}`);
   }
@@ -386,15 +396,38 @@ function grade({ mcp1, mcp2, a8, a9, a10, http }) {
   }
   if (http) {
     const d = http.d;
-    const started = d.calls.find((c) => /Bash/.test(c.name) && /--dashboard|--transport http/.test(JSON.stringify(c.input)));
-    const health = d.calls.find((c) => /api\/v1\/health/.test(JSON.stringify(c.input)) && /200|"status"\s*:\s*"ok"/.test(c.result ?? ''));
-    const ingest = d.calls.filter((c) => /api\/v1\/traces/.test(JSON.stringify(c.input)) && /evaluate/.test(JSON.stringify(c.input)));
-    row('H-A3', Boolean(started && (health || ingest.length > 0)), started ? JSON.stringify(started.input) : 'no server started');
-    row('H-A4', ingest.length >= 3, `ingest with evaluate ×${ingest.length}`);
+    /*
+     * The H rows grade the OUTCOME on any of the three routes (A6-9).
+     *
+     * The 0.12.0 run started Iris over HTTP, evaluated the three outputs
+     * through MCP-over-HTTP, and wrote the right answer in the right words
+     * ("Must not ship: output-3 … basis risk_over_loss, silent_tool_failure")
+     * — and every H row failed, because each was written for the REST route
+     * alone: a POST to /api/v1/traces, a read of /api/v1/capabilities, the
+     * rule spelled `no_silent_tool_failure`. The routes are REST ingest,
+     * MCP over HTTP, and the CLI (`iris-eval ingest`, 0.13.0); the same
+     * substantive answer grades identically on all three.
+     */
+    const inputOf = (c) => JSON.stringify(c.input ?? {});
+    const bash = (c) => /Bash/.test(c.name);
+    const started = d.calls.find((c) => bash(c) && /--dashboard|--transport http|\bingest\b/.test(inputOf(c)));
+    const health = d.calls.some((c) => /api\/v1\/health/.test(inputOf(c)) && /200|"status"\s*:\s*"ok"/.test(c.result ?? ''));
+    const restIngest = d.calls.filter((c) => /api\/v1\/traces/.test(inputOf(c)) && /evaluate/.test(inputOf(c)) && /evaluation_id|"passed"|verdict/.test(c.result ?? ''));
+    const mcpOverHttp = d.calls.filter((c) => /\/mcp\b/.test(inputOf(c)) && /evaluate_output|log_trace/.test(inputOf(c)) && /verdict|"passed"/.test(c.result ?? ''));
+    const cliIngest = d.calls.filter((c) => bash(c) && /\bingest\b/.test(inputOf(c)) && /--evaluate/.test(inputOf(c)));
+    // One CLI call can carry three traces (NDJSON): count the verdict lines it printed, not the calls.
+    const cliEvaluations = cliIngest.reduce((n, c) => n + ((c.result ?? '').match(/"evaluation_id"/g) ?? []).length, 0);
+    const evaluations = restIngest.length + mcpOverHttp.length + cliEvaluations;
+    const route = restIngest.length ? 'REST ingest' : mcpOverHttp.length ? 'MCP over HTTP' : cliEvaluations ? 'CLI ingest' : 'none';
+    row('H-A3', Boolean(started) && (health || evaluations > 0), started ? `${route}: ${inputOf(started).slice(0, 240)}` : 'no server started and no ingest run');
+    row('H-A4', evaluations >= 3, `evaluations evidenced: ${evaluations} (REST ${restIngest.length}, MCP-over-HTTP ${mcpOverHttp.length}, CLI ${cliEvaluations})`);
     const t = d.finalText;
-    row('H-A6', /no_pii/.test(t) && /no_silent_tool_failure/.test(t), t);
-    const capabilities = d.calls.some((c) => /api\/v1\/capabilities/.test(JSON.stringify(c.input)));
-    row('H-A2', capabilities, capabilities ? 'read /api/v1/capabilities' : 'never read /api/v1/capabilities');
+    const out3 = /\bno_silent_tool_failure\b|\bsilent_tool_failure\b/.test(t) && /(output[- ]?3|third output|telemetry)/i.test(t);
+    const out2 = /\bno_pii\b|\bPII\b/.test(t) && /(output[- ]?2|second output)/i.test(t);
+    const basis = /\b(policy_gate|detector_veto|critical_unknown|required_evidence_missing|risk_over_loss|clean|no_rules)\b/.test(t);
+    row('H-A6', out3 && out2 && basis, t, `out3:${out3} out2:${out2} basis:${basis}`);
+    const capabilities = d.calls.some((c) => /api\/v1\/capabilities|iris:\/\/capabilities|--self-test|--help/.test(inputOf(c)));
+    row('H-A2', capabilities, capabilities ? 'read what this server can judge (the route, the resource, --self-test or --help)' : 'never read what this server can judge');
   }
   return rows;
 }
