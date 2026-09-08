@@ -46,6 +46,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import Database from 'better-sqlite3';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..', '..', '..');
@@ -66,6 +67,13 @@ const TARBALL = args.get('tarball') ? resolve(args.get('tarball')) : null;
 const PHASE = args.get('phase') ?? 'all';
 const OUT = resolve(args.get('out') ?? join(repo, 'stranger-records', new Date().toISOString().slice(0, 10)));
 const MODEL = args.get('model'); // optional pin; otherwise the CLI default
+/*
+ * For the capture phases on a LOCAL build: a JSON argv the capture plugin's
+ * Stop hook runs instead of `npx @iris-eval/mcp-server` (e.g.
+ * '["node","/path/to/dist/index.js"]'). On the published package this is
+ * omitted and the hook resolves the version the manifest pins.
+ */
+const INGEST_ARGV = args.get('ingest-argv');
 mkdirSync(OUT, { recursive: true });
 
 /** The artefact under test, as the agent should install it. */
@@ -80,6 +88,16 @@ const ENV_NOTE_COMMON =
 const ENV_NOTE_HTTP = `${ENV_NOTE_COMMON} No MCP servers are available to this session and none can be attached; if Iris has another way in, find it.`;
 const ENV_NOTE_MCP1 = `${ENV_NOTE_COMMON} No MCP servers are attached to this session and none can be attached mid-run. Do the discovery and installation work now: find how Iris is installed and write, to ./mcp-config.json, the exact MCP server config you would attach for a client like Claude Code, then stop and say what you would do next once it is connected. Do not evaluate the outputs in this session.`;
 const ENV_NOTE_MCP2 = `${ENV_NOTE_COMMON} Iris is connected to this session as an MCP server named iris-eval; use it.`;
+/*
+ * The capture phases (0.13.0, rows V1 and V2). A task that never names
+ * Iris, in a session where the iris-eval-capture plugin is loaded from the
+ * repository (`--plugin-dir`). V1: no MCP server attached — the only way a
+ * trace can exist afterwards is the hook. V2: iris-eval attached as well,
+ * under the when-clause — the model may log the turn itself, and then the
+ * hook must stand down: exactly one trace for the turn, either way.
+ */
+const CAPTURE_PROMPT = 'Read ./outputs/output-1.json and tell me in two sentences what the agent was asked and what it answered.';
+const ENV_NOTE_CAPTURE = `${ENV_NOTE_COMMON} No MCP servers are attached to this session.`;
 const A8_DRIVER = "Before I decide, double-check output 2 with Iris's LLM judge as well, and tell me what it says.";
 /*
  * A9 (0.12.0). The question a single verdict cannot answer, asked the way a
@@ -190,7 +208,7 @@ function claudeBinary() {
   return 'claude';
 }
 
-function runClaude({ phase, cwd, home, prompt, mcpConfig, resume }) {
+function runClaude({ phase, cwd, home, prompt, mcpConfig, resume, pluginDir, extraEnv }) {
   // Not `--bare`: it also skips the keychain and OAuth reads, so the session
   // runs "Not logged in" and ends on an api_error before a single call. The
   // isolation the verifier asked for holds without it — a never-used cwd has
@@ -198,10 +216,11 @@ function runClaude({ phase, cwd, home, prompt, mcpConfig, resume }) {
   // --strict-mcp-config keeps every other server off the session.
   const cli = ['-p', prompt, '--permission-mode', 'dontAsk', '--strict-mcp-config', '--output-format', 'stream-json', '--verbose', '--allowedTools', ...ALLOWED_TOOLS];
   if (mcpConfig) cli.push('--mcp-config', mcpConfig);
+  if (pluginDir) cli.push('--plugin-dir', pluginDir);
   if (resume) cli.push('--resume', resume);
   if (MODEL) cli.push('--model', MODEL);
   const started = Date.now();
-  const env = { ...process.env, IRIS_HOME: home };
+  const env = { ...process.env, IRIS_HOME: home, ...(extraEnv ?? {}) };
   for (const k of Object.keys(env)) if (/^IRIS_(ANTHROPIC|OPENAI)_API_KEY$/.test(k)) delete env[k];
   return new Promise((resolveRun, reject) => {
     // Never through a shell: on Windows the npm `claude` shim is a .cmd that
@@ -297,7 +316,7 @@ function summarise(phase, d, wallMs, substitution) {
 }
 
 /* ── grading ── */
-function grade({ mcp1, mcp2, a8, a9, a10, http }) {
+function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
   const rows = {};
   const row = (id, pass, evidence, note) => { rows[id] = { pass, evidence: quote(evidence), ...(note ? { note } : {}) }; };
 
@@ -393,6 +412,32 @@ function grade({ mcp1, mcp2, a8, a9, a10, http }) {
     const inline = logs.some((c) => c.input?.evaluate === true);
     const after = logs.length > 0 && d.calls.some((c, i) => irisName(c.name) === 'evaluate_output' && i > d.calls.indexOf(logs[0]));
     row('A10', logs.length >= 1 && (inline || after), logs.length ? JSON.stringify(logs[0].input).slice(0, 400) : 'no log_trace after an untold task', `log_trace ×${logs.length}, inline evaluate: ${inline}, evaluate_output after: ${after}`);
+  }
+  if (capture) {
+    /*
+     * V1 (F8): capture needs no cooperation. The session never named Iris
+     * and had no Iris tools; a trace with the prompt, the answer and the
+     * tool calls exists afterwards, with a verdict, because the hook sent
+     * it. Graded on the stored row, not on the transcript.
+     */
+    const t = capture.traces;
+    const hooked = t.filter((x) => x.source === 'hook');
+    const one = hooked[0];
+    const ok = Boolean(one) && one.input.length > 0 && one.output.length > 0 && one.tool_calls.length > 0 && one.evaluations > 0 && !capture.d.calls.some((c) => isIris(c.name));
+    row('V1', ok, one ? `trace ${one.trace_id.slice(0, 8)} source=${one.source} input=${one.input.length} chars output=${one.output.length} chars tool_calls=${one.tool_calls.length} evaluations=${one.evaluations}; ${t.length} trace(s) in the home` : `no hook trace (${t.length} trace(s) in the home)`, capture.log ? `capture.log: ${capture.log.slice(-400)}` : undefined);
+  }
+  if (captureBoth) {
+    /*
+     * V2 (F15): the hook and the model must not both log one turn. With
+     * iris-eval attached and the when-clause in force the model may call
+     * log_trace itself; the hook then stands down. Exactly one trace for
+     * the turn, its source stated, and no Iris call inside its trajectory.
+     */
+    const t = captureBoth.traces;
+    const one = t[0];
+    const irisInside = one ? one.tool_calls.some((c) => /iris-eval|iris_eval/.test(String(c.tool_name ?? c.name ?? ''))) : false;
+    const ok = t.length === 1 && Boolean(one.source) && one.evaluations > 0 && !irisInside;
+    row('V2', ok, one ? `${t.length} trace(s); source=${one.source} evaluations=${one.evaluations} tool_calls=${one.tool_calls.length} iris-call-inside=${irisInside}; model logged itself: ${captureBoth.d.calls.some((c) => irisName(c.name) === 'log_trace')}` : `${t.length} trace(s) in the home`, captureBoth.log ? `capture.log: ${captureBoth.log.slice(-400)}` : undefined);
   }
   if (http) {
     const d = http.d;
@@ -538,6 +583,81 @@ async function phaseHttp() {
   return { d, rec };
 }
 
+/** The traces in a scratch home, read straight off the file, with how many evaluations each carries. */
+function readTraces(home) {
+  const file = join(home, 'iris.db');
+  if (!existsSync(file)) return [];
+  const db = new Database(file, { readonly: true, fileMustExist: true });
+  try {
+    const rows = db.prepare('SELECT trace_id, source, input, output, tool_calls FROM traces ORDER BY created_at').all();
+    const count = db.prepare('SELECT count(*) AS n FROM eval_results WHERE trace_id = ?');
+    return rows.map((t) => ({
+      trace_id: t.trace_id,
+      source: t.source,
+      input: t.input ?? '',
+      output: t.output ?? '',
+      tool_calls: t.tool_calls ? JSON.parse(t.tool_calls) : [],
+      evaluations: count.get(t.trace_id).n,
+    }));
+  } finally {
+    db.close();
+  }
+}
+
+/** The hook's ingest runs detached and outlives the session; wait for its row and verdict. */
+async function waitForTraces(home, ms) {
+  const until = Date.now() + ms;
+  let traces = [];
+  while (Date.now() < until) {
+    try {
+      traces = readTraces(home);
+    } catch {
+      traces = [];
+    }
+    if (traces.length > 0 && traces.every((t) => t.evaluations > 0)) break;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return traces;
+}
+
+/** Whatever the capture plugin logged: under CLAUDE_PLUGIN_DATA if the host set it, else its tmpdir fallback. */
+function captureLog(pluginData) {
+  for (const dir of [pluginData, join(tmpdir(), 'iris-eval-capture')]) {
+    const f = join(dir, 'capture.log');
+    if (existsSync(f)) return readFileSync(f, 'utf8').split('\n').slice(-12).join('\n');
+  }
+  return '';
+}
+
+async function phaseCapture(kind, connectedConfig) {
+  const { dir, home } = makePhaseDir(kind);
+  const pluginData = mkdtempSync(join(tmpdir(), `iris-stranger-plugin-data-${kind}-`));
+  let mcpConfig = null;
+  if (kind === 'capture-both') {
+    const resolved = JSON.parse(JSON.stringify(connectedConfig));
+    for (const server of Object.values(resolved.mcpServers ?? {})) server.env = { ...(server.env ?? {}), IRIS_HOME: home };
+    mcpConfig = join(dirname(dir), `iris-stranger-${kind}-config-${Date.now()}.json`);
+    writeFileSync(mcpConfig, JSON.stringify(resolved));
+  }
+  const extraEnv = { CLAUDE_PLUGIN_DATA: pluginData, ...(INGEST_ARGV ? { IRIS_CAPTURE_INGEST_ARGV: INGEST_ARGV } : {}) };
+  const r = await runClaude({
+    phase: kind,
+    cwd: dir,
+    home,
+    prompt: `${CAPTURE_PROMPT}\n\n${kind === 'capture-both' ? ENV_NOTE_MCP2 : ENV_NOTE_CAPTURE}`,
+    mcpConfig,
+    pluginDir: join(repo, 'claude-plugin-capture'),
+    extraEnv,
+  });
+  const d = digest(parseStream(r.out));
+  const traces = await waitForTraces(home, 90_000);
+  const log = captureLog(pluginData);
+  writeFileSync(join(OUT, `${kind}-traces.json`), JSON.stringify(traces, null, 2));
+  writeFileSync(join(OUT, `${kind}-capture.log`), log);
+  const rec = summarise(kind, d, r.wallMs, null);
+  return { d, rec, traces, log };
+}
+
 const results = {};
 const want = (p) => PHASE === 'all' || PHASE === p;
 const line = (name, rec) => console.log(`${name}: ${rec.toolCalls} calls, $${rec.costUsd}, ${Math.round(rec.wallMs / 1000)}s, denials ${rec.denials}${rec.irisCalls.length ? `, iris ${rec.irisCalls.join(',')}` : ''}`);
@@ -547,7 +667,7 @@ if (want('mcp1')) {
   results.mcp1 = await phaseMcp1();
   line('mcp1', results.mcp1.rec);
   connectedConfig = results.mcp1.config;
-} else if ((want('mcp2') || want('a8') || want('a9') || want('a10')) && existsSync(savedConfig)) {
+} else if ((want('mcp2') || want('a8') || want('a9') || want('a10') || want('capture-both')) && existsSync(savedConfig)) {
   // Reuse the config phase 1 wrote on an earlier run of this record dir.
   connectedConfig = prepareConfig(JSON.parse(readFileSync(savedConfig, 'utf8'))).config;
 }
@@ -585,6 +705,17 @@ if (PHASE === 'a8' && existsSync(join(OUT, 'mcp2.jsonl')) && existsSync(join(OUT
 if (want('http')) {
   results.http = await phaseHttp();
   line('http', results.http.rec);
+}
+if (want('capture')) {
+  results.capture = await phaseCapture('capture');
+  line('capture', results.capture.rec);
+}
+if (want('capture-both')) {
+  if (!connectedConfig) console.warn('capture-both needs the connected config from phase mcp1 (run it first, or in the same record dir)');
+  else {
+    results.captureBoth = await phaseCapture('capture-both', connectedConfig);
+    line('capture-both', results.captureBoth.rec);
+  }
 }
 const rows = grade(results);
 // Rows merge across runs of the same record dir, so the phases can be run
