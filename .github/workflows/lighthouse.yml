@@ -33,8 +33,9 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - run: npm ci
+      - run: cd dashboard && npm install --no-audit --no-fund
+      # One build: the dashboard, then the server (A6-9).
       - run: npm run build
-      - run: cd dashboard && npm install --no-audit --no-fund && npm run build
 
       # Start iris-mcp with the built dashboard on a known port in the
       # background. IRIS_NO_AUTO_LAUNCH keeps the server from opening a

@@ -138,8 +138,20 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - run: cd dashboard && npm install --no-audit --no-fund
+      # One build: the dashboard, then the server (A6-9). A local `npm pack`
+      # after `npm run build` used to ship a server with no UI because
+      # dist/dashboard came from a separate step only CI ran.
       - run: npm run build
-      - run: cd dashboard && npm install --no-audit --no-fund && npm run build
+      - name: The pack carries the dashboard (F14)
+        # What `npm pack` would ship, read from npm itself; `prepack` refuses
+        # earlier when dist/dashboard is missing, and this asserts the file
+        # is actually in the tarball's list.
+        run: |
+          npm pack --dry-run --json > pack.json
+          jq -e '.[0].files[] | select(.path == "dist/dashboard/index.html")' pack.json > /dev/null \
+            || { echo "::error::dist/dashboard/index.html is not in the pack list"; exit 1; }
+          echo "pack carries dist/dashboard/index.html"
       - name: Bundle size budget gate
         # Fails if dashboard JS/CSS exceeds the declared budget. Raising
         # budgets requires an explicit commit editing
@@ -275,8 +287,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - run: cd dashboard && npm install --no-audit --no-fund
       - run: npm run build
-      - run: cd dashboard && npm install --no-audit --no-fund && npm run build
       - name: Install Playwright browsers (Chromium + Firefox)
         # WebKit on Linux is NOT Safari (Safari uses Apple's WebKit,
         # macOS-only). We run Chromium + Firefox for real evergreen

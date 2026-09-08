@@ -45,7 +45,8 @@ jobs:
       # setup-node action removes it rather than constraining it.
       # Closes the Scorecard Pinned-Dependencies finding on this file.
       - run: npm ci
-      - run: npm run build
+      # The server alone (see nightly-real-llm-smoke.yml for why).
+      - run: npm run build:server
       - run: npm test
       - name: Verify tag matches package.json version
         run: |
