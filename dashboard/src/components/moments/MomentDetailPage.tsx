@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMomentDetail, useBuiltInRules, useCapabilities } from '../../api/hooks';
 import { RuleResultRow } from '../evals/RuleResultRow';
+import { VerdictPanel } from '../evals/VerdictPanel';
 import { CopyableId } from '../shared/CopyableId';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
@@ -177,22 +178,6 @@ const styles = {
     flexDirection: 'column',
     gap: 'var(--space-2)',
   } as const,
-  evalGroupHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: 'var(--text-body-sm)',
-    fontWeight: 600,
-    color: 'var(--text-primary)',
-    paddingBottom: 'var(--space-1)',
-    borderBottom: '1px solid var(--border-default)',
-  } as const,
-  vetoNotice: {
-    marginTop: 'var(--space-1)',
-    fontSize: 'var(--text-body-sm)',
-    fontWeight: 600,
-    color: 'var(--eval-fail)',
-  } as const,
   toggle: {
     appearance: 'none',
     background: 'transparent',
@@ -240,6 +225,15 @@ export function MomentDetailPage() {
   const [showRaw, setShowRaw] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  // The ladder (D-4), per evaluation: which panels have "How was this computed?" open.
+  const [expandedEvals, setExpandedEvals] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleEval = (evalId: string) =>
+    setExpandedEvals((prev) => {
+      const next = new Set(prev);
+      if (next.has(evalId)) next.delete(evalId);
+      else next.add(evalId);
+      return next;
+    });
   const [deployedToast, setDeployedToast] = useState<string | null>(null);
 
   if (loading && !data) return <LoadingSpinner />;
@@ -263,6 +257,7 @@ export function MomentDetailPage() {
   const proofsByName = new Map(
     (capabilities.data?.rules ?? []).flatMap((r) => (r.proof ? [[r.name, r.proof] as const] : [])),
   );
+  const questionText = new Map((capabilities.data?.questions ?? []).map((q) => [q.id, q.text]));
   const verdict = getVerdictVisual(data.verdict, {
     significanceKind: data.significance.kind,
     vetoed: vetoingEvals.length > 0,
@@ -408,33 +403,21 @@ export function MomentDetailPage() {
               const passed = e.ruleResults.filter((r) => r.passed && !r.skipped);
               return (
                 <div key={e.id} style={styles.evalGroup}>
-                  <div style={styles.evalGroupHeader}>
-                    <span>
-                      {e.evalType} ·{' '}
-                      <span style={{ color: e.passed ? 'var(--eval-pass)' : 'var(--eval-fail)' }}>
-                        {e.passed ? 'pass' : 'fail'}
-                      </span>{' '}
-                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
-                        score {e.score.toFixed(2)}
-                      </span>
-                    </span>
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
-                      {passed.length}p · {failed.length}f · {skipped.length}s
-                    </span>
-                  </div>
-                  {/*
-                   * Names the veto. Without this the header reads
-                   * "safety · fail  score 0.92" and gives no way to tell a
-                   * critical-rule hard-fail from a merely-low weighted
-                   * score — an eval carrying a real SSN scores 0.765 and
-                   * would otherwise look like a near miss.
-                   */}
-                  {e.criticalFailures && e.criticalFailures.length > 0 && (
-                    <div style={styles.vetoNotice}>
-                      Vetoed by: {e.criticalFailures.join(', ')} — this evaluation fails
-                      regardless of its score.
-                    </div>
-                  )}
+                  <VerdictPanel
+                    evalType={e.evalType}
+                    passed={e.passed}
+                    score={e.score}
+                    verdict={e.verdict}
+                    coverage={e.coverage}
+                    interpretations={e.interpretations}
+                    provenance={e.provenance}
+                    criticalFailures={e.criticalFailures}
+                    criticalSkipped={e.criticalSkipped}
+                    ruleResults={e.ruleResults}
+                    questionText={questionText}
+                    expanded={expandedEvals.has(e.id)}
+                    onToggleExpanded={() => toggleEval(e.id)}
+                  />
                   {/* One renderer for a rule result (D-3): every stamped field, in RuleResultRow. */}
                   {[...failed, ...passed, ...skipped].map((r) => (
                     <RuleResultRow
@@ -444,6 +427,7 @@ export function MomentDetailPage() {
                       proof={proofsByName.get(r.ruleName) ?? null}
                       callHref={(i) => `/traces/${data.traceId}#call-${i}`}
                       texts={{ output: data.output, input: data.input }}
+                      depth={expandedEvals.has(e.id) ? 'full' : 'default'}
                     />
                   ))}
                 </div>

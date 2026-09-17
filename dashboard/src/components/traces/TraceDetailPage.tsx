@@ -37,6 +37,7 @@ export function TraceDetailPage() {
   const proofsByName = new Map(
     (capabilities.data?.rules ?? []).flatMap((r) => (r.proof ? [[r.name, r.proof] as const] : [])),
   );
+  const questionText = new Map((capabilities.data?.questions ?? []).map((q) => [q.id, q.text]));
 
   return (
     <div className="iris-stack iris-stack--lg">
@@ -100,6 +101,7 @@ export function TraceDetailPage() {
               proofs={proofsByName}
               callHref={(i) => `#call-${i}`}
               input={trace.input}
+              questionText={questionText}
             />
           ))}
         </section>

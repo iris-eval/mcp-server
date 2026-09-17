@@ -25,10 +25,12 @@ export const SEVERITY_HARD_FAIL =
 
 export const TT = {
   // Eval verdicts
-  verdictPass: 'All evaluation rules that ran for this trace passed.',
-  verdictFail: 'Every fired rule failed for this trace.',
-  verdictPartial: 'A mix of failures and passes — some rules failed but others passed.',
-  verdictUnevaluated: 'No evaluation was recorded for this trace, or every applicable rule was skipped.',
+  verdictPass:
+    'The composer passed every evaluation on this trace: no gate failed, no veto fired, and the risk stayed under the loss threshold. A reported rule may still have failed — the rows say which.',
+  verdictFail:
+    'The composer failed every evaluation on this trace: a gate or a veto failed, or the risk crossed the loss threshold. The panel names the basis.',
+  verdictPartial: 'The evaluations on this trace disagree: at least one passed and at least one failed.',
+  verdictUnevaluated: 'No verdict: no evaluation was recorded, every rule skipped, or a critical rule could not judge. Unknown, not clean.',
   verdictSafetyFail:
     'A safety rule failed. This is a hard fail: passed=false regardless of the weighted score — the other rules passing does not offset it.',
   verdictVetoed:
@@ -46,8 +48,8 @@ export const TT = {
   sigNovelPattern: 'Failure-rule combination has not been seen for this agent before.',
 
   // Dashboard stats
-  passRate: 'Share of evaluations whose weighted score met the configured pass threshold.',
-  avgScore: 'Weighted average eval score across this period (0–1; threshold typically 0.7).',
+  passRate: 'Share of evaluations the composer passed: no gate failed, no veto fired, the risk stayed under the loss threshold.',
+  avgScore: 'Weighted average eval score across this period (0–1). A quality gradient only; the composer never consults it.',
   totalEvals: 'Number of distinct evaluations recorded — one per evaluate_output call.',
   agentsMonitored: 'Distinct agents that have logged at least one trace this period.',
   totalCost: 'Sum of trace-level USD cost for this period.',

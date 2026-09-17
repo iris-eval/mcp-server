@@ -40,6 +40,14 @@ export interface RuleResultRowProps {
   callHref?: (index: number) => string;
   /** The texts the evidence spans point into, when the page has them. */
   texts?: EvidenceTexts;
+  /**
+   * The ladder's depth (D-4). `default` shows the result and, for a failed
+   * row, its evidence; `full` adds method, computation and uncertainty —
+   * the measured value, the error bar, the published interval and the
+   * definition. Pages pass the verdict panel's control; alone, a row shows
+   * everything.
+   */
+  depth?: 'default' | 'full';
 }
 
 const SR_ONLY: CSSProperties = {
@@ -136,7 +144,8 @@ const ROLE_TONE: Record<NonNullable<EvalRuleResult['role']>, Tone> = {
   advisory: 'muted',
 };
 
-export function RuleResultRow({ result, meta = null, proof = null, callHref, texts }: RuleResultRowProps) {
+export function RuleResultRow({ result, meta = null, proof = null, callHref, texts, depth = 'full' }: RuleResultRowProps) {
+  const full = depth === 'full';
   const state = ruleState(result);
   const color = state === 'skipped' ? 'var(--eval-skipped)' : state === 'passed' ? 'var(--eval-pass)' : 'var(--eval-fail)';
   const mark = state === 'skipped' ? '○' : state === 'passed' ? '✓' : '✗';
@@ -145,6 +154,8 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
   const uncertainty = describeUncertainty(result.uncertainty);
   const evidence = (result.evidence ?? []).map((e) => describeEvidence(e, texts));
   const published = !uncertainty && proof?.ci95.precision ? proof : null;
+  const showEvidence = evidence.length > 0 && (full || state === 'failed');
+  const showComputation = full && Boolean(uncertainty || published || meta);
 
   return (
     <div className="eval-card__rule" style={styles.row} data-rule-state={state} data-rule-name={result.ruleName}>
@@ -171,7 +182,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
         <span className="eval-card__rule-message" style={styles.message}>
           {result.message}
         </span>
-        {result.value && (
+        {full && result.value && (
           <span style={styles.value} data-measured={result.value.stat}>
             {result.value.stat} {result.value.value} {result.value.unit}
           </span>
@@ -179,13 +190,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
         {state === 'skipped' ? <Badge label="SKIPPED" variant="UNSET" /> : <ScoreBadge score={result.score} passed={result.passed} />}
       </div>
 
-      {(preStamp ||
-        state === 'skipped' ||
-        result.evidenceIncomplete ||
-        evidence.length > 0 ||
-        uncertainty ||
-        published ||
-        meta) && (
+      {(preStamp || state === 'skipped' || result.evidenceIncomplete || showEvidence || showComputation) && (
         <div style={styles.detail}>
           {preStamp && <span data-pre-stamp="true">{PRE_STAMP_TEXT}</span>}
 
@@ -200,7 +205,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
             <span data-evidence-incomplete="true">Evidence was truncated: the rule read more than it could keep.</span>
           )}
 
-          {evidence.length > 0 && (
+          {showEvidence && (
             <ul style={styles.evidenceList} aria-label={`Evidence for ${result.ruleName}`}>
               {evidence.map((e, i) => (
                 <li key={i} data-evidence-type={e.type}>
@@ -222,7 +227,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
             </ul>
           )}
 
-          {uncertainty && (
+          {full && uncertainty && (
             <Tooltip content={uncertainty.sentence}>
               <span tabIndex={0} data-uncertainty={result.uncertainty?.basis}>
                 {uncertainty.label}
@@ -230,7 +235,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
             </Tooltip>
           )}
 
-          {published && published.ci95.precision && (
+          {full && published && published.ci95.precision && (
             <Tooltip
               content={`Published precision for this rule on the labelled corpus (n = ${published.n}, release ${published.release}); this row carries no error bar of its own.`}
             >
@@ -241,7 +246,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
             </Tooltip>
           )}
 
-          {meta && (
+          {full && meta && (
             <details style={styles.definition} data-definition={meta.name}>
               <summary style={styles.summary}>definition</summary>
               <dl style={styles.definitionBody}>
