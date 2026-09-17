@@ -30,9 +30,14 @@ import { axe } from 'jest-axe';
 const useMomentDetailMock = vi.fn();
 const useTraceDetailMock = vi.fn();
 
+const idleQuery = () => ({ data: null, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
+
 vi.mock('../../src/api/hooks', () => ({
   useMomentDetail: (...args: unknown[]) => useMomentDetailMock(...args),
   useTraceDetail: (...args: unknown[]) => useTraceDetailMock(...args),
+  // D-3: both detail pages read the roster and the published table once; idle here.
+  useBuiltInRules: () => idleQuery(),
+  useCapabilities: () => idleQuery(),
 }));
 
 // MakeRuleModal touches preferences + the composer API surface area that

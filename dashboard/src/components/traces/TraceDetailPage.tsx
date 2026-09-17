@@ -6,7 +6,8 @@
  * <section aria-labelledby> so AT users can navigate by structure.
  */
 import { useParams, Link } from 'react-router';
-import { useTraceDetail } from '../../api/hooks';
+import { useTraceDetail, useBuiltInRules, useCapabilities } from '../../api/hooks';
+import { QueryError } from '../shared/QueryError';
 import { SpanTree } from './SpanTree';
 import { ToolCallCard } from './ToolCallCard';
 import { EvalDetailCard } from '../evals/EvalDetailCard';
@@ -22,13 +23,20 @@ import { EmptyState } from '../shared/EmptyState';
 
 export function TraceDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, loading, error } = useTraceDetail(id!);
+  const { data, loading, error, refetch } = useTraceDetail(id!);
+  // The rule roster and the published table, read once each (D-3): the row's definition and interval.
+  const rules = useBuiltInRules();
+  const capabilities = useCapabilities();
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <EmptyState message={`Error: ${error}`} />;
+  if (error) return <QueryError error={error} what="this trace" onRetry={refetch} />;
   if (!data) return <EmptyState message="Trace not found" />;
 
   const { trace, spans, evals } = data;
+  const rulesByName = new Map((rules.data ?? []).map((r) => [r.name, r]));
+  const proofsByName = new Map(
+    (capabilities.data?.rules ?? []).flatMap((r) => (r.proof ? [[r.name, r.proof] as const] : [])),
+  );
 
   return (
     <div className="iris-stack iris-stack--lg">
@@ -76,7 +84,7 @@ export function TraceDetailPage() {
         <section aria-labelledby="trace-tools-title" className="detail-section">
           <h2 id="trace-tools-title" className="detail-section__title">Tool Calls ({trace.tool_calls.length})</h2>
           {trace.tool_calls.map((call, i) => (
-            <ToolCallCard key={i} call={call} />
+            <ToolCallCard key={i} call={call} anchorId={`call-${i}`} />
           ))}
         </section>
       )}
@@ -85,7 +93,14 @@ export function TraceDetailPage() {
         <section aria-labelledby="trace-evals-title" className="detail-section">
           <h2 id="trace-evals-title" className="detail-section__title">Evaluations ({evals.length})</h2>
           {evals.map((evalResult) => (
-            <EvalDetailCard key={evalResult.id} evalResult={evalResult} />
+            <EvalDetailCard
+              key={evalResult.id}
+              evalResult={evalResult}
+              rules={rulesByName}
+              proofs={proofsByName}
+              callHref={(i) => `#call-${i}`}
+              input={trace.input}
+            />
           ))}
         </section>
       )}

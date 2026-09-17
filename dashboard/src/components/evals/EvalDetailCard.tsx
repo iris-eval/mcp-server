@@ -1,24 +1,25 @@
-import type { CSSProperties } from 'react';
-import type { EvalResult } from '../../api/types';
+import type { BuiltInRuleMeta, EvalResult, RuleProofSummary } from '../../api/types';
 import { Badge } from '../shared/Badge';
 import { ScoreBadge } from '../shared/ScoreBadge';
+import { RuleResultRow } from './RuleResultRow';
 
-const SR_ONLY: CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0, 0, 0, 0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
+export interface EvalDetailCardProps {
+  evalResult: EvalResult;
+  /** The built-in roster by name, when the page has it: the row's definition. */
+  rules?: ReadonlyMap<string, BuiltInRuleMeta> | null;
+  /** Published accuracy by name, when the page has it: the interval for rows that carry none. */
+  proofs?: ReadonlyMap<string, RuleProofSummary> | null;
+  /** Where a tool-call evidence item links. */
+  callHref?: (index: number) => string;
+  /** The trace's input, so input spans can be quoted. The output is the evaluation's own. */
+  input?: string;
+}
 
 /* Static styling lives in utilities.css (.eval-card block). Only the
  * pass/fail mark color stays inline — it's chosen from data. */
 
-export function EvalDetailCard({ evalResult }: { evalResult: EvalResult }) {
+export function EvalDetailCard({ evalResult, rules = null, proofs = null, callHref, input }: EvalDetailCardProps) {
+  const texts = { output: evalResult.output_text, input };
   return (
     <div className="iris-card eval-card">
       <div className="eval-card__badges">
@@ -29,42 +30,17 @@ export function EvalDetailCard({ evalResult }: { evalResult: EvalResult }) {
 
       {/* Rule results */}
       <div className="eval-card__rules">
-        {evalResult.rule_results.map((rule) => {
-          /*
-           * A skipped rule is "not judged", not "failed": the server ships it
-           * with passed:false / score:0 as placeholders and `skipped: true`.
-           * This card used to branch on `passed` alone and drew the same red
-           * cross for "no cost was supplied" as for "an SSN was found" — the
-           * moment page already told the two apart; the /evals modal and the
-           * trace page did not.
-           */
-          const state = rule.skipped ? 'skipped' : rule.passed ? 'passed' : 'failed';
-          const color =
-            state === 'skipped'
-              ? 'var(--eval-skipped)'
-              : state === 'passed'
-                ? 'var(--eval-pass)'
-                : 'var(--eval-fail)';
-          const mark = state === 'skipped' ? '○' : state === 'passed' ? '✓' : '✗';
-          const srLabel = state === 'skipped' ? 'Skipped: ' : state === 'passed' ? 'Passed: ' : 'Failed: ';
-          return (
-            <div key={rule.ruleName} className="eval-card__rule" data-rule-state={state}>
-              <span className="eval-card__rule-mark" style={{ color }} aria-hidden="true">
-                {mark}
-              </span>
-              <code className="eval-card__rule-name">
-                <span style={SR_ONLY}>{srLabel}</span>
-                {rule.ruleName}
-              </code>
-              <span className="eval-card__rule-message">{rule.message}</span>
-              {state === 'skipped' ? (
-                <Badge label="SKIPPED" variant="UNSET" />
-              ) : (
-                <ScoreBadge score={rule.score} passed={rule.passed} />
-              )}
-            </div>
-          );
-        })}
+        {/* One renderer for a rule result (D-3): every stamped field, in RuleResultRow. */}
+        {evalResult.rule_results.map((rule) => (
+          <RuleResultRow
+            key={rule.ruleName}
+            result={rule}
+            meta={rules?.get(rule.ruleName) ?? null}
+            proof={proofs?.get(rule.ruleName) ?? null}
+            callHref={callHref}
+            texts={texts}
+          />
+        ))}
       </div>
 
       {/* Suggestions */}

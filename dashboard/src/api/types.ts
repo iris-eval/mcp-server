@@ -81,7 +81,8 @@ export interface EvalRuleResult {
   ruleVersion?: number;
   saw?: string[];
   skipClass?: 'not_applicable' | 'defeated' | 'config_invalid';
-  uncertainty?: { basis: string; [key: string]: unknown };
+  uncertainty?: Uncertainty;
+  evidenceIncomplete?: boolean;
 }
 
 /**
@@ -171,6 +172,59 @@ export interface MeasuredValue {
   stat: string;
   unit: string;
   value: number;
+}
+
+export interface Interval {
+  point: number;
+  lo: number;
+  hi: number;
+}
+
+/**
+ * The error bar a rule result carries (mirrors `src/types/eval.ts`). A fired
+ * detection reports its PPV at the prior in force; a quiet one its miss rate;
+ * a rule that is right by definition its conformance count; a policy has none.
+ */
+export type Uncertainty =
+  | {
+      basis: 'published_accuracy';
+      fired: true;
+      ppv: Interval;
+      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+    }
+  | {
+      basis: 'published_accuracy';
+      fired: false;
+      missRate: Interval;
+      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+    }
+  | { basis: 'definition'; conformance: { n: number; matched: number } }
+  | { basis: 'self_consistency'; samples: number; voteFraction: number; scoreSd: number }
+  | { basis: 'local_labels'; precision: Interval; n: number }
+  | { basis: 'policy' }
+  | { basis: 'unmeasured'; why: string };
+
+/** GET /api/v1/capabilities → `rules[].proof`: a rule's published accuracy row, or null when it has no family. */
+export interface RuleProofSummary {
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+  n: number;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  ci95: {
+    precision: readonly [number, number] | null;
+    recall: readonly [number, number] | null;
+    f1: readonly [number, number] | null;
+  };
+  ppvAt: Record<string, number | null>;
+  corpusVersion: string;
+  release: string;
+  labelling: 'same-model' | 'human-verified';
 }
 
 export interface EvalResult {
@@ -600,6 +654,8 @@ export interface HealthResponse {
  */
 export interface CapabilitiesSummary {
   version?: string;
+  /** The built-in roster with each rule's published accuracy (D-3 reads `proof`). */
+  rules?: Array<{ name: string; proof: RuleProofSummary | null }>;
   judge?: { enabled: boolean; provider?: string | null; howToEnable?: readonly string[] };
   retention?: { days: number; sweepIntervalHours: number };
   dashboard?: { enabled: boolean; url: string | null; mode: 'real' | 'demo' };
