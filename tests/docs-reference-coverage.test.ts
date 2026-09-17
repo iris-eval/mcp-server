@@ -37,6 +37,7 @@ const ROUTES_THAT_MUST_BE_DOCUMENTED = [
   'GET /api/v1/runs',
   'GET /api/v1/runs/:id',
   'GET /api/v1/cases/:key',
+  'POST /api/v1/compare',
   'GET /api/v1/eval-stats/drift',
 ];
 

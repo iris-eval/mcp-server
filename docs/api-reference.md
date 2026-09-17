@@ -1089,6 +1089,12 @@ Query: `run` narrows to one run.
 
 ---
 
+### POST /api/v1/compare
+
+The `compare_runs` tool over HTTP — the same handler, the same answer — for the dashboard's compare action and for a pipeline that would rather not speak MCP. Body: `{ "before": "<run id>", "after": "<run id>", "force": false }` (the tool's input; an unknown field is refused). Response: the tool's output — `comparable`, `incomparable_because`, `method` (`paired-mcnemar` when the runs share case keys, `unpaired-newcombe` otherwise), `before` and `after` summaries with their Wilson intervals, `difference`, `paired`, `worse`, `better`, `smallest_detectable`, `regressions` and `improvements` per rule, and a one-paragraph `summary`. An unknown run is not an error: its `n` is 0 and the summary says so. `400` names an invalid body.
+
+---
+
 ### GET /api/v1/eval-stats/drift
 
 This window against the one before it, with both denominators and a 95% interval on the difference — computed by the same `newcombeDifference` the proof harness and `compare_runs` use.

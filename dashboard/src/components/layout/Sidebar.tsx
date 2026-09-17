@@ -17,6 +17,7 @@ import {
   History,
   GitFork,
   CheckCircle2,
+  Layers,
 } from 'lucide-react';
 import { useCallback } from 'react';
 import { NavItem } from './NavItem';
@@ -138,6 +139,7 @@ export function Sidebar() {
         </NavGroup>
 
         <NavGroup label="Raw Data" collapsed={collapsed}>
+          <NavItem to="/runs" label="Runs" icon={Layers} collapsed={collapsed} />
           <NavItem to="/traces" label="Traces" icon={GitFork} collapsed={collapsed} />
           <NavItem
             to="/evals"

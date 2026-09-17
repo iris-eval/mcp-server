@@ -662,3 +662,111 @@ export interface CapabilitiesSummary {
   retention?: { days: number; sweepIntervalHours: number };
   dashboard?: { enabled: boolean; url: string | null; mode: 'real' | 'demo' };
 }
+
+/* ---------------------------------------------------------------------------
+ * Runs, cases and the comparison (arc 7, D-5)
+ * ------------------------------------------------------------------------- */
+
+/** GET /api/v1/runs → runs[] (mirrors RunSummaryRow in src/storage/sqlite-adapter.ts). */
+export interface RunSummaryRow {
+  runId: string;
+  label: string | null;
+  reevaluationOf: string | null;
+  traces: number;
+  evaluated: number;
+  passed: number;
+  agentNames: string[];
+  engineVersions: string[];
+  rulesetHashes: string[];
+  startedAt: string | null;
+  lastActivityAt: string | null;
+}
+
+/** GET /api/v1/runs/:id → results[]: one evaluation per trace, the most recent. */
+export interface RunResultRow {
+  evalId: string;
+  traceId: string | null;
+  caseKey: string | null;
+  agentName: string | null;
+  passed: boolean;
+  failedRules: string[];
+  engineVersion: string | null;
+  rulesetHash: string | null;
+  configHash: string | null;
+  createdAt: string;
+  supersededInRun?: number;
+}
+
+/** GET /api/v1/cases/:key → results[]: every attempt, not collapsed. */
+export interface CaseResultRow {
+  evalId: string;
+  traceId: string | null;
+  caseKey: string | null;
+  runId: string | null;
+  passed: boolean;
+  createdAt: string;
+}
+
+export interface RunsResponse {
+  runs: RunSummaryRow[];
+  count: number;
+}
+
+export interface RunDetailResponse {
+  run: RunSummaryRow;
+  results: RunResultRow[];
+}
+
+export interface CaseResponse {
+  caseKey: string;
+  attempts: number;
+  passed: number;
+  flaky: boolean;
+  runs: string[];
+  results: CaseResultRow[];
+}
+
+/** POST /api/v1/compare body — the compare_runs tool's input. */
+export interface CompareRunsRequest {
+  before: string;
+  after: string;
+  force?: boolean;
+}
+
+export interface CompareRunSummary {
+  run_id: string;
+  n: number;
+  passed: number;
+  rate: number | null;
+  interval: { lo: number; hi: number } | null;
+  agent_names: string[];
+  engine_versions: string[];
+  ruleset_hashes: string[];
+  config_hashes: string[];
+  superseded: number;
+}
+
+export interface CompareRuleDelta {
+  rule: string;
+  failed_before: number;
+  failed_after: number;
+  delta: number;
+}
+
+/** POST /api/v1/compare response — the compare_runs tool's output, unchanged. */
+export interface CompareRunsResult {
+  comparable: boolean;
+  incomparable_because: string[];
+  forced: boolean;
+  method: 'paired-mcnemar' | 'unpaired-newcombe' | 'none';
+  before: CompareRunSummary;
+  after: CompareRunSummary;
+  difference: { delta: number; lo: number; hi: number; significant: boolean } | null;
+  paired: { method: 'mcnemar-exact'; b: number; c: number; concordant: number; pairs: number; p_value: number; significant: boolean } | null;
+  worse: boolean;
+  better: boolean;
+  smallest_detectable: number | null;
+  regressions: CompareRuleDelta[];
+  improvements: CompareRuleDelta[];
+  summary: string;
+}

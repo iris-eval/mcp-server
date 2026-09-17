@@ -21,6 +21,9 @@ import type {
   BuiltInRuleMeta,
   HealthResponse,
   CapabilitiesSummary,
+  RunsResponse,
+  RunDetailResponse,
+  CaseResponse,
 } from './types';
 
 /**
@@ -193,6 +196,22 @@ export function useHealth() {
 export function useCapabilities() {
   const fetcher = useCallback(() => api.getCapabilities(), []);
   return useApiData<CapabilitiesSummary>(fetcher);
+}
+
+/* ---- runs and cases (D-5) ---- */
+export function useRuns(limit = 50) {
+  const fetcher = useCallback(() => api.getRuns(limit), [limit]);
+  return useApiData<RunsResponse>(fetcher, CADENCE.SLOW);
+}
+
+export function useRun(runId: string) {
+  const fetcher = useCallback(() => api.getRun(runId), [runId]);
+  return useApiData<RunDetailResponse>(fetcher, CADENCE.SLOW);
+}
+
+export function useCase(caseKey: string, run?: string) {
+  const fetcher = useCallback(() => api.getCase(caseKey, run), [caseKey, run]);
+  return useApiData<CaseResponse>(fetcher, CADENCE.SLOW);
 }
 
 export function useFilters() {

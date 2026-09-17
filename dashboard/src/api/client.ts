@@ -25,6 +25,11 @@ import type {
   BuiltInRuleMeta,
   HealthResponse,
   CapabilitiesSummary,
+  RunsResponse,
+  RunDetailResponse,
+  CaseResponse,
+  CompareRunsRequest,
+  CompareRunsResult,
 } from './types';
 
 /**
@@ -111,6 +116,24 @@ export const api = {
   /** Read once by the shell: the judge's enable steps and the retention window (D-2). */
   getCapabilities(): Promise<CapabilitiesSummary> {
     return fetchJson<CapabilitiesSummary>(`${API_BASE_URL}/capabilities`);
+  },
+
+  /* ---- runs, cases, the comparison (D-5) ---- */
+  getRuns(limit = 50): Promise<RunsResponse> {
+    return fetchJson<RunsResponse>(`${API_BASE_URL}/runs`, { limit: String(limit) });
+  },
+
+  getRun(runId: string): Promise<RunDetailResponse> {
+    return fetchJson<RunDetailResponse>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`);
+  },
+
+  getCase(caseKey: string, run?: string): Promise<CaseResponse> {
+    return fetchJson<CaseResponse>(`${API_BASE_URL}/cases/${encodeURIComponent(caseKey)}`, run ? { run } : undefined);
+  },
+
+  /** The compare_runs tool over HTTP: the same handler, the same answer. */
+  compareRuns(body: CompareRunsRequest): Promise<CompareRunsResult> {
+    return postJson<CompareRunsResult>(`${API_BASE_URL}/compare`, body);
   },
 
   getFilters(): Promise<FilterOptions> {

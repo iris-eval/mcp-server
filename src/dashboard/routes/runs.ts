@@ -1,7 +1,18 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { runsQuerySchema, caseQuerySchema } from '../validation.js';
+import { compareStoredRuns } from '../../tools/compare-runs.js';
+
+/** The body of POST /compare: the compare_runs tool's input, and nothing the tool would not take. */
+const compareBodySchema = z
+  .object({
+    before: z.string().min(1),
+    after: z.string().min(1),
+    force: z.boolean().optional(),
+  })
+  .strict();
 
 /*
  * The read side of a comparison, over HTTP.
@@ -58,6 +69,26 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
    * IS the measurement here, which is the whole difference between this
    * route and the one above.
    */
+  /*
+   * POST /compare (arc 7, D-5) — the compare_runs tool's handler over HTTP,
+   * for the dashboard's compare action and for a script that would rather
+   * not speak MCP. One implementation, one shape: the body is the tool's
+   * input, the answer is the tool's output.
+   */
+  router.post('/compare', async (req, res) => {
+    try {
+      const tenantId = requireTenant(req);
+      const body = compareBodySchema.parse(req.body);
+      res.json(await compareStoredRuns(storage, tenantId, body));
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        return;
+      }
+      throw err;
+    }
+  });
+
   router.get('/cases/:key', async (req, res) => {
     try {
       const tenantId = requireTenant(req);

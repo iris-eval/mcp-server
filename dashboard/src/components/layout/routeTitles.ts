@@ -47,6 +47,9 @@ export const ROUTE_TITLES: RouteMeta[] = [
   { pattern: '/traces', title: 'Traces', subtitle: 'Raw agent execution logs', kind: 'static' },
   { pattern: '/traces/:id', title: 'Trace', kind: 'resource' },
   { pattern: '/evals', title: 'Evaluations', subtitle: 'Per-rule eval results', kind: 'static' },
+  { pattern: '/runs', title: 'Runs', subtitle: 'Named batches of traces, with their pass rates; compare two with an interval', kind: 'static' },
+  { pattern: '/runs/:id', title: 'Run', kind: 'resource' },
+  { pattern: '/cases/:key', title: 'Case', kind: 'resource' },
 ];
 
 /**
