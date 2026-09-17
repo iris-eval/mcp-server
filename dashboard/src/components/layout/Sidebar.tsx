@@ -12,11 +12,8 @@
  */
 import {
   LayoutDashboard,
-  Activity,
   Sparkles,
   History,
-  GitFork,
-  CheckCircle2,
   Layers,
 } from 'lucide-react';
 import { useCallback } from 'react';
@@ -24,6 +21,7 @@ import { NavItem } from './NavItem';
 import { NavGroup } from './NavGroup';
 import { SidebarFooter } from './SidebarFooter';
 import { usePreferences } from '../../hooks/usePreferences';
+import { NAV_LABELS } from './navLabels';
 import { useCommandPalette } from '../command/CommandPaletteProvider';
 
 const styles = {
@@ -113,40 +111,20 @@ export function Sidebar() {
       </div>
 
       <nav style={styles.navContainer}>
+        {/*
+         * Four entries for three concepts (D-5): what failed, the data,
+         * authoring. Traces and evaluations are raw views reachable from
+         * Runs; the moments timeline is reachable from Failures and the
+         * palette. The names come from NAV_LABELS — one edit flips them.
+         */}
         <NavGroup label="Main" collapsed={collapsed}>
-          <NavItem to="/" label="Dashboard" icon={LayoutDashboard} collapsed={collapsed} end />
-          <NavItem
-            to="/moments"
-            label="Decision Moments"
-            icon={Activity}
-            collapsed={collapsed}
-          />
+          <NavItem to="/" label={NAV_LABELS.failures} icon={LayoutDashboard} collapsed={collapsed} end />
+          <NavItem to="/runs" label={NAV_LABELS.runs} icon={Layers} collapsed={collapsed} />
         </NavGroup>
 
         <NavGroup label="Authoring" collapsed={collapsed}>
-          <NavItem
-            to="/rules"
-            label="Custom Rules"
-            icon={Sparkles}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/audit"
-            label="Audit Log"
-            icon={History}
-            collapsed={collapsed}
-          />
-        </NavGroup>
-
-        <NavGroup label="Raw Data" collapsed={collapsed}>
-          <NavItem to="/runs" label="Runs" icon={Layers} collapsed={collapsed} />
-          <NavItem to="/traces" label="Traces" icon={GitFork} collapsed={collapsed} />
-          <NavItem
-            to="/evals"
-            label="Evaluations"
-            icon={CheckCircle2}
-            collapsed={collapsed}
-          />
+          <NavItem to="/rules" label={NAV_LABELS.rules} icon={Sparkles} collapsed={collapsed} />
+          <NavItem to="/audit" label={NAV_LABELS.audit} icon={History} collapsed={collapsed} />
         </NavGroup>
       </nav>
 

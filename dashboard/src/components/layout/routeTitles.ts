@@ -1,3 +1,5 @@
+import { NAV_LABELS } from './navLabels';
+
 /*
  * routeTitles — single source of truth for page titles + meta.
  *
@@ -19,10 +21,10 @@ export interface RouteMeta {
 
 export const ROUTE_TITLES: RouteMeta[] = [
   { pattern: '*', title: 'Not found', subtitle: 'No page at this address', kind: 'static' },
-  { pattern: '/', title: 'Dashboard', subtitle: 'Output quality across all agents', kind: 'static' },
+  { pattern: '/', title: NAV_LABELS.failures, subtitle: 'What failed, worst and newest first; health, drift and the live stream one tab over', kind: 'static' },
   {
     pattern: '/moments',
-    title: 'Decision Moments',
+    title: NAV_LABELS.moments,
     subtitle: 'Every trace, classified by significance',
     kind: 'static',
   },
@@ -34,20 +36,20 @@ export const ROUTE_TITLES: RouteMeta[] = [
   },
   {
     pattern: '/rules',
-    title: 'Custom Rules',
-    subtitle: 'Deployed via Make-This-A-Rule',
+    title: NAV_LABELS.rules,
+    subtitle: 'The built-in roster with its proof, and the rules you deployed',
     kind: 'static',
   },
   {
     pattern: '/audit',
-    title: 'Audit Log',
+    title: NAV_LABELS.audit,
     subtitle: 'Immutable record of rule changes',
     kind: 'static',
   },
   { pattern: '/traces', title: 'Traces', subtitle: 'Raw agent execution logs', kind: 'static' },
   { pattern: '/traces/:id', title: 'Trace', kind: 'resource' },
   { pattern: '/evals', title: 'Evaluations', subtitle: 'Per-rule eval results', kind: 'static' },
-  { pattern: '/runs', title: 'Runs', subtitle: 'Named batches of traces, with their pass rates; compare two with an interval', kind: 'static' },
+  { pattern: '/runs', title: NAV_LABELS.runs, subtitle: 'Named batches of traces, with their pass rates; compare two with an interval', kind: 'static' },
   { pattern: '/runs/:id', title: 'Run', kind: 'resource' },
   { pattern: '/cases/:key', title: 'Case', kind: 'resource' },
 ];

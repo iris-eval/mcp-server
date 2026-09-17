@@ -10,6 +10,7 @@
  * The second is produced by aborting every /api/v1 request at the browser,
  * which is what a stopped server looks like from the page's side.
  */
+import { NAV_LABELS } from '../../dashboard/src/components/layout/navLabels.js';
 import { test, expect } from '@playwright/test';
 
 test.describe('failure states', () => {
@@ -20,8 +21,8 @@ test.describe('failure states', () => {
     await expect(page.locator('h1')).toHaveText('Not found');
     // The shell is still there: the sidebar's own landmark.
     await expect(page.getByRole('navigation').first()).toBeVisible();
-    await page.getByRole('link', { name: 'Dashboard' }).first().click();
-    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await page.getByRole('link', { name: NAV_LABELS.failures, exact: true }).first().click();
+    await expect(page.locator('h1')).toHaveText(NAV_LABELS.failures);
   });
 
   test('when the API does not answer, the widget says so and the page stays up', async ({ page }) => {
@@ -31,7 +32,7 @@ test.describe('failure states', () => {
     await expect(alert).toBeVisible();
     await expect(alert).toHaveAttribute('data-error-kind', 'unreachable');
     // The page around the failed widget rendered: its title and its tabs.
-    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await expect(page.locator('h1')).toHaveText(NAV_LABELS.failures);
     await expect(page.getByRole('tab', { name: 'Failures' })).toBeVisible();
     // A retry is offered on this kind.
     await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible();

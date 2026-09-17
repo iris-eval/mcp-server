@@ -8,6 +8,7 @@
  * These tests are the lowest-cost highest-value coverage: a regression
  * here means the dashboard is broken-broken (not just ugly).
  */
+import { NAV_LABELS } from '../../dashboard/src/components/layout/navLabels.js';
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -30,7 +31,7 @@ test.describe('dashboard smoke', () => {
     await page.goto('/');
 
     // Chrome: sidebar, header title, view tabs
-    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await expect(page.locator('h1')).toHaveText(NAV_LABELS.failures);
     await expect(page.getByRole('tab', { name: 'Failures' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tab', { name: 'Health' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Drift' })).toBeVisible();
@@ -97,7 +98,7 @@ test.describe('dashboard smoke', () => {
   test('non-dashboard routes load without errors', async ({ page }) => {
     const errors = await failOnConsoleErrors(page);
 
-    for (const path of ['/moments', '/rules', '/audit', '/traces', '/evals']) {
+    for (const path of ['/moments', '/rules', '/audit', '/traces', '/evals', '/runs']) {
       await page.goto(path);
       // Chrome h1 renders on every route — matches routeTitles.ts.
       await expect(page.locator('h1').first()).toBeVisible();
@@ -126,17 +127,22 @@ test.describe('navigation', () => {
     await expect(page).toHaveURL(/period=7d/);
   });
 
-  test('sidebar nav reaches all routes', async ({ page }) => {
+  test('sidebar nav reaches all routes: four entries for three concepts (D-5)', async ({ page }) => {
     await page.goto('/');
-    // Scope to the sidebar <aside aria-label="Main navigation">;
-    // "Decision Moments" text also appears in the Welcome banner so a
-    // global match is ambiguous.
     const sidebar = page.getByRole('complementary', { name: /Main navigation/i });
-    await sidebar.getByRole('link', { name: 'Decision Moments' }).click();
-    await expect(page).toHaveURL(/\/moments/);
-    await sidebar.getByRole('link', { name: /Custom Rules/ }).click();
+    await sidebar.getByRole('link', { name: NAV_LABELS.runs, exact: true }).click();
+    await expect(page).toHaveURL(/\/runs/);
+    await sidebar.getByRole('link', { name: NAV_LABELS.rules, exact: true }).click();
     await expect(page).toHaveURL(/\/rules/);
-    await sidebar.getByRole('link', { name: 'Audit Log' }).click();
+    await sidebar.getByRole('link', { name: NAV_LABELS.audit, exact: true }).click();
     await expect(page).toHaveURL(/\/audit/);
+    await sidebar.getByRole('link', { name: NAV_LABELS.failures, exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    // The raw views and the timeline are not top-level entries; Runs carries the raw views.
+    for (const absent of ['Traces', 'Evaluations', NAV_LABELS.moments]) {
+      await expect(sidebar.getByRole('link', { name: absent, exact: true })).toHaveCount(0);
+    }
+    await page.goto('/runs');
+    await expect(page.locator('[data-raw-view="traces"]')).toBeVisible();
   });
 });

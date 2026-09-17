@@ -10,6 +10,7 @@
  * The demo server is a second process on its own port and its own IRIS_HOME,
  * killed at the end of the test.
  */
+import { NAV_LABELS } from '../../dashboard/src/components/layout/navLabels.js';
 import { test, expect } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
@@ -80,7 +81,7 @@ test.describe('header states', () => {
     await expect(pill).toHaveAttribute('data-status', 'unreachable');
     await expect(pill).toHaveText('unreachable');
     // The page itself is still up around it.
-    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await expect(page.locator('h1')).toHaveText(NAV_LABELS.failures);
   });
 
   test('a demo server wears the DEMO chip', async ({ page }) => {

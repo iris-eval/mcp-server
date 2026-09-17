@@ -12,6 +12,7 @@
  *   - run: function executed when the command is selected
  *   - section: visual grouping in the palette
  */
+import { NAV_LABELS } from '../layout/navLabels';
 import type { NavigateFunction } from 'react-router';
 
 /*
@@ -57,7 +58,7 @@ export function buildCommands(ctx: CommandContext): Command[] {
     // ── Navigate ─────────────────────────────────────────────
     {
       id: 'nav.dashboard',
-      title: 'Dashboard',
+      title: NAV_LABELS.failures,
       subtitle: '/',
       keywords: ['home', 'overview', 'metrics'],
       shortcut: 'g d',
@@ -66,7 +67,7 @@ export function buildCommands(ctx: CommandContext): Command[] {
     },
     {
       id: 'nav.moments',
-      title: 'Decision Moments',
+      title: NAV_LABELS.moments,
       subtitle: '/moments',
       keywords: ['timeline', 'traces', 'classified'],
       shortcut: 'g m',
@@ -75,7 +76,7 @@ export function buildCommands(ctx: CommandContext): Command[] {
     },
     {
       id: 'nav.rules',
-      title: 'Custom Rules',
+      title: NAV_LABELS.rules,
       subtitle: '/rules',
       keywords: ['deployed', 'composer', 'eval'],
       shortcut: 'g r',
@@ -84,7 +85,7 @@ export function buildCommands(ctx: CommandContext): Command[] {
     },
     {
       id: 'nav.audit',
-      title: 'Audit Log',
+      title: NAV_LABELS.audit,
       subtitle: '/audit',
       keywords: ['history', 'changes', 'log'],
       shortcut: 'g a',
@@ -111,7 +112,7 @@ export function buildCommands(ctx: CommandContext): Command[] {
     },
     {
       id: 'nav.runs',
-      title: 'Runs',
+      title: NAV_LABELS.runs,
       subtitle: '/runs',
       keywords: ['batch', 'compare', 'cases', 'regression'],
       shortcut: 'g u',

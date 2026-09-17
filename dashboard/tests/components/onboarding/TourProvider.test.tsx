@@ -1,52 +1,25 @@
 /*
- * The welcome tour must not reappear across demo / real dashboards.
- *
- * Dismissal used to live only in server preferences, which are per
- * server (preferences.json vs demo-preferences.json vs IRIS_HOME), so the
- * same browser was toured again on every switch (#377 item 2). The
- * browser now remembers in localStorage, like the banner, and either
- * source suppresses the auto-open.
+ * The tour opens on request only (D-5): never on its own, whatever the
+ * browser or the server has recorded; openTour/closeTour drive it.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import type { Preferences } from '../../../src/api/types';
-
-const preferencesMock: { preferences: Preferences | null } = { preferences: null };
-
-vi.mock('../../../src/hooks/usePreferences', () => ({
-  usePreferences: () => ({
-    preferences: preferencesMock.preferences,
-    displayPath: null,
-    loading: false,
-    error: null,
-    patch: vi.fn().mockResolvedValue(null),
-    refetch: vi.fn(),
-  }),
-}));
-
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { TourProvider, useTour } from '../../../src/components/onboarding/TourProvider';
-import {
-  TOUR_DISMISSED_STORAGE_KEY,
-  readTourDismissed,
-  writeTourDismissed,
-} from '../../../src/components/onboarding/tourDismissal';
-
-function prefs(dismissedTours: string[]): Preferences {
-  return {
-    autoLaunch: true,
-    dismissedBanners: [],
-    theme: 'system',
-    momentFilters: {},
-    dismissedTours,
-    archivedMoments: [],
-    density: 'compact',
-    sidebarCollapsed: false,
-  };
-}
+import { TOUR_DISMISSED_STORAGE_KEY, readTourDismissed, writeTourDismissed } from '../../../src/components/onboarding/tourDismissal';
 
 function Probe() {
-  const { tourOpen } = useTour();
-  return <span data-testid="tour-state">{tourOpen ? 'open' : 'closed'}</span>;
+  const { tourOpen, openTour, closeTour } = useTour();
+  return (
+    <>
+      <span data-testid="tour-state">{tourOpen ? 'open' : 'closed'}</span>
+      <button type="button" onClick={openTour}>
+        open
+      </button>
+      <button type="button" onClick={closeTour}>
+        close
+      </button>
+    </>
+  );
 }
 
 function renderProbe() {
@@ -59,28 +32,27 @@ function renderProbe() {
 
 beforeEach(() => {
   window.localStorage.clear();
-  preferencesMock.preferences = null;
 });
 
-describe('TourProvider auto-open', () => {
-  it('opens on a fresh browser against a fresh server', () => {
-    preferencesMock.preferences = prefs([]);
+describe('TourProvider (D-5): on request only', () => {
+  it('stays closed on a fresh browser — nothing opens on its own', () => {
     renderProbe();
-    expect(screen.getByTestId('tour-state')).toHaveTextContent('open');
+    expect(screen.getByTestId('tour-state').textContent).toBe('closed');
   });
 
-  it('stays closed when this browser dismissed it — even against a server that never saw the dismissal', () => {
+  it('opens on request and closes on request', () => {
+    renderProbe();
+    fireEvent.click(screen.getByText('open'));
+    expect(screen.getByTestId('tour-state').textContent).toBe('open');
+    fireEvent.click(screen.getByText('close'));
+    expect(screen.getByTestId('tour-state').textContent).toBe('closed');
+  });
+
+  it('a recorded dismissal does not stop a request', () => {
     writeTourDismissed();
-    // A different server (say, --demo) with a pristine preferences file.
-    preferencesMock.preferences = prefs([]);
     renderProbe();
-    expect(screen.getByTestId('tour-state')).toHaveTextContent('closed');
-  });
-
-  it('still honours a server-side dismissal from another browser', () => {
-    preferencesMock.preferences = prefs(['tour-welcome']);
-    renderProbe();
-    expect(screen.getByTestId('tour-state')).toHaveTextContent('closed');
+    fireEvent.click(screen.getByText('open'));
+    expect(screen.getByTestId('tour-state').textContent).toBe('open');
   });
 
   it('tourDismissal round-trips through localStorage', () => {

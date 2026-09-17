@@ -1,3 +1,4 @@
+import { NAV_LABELS } from '../../../src/components/layout/navLabels';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -110,8 +111,8 @@ describe('CommandPalette', () => {
 
   it('lists Navigate commands by default without touching the data APIs', () => {
     renderPalette(true);
-    expect(screen.getByRole('option', { name: /Decision Moments/ })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /Custom Rules/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: new RegExp(NAV_LABELS.moments) })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: new RegExp(NAV_LABELS.rules) })).toBeInTheDocument();
     // No query yet — the corpus fetch must not fire on open.
     expect(getCustomRulesMock).not.toHaveBeenCalled();
     expect(getTracesMock).not.toHaveBeenCalled();
@@ -124,7 +125,7 @@ describe('CommandPalette', () => {
     const input = screen.getByPlaceholderText(PLACEHOLDER);
     await user.type(input, 'rules');
     // Custom Rules navigation match remains; non-matching items hidden
-    expect(screen.queryByRole('option', { name: /Custom Rules/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: new RegExp(NAV_LABELS.rules) })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Toggle theme/ })).not.toBeInTheDocument();
   });
 

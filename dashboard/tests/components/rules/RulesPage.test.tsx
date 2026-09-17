@@ -14,8 +14,13 @@ const useCustomRulesMock = vi.fn();
 const deleteCustomRuleMock = vi.fn();
 const setCustomRuleEnabledMock = vi.fn();
 
+const idleQuery = () => ({ data: null, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
+
 vi.mock('../../../src/api/hooks', () => ({
   useCustomRules: (...args: unknown[]) => useCustomRulesMock(...args),
+  // D-5: the roster above the custom rules reads these once; idle here.
+  useBuiltInRules: () => idleQuery(),
+  useCapabilities: () => idleQuery(),
 }));
 
 vi.mock('../../../src/api/client', async (importOriginal) => {
