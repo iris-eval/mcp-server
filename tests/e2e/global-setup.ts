@@ -23,6 +23,8 @@ import type { EvalResult } from '../../src/types/eval.js';
 import { E2E_BASE_URL, E2E_DB_DIR, E2E_DB_PATH } from './_constants.js';
 
 const AGENTS = ['research-synthesizer', 'content-drafter', 'data-extractor', 'code-reviewer'];
+/** The seeded $1.33 trace (D-4): tests/e2e/verdict.spec.ts opens /traces/e2e-trace-0019. */
+export const COST_CASE_INDEX = 19;
 
 function makeTrace(i: number): Trace {
   const agent = AGENTS[i % AGENTS.length];
@@ -43,6 +45,60 @@ function makeTrace(i: number): Trace {
 }
 
 function makeEval(trace: Trace, index: number): EvalResult {
+  if (index === COST_CASE_INDEX) {
+    /*
+     * The plan's own case (arc 7, D-4): a $1.33 trace at defaults.
+     * cost_under_threshold fails against the shipped $0.10 and does not
+     * decide (the number is Iris's, not the deployment's); the verdict
+     * passes and interpretations[] says why. The verdict, coverage and
+     * interpretations are composed on read from provenance.composer, the
+     * way a stored row is — nothing here fabricates them.
+     */
+    return {
+      id: `e2e-eval-${String(index).padStart(4, '0')}`,
+      trace_id: trace.trace_id,
+      eval_type: 'cost',
+      output_text: trace.output ?? '',
+      score: 0.5,
+      passed: true,
+      rule_results: [
+        {
+          ruleName: 'cost_under_threshold',
+          passed: false,
+          score: 0,
+          message: 'cost $1.33 exceeds threshold $0.10',
+          kind: 'policy',
+          origin: 'built-in',
+          question: 'within_budget',
+          saw: ['cost_usd'],
+          evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: 1.33, threshold: 0.1, thresholdSource: 'default' }],
+          uncertainty: { basis: 'policy' },
+        },
+        {
+          ruleName: 'min_output_length',
+          passed: true,
+          score: 1,
+          message: 'OK',
+          kind: 'measurement',
+          origin: 'built-in',
+          question: 'complete',
+          saw: ['output'],
+          value: { stat: 'length', unit: 'chars', value: (trace.output ?? '').length },
+          uncertainty: { basis: 'policy' },
+        },
+      ],
+      suggestions: [],
+      provenance: {
+        irisVersion: '0.13.0',
+        rulesetHash: 'e2e-seed',
+        configHash: 'e2e-seed',
+        thresholds: { default: 0.7 },
+        corpusVersion: 'e2e-seed',
+        composer: { defaultsGate: false, falsePassCost: 1, onCriticalSkipped: 'unknown' },
+        judgedAt: trace.timestamp ?? new Date().toISOString(),
+      },
+    };
+  }
   const passed = index % 7 !== 0; // ~85% pass rate
   return {
     id: `e2e-eval-${String(index).padStart(4, '0')}`,
@@ -106,6 +162,7 @@ export default async function globalSetup(): Promise<void> {
       //    even though trace timestamps span 7 days.
       for (let i = 0; i < 20; i++) {
         const trace = makeTrace(i);
+        if (i === COST_CASE_INDEX) trace.cost_usd = 1.33;
         await adapter.insertTrace(LOCAL_TENANT, trace);
         const evalResult = makeEval(trace, i);
         await adapter.insertEvalResult(LOCAL_TENANT, evalResult);

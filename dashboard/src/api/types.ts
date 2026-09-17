@@ -656,6 +656,8 @@ export interface CapabilitiesSummary {
   version?: string;
   /** The built-in roster with each rule's published accuracy (D-3 reads `proof`). */
   rules?: Array<{ name: string; proof: RuleProofSummary | null }>;
+  /** The questions the server asks, with their text (D-4 renders coverage by question). */
+  questions?: ReadonlyArray<{ id: string; text: string; answeredBy?: string }>;
   judge?: { enabled: boolean; provider?: string | null; howToEnable?: readonly string[] };
   retention?: { days: number; sweepIntervalHours: number };
   dashboard?: { enabled: boolean; url: string | null; mode: 'real' | 'demo' };
