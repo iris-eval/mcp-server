@@ -40,8 +40,18 @@ export default defineConfig({
      * IRIS_NO_AUTO_LAUNCH=1 keeps the server from opening a browser
      * window (Playwright drives its own).
      */
-    command: `node dist/index.js --dashboard --dashboard-port ${E2E_PORT}`,
+    command: `node dist/index.js --dashboard --dashboard-port ${E2E_PORT} --config tests/e2e/server-config.json`,
     url: `${E2E_BASE_URL}/api/v1/health`,
+    /*
+     * tests/e2e/server-config.json raises security.rateLimit.api for this
+     * server only. Every test here opens a fresh browser context, so each
+     * page load re-fetches every asset plus the shell's own reads, and the
+     * whole run (both browsers, one process, one IP) lands inside one
+     * 60-second limiter window: at the shipped 600/min the Firefox half of
+     * a CI run was served `{"error":"Too many requests"}` for `/` itself
+     * (S97, D-2). The limiter's own proposition is held by
+     * tests/unit/middleware/rate-limit.test.ts, not here.
+     */
     /*
      * Outside CI a server already on the port is reused — and it serves the
      * bundle IT was started with. A dashboard left running from an earlier

@@ -136,6 +136,17 @@ describe('--demo', () => {
     const forged = await get(port, '/api/v1/summary', 'evil.example.com');
     expect(forged.status).toBe(403);
 
+    // The server knows it is the demo (arc 7, D-2): health and capabilities
+    // both say so, which is what the dashboard's DEMO chip reads. Until this
+    // assertion existed the CLI never passed the mode through, and a --demo
+    // server reported itself as real on both surfaces.
+    const health = JSON.parse((await get(port, '/api/v1/health', `127.0.0.1:${port}`)).body) as { mode?: string };
+    expect(health.mode).toBe('demo');
+    const capabilities = JSON.parse((await get(port, '/api/v1/capabilities', `127.0.0.1:${port}`)).body) as {
+      dashboard?: { mode?: string };
+    };
+    expect(capabilities.dashboard?.mode).toBe('demo');
+
     // Wait for the banner (printed right after the log line we matched).
     await new Promise<void>((resolvePromise) => {
       const check = () => {

@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../utils/constants';
 import { networkError, toApiError } from './errors';
+import { reportConnection } from './connection';
 import type {
   DriftComparison,
   TraceQueryResult,
@@ -22,6 +23,8 @@ import type {
   PreferencesPatch,
   AuditQueryResult,
   BuiltInRuleMeta,
+  HealthResponse,
+  CapabilitiesSummary,
 } from './types';
 
 /**
@@ -64,8 +67,10 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
   try {
     res = await fetch(url.toString());
   } catch (err) {
+    reportConnection('unreachable');
     throw networkError(path, err);
   }
+  reportConnection(res.status === 401 || res.status === 403 ? 'signed-out' : 'connected');
   handleUnauthorized(res);
   if (!res.ok) throw await toApiError(res, path);
   return res.json() as Promise<T>;
@@ -82,6 +87,30 @@ export const api = {
 
   getSummary(hours?: number): Promise<DashboardSummary> {
     return fetchJson<DashboardSummary>(`${API_BASE_URL}/summary`, hours ? { hours: String(hours) } : undefined);
+  },
+
+  /**
+   * The health poll (D-2). Unauthenticated by design; the server answers 503
+   * with a body when its storage is down, and that body is the answer the
+   * header renders ("degraded"), not an error.
+   */
+  async getHealth(): Promise<HealthResponse> {
+    const path = `${API_BASE_URL}/health`;
+    let res: Response;
+    try {
+      res = await fetch(new URL(path, window.location.origin).toString());
+    } catch (err) {
+      reportConnection('unreachable');
+      throw networkError(path, err);
+    }
+    reportConnection('connected');
+    if (res.ok || res.status === 503) return res.json() as Promise<HealthResponse>;
+    throw await toApiError(res, path);
+  },
+
+  /** Read once by the shell: the judge's enable steps and the retention window (D-2). */
+  getCapabilities(): Promise<CapabilitiesSummary> {
+    return fetchJson<CapabilitiesSummary>(`${API_BASE_URL}/capabilities`);
   },
 
   getFilters(): Promise<FilterOptions> {
@@ -172,8 +201,10 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
     });
   } catch (err) {
+    reportConnection('unreachable');
     throw networkError(path, err);
   }
+  reportConnection(res.status === 401 || res.status === 403 ? 'signed-out' : 'connected');
   handleUnauthorized(res);
   if (!res.ok) throw await toApiError(res, path);
   return res.json() as Promise<T>;
@@ -189,8 +220,10 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
     });
   } catch (err) {
+    reportConnection('unreachable');
     throw networkError(path, err);
   }
+  reportConnection(res.status === 401 || res.status === 403 ? 'signed-out' : 'connected');
   handleUnauthorized(res);
   if (!res.ok) throw await toApiError(res, path);
   return res.json() as Promise<T>;
@@ -202,8 +235,10 @@ async function deleteRequest(path: string): Promise<void> {
   try {
     res = await fetch(url.toString(), { method: 'DELETE' });
   } catch (err) {
+    reportConnection('unreachable');
     throw networkError(path, err);
   }
+  reportConnection(res.status === 401 || res.status === 403 ? 'signed-out' : 'connected');
   handleUnauthorized(res);
   if (!res.ok && res.status !== 204) throw await toApiError(res, path);
 }

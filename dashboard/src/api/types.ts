@@ -574,3 +574,33 @@ export interface DriftWindowSummary {
   /** Null for an empty window — "0 of 0" is unknown, not zero. */
   passRate: number | null;
 }
+
+/* ---------------------------------------------------------------------------
+ * The shell's two reads (arc 7, D-2)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * GET /api/v1/health — unauthenticated by design (it carries no data).
+ * The server answers 503 with `status: 'degraded'` when its storage is down;
+ * that body is still the answer, and the client returns it as one.
+ */
+export interface HealthResponse {
+  status: 'ok' | 'degraded';
+  version: string;
+  uptime_seconds: number;
+  trace_count?: number;
+  storage?: 'connected' | 'disconnected';
+  judge: { enabled: boolean; provider?: string | null };
+  mode?: 'real' | 'demo';
+}
+
+/**
+ * GET /api/v1/capabilities — the fields the shell renders. The document is
+ * the server's and larger than this; unknown fields pass through untouched.
+ */
+export interface CapabilitiesSummary {
+  version?: string;
+  judge?: { enabled: boolean; provider?: string | null; howToEnable?: readonly string[] };
+  retention?: { days: number; sweepIntervalHours: number };
+  dashboard?: { enabled: boolean; url: string | null; mode: 'real' | 'demo' };
+}

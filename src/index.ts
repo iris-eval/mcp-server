@@ -443,6 +443,8 @@ async function main(): Promise<void> {
       customRuleStore,
       evalEngine,
       preferenceStore,
+      // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it (D-2).
+      mode: values.demo ? 'demo' : 'real',
     });
     const server = dashboardServer.start();
     httpServers.push(server);
@@ -577,6 +579,8 @@ async function runDemo(): Promise<void> {
     customRuleStore,
     evalEngine,
     preferenceStore,
+    // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it (D-2).
+    mode: values.demo ? 'demo' : 'real',
   });
   const server = dashboardServer.start();
 
