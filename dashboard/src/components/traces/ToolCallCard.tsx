@@ -2,9 +2,10 @@ import type { ToolCallRecord } from '../../api/types';
 import { Badge } from '../shared/Badge';
 import { JsonViewer } from '../shared/JsonViewer';
 
-export function ToolCallCard({ call }: { call: ToolCallRecord }) {
+export function ToolCallCard({ call, anchorId }: { call: ToolCallRecord; anchorId?: string }) {
   return (
     <div
+      id={anchorId}
       style={{
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border-color)',

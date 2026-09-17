@@ -13,7 +13,8 @@
  */
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { useMomentDetail } from '../../api/hooks';
+import { useMomentDetail, useBuiltInRules, useCapabilities } from '../../api/hooks';
+import { RuleResultRow } from '../evals/RuleResultRow';
 import { CopyableId } from '../shared/CopyableId';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
@@ -192,33 +193,6 @@ const styles = {
     fontWeight: 600,
     color: 'var(--eval-fail)',
   } as const,
-  ruleRow: {
-    display: 'grid',
-    gridTemplateColumns: '20px 1fr auto',
-    gap: 'var(--space-2)',
-    alignItems: 'baseline',
-    padding: 'var(--space-1) 0',
-    fontSize: 'var(--text-body-sm)',
-  } as const,
-  ruleStatus: {
-    width: '14px',
-    height: '14px',
-    borderRadius: 'var(--radius-pill)',
-    display: 'inline-block',
-  } as const,
-  ruleName: {
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-primary)',
-  } as const,
-  ruleMessage: {
-    color: 'var(--text-muted)',
-    fontSize: 'var(--text-caption)',
-    fontFamily: 'var(--font-mono)',
-    textAlign: 'right',
-    maxWidth: '50%',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  } as const,
   toggle: {
     appearance: 'none',
     background: 'transparent',
@@ -260,6 +234,9 @@ const styles = {
 export function MomentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading, error, refetch } = useMomentDetail(id ?? '');
+  // The rule roster and the published table, read once each (D-3): the row's definition and interval.
+  const rules = useBuiltInRules();
+  const capabilities = useCapabilities();
   const [showRaw, setShowRaw] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -282,6 +259,10 @@ export function MomentDetailPage() {
   // not see, it only knows the built-in safety bundle — still turns the
   // chip red here instead of leaving an amber PARTIAL beside "Vetoed by".
   const vetoingEvals = data.evals.filter((e) => e.criticalFailures && e.criticalFailures.length > 0);
+  const rulesByName = new Map((rules.data ?? []).map((r) => [r.name, r]));
+  const proofsByName = new Map(
+    (capabilities.data?.rules ?? []).flatMap((r) => (r.proof ? [[r.name, r.proof] as const] : [])),
+  );
   const verdict = getVerdictVisual(data.verdict, {
     significanceKind: data.significance.kind,
     vetoed: vetoingEvals.length > 0,
@@ -395,10 +376,16 @@ export function MomentDetailPage() {
               </div>
               <div style={styles.toolList}>
                 {visibleTools.map((t, i) => (
-                  <div key={i} style={styles.toolRow}>
+                  <div key={i} id={`call-${i}`} style={{ ...styles.toolRow, flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                     <span>{t.tool_name}</span>
                     {t.latency_ms !== undefined && (
                       <span>{formatLatency(t.latency_ms)}</span>
+                    )}
+                    {/* A call that errored says so here, not only on the trace page (D-3). */}
+                    {t.error && (
+                      <span style={{ flexBasis: '100%', color: 'var(--eval-fail)' }} data-tool-error="true">
+                        {t.error}
+                      </span>
                     )}
                   </div>
                 ))}
@@ -448,27 +435,16 @@ export function MomentDetailPage() {
                       regardless of its score.
                     </div>
                   )}
+                  {/* One renderer for a rule result (D-3): every stamped field, in RuleResultRow. */}
                   {[...failed, ...passed, ...skipped].map((r) => (
-                    <div key={r.ruleName} style={styles.ruleRow}>
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          ...styles.ruleStatus,
-                          background: r.skipped
-                            ? 'var(--eval-skipped)'
-                            : r.passed
-                              ? 'var(--eval-pass)'
-                              : 'var(--eval-fail)',
-                        }}
-                      />
-                      <span style={styles.ruleName}>
-                        <span style={styles.srOnly}>
-                          {r.skipped ? 'Skipped: ' : r.passed ? 'Passed: ' : 'Failed: '}
-                        </span>
-                        {r.ruleName}
-                      </span>
-                      <span style={styles.ruleMessage}>{r.message}</span>
-                    </div>
+                    <RuleResultRow
+                      key={r.ruleName}
+                      result={r}
+                      meta={rulesByName.get(r.ruleName) ?? null}
+                      proof={proofsByName.get(r.ruleName) ?? null}
+                      callHref={(i) => `/traces/${data.traceId}#call-${i}`}
+                      texts={{ output: data.output, input: data.input }}
+                    />
                   ))}
                 </div>
               );
