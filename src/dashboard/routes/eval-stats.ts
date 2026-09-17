@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { evalStatsPeriodSchema, evalStatsFailuresSchema, evalStatsTrendSchema, driftSchema } from '../validation.js';
-import { newcombeDifference, smallestDetectableDifference } from '../../eval/stats.js';
+import { newcombeDifference, smallestDetectableDifference, wilson } from '../../eval/stats.js';
 
 /*
  * Below this many evaluations on a side, the comparison is reported as
@@ -94,11 +94,21 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
           ? smallestDetectableDifference(current.evaluated, prior.evaluated)
           : null;
 
+      /*
+       * Each window carries its own Wilson interval (arc 7, D-6), so a
+       * cohort panel can show "n and the interval" without recomputing
+       * anything on the client — the same wilson() the proof harness uses.
+       * Null for an empty window: "0 of 0" is unknown, not zero.
+       */
+      const withInterval = <W extends { evaluated: number; passed: number }>(w: W): W & { interval: { lo: number; hi: number } | null } => {
+        const i = w.evaluated > 0 ? wilson(w.passed, w.evaluated) : null;
+        return { ...w, interval: i ? { lo: i.lo, hi: i.hi } : null };
+      };
       res.json({
         period,
         run: run ?? null,
-        current,
-        prior,
+        current: withInterval(current),
+        prior: withInterval(prior),
         difference,
         /*
          * Reported so the view never has to guess why it got no direction,

@@ -234,8 +234,8 @@ export function useEvalStats(period?: string) {
   return useApiData<EvalStats>(fetcher, CADENCE.NORMAL);
 }
 
-export function useEvalTrend(period?: string) {
-  const fetcher = useCallback(() => api.getEvalTrend(period), [period]);
+export function useEvalTrend(period?: string, cohort?: 'run') {
+  const fetcher = useCallback(() => api.getEvalTrend(period, cohort), [period, cohort]);
   // Trend over 7d/30d/90d windows changes slowly — poll at SLOW cadence.
   return useApiData<EvalTrendPoint[]>(fetcher, CADENCE.SLOW);
 }

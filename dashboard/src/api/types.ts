@@ -320,6 +320,8 @@ export interface EvalTrendPoint {
   avgScore: number;
   passRate: number;
   evalCount: number;
+  /** The run this bucket belongs to when the trend was asked for split by run (D-6); null for evaluations with no run. */
+  cohort?: string | null;
 }
 
 export interface RuleBreakdown {
@@ -627,6 +629,8 @@ export interface DriftWindowSummary {
   passed: number;
   /** Null for an empty window — "0 of 0" is unknown, not zero. */
   passRate: number | null;
+  /** The 95% Wilson interval on this window's pass rate; null for an empty window (D-6). */
+  interval: { lo: number; hi: number } | null;
 }
 
 /* ---------------------------------------------------------------------------

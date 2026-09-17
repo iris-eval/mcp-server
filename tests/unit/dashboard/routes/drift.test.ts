@@ -15,10 +15,11 @@ import { defaultConfig } from '../../../../src/config/defaults.js';
 import { createLogger } from '../../../../src/utils/logger.js';
 import { EvalEngine } from '../../../../src/eval/engine.js';
 import { LOCAL_TENANT } from '../../../../src/types/tenant.js';
+import { wilson } from '../../../../src/eval/stats.js';
 
 interface DriftBody {
-  current: { evaluated: number; passed: number; passRate: number | null };
-  prior: { evaluated: number; passed: number; passRate: number | null };
+  current: { evaluated: number; passed: number; passRate: number | null; interval: { lo: number; hi: number } | null };
+  prior: { evaluated: number; passed: number; passRate: number | null; interval: { lo: number; hi: number } | null };
   difference: { delta: number; lo: number; hi: number; significant: boolean } | null;
   enoughEvidence: boolean;
   minimumPerWindow: number;
@@ -81,6 +82,27 @@ describe('the drift comparison', () => {
     expect(res.status).toBe(200);
     return (await res.json()) as DriftBody;
   };
+
+  it('each window carries its Wilson interval, and an empty window carries null (D-6)', async () => {
+    for (let i = 0; i < 12; i += 1) await seed(`c${i}`, 1, i < 6);
+    for (let i = 0; i < 12; i += 1) await seed(`p${i}`, 9, true);
+    const res = await fetch(`http://127.0.0.1:${port}/api/v1/eval-stats/drift?period=7d`);
+    const body = (await res.json()) as DriftBody;
+    // Wilson on 6 of 12 and on 12 of 12 — the route serves what the same
+    // stats module the proof uses computes, so the test asks that module
+    // rather than typing a number.
+    const w6 = wilson(6, 12)!;
+    const w12 = wilson(12, 12)!;
+    expect(body.current.interval).toEqual({ lo: w6.lo, hi: w6.hi });
+    expect(body.prior.interval).toEqual({ lo: w12.lo, hi: w12.hi });
+    expect(body.current.interval!.lo).toBeGreaterThan(0.2);
+    expect(body.current.interval!.hi).toBeLessThan(0.8);
+    const empty = await fetch(`http://127.0.0.1:${port}/api/v1/eval-stats/drift?period=7d&run=never-ran`);
+    const none = (await empty.json()) as DriftBody;
+    expect(none.current.evaluated).toBe(0);
+    expect(none.current.interval).toBeNull();
+    expect(none.prior.interval).toBeNull();
+  });
 
   it('withholds a direction when either window is too small to mean anything', async () => {
     // Three vs three. The interval would correctly refuse to call this
