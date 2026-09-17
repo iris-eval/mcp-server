@@ -15,6 +15,9 @@ import { RulesPage } from './components/rules/RulesPage';
 import { AuditPage } from './components/audit/AuditPage';
 import { RouteBoundary } from './components/layout/ErrorBoundary';
 import { NotFoundPage } from './components/layout/NotFoundPage';
+import { RunsPage } from './components/runs/RunsPage';
+import { RunDetailPage } from './components/runs/RunDetailPage';
+import { CasePage } from './components/runs/CasePage';
 
 export function App() {
   return (
@@ -36,6 +39,9 @@ export function App() {
                     <Route path="/traces" element={<TraceListPage />} />
                     <Route path="/traces/:id" element={<TraceDetailPage />} />
                     <Route path="/evals" element={<EvalListPage />} />
+                    <Route path="/runs" element={<RunsPage />} />
+                    <Route path="/runs/:id" element={<RunDetailPage />} />
+                    <Route path="/cases/:key" element={<CasePage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </RouteBoundary>

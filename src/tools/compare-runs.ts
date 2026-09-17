@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
-import { LOCAL_TENANT } from '../types/tenant.js';
+import { LOCAL_TENANT, type TenantId } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { guarded, respond } from './respond.js';
@@ -111,44 +111,63 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
         openWorldHint: false,
       },
     },
-    guarded(async (args) => {
-      const [beforeRows, afterRows] = await Promise.all([
-        storage.getRunResults(LOCAL_TENANT, args.before),
-        storage.getRunResults(LOCAL_TENANT, args.after),
-      ]);
-      const c = compareRuns(args.before, beforeRows, args.after, afterRows, { force: args.force === true });
-
-      const summary = (s: typeof c.before): z.infer<typeof runSummarySchema> => ({
-        run_id: s.runId,
-        n: s.n,
-        passed: s.passed,
-        rate: s.rate,
-        interval: s.interval,
-        agent_names: s.agentNames,
-        engine_versions: s.engineVersions,
-        ruleset_hashes: s.rulesetHashes,
-        config_hashes: s.configHashes,
-        superseded: s.superseded,
-      });
-
-      return respond(compareRunsOutputSchema, {
-        comparable: c.comparable,
-        incomparable_because: c.incomparableBecause,
-        forced: c.forced,
-        method: c.method,
-        before: summary(c.before),
-        after: summary(c.after),
-        difference: c.difference,
-        paired: c.paired
-          ? { method: c.paired.method, b: c.paired.b, c: c.paired.c, concordant: c.paired.concordant, pairs: c.paired.pairs, p_value: c.paired.pValue, significant: c.paired.significant }
-          : null,
-        worse: c.worse,
-        better: c.better,
-        smallest_detectable: c.smallestDetectable,
-        regressions: c.regressions.map((r) => ({ rule: r.rule, failed_before: r.failedBefore, failed_after: r.failedAfter, delta: r.delta })),
-        improvements: c.improvements.map((r) => ({ rule: r.rule, failed_before: r.failedBefore, failed_after: r.failedAfter, delta: r.delta })),
-        summary: c.summary,
-      });
-    }),
+    guarded(async (args) => respond(compareRunsOutputSchema, await compareStoredRuns(storage, LOCAL_TENANT, args))),
   );
+}
+
+export interface CompareStoredRunsArgs {
+  before: string;
+  after: string;
+  force?: boolean;
+}
+
+/**
+ * The handler behind `compare_runs`, shared with `POST /api/v1/compare`
+ * (arc 7, D-5): reads each run's evaluations (most recent per trace), runs
+ * the comparison, and shapes it exactly as the tool's output schema says.
+ * One implementation, one shape, two doors.
+ */
+export async function compareStoredRuns(
+  storage: IStorageAdapter,
+  tenantId: TenantId,
+  args: CompareStoredRunsArgs,
+): Promise<z.infer<typeof compareRunsOutputSchema>> {
+  const [beforeRows, afterRows] = await Promise.all([
+    storage.getRunResults(tenantId, args.before),
+    storage.getRunResults(tenantId, args.after),
+  ]);
+  const c = compareRuns(args.before, beforeRows, args.after, afterRows, { force: args.force === true });
+
+  const summary = (s: typeof c.before): z.infer<typeof runSummarySchema> => ({
+    run_id: s.runId,
+    n: s.n,
+    passed: s.passed,
+    rate: s.rate,
+    interval: s.interval,
+    agent_names: s.agentNames,
+    engine_versions: s.engineVersions,
+    ruleset_hashes: s.rulesetHashes,
+    config_hashes: s.configHashes,
+    superseded: s.superseded,
+  });
+
+  return {
+    comparable: c.comparable,
+    incomparable_because: c.incomparableBecause,
+    forced: c.forced,
+    method: c.method,
+    before: summary(c.before),
+    after: summary(c.after),
+    // Spread: the output schema is loose (index-signed) and an interface value is not assignable to it as-is.
+    difference: c.difference ? { ...c.difference } : null,
+    paired: c.paired
+      ? { method: c.paired.method, b: c.paired.b, c: c.paired.c, concordant: c.paired.concordant, pairs: c.paired.pairs, p_value: c.paired.pValue, significant: c.paired.significant }
+      : null,
+    worse: c.worse,
+    better: c.better,
+    smallest_detectable: c.smallestDetectable,
+    regressions: c.regressions.map((r) => ({ rule: r.rule, failed_before: r.failedBefore, failed_after: r.failedAfter, delta: r.delta })),
+    improvements: c.improvements.map((r) => ({ rule: r.rule, failed_before: r.failedBefore, failed_after: r.failedAfter, delta: r.delta })),
+    summary: c.summary,
+  };
 }

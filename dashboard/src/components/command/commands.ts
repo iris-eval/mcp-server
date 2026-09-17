@@ -109,6 +109,15 @@ export function buildCommands(ctx: CommandContext): Command[] {
       section: 'Navigate',
       run: () => ctx.navigate('/evals'),
     },
+    {
+      id: 'nav.runs',
+      title: 'Runs',
+      subtitle: '/runs',
+      keywords: ['batch', 'compare', 'cases', 'regression'],
+      shortcut: 'g u',
+      section: 'Navigate',
+      run: () => ctx.navigate('/runs'),
+    },
 
     // ── Filter (page-aware shortcuts) ────────────────────────
     {

@@ -163,8 +163,16 @@ export default async function globalSetup(): Promise<void> {
       for (let i = 0; i < 20; i++) {
         const trace = makeTrace(i);
         if (i === COST_CASE_INDEX) trace.cost_usd = 1.33;
+        // Two runs over the same ten cases (D-5): traces 0–9 are the
+        // baseline, 10–19 the candidate; case-k is trace k and trace k+10.
+        // The baseline fails case-0 and case-7 (i % 7 === 0), the candidate
+        // fails case-4 (i = 14), so the pair is comparable, paired, and not
+        // distinguishable at n = 10 — and case-0 is flaky across runs.
+        trace.run_id = i < 10 ? 'baseline' : 'candidate';
+        trace.case_key = `case-${i % 10}`;
         await adapter.insertTrace(LOCAL_TENANT, trace);
         const evalResult = makeEval(trace, i);
+        evalResult.run_id = trace.run_id;
         await adapter.insertEvalResult(LOCAL_TENANT, evalResult);
         raw
           .prepare('UPDATE eval_results SET created_at = ? WHERE id = ?')
