@@ -36,8 +36,34 @@ const worse: CompareRunsResult = {
   worse: true,
   better: false,
   smallest_detectable: 0.12,
-  regressions: [{ rule: 'no_stub_output', failed_before: 1, failed_after: 8, delta: 7 }],
-  improvements: [{ rule: 'min_output_length', failed_before: 2, failed_after: 1, delta: -1 }],
+  equivalent_within: { margin: 0.12, margin_source: 'smallest-detectable', interval: { lo: -0.31, hi: -0.09 }, holds: false },
+  rules_tested: 2,
+  regressions: [
+    {
+      rule: 'no_stub_output',
+      failed_before: 1,
+      failed_after: 8,
+      delta: 7,
+      difference: { delta: -0.175, lo: -0.31, hi: -0.04, significant: true },
+      test: 'mcnemar-exact',
+      p: 0.0039,
+      q: 0.0078,
+      worse: true,
+    },
+  ],
+  improvements: [
+    {
+      rule: 'min_output_length',
+      failed_before: 2,
+      failed_after: 1,
+      delta: -1,
+      difference: { delta: 0.025, lo: -0.08, hi: 0.13, significant: false },
+      test: 'mcnemar-exact',
+      p: 0.75,
+      q: 0.75,
+      worse: false,
+    },
+  ],
   summary: 'candidate is worse than baseline: 8 more failures on 40 paired cases.',
 };
 
@@ -90,6 +116,40 @@ describe('ComparisonView (D-5)', () => {
     const { container } = view({ ...worse, comparable: false, forced: true, incomparable_because: ['different agents'] });
     expect(container.querySelector('[data-forced]')).not.toBeNull();
     expect(container.querySelector('[data-comparison-verdict]')?.textContent).toBe('WORSE');
+  });
+
+  it('D-6b: every rule row carries its one-sided p and its corrected q, and only a surviving rule is marked worse', () => {
+    const { container } = view(worse);
+    const stub = container.querySelector('[data-rule-row="no_stub_output"]');
+    expect(stub?.getAttribute('data-rule-worse')).toBe('true');
+    expect(stub?.textContent).toContain('worse');
+    const length = container.querySelector('[data-rule-row="min_output_length"]');
+    expect(length?.getAttribute('data-rule-worse')).toBe('false');
+    expect(length?.textContent).not.toContain('worse');
+    const ps = [...container.querySelectorAll('[data-rule-p]')].map((el) => el.textContent);
+    expect(ps).toEqual(['p = 0.004', 'p = 0.750']);
+    const qs = [...container.querySelectorAll('[data-rule-q]')].map((el) => el.textContent);
+    expect(qs).toEqual(['q = 0.008', 'q = 0.750']);
+    expect(container.querySelector('[data-rules-tested]')?.textContent).toBe('2 tested · corrected together');
+  });
+
+  it('D-6b: the equivalence finding is its own chip — not equivalent here, equivalent when the 90% interval sits inside the margin', () => {
+    const { container: a } = view(worse);
+    expect(a.querySelector('[data-equivalent-within]')?.getAttribute('data-equivalent-within')).toBe('false');
+    expect(a.querySelector('[data-equivalent-within]')?.textContent).toBe('not equivalent within ±12.0 pts');
+    const { container: b } = view({
+      ...worse,
+      worse: false,
+      difference: { delta: 0.01, lo: -0.05, hi: 0.07, significant: false },
+      paired: null,
+      method: 'unpaired-newcombe',
+      equivalent_within: { margin: 0.1, margin_source: 'caller', interval: { lo: -0.04, hi: 0.06 }, holds: true },
+    });
+    expect(b.querySelector('[data-comparison-verdict]')?.textContent).toBe('NOT DISTINGUISHABLE');
+    expect(b.querySelector('[data-equivalent-within]')?.getAttribute('data-equivalent-within')).toBe('true');
+    expect(b.querySelector('[data-equivalent-within]')?.textContent).toBe('equivalent within ±10.0 pts');
+    const { container: c } = view({ ...worse, equivalent_within: null });
+    expect(c.querySelector('[data-equivalent-within]')).toBeNull();
   });
 
   it('has no axe violations', async () => {

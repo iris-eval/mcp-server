@@ -51,3 +51,25 @@ export function fmtSmallestDetectable(s: number | null): string {
   if (s === null) return '—';
   return `${(s * 100).toFixed(1)} pts`;
 }
+
+export function fmtQ(q: number | null): string {
+  if (q === null) return '—';
+  if (q < 0.001) return 'q < 0.001';
+  return `q = ${q.toFixed(3)}`;
+}
+
+/** The per-rule statistics, in one sentence a reader can act on (D-6b). */
+export const PER_RULE_TEXT =
+  'Each rule is tested one-sided for a fall in its pass rate — McNemar exact on its own discordant pairs when the runs pair, else the z from its Newcombe difference — and the p-values are corrected together (Benjamini–Hochberg) so twenty rules do not manufacture a regression. Read q: a rule is marked worse only at q ≤ 0.05.';
+
+export const EQUIVALENCE_TEXT = {
+  holds:
+    'Equivalent within the margin: the 90% interval on the difference lies inside ±δ — two one-sided tests at α = 0.05. A positive finding, distinct from "not distinguishable".',
+  fails:
+    'Not equivalent within the margin: the 90% interval on the difference reaches outside ±δ. The runs may still be indistinguishable — that is a different statement.',
+} as const;
+
+export function fmtEquivalence(e: CompareRunsResult['equivalent_within']): string {
+  if (!e) return '—';
+  return `${e.holds ? 'equivalent' : 'not equivalent'} within ±${(e.margin * 100).toFixed(1)} pts`;
+}

@@ -11,6 +11,7 @@ const compareBodySchema = z
     before: z.string().min(1),
     after: z.string().min(1),
     force: z.boolean().optional(),
+    equivalence_margin: z.number().gt(0).lte(1).optional(),
   })
   .strict();
 

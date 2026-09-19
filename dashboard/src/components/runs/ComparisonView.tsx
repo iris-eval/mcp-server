@@ -1,9 +1,11 @@
 /*
- * One comparison, rendered (arc 7, D-5): the verdict word with its sentence,
- * the two runs side by side with their Wilson intervals, the difference with
- * its interval, the method, the smallest change the runs could have seen,
- * and the per-rule movement. Everything here is the compare_runs tool's own
- * answer; nothing is recomputed on the client.
+ * One comparison, rendered (arc 7, D-5; the statistics D-6b): the verdict
+ * word with its sentence, the two runs side by side with their Wilson
+ * intervals, the difference with its interval, the method, the smallest
+ * change the runs could have seen, the equivalence finding with its margin,
+ * and the per-rule movement with each rule's one-sided p and its corrected
+ * q. Everything here is the compare_runs tool's own answer; nothing is
+ * recomputed on the client.
  */
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
@@ -11,11 +13,15 @@ import type { CompareRunsResult } from '../../api/types';
 import { Tooltip } from '../shared/Tooltip';
 import { DataTable, type Column } from '../shared/DataTable';
 import {
+  EQUIVALENCE_TEXT,
   METHOD_TEXT,
+  PER_RULE_TEXT,
   VERDICT_TEXT,
   comparisonVerdict,
   fmtDifference,
+  fmtEquivalence,
   fmtP,
+  fmtQ,
   fmtRate,
   fmtSmallestDetectable,
 } from './compareText';
@@ -54,6 +60,8 @@ const styles = {
   reasons: { margin: 0, paddingLeft: '1.2em', color: 'var(--eval-warn)', fontSize: 'var(--text-caption)' } as CSSProperties,
   summary: { margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--text-secondary)' } as CSSProperties,
   h4: { margin: 0, fontSize: 'var(--text-caption)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } as CSSProperties,
+  perRuleHead: { display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' } as CSSProperties,
+  worseMark: { color: 'var(--eval-fail)', fontWeight: 700, marginLeft: '0.4em' } as CSSProperties,
 };
 
 function RunCard({ label, s }: { label: string; s: CompareRunsResult['before'] }) {
@@ -81,18 +89,65 @@ export function ComparisonView({ result }: { result: CompareRunsResult }) {
     ...result.improvements.map((r) => ({ ...r, direction: 'better' as const })),
   ];
   const columns: Column<(typeof movement)[number]>[] = [
-    { key: 'rule', header: 'Rule', render: (r) => <code>{r.rule}</code> },
-    { key: 'failed_before', header: 'Failed before', render: (r) => String(r.failed_before), width: '9rem' },
-    { key: 'failed_after', header: 'Failed after', render: (r) => String(r.failed_after), width: '9rem' },
+    {
+      key: 'rule',
+      header: 'Rule',
+      render: (r) => (
+        <span data-rule-row={r.rule} data-rule-worse={r.worse ? 'true' : 'false'}>
+          <code>{r.rule}</code>
+          {r.worse && (
+            <Tooltip content={`Worse after the correction: q = ${r.q === null ? '—' : r.q.toFixed(3)} at the 0.05 level, in the regression direction.`}>
+              <span style={styles.worseMark} tabIndex={0} aria-label="worse after correction">
+                worse
+              </span>
+            </Tooltip>
+          )}
+        </span>
+      ),
+    },
+    { key: 'failed_before', header: 'Failed before', render: (r) => String(r.failed_before), width: '8rem' },
+    { key: 'failed_after', header: 'Failed after', render: (r) => String(r.failed_after), width: '8rem' },
     {
       key: 'delta',
       header: 'Change',
-      width: '8rem',
+      width: '6rem',
       render: (r) => (
         <span style={{ color: r.direction === 'worse' ? 'var(--eval-fail)' : 'var(--eval-pass)', ...styles.mono }}>
           {r.delta > 0 ? '+' : ''}
           {r.delta}
         </span>
+      ),
+    },
+    {
+      key: 'p',
+      header: 'p (one-sided)',
+      width: '8rem',
+      render: (r) => (
+        <Tooltip
+          content={
+            r.test === 'mcnemar-exact'
+              ? "McNemar exact on this rule's own discordant pairs, one-sided: the chance of at least this many pass→fail pairs when nothing changed."
+              : r.test === 'newcombe-z'
+                ? "The z read off this rule's Newcombe difference, one-sided: the chance of a fall this large in its pass rate when nothing changed."
+                : 'No test: a side of the comparison is empty for this rule.'
+          }
+        >
+          <span style={styles.mono} tabIndex={0} data-rule-p={r.p === null ? 'null' : r.p.toFixed(4)}>
+            {r.p === null ? '—' : fmtP(r.p)}
+          </span>
+        </Tooltip>
+      ),
+    },
+    {
+      key: 'q',
+      header: 'q (corrected)',
+      width: '8rem',
+      render: (r) => (
+        <Tooltip content={`Benjamini–Hochberg over the ${result.rules_tested} rules tested in this comparison. Read this, not p: a rule is marked worse only at q ≤ 0.05.`}>
+          <span style={{ ...styles.mono, ...(r.worse ? { color: 'var(--eval-fail)', fontWeight: 600 } : {}) }} tabIndex={0} data-rule-q={r.q === null ? 'null' : r.q.toFixed(4)}>
+            {fmtQ(r.q)}
+          </span>
+        </Tooltip>
       ),
     },
   ];
@@ -133,6 +188,20 @@ export function ComparisonView({ result }: { result: CompareRunsResult }) {
             </span>
           </Tooltip>
         )}
+        {result.equivalent_within && (
+          <Tooltip
+            content={`${result.equivalent_within.holds ? EQUIVALENCE_TEXT.holds : EQUIVALENCE_TEXT.fails} The 90% interval is [${(result.equivalent_within.interval.lo * 100).toFixed(1)}, ${(result.equivalent_within.interval.hi * 100).toFixed(1)}] points; δ ${result.equivalent_within.margin_source === 'caller' ? 'was supplied' : 'is the smallest difference these sizes could detect'}.`}
+          >
+            <span
+              style={{ ...styles.muted, ...styles.mono, ...(result.equivalent_within.holds ? { color: 'var(--eval-pass)' } : {}) }}
+              tabIndex={0}
+              data-equivalent-within={result.equivalent_within.holds ? 'true' : 'false'}
+              data-equivalence-margin={result.equivalent_within.margin.toFixed(3)}
+            >
+              {fmtEquivalence(result.equivalent_within)}
+            </span>
+          </Tooltip>
+        )}
         {result.forced && (
           <span style={{ ...styles.muted, color: 'var(--eval-warn)' }} data-forced="true">
             forced
@@ -161,7 +230,14 @@ export function ComparisonView({ result }: { result: CompareRunsResult }) {
 
       {movement.length > 0 && (
         <div>
-          <h4 style={styles.h4}>Per rule</h4>
+          <div style={styles.perRuleHead}>
+            <h4 style={styles.h4}>Per rule</h4>
+            <Tooltip content={PER_RULE_TEXT}>
+              <span style={styles.muted} tabIndex={0} data-rules-tested={result.rules_tested}>
+                {result.rules_tested} tested · corrected together
+              </span>
+            </Tooltip>
+          </div>
           <DataTable columns={columns} data={movement} emptyMessage="No rule moved" />
         </div>
       )}

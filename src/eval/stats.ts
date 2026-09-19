@@ -306,6 +306,83 @@ function logFactorial(n: number): number {
   return LOG_FACT[n];
 }
 
+/** z for a one-sided test at 5%, which is the two-sided 90% interval: equivalence by two one-sided tests at α = 0.05 reads this interval. */
+export const Z_90 = 1.6448536269514722;
+
+/**
+ * The standard normal distribution function Φ(z), through the complementary
+ * error function (the Chebyshev fit in Numerical Recipes; fractional error
+ * below 1.2e-7 everywhere). Enough for a p-value a reader compares with 0.05.
+ */
+export function normalCdf(z: number): number {
+  return 0.5 * erfc(-z / Math.SQRT2);
+}
+
+function erfc(x: number): number {
+  const t = 1 / (1 + 0.5 * Math.abs(x));
+  const poly =
+    -x * x -
+    1.26551223 +
+    t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))));
+  const r = t * Math.exp(poly);
+  return x >= 0 ? r : 2 - r;
+}
+
+/**
+ * McNemar, one-sided in the regression direction: the probability, when
+ * nothing changed, of at least b pass→fail pairs among the b + c that
+ * disagreed. The question a comparison asks per rule is "worse", not
+ * "different", so only that tail is summed. No discordant pairs is no
+ * evidence, and p is 1.
+ */
+export function mcnemarOneSidedWorse(b: number, c: number): number {
+  const n = b + c;
+  if (n === 0) return 1;
+  let tail = 0;
+  for (let i = b; i <= n; i += 1) tail += binomialPmfHalf(i, n);
+  return Math.min(1, tail);
+}
+
+/**
+ * Two independent proportions, one-sided in the regression direction: did
+ * the after rate fall? The z is read off the Newcombe interval on the
+ * difference — the half-width on the side that would have to reach zero,
+ * over z₉₅ — and p = Φ(z), so "p ≤ 0.05" and "the 90% interval excludes
+ * zero on that side" say the same thing. Null when either side is empty.
+ */
+export function newcombeOneSidedWorse(kBefore: number, nBefore: number, kAfter: number, nAfter: number): number | null {
+  const d = newcombeDifference(kAfter, nAfter, kBefore, nBefore);
+  if (d === null) return null;
+  const halfWidth = d.delta < 0 ? d.hi - d.delta : d.delta - d.lo;
+  if (!(halfWidth > 0)) return d.delta < 0 ? 0 : d.delta > 0 ? 1 : 0.5;
+  return normalCdf(d.delta / (halfWidth / Z_95));
+}
+
+/**
+ * Benjamini–Hochberg: q-values, in the order the p-values came.
+ *
+ * Twenty one-sided tests at α = 0.05 on twenty rules that did not change
+ * read "worse" somewhere in 1 − 0.95²⁰ ≈ 64% of comparisons, and a
+ * dashboard that manufactures a regression most weeks teaches its user to
+ * ignore regressions. Sort p₍₁₎ ≤ … ≤ p₍ₘ₎; q₍ᵢ₎ = min over j ≥ i of
+ * m·p₍ⱼ₎/j, capped at 1. Calling a row at q ≤ α holds the expected share of
+ * false calls among the calls to α — and under the global null, the chance
+ * of any false call at all.
+ */
+export function benjaminiHochberg(p: readonly number[]): number[] {
+  const m = p.length;
+  if (m === 0) return [];
+  const order = p.map((v, i) => ({ v, i })).sort((x, y) => x.v - y.v);
+  const q = new Array<number>(m);
+  let running = 1;
+  for (let rank = m; rank >= 1; rank -= 1) {
+    const { v, i } = order[rank - 1];
+    running = Math.min(running, (m * v) / rank);
+    q[i] = Math.min(1, Math.max(v, running));
+  }
+  return q;
+}
+
 /**
  * A run-level pass rate when one case was run several times.
  *

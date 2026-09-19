@@ -22,6 +22,14 @@ test.describe('runs and cases', () => {
     await expect(cmp.locator('[data-compare-run="after"]')).toContainText('9 of 10 passed');
     await expect(cmp.locator('[data-comparison-verdict]')).toHaveText('NOT DISTINGUISHABLE');
     await expect(cmp.locator('[data-smallest-detectable]')).toBeVisible();
+    // D-6b: the per-rule table carries p and the corrected q (two rules: the
+    // seeded min_output_length failures and the $1.33 trace's cost rule), and the
+    // equivalence chip is a separate statement from "not distinguishable".
+    await expect(cmp.locator('[data-rules-tested]')).toHaveText('2 tested · corrected together');
+    await expect(cmp.locator('[data-rule-row="min_output_length"]')).toHaveAttribute('data-rule-worse', 'false');
+    await expect(cmp.locator('[data-rule-p]')).toHaveCount(2);
+    await expect(cmp.locator('[data-rule-q]')).toHaveCount(2);
+    await expect(cmp.locator('[data-equivalent-within]')).toHaveAttribute('data-equivalent-within', /true|false/);
 
     await page.locator('[data-run-link="baseline"]').click();
     await expect(page.locator('[data-run-detail="baseline"]')).toBeVisible();

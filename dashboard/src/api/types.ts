@@ -735,6 +735,8 @@ export interface CompareRunsRequest {
   before: string;
   after: string;
   force?: boolean;
+  /** δ for the equivalence test, as a difference in pass rate in (0, 1]; absent, the smallest detectable difference. */
+  equivalence_margin?: number;
 }
 
 export interface CompareRunSummary {
@@ -755,6 +757,24 @@ export interface CompareRuleDelta {
   failed_before: number;
   failed_after: number;
   delta: number;
+  /** After minus before on this rule's own pass rate, 95% Newcombe; null when a side is empty. */
+  difference: { delta: number; lo: number; hi: number; significant: boolean } | null;
+  /** The one-sided test behind p. */
+  test: 'mcnemar-exact' | 'newcombe-z' | null;
+  /** One-sided, in the regression direction. */
+  p: number | null;
+  /** Benjamini–Hochberg over every rule tested in the comparison. */
+  q: number | null;
+  /** True only at q ≤ 0.05 in the regression direction. */
+  worse: boolean;
+}
+
+/** The third answer a comparison can give: equivalent within a margin (two one-sided tests at α = 0.05, the 90% interval). */
+export interface CompareEquivalence {
+  margin: number;
+  margin_source: 'caller' | 'smallest-detectable';
+  interval: { lo: number; hi: number };
+  holds: boolean;
 }
 
 /** POST /api/v1/compare response — the compare_runs tool's output, unchanged. */
@@ -770,6 +790,8 @@ export interface CompareRunsResult {
   worse: boolean;
   better: boolean;
   smallest_detectable: number | null;
+  equivalent_within: CompareEquivalence | null;
+  rules_tested: number;
   regressions: CompareRuleDelta[];
   improvements: CompareRuleDelta[];
   summary: string;

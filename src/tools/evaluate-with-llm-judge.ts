@@ -9,7 +9,8 @@ import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeCostCapUsd, judgeRecovery } from '../judge-enablement.js';
 import { strictInput } from './strict-input.js';
-import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
+import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
+import { agentModelOf, sameFamily, sameFamilyWarning } from '../eval/llm-judge/family.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { irisError } from './errors.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
@@ -32,6 +33,11 @@ const inputSchema = {
   expected: z.string().optional().describe('Reference answer (required for correctness template)'),
   source_material: z.string().optional().describe('Provided RAG sources (required for faithfulness template)'),
   trace_id: z.string().optional().describe('Link this evaluation to a stored trace (id from log_trace / get_traces); an unknown id is rejected BEFORE the judge is called'),
+  agent_model: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('The model that produced the output, for the same-family check, when no linked trace records it (a trace carries it as metadata.model or a span\'s gen_ai.request.model). A judge from the agent\'s own family is warned about, never refused'),
   max_cost_usd: z.number().positive().optional().describe(`Cost cap in USD for this call; defaults to ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}. The worst case (two attempts, full max_output_tokens) is computed before the call and refused if it exceeds the cap`),
   max_output_tokens: z.number().int().positive().max(4096).optional().describe('Judge output token cap; default 512'),
   temperature: z.number().min(0).max(2).optional().describe('Sampling temperature; default 0 (deterministic)'),
@@ -97,6 +103,10 @@ export const judgeOutputSchema = z.looseObject({
   cost_usd: z.number().nullable().describe('the exact spend from the pricing table'),
   latency_ms: z.number().describe('wall time of the provider call(s)'),
   raw_response_id: z.string().optional().describe('the provider\'s response id, for your own audit'),
+  warnings: z
+    .array(z.looseObject({ code: z.string(), message: z.string() }))
+    .optional()
+    .describe('IRIS_JUDGE_SAME_FAMILY: the judge shares a model family with the agent; warned, never refused'),
 });
 
 export function registerEvaluateWithLLMJudgeTool(
@@ -146,9 +156,17 @@ export function registerEvaluateWithLLMJudgeTool(
       // An unknown trace_id is refused BEFORE the provider call — the old
       // path spent the judge's money and then failed the INSERT with a raw
       // "FOREIGN KEY constraint failed" (#376).
+      let agentModel: string | null = args.agent_model ?? null;
       if (args.trace_id) {
-        await assertTraceExists(storage, LOCAL_TENANT, args.trace_id);
+        const trace = await getTraceOrThrow(storage, LOCAL_TENANT, args.trace_id);
+        agentModel ??= agentModelOf(trace);
       }
+      /*
+       * A judge from the agent's own family (arc 7, D-6b): the score still
+       * stands, but a reader is told it is a same-family opinion. Warned,
+       * never refused — the caller may have no other key.
+       */
+      const warnings = agentModel !== null && sameFamily(args.model, agentModel) ? [sameFamilyWarning(args.model, agentModel)] : [];
 
       const result = await evaluateWithLLMJudge({
         output: args.output,
@@ -239,6 +257,7 @@ export function registerEvaluateWithLLMJudgeTool(
           cost_usd: result.costUsd,
           latency_ms: result.latencyMs,
           raw_response_id: result.rawResponseId,
+          ...(warnings.length > 0 ? { warnings } : {}),
         },
         evaluationLinks(evalId, args.trace_id),
       );

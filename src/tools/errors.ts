@@ -39,6 +39,19 @@ export const ERROR_CODE_CATALOGUE = [
 ] as const;
 export type IrisErrorCode = (typeof ERROR_CODE_CATALOGUE)[number];
 
+/**
+ * Codes a tool attaches to a SUCCESSFUL response under `warnings[]` — the
+ * call did what was asked, and something about the answer should be read
+ * with care. Kept beside the error catalogue so every IRIS_* name a
+ * document may use is enumerated in one file (tests/docs-contract.test.ts
+ * holds prose to this list and the error list).
+ */
+export const WARNING_CODE_CATALOGUE = [
+  /** The LLM judge shares a model family with the agent it judged (arc 7, D-6b). */
+  'IRIS_JUDGE_SAME_FAMILY',
+] as const;
+export type IrisWarningCode = (typeof WARNING_CODE_CATALOGUE)[number];
+
 export type ProviderErrorKind = LLMJudgeError['kind'];
 
 export interface IrisErrorEnvelope {
