@@ -1,31 +1,19 @@
 /*
- * TourProvider — global state + auto-open logic for the welcome tour.
+ * TourProvider — global state for the welcome tour.
  *
- * Auto-opens once when:
- *   - this browser has not dismissed the tour (localStorage — see
- *     tourDismissal.ts for why the server preference alone was not enough)
- *   - Preferences finish loading
- *   - WELCOME_TOUR_ID is NOT in preferences.dismissedTours
- *
- * Exposes openTour / closeTour for re-triggering from the command palette.
+ * The tour opens on request only (the command palette's "Take the tour";
+ * arc 7, D-5). It used to auto-open on a fresh browser against a fresh
+ * server, alongside a welcome banner and the first-run modal; all three
+ * competed for the first screen, and the Failures empty state now carries
+ * what they said. The dismissal record (localStorage + the server-side
+ * preference) is kept so an older bundle's decision still reads.
  *
  * Lifted into its own provider so:
  *   - Shell can render <WelcomeTour /> with the live state
  *   - CommandPaletteProvider can pull `openTour` into the command context
  *     without entangling tour-render logic
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import { usePreferences } from '../../hooks/usePreferences';
-import { WELCOME_TOUR_ID } from './WelcomeTour';
-import { readTourDismissed } from './tourDismissal';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 interface TourContextValue {
   tourOpen: boolean;
@@ -36,33 +24,12 @@ interface TourContextValue {
 const TourContext = createContext<TourContextValue | null>(null);
 
 export function TourProvider({ children }: { children: ReactNode }) {
-  const { preferences } = usePreferences();
   const [tourOpen, setTourOpen] = useState(false);
-  const [autoOpened, setAutoOpened] = useState(false);
-
-  useEffect(() => {
-    if (autoOpened) return;
-    // This browser already saw it — regardless of which server (demo or
-    // real) is behind the page. Decided before preferences even load.
-    if (readTourDismissed()) {
-      setAutoOpened(true);
-      return;
-    }
-    if (!preferences) return;
-    const dismissed = preferences.dismissedTours?.includes(WELCOME_TOUR_ID) ?? false;
-    if (!dismissed) {
-      setTourOpen(true);
-    }
-    setAutoOpened(true);
-  }, [preferences, autoOpened]);
 
   const openTour = useCallback(() => setTourOpen(true), []);
   const closeTour = useCallback(() => setTourOpen(false), []);
 
-  const value = useMemo(
-    () => ({ tourOpen, openTour, closeTour }),
-    [tourOpen, openTour, closeTour],
-  );
+  const value = useMemo(() => ({ tourOpen, openTour, closeTour }), [tourOpen, openTour, closeTour]);
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

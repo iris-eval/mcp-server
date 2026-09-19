@@ -44,6 +44,7 @@ const styles = {
   mono: { fontFamily: 'var(--font-mono)' } as CSSProperties,
   muted: { color: 'var(--text-muted)', fontSize: 'var(--text-caption)' } as CSSProperties,
   h2: { margin: 0, fontSize: 'var(--text-body)', fontWeight: 600 } as CSSProperties,
+  rawNav: { display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', fontSize: 'var(--text-caption)' } as CSSProperties,
 };
 
 function rate(run: RunSummaryRow): string {
@@ -131,6 +132,16 @@ export function RunsPage() {
 
   return (
     <div style={styles.page}>
+      {/* The raw views are views of this same data (D-5): reachable here, not top-level entries. */}
+      <nav aria-label="Raw views" style={styles.rawNav}>
+        <span style={styles.muted}>Raw views of the same data:</span>
+        <Link to="/traces" data-raw-view="traces">
+          Traces
+        </Link>
+        <Link to="/evals" data-raw-view="evals">
+          Evaluations
+        </Link>
+      </nav>
       <div style={styles.card}>
         <h2 style={styles.h2}>Compare two runs</h2>
         <form style={styles.form} onSubmit={submit} aria-label="Compare two runs">

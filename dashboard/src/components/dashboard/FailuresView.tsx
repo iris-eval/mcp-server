@@ -24,11 +24,13 @@ import { SectionHeader } from './SectionHeader';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
 import { PageEmptyState } from '../layout/PageEmptyState';
+import { usePreferences } from '../../hooks/usePreferences';
 import { RateLimitBanner } from '../shared/RateLimitBanner';
 
 const FAILURE_LIST_LIMIT = '50';
 
 export function FailuresView() {
+  const { displayPath } = usePreferences();
   const { data, loading, error, rateLimitedUntil, refetch } = useFailures({
     limit: FAILURE_LIST_LIMIT,
   });
@@ -95,6 +97,12 @@ export function FailuresView() {
                   quickstart
                 </a>{' '}
                 wires up your agent in about a minute.
+                <br />
+                <span data-first-run-hints="true">
+                  Press <kbd>⌘K</kbd> (or <kbd>Ctrl K</kbd>) for the command palette — “Take the tour” is in it — and <kbd>?</kbd> for
+                  shortcuts. To stop the browser opening on every start, set <code>IRIS_NO_AUTO_LAUNCH=1</code> or{' '}
+                  <code>autoLaunch: false</code> in {displayPath ? <code>{displayPath}</code> : 'your preferences file'}.
+                </span>
               </>
             }
             command="npx @iris-eval/mcp-server --demo"

@@ -1,3 +1,4 @@
+import { NAV_LABELS } from '../../../src/components/layout/navLabels';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   buildCommands,
@@ -71,11 +72,11 @@ describe('scoreCommand', () => {
   });
 
   it('exact title match scores highest', () => {
-    expect(scoreCommand(moments, 'Decision Moments')).toBe(100);
+    expect(scoreCommand(moments, NAV_LABELS.moments)).toBe(100);
   });
 
   it('starts-with scores higher than substring', () => {
-    expect(scoreCommand(moments, 'Decision')).toBeGreaterThan(scoreCommand(moments, 'oments'));
+    expect(scoreCommand(moments, NAV_LABELS.moments.split(' ')[0])).toBeGreaterThan(scoreCommand(moments, 'oments'));
   });
 
   it('keyword match still scores positively', () => {

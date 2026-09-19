@@ -16,6 +16,10 @@ const useFailuresMock = vi.fn();
 vi.mock('../../../src/api/hooks', () => ({
   useFailures: (...args: unknown[]) => useFailuresMock(...args),
 }));
+// D-5: the empty state names the preferences file the server reports.
+vi.mock('../../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: null, displayPath: '/tmp/iris/preferences.json', loading: false, error: null, patch: vi.fn(), refetch: vi.fn() }),
+}));
 
 import { FailuresView } from '../../../src/components/dashboard/FailuresView';
 
