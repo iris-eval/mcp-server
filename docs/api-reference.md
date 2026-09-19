@@ -1105,14 +1105,16 @@ Below `minimumPerWindow` evaluations on either side no direction is offered: `di
 {
   "period": "7d",
   "run": null,
-  "current": { "since": "…", "until": null, "evaluated": 40, "passed": 29, "passRate": 0.725 },
-  "prior":   { "since": "…", "until": "…",  "evaluated": 38, "passed": 36, "passRate": 0.947 },
+  "current": { "since": "…", "until": null, "evaluated": 40, "passed": 29, "passRate": 0.725, "interval": { "lo": 0.571, "hi": 0.839 } },
+  "prior":   { "since": "…", "until": "…",  "evaluated": 38, "passed": 36, "passRate": 0.947, "interval": { "lo": 0.827, "hi": 0.986 } },
   "difference": { "delta": -0.222, "lo": -0.38, "hi": -0.05, "significant": true },
   "enoughEvidence": true,
   "minimumPerWindow": 10,
   "smallestDetectable": null
 }
 ```
+
+Each window carries `interval`, the 95% Wilson interval on its own pass rate (null for an empty window — "0 of 0" is unknown, not zero), so a reader has n and the interval per window without computing anything. The dashboard's Drift view, split by run, shows one such pair per cohort.
 
 Query: `period` (`24h`…`180d`, default `7d`), `run` — which narrows **both** windows, never one.
 

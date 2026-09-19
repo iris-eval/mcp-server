@@ -30,6 +30,8 @@ import {
 import { drillToMoments, isoDaysAgo } from '../../utils/drillThrough';
 import { SectionHeader } from './SectionHeader';
 import { ChangeBanner } from './charts/ChangeBanner';
+import { CohortSelector, resolveCohort } from './CohortSelector';
+import { CohortPanels } from './CohortPanels';
 import { StackedBarByDay } from './charts/StackedBarByDay';
 import { HorizontalBarChart } from './charts/HorizontalBarChart';
 import { PerRuleMeterGrid } from './charts/PerRuleMeterGrid';
@@ -62,6 +64,7 @@ const FAILURE_KINDS: MomentSignificanceKind[] = [
 export function DriftView() {
   const [searchParams] = useSearchParams();
   const period = resolvePeriod(searchParams, '7d');
+  const cohort = resolveCohort(searchParams);
   const days = periodToDays(period);
   const periodStartIso = isoDaysAgo(days);
   const priorPeriodStartIso = isoDaysAgo(days * 2);
@@ -126,6 +129,19 @@ export function DriftView() {
         drift={drift ?? undefined}
       />
 
+      {/* §1b BY RUN (D-6) — the split compare_runs tests, so the picture and the test agree on "before" */}
+      <SectionHeader
+        title="By run"
+        question="Did every run move the same way, or did two runs average into a flat line?"
+        trailing={<CohortSelector />}
+      />
+      {cohort === 'run' ? (
+        <CohortPanels period={period} />
+      ) : (
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-caption)' }} data-cohort-hint="true">
+          Split by run to see each cohort's n and the interval on its pass rate, this {period} against the prior {period}.
+        </p>
+      )}
       {/* §2 PATTERN OVER TIME */}
       <SectionHeader
         title="Pattern over time"

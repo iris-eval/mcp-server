@@ -148,8 +148,11 @@ export const api = {
     return fetchJson<EvalStats>(`${API_BASE_URL}/eval-stats`, period ? { period } : undefined);
   },
 
-  getEvalTrend(period?: string): Promise<EvalTrendPoint[]> {
-    return fetchJson<EvalTrendPoint[]>(`${API_BASE_URL}/eval-stats/trend`, period ? { period } : undefined);
+  getEvalTrend(period?: string, cohort?: 'run'): Promise<EvalTrendPoint[]> {
+    const params: Record<string, string> = {};
+    if (period) params.period = period;
+    if (cohort) params.cohort = cohort;
+    return fetchJson<EvalTrendPoint[]>(`${API_BASE_URL}/eval-stats/trend`, Object.keys(params).length ? params : undefined);
   },
 
   getEvalRules(): Promise<RuleBreakdown[]> {
