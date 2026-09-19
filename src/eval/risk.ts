@@ -32,8 +32,7 @@ import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js'
 import { publishedAccuracyFor } from './accuracy.js';
 import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
 import { FAILURE_CLASS_IDS } from './failure-classes.js';
-import { sensitivity, specificity } from './stats.js';
-import { fnv1a, mulberry32 } from './seeded-random.js';
+import { beta, fnv1a, mulberry32, sensitivity, specificity } from './stats.js';
 
 /** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
 /*
@@ -92,31 +91,15 @@ interface Detector {
   counts: { tp: number; fp: number; fn: number; tn: number };
 }
 
-function beta(a: number, b: number, rng: () => number): number {
-  // Marsaglia–Tsang gamma with the shape < 1 boost; beta = ga / (ga + gb).
-  const gamma = (shape: number): number => {
-    if (shape < 1) return gamma(shape + 1) * Math.pow(rng(), 1 / shape);
-    const d = shape - 1 / 3;
-    const c = 1 / Math.sqrt(9 * d);
-    for (;;) {
-      let x: number;
-      let v: number;
-      do {
-        const u1 = rng();
-        const u2 = rng();
-        x = Math.sqrt(-2 * Math.log(u1 || 1e-12)) * Math.cos(2 * Math.PI * u2);
-        v = 1 + c * x;
-      } while (v <= 0);
-      v = v * v * v;
-      const u = rng();
-      if (u < 1 - 0.0331 * x * x * x * x) return d * v;
-      if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
-    }
-  };
-  const ga = gamma(a);
-  const gb = gamma(b);
-  return ga / (ga + gb);
-}
+/*
+ * ONE SAMPLER (arc 7, D-6b; arc 6's deferred item). The risk layer carried
+ * its own Beta draw — the same Marsaglia–Tsang gamma as stats.ts, but with
+ * the shape < 1 boost drawing its uniform in a different order — so the
+ * verdict's credible interval and the published PPV interval were computed
+ * by two implementations of one idea. They now share stats.beta; the
+ * composite intervals moved by the amount proof/COMPOSITE.md's regeneration
+ * records, and nothing else changed.
+ */
 
 /** The evaluated detections and inferences with a published family, one entry per rule. */
 export function detectorsOf(result: EvalResult): Detector[] {
