@@ -32,7 +32,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { defaultConfig } from '../src/config/defaults.js';
 import { rulesByType } from '../src/eval/rules/index.js';
-import { ERROR_CODE_CATALOGUE } from '../src/tools/errors.js';
+import { ERROR_CODE_CATALOGUE, WARNING_CODE_CATALOGUE } from '../src/tools/errors.js';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8');
@@ -253,6 +253,7 @@ describe('docs contract — IRIS_* variables', () => {
       for (const m of text.matchAll(/\bIRIS_[A-Z0-9_]+\b/g)) {
         // The error catalogue shares the prefix; a code is not a variable.
         if ((ERROR_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
+        if ((WARNING_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
         if (!read_.has(m[0]) && !pluginRead.has(m[0])) unknown.push(`${rel}: ${m[0]}`);
       }
     }

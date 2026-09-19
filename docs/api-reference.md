@@ -504,6 +504,10 @@ It is allowed to say it cannot tell, and says so with a number attached: when th
 
 Runs that measure different things — a different ruleset, configuration, engine minor or agent — are refused, naming which. `force` compares anyway and still names what changed: a pass rate that moved because the RULES changed is not a regression in your agent.
 
+**Per rule, with a test behind every row (0.14.0).** Each rule that fired in either run is tested one-sided in the regression direction — McNemar exact on that rule's own discordant pairs when the runs pair, else the z read off its Newcombe difference — and the p-values are corrected together with Benjamini–Hochberg, so twenty rules cannot manufacture a regression: on twenty rules that did not change, some rule reads "worse" uncorrected in about half of comparisons and in about 2% after the correction (the seeded guard in `tests/unit/eval/per-rule-stats.test.ts`). Every row carries `p`, `q`, the `test` and its own `difference`; `worse` on a row is true only at `q ≤ 0.05`; `rules_tested` is the family the correction ran over.
+
+**Equivalence, the third answer (0.14.0).** `equivalent_within` is distinct from `worse` and from "not distinguishable": two one-sided tests at α = 0.05 — the 90% Newcombe interval on the difference lying inside (−δ, +δ). Pass `equivalence_margin` (a difference in pass rate, `0.05` = five points) to choose δ; absent, δ is the smallest difference these sizes could have detected and `margin_source` says so.
+
 Deterministic, local, no model call. Tag traces with `run` and `case_key` on `log_trace` to create the runs this reads.
 
 #### Parameters
@@ -513,6 +517,7 @@ Deterministic, local, no model call. Tag traces with `run` and `case_key` on `lo
 | `before` | `string` | Yes | The run id to treat as the baseline |
 | `after` | `string` | Yes | The run id to compare against it |
 | `force` | `boolean` | No | Compare even when the runs are not strictly comparable. The response still names what changed |
+| `equivalence_margin` | `number` | No | δ for the equivalence test, as a difference in pass rate in (0, 1]. Absent: the smallest detectable difference at these sizes |
 
 #### Response
 
@@ -529,7 +534,15 @@ Deterministic, local, no model call. Tag traces with `run` and `case_key` on `lo
   "worse": true,
   "better": false,
   "smallest_detectable": null,
-  "regressions": [{ "rule": "no_silent_tool_failure", "failed_before": 0, "failed_after": 9, "delta": 9 }],
+  "equivalent_within": { "margin": 0.2, "margin_source": "smallest-detectable", "interval": { "lo": -0.36, "hi": -0.08 }, "holds": false },
+  "rules_tested": 1,
+  "regressions": [
+    {
+      "rule": "no_silent_tool_failure", "failed_before": 0, "failed_after": 9, "delta": 9,
+      "difference": { "delta": -0.225, "lo": -0.39, "hi": -0.05, "significant": true },
+      "test": "mcnemar-exact", "p": 0.002, "q": 0.002, "worse": true
+    }
+  ],
   "improvements": [],
   "summary": "…"
 }
@@ -627,6 +640,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Co
 | `source_material` | `string` | Required for `faithfulness` template | RAG sources |
 | `max_cost_usd` | `number` | No | Cost cap; default `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` or $0.25 |
 | `trace_id` | `string` | No | Link to a trace |
+| `agent_model` | `string` | No | The model that produced the output, when no linked trace records it (a trace carries it as `metadata.model` or a span's `gen_ai.request.model`). Used only for the same-family warning |
 
 #### Response (summary)
 
@@ -646,6 +660,8 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Co
   "latency_ms": 1240
 }
 ```
+
+**Same-family warning (0.14.0).** When the judge shares a model family with the agent it judged — read from the linked trace's `metadata.model` (or a span's `gen_ai.request.model`), or from `agent_model` — the response carries `warnings: [{ "code": "IRIS_JUDGE_SAME_FAMILY", "message": "…" }]`. A judge from the agent's own lineage tends to forgive the errors it would make itself, so the score is less independent than one from another family. The evaluation stands and is stored; nothing is refused.
 
 **Auth:** Requires `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` env var at call time.
 
@@ -1091,7 +1107,7 @@ Query: `run` narrows to one run.
 
 ### POST /api/v1/compare
 
-The `compare_runs` tool over HTTP — the same handler, the same answer — for the dashboard's compare action and for a pipeline that would rather not speak MCP. Body: `{ "before": "<run id>", "after": "<run id>", "force": false }` (the tool's input; an unknown field is refused). Response: the tool's output — `comparable`, `incomparable_because`, `method` (`paired-mcnemar` when the runs share case keys, `unpaired-newcombe` otherwise), `before` and `after` summaries with their Wilson intervals, `difference`, `paired`, `worse`, `better`, `smallest_detectable`, `regressions` and `improvements` per rule, and a one-paragraph `summary`. An unknown run is not an error: its `n` is 0 and the summary says so. `400` names an invalid body.
+The `compare_runs` tool over HTTP — the same handler, the same answer — for the dashboard's compare action and for a pipeline that would rather not speak MCP. Body: `{ "before": "<run id>", "after": "<run id>", "force": false, "equivalence_margin": 0.05 }` (the tool's input; an unknown field is refused). Response: the tool's output — `comparable`, `incomparable_because`, `method` (`paired-mcnemar` when the runs share case keys, `unpaired-newcombe` otherwise), `before` and `after` summaries with their Wilson intervals, `difference`, `paired`, `worse`, `better`, `smallest_detectable`, `equivalent_within`, `rules_tested`, `regressions` and `improvements` per rule (each with its one-sided `p`, corrected `q`, `test` and `difference`), and a one-paragraph `summary`. An unknown run is not an error: its `n` is 0 and the summary says so. `400` names an invalid body.
 
 ---
 

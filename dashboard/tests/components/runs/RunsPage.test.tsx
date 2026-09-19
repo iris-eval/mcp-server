@@ -48,8 +48,10 @@ const comparison: CompareRunsResult = {
   worse: false,
   better: false,
   smallest_detectable: 0.42,
+  equivalent_within: { margin: 0.42, margin_source: 'smallest-detectable', interval: { lo: -0.15, hi: 0.35 }, holds: true },
+  rules_tested: 1,
   regressions: [],
-  improvements: [{ rule: 'min_output_length', failed_before: 2, failed_after: 1, delta: -1 }],
+  improvements: [{ rule: 'min_output_length', failed_before: 2, failed_after: 1, delta: -1, difference: { delta: 0.1, lo: -0.2, hi: 0.4, significant: false }, test: 'mcnemar-exact', p: 0.75, q: 0.75, worse: false }],
   summary: 'Not enough evidence to call it either way.',
 };
 

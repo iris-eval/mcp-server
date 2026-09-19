@@ -120,6 +120,18 @@ Same output with opus: **$0.015–$0.025**.
 
 ---
 
+## A judge from the agent's own family
+
+A judge that shares a model family with the agent it scores is not an independent reader: the two were trained on the same data with the same preferences, so the judge tends to forgive the agent's characteristic errors and reward its characteristic style. The measurement is not wrong, but it is narrower than it looks.
+
+Since 0.14.0 the tool says so. When `trace_id` names a trace that records the agent's model (`metadata.model`, or a span's `gen_ai.request.model`), or when you pass `agent_model`, and that model shares a family with the judge's `model`, the response carries:
+
+```json
+"warnings": [{ "code": "IRIS_JUDGE_SAME_FAMILY", "message": "The judge (claude-haiku-4-5) shares a model family (claude) with the agent it judged (claude-opus-4-7). …" }]
+```
+
+The evaluation stands and is stored; nothing is refused — you may have no other key. Read it as a same-family opinion, or judge again with a model from another family. Families are read off the id's leading token (`claude`, `gpt`, the OpenAI o-series, `gemini`, `llama`, `mistral`, …); an id the tool does not recognise is never called "same".
+
 ## Failure modes
 
 | Symptom                                      | What Iris does                                                                  | What you do                                                             |

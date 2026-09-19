@@ -26,7 +26,7 @@
     },
     {
       "name": "compare_runs",
-      "description": "Did this change make the agent worse? Compares two runs of stored evaluations and answers with an interval — or says the data cannot tell."
+      "description": "Did this change make the agent worse? Compares two runs of stored evaluations and answers with an interval — or says the data cannot tell, or that the runs are equivalent within a margin."
     },
     {
       "name": "compare_traces",
