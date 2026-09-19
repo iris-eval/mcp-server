@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveMoment } from '../../../src/eval/decision-moment.js';
+import { deriveMoment, historyBefore } from '../../../src/eval/decision-moment.js';
 import {
   isFailureMoment,
   rankFailureScore,
@@ -70,7 +70,13 @@ describe('isFailureMoment', () => {
   });
 
   it('flags a cost spike even when the verdict is pass', () => {
-    const m = deriveMoment(makeTrace({ cost_usd: 0.15 }), [passingEval()]);
+    // Against the agent's own baseline (D-7a): thirty cheap prior traces.
+    const history = historyBefore(
+      Array.from({ length: 30 }, (_, i) => ({ traceId: `prior-${i}`, timestamp: `2026-04-22T1${i % 9}:${String(i).padStart(2, '0')}:00.000Z`, failed: [], costUsd: 0.001 + (i % 4) * 0.0002 })),
+      'trace-1',
+      '2026-04-22T20:00:00.000Z',
+    );
+    const m = deriveMoment(makeTrace({ cost_usd: 0.15 }), [passingEval()], history);
     expect(m.verdict).toBe('pass');
     expect(m.significance.kind).toBe('cost-spike');
     expect(isFailureMoment(m)).toBe(true);

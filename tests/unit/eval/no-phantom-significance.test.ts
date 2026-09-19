@@ -45,7 +45,7 @@ const evalOf = (rules: string[], passed: boolean, evalType = 'completeness'): Ev
 /** Five quiet prior traces: enough history for the novelty classes to speak. */
 const quietHistory = (failedBefore: string[][] = [[], [], [], [], []]) =>
   historyBefore(
-    failedBefore.map((failed, i) => ({ traceId: `t${i}`, timestamp: `2026-09-0${i + 1}T09:00:00Z`, failed: [...failed].sort() })),
+    failedBefore.map((failed, i) => ({ traceId: `t${i}`, timestamp: `2026-09-0${i + 1}T09:00:00Z`, failed: [...failed].sort(), costUsd: null })),
     'subject',
     '2026-09-07T12:00:00Z',
   );
@@ -55,7 +55,17 @@ const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = 
   'safety-violation': () => deriveMoment(trace(), [evalOf(['no_pii'], false)]).significance.kind,
   // Nothing judged (D-0): no evaluation at all.
   unevaluated: () => deriveMoment(trace(), []).significance.kind,
-  'cost-spike': () => deriveMoment(trace({ cost_usd: 5 }), [evalOf([], true)]).significance.kind,
+  // Against the agent's own baseline (D-7a): thirty cheap prior traces, then a $5 one.
+  'cost-spike': () =>
+    deriveMoment(
+      trace({ cost_usd: 5 }),
+      [evalOf([], true)],
+      historyBefore(
+        Array.from({ length: 30 }, (_, i) => ({ traceId: `c${i}`, timestamp: `2026-08-${String(1 + (i % 28)).padStart(2, '0')}T09:00:00Z`, failed: [], costUsd: 0.01 })),
+        'subject',
+        '2026-09-07T12:00:00Z',
+      ),
+    ).significance.kind,
   'first-failure': () =>
     deriveMoment(trace(), [evalOf(['keyword_overlap'], false)], quietHistory()).significance.kind,
   'novel-pattern': () =>

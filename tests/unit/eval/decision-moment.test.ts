@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveMoment, deriveMomentDetail } from '../../../src/eval/decision-moment.js';
+import { deriveMoment, deriveMomentDetail, historyBefore } from '../../../src/eval/decision-moment.js';
 import { MOMENT_SIGNIFICANCE_KINDS } from '../../../src/types/decision-moment.js';
 import type { Trace } from '../../../src/types/trace.js';
 import type { EvalResult } from '../../../src/types/eval.js';
@@ -71,7 +71,15 @@ describe('deriveMoment', () => {
     expect(m.verdict).toBe('fail');
   });
 
-  it('classifies cost-spike when trace cost crosses absolute threshold', () => {
+  /** The agent's own baseline (D-7a): thirty cheap prior traces, so a cost is judged against THIS agent. */
+  const cheapHistory = () =>
+    historyBefore(
+      Array.from({ length: 30 }, (_, i) => ({ traceId: `prior-${i}`, timestamp: `2026-04-22T1${i % 9}:${String(i).padStart(2, '0')}:00.000Z`, failed: [], costUsd: 0.001 + (i % 4) * 0.0002 })),
+      'trace-1',
+      '2026-04-22T20:00:00.000Z',
+    );
+
+  it('classifies cost-spike when the trace cost is far above the agent\'s own baseline, and the reason names that baseline', () => {
     const m = deriveMoment(
       makeTrace({ cost_usd: 0.15 }),
       [
@@ -81,9 +89,17 @@ describe('deriveMoment', () => {
           ],
         }),
       ],
+      cheapHistory(),
     );
     expect(m.significance.kind).toBe('cost-spike');
     expect(m.significance.label).toContain('0.15');
+    expect(m.significance.reason).toContain("this agent's own baseline");
+    expect(m.significance.reason).not.toContain('per-trace threshold');
+  });
+
+  it('the same cost with no history is not a cost-spike: without a baseline the classifier says nothing about cost', () => {
+    const m = deriveMoment(makeTrace({ cost_usd: 0.15 }), [makeEval({ rule_results: [{ ruleName: 'min_output_length', passed: true, score: 1, message: 'OK' }] })]);
+    expect(m.significance.kind).toBe('normal-pass');
   });
 
   it('safety-violation outranks cost-spike', () => {
@@ -97,6 +113,7 @@ describe('deriveMoment', () => {
           ],
         }),
       ],
+      cheapHistory(),
     );
     expect(m.significance.kind).toBe('safety-violation');
   });

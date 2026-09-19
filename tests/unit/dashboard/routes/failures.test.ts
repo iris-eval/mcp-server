@@ -14,7 +14,7 @@ import express from 'express';
 import { registerFailureRoutes } from '../../../../src/dashboard/routes/failures.js';
 import { createTenantMiddleware } from '../../../../src/middleware/tenant.js';
 import { LOCAL_TENANT } from '../../../../src/types/tenant.js';
-import type { IStorageAdapter } from '../../../../src/types/query.js';
+import type { AgentFailureLogEntry, IStorageAdapter } from '../../../../src/types/query.js';
 import type { Trace } from '../../../../src/types/trace.js';
 import type { EvalResult } from '../../../../src/types/eval.js';
 import type { RankedFailure } from '../../../../src/types/decision-moment.js';
@@ -53,6 +53,8 @@ const piiRules = [{ ruleName: 'no_pii', passed: false, score: 0, message: 'SSN d
 interface StubData {
   traces: Trace[];
   evalsByTrace: Record<string, EvalResult[]>;
+  /** Older entries of the agent's failure log beyond the scanned window — the cost baseline a spike is judged against (D-7a). */
+  baselineLog?: AgentFailureLogEntry[];
 }
 
 /**
@@ -80,6 +82,20 @@ function makeStubStorage(data: StubData): {
     getEvalsByTraceId: async (tenantId: string, traceId: string) => {
       seenTenants.push(tenantId);
       return data.evalsByTrace[traceId] ?? [];
+    },
+    // The route reads one failure log per agent (D-7a): the scanned traces as
+    // entries, plus whatever older baseline the fixture supplies.
+    getAgentFailureLog: async (tenantId: string, agentName: string): Promise<AgentFailureLogEntry[]> => {
+      seenTenants.push(tenantId);
+      const own = data.traces
+        .filter((t) => t.agent_name === agentName)
+        .map((t) => ({
+          traceId: t.trace_id,
+          timestamp: t.timestamp,
+          failed: (data.evalsByTrace[t.trace_id] ?? []).flatMap((e) => e.rule_results.filter((r) => r.passed === false).map((r) => r.ruleName)).sort(),
+          costUsd: t.cost_usd ?? null,
+        }));
+      return [...own, ...(data.baselineLog ?? [])];
     },
   } as unknown as IStorageAdapter;
   return { storage, seenTenants, seenQueries };
@@ -135,6 +151,15 @@ function mixedFixture(): StubData {
       't-costspike': [makeEval('t-costspike', { rule_results: passRules })],
       't-unevaluated': [],
     },
+    // Twenty-four quiet, cheap traces from earlier in the day: the agent's own
+    // baseline, so $0.15 reads as a spike for THIS agent rather than against a
+    // dollar line typed into the classifier.
+    baselineLog: Array.from({ length: 24 }, (_, i) => ({
+      traceId: `t-baseline-${i}`,
+      timestamp: new Date(now - (3 * 60 + i) * 60 * 1000).toISOString(),
+      failed: [],
+      costUsd: 0.001 + (i % 5) * 0.0001,
+    })),
   };
 }
 

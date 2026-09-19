@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import type { IStorageAdapter } from '../../types/query.js';
+import type { AgentFailureLogEntry, IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import type { FailureQueryResult, RankedFailure } from '../../types/decision-moment.js';
-import { deriveMoment } from '../../eval/decision-moment.js';
+import { deriveMoment, historyBefore } from '../../eval/decision-moment.js';
 import { isFailureMoment, rankFailureScore } from '../../eval/failure-rank.js';
 import { failuresQuerySchema } from '../validation.js';
 
@@ -46,11 +46,23 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
       // Sequential per-trace eval fetches match the moments route's
       // approach — acceptable at this cap; batching is a later
       // optimization once we have volume data.
+      /*
+       * One failure log per distinct agent on this page, as the moments
+       * route reads it (arc 7, D-7a): a cost spike is judged against the
+       * agent's own recent costs, and the novelty classes against its own
+       * failures, so this page ranks what the moments page ranks.
+       */
+      const logs = new Map<string, AgentFailureLogEntry[]>();
+      for (const agent of new Set(traceResult.traces.map((t) => t.agent_name))) {
+        logs.set(agent, await storage.getAgentFailureLog(tenantId, agent));
+      }
+
       const nowMs = Date.now();
       const failures: RankedFailure[] = [];
       for (const trace of traceResult.traces) {
         const evals = await storage.getEvalsByTraceId(tenantId, trace.trace_id);
-        const moment = deriveMoment(trace, evals);
+        const history = historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp);
+        const moment = deriveMoment(trace, evals, history);
         if (!isFailureMoment(moment)) continue;
         failures.push({ ...moment, rankScore: rankFailureScore(moment, nowMs) });
       }

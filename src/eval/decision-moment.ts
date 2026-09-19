@@ -25,12 +25,7 @@ import type {
   MomentRuleSnapshot,
 } from '../types/decision-moment.js';
 import { safetyRules } from './rules/safety.js';
-
-/* Cost-spike threshold in USD per single trace. Crossing this triggers
- * cost-spike classification regardless of agent baseline. The bound was
- * picked to flag any single trace that costs more than a typical
- * developer-tier monthly budget would absorb at scale (1000 traces/day). */
-const COST_SPIKE_USD_THRESHOLD = 0.10;
+import { COST_ANOMALY_WINDOW, costAnomaly, describeCostAnomaly } from './cost-anomaly.js';
 
 /* Rule names that, if failed, escalate the moment to safety-violation
  * regardless of the rest of the verdict. Derived from the safety bundle
@@ -67,18 +62,27 @@ const MIN_HISTORY_TRACES_FOR_NOVELTY = 5;
 export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: string, timestamp: string): AgentFailureHistory {
   const rulesEverFailed = new Set<string>();
   const combinationsSeen = new Set<string>();
-  let priorTraces = 0;
+  const prior: AgentFailureLogEntry[] = [];
   for (const entry of log) {
     if (entry.traceId === traceId) continue;
     if (entry.timestamp >= timestamp) continue;
-    priorTraces += 1;
+    prior.push(entry);
     for (const name of entry.failed) rulesEverFailed.add(name);
     if (entry.failed.length > 0) combinationsSeen.add(entry.failed.join('+'));
   }
+  // The cost baseline is the agent's most recent prior costs, newest first
+  // (arc 7, D-7a): the log arrives newest first from storage, but a caller
+  // that built it by hand may not, so it is ordered here rather than assumed.
+  const recentCosts = prior
+    .filter((e): e is AgentFailureLogEntry & { costUsd: number } => typeof e.costUsd === 'number')
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0))
+    .slice(0, COST_ANOMALY_WINDOW)
+    .map((e) => e.costUsd);
   return {
-    priorTraces,
+    priorTraces: prior.length,
     rulesEverFailed: [...rulesEverFailed].sort(),
     combinationsSeen: [...combinationsSeen].sort(),
+    recentCosts,
   };
 }
 
@@ -248,14 +252,26 @@ function classifySignificance({
     };
   }
 
-  // 2. Cost spike — trace cost over absolute threshold.
-  if (trace.cost_usd !== undefined && trace.cost_usd >= COST_SPIKE_USD_THRESHOLD) {
-    return {
-      kind: 'cost-spike',
-      score: 0.9,
-      label: `Cost: $${trace.cost_usd.toFixed(4)}`,
-      reason: `Trace cost ($${trace.cost_usd.toFixed(4)}) crossed the $${COST_SPIKE_USD_THRESHOLD} per-trace threshold. Investigate prompt size, token efficiency, or model-tier choice.`,
-    };
+  /*
+   * 2. Cost spike — against the agent's OWN baseline (arc 7, D-7a).
+   *
+   * A fixed dollar figure flagged a haiku-class summariser and a research
+   * agent against the same line. The question is whether this trace is
+   * expensive for THIS agent: a robust z over its recent costs (median and
+   * MAD, src/eval/cost-anomaly.ts). Needs a history, as the novelty classes
+   * do; below the floor nothing is said about cost, which is different from
+   * saying it is fine.
+   */
+  if (trace.cost_usd !== undefined && history !== undefined) {
+    const anomaly = costAnomaly(trace.cost_usd, history.recentCosts);
+    if (anomaly !== null && anomaly.anomalous) {
+      return {
+        kind: 'cost-spike',
+        score: 0.9,
+        label: `Cost: ${trace.cost_usd.toFixed(4)} (${anomaly.z.toFixed(1)}× MAD over baseline)`,
+        reason: describeCostAnomaly(anomaly),
+      };
+    }
   }
 
   /*
