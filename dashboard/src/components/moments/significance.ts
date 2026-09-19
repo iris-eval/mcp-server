@@ -36,7 +36,7 @@ const VISUALS: Record<MomentSignificanceKind, SignificanceVisual> = {
     glyph: '$',
     name: 'Cost spike',
     description:
-      'Trace cost crossed the per-trace threshold. Investigate prompt size, token efficiency, or model-tier choice.',
+      'Trace cost is far above this agent’s own baseline: more than 3.5 robust standard deviations over the median of its recent traces, not a fixed dollar line. Investigate prompt size, token efficiency, or model-tier choice.',
   },
   'first-failure': {
     color: 'var(--accent-llm)',

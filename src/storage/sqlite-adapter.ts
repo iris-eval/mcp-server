@@ -954,14 +954,14 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     const rows = this.db
       .prepare(
-        `SELECT e.rule_results AS rule_results, t.trace_id AS trace_id, t.timestamp AS timestamp
+        `SELECT e.rule_results AS rule_results, t.trace_id AS trace_id, t.timestamp AS timestamp, t.cost_usd AS cost_usd
            FROM eval_results e
            JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
           WHERE e.tenant_id = ? AND t.agent_name = ?
           ORDER BY t.timestamp DESC, e.created_at DESC
           LIMIT ?`,
       )
-      .all(tenantId, agentName, limit) as Array<{ rule_results: string | null; trace_id: string; timestamp: string }>;
+      .all(tenantId, agentName, limit) as Array<{ rule_results: string | null; trace_id: string; timestamp: string; cost_usd: number | null }>;
 
     // A trace evaluated more than once contributes ONE entry, its newest —
     // the same collapse every run read performs, for the same reason: a
@@ -976,6 +976,7 @@ export class SqliteAdapter implements IStorageAdapter {
         traceId: row.trace_id,
         timestamp: row.timestamp,
         failed: results.filter((r) => r.skipped !== true && r.passed === false).map((r) => r.ruleName).sort(),
+        costUsd: typeof row.cost_usd === 'number' && Number.isFinite(row.cost_usd) ? row.cost_usd : null,
       });
     }
     return out;

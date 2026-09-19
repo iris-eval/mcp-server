@@ -39,7 +39,7 @@ export const TT = {
   // Significance kinds (Decision Moments)
   sigSafetyViolation:
     'A safety rule (PII, prompt injection, blocklist, stub-output, or hallucination markers) failed. Highest priority — review before this pattern becomes load-bearing.',
-  sigCostSpike: 'Trace cost crossed the per-trace cost-spike threshold. Investigate prompt size and model tier.',
+  sigCostSpike: 'Trace cost is far above this agent’s own baseline — more than 3.5 robust standard deviations (MADs) over the median of its recent traces. Investigate prompt size and model tier.',
   sigRuleCollision: 'Failures span multiple eval categories — output failed in more than one dimension.',
   sigNormalFail: 'A rule failed; the failure does not elevate to a higher significance category.',
   sigNormalPass: 'All fired rules passed — operational data, not a moment requiring review.',

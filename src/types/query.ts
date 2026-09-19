@@ -104,6 +104,8 @@ export interface AgentFailureLogEntry {
   timestamp: string;
   /** Sorted, skips excluded — skips are not failures anywhere in this codebase. */
   failed: string[];
+  /** The trace's cost, for the agent's own cost baseline (arc 7, D-7a); null when the trace recorded none. */
+  costUsd: number | null;
 }
 
 export interface AgentFailureHistory {
@@ -113,6 +115,8 @@ export interface AgentFailureHistory {
   rulesEverFailed: string[];
   /** Every combination of simultaneously-failing rules seen before, each a sorted, joined key. */
   combinationsSeen: string[];
+  /** The agent's most recent prior costs, newest first, at most COST_ANOMALY_WINDOW; traces without a cost are skipped. The baseline a cost spike is judged against (arc 7, D-7a). */
+  recentCosts: number[];
 }
 
 export interface DriftWindow {
