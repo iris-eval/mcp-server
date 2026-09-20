@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two processes opening one cold database at the same instant no longer race on the WAL switch.** `busy_timeout` was set after `PRAGMA journal_mode = WAL`, so the second process could fail on that very first statement with `database is locked` and no wait (seen once on a loaded CI runner in the CLI ingest race test, 0.14.0's day). The five-second wait is now on the connection itself (`new Database(path, { timeout })`) and the pragma runs first; the migration race closed in 0.13.0 with `BEGIN IMMEDIATE` stands.
+
 ### Changed
 
 - The stranger harness's H rows read the CLI's own receipt: an `ingest --evaluate` run counts however the agent wrapped the command (the 0.14.0 stranger, refused an env-prefixed command by its session, wrote a ten-line script that spawned `npx … ingest --file … --evaluate` and ran the script — three correct verdicts, graded as zero because the graders looked for the word `ingest` in the command's text), and the silent-tool-failure rule counts by its identifier or by its name in prose. Each re-derivation is proven with `--regrade` against the 0.14.0 run that exposed it.
