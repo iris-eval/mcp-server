@@ -75,6 +75,7 @@ const VERDICTS_FOR_DONUT: MomentVerdict[] = ['pass', 'partial', 'fail', 'unevalu
 const FAILURE_KINDS: MomentSignificanceKind[] = [
   'safety-violation',
   'cost-spike',
+  'regression-alarm',
   'rule-collision',
   'first-failure',
   'novel-pattern',

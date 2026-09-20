@@ -3,6 +3,8 @@ import { deriveMoment, historyBefore } from '../../../src/eval/decision-moment.j
 import type { Trace } from '../../../src/types/trace.js';
 import type { EvalResult } from '../../../src/types/eval.js';
 import { MOMENT_SIGNIFICANCE_KINDS, type MomentSignificanceKind } from '../../../src/types/decision-moment.js';
+import { fnv1a, mulberry32 } from '../../../src/eval/stats.js';
+import type { AgentFailureLogEntry } from '../../../src/types/query.js';
 
 /*
  * Every value the moments filter accepts must be a value the classifier can
@@ -66,6 +68,22 @@ const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = 
         '2026-09-07T12:00:00Z',
       ),
     ).significance.kind,
+  // The agent's own stream shifted (D-7b): 200 evaluations at a 20% fail
+  // rate settle the baseline, then every evaluation fails; the producer is
+  // the first trace at which the CUSUM crossed its line.
+  'regression-alarm': () => {
+    const rng = mulberry32(fnv1a('no-phantom:regression'));
+    const log: AgentFailureLogEntry[] = Array.from({ length: 400 }, (_, i) => ({
+      traceId: `s${String(i).padStart(4, '0')}`,
+      timestamp: new Date(Date.UTC(2026, 8, 1, 0, 0, i)).toISOString(),
+      failed: i >= 200 || rng() < 0.2 ? ['keyword_overlap'] : [],
+      judged: ['keyword_overlap', 'min_output_length'],
+      costUsd: null,
+      runId: null,
+    }));
+    const at = log.find((e) => historyBefore(log, e.traceId, e.timestamp).regressionAlarms.length > 0)!;
+    return deriveMoment(trace({ trace_id: at.traceId, timestamp: at.timestamp }), [evalOf(['keyword_overlap'], false)], historyBefore(log, at.traceId, at.timestamp)).significance.kind;
+  },
   'first-failure': () =>
     deriveMoment(trace(), [evalOf(['keyword_overlap'], false)], quietHistory()).significance.kind,
   'novel-pattern': () =>

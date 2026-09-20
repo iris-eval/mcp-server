@@ -55,6 +55,7 @@ const styles = {
 const FAILURE_KINDS: MomentSignificanceKind[] = [
   'safety-violation',
   'cost-spike',
+  'regression-alarm',
   'rule-collision',
   'normal-fail',
   'first-failure',

@@ -28,6 +28,7 @@ import { TT } from '../shared/tooltipText';
 const SIG_TOOLTIP_DETAIL: Record<string, string> = {
   'safety-violation': TT.sigSafetyViolation,
   'cost-spike': TT.sigCostSpike,
+  'regression-alarm': TT.sigRegressionAlarm,
   'rule-collision': TT.sigRuleCollision,
   'normal-fail': TT.sigNormalFail,
   'normal-pass': TT.sigNormalPass,

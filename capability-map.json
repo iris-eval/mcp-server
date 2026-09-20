@@ -924,7 +924,7 @@
       "question": "Q8",
       "subject": "S5",
       "status": "has",
-      "summary": "Two runs are compared on pass rate with a 95% interval on the difference; when the runs share case keys they are paired and the discordant cases are tested exactly. When the evidence cannot exclude \"no change\" it says so and reports the smallest change that many cases could have detected. Runs measuring different things are refused unless forced, naming what differs. Scores bucketed over time still feed the drift view.",
+      "summary": "Two runs are compared on pass rate with a 95% interval on the difference; when the runs share case keys they are paired and the discordant cases are tested exactly. When the evidence cannot exclude \"no change\" it says so and reports the smallest change that many cases could have detected. Runs measuring different things are refused unless forced, naming what differs. Scores bucketed over time still feed the drift view, and a CUSUM per agent and rule watches the stream itself: a regression-alarm moment marks the evaluation at which a rule's fail rate crossed a line derived for an in-control run length of about 500, reporting and never gating.",
       "evidence": [
         {
           "kind": "tool",
@@ -933,6 +933,10 @@
         {
           "kind": "route",
           "name": "/api/v1/eval-stats"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/moments"
         }
       ],
       "needs": []

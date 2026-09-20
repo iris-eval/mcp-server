@@ -38,6 +38,14 @@ const VISUALS: Record<MomentSignificanceKind, SignificanceVisual> = {
     description:
       'Trace cost is far above this agent’s own baseline: more than 3.5 robust standard deviations over the median of its recent traces, not a fixed dollar line. Investigate prompt size, token efficiency, or model-tier choice.',
   },
+  'regression-alarm': {
+    color: 'var(--accent-warning)',
+    bg: 'oklch(28% 0.10 60 / 0.20)',
+    glyph: '↗',
+    name: 'Regression alarm',
+    description:
+      'This agent’s own stream shifted: a rule’s fail rate crossed its CUSUM line at this evaluation — about ten points over the baseline set on the agent’s earlier evaluations. Reports, never gates; the watcher resets and re-baselines from here.',
+  },
   'first-failure': {
     color: 'var(--accent-llm)',
     bg: 'oklch(28% 0.12 295 / 0.20)',
@@ -146,6 +154,7 @@ export const SIGNIFICANCE_KIND_OPTIONS: Array<{
   { value: '', label: 'All significance' },
   { value: 'safety-violation', label: 'Safety violations' },
   { value: 'cost-spike', label: 'Cost spikes' },
+  { value: 'regression-alarm', label: 'Regression alarms' },
   { value: 'rule-collision', label: 'Multi-category fails' },
   { value: 'normal-fail', label: 'Other fails' },
   { value: 'normal-pass', label: 'Passes' },

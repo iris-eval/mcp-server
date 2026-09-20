@@ -26,6 +26,7 @@ import type {
 } from '../types/decision-moment.js';
 import { safetyRules } from './rules/safety.js';
 import { COST_ANOMALY_WINDOW, costAnomaly, describeCostAnomaly } from './cost-anomaly.js';
+import { describeRegressionAlarm, regressionAlarmsAt } from './cusum.js';
 
 /* Rule names that, if failed, escalate the moment to safety-violation
  * regardless of the rest of the verdict. Derived from the safety bundle
@@ -83,6 +84,9 @@ export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: str
     rulesEverFailed: [...rulesEverFailed].sort(),
     combinationsSeen: [...combinationsSeen].sort(),
     recentCosts,
+    // The stream watcher (D-7b) reads the log up to and INCLUDING the trace
+    // under test: an alarm is raised at the evaluation that crossed the line.
+    regressionAlarms: regressionAlarmsAt(log, traceId, timestamp),
   };
 }
 
@@ -272,6 +276,29 @@ function classifySignificance({
         reason: describeCostAnomaly(anomaly),
       };
     }
+  }
+
+  /*
+   * 2b. Regression alarm — the agent's own stream shifted (D-7b, §4.15).
+   *
+   * Not a property of this trace alone: the CUSUM over the agent's
+   * evaluations of one rule crossed its line at this evaluation, so the
+   * fail rate has moved from its baseline by about δ. Above the novelty
+   * classes because a shift in a rule's rate is what a reader acts on
+   * before a first failure; below cost because a spike is one trace and
+   * this is many. It reports and never gates; the watcher has already
+   * reset and re-baselined.
+   */
+  if (history !== undefined && history.regressionAlarms.length > 0) {
+    const alarms = history.regressionAlarms;
+    const rules = [...new Set(alarms.map((a) => a.rule))];
+    const runScoped = alarms.filter((a) => a.run !== null);
+    return {
+      kind: 'regression-alarm',
+      score: 0.85,
+      label: `Regression alarm: ${rules.join(', ')}${runScoped.length > 0 && runScoped.length === alarms.length ? ` (run ${runScoped[0].run})` : ''}`,
+      reason: alarms.map((a) => describeRegressionAlarm(a, trace.agent_name)).join(' '),
+    };
   }
 
   /*
