@@ -27,7 +27,7 @@ describe('costAnomaly', () => {
     const spike = costAnomaly(0.2, baseline)!;
     expect(spike.n).toBe(200);
     expect(spike.median).toBeCloseTo(0.01, 2);
-    expect(spike.floored).toBe(false);
+    expect(spike.fallback).toBe(false);
     expect(spike.z).toBeGreaterThan(COST_ANOMALY_Z);
     expect(spike.anomalous).toBe(true);
     const usual = costAnomaly(0.011, baseline)!;
@@ -50,18 +50,33 @@ describe('costAnomaly', () => {
     expect(a.median).toBeCloseTo(0.01, 2);
   });
 
-  it('a zero-MAD history falls back to a floor and says so, rather than an infinite z', () => {
+  it('a zero-MAD history uses the approved fallback — more than ten percent over every prior value — and says so, never an infinite z', () => {
     const flat = Array(30).fill(0.02);
     const a = costAnomaly(0.03, flat)!;
     expect(a.mad).toBe(0);
-    expect(a.floored).toBe(true);
-    expect(a.scale).toBeCloseTo(0.002, 6);
-    expect(Number.isFinite(a.z)).toBe(true);
-    expect(a.anomalous).toBe(true); // 0.01 over a $0.002 floor is five floors
-    expect(costAnomaly(0.0201, flat)!.anomalous).toBe(false);
-    const zeros = Array(30).fill(0);
-    expect(costAnomaly(0.001, zeros)!.scale).toBe(0.0001);
+    expect(a.fallback).toBe(true);
+    expect(a.z).toBeNull();
+    expect(a.maxPrior).toBe(0.02);
+    expect(a.anomalous).toBe(true); // 50% over every prior value
+    expect(costAnomaly(0.0225, flat)!.anomalous).toBe(true); // 12.5% over
+    expect(costAnomaly(0.022, flat)!.anomalous).toBe(false); // exactly 10% over is not MORE than 10%
+    expect(costAnomaly(0.0218, flat)!.anomalous).toBe(false); // 9% over
+    // A heavy tail over a flat body: the MAD is still zero and the fallback reads against the largest prior value.
+    const tailed = [...Array(24).fill(0.01), 0.9, 1.1, 0.8, 1.0, 1.2, 0.95];
+    expect(costAnomaly(0.05, tailed)!.fallback).toBe(true);
+    expect(costAnomaly(0.05, tailed)!.anomalous).toBe(false);
     expect(costAnomaly(Number.NaN, flat)).toBeNull();
+  });
+
+  it('the z is the Iglewicz–Hoaglin modified z: 0.6745 · (x − median) / MAD', () => {
+    // Twenty costs: 4×0.009, 7×0.010, 6×0.011, 3×0.012 → median 0.010, MAD 0.001.
+    const A = [0.01, 0.011, 0.009, 0.012, 0.01, 0.011, 0.01, 0.009, 0.012, 0.011, 0.01, 0.01, 0.011, 0.009, 0.012, 0.01, 0.011, 0.01, 0.009, 0.011];
+    const a = costAnomaly(0.016, A)!;
+    expect(a.median).toBeCloseTo(0.01, 9);
+    expect(a.mad).toBeCloseTo(0.001, 9);
+    expect(a.z).toBeCloseTo((0.6745 * 0.006) / 0.001, 6);
+    expect(a.anomalous).toBe(true);
+    expect(costAnomaly(0.015, A)!.anomalous).toBe(false);
   });
 
   it('the sentence names the agent\'s own baseline, never a typed dollar line', () => {
@@ -71,8 +86,8 @@ describe('costAnomaly', () => {
     expect(s).toContain(`the spike line is ${COST_ANOMALY_Z}`);
     expect(s).not.toContain('0.10');
     const flat = describeCostAnomaly(costAnomaly(0.03, Array(30).fill(0.02))!);
-    expect(flat).toContain('all cost $0.0200');
-    expect(flat).toContain('floor');
+    expect(flat).toContain('50% over the most this agent has cost before ($0.0200');
+    expect(flat).toContain('the fallback line is 10% over every prior value');
   });
 });
 

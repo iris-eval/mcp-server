@@ -1,6 +1,6 @@
 {
-  "commit": "be8e1f3",
-  "corpusVersion": "795a0dced3cd",
+  "commit": "ab71a96",
+  "corpusVersion": "35c3aa58cbfa",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-08T06:35:56.065Z",
+  "generatedAt": "2026-09-20T18:38:59.991Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -1618,6 +1618,55 @@
       "skipped": 0,
       "tn": 16,
       "tp": 12
+    },
+    {
+      "category": "cost",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7719,
+          1
+        ],
+        "recall": [
+          0.7719,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.8615,
+          0.9992
+        ],
+        "precision": [
+          0.8232,
+          1
+        ],
+        "recall": [
+          0.8352,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 27,
+      "name": "cost_anomaly",
+      "negatives": 14,
+      "positives": 13,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 1,
+      "skipped": 2,
+      "tn": 14,
+      "tp": 13
     }
   ],
   "schemaVersion": 2,

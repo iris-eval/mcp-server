@@ -4,6 +4,7 @@ import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, s
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
 import type { Step } from '../../types/trace.js';
+import { COST_ANOMALY_FLAT_MARGIN, COST_ANOMALY_MIN_HISTORY, COST_ANOMALY_WINDOW, COST_ANOMALY_Z, costAnomaly as anomalyOf, describeCostAnomaly } from '../cost-anomaly.js';
 
 export const costUnderThreshold: EvalRule = {
   name: 'cost_under_threshold',
@@ -372,4 +373,110 @@ export const maxSteps: EvalRule = {
   },
 };
 
-export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps];
+/*
+ * Cost against the agent's OWN history (H-5; the approved §4.8; gap G22).
+ *
+ * `cost_under_threshold` is a POLICY: a dollar line the deployment chose.
+ * This is a MEASUREMENT: the trace's distance from what this agent usually
+ * costs, in robust units, with the spike line derived from the statistic
+ * rather than typed. A measurement reports and never decides — the
+ * composer's own law since 0.10.0 — which is exactly the role the approved
+ * section asked for ("reports and never feeds p_bad"); the shipped
+ * vocabulary's word for that is `measurement`, and its family measures
+ * conformance to the formula, as verbosity_ratio's does.
+ *
+ * The baseline arrives on the context (`costHistory`, newest first) from
+ * the agent's own failure log — the same history the moment classifier
+ * reads, one implementation (src/eval/cost-anomaly.ts). A bare
+ * evaluate_output call with no linked trace has no history and the rule
+ * says so; it never invents a baseline.
+ *
+ * When the trajectory carries per-call costs, the dearest call is named;
+ * when it carries none, the trace cost is shared across the calls by their
+ * output size and the share is labelled estimated, as §4.8 asks.
+ */
+export const costAnomaly: EvalRule = {
+  name: 'cost_anomaly',
+  description:
+    `The trace cost against this agent's own recent history, not a dollar figure: the Iglewicz–Hoaglin modified z-score, 0.6745 · (cost − median) / MAD, over the agent's last ${COST_ANOMALY_WINDOW} costed traces, a spike at z > ${COST_ANOMALY_Z}; when every recent trace cost the same, a spike is more than ${COST_ANOMALY_FLAT_MARGIN * 100}% over every prior value. A measurement — it reports and never decides the verdict — and it skips as insufficient_history below ${COST_ANOMALY_MIN_HISTORY} prior costed traces, so it says nothing rather than "fine" about an agent it has not seen. cost_under_threshold stays the explicit dollar policy. Names the dearest tool call when the trajectory prices its calls, or the largest estimated share when it does not`,
+  evalType: 'cost',
+  weight: 1,
+  kind: 'measurement',
+  mechanism: 'formula',
+  needs: ['cost'],
+  question: 'within_budget',
+  classes: ['over_budget'],
+  version: 1,
+  evaluate(context: EvalContext): EvalRuleResult {
+    if (context.costUsd === undefined || context.costUsd === null) {
+      return { ruleName: 'cost_anomaly', passed: false, score: 0, message: 'Cost data not provided', skipped: true, skipReason: 'context.costUsd not provided' };
+    }
+    const history = context.costHistory ?? [];
+    const anomaly = anomalyOf(context.costUsd, history);
+    if (anomaly === null) {
+      const n = history.length;
+      return {
+        ruleName: 'cost_anomaly',
+        passed: false,
+        score: 0,
+        message: `Not judged: ${n} prior costed trace${n === 1 ? '' : 's'} for this agent, ${COST_ANOMALY_MIN_HISTORY} needed before a cost can be read against its own history`,
+        skipped: true,
+        skipReason: `insufficient_history: ${n} prior costed traces, ${COST_ANOMALY_MIN_HISTORY} needed`,
+      };
+    }
+    const evidence: Evidence[] = anomaly.fallback
+      ? [{ type: 'count', stat: 'cost_over_prior_maximum', unit: 'ratio', value: anomaly.costUsd / anomaly.maxPrior, threshold: 1 + COST_ANOMALY_FLAT_MARGIN, thresholdSource: 'rule' }]
+      : [{ type: 'count', stat: 'modified_z', unit: 'z', value: anomaly.z!, threshold: COST_ANOMALY_Z, thresholdSource: 'rule' }];
+    const dearest = dearestCall(context, anomaly.costUsd);
+    if (dearest !== null && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push(dearest.evidence);
+    const passed = !anomaly.anomalous;
+    const usd = (v: number): string => `${v.toFixed(4)}`;
+    const score = passed
+      ? 1
+      : anomaly.fallback
+        ? Math.max(0, 1 - (anomaly.costUsd / anomaly.maxPrior - 1 - COST_ANOMALY_FLAT_MARGIN))
+        : Math.max(0, 1 - (anomaly.z! - COST_ANOMALY_Z) / COST_ANOMALY_Z);
+    return {
+      ruleName: 'cost_anomaly',
+      passed,
+      score,
+      value: { stat: 'cost', unit: 'usd', value: anomaly.costUsd },
+      evidence,
+      message: passed
+        ? anomaly.fallback
+          ? `Cost (${usd(anomaly.costUsd)}) is within ${COST_ANOMALY_FLAT_MARGIN * 100}% of the most this agent has cost before (${usd(anomaly.maxPrior)}; its last ${anomaly.n} traces all cost about the same)`
+          : `Cost (${usd(anomaly.costUsd)}) is usual for this agent: modified z = ${anomaly.z!.toFixed(1)} against a median of ${usd(anomaly.median)} (MAD ${usd(anomaly.mad)}) over its last ${anomaly.n} traces`
+        : `${describeCostAnomaly(anomaly)}${dearest === null ? '' : ` ${dearest.sentence}`}`,
+    };
+  },
+};
+
+/**
+ * Per-call attribution (§4.8): the dearest call by its own `cost_usd` when
+ * the trajectory prices its calls; otherwise the trace cost shared across
+ * the calls in proportion to their output size, labelled estimated.
+ */
+function dearestCall(context: EvalContext, costUsd: number): { evidence: Evidence; sentence: string } | null {
+  const calls = context.toolCalls ?? [];
+  if (calls.length === 0) return null;
+  const priced = calls.map((c, index) => ({ index, name: c.tool_name, cost: typeof c.cost_usd === 'number' && Number.isFinite(c.cost_usd) ? c.cost_usd : null }));
+  if (priced.some((p) => p.cost !== null)) {
+    const top = priced.filter((p) => p.cost !== null).sort((a, b) => b.cost! - a.cost!)[0];
+    return {
+      evidence: { type: 'toolCall', index: top.index, toolName: top.name, label: `dearest call, $${top.cost!.toFixed(4)} as recorded` },
+      sentence: `The dearest call was ${top.name} at $${top.cost!.toFixed(4)}, as the trajectory recorded it.`,
+    };
+  }
+  const sizes = calls.map((c) => (c.output === undefined ? 0 : String(typeof c.output === 'string' ? c.output : JSON.stringify(c.output)).length));
+  const total = sizes.reduce((a, b) => a + b, 0);
+  if (total === 0) return null;
+  let top = 0;
+  for (let i = 1; i < sizes.length; i += 1) if (sizes[i] > sizes[top]) top = i;
+  const share = (costUsd * sizes[top]) / total;
+  return {
+    evidence: { type: 'toolCall', index: top, toolName: calls[top].tool_name, label: `largest estimated share, $${share.toFixed(4)} by output size` },
+    sentence: `No call carries its own cost; shared by output size, the largest estimated share is ${calls[top].tool_name} at about $${share.toFixed(4)} (estimated).`,
+  };
+}
+
+export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly];

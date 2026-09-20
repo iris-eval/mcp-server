@@ -136,6 +136,13 @@ export interface EvalContext {
   tools?: ToolDescriptor[];
   tokenUsage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   costUsd?: number;
+  /**
+   * The agent's most recent prior costs, newest first, at most 200 — the
+   * baseline `cost_anomaly` reads. Supplied by the engine's callers from the
+   * agent's failure log (src/eval/ingest.ts); absent on a bare
+   * evaluate_output call, where the rule reports insufficient_history.
+   */
+  costHistory?: readonly number[];
   metadata?: Record<string, unknown>;
   customConfig?: Record<string, unknown>;
   /**

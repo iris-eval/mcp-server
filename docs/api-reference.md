@@ -1313,7 +1313,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 
 ## Evaluation Rules
 
-Iris ships with 20 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
+Iris ships with 21 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
 
 ### Completeness Rules
 
@@ -1429,6 +1429,8 @@ Used when `eval_type` is `"cost"`. These rules check execution cost and token ef
 | `cost_under_threshold` | 1.0 | Total USD cost against a threshold | `cost_threshold` (default: `$0.10`) | `cost_usd <= cost_threshold` |
 | `verbosity_ratio` | 0.5 | Completion-to-prompt token ratio | `max_token_ratio` (default: `5`) | `completion_tokens / prompt_tokens <= max_token_ratio` |
 | `no_tool_loop` | 1.0 | **Trajectory rule** — the agent must not repeat itself. Catches the waste a USD threshold cannot see: five identical calls can still bill under `cost_threshold`. Requires `tool_calls`; **skips** without them | `max_tool_repeats` (default: `3`) | No call repeated more than `max_tool_repeats` times, and no two-call cycle repeating more than twice |
+
+| `cost_anomaly` | 1.0 | **Measurement** — the trace cost against this agent's own recent history: the Iglewicz–Hoaglin modified z, `0.6745 · (cost − median) / MAD`, over the agent's last 200 costed traces; when every recent trace cost the same, more than 10% over every prior value. Reports and never decides the verdict. **Skips** as `insufficient_history` below 20 prior costed traces, and on a bare `evaluate_output` call with no linked trace. | none — the baseline is the agent's own | `z <= 3.5` (or, with a flat history, `cost <= 1.1 × max prior`) |
 
 **`cost_under_threshold` scoring:** If over threshold, score is `max(0, 1 - (cost - threshold) / threshold)`. Degrades linearly as cost exceeds the threshold.
 

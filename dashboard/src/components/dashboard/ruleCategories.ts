@@ -68,7 +68,7 @@ export const CATEGORY_META: Record<RuleCategory, CategoryMeta> = {
     id: 'cost',
     label: 'Cost',
     color: 'var(--iris-400)',
-    description: 'Per-trace USD threshold, token efficiency, repeated tool calls',
+    description: 'Per-trace USD threshold, token verbosity, repeated tool calls, the step budget, and cost against the agent’s own history',
   },
   custom: {
     id: 'custom',
@@ -88,7 +88,7 @@ export const CATEGORY_ORDER: RuleCategory[] = [
 
 /**
  * Built-in rule → category map.
- * Total: 15 rules (6 safety + 2 relevance + 4 completeness + 3 cost).
+ * Total: 21 rules (8 safety + 1 cost-bundle step budget + 2 relevance + 6 completeness + 4 cost) — pinned to the engine by the sync test.
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   // safety (7)
@@ -111,10 +111,11 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   expected_coverage: 'completeness',
   valid_tool_arguments: 'completeness',
   ask_coverage: 'completeness',
-  // cost (3)
+  // cost (4; max_steps is listed above with the safety block for historical order)
   cost_under_threshold: 'cost',
   verbosity_ratio: 'cost',
   no_tool_loop: 'cost',
+  cost_anomaly: 'cost',
 };
 
 /** Authoritative roster of built-in rules in canonical display order. */
@@ -139,4 +140,5 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'cost_under_threshold', category: 'cost' },
   { name: 'verbosity_ratio', category: 'cost' },
   { name: 'no_tool_loop', category: 'cost' },
+  { name: 'cost_anomaly', category: 'cost' },
 ];

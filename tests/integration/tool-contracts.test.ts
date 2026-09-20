@@ -228,9 +228,10 @@ describe('tool contracts (MCP surface)', () => {
       expect(Object.keys(body.categories)).toEqual(['completeness', 'relevance', 'safety', 'cost']);
       expect(body.categories.safety).toMatchObject({ passed: false, critical_failures: ['no_pii'] });
       expect(body.categories.completeness).toMatchObject({ passed: true });
-      // cost_usd is given, token_usage and tool_calls are not: cost_under_threshold
-      // runs, verbosity_ratio and no_tool_loop skip.
-      expect(body.categories.cost).toMatchObject({ rules_evaluated: 1, rules_skipped: 3 });
+      // cost_usd is given, token_usage and tool_calls are not, and no trace is
+      // linked: cost_under_threshold runs; verbosity_ratio, no_tool_loop,
+      // max_steps and cost_anomaly (no history) skip.
+      expect(body.categories.cost).toMatchObject({ rules_evaluated: 1, rules_skipped: 4 });
       const pii = body.rule_results.find((x: { ruleName: string }) => x.ruleName === 'no_pii');
       expect(pii.category).toBe('safety');
       expect(body.note).toBeUndefined();
@@ -264,7 +265,7 @@ describe('tool contracts (MCP surface)', () => {
         score: null,
         passed: null,
         rules_evaluated: 0,
-        rules_skipped: 4,
+        rules_skipped: 5,
         insufficient_data: true,
       });
       expect(body.categories.relevance).toMatchObject({ passed: null, score: null, insufficient_data: true });

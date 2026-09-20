@@ -60,7 +60,7 @@ describe('EvalEngine.evaluateAll', () => {
 
   it('reports a bundle with no usable context as NOT judged (passed: null), not as failing (#406)', async () => {
     const engine = new EvalEngine(0.7);
-    // No input → both relevance rules skip; no cost → both cost rules skip.
+    // No input → both relevance rules skip; no cost → all five cost rules skip.
     const result = await engine.evaluateAll({ output: CLEAN_OUTPUT });
     // Before: passed:false, score:0 — a reader regrouping by category saw
     // cost "failing" on a call that carried no cost data. Null is the
@@ -76,7 +76,7 @@ describe('EvalEngine.evaluateAll', () => {
       score: null,
       passed: null,
       rules_evaluated: 0,
-      rules_skipped: 4,
+      rules_skipped: 5,
       insufficient_data: true,
     });
     // A judged bundle keeps its boolean/number, unchanged.
