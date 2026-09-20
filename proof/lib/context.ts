@@ -15,6 +15,7 @@ export function contextFor(c: ReturnType<typeof materialiseCase>, fileConfig?: R
   if (c.context) {
     const extra = c.context as Partial<EvalContext>;
     if (extra.costUsd !== undefined) ctx.costUsd = extra.costUsd;
+    if (extra.costHistory !== undefined) ctx.costHistory = extra.costHistory;
     if (extra.tokenUsage !== undefined) ctx.tokenUsage = extra.tokenUsage;
     if (extra.toolCalls !== undefined) ctx.toolCalls = extra.toolCalls;
     if (extra.tools !== undefined) ctx.tools = extra.tools;

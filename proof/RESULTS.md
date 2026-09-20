@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-08T06:35:56.065Z for v0.13.0 (local generating commit `be8e1f3` — branch commits are squashed on merge, so cite the version).
-Corpus version `795a0dced3cd` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-20T18:38:59.991Z for v0.13.0 (local generating commit `ab71a96` — branch commits are squashed on merge, so cite the version).
+Corpus version `35c3aa58cbfa` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -27,6 +27,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `verbosity_ratio` | cost | 25 | 9 | 1 | 9 | 0 | 0 | 16 | 100.0% [70.1, 100.0] | 100.0% [70.1, 100.0] | 1.000 [100.0, 100.0] | [80.8, 99.9] | 100.0% / 100.0% |
 | `no_tool_loop` | cost | 40 | 18 | 0 | 18 | 0 | 0 | 22 | 100.0% [82.4, 100.0] | 100.0% [82.4, 100.0] | 1.000 [100.0, 100.0] | [90.4, 99.9] | 100.0% / 100.0% |
 | `max_steps` | cost | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.1, 99.9] | 100.0% / 100.0% |
+| `cost_anomaly` | cost | 27 | 13 | 2 | 13 | 0 | 0 | 14 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [86.2, 99.9] | 100.0% / 100.0% |
 
 ## Misses, by case id
 
@@ -52,6 +53,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `verbosity_ratio` — FP: none · FN: none
 - `no_tool_loop` — FP: none · FN: none
 - `max_steps` — FP: none · FN: none
+- `cost_anomaly` — FP: none · FN: none
 
 ## Candidate — a narrower acknowledgement for `no_silent_tool_failure` (NOT SHIPPED)
 

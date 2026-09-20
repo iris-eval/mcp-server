@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalType, CustomRuleDefinition } from '../types/eval.js';
 import type { EvalEngine } from '../eval/engine.js';
+import { costHistoryFor } from '../eval/ingest.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
 import { INJECTION_SCOPE_SENTENCE } from '../eval/rules/safety.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
@@ -154,6 +155,12 @@ export function registerEvaluateOutputTool(
         expected: args.expected,
         input: args.input,
         costUsd: args.cost_usd,
+        // The agent's own cost baseline when a trace is linked (H-5): the
+        // cost under test is the caller's, the history is the trace's agent's.
+        costHistory:
+          trace !== undefined && args.cost_usd !== undefined
+            ? await costHistoryFor(storage, LOCAL_TENANT, { ...trace, cost_usd: args.cost_usd })
+            : undefined,
         tokenUsage: args.token_usage,
         toolCalls,
         spans,

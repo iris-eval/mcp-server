@@ -835,9 +835,13 @@
       "id": "Q7xS5",
       "question": "Q7",
       "subject": "S5",
-      "status": "partial",
-      "summary": "Aggregate cost over a time window is served to the dashboard; the cost-spike classifier uses a fixed threshold rather than the agent's own distribution.",
+      "status": "has",
+      "summary": "Aggregate cost over a time window is served to the dashboard, and a trace is judged against the agent's own cost distribution: the cost_anomaly rule and the cost-spike moment read the modified z over the agent's last 200 costed traces (median and MAD), never a fixed dollar line.",
       "evidence": [
+        {
+          "kind": "rule",
+          "name": "cost_anomaly"
+        },
         {
           "kind": "route",
           "name": "/api/v1/eval-stats"
@@ -847,7 +851,9 @@
           "name": "iris://dashboard/summary"
         }
       ],
-      "needs": []
+      "needs": [
+        "cost"
+      ]
     },
     {
       "id": "Q7xS6",

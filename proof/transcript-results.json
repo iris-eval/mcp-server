@@ -1,6 +1,6 @@
 {
-  "commit": "be8e1f3",
-  "generatedAt": "2026-09-08T06:36:25.413Z",
+  "commit": "ab71a96",
+  "generatedAt": "2026-09-20T18:40:05.400Z",
   "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
   "rows": [
     {
@@ -57,6 +57,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -114,6 +118,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -171,6 +179,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -224,6 +236,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -281,6 +297,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -338,6 +358,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -397,6 +421,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -460,6 +488,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -523,6 +555,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -602,6 +638,10 @@
         {
           "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
           "rule": "max_steps"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -665,6 +705,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] web_fetch) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -726,6 +770,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -792,6 +840,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -858,6 +910,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -924,6 +980,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -986,6 +1046,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1052,6 +1116,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1114,6 +1182,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1176,6 +1248,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1257,6 +1333,10 @@
         {
           "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
           "rule": "max_steps"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1322,6 +1402,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1388,6 +1472,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1447,6 +1535,10 @@
         {
           "reason": "the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part",
           "rule": "ask_coverage"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     },
@@ -1511,6 +1603,10 @@
         {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
+        },
+        {
+          "reason": "insufficient_history: 0 prior costed traces, 20 needed",
+          "rule": "cost_anomaly"
         }
       ]
     }

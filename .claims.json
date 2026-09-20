@@ -776,6 +776,10 @@
       {
         "evidence": [
           {
+            "kind": "rule",
+            "name": "cost_anomaly"
+          },
+          {
             "kind": "route",
             "name": "/api/v1/eval-stats"
           },
@@ -785,11 +789,13 @@
           }
         ],
         "id": "Q7xS5",
-        "needs": [],
+        "needs": [
+          "cost"
+        ],
         "question": "Q7",
-        "status": "partial",
+        "status": "has",
         "subject": "S5",
-        "summary": "Aggregate cost over a time window is served to the dashboard; the cost-spike classifier uses a fixed threshold rather than the agent's own distribution."
+        "summary": "Aggregate cost over a time window is served to the dashboard, and a trace is judged against the agent's own cost distribution: the cost_anomaly rule and the cost-spike moment read the modified z over the agent's last 200 costed traces (median and MAD), never a fixed dollar line."
       },
       {
         "evidence": [
@@ -1166,9 +1172,9 @@
     ],
     "counts": {
       "gap": 8,
-      "has": 25,
+      "has": 26,
       "n/a": 4,
-      "partial": 23
+      "partial": 22
     },
     "questions": [
       {
@@ -1252,7 +1258,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 20,
+    "builtInCount": 21,
     "categories": [
       "completeness",
       "relevance",
@@ -1277,6 +1283,7 @@
     "injectionPatterns": 37,
     "names": [
       "askCoverage",
+      "costAnomaly",
       "costUnderThreshold",
       "expectedCoverage",
       "groundedInReads",
@@ -1363,6 +1370,19 @@
           "input"
         ],
         "question": "task_completed",
+        "version": 1
+      },
+      {
+        "classes": [
+          "over_budget"
+        ],
+        "kind": "measurement",
+        "mechanism": "formula",
+        "name": "cost_anomaly",
+        "needs": [
+          "cost"
+        ],
+        "question": "within_budget",
         "version": 1
       },
       {
@@ -1657,19 +1677,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 20,
-          "measuredThreeOrMore": 20
+          "evaluators": 21,
+          "measuredThreeOrMore": 21
         }
       },
       "byStatus": {
-        "measurable": 165,
-        "measured": 121,
-        "n/a": 92,
-        "partial": 16,
-        "stated": 74
+        "measurable": 169,
+        "measured": 125,
+        "n/a": 94,
+        "partial": 17,
+        "stated": 76
       },
-      "evaluators": 36,
-      "measuredThreeOrMore": 30,
+      "evaluators": 37,
+      "measuredThreeOrMore": 31,
       "questions": 13
     },
     "evaluators": [
@@ -3040,6 +3060,74 @@
       {
         "cells": {
           "q1": {
+            "evidence": "proof/results.json → rules[cost_anomaly]",
+            "note": "precision, recall and F1 on 27 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[cost_anomaly].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[over_budget]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:cost_anomaly",
+        "measured": 4,
+        "name": "cost_anomaly"
+      },
+      {
+        "cells": {
+          "q1": {
             "evidence": "proof/results.json → custom.types[regex_match]",
             "note": "conformance to the documented definition under a declared config on 24 cases",
             "status": "measured"
@@ -4230,13 +4318,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "a4e0e6d77d07"
+        "compositeVersion": "4cba53236d0b"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "795a0dced3cd",
+        "corpusVersion": "35c3aa58cbfa",
         "customCorpusVersion": "7f0a2fdc0855"
       }
     },
@@ -4249,8 +4337,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-20T18:14:03.530Z",
-  "generatedFromCommit": "a37505f",
+  "generatedAt": "2026-09-20T19:01:19.055Z",
+  "generatedFromCommit": "ab71a96",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -4322,10 +4410,10 @@
     ]
   },
   "proof": {
-    "commit": "be8e1f3",
+    "commit": "ab71a96",
     "composite": {
-      "compositeVersion": "a4e0e6d77d07",
-      "corpusVersion": "795a0dced3cd",
+      "compositeVersion": "4cba53236d0b",
+      "corpusVersion": "35c3aa58cbfa",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -5681,7 +5769,7 @@
       },
       "version": "0.13.0"
     },
-    "corpusVersion": "795a0dced3cd",
+    "corpusVersion": "35c3aa58cbfa",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -6306,7 +6394,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-08T06:35:56.065Z",
+    "generatedAt": "2026-09-20T18:38:59.991Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7304,6 +7392,55 @@
         "skipped": 0,
         "tn": 16,
         "tp": 12
+      },
+      {
+        "category": "cost",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7719,
+            1
+          ],
+          "recall": [
+            0.7719,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8615,
+            0.9992
+          ],
+          "precision": [
+            0.8232,
+            1
+          ],
+          "recall": [
+            0.8352,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 27,
+        "name": "cost_anomaly",
+        "negatives": 14,
+        "positives": 13,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 2,
+        "tn": 14,
+        "tp": 13
       }
     ],
     "schemaVersion": 2,
@@ -8042,7 +8179,7 @@
       "passed": null,
       "total": 22
     },
-    "totalCombined": 2764,
+    "totalCombined": 2774,
     "vitestDashboard": {
       "failed": 0,
       "passed": 299,
@@ -8050,8 +8187,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2443,
-      "total": 2443
+      "passed": 2453,
+      "total": 2453
     }
   },
   "version": {

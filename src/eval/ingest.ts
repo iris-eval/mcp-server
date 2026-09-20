@@ -15,6 +15,7 @@ import type { EvalEngine } from './engine.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from './engine.js';
 import type { DormantRule } from './dormant.js';
 import { toEvaluationResponse } from './response.js';
+import { historyBefore } from './decision-moment.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { Trace } from '../types/trace.js';
 import type { EvalResult, EvalType } from '../types/eval.js';
@@ -36,6 +37,19 @@ export interface StoredTraceEvaluation {
 }
 
 /**
+ * The agent's own cost baseline for a stored trace (H-5, §4.8): the
+ * failure log already carries each prior trace's cost, so `cost_anomaly`
+ * reads the same history the moment classifier does. The trace itself is
+ * excluded by id and by timestamp; undefined when the trace has no cost,
+ * because then the rule skips before it would read a baseline.
+ */
+export async function costHistoryFor(storage: IStorageAdapter, tenantId: TenantId, trace: Pick<Trace, 'trace_id' | 'agent_name' | 'timestamp' | 'cost_usd'>): Promise<readonly number[] | undefined> {
+  if (trace.cost_usd === undefined || trace.cost_usd === null) return undefined;
+  const log = await storage.getAgentFailureLog(tenantId, trace.agent_name);
+  return historyBefore(log, trace.trace_id, trace.timestamp).recentCosts;
+}
+
+/**
  * Evaluate a trace that has just been stored, and store the evaluation
  * linked to it. The trace must carry an output — the callers check that
  * before storing anything, so a refusal never leaves a half-done write.
@@ -47,10 +61,17 @@ export async function evaluateStoredTrace(
   trace: Trace & { output: string },
   options: EvaluateStoredTraceOptions = {},
 ): Promise<StoredTraceEvaluation> {
+  /*
+   * The agent's own cost baseline (H-5, §4.8): the failure log already
+   * carries each prior trace's cost, so the rule reads the same history the
+   * moment classifier does. The trace just stored is excluded by id.
+   */
+  const costHistory = await costHistoryFor(storage, tenantId, trace);
   const context = {
     output: trace.output,
     input: trace.input,
     costUsd: trace.cost_usd,
+    costHistory,
     tokenUsage: trace.token_usage,
     // What the agent DID, as this same request stored it. Whole-source
     // precedence in the step layer means spans are only reached when

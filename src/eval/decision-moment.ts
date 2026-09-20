@@ -268,7 +268,7 @@ function classifySignificance({
       return {
         kind: 'cost-spike',
         score: 0.9,
-        label: `Cost: ${trace.cost_usd.toFixed(4)} (${anomaly.z.toFixed(1)}× MAD over baseline)`,
+        label: `Cost: $${trace.cost_usd.toFixed(4)} (${anomaly.fallback ? `${((anomaly.costUsd / anomaly.maxPrior - 1) * 100).toFixed(0)}% over the prior maximum` : `modified z ${anomaly.z!.toFixed(1)}`})`,
         reason: describeCostAnomaly(anomaly),
       };
     }

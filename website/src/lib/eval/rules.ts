@@ -3176,11 +3176,29 @@ function maxSteps(ctx: EvalContext): EvalRuleResult {
   };
 }
 
+/*
+ * cost_anomaly — vendored as a skip. The rule reads the agent's own cost
+ * history from the server's store, which the playground does not have; the
+ * server skips it too on a bare call (insufficient_history), and a skip on
+ * both sides is a parity match.
+ */
+function costAnomaly(): EvalRuleResult {
+  return {
+    ruleName: 'cost_anomaly',
+    category: 'cost',
+    passed: false,
+    score: 0,
+    message: 'Not judged: 0 prior costed traces for this agent, 20 needed before a cost can be read against its own history',
+    skipped: true,
+    skipReason: 'insufficient_history: 0 prior costed traces, 20 needed',
+  };
+}
+
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads, noInjectionCompliance],
   relevance: [keywordOverlap, topicConsistency],
   completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage],
-  cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps],
+  cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly],
 };
 
 export interface EvalSummary {

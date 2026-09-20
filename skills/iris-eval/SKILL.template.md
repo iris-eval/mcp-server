@@ -159,6 +159,7 @@ carry the judge's reasoning.
 | Completeness | valid_tool_arguments | Every tool call names a tool in the catalogue and carries arguments its schema accepts. Reads `tool_calls` and `tools` (your MCP tools/list result, verbatim); **skips** without either, and an invalid call the agent retried successfully is recorded rather than failed |
 | Cost | no_tool_loop | The agent must not repeat itself. No tool called with the same input more than `max_tool_repeats` times (default 3); no 2- or 3-call sequence repeating more than twice; and, when you send `tools`, no single TARGET read more than `max_target_rereads` times (default 3) across every tool your catalogue marks `readOnlyHint` — the same file read through three different tools is one wasted read. A repetition at a REGULAR cadence is a poll, not a loop, and passes; that needs start times, which arrive with OpenTelemetry spans. Reads `tool_calls`; **skips** without them |
 | Cost | max_steps | A task must finish within a step budget — more tool calls than `max_steps` (default 50) fails. At the shipped default it ADVISES; set `max_steps` and it GATES, because only you know what your own agents do. Reads `tool_calls`; **skips** without them |
+| Cost | cost_anomaly | Cost against this agent's own recent history (modified z over its last 200 traces); a measurement that reports and never decides; skips below twenty prior costed traces |
 
 How often each rule is right is measured and published, with intervals, at
 https://iris-eval.com/proof.

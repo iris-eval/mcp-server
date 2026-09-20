@@ -7,12 +7,12 @@
 ## The row
 
 ```markdown
-- [Iris](https://github.com/iris-eval/mcp-server) - Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 20 deterministic rules, local SQLite, MIT licensed. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
+- [Iris](https://github.com/iris-eval/mcp-server) - Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 21 deterministic rules, local SQLite, MIT licensed. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
 ```
 
 ## The check before you save
 
-The listing must say **v0.13.0**, **12 tools**, **20 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
+The listing must say **v0.13.0**, **12 tools**, **21 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
 
 ## Links
 
