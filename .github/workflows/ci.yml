@@ -51,11 +51,14 @@ jobs:
       # add a triage row, or bump the dep — are edits inside the PR itself.
       - run: npm run lint
       - run: npm run typecheck
-      # npm install (not ci) because lockfile is generated on Windows and
-      # rolldown/emnapi transitive optional deps for Linux aren't captured.
-      # Versions are constrained by ^carets in dashboard/package.json.
-      # See memory: reference_rolldown_lockfile_trap.md
-      - run: cd dashboard && npm install --no-audit --no-fund && npm run typecheck && npm run lint && npm test
+      # npm ci (H-1 of the 2026-09-20 audit; closes the code-scan "pinned
+      # dependencies" finding on this file). The dashboard lockfile carries
+      # the Linux rolldown binding and the three @emnapi entries a Windows
+      # `npm install` used to prune; if a future Windows install prunes them
+      # again this step goes red here rather than drifting silently. Repair
+      # recipe: regenerate the lockfile under Linux (Dependabot, WSL or
+      # Docker), never `--package-lock-only` on Windows.
+      - run: cd dashboard && npm ci --no-audit --no-fund && npm run typecheck && npm run lint && npm test
       # Storybook smoke (audit item #11): build catalog to catch broken
       # stories before they ship. No pixel regression yet — Chromatic/
       # lost-pixel vendor choice is a separate founder decision.
@@ -138,7 +141,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: cd dashboard && npm install --no-audit --no-fund
+      - run: cd dashboard && npm ci --no-audit --no-fund
       # One build: the dashboard, then the server (A6-9). A local `npm pack`
       # after `npm run build` used to ship a server with no UI because
       # dist/dashboard came from a separate step only CI ran.
@@ -287,7 +290,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: cd dashboard && npm install --no-audit --no-fund
+      - run: cd dashboard && npm ci --no-audit --no-fund
       - run: npm run build
       - name: Install Playwright browsers (Chromium + Firefox)
         # WebKit on Linux is NOT Safari (Safari uses Apple's WebKit,
