@@ -3,7 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { evaluateWithLLMJudge } from '../eval/llm-judge/evaluator.js';
-import { findPricing, MODEL_PRICING } from '../eval/llm-judge/pricing.js';
+import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
@@ -26,7 +26,7 @@ const inputSchema = {
   model: z
     .string()
     .describe(
-      'Model ID. Supported: anthropic = claude-opus-4-7 | claude-sonnet-4-6 | claude-haiku-4-5 | claude-haiku-4-5-20251001; openai = gpt-4o | gpt-4o-mini | o1-mini. Required — cost varies a hundredfold across models',
+      `Model ID. Supported: ${supportedModelsSummary()}; an unknown id is refused with the full priced list. Required — cost varies a hundredfold across models`,
     ),
   provider: z.enum(['anthropic', 'openai']).optional().describe('Auto-detected from model when omitted'),
   input: z.string().optional().describe('User question / prompt that produced the output (improves accuracy for helpfulness/safety)'),

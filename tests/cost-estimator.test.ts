@@ -9,7 +9,7 @@ describe('estimateCost', () => {
   it('computes input + output USD for a known anthropic model', () => {
     const result = estimateCost({
       provider: 'anthropic',
-      model: 'claude-sonnet-4',
+      model: 'claude-sonnet-4-6',
       tokensIn: 1_000_000,
       tokensOut: 500_000,
     });
@@ -59,7 +59,7 @@ describe('estimateCost', () => {
   it('handles zero tokens cleanly', () => {
     const result = estimateCost({
       provider: 'anthropic',
-      model: 'claude-sonnet-4',
+      model: 'claude-sonnet-4-6',
       tokensIn: 0,
       tokensOut: 0,
     });
@@ -70,7 +70,7 @@ describe('estimateCost', () => {
 describe('estimateBatch', () => {
   it('sums known-model costs and counts unknown models', () => {
     const result = estimateBatch([
-      { provider: 'anthropic', model: 'claude-sonnet-4', tokensIn: 1_000_000, tokensOut: 0 },
+      { provider: 'anthropic', model: 'claude-sonnet-4-6', tokensIn: 1_000_000, tokensOut: 0 },
       { provider: 'openai', model: 'gpt-4o-mini', tokensIn: 1_000_000, tokensOut: 0 },
       { provider: 'anthropic', model: 'unknown-model', tokensIn: 100, tokensOut: 100 },
     ]);

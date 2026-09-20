@@ -7,6 +7,8 @@
  * v0.3.1 — first public surface.
  */
 
+import { MODEL_PRICING } from './eval/llm-judge/pricing.js';
+
 export type Provider = 'anthropic' | 'openai';
 
 export interface ModelPricing {
@@ -24,21 +26,19 @@ export interface ModelPricing {
  *  - Anthropic: anthropic.com/pricing
  *  - OpenAI: openai.com/api/pricing
  */
-export const PRICING: Record<Provider, Record<string, ModelPricing>> = {
-  anthropic: {
-    'claude-opus-4': { inputPerMillion: 15, outputPerMillion: 75 },
-    'claude-sonnet-4': { inputPerMillion: 3, outputPerMillion: 15 },
-    'claude-haiku-4-5': { inputPerMillion: 1, outputPerMillion: 5 },
-    'claude-3-5-sonnet': { inputPerMillion: 3, outputPerMillion: 15 },
-    'claude-3-5-haiku': { inputPerMillion: 0.8, outputPerMillion: 4 },
+/*
+ * Derived from the judge's pricing table (src/eval/llm-judge/pricing.ts),
+ * which is the ONE table. This module carried its own copy from v0.3.1
+ * with different model ids and older prices; two tables of one fact drift,
+ * and the arc-0 gap list named this pair. Same shape as before, one source.
+ */
+export const PRICING: Record<Provider, Record<string, ModelPricing>> = MODEL_PRICING.reduce(
+  (acc, p) => {
+    acc[p.provider][p.model] = { inputPerMillion: p.inputUsdPer1M, outputPerMillion: p.outputUsdPer1M };
+    return acc;
   },
-  openai: {
-    'gpt-4o': { inputPerMillion: 2.5, outputPerMillion: 10 },
-    'gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
-    'o1': { inputPerMillion: 15, outputPerMillion: 60 },
-    'o1-mini': { inputPerMillion: 3, outputPerMillion: 12 },
-  },
-};
+  { anthropic: {}, openai: {} } as Record<Provider, Record<string, ModelPricing>>,
+);
 
 export interface EstimateInput {
   provider: Provider;

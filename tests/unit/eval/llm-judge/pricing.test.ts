@@ -27,7 +27,7 @@ describe('LLM judge pricing', () => {
     // Every entry must have a non-empty provider + model + positive rates.
     for (const p of MODEL_PRICING) {
       expect(p.provider).toMatch(/^(anthropic|openai)$/);
-      expect(p.model).toMatch(/^[a-z0-9-]+$/);
+      expect(p.model).toMatch(/^[a-z0-9.-]+$/);
       expect(p.inputUsdPer1M).toBeGreaterThan(0);
       expect(p.outputUsdPer1M).toBeGreaterThan(0);
     }
