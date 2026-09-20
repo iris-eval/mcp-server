@@ -513,11 +513,23 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
      */
     const inputOf = (c) => JSON.stringify(c.input ?? {});
     const bash = (c) => /Bash/.test(c.name);
-    const started = d.calls.find((c) => bash(c) && /--dashboard|--transport http|\bingest\b/.test(inputOf(c)));
+    /*
+     * The CLI's own receipt (0.14.0). The 0.14.0 stranger could not run an
+     * env-prefixed command in its session, so it wrote a ten-line Node
+     * script that spawns `npx … ingest --file … --evaluate` and ran the
+     * script — and the three rows below read 0 evaluations, because each
+     * looked for the word `ingest` in the Bash command's text. The
+     * evaluations were there in the command's RESULT: `--evaluate` prints
+     * one receipt per trace (`{"trace_id","evaluation_id","passed","verdict"}`)
+     * and `iris-eval ingest: N stored` on stderr, whatever wrapped the call.
+     * The receipt is the evidence; the spelling of the command is the route.
+     */
+    const receipt = (c) => /"evaluation_id"/.test(c.result ?? '') && /"verdict"|iris-eval ingest:/.test(c.result ?? '');
+    const started = d.calls.find((c) => bash(c) && (/--dashboard|--transport http|\bingest\b/.test(inputOf(c)) || receipt(c)));
     const health = d.calls.some((c) => /api\/v1\/health/.test(inputOf(c)) && /200|"status"\s*:\s*"ok"/.test(c.result ?? ''));
     const restIngest = d.calls.filter((c) => /api\/v1\/traces/.test(inputOf(c)) && /evaluate/.test(inputOf(c)) && /evaluation_id|"passed"|verdict/.test(c.result ?? ''));
     const mcpOverHttp = d.calls.filter((c) => /\/mcp\b/.test(inputOf(c)) && /evaluate_output|log_trace/.test(inputOf(c)) && /verdict|"passed"/.test(c.result ?? ''));
-    const cliIngest = d.calls.filter((c) => bash(c) && /\bingest\b/.test(inputOf(c)) && /--evaluate/.test(inputOf(c)));
+    const cliIngest = d.calls.filter((c) => bash(c) && ((/\bingest\b/.test(inputOf(c)) && /--evaluate/.test(inputOf(c))) || receipt(c)));
     // One CLI call can carry three traces (NDJSON): count the verdict lines it printed, not the calls.
     const cliEvaluations = cliIngest.reduce((n, c) => n + ((c.result ?? '').match(/"evaluation_id"/g) ?? []).length, 0);
     const evaluations = restIngest.length + mcpOverHttp.length + cliEvaluations;
@@ -525,7 +537,8 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
     row('H-A3', Boolean(started) && (health || evaluations > 0), started ? `${route}: ${inputOf(started).slice(0, 240)}` : 'no server started and no ingest run');
     row('H-A4', evaluations >= 3, `evaluations evidenced: ${evaluations} (REST ${restIngest.length}, MCP-over-HTTP ${mcpOverHttp.length}, CLI ${cliEvaluations})`);
     const t = d.finalText;
-    const out3 = /\bno_silent_tool_failure\b|\bsilent_tool_failure\b/.test(t) && /(output[- ]?3|third output|telemetry)/i.test(t);
+    // The rule by its identifier or by its name in prose ("Iris' silent-tool-failure rule", 0.14.0): the finding, not the spelling.
+    const out3 = /\b(?:no[-_ ]?)?silent[-_ ]tool[-_ ]failure\b/i.test(t) && /(output[- ]?3|third output|telemetry)/i.test(t);
     const out2 = /\bno_pii\b|\bPII\b/.test(t) && /(output[- ]?2|second output)/i.test(t);
     const basis = /\b(policy_gate|detector_veto|critical_unknown|required_evidence_missing|risk_over_loss|clean|no_rules)\b/.test(t);
     row('H-A6', out3 && out2 && basis, t, `out3:${out3} out2:${out2} basis:${basis}`);
