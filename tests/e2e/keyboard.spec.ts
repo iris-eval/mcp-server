@@ -37,7 +37,9 @@ test.describe('keyboard only', () => {
     const palette = page.getByRole('dialog');
     await expect(palette).toBeVisible();
     await page.keyboard.type(NAV_LABELS.rules);
-    await expect(palette.getByRole('option').first()).toBeVisible();
+    // Enter runs the highlighted option; wait until the search has put the right one first
+    // (CI once pressed Enter on the stale first option and landed on /audit).
+    await expect(palette.getByRole('option').first()).toContainText(NAV_LABELS.rules);
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/rules$/);
   });
