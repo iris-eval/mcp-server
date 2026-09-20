@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The stranger harness's H rows read the CLI's own receipt: an `ingest --evaluate` run counts however the agent wrapped the command (the 0.14.0 stranger, refused an env-prefixed command by its session, wrote a ten-line script that spawned `npx … ingest --file … --evaluate` and ran the script — three correct verdicts, graded as zero because the graders looked for the word `ingest` in the command's text), and the silent-tool-failure rule counts by its identifier or by its name in prose. Each re-derivation is proven with `--regrade` against the 0.14.0 run that exposed it.
+
 ## [0.14.0] - 2026-09-20
 
 **The dashboard is a product.** The engine has computed the verdict, its basis, its coverage and its reasons since 0.9.0, and the dashboard dropped most of it on the way to the screen. This release makes the screen show what shipped: the verdict panel with its basis and the composer's own sentences, one rule-result row with every stamped field, a header that can go red, runs and cases with a comparison that tests each rule and corrects twenty at once, drift by run, a stream watcher that raises a `regression-alarm`, cost spikes read against the agent's own history — and labels: your own right-or-wrong on a rule's fires, which at twenty labels replace the published number on this deployment and estimate the prior. The states a reader can land in — an empty database, a stopped server, a phone, a keyed dashboard — each have a spec that fails on the old code, and three of those specs found bugs this release fixes.
