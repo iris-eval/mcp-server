@@ -148,9 +148,10 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
 
   router.get('/labels/stats', async (req, res) => {
     const tenantId = requireTenant(req);
-    // The engine's source when it has one, so the panel shows exactly what the verdicts read; rebuilt from storage otherwise.
-    const source = engine?.localLabelSource() ?? (await buildLocalLabelSource(storage, tenantId));
-    res.json(statsOf(source));
+    // Rebuilt from storage on every read and installed on the engine, so the
+    // panel and the verdicts read one source even after the store changed
+    // underneath a running server (a reset, a restore).
+    res.json(statsOf(await refresh(tenantId)));
   });
 
   router.get('/issues', async (req, res) => {
