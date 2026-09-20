@@ -57,6 +57,18 @@ describe('DNS-rebinding guard', () => {
     expect(await probe({ host: '127.0.0.1' })).toBe(200);
   });
 
+  it('refuses the literal "null" Origin — what a browser sends on a POST navigation under Referrer-Policy: no-referrer', async () => {
+    /*
+     * The reason the dashboard's referrer policy is `same-origin` and not
+     * helmet's default (arc 7, D-9): under `no-referrer` the sign-in form's
+     * POST /session arrived here as `Origin: null` and was refused, so the
+     * `--api-key` dashboard could never be entered through its own form.
+     * The guard is right to refuse `null` — it is also what a sandboxed
+     * cross-site page sends — so the fix is the policy, not this branch.
+     */
+    expect(await probe({ host: '127.0.0.1' }, { origin: 'null' })).toBe(403);
+  });
+
   it("allows this server's own loopback origin", async () => {
     const app = express();
     const server = app.listen(0, '127.0.0.1');

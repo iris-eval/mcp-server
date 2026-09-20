@@ -161,6 +161,42 @@ describe('session auth — with --api-key', () => {
     expect(bad.headers.get('set-cookie')).toBeNull();
   });
 
+  it('the sign-in form works as a BROWSER submits it: the page sets Referrer-Policy: same-origin, so the POST carries the page origin and not "null"', async () => {
+    /*
+     * The case above sends no Origin header, which is how curl submits a
+     * form and not how a browser does. Under helmet's default
+     * `Referrer-Policy: no-referrer` a browser sends `Origin: null` on a
+     * POST navigation, the DNS-rebinding guard refuses it, and the
+     * `--api-key` dashboard could only ever be entered through a `?key=`
+     * link — a hole the curl-shaped test never saw (arc 7, D-9). The
+     * policy is now `same-origin`; this holds both halves of that.
+     */
+    const { base } = await bootServer(KEY);
+    const page = await fetch(`${base}/`, { headers: HTML, redirect: 'manual' });
+    expect(page.status).toBe(401);
+    expect(page.headers.get('referrer-policy')).toBe('same-origin');
+
+    const form = (origin: string) =>
+      fetch(`${base}/session`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', origin },
+        body: new URLSearchParams({ key: KEY }).toString(),
+        redirect: 'manual',
+      });
+
+    // What the browser sends under `same-origin`: the page's own origin.
+    const ok = await form(base);
+    expect(ok.status).toBe(303);
+    expect(ok.headers.get('location')).toBe('/');
+    cookiePair(ok);
+
+    // What it sent under `no-referrer`: refused by the guard, right key or not.
+    const nulled = await form('null');
+    expect(nulled.status).toBe(403);
+    expect(((await nulled.json()) as { error: string }).error).toMatch(/invalid Origin/);
+    expect(nulled.headers.get('set-cookie')).toBeNull();
+  });
+
   it('Bearer auth is unchanged for API clients', async () => {
     const { base } = await bootServer(KEY);
     const res = await fetch(`${base}/api/v1/traces`, { headers: { authorization: `Bearer ${KEY}` } });
