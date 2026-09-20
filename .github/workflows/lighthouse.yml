@@ -33,7 +33,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - run: npm ci
-      - run: cd dashboard && npm install --no-audit --no-fund
+      - run: cd dashboard && npm ci --no-audit --no-fund
       # One build: the dashboard, then the server (A6-9).
       - run: npm run build
 

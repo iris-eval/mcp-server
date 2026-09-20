@@ -53,7 +53,7 @@ jobs:
       # The one build (dashboard, then server) needs the dashboard's deps:
       # v0.13.0's first release run failed here, in validate, before any
       # publish job ran — the site A6-9's sweep of build steps missed.
-      - run: cd dashboard && npm install --no-audit --no-fund
+      - run: cd dashboard && npm ci --no-audit --no-fund
       - run: npm run build
       # The tag IS the release identity — everything downstream (npm dist-tag,
       # GHCR :vX + :latest, the GitHub release) is named from it. Nothing here
@@ -114,11 +114,10 @@ jobs:
       # Closes the Scorecard Pinned-Dependencies finding on this file.
       - run: npm ci
       - run: npm run clean
-      # NOTE: dashboard uses `npm install` not `npm ci` because the Windows-
-      # generated lockfile prunes Linux-only @emnapi transitive deps that
-      # rolldown needs (per memory/reference_rolldown_lockfile_trap.md +
-      # the M08 fix in the regular CI workflow).
-      - run: cd dashboard && npm install
+      # npm ci, as in ci.yml: the dashboard lockfile carries the Linux
+      # rolldown binding and the @emnapi entries; a pruned lockfile fails
+      # here instead of drifting (2026-09-20 audit, H-2).
+      - run: cd dashboard && npm ci
       # One build: the dashboard, then the server (A6-9); `prepack` refuses
       # to publish a tarball without dist/dashboard/index.html.
       - run: npm run build
