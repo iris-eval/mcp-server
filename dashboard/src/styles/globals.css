@@ -183,12 +183,10 @@ html {
  * The banner sits at the bottom + is dismissable via localStorage.
  */
 @media (max-width: 767px) {
-  /* Sidebar gets narrower so content has room. Below 480px we hide it
-   * behind a CSS-only menu — but for v0.4 we just compress, since
-   * mobile is explicitly out-of-scope per the banner. */
-  aside[aria-label="Main navigation"] {
-    width: 160px;
-  }
+  /* The sidebar collapses to its icon rail at this width in the
+   * component (layout/Sidebar.tsx, D-9): its width is an inline style,
+   * so a rule here could never narrow it — the 160px rule that sat here
+   * from v0.4 was inert the whole time. */
   /* Allow horizontal overflow gracefully rather than clipping content. */
   main {
     overflow-x: auto;

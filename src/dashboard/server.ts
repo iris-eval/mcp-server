@@ -72,6 +72,22 @@ export function createDashboardServer(
 
   // Security headers
   app.use(helmet({
+    /*
+     * `same-origin`, not helmet's default `no-referrer` (arc 7, D-9).
+     *
+     * Under `no-referrer` a browser sends `Origin: null` on every POST
+     * navigation — the Fetch standard nulls the Origin header when the
+     * referrer policy forbids a referrer — so the sign-in form's POST
+     * /session reached the DNS-rebinding guard as an unknown origin and
+     * was refused with a 403 the browser showed as JSON. The `--api-key`
+     * dashboard could only ever be entered through a `?key=` link; the
+     * form had never worked from a browser (found by the api-key state
+     * spec in tests/e2e/states.spec.ts, confirmed with a request probe).
+     * `same-origin` sends the referrer, and so the Origin, only to this
+     * server's own origin; nothing leaves for a third party, which is what
+     * `no-referrer` was buying.
+     */
+    referrerPolicy: { policy: 'same-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],

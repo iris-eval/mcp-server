@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { axe } from 'jest-axe';
 import type { FailureQueryResult, RankedFailure } from '../../../src/api/types';
 import { SEEN_FAILURES_STORAGE_KEY } from '../../../src/hooks/useSeenFailures';
 
@@ -111,6 +112,12 @@ describe('FailuresView', () => {
     const links = screen.getAllByRole('link');
     expect(links.some((l) => l.getAttribute('href') === '/moments/t-1')).toBe(true);
     expect(links.some((l) => l.getAttribute('href') === '/moments/t-2')).toBe(true);
+  });
+
+  it('has no axe violations with failures listed (D-9)', async () => {
+    useFailuresMock.mockReturnValue(apiResult([makeFailure('t-1'), makeFailure('t-2')]));
+    const { container } = renderView();
+    expect((await axe(container)).violations).toEqual([]);
   });
 
   it('marks unvisited failures NEW and counts them in the header', () => {

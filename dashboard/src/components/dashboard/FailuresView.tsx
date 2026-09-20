@@ -100,7 +100,7 @@ export function FailuresView() {
                 wires up your agent in about a minute.
                 <br />
                 <span data-first-run-hints="true">
-                  Press <kbd>⌘K</kbd> (or <kbd>Ctrl K</kbd>) for the command palette — “Take the tour” is in it — and <kbd>?</kbd> for
+                  Press <kbd>⌘K</kbd> (or <kbd>Ctrl K</kbd>) for the command palette — “Onboarding tour” is in it — and <kbd>?</kbd> for
                   shortcuts. To stop the browser opening on every start, set <code>IRIS_NO_AUTO_LAUNCH=1</code> or{' '}
                   <code>autoLaunch: false</code> in {displayPath ? <code>{displayPath}</code> : 'your preferences file'}.
                 </span>

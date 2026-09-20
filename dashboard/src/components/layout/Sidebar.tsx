@@ -21,6 +21,7 @@ import { NavItem } from './NavItem';
 import { NavGroup } from './NavGroup';
 import { SidebarFooter } from './SidebarFooter';
 import { usePreferences } from '../../hooks/usePreferences';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { NAV_LABELS } from './navLabels';
 import { useCommandPalette } from '../command/CommandPaletteProvider';
 
@@ -78,11 +79,22 @@ export function Sidebar() {
   const { preferences, patch } = usePreferences();
   const { openShortcuts } = useCommandPalette();
 
-  const collapsed = preferences?.sidebarCollapsed ?? false;
+  /*
+   * Phone width (arc 7, D-9): below the tablet breakpoint the sidebar is
+   * the icon rail whatever the preference says. The width is an inline
+   * style (the collapse transition needs it), so the stylesheet rule that
+   * used to "compress" it at this width never applied — a 256px sidebar
+   * left a 390px phone 134px for the page, and the failure list's links
+   * had no width at all. The preference is untouched: the toggle still
+   * records it, and it takes effect again on a wider viewport.
+   */
+  const isNarrow = useMediaQuery('(max-width: 767px)');
+  const preferred = preferences?.sidebarCollapsed ?? false;
+  const collapsed = isNarrow || preferred;
 
   const onToggleCollapse = useCallback(() => {
-    patch({ sidebarCollapsed: !collapsed }).catch(() => undefined);
-  }, [patch, collapsed]);
+    patch({ sidebarCollapsed: !preferred }).catch(() => undefined);
+  }, [patch, preferred]);
 
   // env hostname: derive from window.location for local dev. v0.5 cloud
   // tier will replace with workspace+region.

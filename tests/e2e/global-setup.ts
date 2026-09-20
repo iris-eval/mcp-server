@@ -154,6 +154,9 @@ export default async function globalSetup(): Promise<void> {
       raw.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(LOCAL_TENANT);
       raw.prepare('DELETE FROM spans WHERE tenant_id = ?').run(LOCAL_TENANT);
       raw.prepare('DELETE FROM traces WHERE tenant_id = ?').run(LOCAL_TENANT);
+      // Labels name evaluations by id (D-8); a label from an earlier run
+      // would otherwise count against this run's seeded rows.
+      raw.prepare('DELETE FROM verdict_labels WHERE tenant_id = ?').run(LOCAL_TENANT);
 
       // 4. Insert via the adapter (tenant-safe + typed) then backfill
       //    eval_results.created_at so trend queries return multi-bucket

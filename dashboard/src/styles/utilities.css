@@ -415,6 +415,27 @@
   color: var(--text-muted);
 }
 
+/*
+ * Phone width (arc 7, D-9). Four columns at 390px left the body column —
+ * the card's own link — with no width at all: the failure list rendered
+ * and nothing in it could be opened (the 390 px spec found the link
+ * "hidden"). Below the tablet breakpoint the meta column drops under the
+ * body and the body keeps every pixel that is left.
+ */
+@media (max-width: 767px) {
+  .moment-card {
+    grid-template-columns: 24px 48px minmax(0, 1fr);
+  }
+  .moment-card__meta {
+    grid-column: 3;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    text-align: left;
+  }
+}
+
 /* ── ViewTabs (dashboard/ViewTabs.tsx) ──────────────────────────────
  * Underline tab strip. Active state keys off aria-selected so the
  * markup's accessibility state IS the visual state — they can't drift.
