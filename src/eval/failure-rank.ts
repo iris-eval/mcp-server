@@ -26,7 +26,7 @@ export const FAILURE_RANK_HALF_LIFE_MS = 24 * 60 * 60 * 1000;
  * its verdict is not fail/partial. A cost spike on a passing trace is
  * still something the builder should see on the landing screen.
  */
-const FLAGGED_KINDS = new Set(['safety-violation', 'cost-spike']);
+const FLAGGED_KINDS = new Set(['safety-violation', 'cost-spike', 'regression-alarm']);
 
 /**
  * Is this moment a failure (verdict fail/partial) or flagged

@@ -2,6 +2,7 @@ import type { CaseResultRow, RunResultRow, RunSummaryRow } from '../storage/sqli
 import type { Trace, Span } from './trace.js';
 import type { EvalResult } from './eval.js';
 import type { TenantId } from './tenant.js';
+import type { RegressionAlarm } from '../eval/cusum.js';
 
 export interface TraceFilter {
   agent_name?: string;
@@ -106,6 +107,10 @@ export interface AgentFailureLogEntry {
   failed: string[];
   /** The trace's cost, for the agent's own cost baseline (arc 7, D-7a); null when the trace recorded none. */
   costUsd: number | null;
+  /** Rules that RAN on this evaluation (skips excluded), sorted — the stream watcher's observations (arc 7, D-7b). Absent on a hand-built log, which is then not a stream. */
+  judged?: string[];
+  /** The run the evaluation belongs to, for the run-stratified stream; null when none. */
+  runId?: string | null;
 }
 
 export interface AgentFailureHistory {
@@ -117,6 +122,8 @@ export interface AgentFailureHistory {
   combinationsSeen: string[];
   /** The agent's most recent prior costs, newest first, at most COST_ANOMALY_WINDOW; traces without a cost are skipped. The baseline a cost spike is judged against (arc 7, D-7a). */
   recentCosts: number[];
+  /** The regression alarms the agent's stream raised AT the trace under test (arc 7, D-7b): one per (rule) or (run, rule) whose CUSUM crossed its line on this evaluation. */
+  regressionAlarms: RegressionAlarm[];
 }
 
 export interface DriftWindow {

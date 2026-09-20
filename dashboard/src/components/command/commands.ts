@@ -138,6 +138,14 @@ export function buildCommands(ctx: CommandContext): Command[] {
       run: () => ctx.navigate('/moments?kind=cost-spike'),
     },
     {
+      id: 'filter.regression',
+      title: 'Filter moments: regression alarms',
+      subtitle: 'Apply significance_kind=regression-alarm',
+      keywords: ['regression', 'drift', 'cusum', 'alarm', 'shift'],
+      section: 'Filter',
+      run: () => ctx.navigate('/moments?kind=regression-alarm'),
+    },
+    {
       id: 'filter.fail',
       title: 'Filter moments: failures only',
       subtitle: 'Apply verdict=fail',

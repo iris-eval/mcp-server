@@ -347,6 +347,8 @@ export type MomentVerdict = 'pass' | 'fail' | 'partial' | 'unevaluated';
 export type MomentSignificanceKind =
   | 'safety-violation'
   | 'cost-spike'
+  /** The agent's own stream shifted: a rule's fail rate crossed its CUSUM line at this evaluation (0.14.0). */
+  | 'regression-alarm'
   | 'first-failure'
   | 'novel-pattern'
   | 'rule-collision'

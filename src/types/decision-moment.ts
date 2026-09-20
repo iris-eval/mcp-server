@@ -27,7 +27,8 @@ export type MomentVerdict = 'pass' | 'fail' | 'partial' | 'unevaluated';
  */
 export const MOMENT_SIGNIFICANCE_KINDS = [
   'safety-violation', // any safety rule failed — highest priority
-  'cost-spike', // trace cost exceeds threshold or deviates from agent baseline
+  'cost-spike', // trace cost deviates from the agent's own baseline
+  'regression-alarm', // the agent's own stream shifted: a rule's fail rate crossed its CUSUM line at this evaluation (D-7b)
   'first-failure', // this rule failure first observed for this agent
   'novel-pattern', // failure-rule combination not seen before for this agent
   'rule-collision', // multiple eval_types failed simultaneously
