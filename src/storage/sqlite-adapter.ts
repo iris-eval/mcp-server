@@ -21,6 +21,9 @@
  */
 import Database from 'better-sqlite3';
 import { resolveCaseKey } from '../eval/case-key.js';
+
+/** How long a statement waits on another connection's lock before SQLITE_BUSY — on the connection and as the pragma, one number. */
+export const BUSY_TIMEOUT_MS = 5000;
 import { toolsHash } from '../eval/catalogue.js';
 import { evidenceSignature, issueKey } from '../eval/labels.js';
 import { ensureOwnerOnly } from '../utils/write-atomic.js';
@@ -139,12 +142,22 @@ export class SqliteAdapter implements IStorageAdapter {
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
     this.redact = options?.redact ?? 'none';
-    this.db = new Database(dbPath);
+    /*
+     * The busy wait belongs to the CONNECTION, not to a pragma run after
+     * the first statement. `PRAGMA journal_mode = WAL` on a cold file takes
+     * an exclusive lock for the switch, and until 0.14.0 `busy_timeout` was
+     * set only after it — so two processes opening one cold file at the
+     * same instant (the CLI ingest race test, on a loaded CI runner) had
+     * the second one fail on that very first pragma with SQLITE_BUSY and no
+     * wait at all. The migration race was closed in 0.13.0 with
+     * BEGIN IMMEDIATE; the statement before it was never covered.
+     */
+    this.db = new Database(dbPath, { timeout: BUSY_TIMEOUT_MS });
   }
 
   async initialize(): Promise<void> {
+    this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
     this.db.pragma('journal_mode = WAL');
-    this.db.pragma('busy_timeout = 5000');
     this.db.pragma('foreign_keys = ON');
     /*
      * secure_delete overwrites freed content with zeros instead of leaving
