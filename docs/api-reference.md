@@ -633,7 +633,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Co
 |-----------|------|----------|-------------|
 | `output` | `string` | Yes | Text to evaluate |
 | `template` | `enum` | Yes | `accuracy` / `helpfulness` / `safety` / `correctness` / `faithfulness` |
-| `model` | `string` | Yes | Supported: `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`, `gpt-4o`, `gpt-4o-mini`, `o1-mini` |
+| `model` | `string` | Yes | Any model in the pricing table (`docs/llm-as-judge.md`, read from both providers on 2026-09-20); an unknown id is refused with the full list |
 | `provider` | `enum` | No | `anthropic` / `openai` — auto-inferred from model if omitted |
 | `input` | `string` | No | Original user question (improves helpfulness/safety templates) |
 | `expected` | `string` | Required for `correctness` template | Reference answer |

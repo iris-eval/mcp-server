@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { supportedModelsSummary } from '../eval/llm-judge/pricing.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
@@ -18,7 +19,7 @@ const inputSchema = {
   model: z
     .string()
     .describe(
-      'Judge model for per-citation verification. Supported: anthropic = claude-opus-4-7 | claude-sonnet-4-6 | claude-haiku-4-5 | claude-haiku-4-5-20251001; openai = gpt-4o | gpt-4o-mini | o1-mini.',
+      `Judge model for per-citation verification. Supported: ${supportedModelsSummary()}; an unknown id is refused with the full priced list.`,
     ),
   provider: z.enum(['anthropic', 'openai']).optional().describe('Auto-detected from model when omitted'),
   allow_fetch: z.boolean().optional().describe('Permit outbound HTTP to resolve URLs/DOIs. Defaults to IRIS_CITATION_ALLOW_FETCH=1; false otherwise. SSRF-guarded regardless.'),
