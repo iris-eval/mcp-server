@@ -6,7 +6,7 @@
  */
 
 export const PUBLISHED_ACCURACY_CORPUS_VERSION = '35c3aa58cbfa';
-export const PUBLISHED_ACCURACY_RELEASE = '0.13.0';
+export const PUBLISHED_ACCURACY_RELEASE = '0.14.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
 export const PUBLISHED_ACCURACY = {

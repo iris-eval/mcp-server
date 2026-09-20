@@ -1,5 +1,5 @@
 {
-  "commit": "ab71a96",
+  "commit": "92024c8",
   "corpusVersion": "35c3aa58cbfa",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-20T18:38:59.991Z",
+  "generatedAt": "2026-09-20T21:37:37.211Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -2258,5 +2258,5 @@
       }
     ]
   },
-  "version": "0.13.0"
+  "version": "0.14.0"
 }
