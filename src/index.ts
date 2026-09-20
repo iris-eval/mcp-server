@@ -19,6 +19,7 @@ import { openBrowser } from './utils/open-browser.js';
 import { createCustomRuleStore } from './custom-rule-store.js';
 import { createCustomRule } from './eval/rules/custom.js';
 import { EvalEngine } from './eval/engine.js';
+import { refreshLocalLabels } from './eval/local-labels.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { validatePortConfig } from './utils/validate-port-config.js';
 import { validateBindPolicy } from './utils/bind-policy.js';
@@ -403,6 +404,9 @@ async function main(): Promise<void> {
     );
   }
 
+  // The deployment's own labels, read once at boot (arc 7, D-8); every label write refreshes them.
+  await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
+
   const httpServers: Server[] = [];
 
   // Retention: one sweep at boot and the same sweep on a timer that never
@@ -573,6 +577,7 @@ async function runDemo(): Promise<void> {
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
     evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }
+  await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
   const preferenceStore = createPreferenceStore(demoPreferencesPath());
 
   const dashboardServer = createDashboardServer(storage, config, logger, {

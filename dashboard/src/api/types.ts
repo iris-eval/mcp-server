@@ -156,8 +156,114 @@ export interface Provenance {
   configHash: string;
   thresholds: { default: number; perRule?: Record<string, unknown> };
   corpusVersion: string;
-  composer?: { defaultsGate: boolean; falsePassCost: number; onCriticalSkipped: 'unknown' | 'fail' | 'pass' };
+  composer?: {
+    defaultsGate: boolean;
+    falsePassCost: number;
+    onCriticalSkipped: 'unknown' | 'fail' | 'pass';
+    /** The prior the risk estimate used and where it came from (0.14.0): your eval.prior, the one your labels implied, or the default. */
+    prior?: number;
+    priorSource?: 'default' | 'config' | 'estimated';
+  };
+  /** The evaluation this one re-scored (0.14.0); the earlier row is kept. */
+  supersedes?: string;
   [key: string]: unknown;
+}
+
+/* ── Labels on your own traffic (arc 7, D-8) ── */
+
+export type VerdictLabelValue = 'right' | 'wrong';
+
+/** One label: your judgement that a rule's FIRE on one evaluation was right or wrong. Labels measure precision only. */
+export interface VerdictLabel {
+  id: string;
+  evalId: string;
+  ruleName: string | null;
+  label: VerdictLabelValue;
+  note: string | null;
+  labelledAt: string;
+}
+
+export interface LabelStatsRow {
+  rule: string;
+  kind: string | null;
+  /** Whether this rule's fires enter the risk estimate, so its labels can move a verdict. */
+  entersRisk: boolean;
+  n: number;
+  right: number;
+  wrong: number;
+  precision: Interval | null;
+  /** True at `min` labels: the rule's number on this deployment is its own. */
+  local: boolean;
+  publishedPrecision: number | null;
+  fireRate: number | null;
+}
+
+export interface EstimatedPrior {
+  pi: number;
+  lo: number;
+  hi: number;
+  ruleName: string;
+  fireRate: number;
+  sensitivity: number;
+}
+
+export interface SamplingSuggestion {
+  ruleName: string;
+  n: number;
+  halfwidthPoints: number;
+  fireRate: number;
+  sentence: string;
+}
+
+/** GET /api/v1/labels/stats */
+export interface LabelStats {
+  rules: LabelStatsRow[];
+  /** Labels on a rule's fires before its local precision replaces the published number. */
+  min: number;
+  /** How many recent evaluations the fire rate and the issues are read over. */
+  window: number;
+  estimatedPrior: EstimatedPrior | null;
+  suggestion: SamplingSuggestion | null;
+  refreshedAt: string;
+}
+
+/** POST /api/v1/labels */
+export interface LabelResponse {
+  label: VerdictLabel;
+  rule: LabelStatsRow | null;
+  /** Labels before a rule's local precision is in force. */
+  min: number;
+  estimatedPrior: EstimatedPrior | null;
+  suggestion: SamplingSuggestion | null;
+}
+
+/** GET /api/v1/issues: fires grouped by (rule, evidence signature). */
+export interface IssueGroup {
+  key: string;
+  ruleName: string;
+  signature: string;
+  count: number;
+  agents: string[];
+  firstSeen: string;
+  lastSeen: string;
+  exampleEvalIds: string[];
+  /** The traces those evaluations scored, in the same order; null for an evaluation made from bare text. */
+  exampleTraceIds: Array<string | null>;
+  labelled: { right: number; wrong: number };
+}
+
+export interface IssuesResponse {
+  issues: IssueGroup[];
+  window: number;
+}
+
+/** POST /api/v1/evaluations/:id/reevaluate */
+export interface ReevaluateResponse {
+  evaluation: EvalResult;
+  supersedes: string;
+  before: { verdict: string | null; passed: boolean };
+  after: { verdict: string | null; passed: boolean };
+  changed: boolean;
 }
 
 export type Evidence =

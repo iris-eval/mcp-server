@@ -118,6 +118,7 @@ export function buildProvenance(input: {
   ruleThresholds?: Record<string, unknown>;
   toolsHash?: string;
   composer?: Provenance['composer'];
+  supersedes?: string;
   judgedAt: string;
 }): Provenance {
   return {
@@ -127,6 +128,7 @@ export function buildProvenance(input: {
     thresholds: { default: input.threshold, ...(input.ruleThresholds ? { perRule: input.ruleThresholds } : {}) },
     ...(input.toolsHash !== undefined ? { toolsHash: input.toolsHash } : {}),
     ...(input.composer !== undefined ? { composer: input.composer } : {}),
+    ...(input.supersedes !== undefined ? { supersedes: input.supersedes } : {}),
     corpusVersion: publishedProvenance().corpusVersion,
     judgedAt: input.judgedAt,
   };

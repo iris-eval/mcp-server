@@ -4,13 +4,22 @@
  * The chrome already renders h1 "Trace" from routeTitles. This page adds
  * the resource-specific summary card + semantic sections wrapped in
  * <section aria-labelledby> so AT users can navigate by structure.
+ *
+ * Labels on the user's own traffic (arc 7, D-8) live here too: every fired
+ * rule on every evaluation card carries a right/wrong control, the page
+ * keeps the labels it has read and written, and each card can re-score its
+ * trace under the rules and labels as they stand now.
  */
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { useTraceDetail, useBuiltInRules, useCapabilities } from '../../api/hooks';
+import { api } from '../../api/client';
+import type { VerdictLabelValue } from '../../api/types';
 import { QueryError } from '../shared/QueryError';
 import { SpanTree } from './SpanTree';
 import { ToolCallCard } from './ToolCallCard';
 import { EvalDetailCard } from '../evals/EvalDetailCard';
+import { labelSentence, reevaluateSentence } from '../evals/labelText';
 import { Badge } from '../shared/Badge';
 import { LatencyDisplay } from '../shared/LatencyDisplay';
 import { CostDisplay } from '../shared/CostDisplay';
@@ -21,12 +30,68 @@ import { EmptyState } from '../shared/EmptyState';
 
 /* Static styling lives in utilities.css (.detail-* block). */
 
+type LabelsByEval = Record<string, Record<string, VerdictLabelValue>>;
+
 export function TraceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading, error, refetch } = useTraceDetail(id!);
   // The rule roster and the published table, read once each (D-3): the row's definition and interval.
   const rules = useBuiltInRules();
   const capabilities = useCapabilities();
+
+  // Labels on this trace's evaluations (D-8): read once per evaluation, kept on the page after a write.
+  const [labels, setLabels] = useState<LabelsByEval>({});
+  const [labelBusy, setLabelBusy] = useState(false);
+  const [labelNotes, setLabelNotes] = useState<Record<string, string>>({});
+  const [reevaluating, setReevaluating] = useState<string | null>(null);
+  const [reevaluateNotes, setReevaluateNotes] = useState<Record<string, string>>({});
+  const evalIdsKey = (data?.evals ?? []).map((e) => e.id).join(',');
+
+  useEffect(() => {
+    if (evalIdsKey === '') return;
+    let cancelled = false;
+    void (async () => {
+      const next: LabelsByEval = {};
+      for (const evalId of evalIdsKey.split(',')) {
+        try {
+          const { labels: rows } = await api.getLabels(evalId);
+          next[evalId] = Object.fromEntries(rows.filter((l) => l.ruleName !== null).map((l) => [l.ruleName as string, l.label]));
+        } catch {
+          // A page whose labels could not be read still renders; the control writes on first use.
+        }
+      }
+      if (!cancelled) setLabels(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [evalIdsKey]);
+
+  const onLabel = async (evalId: string, rule: string, label: VerdictLabelValue) => {
+    setLabelBusy(true);
+    try {
+      const r = await api.labelRule(evalId, rule, label);
+      setLabels((m) => ({ ...m, [evalId]: { ...(m[evalId] ?? {}), [rule]: label } }));
+      setLabelNotes((m) => ({ ...m, [evalId]: labelSentence(r) }));
+    } catch (err) {
+      setLabelNotes((m) => ({ ...m, [evalId]: `Could not save the label: ${err instanceof Error ? err.message : String(err)}` }));
+    } finally {
+      setLabelBusy(false);
+    }
+  };
+
+  const onReevaluate = async (evalId: string) => {
+    setReevaluating(evalId);
+    try {
+      const r = await api.reevaluate(evalId);
+      setReevaluateNotes((m) => ({ ...m, [evalId]: reevaluateSentence(r) }));
+      refetch();
+    } catch (err) {
+      setReevaluateNotes((m) => ({ ...m, [evalId]: `Could not re-score: ${err instanceof Error ? err.message : String(err)}` }));
+    } finally {
+      setReevaluating(null);
+    }
+  };
 
   if (loading) return <LoadingSpinner />;
   if (error) return <QueryError error={error} what="this trace" onRetry={refetch} />;
@@ -102,6 +167,13 @@ export function TraceDetailPage() {
               callHref={(i) => `#call-${i}`}
               input={trace.input}
               questionText={questionText}
+              labels={new Map(Object.entries(labels[evalResult.id] ?? {}))}
+              onLabel={onLabel}
+              labelBusy={labelBusy}
+              labelNote={labelNotes[evalResult.id] ?? null}
+              onReevaluate={onReevaluate}
+              reevaluating={reevaluating === evalResult.id}
+              reevaluateNote={reevaluateNotes[evalResult.id] ?? null}
             />
           ))}
         </section>

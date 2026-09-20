@@ -21,6 +21,8 @@ vi.mock('../../../src/api/hooks', () => ({
   // D-5: the roster above the custom rules reads these once; idle here.
   useBuiltInRules: () => idleQuery(),
   useCapabilities: () => idleQuery(),
+  // D-8: the local-precision panel reads this once; idle here.
+  useLabelStats: () => idleQuery(),
 }));
 
 vi.mock('../../../src/api/client', async (importOriginal) => {

@@ -24,6 +24,9 @@ import type {
   RunsResponse,
   RunDetailResponse,
   CaseResponse,
+  IssuesResponse,
+  LabelStats,
+  VerdictLabel,
 } from './types';
 
 /**
@@ -307,4 +310,27 @@ export function useAuditLog(params?: Record<string, string>) {
     [paramsKey],
   );
   return useApiData<AuditQueryResult>(fetcher, CADENCE.SLOW);
+}
+
+/* Labels on your own traffic (arc 7, D-8). */
+
+export function useLabelStats() {
+  const fetcher = useCallback(() => api.getLabelStats(), []);
+  return useApiData<LabelStats>(fetcher, CADENCE.SLOW);
+}
+
+export function useIssues(params?: Record<string, string>) {
+  const paramsKey = JSON.stringify(params);
+  const fetcher = useCallback(
+    () => api.getIssues(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
+    [paramsKey],
+  );
+  return useApiData<IssuesResponse>(fetcher, CADENCE.SLOW);
+}
+
+/** The labels on one evaluation, read once; the page updates its own copy after a write. */
+export function useEvalLabels(evalId: string) {
+  const fetcher = useCallback(() => api.getLabels(evalId).then((r) => r.labels), [evalId]);
+  return useApiData<VerdictLabel[]>(fetcher);
 }

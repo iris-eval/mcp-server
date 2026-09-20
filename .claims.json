@@ -1142,6 +1142,10 @@
           {
             "kind": "tool",
             "name": "compare_runs"
+          },
+          {
+            "kind": "route",
+            "name": "/api/v1/labels"
           }
         ],
         "id": "Q10xS5",
@@ -1149,7 +1153,7 @@
         "question": "Q10",
         "status": "has",
         "subject": "S5",
-        "summary": "Population-level trust: two windows are compared with both denominators and a 95% interval on the difference in pass rate, shown on the dashboard's change banner; two runs are compared with a Newcombe interval on the difference (McNemar on the discordant pairs when the cases pair). An interval that straddles zero is reported as not distinguishable, with the sample that would distinguish it."
+        "summary": "Population-level trust: two windows are compared with both denominators and a 95% interval on the difference in pass rate, shown on the dashboard's change banner; two runs are compared with a Newcombe interval on the difference (McNemar on the discordant pairs when the cases pair). An interval that straddles zero is reported as not distinguishable, with the sample that would distinguish it. The deployment's own labels on a rule's fires say how often those fires were right on its traffic, with a Wilson interval; at twenty labels that number is in force on every verdict (the risk estimate reads it in place of the published one), the prior is estimated from the rule's fire rate, and the rule whose next label narrows the most uncertainty is named."
       },
       {
         "evidence": [
@@ -4341,8 +4345,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-20T19:25:07.244Z",
-  "generatedFromCommit": "9f8e4a9",
+  "generatedAt": "2026-09-20T20:11:52.626Z",
+  "generatedFromCommit": "b03577a",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 5,
@@ -8183,16 +8187,16 @@
       "passed": null,
       "total": 22
     },
-    "totalCombined": 2787,
+    "totalCombined": 2830,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 299,
-      "total": 299
+      "passed": 318,
+      "total": 318
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2466,
-      "total": 2466
+      "passed": 2490,
+      "total": 2490
     }
   },
   "version": {

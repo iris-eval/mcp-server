@@ -1196,7 +1196,7 @@
       "question": "Q10",
       "subject": "S5",
       "status": "has",
-      "summary": "Population-level trust: two windows are compared with both denominators and a 95% interval on the difference in pass rate, shown on the dashboard's change banner; two runs are compared with a Newcombe interval on the difference (McNemar on the discordant pairs when the cases pair). An interval that straddles zero is reported as not distinguishable, with the sample that would distinguish it.",
+      "summary": "Population-level trust: two windows are compared with both denominators and a 95% interval on the difference in pass rate, shown on the dashboard's change banner; two runs are compared with a Newcombe interval on the difference (McNemar on the discordant pairs when the cases pair). An interval that straddles zero is reported as not distinguishable, with the sample that would distinguish it. The deployment's own labels on a rule's fires say how often those fires were right on its traffic, with a Wilson interval; at twenty labels that number is in force on every verdict (the risk estimate reads it in place of the published one), the prior is estimated from the rule's fire rate, and the rule whose next label narrows the most uncertainty is named.",
       "evidence": [
         {
           "kind": "route",
@@ -1205,6 +1205,10 @@
         {
           "kind": "tool",
           "name": "compare_runs"
+        },
+        {
+          "kind": "route",
+          "name": "/api/v1/labels"
         }
       ],
       "needs": []

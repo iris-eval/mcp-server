@@ -208,6 +208,9 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   // the difference between "set to the shipped number" and "left alone".
   // Environment and CLI carry no rule thresholds, so the file is the source.
   config.eval.configuredThresholdKeys = Object.keys((fileConfig as Partial<IrisConfig>).eval?.ruleThresholds ?? {});
+  // Likewise the prior: the shipped 0.5 and a deployment's own 0.5 are the
+  // same number and different facts, and the verdict's provenance says which.
+  config.eval.priorConfigured = (fileConfig as Partial<IrisConfig>).eval?.prior !== undefined;
 
   ensureIrisDirectory(dirname(config.storage.path), 'the database directory (IRIS_DB_PATH / --db-path)');
 
