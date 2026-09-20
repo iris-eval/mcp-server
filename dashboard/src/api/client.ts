@@ -30,6 +30,12 @@ import type {
   CaseResponse,
   CompareRunsRequest,
   CompareRunsResult,
+  IssuesResponse,
+  LabelResponse,
+  LabelStats,
+  ReevaluateResponse,
+  VerdictLabel,
+  VerdictLabelValue,
 } from './types';
 
 /**
@@ -214,6 +220,30 @@ export const api = {
 
   getAuditLog(params?: Record<string, string>): Promise<AuditQueryResult> {
     return fetchJson<AuditQueryResult>(`${API_BASE_URL}/audit`, params);
+  },
+
+  /* Labels on your own traffic (arc 7, D-8). */
+
+  /** Label one rule's fire on one evaluation right or wrong; a second label on the same fire replaces the first. */
+  labelRule(evalId: string, rule: string, label: VerdictLabelValue, note?: string): Promise<LabelResponse> {
+    return postJson<LabelResponse>(`${API_BASE_URL}/labels`, { eval_id: evalId, rule, label, ...(note ? { note } : {}) });
+  },
+
+  getLabels(evalId: string): Promise<{ labels: VerdictLabel[] }> {
+    return fetchJson<{ labels: VerdictLabel[] }>(`${API_BASE_URL}/labels`, { eval_id: evalId });
+  },
+
+  getLabelStats(): Promise<LabelStats> {
+    return fetchJson<LabelStats>(`${API_BASE_URL}/labels/stats`);
+  },
+
+  getIssues(params?: Record<string, string>): Promise<IssuesResponse> {
+    return fetchJson<IssuesResponse>(`${API_BASE_URL}/issues`, params);
+  },
+
+  /** Score a stored evaluation's trace again under the rules and labels as they stand now; the earlier row is kept. */
+  reevaluate(evalId: string): Promise<ReevaluateResponse> {
+    return postJson<ReevaluateResponse>(`${API_BASE_URL}/evaluations/${encodeURIComponent(evalId)}/reevaluate`, {});
   },
 };
 

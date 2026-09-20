@@ -25,6 +25,7 @@ import { registerRunRoutes } from './routes/runs.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerMomentRoutes } from './routes/moments.js';
 import { registerFailureRoutes } from './routes/failures.js';
+import { registerLabelRoutes } from './routes/labels.js';
 import { registerRuleRoutes } from './routes/rules.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
@@ -144,6 +145,8 @@ export function createDashboardServer(
   );
   registerMomentRoutes(router, storage);
   registerFailureRoutes(router, storage);
+  // Labels on the user's own traffic, the issues list and re-scoring (arc 7, D-8); re-scoring needs the engine and says so without one.
+  registerLabelRoutes(router, storage, { evalEngine: options?.evalEngine });
   if (options?.customRuleStore && options?.evalEngine) {
     registerRuleRoutes(router, storage, {
       customRuleStore: options.customRuleStore,

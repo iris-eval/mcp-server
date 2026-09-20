@@ -12,10 +12,11 @@
  * nothing else; a test holds that no second renderer exists.
  */
 import type { CSSProperties, ReactNode } from 'react';
-import type { BuiltInRuleMeta, EvalRuleResult, RuleProofSummary } from '../../api/types';
+import type { BuiltInRuleMeta, EvalRuleResult, RuleProofSummary, VerdictLabelValue } from '../../api/types';
 import { Badge } from '../shared/Badge';
 import { ScoreBadge } from '../shared/ScoreBadge';
 import { Tooltip } from '../shared/Tooltip';
+import { TT } from '../shared/tooltipText';
 import {
   CRITICAL_SOURCE_TEXT,
   KIND_TEXT,
@@ -48,6 +49,15 @@ export interface RuleResultRowProps {
    * everything.
    */
   depth?: 'default' | 'full';
+  /**
+   * Your label on this rule's fire (arc 7, D-8), and the handler that
+   * writes one. The control appears only on a FAILED row and only when a
+   * page supplies the handler: a label is a judgement on a fire, so a quiet
+   * or skipped rule has nothing here to be right or wrong about.
+   */
+  label?: VerdictLabelValue | null;
+  onLabel?: (rule: string, label: VerdictLabelValue) => void;
+  labelBusy?: boolean;
 }
 
 const SR_ONLY: CSSProperties = {
@@ -115,6 +125,24 @@ const styles = {
   summary: { cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 'var(--text-caption)' } as CSSProperties,
   definitionBody: { margin: 'var(--space-1) 0 0', paddingLeft: 'var(--space-3)', display: 'grid', gap: '2px' } as CSSProperties,
   value: { fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: 'var(--text-caption)' } as CSSProperties,
+  labelGroup: { display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', marginLeft: 'auto' } as CSSProperties,
+  labelAsk: { color: 'var(--text-muted)', fontSize: 'var(--text-caption-xs)', whiteSpace: 'nowrap' } as CSSProperties,
+  labelButton: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-caption-xs)',
+    padding: '1px var(--space-1_5)',
+    borderRadius: 'var(--radius-pill)',
+    border: '1px solid var(--border-color)',
+    background: 'transparent',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    lineHeight: 1.6,
+  } as CSSProperties,
+};
+
+const LABEL_ON: Record<VerdictLabelValue, CSSProperties> = {
+  right: { color: 'var(--eval-pass)', borderColor: 'var(--eval-pass)', fontWeight: 700 },
+  wrong: { color: 'var(--eval-fail)', borderColor: 'var(--eval-fail)', fontWeight: 700 },
 };
 
 type Tone = 'neutral' | 'fail' | 'warn' | 'muted';
@@ -144,7 +172,7 @@ const ROLE_TONE: Record<NonNullable<EvalRuleResult['role']>, Tone> = {
   advisory: 'muted',
 };
 
-export function RuleResultRow({ result, meta = null, proof = null, callHref, texts, depth = 'full' }: RuleResultRowProps) {
+export function RuleResultRow({ result, meta = null, proof = null, callHref, texts, depth = 'full', label = null, onLabel, labelBusy = false }: RuleResultRowProps) {
   const full = depth === 'full';
   const state = ruleState(result);
   const color = state === 'skipped' ? 'var(--eval-skipped)' : state === 'passed' ? 'var(--eval-pass)' : 'var(--eval-fail)';
@@ -188,6 +216,30 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
           </span>
         )}
         {state === 'skipped' ? <Badge label="SKIPPED" variant="UNSET" /> : <ScoreBadge score={result.score} passed={result.passed} />}
+        {state === 'failed' && onLabel && (
+          <span
+            style={styles.labelGroup}
+            role="group"
+            aria-label={`Was ${result.ruleName} right to fire?`}
+            data-label-control={result.ruleName}
+            data-label={label ?? 'none'}
+          >
+            <span style={styles.labelAsk}>right to fire?</span>
+            {(['right', 'wrong'] as const).map((value) => (
+              <Tooltip key={value} content={value === 'right' ? TT.labelRight : TT.labelWrong}>
+                <button
+                  type="button"
+                  aria-pressed={label === value}
+                  disabled={labelBusy}
+                  style={{ ...styles.labelButton, ...(label === value ? LABEL_ON[value] : {}) }}
+                  onClick={() => onLabel(result.ruleName, value)}
+                >
+                  {value}
+                </button>
+              </Tooltip>
+            ))}
+          </span>
+        )}
       </div>
 
       {(preStamp || state === 'skipped' || result.evidenceIncomplete || showEvidence || showComputation) && (

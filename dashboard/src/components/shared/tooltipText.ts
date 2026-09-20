@@ -41,6 +41,16 @@ export const TT = {
     'A safety rule (PII, prompt injection, blocklist, stub-output, or hallucination markers) failed. Highest priority — review before this pattern becomes load-bearing.',
   sigCostSpike: 'Trace cost is far above this agent’s own baseline — more than 3.5 robust standard deviations (MADs) over the median of its recent traces. Investigate prompt size and model tier.',
   sigRegressionAlarm: 'This agent’s own stream shifted: a rule’s fail rate crossed its CUSUM line at this evaluation, about ten points over the baseline set on the agent’s earlier evaluations. Reports, never gates.',
+
+  // Labels on your own traffic (arc 7, D-8). Labels are written on fires, so they measure precision only.
+  labelRight: 'This rule was right to fire here. Your labels on a rule’s fires build its local precision — how often its fires are right on YOUR traffic — and at twenty labels that number replaces the published one on every verdict this deployment makes.',
+  labelWrong: 'This rule was wrong to fire here — a false positive on your traffic. Counted into the rule’s local precision; at twenty labels the rule’s fires carry your number instead of the published one.',
+  localPrecision: 'Right ÷ (right + wrong) over your labels on this rule’s fires, with a 95% Wilson interval. It measures precision only: nothing here says what a quiet rule missed, so the surface never says “local accuracy”.',
+  localInForce: 'Twenty or more labels: on this deployment the rule’s fires carry this precision instead of the published positive predictive value, in the risk estimate and on every row.',
+  estimatedPrior: 'The prior that an output is bad, estimated from your own labels: a rule that fires on a fraction f of your traffic with local precision p sees f·p true fires, and f·p ≈ prior × sensitivity, so prior ≈ f·p ÷ sensitivity. Your eval.prior, when set, always wins.',
+  samplingSuggestion: 'Which rule’s next label narrows the most uncertainty on your traffic: the fire rate times how much one more label would shrink the interval. A suggestion, never a requirement.',
+  reevaluate: 'Score this trace again under the rules, thresholds and labels as they stand now. The earlier evaluation is kept and the new one names it, so the change between them is the finding.',
+  issues: 'Fires grouped by rule and by what the rule found — the same pattern, the same tool, the same measured stat — so ten fires of one pattern read as one issue with a count.',
   sigRuleCollision: 'Failures span multiple eval categories — output failed in more than one dimension.',
   sigNormalFail: 'A rule failed; the failure does not elevate to a higher significance category.',
   sigNormalPass: 'All fired rules passed — operational data, not a moment requiring review.',

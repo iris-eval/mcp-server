@@ -20,6 +20,21 @@ import type { EvalContext, EvalRule, EvalRuleResult, Need, SkipClass, Uncertaint
 import type { EffectiveCriticality } from './criticality.js';
 import { stepsOf } from './steps.js';
 import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
+import type { LocalPrecision } from './labels.js';
+
+/** The prior in force and where it came from — the engine resolves it once per evaluation. */
+export interface PriorInForce {
+  pi: number;
+  source: 'default' | 'config' | 'estimated';
+}
+
+export interface StampOptions {
+  prior?: PriorInForce;
+  /** This rule's local precision from the deployment's own labels (arc 7, D-8), when any labels exist. */
+  local?: LocalPrecision;
+}
+
+const DEFAULT_PRIOR_IN_FORCE: PriorInForce = { pi: DEFAULT_PREVALENCE, source: 'default' };
 
 /** Which needs the call actually carried. `tools_catalogue` and `citations` arrive with later releases. */
 export function inputsPresent(context: EvalContext): Set<Need> {
@@ -58,8 +73,9 @@ export function skipClassOf(raw: EvalRuleResult): SkipClass | undefined {
  * deployment states its own prevalence (the compose-by-kind release) or the
  * own-traffic labels estimate one.
  */
-export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult): Uncertainty | undefined {
+export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: StampOptions = {}): Uncertainty | undefined {
   if (raw.skipped || rule.kind === undefined) return undefined;
+  const prior = options.prior ?? DEFAULT_PRIOR_IN_FORCE;
   switch (rule.kind) {
     case 'policy':
       return { basis: 'policy' };
@@ -72,13 +88,24 @@ export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult): Uncertainty 
     }
     case 'detection':
     case 'inference': {
+      const fired = raw.passed === false;
+      /*
+       * The deployment's own number (arc 7, D-8): at LOCAL_LABEL_MIN labels
+       * on this rule's fires, a FIRE carries the local precision instead of
+       * the published positive predictive value. A quiet rule keeps the
+       * published miss rate — labels on fires say nothing about what a
+       * quiet rule missed, and a number that pretended otherwise would be
+       * the "local accuracy" the surface refuses to say.
+       */
+      const local = options.local;
+      if (fired && local !== undefined && local.local && local.precision !== null) {
+        return { basis: 'local_labels', precision: { point: local.precision.point, lo: local.precision.lo, hi: local.precision.hi }, n: local.n };
+      }
       const published = publishedAccuracyFor(rule.name);
       if (!published) return { basis: 'unmeasured', why: 'no proof family for this rule' };
       const prov = publishedProvenance();
       const corpus = { n: published.n, tp: published.tp, fp: published.fp, fn: published.fn, tn: published.tn, version: prov.corpusVersion, release: prov.release, labelling: prov.labelling };
-      const prior = { pi: DEFAULT_PREVALENCE, source: 'default' as const };
-      const fired = raw.passed === false;
-      const interval = fired ? ppvInterval(rule.name, DEFAULT_PREVALENCE) : missRateInterval(rule.name, DEFAULT_PREVALENCE);
+      const interval = fired ? ppvInterval(rule.name, prior.pi) : missRateInterval(rule.name, prior.pi);
       if (!interval) return { basis: 'unmeasured', why: 'the proof family has no positives or no negatives' };
       return fired ? { basis: 'published_accuracy', fired: true, ppv: interval, prior, corpus } : { basis: 'published_accuracy', fired: false, missRate: interval, prior, corpus };
     }
@@ -97,10 +124,11 @@ export function stampRuleResult(
   raw: EvalRuleResult,
   context: EvalContext,
   _effective: EffectiveCriticality,
+  options: StampOptions = {},
 ): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty' | 'origin'> {
   const present = inputsPresent(context);
   const skipClass = skipClassOf(raw);
-  const uncertainty = uncertaintyOf(rule, raw);
+  const uncertainty = uncertaintyOf(rule, raw, options);
   return {
     ...(rule.kind !== undefined ? { kind: rule.kind } : {}),
     ...(rule.question !== undefined ? { question: rule.question } : {}),

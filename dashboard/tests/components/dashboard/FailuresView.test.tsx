@@ -15,6 +15,8 @@ const useFailuresMock = vi.fn();
 
 vi.mock('../../../src/api/hooks', () => ({
   useFailures: (...args: unknown[]) => useFailuresMock(...args),
+  // D-8: the recurring-issues list below the failures reads this once; idle here.
+  useIssues: () => ({ data: null, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null }),
 }));
 // D-5: the empty state names the preferences file the server reports.
 vi.mock('../../../src/hooks/usePreferences', () => ({

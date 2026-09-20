@@ -19,6 +19,7 @@
  * in the app, and a native alert can't show the failed request inline.
  */
 import { BuiltInRoster } from './BuiltInRoster';
+import { LocalPrecisionPanel } from './LocalPrecisionPanel';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Sparkles } from 'lucide-react';
@@ -164,6 +165,8 @@ export function RulesPage() {
 
       {/* The built-in roster with its proof (D-5) sits above the rules you deployed. */}
       <BuiltInRoster />
+      {/* Your labels and what they made of each rule's number (D-8). */}
+      <LocalPrecisionPanel />
       {error && <QueryError error={error} what="the deployed rules" onRetry={refetch} />}
 
       {data && data.length === 0 && (

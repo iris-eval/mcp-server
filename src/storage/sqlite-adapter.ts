@@ -22,6 +22,7 @@
 import Database from 'better-sqlite3';
 import { resolveCaseKey } from '../eval/case-key.js';
 import { toolsHash } from '../eval/catalogue.js';
+import { evidenceSignature, issueKey } from '../eval/labels.js';
 import { ensureOwnerOnly } from '../utils/write-atomic.js';
 import type {
   IStorageAdapter,
@@ -36,6 +37,10 @@ import type {
   TrendCohort,
   EvalStatsRuleBreakdown,
   EvalStatsFailure,
+  IssueGroup,
+  LabelTallyRow,
+  RuleFireStat,
+  VerdictLabel,
 } from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
@@ -982,6 +987,122 @@ export class SqliteAdapter implements IStorageAdapter {
       });
     }
     return out;
+  }
+
+  /*
+   * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
+   *
+   * One opinion per (evaluation, rule): labelling a fire that already
+   * carries a label REPLACES it. A reader who changes their mind has one
+   * current judgement, and counting both would weigh one fire twice in the
+   * precision every verdict then reads.
+   */
+  async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel> {
+    assertTenant(tenantId);
+    const labelledAt = label.labelledAt ?? new Date().toISOString();
+    const write = this.db.transaction(() => {
+      this.db.prepare('DELETE FROM verdict_labels WHERE tenant_id = ? AND eval_id = ? AND rule_name IS ?').run(tenantId, label.evalId, label.ruleName);
+      this.db
+        .prepare('INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(label.id, tenantId, label.evalId, label.ruleName, label.label, label.note, labelledAt);
+    });
+    write();
+    return { id: label.id, evalId: label.evalId, ruleName: label.ruleName, label: label.label, note: label.note, labelledAt };
+  }
+
+  async getLabelsForEval(tenantId: TenantId, evalId: string): Promise<VerdictLabel[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare('SELECT id, eval_id, rule_name, label, note, labelled_at FROM verdict_labels WHERE tenant_id = ? AND eval_id = ? ORDER BY labelled_at DESC')
+      .all(tenantId, evalId) as Array<{ id: string; eval_id: string; rule_name: string | null; label: 'right' | 'wrong'; note: string | null; labelled_at: string }>;
+    return rows.map((r) => ({ id: r.id, evalId: r.eval_id, ruleName: r.rule_name, label: r.label, note: r.note, labelledAt: r.labelled_at }));
+  }
+
+  async labelTallies(tenantId: TenantId): Promise<LabelTallyRow[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `SELECT rule_name, SUM(CASE WHEN label = 'right' THEN 1 ELSE 0 END) AS right, SUM(CASE WHEN label = 'wrong' THEN 1 ELSE 0 END) AS wrong
+           FROM verdict_labels
+          WHERE tenant_id = ? AND rule_name IS NOT NULL
+          GROUP BY rule_name
+          ORDER BY rule_name`,
+      )
+      .all(tenantId) as Array<{ rule_name: string; right: number; wrong: number }>;
+    return rows.map((r) => ({ ruleName: r.rule_name, right: Number(r.right), wrong: Number(r.wrong) }));
+  }
+
+  /** The newest `window` evaluations' rule results, each with its id, time and agent — the one scan the fire rate and the issues share. */
+  private recentRuleResults(
+    tenantId: TenantId,
+    window: number,
+  ): Array<{ id: string; traceId: string | null; createdAt: string; agent: string | null; results: Array<{ ruleName: string; passed: boolean; skipped?: boolean; evidence?: unknown[]; message?: string }> }> {
+    const rows = this.db
+      .prepare(
+        `SELECT e.id AS id, e.trace_id AS trace_id, e.rule_results AS rule_results, e.created_at AS created_at, t.agent_name AS agent_name
+           FROM eval_results e
+           LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+          WHERE e.tenant_id = ?
+          ORDER BY e.created_at DESC
+          LIMIT ?`,
+      )
+      .all(tenantId, Math.max(1, Math.floor(window))) as Array<{ id: string; trace_id: string | null; rule_results: string | null; created_at: string; agent_name: string | null }>;
+    return rows.map((row) => ({
+      id: row.id,
+      traceId: row.trace_id,
+      createdAt: row.created_at,
+      agent: row.agent_name,
+      results: row.rule_results === null ? [] : (JSON.parse(row.rule_results) as Array<{ ruleName: string; passed: boolean; skipped?: boolean; evidence?: unknown[]; message?: string }>),
+    }));
+  }
+
+  async ruleFireStats(tenantId: TenantId, window: number): Promise<RuleFireStat[]> {
+    assertTenant(tenantId);
+    const stats = new Map<string, RuleFireStat>();
+    for (const row of this.recentRuleResults(tenantId, window)) {
+      for (const r of row.results) {
+        if (r.skipped === true) continue;
+        const s = stats.get(r.ruleName) ?? { ruleName: r.ruleName, judged: 0, fired: 0 };
+        s.judged += 1;
+        if (r.passed === false) s.fired += 1;
+        stats.set(r.ruleName, s);
+      }
+    }
+    return [...stats.values()].sort((a, b) => a.ruleName.localeCompare(b.ruleName));
+  }
+
+  async listIssues(tenantId: TenantId, window: number, options: { rule?: string; limit?: number } = {}): Promise<IssueGroup[]> {
+    assertTenant(tenantId);
+    const labels = new Map<string, 'right' | 'wrong'>();
+    for (const l of this.db
+      .prepare("SELECT eval_id, rule_name, label FROM verdict_labels WHERE tenant_id = ? AND rule_name IS NOT NULL")
+      .all(tenantId) as Array<{ eval_id: string; rule_name: string; label: 'right' | 'wrong' }>) {
+      labels.set(`${l.eval_id}|${l.rule_name}`, l.label);
+    }
+    const groups = new Map<string, IssueGroup>();
+    // Rows arrive newest first, so the first sighting of a group is its lastSeen and every later one pushes firstSeen back.
+    for (const row of this.recentRuleResults(tenantId, window)) {
+      for (const r of row.results) {
+        if (r.skipped === true || r.passed !== false) continue;
+        if (options.rule !== undefined && r.ruleName !== options.rule) continue;
+        const signature = evidenceSignature({ evidence: r.evidence as never, message: r.message ?? '' });
+        const key = issueKey(r.ruleName, signature);
+        const g: IssueGroup = groups.get(key) ?? { key, ruleName: r.ruleName, signature, count: 0, agents: [], firstSeen: row.createdAt, lastSeen: row.createdAt, exampleEvalIds: [], exampleTraceIds: [], labelled: { right: 0, wrong: 0 } };
+        g.count += 1;
+        g.firstSeen = row.createdAt;
+        if (row.agent !== null && !g.agents.includes(row.agent)) g.agents.push(row.agent);
+        if (g.exampleEvalIds.length < 5) {
+          g.exampleEvalIds.push(row.id);
+          g.exampleTraceIds.push(row.traceId);
+        }
+        const l = labels.get(`${row.id}|${r.ruleName}`);
+        if (l === 'right') g.labelled.right += 1;
+        else if (l === 'wrong') g.labelled.wrong += 1;
+        groups.set(key, g);
+      }
+    }
+    const out = [...groups.values()].sort((a, b) => b.count - a.count || b.lastSeen.localeCompare(a.lastSeen) || a.key.localeCompare(b.key));
+    return options.limit !== undefined ? out.slice(0, Math.max(0, options.limit)) : out;
   }
 
   async getDriftWindow(tenantId: TenantId, since: string, until: string | null, run?: string): Promise<DriftWindow> {

@@ -126,6 +126,61 @@ export interface AgentFailureHistory {
   regressionAlarms: RegressionAlarm[];
 }
 
+/*
+ * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
+ *
+ * A label is one reader's judgement that a rule's FIRE on one evaluation
+ * was right or wrong. Labels on fires measure precision only — nothing here
+ * says what a quiet rule missed — so every surface says "local precision"
+ * and never "local accuracy". At LOCAL_LABEL_MIN labels (src/eval/labels.ts)
+ * a rule's number on this deployment becomes the deployment's own.
+ */
+export type VerdictLabelValue = 'right' | 'wrong';
+
+export interface VerdictLabel {
+  id: string;
+  evalId: string;
+  /** The rule whose fire was labelled. Nullable in the schema for a later whole-verdict label; every label written today names a rule. */
+  ruleName: string | null;
+  label: VerdictLabelValue;
+  note: string | null;
+  labelledAt: string;
+}
+
+/** Right and wrong counts per rule over every label the tenant has written. */
+export interface LabelTallyRow {
+  ruleName: string;
+  right: number;
+  wrong: number;
+}
+
+/** How often a rule fired over the most recent evaluations — the fire rate the prior estimate reads. */
+export interface RuleFireStat {
+  ruleName: string;
+  /** Evaluations in the window on which the rule RAN (skips excluded). */
+  judged: number;
+  /** Of those, the evaluations on which it fired. */
+  fired: number;
+}
+
+/** Fires grouped by (rule, evidence signature): ten fires of one pattern are one issue with a count. */
+export interface IssueGroup {
+  key: string;
+  ruleName: string;
+  signature: string;
+  count: number;
+  /** Distinct agents whose traces carry the fire. */
+  agents: string[];
+  firstSeen: string;
+  lastSeen: string;
+  /** A handful of evaluation ids a reader can open, newest first. */
+  exampleEvalIds: string[];
+  /** The traces those evaluations scored, in the same order (null for an evaluation made from bare text) — the dashboard links to the trace page. */
+  exampleTraceIds: Array<string | null>;
+  /** Labels already written on fires in this group. */
+  labelled: { right: number; wrong: number };
+}
+
 export interface DriftWindow {
   since: string;
   until: string | null;
@@ -262,4 +317,14 @@ export interface IStorageAdapter {
   getAgentFailureLog(tenantId: TenantId, agentName: string, limit?: number): Promise<AgentFailureLogEntry[]>;
   getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]>;
   getEvalStatsFailures(tenantId: TenantId, period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]>;
+  /** Write one label on a rule's fire (arc 7, D-8). Labelling the same fire again REPLACES the earlier label — a reader changed their mind, and two opinions on one fire would count twice. */
+  insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel>;
+  /** Every label on one evaluation. */
+  getLabelsForEval(tenantId: TenantId, evalId: string): Promise<VerdictLabel[]>;
+  /** Right and wrong counts per rule over every label the tenant has written. */
+  labelTallies(tenantId: TenantId): Promise<LabelTallyRow[]>;
+  /** Per rule, how many of the newest `window` evaluations it ran on and fired on — the fire rate the prior estimate reads. */
+  ruleFireStats(tenantId: TenantId, window: number): Promise<RuleFireStat[]>;
+  /** Fires over the newest `window` evaluations grouped by (rule, evidence signature), largest group first. */
+  listIssues(tenantId: TenantId, window: number, options?: { rule?: string; limit?: number }): Promise<IssueGroup[]>;
 }

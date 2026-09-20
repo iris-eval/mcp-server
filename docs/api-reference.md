@@ -1138,6 +1138,62 @@ An empty window reports `passRate: null`, not zero: "0 of 0" is unknown.
 
 ---
 
+### POST /api/v1/labels
+
+Label one rule's **fire** on one evaluation right or wrong — your judgement on your own traffic (0.14.0). Body: `{ "eval_id": "eval_…", "rule": "no_stub_output", "label": "right" | "wrong", "note": "optional, ≤ 500 chars" }`. A rule that did not run on the evaluation, or ran and did not fire, is refused with `400` and a sentence: labels are written on fires, so they say how often a rule's fires were right and nothing about what a quiet rule missed — which is why every surface says "local precision" and never "local accuracy" (the published number each local one stands beside is on [/proof](https://iris-eval.com/proof)). Labelling the same fire again replaces the earlier label (one current opinion per fire). `404` for an unknown evaluation.
+
+Response `201`: the label, the rule's row as `GET /labels/stats` would report it now (`n`, `right`, `wrong`, the `precision` object `{ point, lo, hi }` — right ÷ (right + wrong) with its 95% Wilson interval, beside the published one on [/proof](https://iris-eval.com/proof) — and `local`), `min` (the floor, 20), and the current `estimatedPrior` and `suggestion`.
+
+At **twenty labels** a rule's own number is in force on this deployment: every later fire of a detection or inference carries `uncertainty: { basis: "local_labels", precision, n }` instead of the published positive predictive value from [/proof](https://iris-eval.com/proof), and the risk estimate reads it in place of the published number (its `assumptions` say so). The engine reads the labels at startup and after every write; nothing restarts.
+
+---
+
+### GET /api/v1/labels
+
+The labels on one evaluation. Query: `eval_id` (required). Response: `{ "labels": [{ "id", "evalId", "ruleName", "label", "note", "labelledAt" }] }`.
+
+---
+
+### GET /api/v1/labels/stats
+
+Per rule, what your labels have made of its number.
+
+```json
+{
+  "rules": [{ "rule": "no_stub_output", "kind": "inference", "entersRisk": true, "n": 20, "right": 2, "wrong": 18,
+              "local": true, "publishedPrecision": 0.96, "fireRate": 0.3 }],
+  "min": 20,
+  "window": 2000,
+  "estimatedPrior": { "pi": 0.04, "lo": 0.01, "hi": 0.11, "ruleName": "no_stub_output", "fireRate": 0.3, "sensitivity": 0.8 },
+  "suggestion": { "ruleName": "no_tool_loop", "n": 4, "halfwidthPoints": 38, "fireRate": 0.12,
+                  "sentence": "label a no_tool_loop fire next: 4 labelled, ±38 points, fires on 12% of your traffic" },
+  "refreshedAt": "2026-09-20T18:00:00.000Z"
+}
+```
+
+Each row also carries `precision: { point, lo, hi }` — right ÷ (right + wrong) with its 95% Wilson interval, null below one label — beside `publishedPrecision`, the same rule's number on [/proof](https://iris-eval.com/proof). `entersRisk` says whether the rule's fires enter the risk estimate (detections and inferences), so whether its labels can move a verdict; a measurement's labels inform this table and nothing else. `fireRate` is the fraction of the newest `window` evaluations the rule fired on, over those it ran on. `estimatedPrior` is the prior your labels imply — a rule that fires on a fraction *f* of your traffic whose fires are right a fraction *p̂* of the time sees *f·p̂* true fires, and *f·p̂ ≈ π·sensitivity*, so *π̂ = f·p̂ / sensitivity* — from the detection or inference with the largest estimate once it has twenty labels and fires; your `eval.prior`, when set, always wins, and every verdict's `provenance.composer.priorSource` says which was used (`config`, `estimated`, `default`). `suggestion` names the detection or inference whose next label narrows the most traffic-weighted uncertainty — never a measurement, whose labels move no verdict.
+
+---
+
+### GET /api/v1/issues
+
+Fires over the newest `window` evaluations grouped by **(rule, what it found)** — the evidence signature: a pattern or signal by name, a tool with its failure reason, a measured stat, else the message with its numbers masked — so ten fires of one pattern read as one issue with a count. Query: `rule` narrows to one rule; `limit` (1–200, default 50).
+
+```json
+{ "issues": [{ "key": "3f9a1c0b7e2d", "ruleName": "no_stub_output", "signature": "pattern:marker TODO", "count": 10,
+               "agents": ["support-bot"], "firstSeen": "…", "lastSeen": "…",
+               "exampleEvalIds": ["eval_…"], "exampleTraceIds": ["trc_…"], "labelled": { "right": 1, "wrong": 3 } }],
+  "window": 2000 }
+```
+
+---
+
+### POST /api/v1/evaluations/:id/reevaluate
+
+Score a stored evaluation's trace again under the engine as it stands now — the same rules, your labels, the prior in force. The earlier row is **kept** and the new one names it in `provenance.supersedes`: the change between them is the finding. Response `201`: `{ "evaluation": <the same object evaluate_output returns>, "supersedes": "eval_…", "before": { "verdict", "passed" }, "after": { "verdict", "passed" }, "changed": true }`. `409` when the evaluation is not linked to a stored trace (one made from bare text has nothing to re-score), when the trace has been deleted, or when it recorded no output; `404` for an unknown evaluation; `503` on a dashboard started without the engine. Every newest-per-trace reader (a run's results, a comparison) sees the new verdict from here on, which is what re-scoring is for.
+
+---
+
 ### GET /api/v1/capabilities
 
 The same object as `iris://capabilities`, for the HTTP path. No key is ever included.

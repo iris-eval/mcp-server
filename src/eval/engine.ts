@@ -11,7 +11,8 @@ import type {
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
 import { compose, interpretations, roleOf, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
-import { inputsPresent, stampRuleResult } from './stamp.js';
+import { inputsPresent, stampRuleResult, type PriorInForce } from './stamp.js';
+import type { LocalLabelSource } from './local-labels.js';
 import { toSteps } from './steps.js';
 import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
@@ -87,6 +88,42 @@ export class EvalEngine {
   private compose: ComposeConfig;
 
   /**
+   * The deployment's own labels (arc 7, D-8), installed by
+   * refreshLocalLabels at boot and after every label write. Null on an
+   * engine nothing has labelled — the proof runner, a test, an embedder —
+   * which then evaluates exactly as before.
+   */
+  private localLabels: LocalLabelSource | null = null;
+
+  /** Install (or clear) the local-label source every later evaluation reads. */
+  setLocalLabels(source: LocalLabelSource | null): void {
+    this.localLabels = source;
+  }
+
+  /** The source in force, for the surfaces that show it. */
+  localLabelSource(): LocalLabelSource | null {
+    return this.localLabels;
+  }
+
+  /**
+   * The prior in force and where it came from: the deployment's own
+   * eval.prior when it set one; else the prior its labels imply, once any
+   * detection or inference has LOCAL_LABEL_MIN labels; else the default.
+   * A configured prior always wins — the deployment said so.
+   */
+  private effectivePrior(): PriorInForce {
+    if (this.criticalityOverrides?.priorConfigured === true) return { pi: this.compose.prior, source: 'config' };
+    const estimated = this.localLabels?.estimatedPrior ?? null;
+    if (estimated !== null) return { pi: estimated.pi, source: 'estimated' };
+    return { pi: this.compose.prior, source: 'default' };
+  }
+
+  /** The composer configuration with the prior in force. */
+  private effectiveCompose(): ComposeConfig {
+    return { ...this.compose, prior: this.effectivePrior().pi };
+  }
+
+  /**
    * `criticalityOverrides` are `config.eval` — the criticalRules /
    * nonCriticalRules lists. Validated here as well as in loadConfig, so an
    * engine built directly (a test, an embedder) cannot silently ignore a
@@ -125,7 +162,7 @@ export class EvalEngine {
     // The role each result played, from the composer's own predicates — the
     // one writer, after every stamp and before anything reads it.
     for (const r of result.rule_results) r.role = roleOf(r, this.compose);
-    const verdict = compose(result, this.compose);
+    const verdict = compose(result, this.effectiveCompose());
     result.verdict = verdict;
     result.passed = verdict.passed;
     const notes = interpretations(result, verdict, this.compose);
@@ -387,7 +424,7 @@ export class EvalEngine {
         critical,
         criticalSource: source,
         ...rest,
-        ...stampRuleResult(rule, raw, context, effective),
+        ...stampRuleResult(rule, raw, context, effective, { prior: this.effectivePrior(), local: this.localLabels?.precision.get(rule.name) }),
       });
     }
 
@@ -413,7 +450,13 @@ export class EvalEngine {
       }),
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
-      composer: { defaultsGate: this.compose.defaultsGate, falsePassCost: this.compose.falsePassCost, onCriticalSkipped: this.compose.onCriticalSkipped },
+      composer: {
+        defaultsGate: this.compose.defaultsGate,
+        falsePassCost: this.compose.falsePassCost,
+        onCriticalSkipped: this.compose.onCriticalSkipped,
+        prior: this.effectivePrior().pi,
+        priorSource: this.effectivePrior().source,
+      },
       judgedAt: new Date().toISOString(),
     });
     const coverage = deriveCoverage(ruleResults, inputsPresent(context));

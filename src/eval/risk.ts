@@ -89,7 +89,17 @@ interface Detector {
   classes: FailureClass[];
   fired: boolean;
   counts: { tp: number; fp: number; fn: number; tn: number };
+  /**
+   * The deployment's own labels on this rule's fires (arc 7, D-8), read
+   * off the row's stamped uncertainty — so a stored evaluation re-composes
+   * on read from the same counts that decided it, and the risk layer needs
+   * no second source. Present only at LOCAL_LABEL_MIN labels, on a FIRE.
+   */
+  local?: { right: number; wrong: number };
 }
+
+/** The positive predictive value the local labels imply, with the same half-count prior the published path carries. */
+const localPpv = (l: { right: number; wrong: number }): number => (l.right + 0.5) / (l.right + l.wrong + 1);
 
 /*
  * ONE SAMPLER (arc 7, D-6b; arc 6's deferred item). The risk layer carried
@@ -109,11 +119,17 @@ export function detectorsOf(result: EvalResult): Detector[] {
     if (r.kind !== 'detection' && r.kind !== 'inference') continue;
     const acc = publishedAccuracyFor(r.ruleName);
     if (!acc) continue;
+    const u = r.uncertainty;
+    const local =
+      u !== undefined && u.basis === 'local_labels' && r.passed === false && u.n > 0
+        ? { right: Math.round(u.precision.point * u.n), wrong: u.n - Math.round(u.precision.point * u.n) }
+        : undefined;
     out.push({
       name: r.ruleName,
       classes: (r.classes ?? []) as FailureClass[],
       fired: r.passed === false,
       counts: { tp: acc.tp, fp: acc.fp, fn: acc.fn, tn: acc.tn },
+      ...(local !== undefined ? { local } : {}),
     });
   }
   return out;
@@ -125,7 +141,14 @@ export function classPrior(prior: number, mode: PriorMode, examinedClasses: numb
   return 1 - Math.pow(1 - prior, 1 / examinedClasses);
 }
 
-function pBadFrom(detectors: Detector[], prior: number, mode: PriorMode, sensOf: (d: Detector) => number, specOf: (d: Detector) => number): { pBad: number; perClass: Record<string, number | null> } {
+function pBadFrom(
+  detectors: Detector[],
+  prior: number,
+  mode: PriorMode,
+  sensOf: (d: Detector) => number,
+  specOf: (d: Detector) => number,
+  localPpvOf: (d: Detector) => number | null = (d) => (d.local ? localPpv(d.local) : null),
+): { pBad: number; perClass: Record<string, number | null> } {
   const perClass: Record<string, number | null> = {};
   let survive = 1;
   const examinedClasses = FAILURE_CLASS_IDS.filter((cls) => detectors.some((d) => d.classes.includes(cls))).length;
@@ -141,6 +164,11 @@ function pBadFrom(detectors: Detector[], prior: number, mode: PriorMode, sensOf:
     if (fired.length > 0) {
       q = Math.max(
         ...fired.map((d) => {
+          // A fire with enough of the deployment's own labels carries the
+          // deployment's precision — the one place the estimate learns
+          // from the traffic it runs on (arc 7, D-8).
+          const own = localPpvOf(d);
+          if (own !== null) return own;
           const s = sensOf(d);
           const p = specOf(d);
           const den = s * priorC + (1 - p) * (1 - priorC);
@@ -184,16 +212,24 @@ export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, 
    * reading it.
    */
   const point = pBadFrom(detectors, prior, mode, sensOf, specOf);
-  const rng = mulberry32(fnv1a(`risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}`).join(',')}`));
+  const localised = detectors.filter((d) => d.local !== undefined);
+  const rng = mulberry32(
+    fnv1a(
+      `risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}${d.local ? `@${d.local.right}/${d.local.wrong}` : ''}`).join(',')}`,
+    ),
+  );
   const draws: number[] = [];
   for (let i = 0; i < RISK_DRAWS; i++) {
     const sens = new Map<string, number>();
     const spec = new Map<string, number>();
+    const own = new Map<string, number>();
     for (const d of detectors) {
       sens.set(d.name, beta(d.counts.tp + 0.5, d.counts.fn + 0.5, rng));
       spec.set(d.name, beta(d.counts.tn + 0.5, d.counts.fp + 0.5, rng));
+      // The local precision's own posterior: Beta(right + ½, wrong + ½).
+      if (d.local) own.set(d.name, beta(d.local.right + 0.5, d.local.wrong + 0.5, rng));
     }
-    draws.push(pBadFrom(detectors, prior, mode, (d) => sens.get(d.name)!, (d) => spec.get(d.name)!).pBad);
+    draws.push(pBadFrom(detectors, prior, mode, (d) => sens.get(d.name)!, (d) => spec.get(d.name)!, (d) => own.get(d.name) ?? null).pBad);
   }
   draws.sort((a, b) => a - b);
   const at = (q: number): number => draws[Math.min(draws.length - 1, Math.max(0, Math.ceil(q * draws.length) - 1))];
@@ -211,6 +247,9 @@ export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, 
       'published accuracy is in-sample, same-model labelled',
       'sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain',
       `prior ${prior}, spread ${mode}`,
+      ...(localised.length > 0
+        ? [`local precision from this deployment's labels replaces the published positive predictive value for: ${localised.map((d) => `${d.name} (${d.local!.right + d.local!.wrong} labels)`).join(', ')}`]
+        : []),
     ],
   };
 }

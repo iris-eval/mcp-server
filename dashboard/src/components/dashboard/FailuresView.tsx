@@ -20,6 +20,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useFailures } from '../../api/hooks';
 import { useSeenFailures } from '../../hooks/useSeenFailures';
 import { MomentCard } from '../moments/MomentCard';
+import { IssuesList } from './IssuesList';
 import { SectionHeader } from './SectionHeader';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
@@ -128,6 +129,9 @@ export function FailuresView() {
           ))}
         </div>
       )}
+
+      {/* Fires grouped by what the rule found (D-8): ten of one pattern read as one issue. */}
+      {data && data.total > 0 && <IssuesList />}
     </div>
   );
 }

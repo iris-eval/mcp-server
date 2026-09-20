@@ -324,7 +324,23 @@ export interface Provenance {
    * before 0.13.0, which then read back under the defaults and say so with
    * an empty interpretations list rather than a fabricated one.
    */
-  composer?: { defaultsGate: boolean; falsePassCost: number; onCriticalSkipped: 'unknown' | 'fail' | 'pass' };
+  composer?: {
+    defaultsGate: boolean;
+    falsePassCost: number;
+    onCriticalSkipped: 'unknown' | 'fail' | 'pass';
+    /**
+     * The prior the risk estimate used and where it came from (arc 7, D-8):
+     * `config` when the deployment set eval.prior, `estimated` when the
+     * deployment's own labels implied one, `default` otherwise. Flat, not
+     * nested, so a stored row re-composes on read by spreading this object
+     * over the defaults. Absent on rows written before 0.14.0, which read
+     * back under the default prior and say so.
+     */
+    prior?: number;
+    priorSource?: 'default' | 'config' | 'estimated';
+  };
+  /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row (arc 7, D-8). The earlier row is kept: the change is the finding. */
+  supersedes?: string;
   /**
    * Which toolset the calls were checked against, when one was supplied.
    *

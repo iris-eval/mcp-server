@@ -45,7 +45,14 @@ const assetsDir = join(repoRoot, 'dist', 'dashboard', 'assets');
  */
 const BUDGETS_KB = {
   jsRaw: 600,
-  jsGzip: 160,
+  // jsGzip 160 -> 168 (arc 7, D-8): labels on the user's own traffic add
+  // three surfaces — the right/wrong control on every fired rule row with
+  // its sentences, the Your-labels panel on /rules (local precision, the
+  // estimated prior, what to label next), and Recurring issues on the
+  // Failures page — measured at 161KB gzip on the first CI run against a
+  // 160KB budget (556KB raw against 600). An eight-kilobyte step, not a
+  // blank cheque: the raw budget is unchanged.
+  jsGzip: 168,
   // cssRaw 20 -> 28 (#334): self-hosting the brand fonts adds ~4KB of
   // @font-face blocks — 15 unicode-range subsets across three families.
   // The raw number went up; what the user actually waits for went DOWN,
