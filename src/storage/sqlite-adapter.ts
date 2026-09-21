@@ -47,7 +47,7 @@ import type {
   VerdictLabel,
 } from '../types/query.js';
 import type { Trace, Span } from '../types/trace.js';
-import type { EvalResult, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
+import type { EvalResult, QuestionId, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
 import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
 import { compose, interpretations, DEFAULT_COMPOSE } from '../eval/compose.js';
 import type { TenantId } from '../types/tenant.js';
@@ -771,7 +771,7 @@ export class SqliteAdapter implements IStorageAdapter {
    * attempt is a real attempt — collapsing them would erase the very
    * repetition being measured.
    */
-  async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string } = {}): Promise<CaseResultRow[]> {
+  async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string; question?: QuestionId } = {}): Promise<CaseResultRow[]> {
     assertTenant(tenantId);
     const where: string[] = ['e.tenant_id = ?', 't.case_key IS NOT NULL'];
     const params: unknown[] = [tenantId];
@@ -785,21 +785,33 @@ export class SqliteAdapter implements IStorageAdapter {
     }
     const rows = this.db
       .prepare(
-        `SELECT e.id, e.trace_id, e.passed, e.created_at, t.case_key, COALESCE(e.run_id, t.run_id) AS run_id
+        `SELECT e.id, e.trace_id, e.passed, e.created_at, e.rule_results, t.case_key, COALESCE(e.run_id, t.run_id) AS run_id
            FROM eval_results e
            JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
           WHERE ${where.join(' AND ')}
           ORDER BY e.created_at ASC, e.id ASC`,
       )
       .all(...params) as Array<Record<string, unknown>>;
-    return rows.map((row) => ({
-      evalId: String(row.id),
-      traceId: (row.trace_id as string | null) ?? null,
-      caseKey: (row.case_key as string | null) ?? null,
-      runId: (row.run_id as string | null) ?? null,
-      passed: row.passed === 1 || row.passed === true,
-      createdAt: String(row.created_at),
-    }));
+    const out: CaseResultRow[] = [];
+    for (const row of rows) {
+      let passed = row.passed === 1 || row.passed === true;
+      if (filter.question !== undefined) {
+        // The question's own answer, from the rules that answered it on this evaluation.
+        const results = row.rule_results ? (JSON.parse(String(row.rule_results)) as Array<{ question?: string; passed: boolean; skipped?: boolean }>) : [];
+        const answering = results.filter((r) => r.question === filter.question && !r.skipped);
+        if (answering.length === 0) continue;
+        passed = answering.every((r) => r.passed);
+      }
+      out.push({
+        evalId: String(row.id),
+        traceId: (row.trace_id as string | null) ?? null,
+        caseKey: (row.case_key as string | null) ?? null,
+        runId: (row.run_id as string | null) ?? null,
+        passed,
+        createdAt: String(row.created_at),
+      });
+    }
+    return out;
   }
 
   async getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null> {

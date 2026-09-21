@@ -71,7 +71,7 @@ you report.
    `tool_calls` (or the stored trace) let the trajectory rules judge what the
    agent did.
 3. **Judge** semantically when heuristics aren't enough:
-   `evaluate_with_llm_judge` (5 templates: accuracy, helpfulness, safety, correctness, faithfulness).
+   `evaluate_with_llm_judge` (6 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed).
    Requires the user's own API key — see "LLM judge setup" below. Without a
    key the tool returns `IRIS_JUDGE_NOT_ENABLED` with the steps in its
    `recovery`; the deterministic rules never need one.
@@ -91,7 +91,7 @@ you report.
 | `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |
 | `delete_rule` | Remove a deployed custom rule, or disable / re-enable it. |
 | `delete_trace` | Remove a single stored trace by ID. |
-| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 5 templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped, bring your own key — Iris never proxies. |
+| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 6 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed. Cost-capped, bring your own key — Iris never proxies. |
 | `verify_citations` | Extract citations, fetch sources behind an SSRF-guarded resolver, judge whether each source supports the claim. |
 
 ## How to Read a Result

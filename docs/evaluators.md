@@ -1,6 +1,6 @@
 # Evaluator of evaluators — the thirteen trust questions, asked of every evaluator Iris ships
 
-Rendered from `.claims.json → evaluators` by `npm run llms:render`; do not edit `docs/evaluators.md` by hand. Evaluators with three or more of the thirteen trust questions measured: 31 of 37 (the built-in rules 21 of 21; the custom rule types 9 of 9; the LLM-judge templates 0 of 5; the citation verifier 0 of 1; the verdict composer 1 of 1) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.
+Rendered from `.claims.json → evaluators` by `npm run llms:render`; do not edit `docs/evaluators.md` by hand. Evaluators with three or more of the thirteen trust questions measured: 31 of 38 (the built-in rules 21 of 21; the custom rule types 9 of 9; the LLM-judge templates 0 of 6; the citation verifier 0 of 1; the verdict composer 1 of 1) — every number behind a measured cell is on https://iris-eval.com/proof and in the proof files it names.
 
 Every cell is derived from the committed proof files by `scripts/claims/generators/evaluators.mjs` — never typed. A cell reads **measured** only when a number for it exists in `proof/results.json`, `proof/composite-results.json` or `proof/judge-results.json`, and the evidence list below names the file and key. The other statuses: **partial** (part of the question has a number — the misses are named by id, but no rate), **stated** (the answer is a declaration in code or a corpus definition, not a measurement), **measurable** (the harness that would measure it is named; no number yet), **n/a** (the question does not apply — a deterministic rule has no prompt or model sensitivity). The judge templates and the citation verifier stay measurable until a judge key that the founder or a user supplies runs `npm run proof:judge`; every other row moves only when a release roll regenerates the proof files.
 
@@ -62,7 +62,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `cost_threshold` | ● | ≡ | ≡ | ≡ | — | — | — | ● | — | ● | — | — | ○ | 3 |
 | `action_policy` | ● | ≡ | ≡ | ≡ | — | — | — | ● | — | ● | — | — | ○ | 3 |
 
-## The LLM-judge templates — 0 of 5 with three or more questions measured
+## The LLM-judge templates — 0 of 6 with three or more questions measured
 
 | Evaluator | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Q12 | Q13 | measured |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|--:|
@@ -71,6 +71,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `safety` | ○ | ○ | ≡ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | 0 |
 | `correctness` | ○ | ○ | ≡ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | 0 |
 | `faithfulness` | ○ | ○ | ≡ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | 0 |
+| `task_completed` | ○ | ○ | ≡ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | 0 |
 
 ## The citation verifier — 0 of 1 with three or more questions measured
 
@@ -633,6 +634,22 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 - **Q13** measurable — the judge over the rule corpus, the rules over the judge corpus (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
 
 ### `faithfulness` (the LLM-judge templates)
+
+- **Q1** measurable — npm run proof:judge — 165 cases across the five templates under a cost cap (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q2** measurable — the same run names the misses by id (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q3** stated — src/eval/llm-judge/templates → dimensions and passThreshold (the template names its dimensions and the threshold a score is read against)
+- **Q4** measurable — compare the model's self-reported pass with the threshold verdict on the same run (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q5** measurable — reliability bins, Brier and ECE per template with intervals (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q6** measurable — three committed paraphrases per template, pairwise agreement and score correlation (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q7** measurable — both default providers on the same cases; agreement and the disagreement list (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q8** measurable — repeat the judge run k times over the same cases; flip rate per template with an interval (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q9** measurable — injection twins per template; length, confidence and forged-close-tag axes (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q10** measurable — the self-reported pass against the score on the same run (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q11** measurable — human agreement on the judged cases (the blind label instrument) (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q12** measurable — pair each template's dimensions with the rules that map to them (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+- **Q13** measurable — the judge over the rule corpus, the rules over the judge corpus (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
+
+### `task_completed` (the LLM-judge templates)
 
 - **Q1** measurable — npm run proof:judge — 165 cases across the five templates under a cost cap (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)
 - **Q2** measurable — the same run names the misses by id (needs a judge key that the founder or a user supplies; proof/judge-results.json is pending)

@@ -561,9 +561,14 @@
       "id": "Q5xS1",
       "question": "Q5",
       "subject": "S1",
-      "status": "gap",
-      "summary": "Task completion cannot be judged from the output alone, and no rule attempts it.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "From the output alone, completion is a judgment: the task_completed judge template (0.15.0) reads the ask and the output — and the trajectory when the caller passes it — and scores whether the claims of completion are borne out. User-keyed; its measurement is pending until a key runs proof:judge, and the evaluators matrix says so.",
+      "evidence": [
+        {
+          "kind": "template",
+          "name": "task_completed"
+        }
+      ],
       "needs": [
         "output"
       ]
@@ -593,20 +598,29 @@
       "id": "Q5xS3",
       "question": "Q5",
       "subject": "S3",
-      "status": "gap",
-      "summary": "No rule judges whether the trajectory completed the task; the real-transcript acceptance record names this as open.",
-      "evidence": [],
+      "status": "partial",
+      "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "ask_coverage"
+        },
+        {
+          "kind": "proof",
+          "name": "ask_coverage"
+        }
+      ],
       "needs": [
         "output",
-        "tool_calls"
+        "input"
       ]
     },
     {
       "id": "Q5xS4",
       "question": "Q5",
       "subject": "S4",
-      "status": "partial",
-      "summary": "Completes the task seven of ten runs is readable only as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself.",
+      "status": "has",
+      "summary": "Completes the task seven of ten runs is readable for THIS question: compare_traces (and GET /api/v1/cases/:key) take `question: task_completed` and count only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict (0.15.0).",
       "evidence": [
         {
           "kind": "tool",
@@ -624,7 +638,7 @@
       "question": "Q5",
       "subject": "S5",
       "status": "gap",
-      "summary": "No cohort or baseline.",
+      "summary": "No cohort or baseline for completion: nothing ships that says what an agent, a run or a period usually completes, so a drop in completion has no reference to be a drop against. Named as the one open cell of this question.",
       "evidence": [],
       "needs": []
     },

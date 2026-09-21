@@ -35,6 +35,7 @@ const caseRowSchema = z.looseObject({
 
 export const compareTracesOutputSchema = z.looseObject({
   case_key: z.string().nullable().describe('set when one case was asked for'),
+  question: z.string().nullable().describe('the one question the rates were read for, or null for the composed verdict'),
   cases: z.number().describe('distinct questions counted'),
   attempts: z.number().describe('total evaluations, repeats included'),
   overall: z
@@ -78,6 +79,10 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
         run: z.string().optional().describe('narrow to one run; omit to read every evaluation that carries a case key'),
         case_key: z.string().optional().describe('narrow to a single case — the fastest way to ask "is this one question flaky?"'),
         min_attempts: z.number().int().min(1).optional().describe('ignore cases asked fewer than this many times (default 1). A case asked once cannot be shown to be flaky'),
+        question: z
+          .enum(['safe_output', 'grounded', 'complete', 'relevant', 'task_completed', 'tool_use_correct', 'within_budget'])
+          .optional()
+          .describe('read the rate for ONE question: only evaluations that judged it count, and an attempt passes when every rule answering it passed — not the composed verdict'),
       }),
       outputSchema: compareTracesOutputSchema,
       annotations: {
@@ -88,7 +93,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
       },
     },
     guarded(async (args) => {
-      const rows = await storage.getCaseResults(LOCAL_TENANT, { run: args.run, caseKey: args.case_key });
+      const rows = await storage.getCaseResults(LOCAL_TENANT, { run: args.run, caseKey: args.case_key, question: args.question });
       const minAttempts = args.min_attempts ?? 1;
 
       const grouped = new Map<string, { passed: number; attempts: number; runs: Set<string> }>();
@@ -142,6 +147,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
 
       return respond(compareTracesOutputSchema, {
         case_key: args.case_key ?? null,
+        question: args.question ?? null,
         cases: cases.length,
         attempts,
         overall: boot,

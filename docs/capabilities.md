@@ -1,6 +1,6 @@
 # Capabilities — what Iris can judge, and what it cannot yet
 
-Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 26 are answered by a shipped, measured thing, 22 are answered with a stated limit, 8 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
+Rendered from `capability-map.json` by `npm run llms:render`; do not edit `docs/capabilities.md` by hand. Of 60 capability cells (10 evaluation questions by 6 subjects), 27 are answered by a shipped, measured thing, 23 are answered with a stated limit, 6 are open gaps and 4 do not apply — every answered cell names the rule, tool, resource, route, proof row or judge template behind it.
 
 Ten evaluation questions against six subjects. **has** means at least one shipped, measured thing answers the question for that subject; **partial** means something answers it with a stated limit; **gap** means nothing does yet; **n/a** means the question does not apply to the subject. Every *has* or *partial* cell names its evidence — a rule, a tool, a resource, a route, a proof row or a judge template — and each name resolves to something registered in this release (`tests/capability-map-contract.test.ts`). *needs* lists the inputs a call must carry for the cell's rules to judge; without them those rules skip and the verdict's `coverage` says so. The same map is served to agents inside `iris://capabilities` and at https://iris-eval.com/capabilities.
 
@@ -10,7 +10,7 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 | **is it grounded / correct** | partial | has | has | gap | gap | partial |
 | **is it complete** | partial | partial | gap | partial | partial | has |
 | **is it on-task** | gap | partial | gap | partial | partial | partial |
-| **did it complete the task** | gap | has | gap | partial | gap | partial |
+| **did it complete the task** | partial | has | partial | has | gap | partial |
 | **did it act well (tool choice, arguments, efficiency)** | n/a | n/a | has | partial | partial | has |
 | **what did it cost** | has | partial | has | partial | has | has |
 | **is it better or worse than before** | n/a | n/a | partial | has | has | has |
@@ -51,11 +51,11 @@ Ten evaluation questions against six subjects. **has** means at least one shippe
 - **the evaluator itself** — *partial*. The relevance rules are measured as conformance to their lexical formula; the proof does not yet include cases where the formula and a reader would disagree. Evidence: proof `keyword_overlap`, proof `topic_consistency`.
 ### did it complete the task
 
-- **single output** — *gap*. Task completion cannot be judged from the output alone, and no rule attempts it. Needs: `output`.
+- **single output** — *partial*. From the output alone, completion is a judgment: the task_completed judge template (0.15.0) reads the ask and the output — and the trajectory when the caller passes it — and scores whether the claims of completion are borne out. User-keyed; its measurement is pending until a key runs proof:judge, and the evaluators matrix says so. Evidence: template `task_completed`. Needs: `output`.
 - **output with input / context** — *has*. An ask that declares its parts — a bullet list, a numbered or lettered enumeration, a first/second/finally sequence — is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing. Evidence: rule `ask_coverage`, proof `ask_coverage`. Needs: `output`, `input`.
-- **trajectory (tool calls)** — *gap*. No rule judges whether the trajectory completed the task; the real-transcript acceptance record names this as open. Needs: `output`, `tool_calls`.
-- **multi-run of one input** — *partial*. Completes the task seven of ten runs is readable only as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself. Evidence: tool `compare_traces`, route `/api/v1/cases/:key`.
-- **population / dataset / baseline** — *gap*. No cohort or baseline.
+- **trajectory (tool calls)** — *partial*. A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half. Evidence: rule `ask_coverage`, proof `ask_coverage`. Needs: `output`, `input`.
+- **multi-run of one input** — *has*. Completes the task seven of ten runs is readable for THIS question: compare_traces (and GET /api/v1/cases/:key) take `question: task_completed` and count only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict (0.15.0). Evidence: tool `compare_traces`, route `/api/v1/cases/:key`.
+- **population / dataset / baseline** — *gap*. No cohort or baseline for completion: nothing ships that says what an agent, a run or a period usually completes, so a drop in completion has no reference to be a drop against. Named as the one open cell of this question.
 - **the evaluator itself** — *partial*. The ask-coverage reading of completion — were the parts of the ask addressed — has a published family (precision and recall per rule at https://iris-eval.com/proof); no end-to-end task-completion evaluator exists, so nothing measures completion beyond that reading. Evidence: rule `ask_coverage`, proof `ask_coverage`.
 ### did it act well (tool choice, arguments, efficiency)
 

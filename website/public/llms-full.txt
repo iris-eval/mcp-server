@@ -69,7 +69,7 @@ Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris.
 5. `deploy_rule` — Register a custom eval rule that fires on every matching `evaluate_output`. A second deploy under an existing name is refused unless `replace: true`.
 6. `delete_rule` — Remove a deployed custom rule (destructive; NOT idempotent — a repeat delete returns `deleted: false` and emits no audit row), or with `enabled: false` / `true` pause and resume it without deleting. Either way the change is live on the next evaluation, no restart.
 7. `delete_trace` — Remove a single stored trace by ID (destructive, tenant-scoped; NOT idempotent — a repeat delete returns `deleted: false`).
-8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). 5 templates: accuracy, helpfulness, safety, correctness, faithfulness. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
+8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). 6 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
 9. `verify_citations` — Extract citations (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded, domain-allowlisted resolver, and use an LLM judge to check whether each source supports the cited claim. Opt-in outbound HTTP; same BYOK requirement. Fails closed — an error, not a passing verdict — when citations resolved but the judge never ran.
 
 ## Built-in eval rules (21, across 4 categories)
@@ -82,7 +82,7 @@ Safety depth: 19 PII patterns (SSN, credit card, phone, email, IBAN, passport, D
 
 ## Evaluator accuracy
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 21 built-in rules, corpus 35c3aa58cbfa, generated 2026-09-20 from the source these numbers were measured on; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for 21 built-in rules, corpus 35c3aa58cbfa, generated 2026-09-21 from the source these numbers were measured on; reproduce with `npm run proof`.
 
 ## Trust signals
 

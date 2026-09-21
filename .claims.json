@@ -500,15 +500,20 @@
         "summary": "The relevance rules are measured as conformance to their lexical formula; the proof does not yet include cases where the formula and a reader would disagree."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "template",
+            "name": "task_completed"
+          }
+        ],
         "id": "Q5xS1",
         "needs": [
           "output"
         ],
         "question": "Q5",
-        "status": "gap",
+        "status": "partial",
         "subject": "S1",
-        "summary": "Task completion cannot be judged from the output alone, and no rule attempts it."
+        "summary": "From the output alone, completion is a judgment: the task_completed judge template (0.15.0) reads the ask and the output — and the trajectory when the caller passes it — and scores whether the claims of completion are borne out. User-keyed; its measurement is pending until a key runs proof:judge, and the evaluators matrix says so."
       },
       {
         "evidence": [
@@ -532,16 +537,25 @@
         "summary": "An ask that declares its parts — a bullet list, a numbered or lettered enumeration, a first/second/finally sequence — is checked part by part, and an unaddressed part is named with a span into the ask itself. A multi-part ask written as flowing prose is not split: a writer who numbers their questions is declaring separate things, and a full stop declares nothing."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "ask_coverage"
+          },
+          {
+            "kind": "proof",
+            "name": "ask_coverage"
+          }
+        ],
         "id": "Q5xS3",
         "needs": [
           "output",
-          "tool_calls"
+          "input"
         ],
         "question": "Q5",
-        "status": "gap",
+        "status": "partial",
         "subject": "S3",
-        "summary": "No rule judges whether the trajectory completed the task; the real-transcript acceptance record names this as open."
+        "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half."
       },
       {
         "evidence": [
@@ -557,9 +571,9 @@
         "id": "Q5xS4",
         "needs": [],
         "question": "Q5",
-        "status": "partial",
+        "status": "has",
         "subject": "S4",
-        "summary": "Completes the task seven of ten runs is readable only as a case's pass rate over its repeats: compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, not of this question alone; a per-question filter is not shipped, so the rate cannot be read for this question by itself."
+        "summary": "Completes the task seven of ten runs is readable for THIS question: compare_traces (and GET /api/v1/cases/:key) take `question: task_completed` and count only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict (0.15.0)."
       },
       {
         "evidence": [],
@@ -568,7 +582,7 @@
         "question": "Q5",
         "status": "gap",
         "subject": "S5",
-        "summary": "No cohort or baseline."
+        "summary": "No cohort or baseline for completion: nothing ships that says what an agent, a run or a period usually completes, so a drop in completion has no reference to be a drop against. Named as the one open cell of this question."
       },
       {
         "evidence": [
@@ -1179,10 +1193,10 @@
       }
     ],
     "counts": {
-      "gap": 8,
-      "has": 26,
+      "gap": 6,
+      "has": 27,
       "n/a": 4,
-      "partial": 22
+      "partial": 23
     },
     "questions": [
       {
@@ -1378,7 +1392,7 @@
           "input"
         ],
         "question": "task_completed",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1681,7 +1695,7 @@
           "measuredThreeOrMore": 9
         },
         "judge": {
-          "evaluators": 5,
+          "evaluators": 6,
           "measuredThreeOrMore": 0
         },
         "rules": {
@@ -1690,13 +1704,13 @@
         }
       },
       "byStatus": {
-        "measurable": 169,
+        "measurable": 181,
         "measured": 125,
         "n/a": 94,
         "partial": 17,
-        "stated": 76
+        "stated": 77
       },
-      "evaluators": 37,
+      "evaluators": 38,
       "measuredThreeOrMore": 31,
       "questions": 13
     },
@@ -4099,6 +4113,79 @@
       {
         "cells": {
           "q1": {
+            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that the founder or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:task_completed",
+        "measured": 0,
+        "name": "task_completed"
+      },
+      {
+        "cells": {
+          "q1": {
             "evidence": "npm run proof:judge — the citation cases",
             "note": "needs a judge key; the 17 citation cases run under the same runner",
             "status": "measurable"
@@ -4345,11 +4432,11 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-21T04:09:27.707Z",
-  "generatedFromCommit": "f71b311",
+  "generatedAt": "2026-09-21T04:28:34.890Z",
+  "generatedFromCommit": "8762608",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
-    "count": 5,
+    "count": 6,
     "enable": {
       "steps": [
         "Get an API key from Anthropic or OpenAI.",
@@ -4365,7 +4452,8 @@
       "helpfulness",
       "safety",
       "correctness",
-      "faithfulness"
+      "faithfulness",
+      "task_completed"
     ],
     "supportedModels": [
       "claude-opus-4-7",
@@ -4418,7 +4506,7 @@
     ]
   },
   "proof": {
-    "commit": "92024c8",
+    "commit": "8762608",
     "composite": {
       "compositeVersion": "4cba53236d0b",
       "corpusVersion": "35c3aa58cbfa",
@@ -6402,7 +6490,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-20T21:37:37.211Z",
+    "generatedAt": "2026-09-21T04:24:24.704Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -8187,7 +8275,7 @@
       "passed": null,
       "total": 32
     },
-    "totalCombined": 2951,
+    "totalCombined": 2960,
     "vitestDashboard": {
       "failed": 0,
       "passed": 326,
@@ -8195,8 +8283,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2593,
-      "total": 2593
+      "passed": 2602,
+      "total": 2602
     }
   },
   "version": {
