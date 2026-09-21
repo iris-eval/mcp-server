@@ -217,6 +217,8 @@ Tool spans feed the trajectory rules exactly as spans sent on `log_trace` do: `t
 
 ### The conventions, one fixture each
 
+The setup lines per framework — the vendor's own, with Iris as the endpoint — are on the [recipes page](otel-recipes.md), each recipe naming the fixture below that proves it.
+
 Every vocabulary above is held by a fixture in [`tests/fixtures/otlp/conventions/`](https://github.com/iris-eval/mcp-server/tree/main/tests/fixtures/otlp/conventions) — authored to the vendor's own documentation (the README there names the page every key came from) and read by `tests/unit/otel/conventions.test.ts`, which asserts the agent, the input, the output, the tokens, the model, the session, the tool steps and what the payload lacked. A recipe on the recipes page names the fixture that proves it.
 
 | Framework | Fixture | What a buyer will test |
