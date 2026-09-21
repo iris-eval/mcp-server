@@ -91,13 +91,27 @@ function waitForLog(proc: ChildProcess, pattern: RegExp): Promise<string> {
  * the spawned server. Small TOCTOU window, same trade as demo-mode.test.ts.
  */
 async function freePort(): Promise<number> {
-  const server = createServer();
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  const addr = server.address();
-  const port = typeof addr === 'object' && addr ? addr.port : 0;
-  await new Promise<void>((r) => server.close(() => r()));
-  return port;
+  return (await freePorts(1))[0];
+}
+/*
+ * Two ports reserved one after the other can be the SAME port: the OS may
+ * hand the ephemeral port back the moment the first listener closes, and
+ * PR #553's integration job saw exactly that — "Port collision: HTTP
+ * transport and dashboard are both configured for port 35891". Reserve
+ * every port while every listener is still open, then release them all.
+ */
+async function freePorts(count: number): Promise<number[]> {
+  const servers = Array.from({ length: count }, () => createServer());
+  for (const server of servers) {
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+  }
+  const ports = servers.map((server) => {
+    const addr = server.address();
+    return typeof addr === 'object' && addr ? addr.port : 0;
+  });
+  for (const server of servers) await new Promise<void>((r) => server.close(() => r()));
+  return ports;
 }
 
 /** Bind a port for real, so a collision is genuine. */
@@ -131,8 +145,7 @@ function isListening(port: number): Promise<boolean> {
 
 describe('--transport http without a dashboard flag', () => {
   it('starts no dashboard, and says how to get one', async () => {
-    const transportPort = await freePort();
-    const dashboardPort = await freePort();
+    const [transportPort, dashboardPort] = await freePorts(2);
     const proc = spawnCli([
       '--transport', 'http',
       '--port', String(transportPort),
@@ -179,8 +192,7 @@ describe('--transport http without a dashboard flag', () => {
 
 describe('the three documented ways to ask for the dashboard', () => {
   it('--dashboard starts it alongside the http transport', async () => {
-    const transportPort = await freePort();
-    const dashboardPort = await freePort();
+    const [transportPort, dashboardPort] = await freePorts(2);
     const proc = spawnCli([
       '--transport', 'http',
       '--port', String(transportPort),

@@ -67,6 +67,7 @@ export const configFileSchema = z.strictObject({
       requiredEvidence: z.array(name).optional(),
       defaultsGate: z.boolean().optional(),
       validateToolArguments: z.boolean().optional(),
+      plugins: z.array(z.strictObject({ path: name, sha256: z.string().regex(/^[0-9a-f]{64}$/i, 'the sha256 of the file as 64 hex characters') })).optional(),
       prior: unit.optional(),
       priorMode: z.enum(['per-output', 'per-class']).optional(),
     })

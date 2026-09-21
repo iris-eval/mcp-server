@@ -110,6 +110,14 @@ export interface IrisConfig {
     defaultsGate?: boolean;
     /** Check tool-call arguments against the catalogue's schemas. See defaults.ts. */
     validateToolArguments?: boolean;
+    /**
+     * Rules you wrote as code (arc 8, R-3): ES modules whose default export
+     * is `{ name, kind, mechanism, version, needs, evaluate(ctx) }`, each
+     * pinned by the sha256 of its file. A plugin runs in-process, so a file
+     * whose hash does not match, or that lacks the contract, refuses
+     * startup naming the path. Relative paths resolve against the Iris home.
+     */
+    plugins?: Array<{ path: string; sha256: string }>;
     /** The prior that an output is bad before any rule speaks. 0.5 matches the proof corpus, not your traffic. */
     prior?: number;
     /**

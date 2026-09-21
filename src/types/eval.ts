@@ -84,7 +84,7 @@ export interface EvalRule {
    * advises, while for THEIRS the severity they deployed it at is their own
    * statement of how much it matters. Absent means built-in.
    */
-  origin?: 'built-in' | 'custom';
+  origin?: 'built-in' | 'custom' | 'plugin';
   evaluate(context: EvalContext): EvalRuleResult;
 }
 
@@ -402,7 +402,7 @@ export interface EvalRuleResult {
   /** The version of the rule definition that produced this result. */
   ruleVersion?: number;
   /** Who wrote the rule: `custom` for anything createCustomRule produced. See EvalRule.origin. */
-  origin?: 'built-in' | 'custom';
+  origin?: 'built-in' | 'custom' | 'plugin';
   /** Which of the rule's declared needs the call actually carried — what the rule SAW. */
   saw?: Need[];
   /** Present only when `skipped`; says whether the rule was never asked or was asked and could not answer. */

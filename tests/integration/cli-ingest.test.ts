@@ -7,7 +7,8 @@
  * duplicate column because migrations read "not applied" outside the lock.
  */
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -195,5 +196,43 @@ describe('iris-eval ingest --dataset', () => {
     expect(unknown.code).toBe(2);
     expect(unknown.stderr).toMatch(/no dataset has the id or label "nope"/);
     expect(unknown.stdout.trim()).toBe('');
+  }, 60_000);
+});
+
+/*
+ * Plugin rules through the CLI (arc 8, R-3): config.json in the temp home
+ * names a hash-pinned module; the same loader the server boots with runs
+ * it on `ingest --evaluate`, and a wrong hash is a usage error before any
+ * trace is read.
+ */
+describe('iris-eval ingest with eval.plugins', () => {
+  const PLUGIN = `export default { name: 'no_competitor_mention', kind: 'policy', mechanism: 'pattern', version: 1, needs: ['output'], critical: true,
+  evaluate(ctx) { const hit = /\\bacme\\b/i.exec(ctx.output); return hit ? { ruleName: 'no_competitor_mention', passed: false, score: 0, message: 'names ' + hit[0] } : { ruleName: 'no_competitor_mention', passed: true, score: 1, message: 'clean' }; } };
+`;
+  const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
+  function installPlugin(pinned?: string): void {
+    mkdirSync(join(home, 'rules'), { recursive: true });
+    writeFileSync(join(home, 'rules', 'no-competitor.mjs'), PLUGIN);
+    writeFileSync(join(home, 'config.json'), JSON.stringify({ eval: { plugins: [{ path: './rules/no-competitor.mjs', sha256: pinned ?? sha256(PLUGIN) }] } }));
+  }
+
+  it('a pinned critical plugin fires on ingest --evaluate: its policy fail gates the verdict, and --fail-on policy_gate trips on it', async () => {
+    installPlugin();
+    const bad = await run(['ingest', '--evaluate', '--fail-on', 'policy_gate'], JSON.stringify({ ...CLEAN, output: 'Our plan beats Acme on every axis, and that is the whole of it.' }));
+    expect(bad.code, bad.stderr).toBe(1);
+    const [line] = lines(bad.stdout);
+    expect((line.verdict as { basis: string; by: string[] }).basis).toBe('policy_gate');
+    expect((line.verdict as { by: string[] }).by).toContain('no_competitor_mention');
+    expect(line.tripped).toBe('policy_gate');
+    const good = await run(['ingest', '--evaluate', '--fail-on', 'policy_gate'], JSON.stringify(CLEAN));
+    expect(good.code, good.stderr).toBe(0);
+  }, 60_000);
+
+  it('a wrong hash is refused before any trace is read: exit 2, the sentence names the path and both hashes', async () => {
+    installPlugin('b'.repeat(64));
+    const { code, stdout, stderr } = await run(['ingest', '--evaluate'], JSON.stringify(CLEAN));
+    expect(code).toBe(2);
+    expect(stdout.trim()).toBe('');
+    expect(stderr).toMatch(/Refusing to start: eval\.plugins entry "\.\/rules\/no-competitor\.mjs" .* does not match its pinned hash: pinned b{64}, file [0-9a-f]{64}/);
   }, 60_000);
 });

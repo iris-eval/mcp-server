@@ -13,6 +13,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { builtInRuleRoster } from '../eval/criticality.js';
+import { pluginRows } from '../eval/plugins.js';
 import { ruleProof } from '../capabilities.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
@@ -37,6 +38,7 @@ export const listRulesOutputSchema = z.looseObject({
   enabled_count: z.number().int().describe('of those, how many are enabled'),
   built_in: z.array(z.looseObject({ name: z.string() })).describe('the shipped roster, never filtered: name, category, description, weight, kind, mechanism, needs, question, classes, version, the EFFECTIVE critical flag with criticalSource, and proof (published precision, recall, intervals and ppvAt from https://iris-eval.com/proof; null where the proof is a conformance check)'),
   quarantined: z.array(z.unknown()).describe('entries in the store this version could not validate; they do not fire and are never deleted by a deploy'),
+  plugins: z.array(z.looseObject({ name: z.string() })).describe('rules loaded from eval.plugins: name, kind, mechanism, needs, version, critical, path and the pinned sha256'),
 });
 
 export function registerListRulesTool(
@@ -55,7 +57,7 @@ export function registerListRulesTool(
           'Read-only, no network. built_in is the shipped roster and is never narrowed by the filters. For each rule: kind (measurement, detection, inference, judgment, policy, verification), mechanism, needs (the inputs it reads — absent means the rule skips, never passes), question, classes, version, weight, ' +
           'the EFFECTIVE critical flag with criticalSource (default, or config when eval.criticalRules / eval.nonCriticalRules changed it on this server — read it before trusting a passed: true), ' +
           'and proof: precision and recall with 95% intervals and the positive predictive value at four prevalences, the numbers published at https://iris-eval.com/proof. ' +
-          'rules is the custom-rule store, filterable by eval_type and enabled_only; total and enabled_count count custom rules. quarantined lists store entries this version could not validate; they do not fire.',
+          'rules is the custom-rule store, filterable by eval_type and enabled_only; total and enabled_count count custom rules. quarantined lists store entries this version could not validate. plugins lists the rules loaded from eval.plugins.',
         whenNot:
           'To count traces (get_traces). To add, remove or pause a rule (deploy_rule, delete_rule). Built-in rules are not in the store and cannot be deployed, deleted or disabled.',
         returns: listRulesOutputSchema,
@@ -104,7 +106,7 @@ export function registerListRulesTool(
       }));
       return respond(
         listRulesOutputSchema,
-        { rules, total, enabled_count, built_in, quarantined: customRuleStore.quarantined(LOCAL_TENANT) },
+        { rules, total, enabled_count, built_in, quarantined: customRuleStore.quarantined(LOCAL_TENANT), plugins: pluginRows() },
         [{ uri: PROOF_RESOURCE_URI, name: 'proof', description: 'The published accuracy of every measured rule, with the corpus it was measured on' }],
       );
     }),
