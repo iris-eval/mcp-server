@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`no_tool_loop` catches a repeating cycle of any length.** The cycle clause stopped at period 3 ("beyond three the pattern is a plan, not a loop"), so a four-call block repeated three times over — twelve calls that between them asked four questions three times, every answer unchanged — walked straight through (#427). The period searched is now bounded by what can still repeat more than the allowance inside the trajectory (`maxCycleLength(n) = floor(n / 3)`): a plan repeated twice is a retry and passes; the same plan a third time is the machine stuck. The polling exemption and the shorter-period rule are unchanged. Two corpus cases pin both sides (`loop-041` fails, `loop-042` passes); the family measures n = 42, precision 1.00, recall 1.00 on corpus `a2825049eb4f` (it was n = 40, 1.00 / 1.00 — nothing that fired stops firing, nothing that passed starts). **Observable:** an agent whose trajectory repeats a block of four or more distinct calls three times over is now judged a loop where it was not.
+
 ## [0.15.0] - 2026-09-21
 
 **Reach, honestly.** Iris reaches further in 0.15.0 — the engine and a client are importable, traces arrive over OTLP, rules can be plugged in, a dataset can gate a release, Node's built-in SQLite carries the store when the native addon cannot — and every reach is stated at exactly its verified width: every client Iris names has a row that says whether it was verified or claimed, every cell on a comparison page names the page it was read from and the date, and the proof's two oldest evasions are measured moving rather than declared fixed.

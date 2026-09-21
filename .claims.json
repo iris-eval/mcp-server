@@ -3103,7 +3103,7 @@
         "cells": {
           "q1": {
             "evidence": "proof/results.json → rules[no_tool_loop]",
-            "note": "precision, recall and F1 on 40 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "note": "precision, recall and F1 on 42 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
@@ -4569,13 +4569,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "d983cd2c4a62"
+        "compositeVersion": "2e93146fa04b"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "aa4bedbfabcd",
+        "corpusVersion": "a2825049eb4f",
         "customCorpusVersion": "7f0a2fdc0855"
       }
     },
@@ -4588,8 +4588,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-21T17:20:20.993Z",
-  "generatedFromCommit": "e63138e",
+  "generatedAt": "2026-09-21T17:46:04.660Z",
+  "generatedFromCommit": "8354feb",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -4662,10 +4662,10 @@
     ]
   },
   "proof": {
-    "commit": "57b1850",
+    "commit": "37e7a18",
     "composite": {
-      "compositeVersion": "d983cd2c4a62",
-      "corpusVersion": "aa4bedbfabcd",
+      "compositeVersion": "2e93146fa04b",
+      "corpusVersion": "a2825049eb4f",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -5220,7 +5220,7 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1556,
+                "meanPredicted": 0.1554,
                 "n": 47,
                 "observedRate": 0.3404,
                 "to": 0.2
@@ -5241,7 +5241,7 @@
               },
               {
                 "from": 0.4,
-                "meanPredicted": 0.4446,
+                "meanPredicted": 0.4445,
                 "n": 3,
                 "observedRate": 0.6667,
                 "to": 0.5
@@ -5262,14 +5262,14 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7741,
+                "meanPredicted": 0.774,
                 "n": 12,
                 "observedRate": 0.6667,
                 "to": 0.8
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.818,
+                "meanPredicted": 0.8241,
                 "n": 4,
                 "observedRate": 1,
                 "to": 0.9
@@ -5283,7 +5283,7 @@
               }
             ],
             "brier": 0.1804,
-            "ece": 0.186,
+            "ece": 0.1858,
             "n": 108
           },
           "falseBlock": {
@@ -5326,7 +5326,7 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1562,
+                "meanPredicted": 0.156,
                 "n": 12,
                 "observedRate": 0.5,
                 "to": 0.2
@@ -5375,21 +5375,21 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8564,
+                "meanPredicted": 0.8595,
                 "n": 2,
                 "observedRate": 1,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9266,
+                "meanPredicted": 0.9265,
                 "n": 2,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.2363,
-            "ece": 0.3094,
+            "brier": 0.2362,
+            "ece": 0.3092,
             "n": 24
           },
           "falseBlock": {
@@ -5432,7 +5432,7 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1553,
+                "meanPredicted": 0.1552,
                 "n": 16,
                 "observedRate": 0.3125,
                 "to": 0.2
@@ -5453,7 +5453,7 @@
               },
               {
                 "from": 0.4,
-                "meanPredicted": 0.4446,
+                "meanPredicted": 0.4445,
                 "n": 2,
                 "observedRate": 1,
                 "to": 0.5
@@ -5481,7 +5481,7 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8372,
+                "meanPredicted": 0.8402,
                 "n": 4,
                 "observedRate": 1,
                 "to": 0.9
@@ -5494,8 +5494,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.1871,
-            "ece": 0.1893,
+            "brier": 0.187,
+            "ece": 0.189,
             "n": 33
           },
           "falseBlock": {
@@ -5589,7 +5589,7 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8163,
+                "meanPredicted": 0.816,
                 "n": 40,
                 "observedRate": 0.325,
                 "to": 0.9
@@ -5602,8 +5602,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.2452,
-            "ece": 0.2471,
+            "brier": 0.2451,
+            "ece": 0.247,
             "n": 108
           },
           "falseBlock": {
@@ -5695,7 +5695,7 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8159,
+                "meanPredicted": 0.8156,
                 "n": 11,
                 "observedRate": 0.4545,
                 "to": 0.9
@@ -5708,8 +5708,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.1788,
-            "ece": 0.1863,
+            "brier": 0.1787,
+            "ece": 0.1862,
             "n": 24
           },
           "falseBlock": {
@@ -5801,7 +5801,7 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8167,
+                "meanPredicted": 0.8164,
                 "n": 12,
                 "observedRate": 0.4167,
                 "to": 0.9
@@ -5814,8 +5814,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.2286,
-            "ece": 0.2492,
+            "brier": 0.2285,
+            "ece": 0.2491,
             "n": 33
           },
           "falseBlock": {
@@ -6021,7 +6021,7 @@
       },
       "version": "0.15.0"
     },
-    "corpusVersion": "aa4bedbfabcd",
+    "corpusVersion": "a2825049eb4f",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -6646,7 +6646,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-21T07:41:28.982Z",
+    "generatedAt": "2026-09-21T17:08:51.560Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7555,35 +7555,35 @@
             1
           ],
           "precision": [
-            0.8241,
+            0.8318,
             1
           ],
           "recall": [
-            0.8241,
+            0.8318,
             1
           ]
         },
         "credible95": {
           "f1": [
-            0.9039,
-            0.9994
+            0.9083,
+            0.9995
           ],
           "precision": [
-            0.8605,
+            0.8679,
             1
           ],
           "recall": [
-            0.8677,
+            0.874,
             1
           ]
         },
         "f1": 1,
         "fn": 0,
         "fp": 0,
-        "n": 40,
+        "n": 42,
         "name": "no_tool_loop",
-        "negatives": 22,
-        "positives": 18,
+        "negatives": 23,
+        "positives": 19,
         "ppvAt": {
           "0.01": 1,
           "0.05": 1,
@@ -7593,8 +7593,8 @@
         "precision": 1,
         "recall": 1,
         "skipped": 0,
-        "tn": 22,
-        "tp": 18
+        "tn": 23,
+        "tp": 19
       },
       {
         "category": "cost",
@@ -8305,7 +8305,7 @@
       "passed": null,
       "total": 34
     },
-    "totalCombined": 3032,
+    "totalCombined": 3035,
     "vitestDashboard": {
       "failed": 0,
       "passed": 329,
@@ -8313,8 +8313,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2669,
-      "total": 2669
+      "passed": 2672,
+      "total": 2672
     }
   },
   "version": {
