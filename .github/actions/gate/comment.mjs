@@ -18,7 +18,7 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 export const MARKER_PREFIX = '<!-- iris-gate:';
 
 export function markerFor(tracesPath) {
-  return `${MARKER_PREFIX}${String(tracesPath).replace(/-->/g, '').trim()} -->`;
+  return `${MARKER_PREFIX}${String(tracesPath).replace(/--!?>/g, '').trim()} -->`;
 }
 
 /** What to do, from the event alone. */
