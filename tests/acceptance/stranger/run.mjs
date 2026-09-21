@@ -29,7 +29,7 @@
  * pins the model id and A6 is the only row graded on wording alone.
  *
  * Usage:
- *   node tests/acceptance/stranger/run.mjs --spec @iris-eval/mcp-server@0.9.0 --out <dir> [--phase all|http|mcp1|mcp2|a8|a9]
+ *   node tests/acceptance/stranger/run.mjs --spec @iris-eval/mcp-server@0.9.0 --out <dir> [--phase all|http|gate|mcp1|mcp2|a8|a9]
  *   node tests/acceptance/stranger/run.mjs --tarball ./iris-eval-mcp-server-0.9.0.tgz --out <dir>
  *
  * The phases can be run separately against one record dir: `--phase mcp2`
@@ -86,6 +86,17 @@ const PROMPT =
 const ENV_NOTE_COMMON =
   'Environment: this is a non-interactive session with no browser. You may run single commands (npx, npm, node, curl, ls, cat) and read or write files under the current directory; compound shell lines are not permitted.';
 const ENV_NOTE_HTTP = `${ENV_NOTE_COMMON} No MCP servers are available to this session and none can be attached; if Iris has another way in, find it.`;
+/*
+ * The org reader's gate phase (0.15.0, rows H-G1 to H-G4). The person who
+ * gates deploys walks docs/ci-gate.md against the published package: the
+ * refusal without a key, eval.requiredEvidence, an action_policy at
+ * severity high, and `ingest --fail-on detector_veto --dataset release-gate`
+ * over ./release/ — three traces, one carrying an AWS key in its output.
+ * Every row grades the OUTCOME the transcript shows, never the route.
+ */
+const GATE_PROMPT =
+  "You are the engineer who gates deploys for a team that runs its agents through Iris (the npm package @iris-eval/mcp-server). Do the four steps of its CI-gate walk-through, in order, using only the published package, and report what each one printed. Start by reading the walk-through: run `npx -y @iris-eval/mcp-server --help` and fetch https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/ci-gate.md. Step 1: try to start the server over HTTP bound to 0.0.0.0 without any API key and report the exact refusal (do not set a key first). Step 2: with a config file that sets eval.requiredEvidence to [\"tool_calls\"], evaluate ./release/notes.json (it has no tool calls) and report the verdict's state and basis. Step 3: deploy a custom rule of type action_policy at severity high that denies every tool whose name starts with delete_, evaluate ./release/cleanup.json (it calls delete_repo), and report the verdict's basis and which rule it names. Step 4: create a dataset labelled release-gate from the case keys deploy-config and release-notes, then run the ingest command with --file over ./release/traces.ndjson, --evaluate, --fail-on detector_veto and --dataset release-gate; report the exit code, which trace tripped, which rule tripped it, and where in the output the credential sits (the receipt's spans: offsets and label). Finish with four lines, one per step, each naming what was printed.";
+const ENV_NOTE_GATE = `${ENV_NOTE_COMMON} No MCP servers are attached to this session; use the package's CLI and HTTP surfaces. The three traces are in ./release/ (notes.json, cleanup.json, deploy-config.json) and together in ./release/traces.ndjson.`;
 const ENV_NOTE_MCP1 = `${ENV_NOTE_COMMON} No MCP servers are attached to this session and none can be attached mid-run. Do the discovery and installation work now: find how Iris is installed and write, to ./mcp-config.json, the exact MCP server config you would attach for a client like Claude Code, then stop and say what you would do next once it is connected. Do not evaluate the outputs in this session.`;
 const ENV_NOTE_MCP2 = `${ENV_NOTE_COMMON} Iris is connected to this session as an MCP server named iris-eval; use it.`;
 /*
@@ -183,6 +194,22 @@ function makeA9Cohort(dir) {
     writeFileSync(join(outputs, dst), JSON.stringify(fixture, null, 2));
   });
   return outputs;
+}
+
+/** The gate phase's directory: ./release/ with the three traces the walk-through gates, and a scratch home. */
+function makeGateDir() {
+  const dir = mkdtempSync(join(tmpdir(), 'iris-stranger-gate-'));
+  const release = join(dir, 'release');
+  mkdirSync(release);
+  const notes = { agent_name: 'deploy-bot', case_key: 'release-notes', input: 'Summarise the release notes.', output: 'The release adds a datasets table, a views route and an OTLP door. Nothing was removed.', cost_usd: 0.01 };
+  const cleanup = { agent_name: 'deploy-bot', case_key: 'staging-cleanup', input: 'Clean up the staging repo.', output: 'Done — removed the staging repository.', tool_calls: [{ tool_name: 'delete_repo', input: { name: 'staging' }, output: 'deleted' }], cost_usd: 0.02 };
+  const deployConfig = { agent_name: 'deploy-bot', case_key: 'deploy-config', input: 'Show me the deploy config.', output: 'Here is the deploy config. The access key is AKIAIOSFODNN7EXAMPLE and the region is us-east-1.', cost_usd: 0.01 };
+  writeFileSync(join(release, 'notes.json'), JSON.stringify(notes, null, 2));
+  writeFileSync(join(release, 'cleanup.json'), JSON.stringify(cleanup, null, 2));
+  writeFileSync(join(release, 'deploy-config.json'), JSON.stringify(deployConfig, null, 2));
+  writeFileSync(join(release, 'traces.ndjson'), [deployConfig, notes, { ...deployConfig, case_key: 'scratch-experiment' }].map((t) => JSON.stringify(t)).join('\n') + '\n');
+  const home = mkdtempSync(join(tmpdir(), 'iris-stranger-home-gate-'));
+  return { dir, home };
 }
 
 function makePhaseDir(phase) {
@@ -337,7 +364,7 @@ function summarise(phase, d, wallMs, substitution) {
  * capture-both phase) produced a self-initiated log_trace with evaluate. So
  * A10 grades that session when it exists, and the resumed driver otherwise.
  */
-function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
+function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth, gate }) {
   const rows = {};
   const row = (id, pass, evidence, note) => { rows[id] = { pass, evidence: quote(evidence), ...(note ? { note } : {}) }; };
 
@@ -545,6 +572,34 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth }) {
     const capabilities = d.calls.some((c) => /api\/v1\/capabilities|iris:\/\/capabilities|--self-test|--help/.test(inputOf(c)));
     row('H-A2', capabilities, capabilities ? 'read what this server can judge (the route, the resource, --self-test or --help)' : 'never read what this server can judge');
   }
+  if (gate) {
+    const d = gate.d;
+    const inputOf = (c) => JSON.stringify(c.input ?? {});
+    const resultOf = (c) => String(c.result ?? '');
+    const t = d.finalText;
+    /*
+     * The org reader's four steps (0.15.0), each graded on what the
+     * transcript shows was printed — by the CLI, the HTTP surface or the
+     * final answer — never on how the agent phrased the command.
+     */
+    // H-G1: the refusal without a key, and the way out named.
+    const refused = d.calls.find((c) => /Refusing to bind the (HTTP transport|dashboard) to/.test(resultOf(c)) && /without an API key/.test(resultOf(c)));
+    const wayOut = refused ? /IRIS_API_KEY/.test(resultOf(refused)) : /IRIS_API_KEY/.test(t);
+    row('H-G1', Boolean(refused) && wayOut, refused ? resultOf(refused).slice(0, 220) : 'no refusal without a key was seen', `wayOut:${wayOut}`);
+    // H-G2: requiredEvidence — a verdict whose basis is required_evidence_missing.
+    const evidenceMissing = d.calls.find((c) => /required_evidence_missing/.test(resultOf(c)));
+    row('H-G2', Boolean(evidenceMissing) || /required_evidence_missing/.test(t), evidenceMissing ? resultOf(evidenceMissing).slice(0, 220) : t.slice(0, 220));
+    // H-G3: the policy gates — basis policy_gate, by a rule the agent deployed.
+    const policyGate = d.calls.find((c) => /policy_gate/.test(resultOf(c)));
+    const named = policyGate ? /"by"\s*:\s*\[\s*"[a-z][a-z0-9_-]*"/i.test(resultOf(policyGate)) : /policy_gate/.test(t);
+    row('H-G3', Boolean(policyGate) && named, policyGate ? resultOf(policyGate).slice(0, 220) : 'no policy_gate verdict was seen', `named:${named}`);
+    // H-G4: the gate fails the job on the leak and names the rule and the span.
+    const gated = d.calls.find((c) => /"tripped"\s*:\s*"detector_veto"/.test(resultOf(c)) && /no_pii/.test(resultOf(c)));
+    const span = gated ? /"spans"\s*:\s*\[/.test(resultOf(gated)) : false;
+    const scoped = gated ? /in dataset "release-gate"|--dataset release-gate/.test(resultOf(gated) + inputOf(gated)) : false;
+    const exitNamed = /exit(?:ed)?(?: code| status)?\s*(?:=|:|of|was|is)?\s*1\b/i.test(t) || (gated && /exit code 1|Exit code: 1/i.test(resultOf(gated)));
+    row('H-G4', Boolean(gated) && span && scoped, gated ? resultOf(gated).slice(0, 220) : 'no tripped detector_veto receipt was seen', `span:${span} scoped:${scoped} exitNamed:${exitNamed}`);
+  }
   return rows;
 }
 
@@ -643,6 +698,14 @@ async function phaseA10(mcp2) {
   const r = await runClaude({ phase: 'a10', cwd: mcp2.dir, home: mcp2.home, prompt: A10_DRIVER, mcpConfig: mcp2.cfgPath, resume: mcp2.rec.sessionId });
   const d = digest(parseStream(r.out));
   const rec = summarise('a10', d, r.wallMs, null);
+  return { d, rec };
+}
+
+async function phaseGate() {
+  const { dir, home } = makeGateDir();
+  const r = await runClaude({ phase: 'gate', cwd: dir, home, prompt: `${GATE_PROMPT}\n\n${ENV_NOTE_GATE}` });
+  const d = digest(parseStream(r.out));
+  const rec = summarise('gate', d, r.wallMs, null);
   return { d, rec };
 }
 
@@ -745,7 +808,7 @@ if (args.get('regrade') === 'true') {
   const re = {};
   const m1 = load('mcp1');
   if (m1) re.mcp1 = { ...m1, config: existsSync(join(OUT, 'mcp-config-as-written.json')) ? JSON.parse(readFileSync(join(OUT, 'mcp-config-as-written.json'), 'utf8')) : null, substitution: null };
-  for (const phase of ['mcp2', 'a8', 'a9', 'a10', 'http']) { const r = load(phase); if (r) re[phase] = r; }
+  for (const phase of ['mcp2', 'a8', 'a9', 'a10', 'http', 'gate']) { const r = load(phase); if (r) re[phase] = r; }
   for (const [phase, key] of [['capture', 'capture'], ['capture-both', 'captureBoth']]) {
     const r = load(phase);
     if (!r) continue;
@@ -805,6 +868,10 @@ if (PHASE === 'a8' && existsSync(join(OUT, 'mcp2.jsonl')) && existsSync(join(OUT
 if (want('http')) {
   results.http = await phaseHttp();
   line('http', results.http.rec);
+}
+if (want('gate')) {
+  results.gate = await phaseGate();
+  line('gate', results.gate.rec);
 }
 if (want('capture')) {
   results.capture = await phaseCapture('capture');
