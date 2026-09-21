@@ -84,16 +84,27 @@ export const MAX_TWO_CALL_CYCLES = 2;
 /** Default for config key `max_target_rereads`: how many reads of one target are tolerated. */
 export const DEFAULT_MAX_TARGET_REREADS = 3;
 
-/** Longest cycle length considered. Beyond three the pattern is a plan, not a loop. */
-export const MAX_CYCLE_LENGTH = 3;
+/**
+ * The longest period a cycle can have and still repeat more than the
+ * allowance inside a trajectory of n calls. Until 0.16.0 the search stopped
+ * at period 3 ("beyond three the pattern is a plan, not a loop"), which a
+ * four-call block repeated three times over — twelve calls that between
+ * them asked four questions three times — walked straight through (#427).
+ * The allowance is what tells a plan from a loop, not the period: a plan
+ * repeated twice is a retry and passes; the same plan a third time is the
+ * machine stuck.
+ */
+export function maxCycleLength(callCount: number): number {
+  return Math.floor(callCount / (MAX_TWO_CALL_CYCLES + 1));
+}
 
 /**
- * The longest repeated sequence worth reporting, at any period from 2 to 3 —
- * or null when the repetition was a POLL.
+ * The longest repeated sequence worth reporting, at any period from 2 up to
+ * maxCycleLength(n) — or null when the repetition was a POLL.
  *
  * Period 2 keeps exactly the threshold the alternating-pair detector used,
- * so no case that fired before stops firing and none starts. Period 3 is new
- * recall: A,B,C,A,B,C is a loop that the pair detector could not see.
+ * so no case that fired before stops firing and none starts. Period 3 was
+ * arc 4's recall (A,B,C,A,B,C); every longer period is 0.16.0's (#427).
  *
  * Period 1 is deliberately absent. The repeat COUNT above owns it and counts
  * non-consecutive repeats too, which is strictly more; a second detector of
@@ -101,7 +112,7 @@ export const MAX_CYCLE_LENGTH = 3;
  * signals to multiply as though they were independent.
  */
 function findCycle(keys: readonly string[], calls: readonly Step[]): { k: number; start: number; repetitions: number; gramIndices: number[] } | null {
-  for (let k = 2; k <= MAX_CYCLE_LENGTH; k += 1) {
+  for (let k = 2; k <= maxCycleLength(keys.length); k += 1) {
     const cycle = longestCycle(keys, k);
     if (cycle === null || cycle.repetitions <= MAX_TWO_CALL_CYCLES) continue;
     const occurrences: number[] = [];
@@ -174,7 +185,7 @@ function targetRereads(
 export const noToolLoop: EvalRule = {
   name: 'no_tool_loop',
   description:
-    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when two calls alternate for more than two complete A,B,A,B cycles. Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit',
+    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit',
   evalType: 'cost',
   weight: 1,
   kind: 'detection',

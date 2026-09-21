@@ -8,7 +8,7 @@
  * that a trajectory carrying no timing is judged exactly as it was before.
  */
 import { describe, expect, it } from 'vitest';
-import { maxSteps, noToolLoop, DEFAULT_MAX_STEPS } from '../../../src/eval/rules/cost.js';
+import { maxSteps, noToolLoop, maxCycleLength, DEFAULT_MAX_STEPS } from '../../../src/eval/rules/cost.js';
 import { longestCycle, looksLikePolling, subjectOf, targetKey } from '../../../src/eval/rules/trajectory.js';
 import type { EvalContext } from '../../../src/types/eval.js';
 import type { Step } from '../../../src/types/trace.js';
@@ -50,6 +50,24 @@ describe('no_tool_loop — repetition at more than one period', () => {
   it('does not invent a cycle out of a plan', () => {
     const distinct = Array.from({ length: 12 }, (_, i) => call(`t${i}`, { i }));
     expect(run(noToolLoop, { toolCalls: distinct }).passed).toBe(true);
+  });
+});
+
+describe('no_tool_loop — a cycle of any period (#427)', () => {
+  const block = (names: string[]) => names.map((n) => ({ tool_name: 'grep', input: { path: n }, output: 'unchanged' }));
+  const four = ['a.ts', 'b.ts', 'c.ts', 'd.ts'];
+  it('a four-call block repeated three times is a loop — the cap that stopped at period 3 let it through', () => {
+    const r = run(noToolLoop, { toolCalls: [...block(four), ...block(four), ...block(four)] });
+    expect(r.passed).toBe(false);
+    expect(r.message).toMatch(/4-call sequence/);
+  });
+  it('the same block repeated twice is a plan and a retry, not a loop', () => {
+    expect(run(noToolLoop, { toolCalls: [...block(four), ...block(four)] }).passed).toBe(true);
+  });
+  it('the longest period searched is the longest that can still repeat more than the allowance', () => {
+    expect(maxCycleLength(12)).toBe(4);
+    expect(maxCycleLength(11)).toBe(3);
+    expect(maxCycleLength(5)).toBe(1);
   });
 });
 

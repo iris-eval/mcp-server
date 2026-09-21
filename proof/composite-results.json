@@ -5165,9 +5165,9 @@
       "split": "test"
     }
   ],
-  "commit": "57b1850",
-  "compositeVersion": "d983cd2c4a62",
-  "corpusVersion": "aa4bedbfabcd",
+  "commit": "37e7a18",
+  "compositeVersion": "832423aabe74",
+  "corpusVersion": "b7ebe39cdab4",
   "counts": {
     "byClass": {
       "credential_leak": 5,
@@ -5221,7 +5221,7 @@
       }
     }
   },
-  "generatedAt": "2026-09-21T07:41:38.920Z",
+  "generatedAt": "2026-09-21T17:07:52.250Z",
   "legacy": {
     "dev": {
       "accuracy": {

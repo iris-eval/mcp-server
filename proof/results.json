@@ -1,6 +1,6 @@
 {
-  "commit": "57b1850",
-  "corpusVersion": "aa4bedbfabcd",
+  "commit": "37e7a18",
+  "corpusVersion": "a2825049eb4f",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-21T07:41:28.982Z",
+  "generatedAt": "2026-09-21T17:08:51.560Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -1529,35 +1529,35 @@
           1
         ],
         "precision": [
-          0.8241,
+          0.8318,
           1
         ],
         "recall": [
-          0.8241,
+          0.8318,
           1
         ]
       },
       "credible95": {
         "f1": [
-          0.9039,
-          0.9994
+          0.9083,
+          0.9995
         ],
         "precision": [
-          0.8605,
+          0.8679,
           1
         ],
         "recall": [
-          0.8677,
+          0.874,
           1
         ]
       },
       "f1": 1,
       "fn": 0,
       "fp": 0,
-      "n": 40,
+      "n": 42,
       "name": "no_tool_loop",
-      "negatives": 22,
-      "positives": 18,
+      "negatives": 23,
+      "positives": 19,
       "ppvAt": {
         "0.01": 1,
         "0.05": 1,
@@ -1567,8 +1567,8 @@
       "precision": 1,
       "recall": 1,
       "skipped": 0,
-      "tn": 22,
-      "tp": 18
+      "tn": 23,
+      "tp": 19
     },
     {
       "category": "cost",

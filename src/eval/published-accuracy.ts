@@ -5,7 +5,7 @@
  * are the numbers on https://iris-eval.com/proof, for the release named below.
  */
 
-export const PUBLISHED_ACCURACY_CORPUS_VERSION = 'aa4bedbfabcd';
+export const PUBLISHED_ACCURACY_CORPUS_VERSION = 'a2825049eb4f';
 export const PUBLISHED_ACCURACY_RELEASE = '0.15.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
@@ -101,9 +101,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7009, 1], recall: [0.7009, 1], f1: [1, 1] },
   },
   no_tool_loop: {
-    n: 40, tp: 18, fp: 0, fn: 0, tn: 22,
+    n: 42, tp: 19, fp: 0, fn: 0, tn: 23,
     precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.8241, 1], recall: [0.8241, 1], f1: [1, 1] },
+    ci95: { precision: [0.8318, 1], recall: [0.8318, 1], f1: [1, 1] },
   },
   max_steps: {
     n: 28, tp: 12, fp: 0, fn: 0, tn: 16,

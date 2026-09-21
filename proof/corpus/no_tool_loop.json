@@ -4,14 +4,14 @@
   "category": "cost",
   "family": "no_tool_loop",
   "positiveClass": "fail",
-  "definition": "no_tool_loop — the agent must not repeat itself. Two calls are the SAME call when their tool_name is equal and their inputs normalise to the same string: object keys sorted and undefined values dropped, strings taken as written, then whitespace runs collapsed to single spaces, trimmed, and capped at 500 characters (longer values keep their length as a discriminator). An absent input is its own key, so two argument-less calls to one tool are repeats of each other. The rule FAILS when (a) any one call is made more than max_tool_repeats times (default 3, config key `max_tool_repeats`), or (b) a sequence of 2 or 3 distinct calls repeats consecutively (A,B,A,B,… or A,B,C,A,B,C,…) for more than two repetitions — a sequence whose own period is shorter is counted at that shorter period, so A,A,A,A is clause (a) and not clause (b) — or (c) one TARGET is read more than `max_target_rereads` times (default 3) through tools the supplied `tools` catalogue marks `readOnlyHint: true`, whatever tool did each read; clause (c) is dormant without a catalogue, and the target is the first of path, file, file_path, filename, url, uri, query, command, cmd, pattern, name, id that the call carries. A repetition whose calls are regularly spaced in time is a POLL and not a loop: at least three repetitions, a median gap of at least one second, and every gap within 35% of that median. Polling needs start times, which arrive with OpenTelemetry spans and not with tool_calls, so a trajectory that carries no timing is judged exactly as it was before. It SKIPS when context.toolCalls is absent or empty. Definitions: src/eval/rules/trajectory.ts; rule: src/eval/rules/cost.ts. Positive = a loop under that definition (the rule should FAIL).",
+  "definition": "no_tool_loop — the agent must not repeat itself. Two calls are the SAME call when their tool_name is equal and their inputs normalise to the same string: object keys sorted and undefined values dropped, strings taken as written, then whitespace runs collapsed to single spaces, trimmed, and capped at 500 characters (longer values keep their length as a discriminator). An absent input is its own key, so two argument-less calls to one tool are repeats of each other. The rule FAILS when (a) any one call is made more than max_tool_repeats times (default 3, config key `max_tool_repeats`), or (b) a sequence of two or more distinct calls repeats consecutively (A,B,A,B,…; A,B,C,A,B,C,…; A,B,C,D,A,B,C,D,… — any period that can repeat more than twice inside the trajectory) for more than two repetitions — a sequence whose own period is shorter is counted at that shorter period, so A,A,A,A is clause (a) and not clause (b) — or (c) one TARGET is read more than `max_target_rereads` times (default 3) through tools the supplied `tools` catalogue marks `readOnlyHint: true`, whatever tool did each read; clause (c) is dormant without a catalogue, and the target is the first of path, file, file_path, filename, url, uri, query, command, cmd, pattern, name, id that the call carries. A repetition whose calls are regularly spaced in time is a POLL and not a loop: at least three repetitions, a median gap of at least one second, and every gap within 35% of that median. Polling needs start times, which arrive with OpenTelemetry spans and not with tool_calls, so a trajectory that carries no timing is judged exactly as it was before. It SKIPS when context.toolCalls is absent or empty. Definitions: src/eval/rules/trajectory.ts; rule: src/eval/rules/cost.ts. Positive = a loop under that definition (the rule should FAIL).",
   "source": "LLM-authored on 2026-09-04. Cases marked \"real transcript t-NN\" carry the real input, output and tool_calls from the 2026-09-03 UAT run of an agent against the read-only Iris repository at v0.6.0 (tests/fixtures/real-transcripts). The rest are authored around the boundaries the definition draws: three repeats versus four, two alternating cycles versus three, key order, whitespace, absent inputs, and long trajectories that are merely long.",
   "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-04, by counting each trajectory against the definition rather than by running the rule. Each note states the count and the clause that decided the label. Cases the measurement then disagrees with are reported as errors, not relabelled. Re-derived on 2026-09-06 against the definition above after arc 4 generalised the repetition clause, added the target clause and taught the rule to recognise polling; loop-023 moved from negative to positive because its own note recorded the narrowness that was removed, and its note now says so.",
   "authored": "2026-09-04",
   "counts": {
-    "n": 40,
-    "positive": 18,
-    "negative": 22
+    "n": 42,
+    "positive": 19,
+    "negative": 23
   },
   "cases": [
     {
@@ -2311,6 +2311,170 @@
         ]
       },
       "notes": "Four reads through read-only tools, every one of a DIFFERENT target. Reading is not the problem; reading the same thing again is. PASSES."
+    },
+    {
+      "id": "loop-041",
+      "rule": "no_tool_loop",
+      "label": "positive",
+      "input": "Cross-check four files for the retention default.",
+      "output": "All four agree on 30 days.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "d.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "d.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "d.ts"
+            },
+            "output": "unchanged"
+          }
+        ]
+      },
+      "notes": "A,B,C,D repeated three times — twelve calls that between them asked four questions three times over, every answer unchanged. Until 0.16.0 the cycle search stopped at period 3 and this walked through (#427); the period is now bounded by what can repeat more than twice inside the trajectory. FAILS."
+    },
+    {
+      "id": "loop-042",
+      "rule": "no_tool_loop",
+      "label": "negative",
+      "input": "Cross-check four files for the retention default, then confirm once.",
+      "output": "All four agree on 30 days; confirmed on a second pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "d.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "a.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "b.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "c.ts"
+            },
+            "output": "unchanged"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "d.ts"
+            },
+            "output": "unchanged"
+          }
+        ]
+      },
+      "notes": "A,B,C,D repeated twice — a four-call plan and one retry of it. Two repetitions is the allowance for every period, so a plan run again is not a loop; the third time would be. PASSES."
     }
   ]
 }
