@@ -1,0 +1,169 @@
+name: Iris gate
+description: >-
+  Evaluate an agent's traces with Iris and fail the job on the verdicts you name.
+  The receipt goes to the job summary and, on a pull request, to one comment updated in place.
+author: iris-eval
+branding:
+  icon: shield
+  color: purple
+
+# One step in a workflow:
+#
+#   - uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0
+#     with:
+#       traces: traces.ndjson
+#
+# The job needs `permissions: pull-requests: write` for the comment; without
+# it (or on a pull request from a fork, whose token is read-only) the receipt
+# still reaches the job summary and the comment is skipped, said so.
+
+inputs:
+  traces:
+    description: The traces file — NDJSON, one trace per line, or one JSON trace.
+    required: true
+  fail-on:
+    description: >-
+      The basis that trips the gate: detector_veto | policy_gate | critical_unknown |
+      required_evidence_missing | risk_over_loss | fail | unknown | any.
+    required: false
+    default: detector_veto
+  dataset:
+    description: >-
+      Restrict the gate to the case keys of a dataset (id or label) that exists under iris-home;
+      every trace is still stored and evaluated. Empty: every trace can trip the gate.
+    required: false
+    default: ''
+  eval-type:
+    description: "The bundle to run: completeness | relevance | safety | cost | custom | all. Empty: every bundle."
+    required: false
+    default: ''
+  redact:
+    description: "How the stored evaluation text is redacted: none | critical_spans. Empty: the server's default."
+    required: false
+    default: ''
+  iris-home:
+    description: >-
+      Where the database lives. Empty: a scratch directory under the runner's temp, gone after the job.
+      A cached directory keeps history across runs (and holds the dataset the gate reads).
+    required: false
+    default: ''
+  version:
+    description: The @iris-eval/mcp-server version npx runs.
+    required: false
+    default: latest
+  command:
+    description: >-
+      Advanced — the command that runs iris-eval instead of npx, e.g. `node dist/index.js` in a checkout of this repo.
+    required: false
+    default: ''
+  comment:
+    description: On a pull request, post the receipt as one comment, updated in place on every run.
+    required: false
+    default: 'true'
+  github-token:
+    description: The token that posts the comment.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: "iris-eval ingest's own exit code: 0 stored and nothing tripped · 1 a verdict tripped fail-on · 2 usage error, or nothing stored."
+    value: ${{ steps.ingest.outputs.exit-code }}
+  stored:
+    description: Traces stored.
+    value: ${{ steps.receipt.outputs.stored }}
+  evaluated:
+    description: Traces evaluated.
+    value: ${{ steps.receipt.outputs.evaluated }}
+  tripped:
+    description: Verdicts that tripped fail-on.
+    value: ${{ steps.receipt.outputs.tripped }}
+  gated:
+    description: Traces inside the dataset's gate (equals evaluated when no dataset was named).
+    value: ${{ steps.receipt.outputs.gated }}
+  summary-file:
+    description: The receipt as Markdown, the same text the job summary and the comment carry.
+    value: ${{ steps.receipt.outputs.summary-file }}
+  comment:
+    description: "What happened to the comment: posted · updated · skipped-not-pr · skipped-fork · skipped-off · skipped-no-token · skipped-error."
+    value: ${{ steps.comment.outputs.comment }}
+
+runs:
+  using: composite
+  steps:
+    - name: Evaluate the traces
+      id: ingest
+      shell: bash
+      env:
+        INPUT_TRACES: ${{ inputs.traces }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_DATASET: ${{ inputs.dataset }}
+        INPUT_EVAL_TYPE: ${{ inputs.eval-type }}
+        INPUT_REDACT: ${{ inputs.redact }}
+        INPUT_IRIS_HOME: ${{ inputs.iris-home }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_COMMAND: ${{ inputs.command }}
+      run: |
+        set -u
+        work="$RUNNER_TEMP/iris-gate"
+        mkdir -p "$work"
+        home="${INPUT_IRIS_HOME:-$RUNNER_TEMP/iris}"
+        mkdir -p "$home"
+        if [ ! -f "$INPUT_TRACES" ]; then
+          echo "::error::traces: $INPUT_TRACES is not a file"
+          echo "exit-code=2" >> "$GITHUB_OUTPUT"
+          echo "work=$work" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        args=(ingest --file "$INPUT_TRACES" --evaluate --fail-on "$INPUT_FAIL_ON")
+        if [ -n "$INPUT_DATASET" ]; then args+=(--dataset "$INPUT_DATASET"); fi
+        if [ -n "$INPUT_EVAL_TYPE" ]; then args+=(--eval-type "$INPUT_EVAL_TYPE"); fi
+        if [ -n "$INPUT_REDACT" ]; then args+=(--redact "$INPUT_REDACT"); fi
+        if [ -n "$INPUT_COMMAND" ]; then
+          # shellcheck disable=SC2206
+          cmd=($INPUT_COMMAND)
+        else
+          cmd=(npx -y "@iris-eval/mcp-server@${INPUT_VERSION}")
+        fi
+        set +e
+        IRIS_HOME="$home" IRIS_NO_AUTO_LAUNCH=1 "${cmd[@]}" "${args[@]}" > "$work/receipts.ndjson" 2> "$work/ingest.log"
+        code=$?
+        set -e
+        cat "$work/ingest.log" >&2
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        echo "work=$work" >> "$GITHUB_OUTPUT"
+
+    - name: The receipt
+      id: receipt
+      shell: bash
+      env:
+        GATE_WORK: ${{ steps.ingest.outputs.work }}
+        GATE_EXIT_CODE: ${{ steps.ingest.outputs.exit-code }}
+        GATE_TRACES: ${{ inputs.traces }}
+        GATE_FAIL_ON: ${{ inputs.fail-on }}
+        GATE_DATASET: ${{ inputs.dataset }}
+      run: node "$GITHUB_ACTION_PATH/receipt.mjs"
+
+    - name: The comment
+      id: comment
+      shell: bash
+      env:
+        GATE_COMMENT: ${{ inputs.comment }}
+        GATE_TOKEN: ${{ inputs.github-token }}
+        GATE_SUMMARY_FILE: ${{ steps.receipt.outputs.summary-file }}
+        GATE_TRACES: ${{ inputs.traces }}
+      run: node "$GITHUB_ACTION_PATH/comment.mjs"
+
+    - name: The verdict
+      shell: bash
+      env:
+        GATE_EXIT_CODE: ${{ steps.ingest.outputs.exit-code }}
+        GATE_TRIPPED: ${{ steps.receipt.outputs.tripped }}
+        GATE_STORED: ${{ steps.receipt.outputs.stored }}
+        GATE_FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        case "$GATE_EXIT_CODE" in
+          0) echo "Iris gate: $GATE_STORED stored, nothing tripped --fail-on $GATE_FAIL_ON" ;;
+          1) echo "::error::Iris gate: $GATE_TRIPPED verdict(s) tripped --fail-on $GATE_FAIL_ON — the receipt names each trace and the rules that fired"; exit 1 ;;
+          *) echo "::error::Iris gate: iris-eval ingest exited $GATE_EXIT_CODE — a usage error, or nothing was stored; the log above says which"; exit "$GATE_EXIT_CODE" ;;
+        esac

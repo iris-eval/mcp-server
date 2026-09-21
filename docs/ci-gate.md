@@ -45,7 +45,54 @@ Four steps, in the order the person who gates deploys does them; each prints one
 3. **Deploy the policy that gates.** `deploy_rule` (or `POST /api/v1/rules/custom`) with an `action_policy` rule at `severity: high` — for example, no tool named `delete_*` may be called. A trace that calls one gets `basis: policy_gate`, `by: ["<your rule>"]`, and the rule's own message says it gates rather than advises.
 4. **Gate the release cases, and read where the leak is.** Create the dataset once (`POST /api/v1/datasets` with `{ "label": "release-gate", "from_run": "…" }` or explicit case keys), then `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_veto --dataset release-gate`. A trace in the gate whose output carries a credential exits the job with 1; its receipt reads `"tripped": "detector_veto"`, `"verdict": { "by": ["no_pii"] }`, and `"spans": [{ "rule": "no_pii", "label": "AWS Access Key", "source": "output", "start": 41, "end": 61 }]` — the offsets and the label, never the secret. The stored evaluation (`iris://evaluations/{id}`, or `GET /api/v1/evaluations` filtered by trace) carries the same span; `--redact critical_spans` redacts the stored text, not the receipt's offsets.
 
-## GitHub Actions
+## GitHub Actions — the action (0.16.0)
+
+```yaml
+- uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0
+  with:
+    traces: traces.ndjson
+```
+
+That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_veto`, fails the job when a verdict trips, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green.
+
+| Input | Default | What it is |
+|---|---|---|
+| `traces` | — (required) | The traces file: NDJSON, or one JSON trace |
+| `fail-on` | `detector_veto` | The basis that trips the gate — the table above |
+| `dataset` | — | Restrict the gate to a dataset's case keys (id or label) that exists under `iris-home` |
+| `eval-type` | every bundle | `completeness` · `relevance` · `safety` · `cost` · `custom` · `all` |
+| `redact` | the server's default | `none` · `critical_spans` |
+| `iris-home` | a scratch directory | Where the database lives; a cached directory keeps history across runs and holds the dataset |
+| `version` | `latest` | The `@iris-eval/mcp-server` version `npx` runs |
+| `command` | `npx -y @iris-eval/mcp-server@<version>` | Advanced: the command that runs `iris-eval` instead — `node dist/index.js` in a checkout of this repo |
+| `comment` | `true` | On a pull request, the comment |
+| `github-token` | `${{ github.token }}` | The token that posts it |
+
+Outputs: `exit-code` (ingest's own: 0 · 1 · 2), `stored`, `evaluated`, `tripped`, `gated`, `summary-file`, and `comment` — `posted` · `updated` · `skipped-not-pr` · `skipped-fork` · `skipped-off` · `skipped-no-token` · `skipped-error`.
+
+The receipt is the trace ids, the verdict bases, the rules that fired and the span labels — never the agent's text. To keep history across runs and compare them with `compare_runs` (pass `run` and `case_key` on each trace), cache `iris-home`:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/cache@v4
+    with:
+      path: ${{ runner.temp }}/iris
+      key: iris-${{ github.ref_name }}
+  - uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0
+    with:
+      traces: traces.ndjson
+      fail-on: detector_veto
+      dataset: release-gate
+      iris-home: ${{ runner.temp }}/iris
+```
+
+The action is dogfooded on this repository's own CI (`gate-action` in `ci.yml`): the walk-through's three traces with the dataset seeded, one leak inside the gate caught and one outside ignored, a clean file passing, and the comment updated rather than duplicated on a second run.
+
+Without the action, the same gate is one line:
 
 ```yaml
 - name: Evaluate the agent's traces
@@ -54,7 +101,7 @@ Four steps, in the order the person who gates deploys does them; each prints one
     IRIS_HOME: ${{ runner.temp }}/iris
 ```
 
-The database lives under `IRIS_HOME` (`iris.db`); point it at a scratch directory in CI, or at a persistent one to keep history across runs and compare them with `compare_runs` (pass `run` and `case_key` on each trace).
+The database lives under `IRIS_HOME` (`iris.db`); point it at a scratch directory in CI, or at a persistent one to keep history across runs.
 
 ## What it does not do
 

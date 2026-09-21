@@ -392,3 +392,88 @@ jobs:
       - name: Publish the table to the job summary
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
+
+  # The gate action, dogfooded (arc 9, N-17): the composite action under
+  # .github/actions/gate runs this checkout's own build against the
+  # walk-through fixtures — the leak is caught, the clean file passes, the
+  # receipt reaches the job summary, and on a pull request one comment is
+  # posted and then updated in place; on a push it posts nothing, asserted.
+  gate-action:
+    name: Gate action — dogfood
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    permissions:
+      contents: read
+      pull-requests: write   # the action posts the receipt as one PR comment
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: cd dashboard && npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Seed the dataset the gate reads
+        run: node scripts/ci/seed-gate-dataset.mjs
+        env:
+          IRIS_HOME: ${{ runner.temp }}/iris-gate-home
+      - name: The gate on the walk-through traces (one leak inside the dataset, one outside)
+        id: leak
+        uses: ./.github/actions/gate
+        continue-on-error: true
+        with:
+          traces: tests/fixtures/ci-gate/traces.ndjson
+          fail-on: detector_veto
+          dataset: release-gate
+          iris-home: ${{ runner.temp }}/iris-gate-home
+          command: node dist/index.js
+      - name: The gate on a clean file
+        id: clean
+        uses: ./.github/actions/gate
+        with:
+          traces: tests/fixtures/ci-gate/clean.ndjson
+          fail-on: any
+          iris-home: ${{ runner.temp }}/iris-gate-home
+          command: node dist/index.js
+      - name: The gate on the same traces again — the comment is updated, not duplicated
+        id: again
+        uses: ./.github/actions/gate
+        continue-on-error: true
+        with:
+          traces: tests/fixtures/ci-gate/traces.ndjson
+          fail-on: detector_veto
+          dataset: release-gate
+          iris-home: ${{ runner.temp }}/iris-gate-home
+          command: node dist/index.js
+      - name: What the three runs said
+        env:
+          LEAK_OUTCOME: ${{ steps.leak.outcome }}
+          LEAK_EXIT: ${{ steps.leak.outputs.exit-code }}
+          LEAK_STORED: ${{ steps.leak.outputs.stored }}
+          LEAK_TRIPPED: ${{ steps.leak.outputs.tripped }}
+          LEAK_GATED: ${{ steps.leak.outputs.gated }}
+          LEAK_COMMENT: ${{ steps.leak.outputs.comment }}
+          CLEAN_EXIT: ${{ steps.clean.outputs.exit-code }}
+          CLEAN_STORED: ${{ steps.clean.outputs.stored }}
+          CLEAN_TRIPPED: ${{ steps.clean.outputs.tripped }}
+          AGAIN_COMMENT: ${{ steps.again.outputs.comment }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$LEAK_OUTCOME" = "failure" ] || fail "the leak run should fail the step, got outcome $LEAK_OUTCOME"
+          [ "$LEAK_EXIT" = "1" ] || fail "the leak run should exit 1, got $LEAK_EXIT"
+          [ "$LEAK_STORED" = "3" ] || fail "three traces stored, got $LEAK_STORED"
+          [ "$LEAK_TRIPPED" = "1" ] || fail "one verdict tripped inside the dataset, got $LEAK_TRIPPED"
+          [ "$LEAK_GATED" = "2" ] || fail "two of three in the dataset's gate, got $LEAK_GATED"
+          [ "$CLEAN_EXIT" = "0" ] || fail "the clean run should exit 0, got $CLEAN_EXIT"
+          [ "$CLEAN_STORED" = "1" ] && [ "$CLEAN_TRIPPED" = "0" ] || fail "the clean run: $CLEAN_STORED stored, $CLEAN_TRIPPED tripped"
+          if [ "$EVENT" = "pull_request" ]; then
+            case "$LEAK_COMMENT" in posted|updated) ;; *) fail "on a pull request the first run should post or update the comment, got $LEAK_COMMENT" ;; esac
+            [ "$AGAIN_COMMENT" = "updated" ] || fail "the second run on the same traces should update the comment in place, got $AGAIN_COMMENT"
+          else
+            [ "$LEAK_COMMENT" = "skipped-not-pr" ] || fail "outside a pull request the comment is skipped-not-pr, got $LEAK_COMMENT"
+            [ "$AGAIN_COMMENT" = "skipped-not-pr" ] || fail "outside a pull request the comment is skipped-not-pr, got $AGAIN_COMMENT"
+          fi
+          echo "gate action: leak caught (exit 1, 1 of 2 tripped), clean passed (exit 0), comment: $LEAK_COMMENT then $AGAIN_COMMENT"

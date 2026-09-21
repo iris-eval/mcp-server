@@ -67,6 +67,8 @@ const PROSE_SURFACES: string[] = [
   'src/prompts.ts',
   'src/judge-enablement.ts',
   'src/capabilities.ts',
+  // The gate action (arc 9, N-17): a workflow file a reader copies, held to the same flags and variables.
+  '.github/actions/gate/action.yml',
 ];
 
 const prose = PROSE_SURFACES.map((rel) => ({ rel, text: read(rel) }));
