@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-21T06:27:58.654Z for v0.14.0 (local generating commit `22c3447` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-21T06:49:54.947Z for v0.14.0 (local generating commit `bfc42ae` — branch commits are squashed on merge, so cite the version).
 Corpus version `aa4bedbfabcd` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -54,21 +54,6 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_tool_loop` — FP: none · FN: none
 - `max_steps` — FP: none · FN: none
 - `cost_anomaly` — FP: none · FN: none
-
-## Candidate — a narrower acknowledgement for `no_silent_tool_failure` (NOT SHIPPED)
-
-The shipped rule accepts an acknowledgement phrase anywhere in the output. The candidate requires it near the failed call's own subject, so that an answer naming one failure while silently answering another is caught. Narrowing can only keep or raise recall and can only keep or lower precision, so the bar was set before the measurement: a precision lower bound of at least 0.85, and recall no lower than the shipped rule. Nothing here affects any verdict.
-
-Measured over the 44 cases of this family that carry a failed call.
-
-| Definition | TP | FP | FN | TN | Precision | Recall |
-|---|---|---|---|---|---|---|
-| shipped — an acknowledgement phrase anywhere in the output | 17 | 0 | 8 | 19 | 100.0% [81.6, 100.0] | 68.0% [48.4, 82.8] |
-| candidate — an acknowledgement phrase within 200 characters of the failed call's subject | 21 | 10 | 4 | 9 | 67.7% [50.1, 81.4] | 84.0% [65.3, 93.6] |
-
-Cases where the two definitions disagree: silent-020, silent-027, silent-030, silent-031, silent-035, silent-036, silent-038, silent-039, silent-040, silent-044, silent-046, silent-047, silent-051, silent-052.
-
-**Verdict: the candidate does NOT clear the bar (precision lower bound at least 0.85, recall no lower than the shipped rule), so it does not ship and this block stands as a published negative result.**
 
 ## Transforms — do the critical rules survive the evasions a leak arrives in?
 
