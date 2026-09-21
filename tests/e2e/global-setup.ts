@@ -173,6 +173,8 @@ export default async function globalSetup(): Promise<void> {
         // distinguishable at n = 10 — and case-0 is flaky across runs.
         trace.run_id = i < 10 ? 'baseline' : 'candidate';
         trace.case_key = `case-${i % 10}`;
+        // Three turns of one conversation (arc 9, N-15): the session strip on traces 3–5.
+        if (i >= 3 && i <= 5) trace.session_id = 'e2e-session-1';
         await adapter.insertTrace(LOCAL_TENANT, trace);
         const evalResult = makeEval(trace, i);
         evalResult.run_id = trace.run_id;

@@ -13,6 +13,8 @@ export interface TraceFilter {
   min_score?: number;
   max_score?: number;
   has_errors?: boolean;
+  /** The turns of one conversation (arc 9, N-15). */
+  session_id?: string;
 }
 
 export interface TraceQueryOptions {
@@ -297,7 +299,7 @@ export interface IStorageAdapter {
    * question's own answer — every rule answering it passed — rather than
    * the composed verdict, so a case's rate can be read for one question.
    */
-  getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string; question?: QuestionId }): Promise<CaseResultRow[]>;
+  getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string; question?: QuestionId; session?: string; groupBy?: 'case_key' | 'session' }): Promise<CaseResultRow[]>;
   /** Datasets (arc 8, R-8): a named set of case keys a comparison and a gate can be restricted to. */
   createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail>;
   /** By id, else by label; null when neither matches. */

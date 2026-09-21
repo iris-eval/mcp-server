@@ -273,7 +273,7 @@ describe('fromOtlp — the conventions beside GenAI', () => {
     ]));
     expect(trace.agent_name).toBe('billing-agent');
     expect(lacked.some((l) => l.startsWith('service.name'))).toBe(false);
-    expect(trace.metadata?.session_id).toBe('conv-77');
+    expect(trace.session_id).toBe('conv-77');
     expect(trace.tools).toEqual([{ name: 'refund_order', description: 'Refund an order', inputSchema: { type: 'object', properties: { order_id: { type: 'integer' } } } }]);
   });
 

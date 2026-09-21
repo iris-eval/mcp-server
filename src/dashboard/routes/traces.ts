@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { traceContextFrom, withTraceContext } from '../../otel/trace-context.js';
+import { sessionFromBaggage, traceContextFrom, withTraceContext } from '../../otel/trace-context.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
@@ -72,6 +72,7 @@ export function registerTraceRoutes(
         tools: body.tools,
         run_id: body.run,
         case_key: body.case_key,
+        session_id: body.session_id ?? sessionFromBaggage(traceContextFrom(req.headers as Record<string, unknown>)),
         source: 'http',
         spans: body.spans?.map((s) => ({
           ...s,
@@ -120,6 +121,7 @@ export function registerTraceRoutes(
         filter: {
           agent_name: query.agent_name,
           framework: query.framework,
+          session_id: query.session,
           since: query.since,
           until: query.until,
           min_score: query.min_score,

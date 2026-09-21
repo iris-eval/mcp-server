@@ -39,6 +39,8 @@ export interface Trace {
   metadata?: Record<string, unknown>;
   timestamp: string;
   created_at?: string;
+  /** The conversation this turn belongs to (arc 9, N-15); the trace page shows the session strip when set. */
+  session_id?: string;
 }
 
 export interface EvalRuleResult {

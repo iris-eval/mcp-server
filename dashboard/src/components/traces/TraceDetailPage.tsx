@@ -17,6 +17,7 @@ import { api } from '../../api/client';
 import type { VerdictLabelValue } from '../../api/types';
 import { QueryError } from '../shared/QueryError';
 import { SpanTree } from './SpanTree';
+import { SessionStrip } from './SessionStrip';
 import { ToolCallCard } from './ToolCallCard';
 import { EvalDetailCard } from '../evals/EvalDetailCard';
 import { labelSentence, reevaluateSentence } from '../evals/labelText';
@@ -132,6 +133,8 @@ export function TraceDetailPage() {
           <div><span className="detail-card__label">Time</span><br />{new Date(trace.timestamp).toLocaleString()}</div>
         </div>
       </section>
+
+      {trace.session_id && <SessionStrip trace={trace} />}
 
       {(trace.input || trace.output) && (
         <section aria-labelledby="trace-io-title" className="detail-section">

@@ -139,7 +139,7 @@ describe('the OTLP door — one fixture per convention', () => {
       // No framework in the table emits a cost attribute (the GenAI registry has none); the door invents none.
       expect(trace.cost_usd).toBeUndefined();
       expect(trace.metadata?.model).toBe(want.model);
-      expect(trace.metadata?.session_id).toBe(want.session);
+      expect(trace.session_id).toBe(want.session);
       expect(steps).toEqual(want.steps);
       expect(lacked).toHaveLength(want.lacked.length);
       want.lacked.forEach((l, idx) => matches(lacked[idx], l));

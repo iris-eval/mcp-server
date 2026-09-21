@@ -453,10 +453,11 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       ...(tokenUsage ? { token_usage: tokenUsage } : {}),
       ...(cost !== undefined ? { cost_usd: cost } : {}),
       ...(tools ? { tools } : {}),
+      // gen_ai.conversation.id is the session (arc 9, N-15): the column the drawer and the filters read.
+      ...(conversationId !== undefined ? { session_id: conversationId } : {}),
       metadata: {
-        // What the judge's same-family check and a session view read — beside the OTel block, never inside it.
+        // What the judge's same-family check reads — beside the OTel block, never inside it.
         ...(model !== undefined ? { model } : {}),
-        ...(conversationId !== undefined ? { session_id: conversationId } : {}),
         otel: { trace_id: otelTraceId, ...(group.scope ? { scope: group.scope } : {}), resource: group.resource },
       },
       timestamp,

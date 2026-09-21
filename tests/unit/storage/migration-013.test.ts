@@ -27,8 +27,8 @@ function tempDb(): string {
 }
 
 describe('migration 013 — the pinned baseline', () => {
-  it('is the thirteenth known migration, and the last', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(13);
+  it('is the thirteenth known migration', () => {
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[12]).toBe('013-run-baseline');
   });
 
