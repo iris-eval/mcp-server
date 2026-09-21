@@ -6,6 +6,7 @@
  * read documentation.
  */
 import { useCommandPalette } from './CommandPaletteProvider';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const styles = {
   trigger: {
@@ -21,6 +22,8 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 'var(--space-2)',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
     transition: 'background var(--transition-fast), color var(--transition-fast)',
   } as const,
   prompt: {
@@ -49,17 +52,24 @@ function detectShortcut(): string {
 
 export function CommandPaletteTrigger() {
   const { open } = useCommandPalette();
+  /*
+   * Below 768 px the trigger is its icon (arc 9, N-2): with the label and
+   * the shortcut hint it ran under the status chips on every page at phone
+   * width. The accessible name and the keyboard shortcut are unchanged.
+   */
+  const compact = useMediaQuery('(max-width: 767px)');
   return (
     <button
       type="button"
       onClick={open}
       style={styles.trigger}
       aria-label="Open command palette"
-      title="Open command palette"
+      title={`Open command palette (${detectShortcut()})`}
+      data-palette-trigger={compact ? 'compact' : 'full'}
     >
-      <span style={styles.prompt}>›</span>
-      <span style={styles.label}>Search or jump to…</span>
-      <span style={styles.shortcut}>{detectShortcut()}</span>
+      <span style={styles.prompt} aria-hidden="true">›</span>
+      {!compact && <span style={styles.label}>Search or jump to…</span>}
+      {!compact && <span style={styles.shortcut}>{detectShortcut()}</span>}
     </button>
   );
 }
