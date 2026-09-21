@@ -368,6 +368,8 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--purge` | `false` | Delete **every** stored trace, span and evaluation from the configured database, compact the file and truncate the write-ahead log so the deleted text does not linger on disk, then exit. Deployed rules, the audit log and preferences are kept. Not reversible. Stop any running Iris server first — the file is compacted in place. Refuses to combine with `--demo`, `--demo-clear` or `--self-test` |
 | `--version` | — | Print the bare version (e.g. `0.5.1`) to stdout and exit 0. Reads nothing under your Iris home |
 
+**`config.json` is validated when Iris starts.** A key Iris does not read — a typo such as `eval.critcalRules`, a key from another tool — or a value of the wrong type refuses startup with one sentence naming the full key, the key it most likely meant, or the type it wanted. Nothing in the file is silently ignored.
+
 ### Environment Variables
 
 Every variable `--help` documents. CLI flags take precedence over environment variables when both are set.
@@ -433,7 +435,7 @@ IRIS_API_KEY="$(openssl rand -hex 32)" docker compose up
 IRIS_ALLOW_UNAUTHENTICATED=1 iris-eval --transport http --dashboard
 ```
 
-Open by design, on a keyed server: `GET /health` on the transport and `GET /api/v1/health` on the dashboard answer without a key — status, version, uptime, storage connectivity, whether a judge key is present — never the key, never a trace. Everything else needs `Authorization: Bearer <key>` or a browser session. Retention runs on every server: traces and evaluations older than `retention.days` (default `30`) are deleted at startup and every `retention.sweepIntervalHours`; `--self-test` prints this install's policy, and `iris://capabilities` / `GET /api/v1/capabilities` carry it as `retention`.
+Open by design, on a keyed server: `GET /health` on the transport and `GET /api/v1/health` on the dashboard answer without a key and outside every rate limit, in one shape: status, version, uptime, the SQLite driver, `checks` for storage, the deployed-rules file and the migrations (applied against known), and whether a judge key is present — never the key, never a trace. `status` is `ok` only when every check is; otherwise it is `degraded` with HTTP 503, which the Docker image's own `HEALTHCHECK` reads. Everything else needs `Authorization: Bearer <key>` or a browser session. Retention runs on every server: traces and evaluations older than `retention.days` (default `30`) are deleted at startup and every `retention.sweepIntervalHours`; `--self-test` prints this install's policy, and `iris://capabilities` / `GET /api/v1/capabilities` carry it as `retention`.
 
 ### Your data on disk
 

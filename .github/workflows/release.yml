@@ -239,6 +239,10 @@ jobs:
             echo "tags<<EOF"
             echo "$TAGS"
             echo "EOF"
+            # The bare version for the OCI version label (v0.15.0 -> 0.15.0)
+            # and the build instant for the created label, RFC 3339.
+            echo "version=${GITHUB_REF_NAME#v}"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build + push multi-arch image
@@ -250,6 +254,14 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.docker-tags.outputs.tags }}
+          # OCI labels the Dockerfile cannot know (arc 8, R-6): the static
+          # ones — title, description, source, url, licenses — are LABEL
+          # lines in the Dockerfile so every build carries them; these
+          # three are the release's own facts.
+          labels: |
+            org.opencontainers.image.version=${{ steps.docker-tags.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.docker-tags.outputs.created }}
           # Attach provenance + SBOM attestations to the manifest so
           # `docker buildx imagetools inspect` shows them. Redundant with
           # the cosign signature below but gives two independent trust

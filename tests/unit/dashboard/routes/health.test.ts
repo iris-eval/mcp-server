@@ -36,6 +36,8 @@ describe('GET /health', () => {
         expect(opts.limit).toBe(1);
         return { traces: [{}], total: 253, limit: 1, offset: 0 };
       },
+      driver: 'better-sqlite3',
+      migrations: async () => ({ applied: 11, known: 11, pending: [] }),
     } as unknown as IStorageAdapter;
 
     const { status, body } = await getHealth(storage);
@@ -43,6 +45,9 @@ describe('GET /health', () => {
     expect(body.trace_count).toBe(253);
     expect(body.storage).toBe('connected');
     expect(body.version).toBe('9.9.9');
+    // The one contract (arc 8, R-6): the route serves what src/health.ts builds.
+    expect(body.driver).toBe('better-sqlite3');
+    expect(body.checks).toEqual({ storage: 'ok', rules_store: 'absent', migrations: { status: 'ok', applied: 11, known: 11 } });
   });
 
   it('degrades to 503 when storage cannot be counted', async () => {
@@ -50,15 +55,19 @@ describe('GET /health', () => {
       queryTraces: async () => {
         throw new Error('database is locked');
       },
+      driver: 'better-sqlite3',
+      migrations: async () => ({ applied: 11, known: 11, pending: [] }),
     } as unknown as IStorageAdapter;
     const { status, body } = await getHealth(storage);
     expect(status).toBe(503);
     expect(body.status).toBe('degraded');
+    expect((body.checks as { storage: string }).storage).toBe('fail');
   });
 
   it('answers without a storage adapter at all', async () => {
     const { status, body } = await getHealth(undefined);
     expect(status).toBe(200);
     expect(body).not.toHaveProperty('trace_count');
+    expect(body.driver).toBeNull();
   });
 });

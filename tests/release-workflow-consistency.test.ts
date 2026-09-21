@@ -89,3 +89,34 @@ describe('the keyed measurement workflows fail loudly without a key', () => {
     expect(branch).toContain('exit 1');
   });
 });
+
+describe('the image (arc 8, R-6) — labels, HEALTHCHECK, and the CI run that checks them', () => {
+  const dockerfile = workflow('Dockerfile');
+  const ci = workflow('.github/workflows/ci.yml');
+
+  it('the Dockerfile carries the static OCI labels', () => {
+    expect(dockerfile).toContain('org.opencontainers.image.source="https://github.com/iris-eval/mcp-server"');
+    expect(dockerfile).toContain('org.opencontainers.image.licenses="MIT"');
+    expect(dockerfile).toMatch(/org\.opencontainers\.image\.description="Stop shipping agents on vibes\./);
+    expect(dockerfile).toContain('org.opencontainers.image.url="https://iris-eval.com"');
+  });
+
+  it('the release build stamps version, revision and created from the tag and the commit', () => {
+    expect(release).toContain('org.opencontainers.image.version=${{ steps.docker-tags.outputs.version }}');
+    expect(release).toContain('org.opencontainers.image.revision=${{ github.sha }}');
+    expect(release).toContain('org.opencontainers.image.created=${{ steps.docker-tags.outputs.created }}');
+    expect(release).toContain('echo "version=${GITHUB_REF_NAME#v}"');
+  });
+
+  it('the Dockerfile has a HEALTHCHECK on the transport /health that reads IRIS_PORT', () => {
+    expect(dockerfile).toMatch(/^HEALTHCHECK --interval=\d+s --timeout=\d+s --start-period=\d+s --retries=\d+ /m);
+    expect(dockerfile).toContain("(process.env.IRIS_PORT || 3000) + '/health'");
+  });
+
+  it('CI runs the shipped image and requires healthy, the checks block on both ports, and the labels', () => {
+    expect(ci).toContain("{{.State.Health.Status}}");
+    expect(ci).toContain('"http://127.0.0.1:3000/health" "http://127.0.0.1:6920/api/v1/health"');
+    expect(ci).toContain(`grep -q '"migrations":{"status":"ok"'`);
+    expect(ci).toContain('org.opencontainers.image.source org.opencontainers.image.description org.opencontainers.image.licenses');
+  });
+});

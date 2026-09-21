@@ -754,6 +754,14 @@ export interface HealthResponse {
   status: 'ok' | 'degraded';
   version: string;
   uptime_seconds: number;
+  /** The SQLite driver behind the store (0.15.0). */
+  driver?: string | null;
+  /** What was checked and how it went (0.15.0). */
+  checks?: {
+    storage: 'ok' | 'fail' | 'absent';
+    rules_store: 'ok' | 'fail' | 'absent';
+    migrations: { status: 'ok' | 'fail' | 'absent'; applied: number; known: number };
+  };
   trace_count?: number;
   storage?: 'connected' | 'disconnected';
   judge: { enabled: boolean; provider?: string | null };

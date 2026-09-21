@@ -37,6 +37,14 @@ RUN npm run build
 
 FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS production
 
+# OCI image labels (arc 8, R-6). The GHCR package page and `docker inspect`
+# read these; until 0.15.0 the image carried none, so the package page had
+# no description and no link back to the source. The static ones live here
+# so a local build carries them too; version, revision and created are
+# stamped by the release workflow (docker/build-push-action `labels:`),
+# which knows the tag and the commit.
+LABEL org.opencontainers.image.title="Iris"       org.opencontainers.image.description="Stop shipping agents on vibes. Score every agent output for quality, safety, and cost. MCP server, HTTP ingest and dashboard in one image."       org.opencontainers.image.source="https://github.com/iris-eval/mcp-server"       org.opencontainers.image.url="https://iris-eval.com"       org.opencontainers.image.documentation="https://github.com/iris-eval/mcp-server#readme"       org.opencontainers.image.vendor="iris-eval"       org.opencontainers.image.licenses="MIT"
+
 RUN addgroup -g 1001 iris && adduser -u 1001 -G iris -s /bin/sh -D iris
 
 WORKDIR /app
@@ -88,6 +96,16 @@ ENV IRIS_TRANSPORT=http \
 EXPOSE 3000 6920
 
 VOLUME ["/data"]
+
+# The container's own liveness (arc 8, R-6): the MCP transport's /health is
+# unauthenticated, rate-limit exempt, and the same contract the dashboard
+# serves at /api/v1/health (src/health.ts) — 200 when storage, the rules
+# store and the migrations all check out, 503 otherwise. Node's own fetch,
+# so the probe needs no curl or wget in the image; the port is read from
+# the same ENV the process reads, so an operator who overrides IRIS_PORT
+# does not silently break the probe. `docker inspect` shows the state;
+# compose and orchestrators gate on it.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3   CMD node -e "fetch('http://127.0.0.1:' + (process.env.IRIS_PORT || 3000) + '/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 
 # No --port/--dashboard-port flags baked in: the ENV above is the single
 # source, so an operator overriding IRIS_DASHBOARD_PORT at `docker run` is

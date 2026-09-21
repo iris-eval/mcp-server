@@ -31,6 +31,29 @@ const migrations: Migration[] = [
   migration011,
 ];
 
+/** Every migration this build knows, in order. */
+export const KNOWN_MIGRATION_IDS: readonly string[] = migrations.map((m) => m.id);
+
+export interface MigrationState {
+  /** How many of the known migrations the database has applied. */
+  applied: number;
+  /** How many this build knows. */
+  known: number;
+  /** Known and not applied — empty after a successful boot. */
+  pending: string[];
+}
+
+/**
+ * What the database has applied against what this build knows (arc 8,
+ * R-6): the health contract reports it so an operator can see a schema is
+ * behind before a query fails on a missing column. Reads only.
+ */
+export function migrationState(db: Database.Database): MigrationState {
+  const applied = new Set((db.prepare('SELECT id FROM _iris_migrations').all() as Array<{ id: string }>).map((r) => r.id));
+  const pending = KNOWN_MIGRATION_IDS.filter((id) => !applied.has(id));
+  return { applied: KNOWN_MIGRATION_IDS.length - pending.length, known: KNOWN_MIGRATION_IDS.length, pending };
+}
+
 export function runMigrations(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS _iris_migrations (

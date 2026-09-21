@@ -51,7 +51,7 @@ import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
 import { compose, interpretations, DEFAULT_COMPOSE } from '../eval/compose.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
-import { runMigrations } from './migrations/index.js';
+import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 const ALLOWED_SORT_ORDERS = new Set(['asc', 'desc']);
@@ -132,7 +132,15 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
+/**
+ * The word the health contract reports for the driver behind this adapter.
+ * Arc 8's R-0 adds Node's built-in SQLite as a fallback; this constant is
+ * the seam that row changes.
+ */
+export const SQLITE_DRIVER = 'better-sqlite3';
+
 export class SqliteAdapter implements IStorageAdapter {
+  readonly driver = SQLITE_DRIVER;
   private db: Database.Database;
   private readonly dbPath: string;
 
@@ -153,6 +161,11 @@ export class SqliteAdapter implements IStorageAdapter {
      * BEGIN IMMEDIATE; the statement before it was never covered.
      */
     this.db = new Database(dbPath, { timeout: BUSY_TIMEOUT_MS });
+  }
+
+  /** Applied against known (arc 8, R-6) — the health contract's `checks.migrations`. */
+  async migrations(): Promise<MigrationState> {
+    return migrationState(this.db);
   }
 
   async initialize(): Promise<void> {

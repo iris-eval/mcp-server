@@ -4,6 +4,7 @@ import type { IrisConfig } from '../types/index.js';
 import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
+import { validateConfigFile } from './schema.js';
 
 /*
  * Owner-only (0700) for the iris home directory, matching the 0600 the data
@@ -68,11 +69,15 @@ function loadConfigFile(path: string): Partial<IrisConfig> {
     }
     throw new Error(`Cannot read config file ${path}: ${(err as Error).message}`);
   }
+  let parsed: unknown;
   try {
-    return JSON.parse(content) as Partial<IrisConfig>;
+    parsed = JSON.parse(content);
   } catch (err: unknown) {
     throw new Error(`Invalid JSON in config file ${path}: ${(err as Error).message}`);
   }
+  // Strict (arc 8, R-6): a key Iris does not read, or a value of the wrong
+  // type, refuses startup naming it — see schema.ts for why.
+  return validateConfigFile(parsed, path);
 }
 
 function parsePortEnv(value: string, name: string): number {
