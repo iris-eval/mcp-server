@@ -85,6 +85,17 @@ describe('step 1 — started where it will run, without a key', () => {
   });
 });
 
+describe('step 1, the config-file form — a session that cannot prefix a command with a variable', () => {
+  it('the strict config file binds the HTTP transport to 0.0.0.0 and the refusal is the same sentence, exit 1', async () => {
+    const configPath = join(home, 'gate.json');
+    writeFileSync(configPath, JSON.stringify({ transport: { type: 'http', host: '0.0.0.0' } }));
+    const { code, stderr } = await run(['--config', configPath]);
+    expect(code).toBe(1);
+    expect(stderr).toMatch(/Refusing to bind the HTTP transport to 0\.0\.0\.0 without an API key/);
+    expect(stderr).toMatch(/IRIS_API_KEY/);
+  }, 60_000);
+});
+
 describe('step 2 — eval.requiredEvidence', () => {
   it('a trace that cannot show its tool calls gets an unknown verdict with basis required_evidence_missing, never a pass', async () => {
     const engine = new EvalEngine(0.7, undefined, { requiredEvidence: ['tool_calls'] });

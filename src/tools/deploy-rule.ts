@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
+import { RULE_TYPE_VALUES } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { createCustomRule } from '../eval/rules/custom.js';
 import type { DeployedCustomRule } from '../types/custom-rule.js';
@@ -112,19 +113,7 @@ const CustomRuleDefinitionSchema = strictNested(
       .max(80)
       .optional()
       .describe('Optional and IGNORED if given — the server overwrites it with the top-level `name` so the rule reports under one name everywhere'),
-    type: z
-      .enum([
-        'regex_match',
-        'regex_no_match',
-        'min_length',
-        'max_length',
-        'contains_keywords',
-        'excludes_keywords',
-        'json_schema',
-        'cost_threshold',
-        'action_policy',
-      ])
-      .describe('Check type — decides which config keys are required'),
+    type: z.enum(RULE_TYPE_VALUES).describe('Check type — decides which config keys are required'),
     config: z
       .record(z.string(), z.unknown())
       .describe('Check configuration; required keys depend on type (regex_match: pattern; min_length: min_length; max_length: max_length; contains_keywords/excludes_keywords: keywords; cost_threshold: max_cost; json_schema: schema, optional; action_policy: allow and/or deny)'),
