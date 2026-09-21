@@ -1,0 +1,213 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "next-app"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "ai"
+          },
+          "spans": [
+            {
+              "traceId": "8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b",
+              "spanId": "b800000000000001",
+              "name": "ai.generateText",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456001800000000",
+              "attributes": [
+                {
+                  "key": "operation.name",
+                  "value": {
+                    "stringValue": "ai.generateText"
+                  }
+                },
+                {
+                  "key": "ai.operationId",
+                  "value": {
+                    "stringValue": "ai.generateText"
+                  }
+                },
+                {
+                  "key": "ai.model.id",
+                  "value": {
+                    "stringValue": "claude-sonnet-5"
+                  }
+                },
+                {
+                  "key": "ai.model.provider",
+                  "value": {
+                    "stringValue": "anthropic.messages"
+                  }
+                },
+                {
+                  "key": "ai.prompt",
+                  "value": {
+                    "stringValue": "{\"prompt\":\"Name three risks of shipping on a Friday.\"}"
+                  }
+                },
+                {
+                  "key": "ai.response.text",
+                  "value": {
+                    "stringValue": "Fewer people on call, a slower rollback, and a weekend of silent failures."
+                  }
+                },
+                {
+                  "key": "ai.response.finishReason",
+                  "value": {
+                    "stringValue": "stop"
+                  }
+                },
+                {
+                  "key": "ai.usage.promptTokens",
+                  "value": {
+                    "intValue": "58"
+                  }
+                },
+                {
+                  "key": "ai.usage.completionTokens",
+                  "value": {
+                    "intValue": "24"
+                  }
+                },
+                {
+                  "key": "ai.settings.maxRetries",
+                  "value": {
+                    "intValue": "2"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b",
+              "spanId": "b800000000000002",
+              "name": "ai.generateText.doGenerate",
+              "kind": 3,
+              "startTimeUnixNano": "1758456000005000000",
+              "endTimeUnixNano": "1758456001505000000",
+              "attributes": [
+                {
+                  "key": "operation.name",
+                  "value": {
+                    "stringValue": "ai.generateText.doGenerate"
+                  }
+                },
+                {
+                  "key": "ai.operationId",
+                  "value": {
+                    "stringValue": "ai.generateText.doGenerate"
+                  }
+                },
+                {
+                  "key": "ai.model.id",
+                  "value": {
+                    "stringValue": "claude-sonnet-5"
+                  }
+                },
+                {
+                  "key": "ai.model.provider",
+                  "value": {
+                    "stringValue": "anthropic.messages"
+                  }
+                },
+                {
+                  "key": "ai.prompt.messages",
+                  "value": {
+                    "stringValue": "[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Name three risks of shipping on a Friday.\"}]}]"
+                  }
+                },
+                {
+                  "key": "ai.response.text",
+                  "value": {
+                    "stringValue": "Fewer people on call, a slower rollback, and a weekend of silent failures."
+                  }
+                },
+                {
+                  "key": "ai.response.finishReason",
+                  "value": {
+                    "stringValue": "stop"
+                  }
+                },
+                {
+                  "key": "ai.response.model",
+                  "value": {
+                    "stringValue": "claude-sonnet-5"
+                  }
+                },
+                {
+                  "key": "ai.usage.promptTokens",
+                  "value": {
+                    "intValue": "58"
+                  }
+                },
+                {
+                  "key": "ai.usage.completionTokens",
+                  "value": {
+                    "intValue": "24"
+                  }
+                }
+              ],
+              "parentSpanId": "b800000000000001"
+            },
+            {
+              "traceId": "8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b",
+              "spanId": "b800000000000003",
+              "name": "ai.toolCall",
+              "kind": 1,
+              "startTimeUnixNano": "1758456001520000000",
+              "endTimeUnixNano": "1758456001580000000",
+              "attributes": [
+                {
+                  "key": "operation.name",
+                  "value": {
+                    "stringValue": "ai.toolCall"
+                  }
+                },
+                {
+                  "key": "ai.operationId",
+                  "value": {
+                    "stringValue": "ai.toolCall"
+                  }
+                },
+                {
+                  "key": "ai.toolCall.name",
+                  "value": {
+                    "stringValue": "get_oncall"
+                  }
+                },
+                {
+                  "key": "ai.toolCall.id",
+                  "value": {
+                    "stringValue": "toolu_01"
+                  }
+                },
+                {
+                  "key": "ai.toolCall.args",
+                  "value": {
+                    "stringValue": "{\"day\":\"friday\"}"
+                  }
+                },
+                {
+                  "key": "ai.toolCall.result",
+                  "value": {
+                    "stringValue": "{\"engineers\":1}"
+                  }
+                }
+              ],
+              "parentSpanId": "b800000000000001"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

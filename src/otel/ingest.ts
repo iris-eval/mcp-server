@@ -34,7 +34,7 @@
  * metadata; Iris mints its own id, as every other door does.
  */
 import { z } from 'zod';
-import type { Span, SpanKind, SpanStatus, Trace } from '../types/trace.js';
+import type { Span, SpanKind, SpanStatus, Trace, ToolDescriptor } from '../types/trace.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
@@ -129,12 +129,21 @@ const OTEL_KIND: Record<string, SpanKind> = {
   SPAN_KIND_CONSUMER: 'CONSUMER',
 };
 
-const TOOL_MARKERS = ['gen_ai.tool.name', 'gen_ai.tool.call.id', 'tool.name', 'tool_name'];
-const LLM_MARKERS = ['gen_ai.request.model', 'gen_ai.response.model', 'gen_ai.system', 'gen_ai.provider.name', 'llm.request.model'];
+const TOOL_MARKERS = ['gen_ai.tool.name', 'gen_ai.tool.call.id', 'tool.name', 'tool_name', 'tool_call.function.name', 'ai.toolCall.name'];
+const LLM_MARKERS = ['gen_ai.request.model', 'gen_ai.response.model', 'gen_ai.system', 'gen_ai.provider.name', 'llm.request.model', 'llm.model_name', 'ai.model.id', 'llm.request.type'];
 
 function spanKindOf(attrs: Record<string, unknown>, otelKind: string | number | undefined): SpanKind {
   const declared = attrs['iris.span_kind'];
   if (declared === 'LLM' || declared === 'TOOL') return declared;
+  // OpenInference (Phoenix, and the CrewAI / OpenAI-Agents / ADK instrumentors most teams install) names the kind outright.
+  const openInference = attrs['openinference.span.kind'];
+  if (openInference === 'TOOL') return 'TOOL';
+  if (openInference === 'LLM') return 'LLM';
+  // LangSmith's export names the run type; OpenLLMetry names its own kinds (workflow, task, agent, tool).
+  const langsmith = attrs['langsmith.span.kind'];
+  if (langsmith === 'tool') return 'TOOL';
+  if (langsmith === 'llm') return 'LLM';
+  if (attrs['traceloop.span.kind'] === 'tool') return 'TOOL';
   const op = attrs['gen_ai.operation.name'];
   if (op === 'execute_tool' || TOOL_MARKERS.some((k) => attrs[k] !== undefined)) return 'TOOL';
   if (LLM_MARKERS.some((k) => attrs[k] !== undefined) || (typeof op === 'string' && op.length > 0)) return 'LLM';
@@ -148,11 +157,30 @@ function statusOf(code: string | number | undefined): SpanStatus {
   return 'UNSET';
 }
 
-const INPUT_KEYS = ['iris.input', 'gen_ai.input.messages', 'gen_ai.prompt'];
-const OUTPUT_KEYS = ['iris.output', 'gen_ai.output.messages', 'gen_ai.completion'];
-const INPUT_TOKEN_KEYS = ['gen_ai.usage.input_tokens', 'gen_ai.usage.prompt_tokens', 'iris.prompt_tokens'];
-const OUTPUT_TOKEN_KEYS = ['gen_ai.usage.output_tokens', 'gen_ai.usage.completion_tokens', 'iris.completion_tokens'];
+/*
+ * The conventions a buyer will test against this door (arc 9, N-11), in
+ * the order they are read: Iris's own keys, the OTel GenAI conventions
+ * (current, then the names deprecated in v1.37 that LangSmith's export and
+ * Semantic Kernel still emit), OpenInference (`input.value`,
+ * `llm.token_count.*`), Traceloop (`traceloop.entity.*`, indexed
+ * `gen_ai.prompt.N.content`), Semantic Kernel's `gen_ai.response.*_tokens`,
+ * and the Vercel AI SDK's legacy `ai.*`. Langfuse, LangSmith, Braintrust and
+ * Weave each map four to eight of these vocabularies; a trace arriving with
+ * no input and a doubled cost is a lost buyer.
+ */
+const INPUT_KEYS = ['iris.input', 'gen_ai.input.messages', 'gen_ai.prompt', 'input.value', 'traceloop.entity.input', 'ai.prompt'];
+const OUTPUT_KEYS = ['iris.output', 'gen_ai.output.messages', 'gen_ai.completion', 'output.value', 'traceloop.entity.output', 'ai.response.text'];
+const INPUT_TOKEN_KEYS = ['gen_ai.usage.input_tokens', 'gen_ai.usage.prompt_tokens', 'iris.prompt_tokens', 'llm.token_count.prompt', 'gen_ai.response.prompt_tokens', 'ai.usage.promptTokens'];
+const OUTPUT_TOKEN_KEYS = ['gen_ai.usage.output_tokens', 'gen_ai.usage.completion_tokens', 'iris.completion_tokens', 'llm.token_count.completion', 'gen_ai.response.completion_tokens', 'ai.usage.completionTokens'];
+const TOTAL_TOKEN_KEYS = ['gen_ai.usage.total_tokens', 'iris.total_tokens', 'llm.token_count.total'];
+/** A framework's own whole-run total (Pydantic AI) — when present it is the answer, not one more addend. */
+const AGGREGATED_INPUT_KEYS = ['gen_ai.aggregated_usage.input_tokens'];
+const AGGREGATED_OUTPUT_KEYS = ['gen_ai.aggregated_usage.output_tokens'];
 const COST_KEYS = ['iris.cost_usd', 'gen_ai.usage.cost', 'llm.usage.total_cost'];
+const AGENT_NAME_KEYS = ['gen_ai.agent.name'];
+const MODEL_KEYS = ['gen_ai.request.model', 'gen_ai.response.model', 'llm.model_name', 'llm.request.model', 'ai.model.id'];
+const CONVERSATION_KEYS = ['gen_ai.conversation.id', 'session.id'];
+const TOOL_DEFINITION_KEYS = ['gen_ai.tool.definitions'];
 
 function asText(v: unknown): string | undefined {
   if (v === undefined || v === null) return undefined;
@@ -164,10 +192,83 @@ function asText(v: unknown): string | undefined {
   }
 }
 
-function firstText(spans: readonly MappedSpan[], keys: readonly string[], eventName: string, eventKey: string): string | undefined {
+/**
+ * Traceloop writes a prompt as one attribute per message —
+ * `gen_ai.prompt.0.role`, `gen_ai.prompt.0.content`, `gen_ai.prompt.1.…` —
+ * and a completion likewise under `gen_ai.completion.N`. Read in index
+ * order, joined by newlines, until an index is missing.
+ */
+function indexedText(attrs: Record<string, unknown>, prefix: string): string | undefined {
+  const parts: string[] = [];
+  for (let i = 0; i < 200; i += 1) {
+    const content = attrs[`${prefix}.${i}.content`];
+    if (content === undefined) break;
+    const text = asText(content);
+    if (text !== undefined) parts.push(text);
+  }
+  return parts.length > 0 ? parts.join('\n') : undefined;
+}
+
+function firstText(spans: readonly MappedSpan[], keys: readonly string[], eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
   for (const s of spans) for (const k of keys) if (s.attrs[k] !== undefined) return asText(s.attrs[k]);
+  if (indexedPrefix !== undefined) for (const s of spans) { const t = indexedText(s.attrs, indexedPrefix); if (t !== undefined) return t; }
   for (const s of spans) for (const e of s.events) if (e.name === eventName && e.attrs[eventKey] !== undefined) return asText(e.attrs[eventKey]);
   return undefined;
+}
+
+function firstString(spans: readonly MappedSpan[], keys: readonly string[]): string | undefined {
+  for (const s of spans) for (const k of keys) { const v = s.attrs[k]; if (typeof v === 'string' && v.length > 0) return v; }
+  return undefined;
+}
+
+function firstNumber(attrs: Record<string, unknown>, keys: readonly string[]): number | undefined {
+  for (const k of keys) { const v = attrs[k]; if (typeof v === 'number' && Number.isFinite(v)) return v; }
+  return undefined;
+}
+
+/**
+ * Token usage over the LEAF carriers only (arc 9, N-11). Microsoft's Agent
+ * Framework puts the run's totals on `invoke_agent` beside `chat` children
+ * that carry their own; summing every span counted each call twice. A
+ * carrier whose descendant also carries is a total, not a call, and is
+ * left out; a framework that reports usage only on the root makes the root
+ * the leaf. An explicit whole-run aggregate (Pydantic AI's
+ * `gen_ai.aggregated_usage.*`) is the answer when it is present.
+ */
+function usageOf(spans: readonly MappedSpan[], keys: readonly string[], aggregatedKeys: readonly string[]): number | undefined {
+  for (const s of spans) { const v = firstNumber(s.attrs, aggregatedKeys); if (v !== undefined) return v; }
+  const carriers = spans.filter((s) => firstNumber(s.attrs, keys) !== undefined);
+  if (carriers.length === 0) return undefined;
+  const parentOf = new Map(spans.map((s) => [s.span.span_id, s.parent] as const));
+  const isAncestor = (ancestor: string, of: MappedSpan): boolean => {
+    let p = of.parent;
+    for (let hops = 0; p !== undefined && hops < 10_000; hops += 1) {
+      if (p === ancestor) return true;
+      p = parentOf.get(p);
+    }
+    return false;
+  };
+  const leaves = carriers.filter((c) => !carriers.some((other) => other !== c && isAncestor(c.span.span_id, other)));
+  return leaves.reduce((total, s) => total + (firstNumber(s.attrs, keys) ?? 0), 0);
+}
+
+function toolDefinitionsOf(spans: readonly MappedSpan[]): ToolDescriptor[] | undefined {
+  const raw = firstString(spans, TOOL_DEFINITION_KEYS);
+  if (raw === undefined) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return undefined;
+    const tools = parsed.filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null && typeof (t as Record<string, unknown>).name === 'string');
+    return tools.length > 0
+      ? tools.map((t) => ({
+          name: t.name as string,
+          ...(typeof t.description === 'string' ? { description: t.description } : {}),
+          ...(typeof t.inputSchema === 'object' && t.inputSchema !== null ? { inputSchema: t.inputSchema as Record<string, unknown> } : typeof t.parameters === 'object' && t.parameters !== null ? { inputSchema: t.parameters as Record<string, unknown> } : {}),
+        }))
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function sumOf(spans: readonly MappedSpan[], keys: readonly string[]): number | undefined {
@@ -289,17 +390,25 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
 
     const serviceName = group.resource['service.name'];
     const declaredAgent = group.resource['iris.agent_name'] ?? root.attrs['iris.agent_name'];
-    const agentName = typeof serviceName === 'string' && serviceName.length > 0 ? serviceName : typeof declaredAgent === 'string' && declaredAgent.length > 0 ? declaredAgent : 'otel';
-    if (agentName === 'otel') lacked.push('service.name (agent_name defaulted to "otel"; set service.name on the resource, or iris.agent_name)');
+    // gen_ai.agent.name (ADK, Agent Framework, AutoGen, Pydantic AI set it on invoke_agent) before the "otel" default.
+    const conventionAgent = firstString(rootFirst, AGENT_NAME_KEYS);
+    const agentName =
+      typeof serviceName === 'string' && serviceName.length > 0 ? serviceName
+      : typeof declaredAgent === 'string' && declaredAgent.length > 0 ? declaredAgent
+      : conventionAgent ?? 'otel';
+    if (agentName === 'otel') lacked.push('service.name (agent_name defaulted to "otel"; set service.name on the resource, iris.agent_name, or gen_ai.agent.name)');
 
-    const input = firstText(rootFirst, INPUT_KEYS, 'gen_ai.content.prompt', 'gen_ai.prompt');
-    const output = firstText(rootFirst, OUTPUT_KEYS, 'gen_ai.content.completion', 'gen_ai.completion');
-    if (input === undefined) lacked.push('input (no iris.input, gen_ai.input.messages or gen_ai.prompt on any span or event)');
-    if (output === undefined) lacked.push('output (no iris.output, gen_ai.output.messages or gen_ai.completion on any span or event — the rules that read the output will not run)');
+    const input = firstText(rootFirst, INPUT_KEYS, 'gen_ai.content.prompt', 'gen_ai.prompt', 'gen_ai.prompt');
+    const output = firstText(rootFirst, OUTPUT_KEYS, 'gen_ai.content.completion', 'gen_ai.completion', 'gen_ai.completion');
+    if (input === undefined) lacked.push('input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, traceloop.entity.input or ai.prompt on any span or event)');
+    if (output === undefined) lacked.push('output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, traceloop.entity.output or ai.response.text on any span or event — the rules that read the output will not run)');
 
-    const inputTokens = sumOf(ordered, INPUT_TOKEN_KEYS);
-    const outputTokens = sumOf(ordered, OUTPUT_TOKEN_KEYS);
-    const declaredTotal = sumOf(ordered, ['gen_ai.usage.total_tokens', 'iris.total_tokens']);
+    const inputTokens = usageOf(ordered, INPUT_TOKEN_KEYS, AGGREGATED_INPUT_KEYS);
+    const outputTokens = usageOf(ordered, OUTPUT_TOKEN_KEYS, AGGREGATED_OUTPUT_KEYS);
+    const declaredTotal = usageOf(ordered, TOTAL_TOKEN_KEYS, []);
+    const model = firstString(rootFirst, MODEL_KEYS);
+    const conversationId = (typeof group.resource['gen_ai.conversation.id'] === 'string' ? (group.resource['gen_ai.conversation.id'] as string) : undefined) ?? firstString(rootFirst, CONVERSATION_KEYS);
+    const tools = toolDefinitionsOf(rootFirst);
     const tokenUsage =
       inputTokens !== undefined || outputTokens !== undefined || declaredTotal !== undefined
         ? {
@@ -343,7 +452,13 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       ...(latency !== undefined && latency >= 0 ? { latency_ms: latency } : {}),
       ...(tokenUsage ? { token_usage: tokenUsage } : {}),
       ...(cost !== undefined ? { cost_usd: cost } : {}),
-      metadata: { otel: { trace_id: otelTraceId, ...(group.scope ? { scope: group.scope } : {}), resource: group.resource } },
+      ...(tools ? { tools } : {}),
+      metadata: {
+        // What the judge's same-family check and a session view read — beside the OTel block, never inside it.
+        ...(model !== undefined ? { model } : {}),
+        ...(conversationId !== undefined ? { session_id: conversationId } : {}),
+        otel: { trace_id: otelTraceId, ...(group.scope ? { scope: group.scope } : {}), resource: group.resource },
+      },
       timestamp,
       spans,
       ...(typeof runId === 'string' && runId.length > 0 ? { run_id: runId } : {}),

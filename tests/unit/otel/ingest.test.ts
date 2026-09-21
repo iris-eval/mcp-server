@@ -95,6 +95,8 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
       source: 'otel',
     });
     expect(trace.metadata).toEqual({
+      // The model lands beside the OTel block: what the judge's same-family check reads (arc 9, N-11).
+      model: 'gpt-4o',
       otel: { trace_id: '5b8efff798038103d269b633813fc60c', scope: 'openllmetry', resource: { 'service.name': 'support-bot', 'iris.run': 'nightly-7', 'deployment.environment': 'staging' } },
     });
     expect(trace.spans).toHaveLength(2);
@@ -145,9 +147,9 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
     expect(trace.latency_ms).toBe(12);
     expect(trace.spans?.[0]).toMatchObject({ name: 'GET /health', kind: 'SERVER', status_code: 'ERROR', status_message: 'boom', attributes: { 'http.route': '/health' } });
     expect(lacked).toEqual([
-      'service.name (agent_name defaulted to "otel"; set service.name on the resource, or iris.agent_name)',
-      'input (no iris.input, gen_ai.input.messages or gen_ai.prompt on any span or event)',
-      'output (no iris.output, gen_ai.output.messages or gen_ai.completion on any span or event — the rules that read the output will not run)',
+      'service.name (agent_name defaulted to "otel"; set service.name on the resource, iris.agent_name, or gen_ai.agent.name)',
+      'input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, traceloop.entity.input or ai.prompt on any span or event)',
+      'output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, traceloop.entity.output or ai.response.text on any span or event — the rules that read the output will not run)',
     ]);
     expect(toSteps({ spans: trace.spans })).toEqual([]);
   });
@@ -194,5 +196,102 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
     expect(otlpTraceRequestSchema.safeParse({ traces: [] }).success).toBe(false);
     expect(otlpTraceRequestSchema.safeParse({ resourceSpans: [] }).success).toBe(false);
     expect(otlpTraceRequestSchema.safeParse({ resourceSpans: [{}] }).success).toBe(true);
+  });
+});
+
+/*
+ * Every convention a buyer will test against the door (arc 9, N-11). One
+ * compact fixture per family; the keys are the ones the vendor's own docs
+ * and instrumentors emit (the arc-9 research brief, python-otel.md, §3).
+ */
+describe('fromOtlp — the conventions beside GenAI', () => {
+  const TID = '5b8efff798038103d269b633813fc60c';
+  type Attr = { key: string; value: unknown };
+  const span = (id: string, name: string, attributes: Attr[], parent?: string, at = 0) => ({
+    traceId: TID,
+    spanId: id,
+    ...(parent ? { parentSpanId: parent } : {}),
+    name,
+    kind: 1,
+    startTimeUnixNano: nanos(T0 + at),
+    endTimeUnixNano: nanos(T0 + at + 100),
+    attributes,
+  });
+  const request = (service: string | undefined, spans: unknown[], resourceExtra: Attr[] = []) => ({
+    resourceSpans: [{ resource: { attributes: [...(service ? [kv('service.name', str(service))] : []), ...resourceExtra] }, scopeSpans: [{ scope: { name: 'x' }, spans }] }],
+  });
+  const one = (req: unknown) => {
+    const mapped = fromOtlp(otlpTraceRequestSchema.parse(req));
+    expect(mapped.traces).toHaveLength(1);
+    return mapped.traces[0];
+  };
+
+  it('OpenInference (Phoenix, CrewAI, OpenAI-Agents, ADK instrumentors): input.value, output.value, llm.token_count.*, a TOOL span by openinference.span.kind', () => {
+    const { trace, lacked } = one(request('crew', [
+      span('0000000000000001', 'CrewAgent.run', [kv('openinference.span.kind', str('AGENT')), kv('input.value', str('Plan the launch')), kv('output.value', str('Launch plan: three steps.'))]),
+      span('0000000000000002', 'ChatOpenAI', [kv('openinference.span.kind', str('LLM')), kv('llm.model_name', str('gpt-4o')), kv('llm.token_count.prompt', int(300)), kv('llm.token_count.completion', int(50))], '0000000000000001', 10),
+      span('0000000000000003', 'search', [kv('openinference.span.kind', str('TOOL')), kv('tool.name', str('search')), kv('input.value', str('{"q":"launch"}')), kv('output.value', str('{"hits":3}'))], '0000000000000001', 20),
+    ]));
+    expect(trace.input).toBe('Plan the launch');
+    expect(trace.output).toBe('Launch plan: three steps.');
+    expect(trace.token_usage).toEqual({ prompt_tokens: 300, completion_tokens: 50, total_tokens: 350 });
+    expect(trace.metadata?.model).toBe('gpt-4o');
+    expect(trace.spans?.filter((x) => x.kind === 'TOOL')).toHaveLength(1);
+    expect(toSteps({ spans: trace.spans })[0]).toMatchObject({ name: 'search' });
+    expect(lacked).toEqual([]);
+  });
+
+  it('Traceloop (OpenLLMetry): traceloop.entity.* and the indexed gen_ai.prompt.N.content, joined in order', () => {
+    const { trace } = one(request('rag', [
+      span('0000000000000001', 'openai.chat', [kv('gen_ai.prompt.0.role', str('system')), kv('gen_ai.prompt.0.content', str('Be brief.')), kv('gen_ai.prompt.1.role', str('user')), kv('gen_ai.prompt.1.content', str('Sum it up.')), kv('gen_ai.completion.0.content', str('Done.')), kv('gen_ai.usage.prompt_tokens', int(40)), kv('gen_ai.usage.completion_tokens', int(5)), kv('gen_ai.request.model', str('gpt-4o-mini'))]),
+    ]));
+    expect(trace.input).toBe('Be brief.\nSum it up.');
+    expect(trace.output).toBe('Done.');
+    expect(trace.token_usage?.prompt_tokens).toBe(40);
+    const entity = one(request('rag', [span('0000000000000001', 'workflow', [kv('traceloop.entity.input', str('{"q":"x"}')), kv('traceloop.entity.output', str('{"a":"y"}'))])]));
+    expect(entity.trace.input).toBe('{"q":"x"}');
+    expect(entity.trace.output).toBe('{"a":"y"}');
+  });
+
+  it('Semantic Kernel: gen_ai.response.prompt_tokens / completion_tokens are usage', () => {
+    const { trace } = one(request('sk', [span('0000000000000001', 'chat', [kv('gen_ai.system', str('openai')), kv('gen_ai.prompt', str('q')), kv('gen_ai.completion', str('a')), kv('gen_ai.response.prompt_tokens', int(11)), kv('gen_ai.response.completion_tokens', int(7))])]));
+    expect(trace.token_usage).toEqual({ prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 });
+  });
+
+  it('the Vercel AI SDK legacy keys: ai.prompt, ai.response.text, ai.usage.*, ai.model.id', () => {
+    const { trace } = one(request('web', [span('0000000000000001', 'ai.generateText', [kv('ai.prompt', str('hello')), kv('ai.response.text', str('hi')), kv('ai.usage.promptTokens', int(3)), kv('ai.usage.completionTokens', int(1)), kv('ai.model.id', str('claude-sonnet-5'))])]));
+    expect(trace.input).toBe('hello');
+    expect(trace.output).toBe('hi');
+    expect(trace.token_usage?.total_tokens).toBe(4);
+    expect(trace.metadata?.model).toBe('claude-sonnet-5');
+  });
+
+  it('gen_ai.agent.name names the agent when the resource has no service.name; the conversation id and the tool catalogue ride along', () => {
+    const tools = JSON.stringify([{ name: 'refund_order', description: 'Refund an order', parameters: { type: 'object', properties: { order_id: { type: 'integer' } } } }]);
+    const { trace, lacked } = one(request(undefined, [
+      span('0000000000000001', 'invoke_agent billing', [kv('gen_ai.operation.name', str('invoke_agent')), kv('gen_ai.agent.name', str('billing-agent')), kv('gen_ai.conversation.id', str('conv-77')), kv('gen_ai.tool.definitions', str(tools)), kv('gen_ai.output.messages', str('ok'))]),
+    ]));
+    expect(trace.agent_name).toBe('billing-agent');
+    expect(lacked.some((l) => l.startsWith('service.name'))).toBe(false);
+    expect(trace.metadata?.session_id).toBe('conv-77');
+    expect(trace.tools).toEqual([{ name: 'refund_order', description: 'Refund an order', inputSchema: { type: 'object', properties: { order_id: { type: 'integer' } } } }]);
+  });
+
+  it('usage is summed over leaf carriers only: an invoke_agent that carries the totals beside its chat children is counted once', () => {
+    const { trace } = one(request('af', [
+      span('0000000000000001', 'invoke_agent', [kv('gen_ai.operation.name', str('invoke_agent')), kv('gen_ai.usage.input_tokens', int(1742)), kv('gen_ai.usage.output_tokens', int(136)), kv('gen_ai.output.messages', str('done'))]),
+      span('0000000000000002', 'chat', [kv('gen_ai.operation.name', str('chat')), kv('gen_ai.request.model', str('m')), kv('gen_ai.usage.input_tokens', int(812)), kv('gen_ai.usage.output_tokens', int(96))], '0000000000000001', 10),
+      span('0000000000000003', 'chat', [kv('gen_ai.operation.name', str('chat')), kv('gen_ai.request.model', str('m')), kv('gen_ai.usage.input_tokens', int(930)), kv('gen_ai.usage.output_tokens', int(40))], '0000000000000001', 20),
+    ]));
+    expect(trace.token_usage).toEqual({ prompt_tokens: 1742, completion_tokens: 136, total_tokens: 1878 });
+  });
+
+  it('an explicit whole-run aggregate (Pydantic AI gen_ai.aggregated_usage.*) is the answer, not one more addend', () => {
+    const { trace } = one(request('pai', [
+      span('0000000000000001', 'agent run', [kv('gen_ai.aggregated_usage.input_tokens', int(500)), kv('gen_ai.aggregated_usage.output_tokens', int(60)), kv('gen_ai.output.messages', str('done'))]),
+      span('0000000000000002', 'chat', [kv('gen_ai.request.model', str('m')), kv('gen_ai.usage.input_tokens', int(200)), kv('gen_ai.usage.output_tokens', int(30))], '0000000000000001', 10),
+      span('0000000000000003', 'chat', [kv('gen_ai.request.model', str('m')), kv('gen_ai.usage.input_tokens', int(300)), kv('gen_ai.usage.output_tokens', int(30))], '0000000000000001', 20),
+    ]));
+    expect(trace.token_usage).toEqual({ prompt_tokens: 500, completion_tokens: 60, total_tokens: 560 });
   });
 });

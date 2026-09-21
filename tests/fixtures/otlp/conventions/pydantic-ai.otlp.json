@@ -1,0 +1,212 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "weather-agent"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "pydantic-ai"
+          },
+          "spans": [
+            {
+              "traceId": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+              "spanId": "a000000000000001",
+              "name": "agent run",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456001400000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "invoke_agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.agent.name",
+                  "value": {
+                    "stringValue": "weather_agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.aggregated_usage.input_tokens",
+                  "value": {
+                    "intValue": "812"
+                  }
+                },
+                {
+                  "key": "gen_ai.aggregated_usage.output_tokens",
+                  "value": {
+                    "intValue": "133"
+                  }
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"What is the weather in Lisbon tomorrow?\"}]}]"
+                  }
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"Lisbon tomorrow: 24 °C, clear skies, a light wind from the northwest.\"}]}]"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+              "spanId": "a000000000000002",
+              "name": "chat gpt-4o",
+              "kind": 3,
+              "startTimeUnixNano": "1758456000010000000",
+              "endTimeUnixNano": "1758456000410000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4o"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-4o-2024-08-06"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "402"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "21"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.cache_read.input_tokens",
+                  "value": {
+                    "intValue": "256"
+                  }
+                }
+              ],
+              "parentSpanId": "a000000000000001"
+            },
+            {
+              "traceId": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+              "spanId": "a000000000000003",
+              "name": "running tool get_weather",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000420000000",
+              "endTimeUnixNano": "1758456000500000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.id",
+                  "value": {
+                    "stringValue": "call_01"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.arguments",
+                  "value": {
+                    "stringValue": "{\"city\":\"Lisbon\",\"day\":\"tomorrow\"}"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.result",
+                  "value": {
+                    "stringValue": "{\"temp_c\":24,\"sky\":\"clear\",\"wind\":\"NW light\"}"
+                  }
+                }
+              ],
+              "parentSpanId": "a000000000000001"
+            },
+            {
+              "traceId": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+              "spanId": "a000000000000004",
+              "name": "chat gpt-4o",
+              "kind": 3,
+              "startTimeUnixNano": "1758456000510000000",
+              "endTimeUnixNano": "1758456001310000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4o"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "390"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "112"
+                  }
+                }
+              ],
+              "parentSpanId": "a000000000000001"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

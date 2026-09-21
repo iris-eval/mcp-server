@@ -1,0 +1,119 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "sk-console"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "semantic_kernel.connectors.ai.open_ai.services.open_ai_chat_completion_base"
+          },
+          "spans": [
+            {
+              "traceId": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+              "spanId": "a700000000000001",
+              "name": "InvokePromptAsync_a1b2",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456001000000000",
+              "attributes": []
+            },
+            {
+              "traceId": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+              "spanId": "a700000000000002",
+              "name": "chat.completions gpt-4o",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000005000000",
+              "endTimeUnixNano": "1758456000955000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat.completions"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4o"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.id",
+                  "value": {
+                    "stringValue": "chatcmpl-A74oD7WGDjawnZ44SJZrj9fKrEv1B"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.finish_reason",
+                  "value": {
+                    "stringValue": "FinishReason.STOP"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.prompt_tokens",
+                  "value": {
+                    "intValue": "16"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.completion_tokens",
+                  "value": {
+                    "intValue": "29"
+                  }
+                }
+              ],
+              "parentSpanId": "a700000000000001",
+              "events": [
+                {
+                  "timeUnixNano": "1758456000005000000",
+                  "name": "gen_ai.content.prompt",
+                  "attributes": [
+                    {
+                      "key": "gen_ai.prompt",
+                      "value": {
+                        "stringValue": "[{\"role\": \"user\", \"content\": \"Why is the sky blue in one sentence?\"}]"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1758456000950000000",
+                  "name": "gen_ai.content.completion",
+                  "attributes": [
+                    {
+                      "key": "gen_ai.completion",
+                      "value": {
+                        "stringValue": "[{\"role\": \"assistant\", \"content\": \"The sky appears blue because shorter blue wavelengths of sunlight are scattered by the atmosphere more than other colors.\"}]"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

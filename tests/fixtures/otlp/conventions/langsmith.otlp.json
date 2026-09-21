@@ -1,0 +1,153 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "support-graph"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "langsmith"
+          },
+          "spans": [
+            {
+              "traceId": "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+              "spanId": "c000000000000001",
+              "name": "support_graph",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456001200000000",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "support_graph"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "support-prod"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.tenant",
+                  "value": {
+                    "stringValue": "acme"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+              "spanId": "c000000000000002",
+              "name": "lookup_order",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000020000000",
+              "endTimeUnixNano": "1758456000110000000",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "tool"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "lookup_order"
+                  }
+                }
+              ],
+              "parentSpanId": "c000000000000001"
+            },
+            {
+              "traceId": "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+              "spanId": "c000000000000003",
+              "name": "ChatOpenAI",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000130000000",
+              "endTimeUnixNano": "1758456001030000000",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "llm"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-4o-mini-2024-07-18"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "stringValue": "[{\"role\":\"user\",\"content\":\"Where is my order 4471?\"}]"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "stringValue": "[{\"role\":\"assistant\",\"content\":\"Order 4471 shipped on 19 September and arrives tomorrow.\"}]"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "210"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "27"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.total_tokens",
+                  "value": {
+                    "intValue": "237"
+                  }
+                }
+              ],
+              "parentSpanId": "c000000000000001"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

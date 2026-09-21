@@ -1,0 +1,189 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "rag-workflow"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "traceloop.sdk"
+          },
+          "spans": [
+            {
+              "traceId": "5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e",
+              "spanId": "e000000000000001",
+              "name": "answer_question.workflow",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456001500000000",
+              "attributes": [
+                {
+                  "key": "traceloop.span.kind",
+                  "value": {
+                    "stringValue": "workflow"
+                  }
+                },
+                {
+                  "key": "traceloop.entity.name",
+                  "value": {
+                    "stringValue": "answer_question"
+                  }
+                },
+                {
+                  "key": "traceloop.workflow.name",
+                  "value": {
+                    "stringValue": "answer_question"
+                  }
+                },
+                {
+                  "key": "traceloop.entity.input",
+                  "value": {
+                    "stringValue": "{\"args\":[\"What does the refund policy say?\"],\"kwargs\":{}}"
+                  }
+                },
+                {
+                  "key": "traceloop.entity.output",
+                  "value": {
+                    "stringValue": "\"Refunds are accepted within 30 days of purchase.\""
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e",
+              "spanId": "e000000000000002",
+              "name": "retrieve_policy.tool",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000010000000",
+              "endTimeUnixNano": "1758456000130000000",
+              "attributes": [
+                {
+                  "key": "traceloop.span.kind",
+                  "value": {
+                    "stringValue": "tool"
+                  }
+                },
+                {
+                  "key": "traceloop.entity.name",
+                  "value": {
+                    "stringValue": "retrieve_policy"
+                  }
+                },
+                {
+                  "key": "traceloop.entity.input",
+                  "value": {
+                    "stringValue": "{\"args\":[\"refund\"],\"kwargs\":{}}"
+                  }
+                },
+                {
+                  "key": "traceloop.entity.output",
+                  "value": {
+                    "stringValue": "[\"Refunds are accepted within 30 days of purchase.\"]"
+                  }
+                }
+              ],
+              "parentSpanId": "e000000000000001"
+            },
+            {
+              "traceId": "5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e",
+              "spanId": "e000000000000003",
+              "name": "openai.chat",
+              "kind": 3,
+              "startTimeUnixNano": "1758456000140000000",
+              "endTimeUnixNano": "1758456001440000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "OpenAI"
+                  }
+                },
+                {
+                  "key": "llm.request.type",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-4o-mini-2024-07-18"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt.0.role",
+                  "value": {
+                    "stringValue": "system"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt.0.content",
+                  "value": {
+                    "stringValue": "Answer from the policy text only."
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt.1.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt.1.content",
+                  "value": {
+                    "stringValue": "What does the refund policy say?"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion.0.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion.0.content",
+                  "value": {
+                    "stringValue": "Refunds are accepted within 30 days of purchase."
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.prompt_tokens",
+                  "value": {
+                    "intValue": "155"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.completion_tokens",
+                  "value": {
+                    "intValue": "12"
+                  }
+                },
+                {
+                  "key": "llm.usage.total_tokens",
+                  "value": {
+                    "intValue": "167"
+                  }
+                }
+              ],
+              "parentSpanId": "e000000000000001"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
