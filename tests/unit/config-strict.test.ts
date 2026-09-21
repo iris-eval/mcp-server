@@ -127,6 +127,7 @@ describe('config.json is strict', () => {
         requiredEvidence: [],
         defaultsGate: true,
         validateToolArguments: false,
+        plugins: [{ path: './rules/no-competitor.mjs', sha256: 'a'.repeat(64) }],
         prior: 0.2,
         priorMode: 'per-class',
       },
@@ -154,6 +155,7 @@ describe('config.json is strict', () => {
     expect(config.security.rateLimit.mcp).toBe(40);
     expect(config.logging.level).toBe('warn');
     expect(config.otel.evaluateOnIngest).toBe(true);
+    expect(config.eval.plugins).toEqual([{ path: './rules/no-competitor.mjs', sha256: 'a'.repeat(64) }]);
   });
 
   it('the key ring and the rate-limit keying are documented keys; a wrong keying value names the two allowed', () => {

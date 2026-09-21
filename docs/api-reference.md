@@ -397,7 +397,7 @@ Query stored traces with filters, pagination, and optional summary stats.
 
 ### list_rules
 
-Enumerate deployed custom eval rules. Read-only; returns the full rule catalog with filters for enabled-only or specific eval type.
+Enumerate deployed custom eval rules. Read-only; returns the full rule catalog with filters for enabled-only or specific eval type. Since 0.15.0 the response also carries `plugins` — the rules loaded from `eval.plugins` (name, kind, mechanism, needs, version, critical, path, the pinned sha256; see [plugins.md](plugins.md)) — and a result from one carries `origin: "plugin"`.
 
 #### Parameters
 

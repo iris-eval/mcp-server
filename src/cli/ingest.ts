@@ -29,6 +29,7 @@ import type { Trace } from '../types/trace.js';
 import { generateSpanId, generateTraceId } from '../utils/ids.js';
 import { COMMAND } from '../identity.js';
 import { resolveCaseKey } from '../eval/case-key.js';
+import { registerPlugins } from '../eval/plugins.js';
 
 export const FAIL_ON = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any'] as const;
 export type FailOn = (typeof FAIL_ON)[number];
@@ -113,6 +114,15 @@ export async function runIngest(o: IngestOptions): Promise<number> {
     const engine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
     for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
       engine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
+    }
+    // Plugin rules (arc 8, R-3): the same loader the server boots with; a
+    // file Iris cannot verify is a usage error before any trace is read.
+    try {
+      await registerPlugins(engine, config);
+    } catch (err) {
+      o.stderr.write(`${COMMAND} ingest: ${err instanceof Error ? err.message : String(err)}
+`);
+      return 2;
     }
     const dormant = () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT));
     // The gate's cases (arc 8, R-8): read once; an unknown dataset is a usage error before any trace is read.

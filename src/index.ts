@@ -24,6 +24,7 @@ import { LOCAL_TENANT } from './types/tenant.js';
 import { validatePortConfig } from './utils/validate-port-config.js';
 import { validateBindPolicy } from './utils/bind-policy.js';
 import { buildKeyRing } from './security/keys.js';
+import { registerPlugins } from './eval/plugins.js';
 import { irisHome } from './utils/iris-home.js';
 import {
   seedDemoData,
@@ -417,6 +418,10 @@ async function main(): Promise<void> {
       `Loaded ${enabled.length} deployed custom rule(s) from ${customRuleStore.pathFor(LOCAL_TENANT)}`,
     );
   }
+  // Plugin rules (arc 8, R-3): hash-checked, then registered like a deployed
+  // custom rule. A file that cannot be verified refuses startup here, before
+  // any port is bound — the sentence names the path and the problem.
+  await registerPlugins(evalEngine, config, { log: (line) => logger.info(line) });
 
   // The deployment's own labels, read once at boot (arc 7, D-8); every label write refreshes them.
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
@@ -596,6 +601,7 @@ async function runDemo(): Promise<void> {
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
     evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }
+  await registerPlugins(evalEngine, config, { log: (line) => logger.info(line) });
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
   const preferenceStore = createPreferenceStore(demoPreferencesPath());
 
