@@ -38,7 +38,7 @@ import type { Trace, Span, ToolCallRecord } from '../types/trace.js';
 import type { EvalResult } from '../types/eval.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 
-export const DEFAULT_DEMO_TRACE_COUNT = 250;
+export const DEFAULT_DEMO_TRACE_COUNT = 200;
 
 /** The demo trace database. Never the same file as the real iris.db. */
 export function demoDbPath(): string {

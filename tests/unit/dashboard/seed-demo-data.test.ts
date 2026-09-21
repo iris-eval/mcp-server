@@ -11,7 +11,11 @@
  *      audit.log while green — see feedback in tests/setup/iris-home.ts).
  *   4. clearDemoData removes the whole demo surface and nothing else.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// The seeder runs the real engine over a fortnight of traces (arc 9, N-1): a full
+// seed took 6.3 s on the Linux runner, past vitest's 5 s default.
+vi.setConfig({ testTimeout: 60_000 });
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -164,7 +168,7 @@ describe('seedDemoData', () => {
     const audit = readFileSync(demoAuditLogPath(), 'utf-8').trim().split('\n').map((l) => JSON.parse(l) as { action: string; ruleName: string });
     expect(audit.map((a) => a.action)).toEqual(['rule.deploy', 'rule.deploy', 'rule.toggle']);
     expect(audit[2].ruleName).toBe('mentions_ticket_id');
-  }, 60_000);
+  });
 
   it('never dates a demo trace in the future', async () => {
     // The last seeded day is today and the hour is drawn from the whole
