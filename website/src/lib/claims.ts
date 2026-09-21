@@ -334,3 +334,33 @@ export const CURRENT_RELEASE_DATE = claimsRaw.release.currentReleaseDate as stri
 export const CURRENT_RELEASE_HEADLINE = claimsRaw.release.currentReleaseHeadline as string | null;
 export const NEXT_PLANNED_VERSION = claimsRaw.release.nextPlannedVersion as string | null;
 export const NEXT_PLANNED_SCOPE = claimsRaw.release.nextPlannedScope as string | null;
+
+// MCP clients — one row per client Iris names as a place it runs
+// (clients.json at the repository root, locked by tests/clients-contract.test.ts).
+// `verified`: a test in the repository drives the client's real integration
+// surface on every CI run. `claimed`: the installer writes the configuration
+// shape the client documents and that writer is tested on the shape; nobody
+// on the Iris side has watched the client connect.
+export type ClientStatus = "verified" | "claimed";
+export interface ClientRow {
+  id: string;
+  name: string;
+  status: ClientStatus;
+  configMode: string;
+  config: string;
+  summary: string;
+  evidence: string[];
+  source: string;
+  lastChecked: string;
+}
+export interface ClientsClaims {
+  version: number;
+  about: string;
+  statuses: ClientStatus[];
+  rows: ClientRow[];
+  counts: Record<ClientStatus, number>;
+  total: number;
+}
+export const CLIENTS = (claimsRaw as unknown as { clients: ClientsClaims }).clients;
+export const CLIENT_NAMES_VERIFIED = CLIENTS.rows.filter((r) => r.status === "verified").map((r) => r.name);
+export const CLIENT_NAMES_CLAIMED = CLIENTS.rows.filter((r) => r.status === "claimed").map((r) => r.name);

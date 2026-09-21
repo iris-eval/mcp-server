@@ -110,6 +110,16 @@ export const TARGETS = [
 
 const SLOT_RE = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g;
 
+/** The client rows as one sentence: the verified ones, the claimed ones with where the rows live, and the open door. */
+function clientsSentence(claims) {
+  const rows = claims.clients.rows;
+  const verified = rows.filter((r) => r.status === 'verified').map((r) => r.name);
+  const claimed = rows.filter((r) => r.status === 'claimed').map((r) => r.name);
+  let site = String(claims.brand.websiteUrl);
+  while (site.endsWith('/')) site = site.slice(0, -1);
+  return `It is verified on every CI run in ${listProse(verified)}; for ${listProse(claimed)} the installer writes the configuration shape each client documents and that writer is tested on the shape, with nobody on the Iris side having watched the client connect (claimed — every row with its source and date at ${site}/clients); and it runs in any other MCP client the same way.`;
+}
+
 function listProse(items) {
   if (items.length <= 1) return items.join('');
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
@@ -273,6 +283,7 @@ export function slotsFrom(claims) {
     securityEmail: claims.brand.securityEmail,
     discoverySentence: claims.brand.discoverySentence,
     dataResidency: claims.brand.dataResidency,
+    clientsSentence: clientsSentence(claims),
     disclosureAckHours: claims.security.disclosure.acknowledgeWithinHours,
     disclosureResponseBusinessDays: claims.security.disclosure.detailedResponseWithinBusinessDays,
     proofSummary: proofSummary(claims),

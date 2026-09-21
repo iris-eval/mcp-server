@@ -1,4 +1,5 @@
-import { DATA_RESIDENCY } from "@/lib/claims";
+import Link from "next/link";
+import { CLIENT_NAMES_CLAIMED, CLIENT_NAMES_VERIFIED, DATA_RESIDENCY } from "@/lib/claims";
 
 export function Install(): React.ReactElement {
   return (
@@ -14,8 +15,12 @@ export function Install(): React.ReactElement {
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
             Install Iris locally and start seeing what your agents are doing.
-            Works with Claude Desktop, Cursor, Windsurf, or any MCP-compatible
-            agent. Free, MIT-licensed. {DATA_RESIDENCY}
+            Verified on every CI run in {CLIENT_NAMES_VERIFIED.join(", ")}; claimed for{" "}
+            {CLIENT_NAMES_CLAIMED.length} more MCP clients from their own documentation —{" "}
+            <Link href="/clients" className="font-semibold text-text-accent hover:underline">
+              every row, with its source
+            </Link>
+            . Free, MIT-licensed. {DATA_RESIDENCY}
           </p>
         </div>
 
