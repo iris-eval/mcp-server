@@ -103,7 +103,11 @@ export interface IrisClient {
 }
 
 export function createClient(options: IrisClientOptions): IrisClient {
-  const base = options.baseUrl.replace(/\/+$/, '');
+  // Trailing slashes off, by a loop rather than a `/\/+$/` — the regex is
+  // quadratic on a string of many slashes (CodeQL js/polynomial-redos), and
+  // the base URL is caller input.
+  let base = options.baseUrl;
+  while (base.endsWith('/')) base = base.slice(0, -1);
   const fetchImpl = options.fetch ?? globalThis.fetch;
   if (typeof fetchImpl !== 'function') throw new Error('createClient needs a fetch: pass one in options.fetch, or run on Node 18 or newer.');
   const headers = (json: boolean): Record<string, string> => ({
