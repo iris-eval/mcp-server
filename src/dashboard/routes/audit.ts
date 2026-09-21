@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { strictQuery } from '../validation.js';
 import { readAuditLog } from '../../audit-log-reader.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
 
-const QuerySchema = z.object({
+const QuerySchema = strictQuery({
   action: z.enum(['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update']).optional(),
   since: z.string().datetime({ offset: true }).optional(),
   search: z.string().max(200).optional(),

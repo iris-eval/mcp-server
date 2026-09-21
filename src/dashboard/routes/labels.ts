@@ -20,7 +20,7 @@ import type { EvalType } from '../../types/eval.js';
 import type { TenantId } from '../../types/tenant.js';
 import type { EvalEngine } from '../../eval/engine.js';
 import { requireTenant } from '../../middleware/tenant.js';
-import { strictBody } from '../validation.js';
+import { strictBody, strictQuery } from '../validation.js';
 import { LOCAL_LABEL_MIN, LOCAL_LABEL_WINDOW, localPrecision } from '../../eval/labels.js';
 import { buildLocalLabelSource, builtInKindOf, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
 import { publishedAccuracyFor } from '../../eval/accuracy.js';
@@ -36,8 +36,8 @@ const LabelBody = strictBody({
   note: z.string().max(500).optional(),
 });
 
-const LabelsQuery = z.object({ eval_id: z.string().min(1).max(200) });
-const IssuesQuery = z.object({
+const LabelsQuery = strictQuery({ eval_id: z.string().min(1).max(200) });
+const IssuesQuery = strictQuery({
   rule: z.string().min(1).max(80).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });

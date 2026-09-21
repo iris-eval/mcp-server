@@ -41,6 +41,28 @@ export function strictBody<T extends z.ZodRawShape>(
 }
 
 /*
+ * Strict query schema for the dashboard's READ routes (arc 9, N-4; #376).
+ *
+ * A bare z.object() on a query string strips an unknown parameter, so
+ * `?agent_nme=docs-qa` returned every agent's rows exactly as if the
+ * filter had applied — the same silent-strip family as the bodies, one
+ * verb over. A misspelled filter is now refused with the valid names, and
+ * the dashboard's own client sends only the keys the schemas declare.
+ */
+export function strictQuery<T extends z.ZodRawShape>(shape: T) {
+  const validKeys = Object.keys(shape).join(', ');
+  return z.strictObject(shape, {
+    error: (issue) =>
+      issue.code === 'unrecognized_keys'
+        ? `Unknown query parameter(s): ${issue.keys.map((k) => `"${k}"`).join(', ')}. ` +
+          `Valid parameters: ${validKeys}. ` +
+          'Unknown parameters are rejected rather than silently ignored, so a misspelled filter ' +
+          'cannot widen what is returned — check the spelling and retry.'
+        : undefined,
+  });
+}
+
+/*
  * POST /api/v1/traces body — the log_trace tool contract plus the
  * HTTP-only evaluation opt-in. Built FROM logTraceInputShape rather than
  * restating it so the two capture paths (MCP tool, HTTP ingest) cannot
@@ -84,22 +106,20 @@ export const ingestTraceSchema = strictBody(
  * refused here with both values named — exactly as the tool refuses it —
  * instead of returning an empty page that reads as "no such traces".
  */
-export const traceQuerySchema = z
-  .object({
-    agent_name: z.string().optional(),
-    framework: z.string().optional(),
-    since: isoTimestamp.optional(),
-    until: isoTimestamp.optional(),
-    min_score: z.coerce.number().min(0).max(1).optional(),
-    max_score: z.coerce.number().min(0).max(1).optional(),
-    limit: z.coerce.number().int().min(1).max(1000).default(50),
-    offset: z.coerce.number().int().min(0).default(0),
-    sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp'),
-    sort_order: z.enum(['asc', 'desc']).default('desc'),
-  })
-  .superRefine(addTraceRangeIssues);
+export const traceQuerySchema = strictQuery({
+  agent_name: z.string().optional(),
+  framework: z.string().optional(),
+  since: isoTimestamp.optional(),
+  until: isoTimestamp.optional(),
+  min_score: z.coerce.number().min(0).max(1).optional(),
+  max_score: z.coerce.number().min(0).max(1).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+  }).superRefine(addTraceRangeIssues);
 
-export const evalQuerySchema = z.object({
+export const evalQuerySchema = strictQuery({
   eval_type: z.string().optional(),
   passed: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   since: z.string().optional(),
@@ -108,19 +128,19 @@ export const evalQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-export const runsQuerySchema = z.object({
+export const runsQuerySchema = strictQuery({
   limit: z.coerce.number().int().min(1).max(500).default(50),
 });
 
-export const caseQuerySchema = z.object({
+export const caseQuerySchema = strictQuery({
   run: z.string().min(1).max(200).optional(),
 });
 
-export const summaryQuerySchema = z.object({
+export const summaryQuerySchema = strictQuery({
   hours: z.coerce.number().int().min(1).max(8760).default(24),
 });
 
-export const evalStatsPeriodSchema = z.object({
+export const evalStatsPeriodSchema = strictQuery({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
 });
 
@@ -135,22 +155,22 @@ export const evalStatsPeriodSchema = z.object({
  * current week against everything's previous week would be a comparison
  * between two different populations dressed as a trend.
  */
-export const driftSchema = z.object({
+export const driftSchema = strictQuery({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d']).default('7d'),
   run: z.string().min(1).max(200).optional(),
 });
 
-export const evalStatsTrendSchema = z.object({
+export const evalStatsTrendSchema = strictQuery({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
   cohort: z.enum(['run']).optional(),
 });
 
-export const evalStatsFailuresSchema = z.object({
+export const evalStatsFailuresSchema = strictQuery({
   period: z.enum(['24h', '2d', '7d', '14d', '30d', '60d', '90d', '180d', 'all']).default('24h'),
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
 
-export const failuresQuerySchema = z.object({
+export const failuresQuerySchema = strictQuery({
   agent_name: z.string().min(1).max(200).optional(),
   since: z.string().datetime({ offset: true }).optional(),
   until: z.string().datetime({ offset: true }).optional(),

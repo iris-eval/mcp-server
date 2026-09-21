@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { strictQuery } from '../validation.js';
 import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import type {
@@ -15,7 +16,7 @@ import type { AgentFailureLogEntry } from '../../types/query.js';
 const VERDICT_VALUES: MomentVerdict[] = ['pass', 'fail', 'partial', 'unevaluated'];
 const SIGNIFICANCE_KINDS: readonly MomentSignificanceKind[] = MOMENT_SIGNIFICANCE_KINDS;
 
-const momentQuerySchema = z.object({
+const momentQuerySchema = strictQuery({
   agent_name: z.string().min(1).max(200).optional(),
   verdict: z.enum(VERDICT_VALUES as [MomentVerdict, ...MomentVerdict[]]).optional(),
   min_significance: z.coerce.number().min(0).max(1).optional(),
