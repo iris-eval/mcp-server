@@ -10,7 +10,7 @@
  * transactions on the built-in roll back and nest as the native ones do.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter, SQLITE_DRIVER } from '../../../src/storage/sqlite-adapter.js';
@@ -60,13 +60,18 @@ describe('the seam', () => {
   });
 
   it('IRIS_SQLITE_DRIVER accepts native and node under both spellings, and refuses anything else naming the two', () => {
-    expect(requestedDriver({})).toBeUndefined();
-    expect(requestedDriver({ [DRIVER_VAR]: '' })).toBeUndefined();
-    expect(requestedDriver({ [DRIVER_VAR]: 'native' })).toBe('native');
-    expect(requestedDriver({ [DRIVER_VAR]: 'better-sqlite3' })).toBe('native');
-    expect(requestedDriver({ [DRIVER_VAR]: 'node' })).toBe('node');
-    expect(requestedDriver({ [DRIVER_VAR]: ' NODE:SQLITE ' })).toBe('node');
-    expect(() => requestedDriver({ [DRIVER_VAR]: 'postgres' })).toThrow(/IRIS_SQLITE_DRIVER="postgres" is not a driver\. Use "native" .* or "node"/);
+    expect(requestedDriver(undefined)).toBeUndefined();
+    expect(requestedDriver('')).toBeUndefined();
+    expect(requestedDriver('native')).toBe('native');
+    expect(requestedDriver('better-sqlite3')).toBe('native');
+    expect(requestedDriver('node')).toBe('node');
+    expect(requestedDriver(' NODE:SQLITE ')).toBe('node');
+    // And the default argument is the environment itself.
+    process.env[DRIVER_VAR] = 'node';
+    expect(requestedDriver()).toBe('node');
+    delete process.env[DRIVER_VAR];
+    expect(requestedDriver()).toBeUndefined();
+    expect(() => requestedDriver('postgres')).toThrow(/IRIS_SQLITE_DRIVER="postgres" is not a driver\. Use "native" .* or "node"/);
   });
 
   it('IRIS_SQLITE_DRIVER=node in the environment opens the built-in with no option passed — the CI matrix cell', async () => {
@@ -130,6 +135,28 @@ describe('the seam', () => {
     d.exec('CREATE TABLE t (a TEXT)');
     expect(d.prepare('INSERT INTO t VALUES (?)').run('x').changes).toBe(1);
     expect(d.prepare('SELECT a FROM t').all()).toEqual([expect.objectContaining({ a: 'x' })]);
+  });
+
+  it('the binding failing at construction — the addon loads lazily, as better-sqlite3 does — falls back the same way', () => {
+    if (!builtIn) return withoutBuiltIn(tempDb());
+    const warnings: string[] = [];
+    class Lazy {
+      constructor() {
+        throw Object.assign(new Error('Cannot load native addon because loading addons is disabled.'), { code: 'ERR_DLOPEN_DISABLED' });
+      }
+    }
+    const d = openDriver(tempDb(), { loadNative: () => Lazy as never, warn: (line) => warnings.push(line) });
+    drivers.push(d);
+    expect(d.name).toBe('node');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('could not load (Cannot load native addon because loading addons is disabled.)');
+  });
+
+  it('fileMustExist on the built-in refuses a missing file and does not create it', () => {
+    const missing = join(tempDb(), '..', 'nope.db');
+    if (!builtIn) return withoutBuiltIn(missing);
+    expect(() => openDriver(missing, { fileMustExist: true, driver: 'node' })).toThrow(/does not exist/);
+    expect(existsSync(missing)).toBe(false);
   });
 
   it('with the fallback forbidden — IRIS_SQLITE_DRIVER=native — a native load failure refuses, naming both the reason and the way out', () => {

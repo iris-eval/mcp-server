@@ -510,7 +510,7 @@ npm update -g @iris-eval/mcp-server
 
 ### The storage driver
 
-Iris keeps everything in one SQLite file, opened by `better-sqlite3` — a native addon that is downloaded or compiled for your Node and platform. **When that module cannot load, Iris falls back to Node's built-in SQLite** (`node:sqlite`, Node 22.13 or later) with one warning on stderr, so a missing prebuild is a slower start rather than a dead one; `IRIS_SQLITE_DRIVER=node` chooses the built-in on purpose, `native` forbids the fallback. The built-in is opened with extension loading off and `trusted_schema` off. `--self-test` and `GET /health` name the driver in use; every number on the proof page was measured on the native driver, and the test suite runs on both in CI.
+Iris keeps everything in one SQLite file, opened by `better-sqlite3` — a native addon that is downloaded or compiled for your Node and platform. **When that module cannot load, Iris falls back to Node's built-in SQLite** (`node:sqlite`, Node 22.13 or later) with one warning on stderr, so a missing prebuild is a slower start rather than a dead one; `IRIS_SQLITE_DRIVER=node` chooses the built-in on purpose, `native` forbids the fallback. The built-in is opened with extension loading off and `trusted_schema` off; Node prints its own `ExperimentalWarning: SQLite is an experimental feature` line on stderr when it loads, and Iris does not silence it. `--self-test` and `GET /health` name the driver in use; every number on the proof page was measured on the native driver, and the test suite runs on both in CI.
 
 ### Node.js version
 

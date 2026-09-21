@@ -74,7 +74,7 @@ describe('one health contract', () => {
     for (const body of [a, b]) {
       expect(body.status).toBe('ok');
       expect(body.version).toBe(config.server.version);
-      expect(body.driver).toBe('better-sqlite3');
+      expect(body.driver).toBe(storage.driver);
       expect(body.checks).toEqual({
         storage: 'ok',
         rules_store: 'absent',

@@ -8,6 +8,7 @@ import {
   SELF_TEST_PASS_VERDICT,
   SELF_TEST_FAIL_VERDICT,
 } from '../../src/self-test.js';
+import { nodeSqliteAvailable } from '../../src/storage/driver.js';
 
 /*
  * The CLI contract for `iris-eval --self-test`: a spawned process, a
@@ -94,22 +95,50 @@ describe('iris-eval --self-test (CLI)', () => {
     expect(existsSync(tempHomeLine!.split(' — ')[1].trim())).toBe(false);
   }, 60000);
 
-  it('exits 1 when the install is broken (native addon cannot load)', async () => {
+  it('exits 1 when the install is broken (native addon cannot load) and the fallback is forbidden', async () => {
     /*
      * --no-addons makes better-sqlite3's native binding unloadable —
      * the same symptom as the most common genuinely broken install of
-     * this package (ABI-mismatched prebuild after a Node upgrade). The
-     * storage step must report the cross, cleanup must still run, and
-     * the exit code must be exactly 1 (argument errors exit 2, so 1
-     * pins the diagnostic's own failure path).
+     * this package (ABI-mismatched prebuild after a Node upgrade). With
+     * IRIS_SQLITE_DRIVER=native there is no fallback (arc 8, R-0), so the
+     * storage step must report the cross naming the way out, cleanup must
+     * still run, and the exit code must be exactly 1 (argument errors
+     * exit 2, so 1 pins the diagnostic's own failure path).
      */
-    const { code, stdout } = await runSelfTestCli({ NODE_OPTIONS: '--no-addons' });
+    const { code, stdout } = await runSelfTestCli({ NODE_OPTIONS: '--no-addons', IRIS_SQLITE_DRIVER: 'native' });
 
     expect(code).toBe(1);
     expect(stdout).toContain(`✗ ${SELF_TEST_STEPS.storage}`);
+    expect(stdout).toContain('IRIS_SQLITE_DRIVER=native forbids the fallback');
     expect(stdout).toContain(SELF_TEST_FAIL_VERDICT);
     expect(stdout).not.toContain(SELF_TEST_PASS_VERDICT);
     // A failed run still cleans up its scratch home.
+    expect(stdout).toContain(`✓ ${SELF_TEST_STEPS.cleanup}`);
+  }, 60000);
+
+  it('with no driver chosen and the native addon unloadable, the self-test falls back to Node’s built-in SQLite where this Node has it, and names the driver', async () => {
+    /*
+     * The bold sentence of arc 8 R-0, end to end through the real CLI:
+     * --no-addons breaks the addon; IRIS_SQLITE_DRIVER is cleared (the CI
+     * matrix sets it) so the choice is Iris's default — native, falling
+     * back. On Node 22.13+ the store opens on node:sqlite, the storage line
+     * names the driver, one warning on stderr says why, and the run passes.
+     * On an older Node there is nothing to fall to: the run fails at
+     * storage naming the Node line it would need.
+     */
+    const { code, stdout, stderr } = await runSelfTestCli({ NODE_OPTIONS: '--no-addons', IRIS_SQLITE_DRIVER: '' });
+
+    if (nodeSqliteAvailable()) {
+      expect(code).toBe(0);
+      expect(stdout).toContain(SELF_TEST_PASS_VERDICT);
+      expect(stdout).toContain('(driver node)');
+      expect(stderr).toContain("falling back to Node's built-in SQLite");
+    } else {
+      expect(code).toBe(1);
+      expect(stdout).toContain(`✗ ${SELF_TEST_STEPS.storage}`);
+      expect(stdout).toContain("Node's built-in SQLite is not available");
+      expect(stdout).toContain(SELF_TEST_FAIL_VERDICT);
+    }
     expect(stdout).toContain(`✓ ${SELF_TEST_STEPS.cleanup}`);
   }, 60000);
 

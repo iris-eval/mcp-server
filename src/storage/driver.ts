@@ -31,6 +31,7 @@
  * parameters; `transaction(fn)` returns a callable with `.immediate()`
  * (nested calls become savepoints, as the native driver does).
  */
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 export type DriverName = 'better-sqlite3' | 'node';
@@ -127,16 +128,12 @@ export function nodeSqliteAvailable(loadNode: () => NodeSqliteModule = defaultLo
 }
 
 function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions): Driver {
-  const db = new mod.DatabaseSync(path, {
-    // No extension loading — a plugin-shaped .so is not something a trace
-    // store should ever load; `open` false is what fileMustExist wants.
-    allowExtension: false,
-    ...(options.fileMustExist ? { open: false } : {}),
-  });
-  if (options.fileMustExist) {
-    // DatabaseSync has no "must exist" switch; open it read-write only if the file is there.
-    (db as unknown as { open(): void }).open();
+  if (options.fileMustExist && path !== ':memory:' && !existsSync(path)) {
+    // DatabaseSync has no "must exist" switch and open() creates the file; refuse here, as the native driver does.
+    throw new Error(`SQLite database file does not exist: ${path}`);
   }
+  // No extension loading — a plugin-shaped .so is not something a trace store should ever load.
+  const db = new mod.DatabaseSync(path, { allowExtension: false });
   if (options.timeout !== undefined) db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(options.timeout))}`);
   // The hardening the built-in exposes: schema text is never trusted to run functions or virtual tables.
   db.exec('PRAGMA trusted_schema = OFF');
@@ -204,8 +201,7 @@ function nodeSupportsSqlite(): boolean {
 }
 
 /** Which driver `IRIS_SQLITE_DRIVER` asks for; a name that is neither is refused at once. */
-export function requestedDriver(env: NodeJS.ProcessEnv = process.env): 'native' | 'node' | undefined {
-  const raw = env[DRIVER_VAR];
+export function requestedDriver(raw: string | undefined = process.env.IRIS_SQLITE_DRIVER): 'native' | 'node' | undefined {
   if (raw === undefined || raw.trim() === '') return undefined;
   const v = raw.trim().toLowerCase();
   if (v === 'native' || v === 'better-sqlite3') return 'native';
@@ -235,6 +231,11 @@ export function openDriver(path: string, options: OpenOptions = {}): Driver {
   let Database: NativeModule;
   try {
     Database = loadNative();
+    // better-sqlite3 loads its binding lazily, in the constructor: an in-memory
+    // open is the probe that surfaces a missing, disabled or mismatched addon
+    // with no file involved. A file error later is a real error, never a
+    // reason to switch drivers.
+    new Database(':memory:').close();
   } catch (err) {
     const reason = err instanceof Error ? err.message.split('\n')[0] : String(err);
     const canFallBack = options.allowFallback !== false && choice === undefined && nodeSqliteAvailable(loadNode);

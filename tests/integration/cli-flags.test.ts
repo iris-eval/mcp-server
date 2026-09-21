@@ -26,6 +26,9 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
+const NODE_SQLITE_WARNING = /^\(node:\d+\) ExperimentalWarning: SQLite is an experimental feature.*\r?\n(\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\r?\n)?/m;
+const withoutNodeSqliteWarning = (text: string): string => text.replace(NODE_SQLITE_WARNING, '');
+
 function runCli(args: string[], env: Record<string, string> = {}): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(process.execPath, ['--import', 'tsx', entryPoint, ...args], {
@@ -39,7 +42,8 @@ function runCli(args: string[], env: Record<string, string> = {}): Promise<{ cod
     child.stdout.on('data', (c: Buffer) => { stdout += c.toString(); });
     child.stderr.on('data', (c: Buffer) => { stderr += c.toString(); });
     child.once('error', rejectPromise);
-    child.once('close', (code) => resolvePromise({ code, stdout, stderr }));
+    // Node prints its own two-line ExperimentalWarning when node:sqlite loads (the CI matrix sets IRIS_SQLITE_DRIVER=node); that is Node's word, not Iris's stderr.
+    child.once('close', (code) => resolvePromise({ code, stdout, stderr: withoutNodeSqliteWarning(stderr) }));
   });
 }
 
