@@ -518,6 +518,7 @@ Deterministic, local, no model call. Tag traces with `run` and `case_key` on `lo
 | `after` | `string` | Yes | The run id to compare against it |
 | `force` | `boolean` | No | Compare even when the runs are not strictly comparable. The response still names what changed |
 | `equivalence_margin` | `number` | No | δ for the equivalence test, as a difference in pass rate in (0, 1]. Absent: the smallest detectable difference at these sizes |
+| `dataset` | `string` | No | A dataset id or label (0.15.0): both runs are restricted to the case keys in it before anything is counted, and the response's `dataset` says how many rows each run matched. An unknown dataset is `IRIS_INVALID_ARGUMENT` |
 
 #### Response
 
@@ -1078,6 +1079,34 @@ Get distinct filter values for the dashboard UI dropdowns.
 
 ---
 
+### Datasets (0.15.0)
+
+A dataset is a named set of case keys — the reader's answer to "which cases are the gate?". `compare_runs` / `POST /api/v1/compare` take `dataset` and pair only those cases; `ingest --fail-on … --dataset` fails a job only on them. No statistic is new: the same McNemar and Newcombe over a chosen set of cases.
+
+#### POST /api/v1/datasets
+
+Promote case keys into a dataset. Body (strict; unknown keys are refused naming the valid ones):
+
+```json
+{ "label": "release-gate", "from_run": "nightly-1", "case_keys": ["refund-policy"], "cases": [{ "case_key": "vat-rate", "expected": { "answer": "20%" } }] }
+```
+
+At least one of `from_run` (every distinct case key the run's traces carry), `case_keys`, or `cases` (a key with the answer the reader expects — carried, not yet read by any statistic). The three are unioned. `201` with the dataset; `400` when no case key results (a run whose traces carry none says so); `409` when the label exists — labels are unique.
+
+```json
+{ "dataset": { "id": "ds_5f1c…", "label": "release-gate", "version": 1, "createdAt": "…", "cases": 41, "caseKeys": [{ "caseKey": "refund-policy", "expected": null }] } }
+```
+
+#### GET /api/v1/datasets
+
+Every dataset with its case count: `{ "datasets": [{ "id", "label", "version", "createdAt", "cases" }], "count" }`.
+
+#### GET /api/v1/datasets/:idOrLabel
+
+One dataset by id or by label, with its case keys. `404` when neither matches.
+
+---
+
 ### GET /api/v1/runs
 
 Every run, newest first — registered runs and runs that exist only because a trace carried the id, so a caller who passed `run` on `log_trace` and nothing else still finds their run.
@@ -1110,7 +1139,7 @@ Query: `run` narrows to one run.
 
 ### POST /api/v1/compare
 
-The `compare_runs` tool over HTTP — the same handler, the same answer — for the dashboard's compare action and for a pipeline that would rather not speak MCP. Body: `{ "before": "<run id>", "after": "<run id>", "force": false, "equivalence_margin": 0.05 }` (the tool's input; an unknown field is refused). Response: the tool's output — `comparable`, `incomparable_because`, `method` (`paired-mcnemar` when the runs share case keys, `unpaired-newcombe` otherwise), `before` and `after` summaries with their Wilson intervals, `difference`, `paired`, `worse`, `better`, `smallest_detectable`, `equivalent_within`, `rules_tested`, `regressions` and `improvements` per rule (each with its one-sided `p`, corrected `q`, `test` and `difference`), and a one-paragraph `summary`. An unknown run is not an error: its `n` is 0 and the summary says so. `400` names an invalid body.
+The `compare_runs` tool over HTTP — the same handler, the same answer — for the dashboard's compare action and for a pipeline that would rather not speak MCP. Body: `{ "before": "<run id>", "after": "<run id>", "force": false, "equivalence_margin": 0.05, "dataset": "release-gate" }` — `dataset` (0.15.0) restricts both runs to a dataset's case keys; an unknown one is `404`. (the tool's input; an unknown field is refused). Response: the tool's output — `comparable`, `incomparable_because`, `method` (`paired-mcnemar` when the runs share case keys, `unpaired-newcombe` otherwise), `before` and `after` summaries with their Wilson intervals, `difference`, `paired`, `worse`, `better`, `smallest_detectable`, `equivalent_within`, `rules_tested`, `regressions` and `improvements` per rule (each with its one-sided `p`, corrected `q`, `test` and `difference`), and a one-paragraph `summary`. An unknown run is not an error: its `n` is 0 and the summary says so. `400` names an invalid body.
 
 ---
 

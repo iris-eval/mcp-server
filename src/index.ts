@@ -64,6 +64,7 @@ const CliSchema = z
     'fail-on': z.enum(['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any']).optional(),
     redact: z.enum(['none', 'critical_spans']).optional(),
     source: z.enum(['cli', 'hook']).optional(),
+    dataset: z.string().min(1).optional(),
   })
   .strict();
 
@@ -104,6 +105,7 @@ try {
       'fail-on': { type: 'string' },
       redact: { type: 'string' },
       source: { type: 'string' },
+      dataset: { type: 'string' },
     },
     strict: true,
     allowPositionals: true,
@@ -139,7 +141,7 @@ if (values.help) {
 Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
 Usage: ${COMMAND} [options]
-       ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--redact <mode>] [--source cli|hook]
+       ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--dataset <id|label>] [--redact <mode>] [--source cli|hook]
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
@@ -182,6 +184,9 @@ Ingest (the third door — a CI gate, and the substrate under host hooks; no ser
   --eval-type <bundle>     With --evaluate: completeness | relevance | safety | cost | custom | all (default: all)
   --fail-on <basis>        Exit 1 when any verdict matches: policy_gate | detector_veto | critical_unknown |
                            required_evidence_missing | risk_over_loss | fail | unknown | any
+  --dataset <id|label>     Restrict --fail-on to the case keys in this dataset (POST /api/v1/datasets promotes a
+                           run's case keys into one); every trace is still stored and evaluated, and each receipt
+                           says whether it was in the gate
   --redact <mode>          none | critical_spans — override storage.redact for this ingest
   --source <door>          cli (default) | hook — recorded on each trace as its capture path
                            Exit codes: 0 stored (nothing tripped), 1 a verdict tripped --fail-on, 2 usage or nothing stored.
@@ -256,13 +261,14 @@ if (verb === 'ingest') {
       failOn: values['fail-on'],
       redact: values.redact,
       source: values.source ?? 'cli',
+      dataset: values.dataset,
       stdin: process.stdin,
       stdout: process.stdout,
       stderr: process.stderr,
     }),
   );
 }
-const ingestOnly = (['file', 'eval-type', 'fail-on', 'redact', 'source'] as const).filter((flag) => values[flag] !== undefined);
+const ingestOnly = (['file', 'eval-type', 'fail-on', 'redact', 'source', 'dataset'] as const).filter((flag) => values[flag] !== undefined);
 if (ingestOnly.length > 0 || values.evaluate) {
   process.stderr.write(`${COMMAND}: ${[...ingestOnly.map((f) => `--${f}`), ...(values.evaluate ? ['--evaluate'] : [])].join(', ')} belong to the ingest command: ${COMMAND} ingest [...].\nRun \`${COMMAND} --help\` for usage.\n`);
   process.exit(2);

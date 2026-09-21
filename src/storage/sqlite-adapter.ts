@@ -51,6 +51,7 @@ import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
 import { compose, interpretations, DEFAULT_COMPOSE } from '../eval/compose.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
+import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
@@ -105,6 +106,34 @@ export interface RunSummaryRow {
 }
 
 /** One trace's latest evaluation inside a run — the unit a comparison counts. */
+/** One case in a dataset: the key, and the answer the reader expects (carried, not yet read by any statistic). */
+export interface DatasetCase {
+  caseKey: string;
+  expected: unknown | null;
+}
+
+export interface DatasetSummary {
+  id: string;
+  label: string;
+  version: number;
+  createdAt: string;
+  /** How many case keys the dataset holds. */
+  cases: number;
+}
+
+export interface DatasetDetail extends DatasetSummary {
+  caseKeys: DatasetCase[];
+}
+
+/** Labels are unique per tenant; the route answers 409 with this sentence. */
+export class DatasetExistsError extends Error {
+  readonly status = 409;
+  constructor(label: string) {
+    super(`A dataset labelled "${label}" already exists; labels are unique. Read it at GET /api/v1/datasets/${encodeURIComponent(label)}, or choose another label.`);
+    this.name = 'DatasetExistsError';
+  }
+}
+
 export interface RunResultRow {
   evalId: string;
   traceId: string | null;
@@ -506,6 +535,73 @@ export class SqliteAdapter implements IStorageAdapter {
    * too, so a re-evaluation that produced nothing is visible rather than
    * silently absent.
    */
+  /* ---- Datasets (arc 8, R-8) ------------------------------------------ */
+
+  async createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail> {
+    assertTenant(tenantId);
+    const label = input.label.trim();
+    const taken = this.db.prepare('SELECT id FROM datasets WHERE tenant_id = ? AND label = ?').get(tenantId, label);
+    if (taken) throw new DatasetExistsError(label);
+    const id = `ds_${randomBytes(8).toString('hex')}`;
+    const insertDataset = this.db.prepare('INSERT INTO datasets (id, tenant_id, label) VALUES (?, ?, ?)');
+    const insertCase = this.db.prepare('INSERT OR REPLACE INTO dataset_cases (dataset_id, case_key, expected_json) VALUES (?, ?, ?)');
+    this.db.transaction(() => {
+      insertDataset.run(id, tenantId, label);
+      for (const c of input.cases) {
+        insertCase.run(id, c.caseKey, c.expected === null || c.expected === undefined ? null : JSON.stringify(c.expected));
+      }
+    })();
+    const created = await this.getDataset(tenantId, id);
+    if (!created) throw new Error(`dataset ${id} vanished after insert`);
+    return created;
+  }
+
+  async getDataset(tenantId: TenantId, idOrLabel: string): Promise<DatasetDetail | null> {
+    assertTenant(tenantId);
+    const row = this.db
+      .prepare(
+        `SELECT id, label, version, created_at FROM datasets
+          WHERE tenant_id = ? AND (id = ? OR label = ?)
+          ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END
+          LIMIT 1`,
+      )
+      .get(tenantId, idOrLabel, idOrLabel, idOrLabel) as { id: string; label: string; version: number; created_at: string } | undefined;
+    if (!row) return null;
+    const cases = this.db
+      .prepare('SELECT case_key, expected_json FROM dataset_cases WHERE dataset_id = ? ORDER BY case_key')
+      .all(row.id) as Array<{ case_key: string; expected_json: string | null }>;
+    return {
+      id: row.id,
+      label: row.label,
+      version: row.version,
+      createdAt: row.created_at,
+      cases: cases.length,
+      caseKeys: cases.map((c) => ({ caseKey: c.case_key, expected: c.expected_json === null ? null : (JSON.parse(c.expected_json) as unknown) })),
+    };
+  }
+
+  async listDatasets(tenantId: TenantId): Promise<DatasetSummary[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `SELECT d.id, d.label, d.version, d.created_at,
+                (SELECT COUNT(*) FROM dataset_cases c WHERE c.dataset_id = d.id) AS cases
+           FROM datasets d
+          WHERE d.tenant_id = ?
+          ORDER BY d.created_at DESC, d.label ASC`,
+      )
+      .all(tenantId) as Array<{ id: string; label: string; version: number; created_at: string; cases: number }>;
+    return rows.map((r) => ({ id: r.id, label: r.label, version: r.version, createdAt: r.created_at, cases: r.cases }));
+  }
+
+  async caseKeysInRun(tenantId: TenantId, runId: string): Promise<string[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare('SELECT DISTINCT case_key FROM traces WHERE tenant_id = ? AND run_id = ? AND case_key IS NOT NULL ORDER BY case_key')
+      .all(tenantId, runId) as Array<{ case_key: string }>;
+    return rows.map((r) => r.case_key);
+  }
+
   async listRuns(tenantId: TenantId, limit = 50): Promise<RunSummaryRow[]> {
     assertTenant(tenantId);
     const rows = this.db

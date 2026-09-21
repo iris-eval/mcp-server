@@ -10,6 +10,7 @@ import * as migration008 from './008-trace-tools-catalogue.js';
 import * as migration009 from './009-runs-and-case-keys.js';
 import * as migration010 from './010-trace-source.js';
 import * as migration011 from './011-verdict-labels.js';
+import * as migration012 from './012-datasets.js';
 import { PKG_VERSION } from '../../config/defaults.js';
 
 interface Migration {
@@ -29,6 +30,7 @@ const migrations: Migration[] = [
   migration009,
   migration010,
   migration011,
+  migration012,
 ];
 
 /** Every migration this build knows, in order. */

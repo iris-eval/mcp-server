@@ -26,6 +26,16 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 | `unknown` | any verdict that could not be reached — the fail-closed choice |
 | `any` | anything but a clean pass |
 
+## `--dataset` — gate only the cases the reader chose (0.15.0)
+
+`--dataset <id|label>` restricts `--fail-on` to the case keys in a dataset. Every trace is still stored and evaluated; only a trace whose case key (supplied as `case_key`, or derived from `input`) is in the dataset can trip the gate. Each receipt gains `"gated": true|false`, and the summary line says how many of the evaluated traces were in the gate:
+
+```
+iris-eval ingest: 40 stored, 1 tripped --fail-on detector_veto (12 of 40 evaluated in dataset "release-gate")
+```
+
+Create the dataset once from a run's case keys — `POST /api/v1/datasets` with `{ "label": "release-gate", "from_run": "nightly-1" }` — or name the keys explicitly. `--dataset` needs `--fail-on` (it restricts the gate, nothing else); an unknown dataset is a usage error (exit 2) before any trace is read. The same dataset restricts `compare_runs` to the same cases.
+
 ## GitHub Actions
 
 ```yaml

@@ -28,6 +28,7 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 import type { Trace } from '../types/trace.js';
 import { generateSpanId, generateTraceId } from '../utils/ids.js';
 import { COMMAND } from '../identity.js';
+import { resolveCaseKey } from '../eval/case-key.js';
 
 export const FAIL_ON = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any'] as const;
 export type FailOn = (typeof FAIL_ON)[number];
@@ -42,6 +43,8 @@ export interface IngestOptions {
   /** Overrides storage.redact for this ingest. */
   redact?: 'none' | 'critical_spans';
   source: 'cli' | 'hook';
+  /** A dataset id or label: `--fail-on` then trips only on traces whose case key is in it (arc 8, R-8). */
+  dataset?: string;
   stdin: Readable;
   stdout: Writable;
   stderr: Writable;
@@ -61,18 +64,27 @@ export function trips(failOn: FailOn, verdict: { state: string; basis: string })
   }
 }
 
+/*
+ * One JSON trace, or NDJSON — one complete object per line. A line that is
+ * a whole object while nothing is buffered is one trace; anything else is
+ * buffered as a pretty-printed document and parsed at the end.
+ *
+ * Until 0.15.0 only the FIRST complete line was taken as a trace: a flag
+ * flipped after it and every later line was buffered together, so an
+ * NDJSON file of three or more traces died on the second with a JSON
+ * syntax error — two traces happened to work because the lone second line
+ * parsed as the "document". Found by the dataset gate's test (arc 8, R-8),
+ * which was the first to pipe three.
+ */
 async function* readTraces(source: Readable): AsyncGenerator<unknown> {
   const rl = createInterface({ input: source, crlfDelay: Infinity });
   let buffered = '';
-  let ndjson = false;
   for await (const line of rl) {
     const trimmed = line.trim();
     if (trimmed === '') continue;
-    if (!ndjson && buffered === '' && trimmed.startsWith('{') && trimmed.endsWith('}')) {
-      // A complete object on one line: NDJSON, or a one-line JSON document.
+    if (buffered === '' && trimmed.startsWith('{') && trimmed.endsWith('}')) {
       try {
         yield JSON.parse(trimmed);
-        ndjson = true;
         continue;
       } catch {
         /* fall through to buffering: a one-line prefix of a pretty-printed document */
@@ -84,6 +96,10 @@ async function* readTraces(source: Readable): AsyncGenerator<unknown> {
 }
 
 export async function runIngest(o: IngestOptions): Promise<number> {
+  if (o.dataset !== undefined && !o.failOn) {
+    o.stderr.write(`${COMMAND} ingest: --dataset restricts the gate, so it needs --fail-on <basis>.\nRun \`${COMMAND} --help\` for usage.\n`);
+    return 2;
+  }
   const config = loadConfig(o.cliArgs);
   if (o.redact) config.storage.redact = o.redact;
   const storage = createStorage(config);
@@ -91,6 +107,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
   let stored = 0;
   let tripped = 0;
   let rejected = 0;
+  let gateSummary: string | null = null;
   try {
     const customRuleStore = createCustomRuleStore();
     const engine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
@@ -98,6 +115,18 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       engine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
     }
     const dormant = () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT));
+    // The gate's cases (arc 8, R-8): read once; an unknown dataset is a usage error before any trace is read.
+    let gate: { label: string; keys: Set<string> } | null = null;
+    if (o.dataset !== undefined) {
+      const found = await storage.getDataset(LOCAL_TENANT, o.dataset);
+      if (!found) {
+        o.stderr.write(`${COMMAND} ingest: no dataset has the id or label "${o.dataset}". List them at GET /api/v1/datasets, or create one with POST /api/v1/datasets from the case keys of a run.\n`);
+        return 2;
+      }
+      gate = { label: found.label, keys: new Set(found.caseKeys.map((c) => c.caseKey)) };
+    }
+    let evaluated = 0;
+    let inGate = 0;
     const input = o.file ? createReadStream(o.file, 'utf8') : o.stdin;
 
     for await (const raw of readTraces(input)) {
@@ -154,12 +183,21 @@ export async function runIngest(o: IngestOptions): Promise<number> {
         verdict: { state: verdict.state, basis: verdict.basis, by: verdict.by },
         ...(unjudged.length > 0 ? { unjudged } : {}),
       };
-      if (o.failOn && trips(o.failOn, verdict)) {
+      evaluated++;
+      // Gated unless a dataset was named and this trace's case key is not in it.
+      const caseKey = resolveCaseKey(trace.case_key, trace.input);
+      const gated = gate === null || (caseKey !== null && gate.keys.has(caseKey));
+      if (gate !== null) {
+        line.gated = gated;
+        if (gated) inGate++;
+      }
+      if (o.failOn && gated && trips(o.failOn, verdict)) {
         tripped++;
         line.tripped = o.failOn;
       }
       o.stdout.write(JSON.stringify(line) + '\n');
     }
+    if (gate !== null) gateSummary = `${inGate} of ${evaluated} evaluated in dataset "${gate.label}"`;
   } finally {
     await storage.close();
   }
@@ -168,7 +206,8 @@ export async function runIngest(o: IngestOptions): Promise<number> {
     return 2;
   }
   if (o.failOn) {
-    o.stderr.write(`${COMMAND} ingest: ${stored} stored, ${tripped} tripped --fail-on ${o.failOn}${rejected ? `, ${rejected} rejected` : ''}\n`);
+    const scope = gateSummary ? ` (${gateSummary})` : '';
+    o.stderr.write(`${COMMAND} ingest: ${stored} stored, ${tripped} tripped --fail-on ${o.failOn}${scope}${rejected ? `, ${rejected} rejected` : ''}\n`);
     return tripped > 0 ? 1 : 0;
   }
   o.stderr.write(`${COMMAND} ingest: ${stored} stored${rejected ? `, ${rejected} rejected` : ''}\n`);

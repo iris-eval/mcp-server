@@ -1,4 +1,4 @@
-import type { CaseResultRow, RunResultRow, RunSummaryRow } from '../storage/sqlite-adapter.js';
+import type { CaseResultRow, DatasetCase, DatasetDetail, DatasetSummary, RunResultRow, RunSummaryRow } from '../storage/sqlite-adapter.js';
 import type { Trace, Span } from './trace.js';
 import type { EvalResult } from './eval.js';
 import type { TenantId } from './tenant.js';
@@ -269,6 +269,13 @@ export interface IStorageAdapter {
   getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]>;
   /** Every attempt at every case, optionally narrowed — repeats kept, because they are the measurement. */
   getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string }): Promise<CaseResultRow[]>;
+  /** Datasets (arc 8, R-8): a named set of case keys a comparison and a gate can be restricted to. */
+  createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail>;
+  /** By id, else by label; null when neither matches. */
+  getDataset(tenantId: TenantId, idOrLabel: string): Promise<DatasetDetail | null>;
+  listDatasets(tenantId: TenantId): Promise<DatasetSummary[]>;
+  /** The distinct case keys the traces of one run carry — what `POST /api/v1/datasets` promotes. */
+  caseKeysInRun(tenantId: TenantId, runId: string): Promise<string[]>;
   queryEvalResults(
     tenantId: TenantId,
     options: {
