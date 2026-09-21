@@ -25,6 +25,7 @@ import { registerRunRoutes } from './routes/runs.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerDatasetRoutes } from './routes/datasets.js';
 import { registerViewRoutes } from './routes/views.js';
+import { registerOtlpRoutes } from './routes/otlp.js';
 import { registerMomentRoutes } from './routes/moments.js';
 import { registerFailureRoutes } from './routes/failures.js';
 import { registerLabelRoutes } from './routes/labels.js';
@@ -196,6 +197,16 @@ export function createDashboardServer(
   // when no custom rule store is provided (read-only access).
   registerAuditRoutes(router, options?.customRuleStore);
   app.use('/api/v1', router);
+  /*
+   * OTLP/HTTP in (arc 8, R-2): the path every OTLP exporter already posts
+   * to, on this port, behind the same key, guard and limiter as the API.
+   * A separate router so the REST API's shape and the OTLP contract never
+   * share a prefix.
+   */
+  const otlp = express.Router();
+  otlp.use(createApiRateLimiter(config));
+  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest });
+  app.use('/v1', otlp);
 
   // Serve static dashboard files if built (rate limited).
   //

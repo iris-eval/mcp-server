@@ -1079,6 +1079,12 @@ Get distinct filter values for the dashboard UI dropdowns.
 
 ---
 
+### POST /v1/traces — OTLP in (0.15.0)
+
+The OTLP/HTTP **JSON** `ExportTraceServiceRequest`, on this port at the path every OTLP exporter posts to. Each OTLP trace id becomes one Iris trace with its spans, read from the GenAI semantic conventions (`service.name`, `gen_ai.input.messages` / `gen_ai.output.messages` or `gen_ai.prompt` / `gen_ai.completion`, `gen_ai.usage.*`, `gen_ai.tool.*`); tool spans feed the trajectory rules as spans on `log_trace` do. Stored, not evaluated, unless `otel.evaluateOnIngest` is on. Answers OTLP's `ExportTraceServiceResponse` (`partialSuccess` when spans lacked ids) plus an `iris-eval` block naming each Iris trace id, its span and step counts, what the payload lacked, and the evaluation when scored. `415` for protobuf, `400` for a non-OTLP body. Full mapping: [otel-integration.md](otel-integration.md#traces-arrive-by-otlp).
+
+---
+
 ### Datasets (0.15.0)
 
 A dataset is a named set of case keys — the reader's answer to "which cases are the gate?". `compare_runs` / `POST /api/v1/compare` take `dataset` and pair only those cases; `ingest --fail-on … --dataset` fails a job only on them. No statistic is new: the same McNemar and Newcombe over a chosen set of cases.

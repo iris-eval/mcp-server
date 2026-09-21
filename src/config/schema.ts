@@ -71,6 +71,7 @@ export const configFileSchema = z.strictObject({
       priorMode: z.enum(['per-output', 'per-class']).optional(),
     })
     .optional(),
+  otel: z.strictObject({ evaluateOnIngest: z.boolean().optional() }).optional(),
   logging: z.strictObject({ level: z.enum(['debug', 'info', 'warn', 'error']).optional() }).optional(),
   retention: z.strictObject({ days: nonNegativeInt.optional(), sweepIntervalHours: nonNegative.optional() }).optional(),
   security: z

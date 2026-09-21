@@ -129,6 +129,15 @@ export interface IrisConfig {
      */
     priorConfigured?: boolean;
   };
+  /**
+   * Traces arriving by OTLP/HTTP at `POST /v1/traces` (arc 8, R-2). They
+   * are stored with what they carry; `evaluateOnIngest` scores each one
+   * that carries an output, off by default because an OTLP feed is a
+   * firehose the operator did not necessarily mean to grade.
+   */
+  otel: {
+    evaluateOnIngest: boolean;
+  };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
   };

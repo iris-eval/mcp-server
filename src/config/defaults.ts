@@ -100,6 +100,9 @@ export const defaultConfig: IrisConfig = {
      */
     validateToolArguments: true,
   },
+  otel: {
+    evaluateOnIngest: false,
+  },
   logging: {
     level: 'info',
   },

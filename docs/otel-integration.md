@@ -1,5 +1,7 @@
 # OpenTelemetry Integration
 
+Two directions. **Out** (since 0.4): every `log_trace` is exported to the OTLP/HTTP collector you name. **In** (0.15.0): the spans your instrumentation already emits arrive at `POST /v1/traces` and become Iris traces — see [Traces arrive by OTLP](#traces-arrive-by-otlp) below.
+
 Iris can export every `log_trace` call to any OpenTelemetry collector that speaks **OTLP/HTTP**
 with **JSON encoding**. The export is a best-effort side effect — Iris always stores the trace
 locally first, then fires an async export in the background. Collector failures never block
@@ -164,3 +166,35 @@ log_trace calls are individually interesting signals — unlike auto-instrumente
 
 **Why synthesize a root span when no span tree is present?**
 Without it, traces with only top-level fields (many quick agent calls have no span tree) would export as empty `ResourceSpans` entries. Downstream tooling expects at least one span per trace; synthesizing one keeps Iris's wire contract sane for the consumer.
+
+---
+
+## Traces arrive by OTLP
+
+`POST /v1/traces` on the dashboard port accepts an OTLP/HTTP **JSON** `ExportTraceServiceRequest` — the path every OTLP exporter already posts to, so pointing a Collector's `otlphttp` exporter (protocol `http/json`) or an SDK's `OTEL_EXPORTER_OTLP_ENDPOINT` at `http://<iris>:6920` is the whole integration. It sits behind the same API key, DNS-rebinding guard and rate limit as the REST API; protobuf is answered `415` naming the JSON encoding; a body that is not an `ExportTraceServiceRequest` is `400`.
+
+Each OTLP trace id becomes one Iris trace with its spans, read from the [GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) and Iris's own export attributes:
+
+| Trace field | Read from, in order |
+|---|---|
+| `agent_name` | resource `service.name`; `iris.agent_name`; else `"otel"` (and the answer says it lacked `service.name`) |
+| `input` | `iris.input`, `gen_ai.input.messages`, `gen_ai.prompt` — on the root span, then any span in start order, then a `gen_ai.content.prompt` event |
+| `output` | the same for `iris.output`, `gen_ai.output.messages`, `gen_ai.completion`, `gen_ai.content.completion` |
+| `token_usage` | `gen_ai.usage.input_tokens` / `output_tokens` (the older `prompt_tokens` / `completion_tokens`, and `iris.*_tokens`), summed over spans |
+| `cost_usd` | `iris.cost_usd`, `gen_ai.usage.cost`, `llm.usage.total_cost`, summed |
+| `run`, `case_key` | `iris.run`, `iris.case_key` on the resource or the root span |
+| `timestamp`, `latency_ms` | the root span's start, and its end minus start |
+| `spans[]` | every span; kind `TOOL` when it carries `gen_ai.tool.*` / `tool.name` or `gen_ai.operation.name = execute_tool`, `LLM` when it carries a GenAI request attribute, else the OTel kind; status from `status.code`; the OTLP span id kept as the `otel.span_id` attribute (Iris mints its own ids, as every door does) |
+
+Tool spans feed the trajectory rules exactly as spans sent on `log_trace` do: `toSteps` reads `gen_ai.tool.name`, `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result` and `gen_ai.tool.call.id` off them. A payload with no GenAI attributes at all is still stored — with what it carries — and the answer lists what it lacked, so you know why the rules that read an output did not run.
+
+**Evaluation is off by default**: an OTLP feed is a firehose you did not necessarily mean to grade. `otel.evaluateOnIngest: true` in `config.json` scores each stored trace that carries an output, under exactly the rules `evaluate_output` runs; a trace without one answers `evaluation: null`.
+
+The answer is OTLP's `ExportTraceServiceResponse` — `{}` when every span was accepted, `partialSuccess: { rejectedSpans, errorMessage }` when some carried no trace or span id — plus an `iris-eval` block:
+
+```json
+{ "iris-eval": { "count": 1, "evaluate_on_ingest": false,
+  "stored": [{ "trace_id": "9f58…", "otel_trace_id": "5b8efff7…", "agent_name": "support-bot", "spans": 2, "steps": 1, "lacked": [] }] } }
+```
+
+A trace that arrived by OTLP is never re-exported to `IRIS_OTEL_ENDPOINT`, which may well be the collector that sent it.
