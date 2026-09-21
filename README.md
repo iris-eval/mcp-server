@@ -389,6 +389,8 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
 | `IRIS_DASHBOARD` | `true`/`1`/`yes`/`on` enables the web dashboard; `false`/`0`/`no`/`off` disables it (also overrides `dashboard.enabled` in `config.json`) |
 | `IRIS_DASHBOARD_PORT` | Dashboard port (1-65535, default `6920`) |
+| `IRIS_WEBHOOK_URL` | The receiver of the webhook that fires on a moment — merged over `notify.webhook` in `config.json` ([docs/webhooks.md](https://github.com/iris-eval/mcp-server/blob/main/docs/webhooks.md)) |
+| `IRIS_WEBHOOK_SECRET` | The webhook's signing key (any string, or `whsec_` + base64); the `iris` format refuses to run without one |
 | `IRIS_DASHBOARD_HOST` | Dashboard bind address (default `127.0.0.1`) |
 | `IRIS_API_KEY` | API key for HTTP authentication. Required to bind the HTTP transport or the dashboard beyond loopback (`0.0.0.0`, a LAN address, a container): without it the server refuses to start |
 | `IRIS_API_KEY_FILE` | Path to a file whose trimmed contents are the API key — the secret-file pattern Docker and Kubernetes mount, so the key never sits in an environment block. Set this or `IRIS_API_KEY`, not both |
@@ -444,6 +446,8 @@ IRIS_ALLOW_UNAUTHENTICATED=1 iris-eval --transport http --dashboard
 ```
 
 Open by design, on a keyed server: `GET /health` on the transport and `GET /api/v1/health` on the dashboard answer without a key and outside every rate limit, in one shape: status, version, uptime, the SQLite driver, `checks` for storage, the deployed-rules file and the migrations (applied against known), and whether a judge key is present — never the key, never a trace. `status` is `ok` only when every check is; otherwise it is `degraded` with HTTP 503, which the Docker image's own `HEALTHCHECK` reads. Everything else needs `Authorization: Bearer <key>` or a browser session. Retention runs on every server: traces and evaluations older than `retention.days` (default `30`) are deleted at startup and every `retention.sweepIntervalHours`; `--self-test` prints this install's policy, and `iris://capabilities` / `GET /api/v1/capabilities` carry it as `retention`.
+
+A webhook fires on a moment (0.16.0): `notify.webhook` in `config.json` (or `IRIS_WEBHOOK_URL` and `IRIS_WEBHOOK_SECRET`) names a receiver, and Iris posts one signed message when a verdict fails, a critical detection vetoes, a cost is an outlier, a rule's fail rate shifts, or a case is answered both ways for the first time — ids, the verdict, the rules and the numbers, never the agent's text. Signed the Standard Webhooks way and the GitHub way at once, retried with backoff, cooled down per agent and rule, never in the way of the evaluation; Slack and Discord bodies built in. [docs/webhooks.md](https://github.com/iris-eval/mcp-server/blob/main/docs/webhooks.md).
 
 ### Your data on disk
 

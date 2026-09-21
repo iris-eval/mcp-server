@@ -10,6 +10,7 @@ import { createStorage } from './storage/index.js';
 import { withDemoIngestGuard } from './storage/demo-guard.js';
 import { createIrisServer } from './server.js';
 import { runRetentionSweep, scheduleRetentionSweep } from './retention.js';
+import { installWebhookNotifier } from './notify/index.js';
 import { createStdioTransport } from './transport/stdio.js';
 import { createHttpTransport } from './transport/http.js';
 import { createDashboardServer } from './dashboard/server.js';
@@ -206,6 +207,10 @@ Environment variables (CLI flags take precedence):
   IRIS_DASHBOARD                       true/1/yes/on enables the web dashboard; false/0/no/off disables it (overrides config.json)
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
   IRIS_DASHBOARD_HOST                  Dashboard bind address (default: 127.0.0.1)
+  IRIS_WEBHOOK_URL                     The receiver of the webhook that fires on a moment (docs/webhooks.md);
+                                       merged over notify.webhook in config.json
+  IRIS_WEBHOOK_SECRET                  Its signing key (any string, or whsec_ + base64); the iris format refuses
+                                       to run without one
   IRIS_API_KEY                         API key for HTTP authentication. Required to bind the HTTP transport or the
                                        dashboard beyond loopback (0.0.0.0, a LAN address, a container): without it
                                        the server refuses to start.
@@ -429,6 +434,10 @@ async function main(): Promise<void> {
   // The deployment's own labels, read once at boot (arc 7, D-8); every label write refreshes them.
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
 
+  // The webhook (arc 9, N-16): installed on the store, so every door that
+  // writes an evaluation reaches it; never in demo mode (runDemo below).
+  const webhook = installWebhookNotifier(storage, config, logger);
+
   const httpServers: Server[] = [];
 
   // Retention: one sweep at boot and the same sweep on a timer that never
@@ -524,6 +533,7 @@ async function main(): Promise<void> {
       new Promise((resolve) => setTimeout(resolve, 10_000)),
     ]);
 
+    await webhook?.dispose();
     await storage.close();
     logger.info('Shutdown complete');
     process.exit(0);

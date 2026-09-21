@@ -1,3 +1,25 @@
+import type { WebhookEventName, WebhookFormat } from '../notify/event-names.js';
+
+/**
+ * An outbound webhook on a moment (arc 9, N-16). `url` is the only required
+ * key; `events` omitted means every event; the `iris` format (the default)
+ * signs every delivery and so needs `secret` or `secretFile`.
+ */
+export interface WebhookConfig {
+  url: string;
+  events?: WebhookEventName[];
+  /** The signing key. A `whsec_`-prefixed base64 secret is read the Standard Webhooks way; any other string signs as its bytes. */
+  secret?: string;
+  /** The signing key read from a file (trimmed) — the secret-file pattern. */
+  secretFile?: string;
+  /** Minutes before the same event for the same agent and subject is sent again. Default 10. */
+  cooldownMinutes?: number;
+  /** `iris` (signed JSON: id, type, timestamp, data), `slack` ({ text }) or `discord` ({ content }). Default `iris`. */
+  format?: WebhookFormat;
+  /** One attempt's limit in milliseconds. Default 10000. */
+  timeoutMs?: number;
+}
+
 export interface IrisConfig {
   storage: {
     type: 'sqlite';
@@ -148,6 +170,10 @@ export interface IrisConfig {
   };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
+  };
+  /** Outbound notifications (arc 9, N-16). `webhook: null` (the default) sends nothing. */
+  notify: {
+    webhook: WebhookConfig | null;
   };
   retention: {
     days: number;

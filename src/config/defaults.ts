@@ -106,6 +106,9 @@ export const defaultConfig: IrisConfig = {
   logging: {
     level: 'info',
   },
+  notify: {
+    webhook: null,
+  },
   retention: {
     days: 30,
     sweepIntervalHours: 24,

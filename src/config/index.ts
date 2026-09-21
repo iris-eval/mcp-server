@@ -1,6 +1,7 @@
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { IrisConfig } from '../types/index.js';
+import { assertWebhookConfig } from '../notify/config.js';
 import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
@@ -139,6 +140,15 @@ function loadEnvVars(): Partial<IrisConfig> {
       host: process.env.IRIS_DASHBOARD_HOST,
     };
   }
+  if (process.env.IRIS_WEBHOOK_URL || process.env.IRIS_WEBHOOK_SECRET) {
+    // The webhook from the environment (arc 9, N-16): merged over the file's, so a URL and a secret can live apart.
+    config.notify = {
+      webhook: {
+        ...(process.env.IRIS_WEBHOOK_URL ? { url: process.env.IRIS_WEBHOOK_URL } : {}),
+        ...(process.env.IRIS_WEBHOOK_SECRET ? { secret: process.env.IRIS_WEBHOOK_SECRET } : {}),
+      },
+    };
+  }
   if (process.env.IRIS_API_KEY) {
     config.security = { ...(config.security as object), apiKey: process.env.IRIS_API_KEY };
   }
@@ -231,6 +241,8 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
    * "detection that reports an all-clear" failure the veto exists to stop.
    */
   assertValidCriticality(config.eval);
+  // Likewise the webhook (arc 9, N-16): a URL the schema never saw (the environment's), or an unsigned iris-format hook, refuses startup here.
+  assertWebhookConfig(config.notify.webhook);
 
   return config;
 }

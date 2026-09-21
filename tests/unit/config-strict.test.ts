@@ -68,7 +68,7 @@ describe('config.json is strict', () => {
 
   it('a top-level key from another tool is named with the top-level keys', () => {
     writeConfig({ mcpServers: {} });
-    expect(refusal()).toMatch(/unknown key "mcpServers" — the keys Iris reads at the top level: storage, server, transport, dashboard, eval, otel, logging, retention, security/);
+    expect(refusal()).toMatch(/unknown key "mcpServers" — the keys Iris reads at the top level: storage, server, transport, dashboard, eval, otel, logging, retention, notify, security/);
   });
 
   it('a value of the wrong type is named with the type it wanted', () => {
@@ -188,7 +188,7 @@ describe('the did-you-mean', () => {
   });
 
   it('knownKeysAt walks optional objects and answers [] off the schema', () => {
-    expect(knownKeysAt([])).toEqual(['storage', 'server', 'transport', 'dashboard', 'eval', 'otel', 'logging', 'retention', 'security']);
+    expect(knownKeysAt([])).toEqual(['storage', 'server', 'transport', 'dashboard', 'eval', 'otel', 'logging', 'retention', 'notify', 'security']);
     expect(knownKeysAt(['security', 'rateLimit'])).toEqual(['api', 'mcp', 'mcpKeyBy']);
     expect(knownKeysAt(['security', 'apiKeys', 0])).toEqual(['id', 'keyFile', 'keyHash', 'expiresAt']);
     expect(knownKeysAt(['nope'])).toEqual([]);

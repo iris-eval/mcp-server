@@ -22,6 +22,7 @@ import { LOCAL_TENANT } from './types/tenant.js';
 import { TOOL_NAMES } from './tools/index.js';
 import { RESOURCE_URIS } from './resources/uris.js';
 import { EVALUATE_MY_AGENT_PROMPT } from './instructions.js';
+import { webhookSettings, type WebhookSettings } from './notify/config.js';
 
 /** The most inline custom rules one evaluate_output call may carry. */
 export const MAX_INLINE_CUSTOM_RULES = 10;
@@ -59,6 +60,8 @@ export interface Capabilities {
   };
   /** What the sweep deletes and how often; 0 days disables it. A data-loss surprise unless said here. */
   retention: { days: number; sweepIntervalHours: number };
+  /** The outbound webhook (arc 9, N-16): the events and the receiver's host, never the URL's token or the secret; null when none. */
+  notify: { webhook: WebhookSettings | null };
   tools: readonly string[];
   resources: readonly string[];
   prompts: readonly string[];
@@ -119,6 +122,7 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
       citationsPerCall: MAX_CITATIONS_PER_CALL,
     },
     retention: { days: config.retention.days, sweepIntervalHours: config.retention.sweepIntervalHours },
+    notify: { webhook: webhookSettings(config.notify?.webhook) },
     tools: TOOL_NAMES,
     resources: RESOURCE_URIS,
     prompts: [EVALUATE_MY_AGENT_PROMPT],
