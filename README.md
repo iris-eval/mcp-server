@@ -97,7 +97,7 @@ A second, separately installed plugin: three hooks record each turn's prompt, to
 npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on detector_veto
 ```
 
-`ingest` reads one JSON trace (or NDJSON, one per line) from stdin or a file, stores it, evaluates it under exactly the rules `evaluate_output` runs, prints one JSON line per trace with the verdict and its basis, and exits 1 when a verdict matches `--fail-on`. `--dataset <id|label>` restricts that gate to the case keys in a dataset (`POST /api/v1/datasets` promotes a run's case keys into one), so a job fails only on the cases you chose. The full recipe, the exit codes and the eight bases are in [docs/ci-gate.md](docs/ci-gate.md).
+A fourth door (0.15.0): `POST /v1/traces` on the dashboard port takes the OTLP/HTTP JSON your OpenTelemetry instrumentation already emits, and each OTLP trace becomes an Iris trace with its spans — [docs/otel-integration.md](docs/otel-integration.md#traces-arrive-by-otlp). `ingest` reads one JSON trace (or NDJSON, one per line) from stdin or a file, stores it, evaluates it under exactly the rules `evaluate_output` runs, prints one JSON line per trace with the verdict and its basis, and exits 1 when a verdict matches `--fail-on`. `--dataset <id|label>` restricts that gate to the case keys in a dataset (`POST /api/v1/datasets` promotes a run's case keys into one), so a job fails only on the cases you chose. The full recipe, the exit codes and the eight bases are in [docs/ci-gate.md](docs/ci-gate.md).
 
 ### Use the engine in your own process
 
