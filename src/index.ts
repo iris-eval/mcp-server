@@ -415,7 +415,7 @@ async function main(): Promise<void> {
   scheduleRetentionSweep(storage, config, logger);
 
   if (config.transport.type === 'http') {
-    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger);
+    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore });
     httpServers.push(httpServer);
     await mcpServer.connect(transport);
     const addr = httpServer.address();

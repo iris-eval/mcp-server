@@ -10,16 +10,21 @@ import { createErrorHandler } from '../middleware/error-handler.js';
 import { createMcpRateLimiter } from '../middleware/rate-limit.js';
 import { createRebindingGuard } from '../middleware/rebinding-guard.js';
 import { assertAuthenticatedBind } from '../utils/bind-policy.js';
+import { buildHealth, type HealthDeps } from '../health.js';
 
 export interface HttpTransportResult {
   transport: StreamableHTTPServerTransport;
   httpServer: Server;
 }
 
+/** What `/health` on this port reports on (arc 8, R-6); the version comes from `config.server`. */
+export type HttpTransportHealthDeps = Omit<HealthDeps, 'version'>;
+
 export async function createHttpTransport(
   mcpServer: McpServer,
   config: IrisConfig,
   logger: Logger,
+  health: HttpTransportHealthDeps = {},
 ): Promise<HttpTransportResult> {
   /*
    * Refuse, don't warn (A6-7): a bind beyond loopback with no API key is
@@ -69,9 +74,15 @@ export async function createHttpTransport(
   // Body parser with size limit
   app.use(express.json({ limit: config.security.requestSizeLimit }));
 
-  // Health endpoint (no auth, no rate limit)
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', server: 'iris-eval', timestamp: new Date().toISOString() });
+  /*
+   * Health endpoint (no auth, no rate limit) — the same contract the
+   * dashboard serves at /api/v1/health, built by src/health.ts (arc 8,
+   * R-6). Until 0.15.0 this port answered `{ status, server, timestamp }`
+   * while the API reference called the two "the same contract".
+   */
+  app.get('/health', async (_req, res) => {
+    const { status, body } = await buildHealth({ ...health, version: config.server.version });
+    res.status(status).json(body);
   });
 
   // Authentication

@@ -3,6 +3,7 @@ import type { Trace, Span } from './trace.js';
 import type { EvalResult } from './eval.js';
 import type { TenantId } from './tenant.js';
 import type { RegressionAlarm } from '../eval/cusum.js';
+import type { MigrationState } from '../storage/migrations/index.js';
 
 export interface TraceFilter {
   agent_name?: string;
@@ -241,8 +242,12 @@ export interface DashboardSummary {
  * not per-tenant — they don't take a TenantId.
  */
 export interface IStorageAdapter {
+  /** The driver word the health contract reports (arc 8, R-6). */
+  readonly driver: string;
   initialize(): Promise<void>;
   close(): Promise<void>;
+  /** Applied migrations against the ones this build knows; the health contract's `checks.migrations`. */
+  migrations(): Promise<MigrationState>;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
   getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null>;
   queryTraces(tenantId: TenantId, options: TraceQueryOptions): Promise<TraceQueryResult>;

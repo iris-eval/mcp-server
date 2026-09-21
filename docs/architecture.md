@@ -215,7 +215,7 @@ dashboard/              React SPA (separate Vite build)
 ### Startup sequence
 
 1. `index.ts` parses CLI args with `node:util.parseArgs`.
-2. `loadConfig()` deep-merges: defaults -> `~/.iris/config.json` -> `IRIS_*` env vars -> CLI args.
+2. `loadConfig()` reads `~/.iris/config.json` and validates it against a strict schema (`src/config/schema.ts`) — a key Iris does not read, or a value of the wrong type, refuses startup naming it — then layers the file, the `IRIS_*` env vars and the CLI args over the defaults, in that order.
 3. `createStorage()` instantiates `SqliteAdapter`, which calls `initialize()` to enable WAL mode, turn on foreign keys, and run pending migrations.
 4. `createIrisServer()` creates the MCP `McpServer` instance, instantiates `EvalEngine` with the configured threshold, and registers all tools and resources.
 5. Based on `config.transport.type`:

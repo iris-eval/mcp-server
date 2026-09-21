@@ -27,19 +27,22 @@ Iris has one maintainer. Every change reaches `main` through a pull request that
 
 ## Supported Versions
 
-Only the latest minor receives security fixes. Older minors do not — upgrade to the current `0.14.x` line.
+The current minor receives every fix. The previous minor receives security fixes for 90 days after the current minor's first release, so an upgrade has a window rather than a deadline. Older minors receive none — upgrade to the current `0.14.x` line.
 
-| Version          | Supported |
-|------------------|-----------|
-| 0.14.x           | Yes       |
-| 0.13.x and lower | No        |
+| Version          | Supported                                   |
+|------------------|---------------------------------------------|
+| 0.14.x           | Yes                                         |
+| 0.13.x           | Yes, security fixes until 2026-12-19        |
+| 0.12.x and lower | No                                          |
 
 <!--
-  This table is release-gated: it must name the CURRENT minor, which is
-  `release.currentReleaseVersion` in .claims.json. On v0.5.0's ship day it
-  still read "upgrade to the current 0.4.x line", i.e. by the policy's own
-  rule it advertised an unsupported line as the supported one. Update it in
-  the release PR, alongside CHANGELOG.md and the version sync.
+  This table is release-gated (scripts/check-security-minor.mjs, run by
+  scripts/check-version.sh): it must mark the CURRENT minor supported, the
+  PREVIOUS minor supported with the window's end date (90 days after the
+  current minor's first release), and no older minor. On v0.5.0's ship day
+  it still read "upgrade to the current 0.4.x line", i.e. by the policy's
+  own rule it advertised an unsupported line as the supported one. Update
+  it in the release PR, alongside CHANGELOG.md and the version sync.
 -->
 
 Verify what you are running: `npx @iris-eval/mcp-server --version`, or read the first startup log line.

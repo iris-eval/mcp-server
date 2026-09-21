@@ -1202,15 +1202,21 @@ The same object as `iris://capabilities`, for the HTTP path. No key is ever incl
 
 ### GET /api/v1/health
 
-Health check endpoint. Reports server status and storage connectivity. Unauthenticated by design — no key, no session, no rate limit — because it carries no trace content: status, version, uptime, storage connectivity and whether a judge key is present (the provider name, never the key). The MCP transport's `GET /health` is the same contract on its own port.
+The one health contract (0.15.0). Unauthenticated by design — no key, no session, no rate limit — because it carries no trace content. `GET /health` on the MCP transport's port is built by the same function (`src/health.ts`) and answers the same shape, so a container `HEALTHCHECK`, a load balancer and a person read one thing.
 
-#### Response (200 -- healthy)
+#### Response (200 -- every check ok)
 
 ```json
 {
   "status": "ok",
-  "version": "0.4.6",
+  "version": "0.15.0",
   "uptime_seconds": 3600,
+  "driver": "better-sqlite3",
+  "checks": {
+    "storage": "ok",
+    "rules_store": "ok",
+    "migrations": { "status": "ok", "applied": 11, "known": 11 }
+  },
   "trace_count": 142,
   "storage": "connected",
   "judge": { "enabled": false, "provider": null },
@@ -1218,16 +1224,27 @@ Health check endpoint. Reports server status and storage connectivity. Unauthent
 }
 ```
 
-The `version` field is sourced dynamically from `package.json` at runtime (see `src/dashboard/routes/health.ts`), so it always reflects the running release.
+- `driver` — the SQLite driver behind the store; `null` on a transport started without storage.
+- `checks.storage` — the database answered a count (`trace_count` is that all-time count); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
+- `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
+- `version` is read from `package.json` at runtime; `judge` is the provider name when a key is present, never the key; `mode` is `demo` when serving the disposable demo database.
 
 #### Response (503 -- degraded)
 
 ```json
 {
   "status": "degraded",
-  "version": "0.4.6",
+  "version": "0.15.0",
   "uptime_seconds": 3600,
-  "storage": "disconnected"
+  "driver": "better-sqlite3",
+  "checks": {
+    "storage": "fail",
+    "rules_store": "ok",
+    "migrations": { "status": "ok", "applied": 11, "known": 11 }
+  },
+  "storage": "disconnected",
+  "judge": { "enabled": false, "provider": null },
+  "mode": "real"
 }
 ```
 

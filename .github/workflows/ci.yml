@@ -277,6 +277,40 @@ jobs:
           echo "--- dashboard health ---"
           curl -fsS "http://127.0.0.1:6920/api/v1/health"
           echo ""
+          echo "--- one health contract on both ports (arc 8, R-6) ---"
+          # The MCP port's /health and the dashboard's /api/v1/health are
+          # built by one function; both must carry the checks block and
+          # name the driver. A probe that reads only the status code must
+          # get 200 here too.
+          for url in "http://127.0.0.1:3000/health" "http://127.0.0.1:6920/api/v1/health"; do
+            body=$(curl -fsS "$url")
+            echo "$body" | grep -q '"checks":{' || { echo "::error::$url carries no checks block: $body"; docker rm -f iris-ci; exit 1; }
+            echo "$body" | grep -q '"migrations":{"status":"ok"' || { echo "::error::$url does not report migrations ok: $body"; docker rm -f iris-ci; exit 1; }
+            echo "$body" | grep -q '"driver":"better-sqlite3"' || { echo "::error::$url does not name the driver: $body"; docker rm -f iris-ci; exit 1; }
+          done
+          echo "both ports report checks, migrations ok, and the driver"
+          echo "--- the image's own HEALTHCHECK must reach healthy (arc 8, R-6) ---"
+          # start-period 20 s, interval 30 s: allow one interval past the
+          # start period before calling it a failure.
+          state=""
+          for _ in $(seq 1 40); do
+            state=$(docker inspect --format '{{.State.Health.Status}}' iris-ci 2>/dev/null || echo "none")
+            [ "$state" = "healthy" ] && break
+            sleep 2
+          done
+          if [ "$state" != "healthy" ]; then
+            echo "::error::HEALTHCHECK state is '$state' after 80 s — the probe in the Dockerfile does not reach /health"
+            docker inspect --format '{{json .State.Health}}' iris-ci || true
+            docker rm -f iris-ci
+            exit 1
+          fi
+          echo "HEALTHCHECK: $state"
+          echo "--- OCI labels (arc 8, R-6): the package page and docker inspect read these ---"
+          for label in org.opencontainers.image.source org.opencontainers.image.description org.opencontainers.image.licenses; do
+            value=$(docker inspect --format "{{index .Config.Labels \"$label\"}}" iris-eval/mcp-server:ci)
+            [ -n "$value" ] || { echo "::error::the image carries no $label label"; docker rm -f iris-ci; exit 1; }
+            echo "$label = $value"
+          done
           echo "--- MCP transport must answer on its own port (any HTTP status proves a live listener) ---"
           code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000/mcp" || true)
           echo "GET /mcp -> $code"

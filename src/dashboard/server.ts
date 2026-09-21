@@ -129,6 +129,18 @@ export function createDashboardServer(
   app.use(createCorsMiddleware(config.security.allowedOrigins));
 
   /*
+   * Health first (arc 8, R-6): the one contract src/health.ts builds, on
+   * this port, AHEAD of the auth-gate limiter, the session layer and the
+   * API limiter. It carries no trace content, it answers unauthenticated
+   * by design, and a container HEALTHCHECK or a load balancer must never
+   * be told to slow down — the API reference has promised "no rate limit"
+   * here since 0.5.0, and until now the promise was false.
+   */
+  const healthRouter = express.Router();
+  registerHealthRoutes(healthRouter, storage, config.server.version, { mode: options?.mode, customRuleStore: options?.customRuleStore });
+  app.use('/api/v1', healthRouter);
+
+  /*
    * Authentication. The Bearer middleware is the contract for MCP clients
    * and capture SDKs; the session layer in front of it is what lets a
    * BROWSER present the same key once (`?key=` or the sign-in form) and
@@ -154,7 +166,6 @@ export function createDashboardServer(
   registerEvalStatsRoutes(router, storage);
   registerRunRoutes(router, storage);
   registerFilterRoutes(router, storage);
-  registerHealthRoutes(router, storage, config.server.version, { mode: options?.mode });
   // The same object iris://capabilities serves, for the HTTP path.
   registerCapabilitiesRoutes(router, () =>
     buildCapabilities({ config, evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, mode: options?.mode }),
