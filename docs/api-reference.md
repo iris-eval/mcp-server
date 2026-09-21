@@ -874,6 +874,8 @@ With no `--api-key` / `IRIS_API_KEY` configured, every route is open — the loo
 
 ### POST /api/v1/traces
 
+> **From code, use the typed client** (0.15.0): `import { createClient } from '@iris-eval/mcp-server/client'` — `createClient({ baseUrl, apiKey }).logTrace(body)` posts this body, sends the Bearer key, returns `{ trace_id, status, evaluation? }` and throws `IrisClientError` with the server's own sentence on a refusal. The engine itself is importable too: `import { EvalEngine } from '@iris-eval/mcp-server/engine'`.
+
 Store a trace over plain HTTP — the deterministic capture path. The MCP [`log_trace`](#log_trace) tool fires only when the model chooses to call it; this endpoint fires when your code calls it. Same body, same storage row, same dashboard. Full guide: [http-ingest.md](http-ingest.md).
 
 #### Request Body

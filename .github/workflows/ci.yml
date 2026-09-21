@@ -155,6 +155,10 @@ jobs:
           jq -e '.[0].files[] | select(.path == "dist/dashboard/index.html")' pack.json > /dev/null \
             || { echo "::error::dist/dashboard/index.html is not in the pack list"; exit 1; }
           echo "pack carries dist/dashboard/index.html"
+      - name: The packed tarball resolves ./engine, ./client and ./dist/* (R-1)
+        # What a consumer does: pack, install the tarball into a never-used
+        # directory, import each subpath, evaluate one stub through the engine.
+        run: node scripts/check-exports.mjs
       - name: Bundle size budget gate
         # Fails if dashboard JS/CSS exceeds the declared budget. Raising
         # budgets requires an explicit commit editing
