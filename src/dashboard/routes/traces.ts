@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { traceContextFrom, withTraceContext } from '../../otel/trace-context.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
@@ -65,7 +66,8 @@ export function registerTraceRoutes(
         latency_ms: body.latency_ms,
         token_usage: body.token_usage,
         cost_usd: body.cost_usd,
-        metadata: body.metadata as Record<string, unknown> | undefined,
+        // W3C trace context from the request headers (SEP-414 names them; arc 9, N-12).
+        metadata: withTraceContext(body.metadata as Record<string, unknown> | undefined, traceContextFrom(req.headers as Record<string, unknown>)),
         timestamp,
         tools: body.tools,
         run_id: body.run,

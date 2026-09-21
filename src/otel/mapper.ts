@@ -11,6 +11,7 @@
 // serializes these plain objects, and the payload shape is the OTLP spec.
 
 import type { Span, Trace, SpanKind } from '../types/trace.js';
+import { storedTraceContext } from './trace-context.js';
 import { PUBLIC_ID } from '../identity.js';
 import { PKG_VERSION } from '../config/defaults.js';
 
@@ -161,6 +162,30 @@ export function mapSpan(span: Span, traceIdOverride?: string): unknown {
 // If the trace has no explicit spans, we synthesize one root span from
 // the trace-level fields (agent_name + latency + cost + token_usage as
 // attributes) so exports aren't empty for simple trace rows.
+/**
+ * The trace id the exported spans carry, and the parent the root joins:
+ * the caller's, when the trace was logged with a W3C context (SEP-414);
+ * Iris's own otherwise. The context is the caller's span that made the
+ * log_trace call, so the exported root becomes its child and the
+ * evaluation shows up inside the agent's trace in the backend.
+ */
+function exportIdentity(trace: Trace): { traceId: string; rootParent: string | undefined } {
+  const ctx = storedTraceContext(trace.metadata);
+  return ctx ? { traceId: ctx.trace_id, rootParent: ctx.parent_span_id } : { traceId: toTraceIdHex(trace.trace_id), rootParent: undefined };
+}
+
+/**
+ * Per the OTel MCP semantic conventions, on a root that joined the caller's
+ * trace: which MCP method produced this span (`mcp.method.name`) and the
+ * session it arrived on (`mcp.session.id`) — only for a trace logged over
+ * MCP with a context, so an export without one is byte-for-byte what it was.
+ */
+function mcpAttributes(trace: Trace): Record<string, unknown> {
+  const ctx = storedTraceContext(trace.metadata);
+  if (!ctx || trace.source !== 'tool') return {};
+  return { 'mcp.method.name': 'tools/call', ...(ctx.mcp_session_id !== undefined ? { 'mcp.session.id': ctx.mcp_session_id } : {}) };
+}
+
 export function buildExportPayload(traces: readonly Trace[], serviceName: string): unknown {
   const resource = {
     attributes: [
@@ -173,8 +198,18 @@ export function buildExportPayload(traces: readonly Trace[], serviceName: string
 
   const spans: unknown[] = [];
   for (const trace of traces) {
+    const identity = exportIdentity(trace);
     if (trace.spans && trace.spans.length > 0) {
-      for (const s of trace.spans) spans.push(mapSpan(s, trace.trace_id));
+      const ids = new Set(trace.spans.map((s) => s.span_id));
+      for (const s of trace.spans) {
+        const mapped = mapSpan(s, identity.traceId) as { parentSpanId?: string; attributes: unknown[] };
+        // A span with no parent inside this trace is a root: it joins the caller's span and says which MCP method produced it.
+        if (identity.rootParent !== undefined && (s.parent_span_id === undefined || !ids.has(s.parent_span_id))) {
+          mapped.parentSpanId = toSpanIdHex(identity.rootParent);
+          mapped.attributes.push(...flattenAttrs(mcpAttributes(trace)));
+        }
+        spans.push(mapped);
+      }
     } else {
       // Synthesize root span from trace-level info.
       const attrs: Record<string, unknown> = {
@@ -190,15 +225,16 @@ export function buildExportPayload(traces: readonly Trace[], serviceName: string
         attrs['iris.prompt_tokens'] = trace.token_usage.prompt_tokens;
       if (trace.token_usage?.completion_tokens !== undefined)
         attrs['iris.completion_tokens'] = trace.token_usage.completion_tokens;
+      Object.assign(attrs, mcpAttributes(trace));
 
       const end = trace.latency_ms
         ? new Date(new Date(trace.timestamp).getTime() + trace.latency_ms).toISOString()
         : trace.timestamp;
 
       spans.push({
-        traceId: toTraceIdHex(trace.trace_id),
+        traceId: identity.traceId,
         spanId: toSpanIdHex(trace.trace_id + ':root'),
-        parentSpanId: undefined,
+        parentSpanId: identity.rootParent !== undefined ? toSpanIdHex(identity.rootParent) : undefined,
         name: trace.agent_name || 'agent_execution',
         kind: 1,
         startTimeUnixNano: toNanoString(trace.timestamp),

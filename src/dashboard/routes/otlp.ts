@@ -17,6 +17,7 @@
  * out to IRIS_OTEL_ENDPOINT, which may well be the collector that sent it.
  */
 import type { Router } from 'express';
+import { traceContextFrom, withTraceContext } from '../../otel/trace-context.js';
 import type { IStorageAdapter } from '../../types/query.js';
 import type { EvalEngine } from '../../eval/engine.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
@@ -83,8 +84,11 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     }
     const tenantId = requireTenant(req);
     const mapped = fromOtlp(parsed.data);
+    // The W3C context on the request, if a proxy or a client set one (SEP-414 names the header; arc 9, N-12).
+    const headerContext = traceContextFrom(req.headers as Record<string, unknown>);
     const stored: Array<Record<string, unknown>> = [];
     for (const { trace, otelTraceId, lacked } of mapped.traces) {
+      if (headerContext) trace.metadata = withTraceContext(trace.metadata, headerContext);
       await storage.insertTrace(tenantId, trace);
       const entry: Record<string, unknown> = {
         trace_id: trace.trace_id,
