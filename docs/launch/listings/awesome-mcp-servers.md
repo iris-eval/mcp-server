@@ -12,11 +12,11 @@
 
 ## The check before you save
 
-The listing must say **v0.14.0**, **12 tools**, **21 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
+The listing must say **v0.15.0**, **12 tools**, **21 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
 
 ## Links
 
 - Repository: https://github.com/iris-eval/mcp-server
 - Site: https://iris-eval.com · capabilities: https://iris-eval.com/capabilities · proof: https://iris-eval.com/proof
 - npm: https://www.npmjs.com/package/@iris-eval/mcp-server
-- Release notes: https://github.com/iris-eval/mcp-server/blob/main/CHANGELOG.md (current: v0.14.0, 2026-09-20 — The dashboard is a product)
+- Release notes: https://github.com/iris-eval/mcp-server/blob/main/CHANGELOG.md (current: v0.15.0, 2026-09-21 — Reach, honestly)

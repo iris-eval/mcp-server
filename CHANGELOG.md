@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+## [0.15.0] - 2026-09-21
+
+**Reach, honestly.** Iris reaches further in 0.15.0 — the engine and a client are importable, traces arrive over OTLP, rules can be plugged in, a dataset can gate a release, Node's built-in SQLite carries the store when the native addon cannot — and every reach is stated at exactly its verified width: every client Iris names has a row that says whether it was verified or claimed, every cell on a comparison page names the page it was read from and the date, and the proof's two oldest evasions are measured moving rather than declared fixed.
+
+**Check before upgrading.**
+
+- The configuration is strict: an unknown or misspelled key refuses startup and names it (with the nearest known key). A config that loaded on 0.14.0 with a typo will not load on 0.15.0 until the typo is fixed — the refusal says which key.
+- `GET /health` on both ports answers one shape: `{ status, version, uptime_seconds, driver, checks: { storage, rules_store, migrations }, trace_count, storage, judge, mode }`, and returns 503 when any check fails. A monitor that parsed the old body must read `status` and `checks`.
+- When the native SQLite module cannot load, Iris now falls back to Node's built-in SQLite on Node 22.13+ with one warning on stderr, instead of failing to start. Set `IRIS_SQLITE_DRIVER=native` to keep the old failure, or `node` to choose the built-in on purpose. `--self-test` and `/health` name the driver in use.
+- The MCP rate limiter can key by API key (`security.rateLimit.mcpKeyBy: 'apiKey'`); the default stays `ip`.
+- A tripped `ingest --fail-on` receipt carries `spans` — the tripping rule's label and offsets, never the text. A parser that rejects unknown receipt fields must accept it.
+- Migration 012 adds the `datasets` and `dataset_cases` tables on first start; it applies once, beside 001–011, and is recorded like every other.
+- The compare pages moved to one route rendered from data; every `/compare/<vendor>` URL is unchanged, six are new, and their vendor-specific extra rows are gone.
+
+### Added
+
 - **The deploy-gate walk-through is rows, and the ingest receipt names the span of what tripped.** `docs/ci-gate.md` walks the four steps the person who gates deploys takes — the refusal without a key, `eval.requiredEvidence`, an `action_policy` at severity high, `ingest --fail-on detector_veto --dataset release-gate` — and each is graded on its outcome twice: on every CI run (`tests/integration/deploy-gate-walkthrough.test.ts`) and against the published package by the stranger harness (`--phase gate`, rows H-G1 to H-G4). A tripped receipt now carries `spans` — the tripping rules' span evidence as rule, label, source and offsets, never the text.
 - **The compare pages are data, and every cell about another product has a source and a date.** `website/src/lib/compare/<vendor>.json` carries the vendor's side of the same twelve features on every page, each cell with the vendor's own page as its source, a verbatim quote and the date it was read; the Iris side lives once in `website/src/lib/compare/iris.ts` with its counts read from the truthbase. One dynamic page renders all of them; six comparisons are new (Promptfoo, Galileo, Opik, Weave, Judgment Labs, Latitude) beside the eight that existed, whose cells were re-read against their sources. Winner marks are stated on the page as Iris's own call, not a measurement. `tests/compare-contract.test.ts` locks the files to the schema, the sources and the dates. The compare index carries the one sentence that separates Iris from tools that test MCP servers.
 - **The release narrative is rendered from the changelog.** `website/scripts/render-changelog.mjs` writes `website/src/lib/changelog.generated.json` from `CHANGELOG.md` — the current release whole (lead, paragraphs, every entry) and one line per earlier release — and `/releases` on the site renders it; the nav banner links there. `npm run changelog:check` runs in CI beside the other rendered surfaces, and `tests/release-narrative.test.ts` locks the render to the truthbase's current version and headline.

@@ -2,7 +2,7 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
-Current release: v0.14.0 (2026-09-20) — The dashboard is a product.
+Current release: v0.15.0 (2026-09-21) — Reach, honestly.
 
 ## What Iris is
 
