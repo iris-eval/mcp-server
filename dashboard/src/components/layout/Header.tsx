@@ -20,6 +20,7 @@ import { CommandPaletteTrigger } from '../command/CommandPaletteTrigger';
 import { NotificationsPopover } from './NotificationsPopover';
 import { AccountMenu } from './AccountMenu';
 import { resolveRouteMeta } from './routeTitles';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const styles = {
   header: {
@@ -32,6 +33,23 @@ const styles = {
     background: 'var(--bg-base)',
     gap: 'var(--space-4)',
     flexShrink: 0,
+  } as const,
+  /*
+   * Phone width (arc 9, N-2): the title row wraps its chips onto a second
+   * line and the header grows to fit, instead of the chips and the right
+   * cluster running over each other inside a fixed height. Every chip stays
+   * visible — they carry live state a phone reader still needs.
+   */
+  headerNarrow: {
+    height: 'auto',
+    minHeight: 'var(--header-height)',
+    padding: 'var(--space-2) var(--space-3)',
+    gap: 'var(--space-2)',
+    alignItems: 'flex-start',
+  } as const,
+  titleRowNarrow: {
+    flexWrap: 'wrap',
+    rowGap: 'var(--space-1)',
   } as const,
   titleBlock: {
     display: 'flex',
@@ -66,6 +84,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--space-2)',
+    flexShrink: 0,
   } as const,
 };
 
@@ -83,6 +102,7 @@ export function Header() {
   const capabilities = useCapabilities();
   const connection = useConnection();
   const visible = useDocumentVisible();
+  const narrow = useMediaQuery('(max-width: 767px)');
   const status = shellStatus({
     connection: connection.state,
     visible,
@@ -92,9 +112,9 @@ export function Header() {
   });
 
   return (
-    <header style={styles.header}>
+    <header style={narrow ? { ...styles.header, ...styles.headerNarrow } : styles.header} data-header-layout={narrow ? 'narrow' : 'wide'}>
       <div style={styles.titleBlock}>
-        <div style={styles.titleRow}>
+        <div style={narrow ? { ...styles.titleRow, ...styles.titleRowNarrow } : styles.titleRow}>
           <h1 style={styles.title}>{meta?.title ?? 'Iris'}</h1>
           <StatusPill status={status} />
           <JudgeChip health={health.data} capabilities={capabilities.data} />
