@@ -39,6 +39,7 @@ export const PAGE_LAST_MODIFIED = {
   "/pricing": "2026-09-03",
   "/privacy": "2026-09-07",
   "/proof": "2026-09-05",
+  "/releases": "2026-09-20",
   "/security": "2026-09-04",
   "/terms": "2026-09-03",
 } as const;
