@@ -48,8 +48,20 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     const type = String(req.headers['content-type'] ?? '').toLowerCase();
     let payload: unknown;
     if (type.includes('application/x-protobuf')) {
+      /*
+       * express.raw hands the decoder a Buffer; anything else here is a
+       * request with no body (the parser did not run) or a tampered one,
+       * and is refused as such rather than decoded as an empty message.
+       * The typeof / Array.isArray checks are the type-tampering guard
+       * CodeQL reads (js/type-confusion-through-parameter-tampering).
+       */
+      const body: unknown = req.body;
+      if (typeof body === 'string' || Array.isArray(body) || !Buffer.isBuffer(body) || body.length === 0) {
+        res.status(400).json({ error: 'An application/x-protobuf request must carry the bytes of an ExportTraceServiceRequest; the body was empty or not bytes' });
+        return;
+      }
       try {
-        payload = decodeExportTraceServiceRequest(req.body instanceof Uint8Array ? req.body : new Uint8Array());
+        payload = decodeExportTraceServiceRequest(body);
       } catch (err) {
         const message = err instanceof OtlpProtobufError ? err.message : err instanceof Error ? err.message : String(err);
         res.status(400).json({ error: `Not a protobuf ExportTraceServiceRequest: ${message}` });

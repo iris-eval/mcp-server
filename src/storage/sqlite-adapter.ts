@@ -19,7 +19,7 @@
  *   - DELETE operations scope to the tenant — a tenant can only delete
  *     its own data.
  */
-import { openDriver, type Driver, type DriverName } from './driver.js';
+import { openDriver, isBusyError, type Driver, type DriverName } from './driver.js';
 import { resolveCaseKey } from '../eval/case-key.js';
 
 /** How long a statement waits on another connection's lock before SQLITE_BUSY — on the connection and as the pragma, one number. */
@@ -199,9 +199,42 @@ export class SqliteAdapter implements IStorageAdapter {
     return migrationState(this.db);
   }
 
+  /**
+   * `PRAGMA journal_mode = WAL` on a cold file upgrades the connection's
+   * SHARED lock to EXCLUSIVE, and SQLite does not run the busy handler on
+   * that upgrade — two connections each holding SHARED and each waiting
+   * for the other to let go would never return — so it answers
+   * SQLITE_BUSY at once. Two processes opening one cold file at the same
+   * instant therefore still lost one of them on this statement, whatever
+   * `busy_timeout` said: the 0.14.0 fix (the timeout set before the
+   * switch, see the constructor) covers a plain wait, never this upgrade.
+   * Found by arc 9's N-10 CI run, on the Node 22 built-in driver. The
+   * wait is done here instead: retry on BUSY with a short backoff inside
+   * the same budget. Once either process is through, the file is WAL and
+   * the pragma is a read. An error that is not BUSY is thrown as it came.
+   */
+  private async switchToWal(): Promise<void> {
+    const deadline = Date.now() + BUSY_TIMEOUT_MS;
+    for (let delay = 5; ; delay = Math.min(delay * 2, 200)) {
+      try {
+        this.db.pragma('journal_mode = WAL');
+        return;
+      } catch (err) {
+        if (!isBusyError(err) || Date.now() >= deadline) throw err;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
   async initialize(): Promise<void> {
     this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
-    this.db.pragma('journal_mode = WAL');
+    try {
+      await this.switchToWal();
+    } catch (err) {
+      // The same rule as a refused migration below: a failed boot must not leak the handle.
+      this.db.close();
+      throw err;
+    }
     this.db.pragma('foreign_keys = ON');
     /*
      * secure_delete overwrites freed content with zeros instead of leaving

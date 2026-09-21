@@ -255,3 +255,16 @@ export function openDriver(path: string, options: OpenOptions = {}): Driver {
   }
   return nativeDriver(Database, path, options);
 }
+
+/**
+ * SQLITE_BUSY as each driver throws it: better-sqlite3 sets `code:
+ * 'SQLITE_BUSY'`; node:sqlite sets `code: 'ERR_SQLITE_ERROR'` with
+ * `errcode: 5` and the message "database is locked". SQLITE_LOCKED (6,
+ * "database table is locked") is a different condition and is not this.
+ */
+export function isBusyError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: unknown; errcode?: unknown; message?: unknown };
+  if (e.code === 'SQLITE_BUSY' || e.errcode === 5) return true;
+  return typeof e.message === 'string' && /\bdatabase is locked\b/.test(e.message);
+}
