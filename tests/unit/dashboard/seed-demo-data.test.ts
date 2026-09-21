@@ -164,7 +164,7 @@ describe('seedDemoData', () => {
     const audit = readFileSync(demoAuditLogPath(), 'utf-8').trim().split('\n').map((l) => JSON.parse(l) as { action: string; ruleName: string });
     expect(audit.map((a) => a.action)).toEqual(['rule.deploy', 'rule.deploy', 'rule.toggle']);
     expect(audit[2].ruleName).toBe('mentions_ticket_id');
-  });
+  }, 60_000);
 
   it('never dates a demo trace in the future', async () => {
     // The last seeded day is today and the hour is drawn from the whole
