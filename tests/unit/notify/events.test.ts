@@ -65,13 +65,13 @@ describe('momentsOf', () => {
     const s = await store();
     const vetoed = await stored(
       s,
-      { run_id: 'nightly-1', case_key: 'refund' },
+      { run_id: 'nightly-1', case_key: 'refund', session_id: 'sess-1' },
       { passed: false, score: 0.3, rule_results: [rule('no_pii', false), rule('min_output_length', true)], critical_failures: ['no_pii'], verdict: verdict('fail', 'detector_veto', ['no_pii']) },
     );
     const moments = await momentsOf(s, LOCAL_TENANT, vetoed, ALL);
     expect(moments.map((m) => m.event)).toEqual(['verdict_fail', 'detector_veto']);
     const [fail, veto] = moments;
-    expect(fail).toMatchObject({ subject: 'no_pii', evaluation_id: vetoed.id, trace_id: vetoed.trace_id, agent_name: 'support-bot', run_id: 'nightly-1', case_key: 'refund', failed_rules: ['no_pii'], critical_failures: ['no_pii'], score: 0.3 });
+    expect(fail).toMatchObject({ subject: 'no_pii', evaluation_id: vetoed.id, trace_id: vetoed.trace_id, agent_name: 'support-bot', run_id: 'nightly-1', case_key: 'refund', session_id: 'sess-1', failed_rules: ['no_pii'], critical_failures: ['no_pii'], score: 0.3 });
     expect(fail.summary).toBe('support-bot: the verdict failed on detector veto — no_pii.');
     expect(veto.summary).toBe('support-bot: a critical detection vetoed the verdict — no_pii.');
     expect(veto.detail).toEqual({ by: ['no_pii'], critical_failures: ['no_pii'] });
@@ -90,7 +90,7 @@ describe('momentsOf', () => {
     const s = await store();
     const legacy = await stored(s, {}, { passed: false, verdict: undefined });
     const [m] = await momentsOf(s, LOCAL_TENANT, legacy, ALL);
-    expect(m).toMatchObject({ event: 'verdict_fail', verdict: null, subject: 'verdict' });
+    expect(m).toMatchObject({ event: 'verdict_fail', verdict: null, subject: 'verdict', session_id: null });
   });
 
   it('the cost_anomaly rule firing is cost_anomaly with the cost, the modified z and the threshold', async () => {

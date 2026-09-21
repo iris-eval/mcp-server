@@ -73,6 +73,7 @@ x-iris-event: detector_veto
     "agent_name": "support-bot",
     "run_id": "nightly-42",
     "case_key": "refund-policy",
+    "session_id": "conv-42",
     "evaluated_at": "2026-09-21T12:00:00.000Z",
     "verdict": { "state": "fail", "basis": "detector_veto", "by": ["no_pii"] },
     "score": 0.4,

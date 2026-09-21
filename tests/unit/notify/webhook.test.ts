@@ -22,6 +22,7 @@ const moment = (over: Partial<WebhookMoment> = {}): WebhookMoment => ({
   agent_name: 'support-bot',
   run_id: 'nightly-1',
   case_key: 'refund-policy',
+  session_id: 'sess-1',
   evaluated_at: '2026-09-21T12:00:00.000Z',
   verdict: { state: 'fail', basis: 'detector_veto', by: ['no_pii'] },
   score: 0.4,

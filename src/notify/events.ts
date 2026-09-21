@@ -32,6 +32,8 @@ export interface WebhookMoment {
   agent_name: string | null;
   run_id: string | null;
   case_key: string | null;
+  /** The conversation the trace belongs to (arc 9, N-15), when it carries one. */
+  session_id: string | null;
   /** When the evaluation was stored (ISO-8601). */
   evaluated_at: string;
   verdict: { state: 'pass' | 'fail' | 'unknown'; basis: string; by: string[] } | null;
@@ -68,6 +70,7 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
     agent_name: agent,
     run_id: result.run_id ?? trace?.run_id ?? null,
     case_key: trace?.case_key ?? null,
+    session_id: trace?.session_id ?? null,
     evaluated_at: result.created_at ?? new Date().toISOString(),
     verdict,
     score: result.score,
