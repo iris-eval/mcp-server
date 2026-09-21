@@ -448,6 +448,17 @@ describe('docs contract — the composer is described as shipped', () => {
       if (!byBundle.get(cat.toLowerCase())?.has(rule)) wrong.push(`SKILL.template.md: ${rule} is not in the ${cat.toLowerCase()} bundle`);
     }
     const arch = read('docs/architecture.md');
+    /*
+     * The architecture guide's data-flow step said `passed` "requires the
+     * score to meet the configured threshold AND no critical rule to have
+     * failed" — the pre-0.10.0 rule — four minors after the composer
+     * replaced it, while the same file's verdict section described the
+     * composer correctly (found by the 0.14.0 distribution audit). The
+     * retired sentence must not come back, and the step must say what
+     * decides `passed` now.
+     */
+    expect(arch).not.toMatch(/requires the score to meet the configured threshold/);
+    expect(arch).toMatch(/`passed` is the verdict/);
     const archRows = [...arch.matchAll(/^\| `(completeness|relevance|safety|cost)`\s*\| ((?:`[a-z_]+`(?:, )?)+)/gm)];
     expect(archRows.length, 'architecture guide bundle rows').toBe(4);
     for (const [, cat, list] of archRows) {

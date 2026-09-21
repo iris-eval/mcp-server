@@ -76,7 +76,7 @@ MCP Client                    Iris MCP Server    EvalEngine        SqliteAdapter
     |                              |                 | rule.evaluate()   |
     |                              |                 |   (per rule)      |
     |                              |                 | weighted average  |
-    |                              |                 | pass/fail check   |
+    |                              |                 | verdict by kind   |
     |                              |<-- EvalResult --|                   |
     |                              |                                     |
     |                              |-- insertEvalResult(result) -------->|
@@ -89,7 +89,7 @@ MCP Client                    Iris MCP Server    EvalEngine        SqliteAdapter
 1. The MCP client calls `evaluate_output` with the output text, eval type, and optionally the original input, expected output, cost, token usage, and custom rules.
 2. The `EvalEngine` selects the appropriate rule set (or builds custom rules from definitions).
 3. Each rule runs independently, returning a `{ passed, score, message }` result.
-4. A weighted average score is computed. `passed` requires the score to meet the configured threshold (default: 0.7) AND no critical rule to have failed — a failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`, or a deployed rule with severity high/critical) forces `passed: false` regardless of the weighted score.
+4. A weighted average `score` is computed as a quality gradient, and the verdict is composed by kind (`src/eval/compose.ts`): a policy you configured or a paid-for judgment gates, a critical detection or inference vetoes (`no_pii`, `no_injection_patterns`, `no_blocklist_words` by default, or a deployed rule with severity high/critical), a critical rule that was asked and could not answer makes the verdict `unknown`, and everything else with a published error rate becomes one risk probability against your loss threshold. `passed` is the verdict — `verdict.state === 'pass'` — and the score is never consulted for it; `eval.defaultThreshold` governs only the gradient. See "Scoring and the verdict" below.
 5. The result is persisted to `eval_results` and returned to the client.
 
 ### Dashboard data flow
