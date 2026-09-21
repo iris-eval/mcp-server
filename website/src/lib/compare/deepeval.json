@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "deepeval test run collects and runs your eval files the same way pytest would.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "pip install -U deepeval",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
       "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
       "quote": "deepeval offers 50+ SOTA, ready-to-use metrics for you to quickly get started with.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/evaluation-llm-tracing",
       "quote": "cost_per_input_token, cost_per_output_token (decorator); input_token_count, output_token_count via update_llm_span",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/evaluation-mcp",
       "quote": "The MCPServer class is an abstraction provided by deepeval to contain information about different MCP servers and the primitives they provide.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/confident-ai/deepeval/blob/main/LICENSE.md",
       "quote": "Apache License Version 2.0, January 2004",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval",
       "quote": "The team behind Confident AI created and maintains DeepEval.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "Confident AI is free and allows you to keep all evaluation results on the cloud.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://deepeval.com/integrations",
       "quote": "Framework integrations let DeepEval evaluate entire execution traces without manually instrumenting every intermediate step.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://deepeval.com/docs/evaluation-prompts",
       "quote": "Prompts work entirely locally from files or code.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/pricing",
       "quote": "Dedicated On-Prem Deployment",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -223,5 +235,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

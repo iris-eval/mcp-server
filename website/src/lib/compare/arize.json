@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/Arize-ai/phoenix",
       "quote": "built on top of OpenTelemetry and is vendor, language, and framework agnostic",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/phoenix/self-hosting/configuration",
       "quote": "If URL is not specified, by default Phoenix starts with a file-based SQLite database in a temporary folder.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://arize.com/docs/phoenix/tracing/llm-traces-1",
       "quote": "the OpenInference CrewAI auto-instrumentation package, which handles tracing for us without requiring manual instrumentation.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/ax",
       "quote": "Evaluate agent performance with LLM-as-a-Judge, agent-as-a-judge, or code evaluators.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking",
       "quote": "The costs are calculated from token counts and model pricing data, then rolled up to the trace and project level for comprehensive cost analysis.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/js/packages/phoenix-mcp/README.md",
       "quote": "Phoenix MCP Server is an implementation of the Model Context Protocol for the Arize Phoenix platform. It provides a unified interface to Phoenix's capabilities.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/LICENSE",
       "quote": "You may not provide the software to third parties as a hosted or managed service, where the service provides users with access to any substantial set of the features or functionality of the software.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://arize.com/blog/a-new-chapter-with-dynatrace/",
       "quote": "Today we are announcing the signing of a definitive agreement for the acquisition of Arize by Dynatrace to accelerate that proposition.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/ax/observe/dashboards",
       "quote": "Two ways to get started: pick a pre-configured template or start with a blank dashboard.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/",
       "quote": "Arize integrates with 40+ models, frameworks, and AI tools",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/docs/ax/concepts/prompts/optimizing-prompts",
       "quote": "Every iteration is committed back to the Prompt Hub as a new version, so the optimization history is auditable and the winner is deployable like any other version.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/pricing/",
       "quote": "Organization and space RBAC",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -246,5 +258,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

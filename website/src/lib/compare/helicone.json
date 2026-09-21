@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.helicone.ai/getting-started/quick-start",
       "quote": "Use the familiar OpenAI SDK to access 100+ LLM models across OpenAI, Anthropic, Google, and more with automatic logging, observability, and fallbacks built in.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/getting-started/self-host/docker",
       "quote": "docker run -d --name helicone -p 3000:3000 -p 8585:8585 -p 9080:9080 helicone/helicone-all-in-one:latest",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/Helicone/ai-gateway",
       "quote": "P95 Latency: <5ms",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/scores",
       "quote": "Helicone doesn't run evaluations for you - we're not an evaluation framework.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/custom-properties",
       "quote": "Calculate cost per user, conversation, or feature to understand your application's profitability",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/integrations/tools/mcp",
       "quote": "debug errors, search logs, analyze performance, and examine request/response bodies without leaving your AI assistant",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/Helicone/helicone",
       "quote": "Apache-2.0",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.helicone.ai/blog/joining-mintlify",
       "quote": "Helicone has been acquired by Mintlify, and our team will be joining them in San Francisco.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.helicone.ai/",
       "quote": "The world's fastest-growing AI companies rely on Helicone to route, debug, and analyze their applications.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.helicone.ai/gateway/integrations/overview",
       "quote": "Integrate Helicone AI Gateway with popular frameworks and tools to access 100+ LLM providers with top tier observability",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/prompts/overview",
       "quote": "Track every change, compare versions, and rollback instantly if something goes wrong.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.helicone.ai/pricing",
       "quote": "SOC-2 & HIPAA compliance",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -232,5 +244,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

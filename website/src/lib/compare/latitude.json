@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.latitude.so/telemetry/start-tracing.md",
       "quote": "Install @latitude-data/telemetry and instrument TypeScript or JavaScript apps.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.latitude.so/deployment/overview",
       "quote": "five application services (web, api, ingest, workers, workflows) backed by Postgres (+ pgvector), ClickHouse, Redis, Temporal, and an object store",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://latitude.so/",
       "quote": "Drop in our sdk or point your existing Open Telemetry pipeline at Latitude",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.latitude.so/evaluations/detection-methods.md",
       "quote": "An LLM reads each session and decides",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.latitude.so/observability/features/token-cost-tracking.md",
       "quote": "Cost values are estimates based on the usage and model/provider information available in telemetry.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.latitude.so/getting-started/mcp.md",
       "quote": "The Latitude MCP is a remote, OAuth-authenticated, streamable HTTP Model Context Protocol server",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://raw.githubusercontent.com/latitude-dev/latitude-llm/development/LICENSE",
       "quote": "MIT License Copyright (c) 2026 Latitude Data SL",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://latitude.so/privacy",
       "quote": "LATITUDE DATA, S.L.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.latitude.so/getting-started/introduction.md",
       "quote": "where spend goes, what caching saves, and cost per session in the Cost view",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://github.com/latitude-dev/latitude-llm",
       "quote": "Telemetry works out of the box with most model providers and frameworks (OpenAI, Anthropic, Bedrock, Vercel AI SDK, LangChain, and more), plus any OTEL-compatible application.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "neither",
       "sourceUrl": "https://latitude.so/",
       "quote": "Not stated: The current docs index (docs.latitude.so/llms.txt) has no prompt-manager or prompt-versioning section and the introduction page does not mention prompts. Older URLs that web search still lists (docs.latitude.so/guides/prompt-manager/version-control, docs.latitude.so/guides/prompt-manager/overview) returned 404 on 2026-09-21, as did the changelog. Do not publish a prompt-management claim either way.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": null
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.latitude.so/security/compliance/soc2.md",
       "quote": "Latitude is SOC II certified as part of its security and compliance program.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -247,5 +259,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://langfuse.com/docs/observability/sdk/python/decorators",
       "quote": "The observe decorator is an easy way to automatically capture inputs, outputs, timings, and errors of a wrapped function without modifying the function's internal logic.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "neither",
       "sourceUrl": "https://langfuse.com/self-hosting",
       "quote": "Clickhouse: High-performance OLAP database which stores traces, observations, and scores.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://langfuse.com/docs/observability/sdk/python/decorators",
       "quote": "As the Langfuse SDKs are asynchronous, they buffer observations in the background.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://langfuse.com/docs/evaluation/overview",
       "quote": "a variety of different evaluation metrics like model-based evaluations (LLM-as-a-Judge), human annotations or fully custom evaluation workflows via API/SDKs.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://langfuse.com/docs/model-usage-and-cost",
       "quote": "Langfuse tracks the usage and cost of every LLM call in your application, so you can monitor spend across models, use cases, and over time.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://langfuse.com/changelog/2026-05-29-mcp-update",
       "quote": "investigate a production issue, pull the relevant observation details, compare metrics, create or update scores, add comments for the team, or prepare dataset items for regression testing.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/langfuse/langfuse",
       "quote": "This repository is MIT licensed, except for the `ee` folders.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://langfuse.com/blog/joining-clickhouse",
       "quote": "ClickHouse has acquired Langfuse.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://langfuse.com/docs/metrics/features/custom-dashboards",
       "quote": "Group by user, model, time, trace name, etc.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://langfuse.com/docs",
       "quote": "Capture traces via our native SDKs for Python/JS, 100+ library/framework integrations, OpenTelemetry, or via an LLM Gateway such as LiteLLM.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://langfuse.com/docs/prompt-management/overview",
       "quote": "Use version control and labels to manage deployments across environments",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://langfuse.com/security",
       "quote": "covered by SOC 2 Type II and ISO 27001 audits, and undergoes annual third-party penetration tests",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -212,5 +224,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

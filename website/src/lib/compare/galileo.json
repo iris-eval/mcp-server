@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
       "quote": "You can decorate or wrap functions with the log decorator to have spans created automatically.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "iris",
       "sourceUrl": "https://galileo.ai/pricing",
       "quote": "Deploy: Hosted, VPC, or on-prem",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
       "quote": "Galileo's third-party SDK integrations automatically capture prompts, responses, and performance metrics without requiring you to add explicit logging code throughout your application.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/concepts/metrics/overview",
       "quote": "You can then expand these metrics with custom metrics, using LLM-as-a-judge, or custom code-based metrics.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/concepts/experiments/compare",
       "quote": "Galileo allows you to compare up to five different experiments, showing the difference in outputs, metrics, latency, and token usage.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/getting-started/mcp/setup-galileo-mcp",
       "quote": "The Galileo MCP server works with both Cursor and VS Code.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://raw.githubusercontent.com/rungalileo/galileo-python/main/LICENSE",
       "quote": "Apache License Version 2.0, January 2004",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.galileo.ai/",
       "quote": "As of August 7, 2026, Galileo is now Splunk Agent Observability.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/getting-started/quickstart",
       "quote": "Open the Log stream for your project in the Galileo console using the URL output to your terminal.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
       "quote": "Automatically log all the steps in your LangChain or LangGraph application with the Galileo callback.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/experiments/prompts",
       "quote": "Prompts in Galileo allow you to create, store, and reuse LLM prompts across your experiments.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://galileo.ai/trust-security",
       "quote": "We maintain SOC 2 Type II certification, demonstrating our commitment to security, availability, processing integrity, confidentiality, and privacy controls.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -237,5 +249,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }
