@@ -89,7 +89,7 @@ Returns `201` with the stored `trace_id` and the evaluation result (in `--demo` 
 /plugin install iris-eval-capture@iris-eval
 ```
 
-A second, separately installed plugin: three hooks record each turn's prompt, tool calls and final answer and hand them to `iris-eval ingest`, detached, with critical spans redacted in the stored evaluation text — capture that does not depend on the model deciding to call a tool. It never logs a turn the model already logged, never prints, never blocks, never sends anything anywhere. Installing `iris-eval` alone changes nothing about your turn loop. Limits and removal: [claude-plugin-capture/README.md](claude-plugin-capture/README.md).
+A second, separately installed plugin: three hooks record each turn's prompt, tool calls and final answer and hand them to `iris-eval ingest`, detached, with critical spans redacted in the stored evaluation text — capture that does not depend on the model deciding to call a tool. It never logs a turn the model already logged, never prints, never blocks, never sends anything anywhere. Installing `iris-eval` alone changes nothing about your turn loop. Limits and removal: [claude-plugin-capture/README.md](https://github.com/iris-eval/mcp-server/blob/main/claude-plugin-capture/README.md).
 
 ### A CI gate, no server needed
 
@@ -97,11 +97,11 @@ A second, separately installed plugin: three hooks record each turn's prompt, to
 npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on detector_veto
 ```
 
-A fourth door (0.15.0): `POST /v1/traces` on the dashboard port takes the OTLP/HTTP JSON your OpenTelemetry instrumentation already emits, and each OTLP trace becomes an Iris trace with its spans — [docs/otel-integration.md](docs/otel-integration.md#traces-arrive-by-otlp). `ingest` reads one JSON trace (or NDJSON, one per line) from stdin or a file, stores it, evaluates it under exactly the rules `evaluate_output` runs, prints one JSON line per trace with the verdict and its basis, and exits 1 when a verdict matches `--fail-on`. `--dataset <id|label>` restricts that gate to the case keys in a dataset (`POST /api/v1/datasets` promotes a run's case keys into one), so a job fails only on the cases you chose. The full recipe, the exit codes and the eight bases are in [docs/ci-gate.md](docs/ci-gate.md).
+A fourth door (0.15.0): `POST /v1/traces` on the dashboard port takes the OTLP/HTTP JSON your OpenTelemetry instrumentation already emits, and each OTLP trace becomes an Iris trace with its spans — [docs/otel-integration.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-integration.md#traces-arrive-by-otlp). `ingest` reads one JSON trace (or NDJSON, one per line) from stdin or a file, stores it, evaluates it under exactly the rules `evaluate_output` runs, prints one JSON line per trace with the verdict and its basis, and exits 1 when a verdict matches `--fail-on`. `--dataset <id|label>` restricts that gate to the case keys in a dataset (`POST /api/v1/datasets` promotes a run's case keys into one), so a job fails only on the cases you chose. The full recipe, the exit codes and the eight bases are in [docs/ci-gate.md](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md).
 
 ### Write a rule as code
 
-`eval.plugins` in `config.json` loads rules you wrote — an ES module whose default export is `{ name, kind, mechanism, version, needs, evaluate(ctx) }` — pinned by the sha256 of the file, so a file that changed since you pinned it refuses startup rather than running. A loaded plugin fires like a built-in and shows on `list_rules` under `plugins`. The contract, the hash recipe and what a plugin may return: [docs/plugins.md](docs/plugins.md).
+`eval.plugins` in `config.json` loads rules you wrote — an ES module whose default export is `{ name, kind, mechanism, version, needs, evaluate(ctx) }` — pinned by the sha256 of the file, so a file that changed since you pinned it refuses startup rather than running. A loaded plugin fires like a built-in and shows on `list_rules` under `plugins`. The contract, the hash recipe and what a plugin may return: [docs/plugins.md](https://github.com/iris-eval/mcp-server/blob/main/docs/plugins.md).
 
 ### Use the engine in your own process
 
