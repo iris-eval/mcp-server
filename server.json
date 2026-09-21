@@ -45,6 +45,13 @@
           "name": "IRIS_DB_PATH"
         },
         {
+          "description": "Which SQLite driver holds the database: native (better-sqlite3, the default) or node (Node's built-in node:sqlite, Node 22.13+). Unset: native, falling back to node when the native module cannot load",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_SQLITE_DRIVER"
+        },
+        {
           "description": "Log level: debug, info, warn, error",
           "isRequired": false,
           "format": "string",

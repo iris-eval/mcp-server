@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 /*
  * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
@@ -15,7 +15,7 @@ import type Database from 'better-sqlite3';
  */
 export const id = '011-verdict-labels';
 
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS verdict_labels (
       id TEXT PRIMARY KEY,

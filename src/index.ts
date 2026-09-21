@@ -199,6 +199,8 @@ Environment variables (CLI flags take precedence):
   IRIS_HOME                            Directory for all per-user files: config.json, iris.db, custom-rules.json,
                                        audit.log, preferences.json (default: ~/.iris)
   IRIS_DB_PATH                         SQLite database path (overrides IRIS_HOME for the DB only)
+  IRIS_SQLITE_DRIVER                   native (better-sqlite3, default) | node (Node's built-in node:sqlite, 22.13+).
+                                       Unset: native, falling back to node when the native module cannot load
   IRIS_LOG_LEVEL                       debug | info | warn | error
   IRIS_DASHBOARD                       true/1/yes/on enables the web dashboard; false/0/no/off disables it (overrides config.json)
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)

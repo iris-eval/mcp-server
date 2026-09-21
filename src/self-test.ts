@@ -40,7 +40,7 @@ import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import type { Server } from 'node:http';
-import Database from 'better-sqlite3';
+import { openDriver, type Driver } from './storage/driver.js';
 import { ensureIrisDirectory, loadConfig } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
 import { createStorage } from './storage/index.js';
@@ -181,9 +181,9 @@ export function probeConfiguredHome(home: string, dbPath: string): string {
   if (!existsSync(dbPath)) {
     return `${home} (database ${dbPath} will be created on first run)`;
   }
-  let db: Database.Database | undefined;
+  let db: Driver | undefined;
   try {
-    db = new Database(dbPath, { fileMustExist: true });
+    db = openDriver(dbPath, { fileMustExist: true });
     db.exec('BEGIN IMMEDIATE');
     db.exec('ROLLBACK');
   } catch (err) {
@@ -331,7 +331,8 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     await storage.initialize();
     // One engine for all three evals, exactly as createIrisServer builds it.
     evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
-    return config.storage.path;
+    // Which driver holds the file (arc 8, R-0): the native addon, or the built-in it fell back to.
+    return `${config.storage.path} (driver ${storage.driver})`;
   });
 
   await step(SELF_TEST_STEPS.trace, async () => {

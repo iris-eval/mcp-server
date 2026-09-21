@@ -216,7 +216,7 @@ dashboard/              React SPA (separate Vite build)
 
 1. `index.ts` parses CLI args with `node:util.parseArgs`.
 2. `loadConfig()` reads `~/.iris/config.json` and validates it against a strict schema (`src/config/schema.ts`) — a key Iris does not read, or a value of the wrong type, refuses startup naming it — then layers the file, the `IRIS_*` env vars and the CLI args over the defaults, in that order.
-3. `createStorage()` instantiates `SqliteAdapter`, which calls `initialize()` to enable WAL mode, turn on foreign keys, and run pending migrations.
+3. `createStorage()` instantiates `SqliteAdapter`, which opens the file through the driver seam (`src/storage/driver.ts`: `better-sqlite3` by default, Node's built-in `node:sqlite` when chosen with `IRIS_SQLITE_DRIVER=node` or when the native module cannot load) and calls `initialize()` to set the busy timeout, enable WAL mode, turn on foreign keys and run pending migrations — every migration is typed on the seam, not on a driver.
 4. `createIrisServer()` creates the MCP `McpServer` instance, instantiates `EvalEngine` with the configured threshold, and registers all tools and resources.
 5. Based on `config.transport.type`:
    - **stdio**: Creates `StdioServerTransport` and connects.

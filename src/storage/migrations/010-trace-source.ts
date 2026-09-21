@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 /*
  * Which door a trace came through: tool | http | cli | hook | otel. The
@@ -8,7 +8,7 @@ import type Database from 'better-sqlite3';
  */
 export const id = '010-trace-source';
 
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     ALTER TABLE traces ADD COLUMN source TEXT;
   `);
