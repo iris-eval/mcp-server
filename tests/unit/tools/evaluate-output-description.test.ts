@@ -61,14 +61,18 @@ describe('evaluate_output description — relevance inputs', () => {
   });
 
   it('matches what the relevance rules actually do', () => {
-    // Every relevance rule skips without input, and none reads expected.
+    // Every relevance rule skips without input, and none reads expected. Given the input — and, for
+    // tool_choice, the trajectory and the catalogue it also declares — every one judges.
+    const tools = [{ name: 'get_weather', description: 'Today\'s weather for a city', inputSchema: { type: 'object', properties: { city: { type: 'string' } } } }];
     for (const rule of relevanceRules) {
-      const withoutInput = rule.evaluate({ output: 'a long enough output about weather today', expected: 'weather' });
+      const withoutInput = rule.evaluate({ output: 'a long enough output about weather today', expected: 'weather', toolCalls: [{ tool_name: 'get_weather', input: { city: 'Lisbon' }, output: 'sunny' }], tools });
       expect(withoutInput.skipped, rule.name).toBe(true);
       expect(withoutInput.skipReason, rule.name).toContain('input');
+      const needsTrajectory = rule.needs?.includes('tool_calls') ?? false;
       const withInput = rule.evaluate({
         output: 'The weather today is sunny and warm with clear skies',
-        input: 'What is the weather today?',
+        input: 'What is the weather today in Lisbon?',
+        ...(needsTrajectory ? { toolCalls: [{ tool_name: 'get_weather', input: { city: 'Lisbon' }, output: 'sunny' }], tools } : {}),
       });
       expect(withInput.skipped, rule.name).toBeUndefined();
     }

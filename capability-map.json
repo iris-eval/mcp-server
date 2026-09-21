@@ -392,12 +392,21 @@
       "id": "Q3xS3",
       "question": "Q3",
       "subject": "S3",
-      "status": "gap",
-      "summary": "No completeness rule reads the trajectory to see which parts of the ask were acted on.",
-      "evidence": [],
+      "status": "has",
+      "summary": "The trajectory against the one the caller expected: tool_sequence compares the calls made with expected_trajectory.tool_calls in a mode (strict, unordered, subset, superset, ordered_subset — the default, a two-pointer subsequence check), matching by name and, when the expectation names arguments, by exact or subset input; a policy, so it gates because the caller stated the expectation; measured with intervals. Which parts of the ASK were acted on, without an expectation to compare against, is still the judge's question.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "tool_sequence"
+        },
+        {
+          "kind": "proof",
+          "name": "tool_sequence"
+        }
+      ],
       "needs": [
-        "output",
-        "tool_calls"
+        "tool_calls",
+        "expected_trajectory"
       ]
     },
     {
@@ -474,8 +483,8 @@
       "id": "Q4xS2",
       "question": "Q4",
       "subject": "S2",
-      "status": "partial",
-      "summary": "Lexical: the share of the input's content terms the output carries, and continuity of topic across sentences, with a stated tokenizer and thresholds; a keyed helpfulness judge template exists and is unmeasured.",
+      "status": "has",
+      "summary": "Lexical, three rules: the share of the input's content terms the output carries (keyword_overlap) and continuity of topic across sentences (topic_consistency) are measurements that score; answers_the_ask is the pair as a policy with no number of its own — when both fail at their thresholds the output answers something else and the verdict fails on policy_gate at the shipped defaults, and it skips whenever either measurement skips and on a one-term ask, so a one-word right answer is never a fire. Measured on the composite corpus before it existed: no classless clean case flipped, four of eight off-task cases caught (two too short to measure, two reuse the ask's words), six stub misses caught. A keyed helpfulness judge template exists and is unmeasured.",
       "evidence": [
         {
           "kind": "rule",
@@ -484,6 +493,14 @@
         {
           "kind": "rule",
           "name": "topic_consistency"
+        },
+        {
+          "kind": "rule",
+          "name": "answers_the_ask"
+        },
+        {
+          "kind": "proof",
+          "name": "answers_the_ask"
         },
         {
           "kind": "template",
@@ -499,12 +516,22 @@
       "id": "Q4xS3",
       "question": "Q4",
       "subject": "S3",
-      "status": "gap",
-      "summary": "Nothing relates the trajectory to the ask, so a wrong tool for the question goes unjudged on every path.",
-      "evidence": [],
+      "status": "has",
+      "summary": "The wrong tool for the ask, from the catalogue valid_tool_arguments already takes: tool_choice scores the ask's content terms against each tool's name, description and input property names (the relevance tokenizer) and fires when an uncalled tool fits the ask at least 0.5 and beats the union of the tools called by at least 0.34, naming both; judged over the whole trajectory so several tools that each serve part of the ask are not wrong; a heuristic detection, so it degrades the score and never vetoes; measured with intervals. Lexical: a tool whose description never mentions the ask's words is invisible to it.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "tool_choice"
+        },
+        {
+          "kind": "proof",
+          "name": "tool_choice"
+        }
+      ],
       "needs": [
-        "output",
-        "tool_calls"
+        "input",
+        "tool_calls",
+        "tools_catalogue"
       ]
     },
     {
@@ -683,7 +710,7 @@
       "question": "Q6",
       "subject": "S3",
       "status": "has",
-      "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — still has no deterministic evaluator.",
+      "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — is judged in the on-task row (Q4×S3, tool_choice).",
       "evidence": [
         {
           "kind": "rule",
@@ -808,11 +835,15 @@
       "question": "Q7",
       "subject": "S3",
       "status": "has",
-      "summary": "A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the budget in force, advising at the shipped default and gating once a deployment sets its own, and no_tool_loop counts the repeated work inside it. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row.",
+      "summary": "A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the deployment's ceiling, advising at the shipped default and gating once a deployment sets its own; step_budget fails a task that takes more than the budget the CALLER stated for it (expected_trajectory.step_budget, or the number of expected calls) times a tolerance, and gates because the caller stated it; no_tool_loop counts the repeated work inside either. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row.",
       "evidence": [
         {
           "kind": "rule",
           "name": "max_steps"
+        },
+        {
+          "kind": "rule",
+          "name": "step_budget"
         },
         {
           "kind": "rule",
@@ -821,10 +852,15 @@
         {
           "kind": "proof",
           "name": "max_steps"
+        },
+        {
+          "kind": "proof",
+          "name": "step_budget"
         }
       ],
       "needs": [
-        "tool_calls"
+        "tool_calls",
+        "expected_trajectory"
       ]
     },
     {

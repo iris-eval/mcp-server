@@ -1,6 +1,6 @@
 {
-  "commit": "37e7a18",
-  "generatedAt": "2026-09-21T17:08:13.222Z",
+  "commit": "84f6437",
+  "generatedAt": "2026-09-21T20:00:22.156Z",
   "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
   "rows": [
     {
@@ -55,12 +55,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -116,12 +128,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -177,12 +201,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -238,8 +274,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -295,12 +343,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -356,12 +416,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -423,8 +495,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -486,12 +570,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -553,12 +649,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[1] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -620,6 +728,14 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
           "rule": "no_silent_tool_failure"
         },
@@ -642,6 +758,10 @@
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -703,12 +823,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] web_fetch) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -772,8 +904,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -842,8 +986,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -912,8 +1068,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -982,8 +1150,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1048,8 +1228,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1114,12 +1306,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1184,8 +1388,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1246,12 +1462,24 @@
           "rule": "valid_tool_arguments"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1315,6 +1543,14 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
           "rule": "no_silent_tool_failure"
         },
@@ -1337,6 +1573,10 @@
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1400,12 +1640,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1470,12 +1722,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1537,8 +1801,20 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     },
@@ -1601,12 +1877,24 @@
           "rule": "ask_coverage"
         },
         {
+          "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
+          "rule": "tool_choice"
+        },
+        {
           "reason": "the output was truncated before it was recorded (tool_calls[0] bash) — a location absent from a partial read is not evidence it was invented",
           "rule": "grounded_in_reads"
         },
         {
           "reason": "insufficient_history: 0 prior costed traces, 20 needed",
           "rule": "cost_anomaly"
+        },
+        {
+          "reason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+          "rule": "step_budget"
         }
       ]
     }

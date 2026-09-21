@@ -35,8 +35,10 @@ export const FAILURE_CLASSES: readonly FailureClassEntry[] = [
   { id: 'over_budget', text: 'The run cost more than the deployment allows, in money or tokens' },
   { id: 'format', text: 'The output fails a shape or size requirement (empty, too short, too few sentences, invalid JSON)' },
   { id: 'invalid_tool_call', text: 'A tool was called that is not in the catalogue, or with arguments its schema rejects' },
+  { id: 'wrong_trajectory', text: 'The calls made differ from the calls expected — one missing, one extra, or out of order' },
+  { id: 'wrong_tool', text: 'A tool was called that does not serve the ask when a tool in the catalogue plainly would' },
 ];
 
 export const FAILURE_CLASS_IDS: readonly FailureClass[] = FAILURE_CLASSES.map((c) => c.id);
 
-export const NEEDS: readonly Need[] = ['output', 'input', 'expected', 'tool_calls', 'tool_outputs', 'tools_catalogue', 'cost', 'tokens', 'citations'];
+export const NEEDS: readonly Need[] = ['output', 'input', 'expected', 'expected_trajectory', 'tool_calls', 'tool_outputs', 'tools_catalogue', 'cost', 'tokens', 'citations'];

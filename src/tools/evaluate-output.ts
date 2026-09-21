@@ -4,7 +4,7 @@ import type { DormantRule } from '../eval/dormant.js';
 import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
-import type { EvalType, CustomRuleDefinition } from '../types/eval.js';
+import type { EvalType, CustomRuleDefinition, ExpectedTrajectory } from '../types/eval.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { costHistoryFor } from '../eval/ingest.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
@@ -48,8 +48,18 @@ const inputSchema = {
   // default is DEFAULT_EVAL_TYPE (every bundle): an omitted argument must
   // never silently narrow the verdict to a bundle with no safety rules.
   eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('Rule bundle to apply: completeness | relevance | safety | cost | custom | all — picks which built-in rules fire. "all" runs every bundle in one call and adds a per-category breakdown. Defaults to "all" when omitted — every bundle runs, safety included, and the response carries a note saying the default ran'),
+  expected_trajectory: strictNested(
+    {
+      tool_calls: z.array(strictNested({ tool_name: z.string(), input: z.unknown().optional() }, 'an expected_trajectory.tool_calls entry')).max(500).optional(),
+      mode: z.enum(['strict', 'unordered', 'subset', 'superset', 'ordered_subset']).optional(),
+      args: z.enum(['exact', 'subset']).optional(),
+      step_budget: z.number().int().min(1).optional(),
+      tolerance: z.number().min(1).optional(),
+    },
+    'expected_trajectory',
+  ).optional().describe('What the agent was expected to DO: tool_calls [{ tool_name, input? }] with a mode (strict | unordered | subset | superset | ordered_subset, default ordered_subset) and args (exact | subset, default subset) for tool_sequence; step_budget and tolerance (default 1.5) for step_budget'),
   expected: z.string().optional().describe('Expected output for comparison — consulted only by the completeness bundle\'s expected_coverage rule; NOT used by relevance (the relevance rules compare the output against `input`)'),
-  input: z.string().optional().describe('Original input for context (the ask + any source material the agent was given) — REQUIRED when eval_type="relevance" (keyword_overlap and topic_consistency compare the output against it and skip without it); also grounds the safety bundle\'s hallucination signals'),
+  input: z.string().optional().describe('Original input for context (the ask + any source material the agent was given) — REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it); also grounds the safety bundle\'s hallucination signals'),
   trace_id: z.string().optional().describe('Link evaluation to a trace — surfaces this eval in the dashboard\'s trace drill-through and lets the tool reuse the trace\'s stored tool_calls. Must be the id of a stored trace (from log_trace / get_traces); an unknown id is rejected before anything is evaluated'),
   // .max(10): inline rules skip the deploy-time probe, and the engine runs
   // rules synchronously — without a cap, one request carrying N sandbox-
@@ -165,6 +175,7 @@ export function registerEvaluateOutputTool(
       const context = {
         output: args.output,
         expected: args.expected,
+        expectedTrajectory: args.expected_trajectory as ExpectedTrajectory | undefined,
         input: args.input,
         costUsd: args.cost_usd,
         // The agent's own cost baseline when a trace is linked (H-5): the

@@ -150,8 +150,9 @@ describe('capability map — needs are real', () => {
     tools: [{ name: 'grep', inputSchema: { type: 'object', properties: { pattern: { type: 'string' } }, required: ['pattern'] } }],
     costUsd: 0.01,
     tokenUsage: { prompt_tokens: 100, completion_tokens: 20 },
+    expectedTrajectory: { tool_calls: [{ tool_name: 'grep' }] },
   };
-  const NEED_TO_CONTEXT: Record<string, keyof typeof FULL> = { input: 'input', expected: 'expected', tool_calls: 'toolCalls', tools_catalogue: 'tools', cost: 'costUsd', tokens: 'tokenUsage' };
+  const NEED_TO_CONTEXT: Record<string, keyof typeof FULL> = { input: 'input', expected: 'expected', expected_trajectory: 'expectedTrajectory', tool_calls: 'toolCalls', tools_catalogue: 'tools', cost: 'costUsd', tokens: 'tokenUsage' };
 
   /*
    * `tool_outputs` is not a context KEY — it is a property of the tool calls

@@ -50,75 +50,10 @@ import { sentencesOf } from '../text/sentences.js';
  * `relevance` template).
  */
 
-const STOPWORDS = new Set(
-  (
-    'a an the and or nor but if then else than that this these those there here it its is are was were be been being ' +
-    'am do does did done doing have has had having will would shall should can could may might must not no yes of in on ' +
-    'at to for from by with without into onto over under about above below between among through during before after ' +
-    'again further once out off up down as so such very really just only also too either neither both each every all any ' +
-    'some few more most less least other another same own new old first second third next last one two three four five ' +
-    'ten i me my mine we us our ours you your yours he him his she her hers they them their theirs who whom whose which ' +
-    'what when where why how because while until unless since although though even ever never always often sometimes ' +
-    'usually still yet already now anywhere everywhere something anything nothing everything someone anyone everyone ' +
-    'nobody thing things way ways kind kinds sort sorts lot lots much many get gets got getting give gives gave given ' +
-    'giving take takes took taken taking make makes made making use uses used using see sees saw seen seeing know knows ' +
-    'knew known knowing think thinks thought thinking want wants wanted wanting need needs needed needing let lets tell ' +
-    'tells told telling say says said saying ask asks asked asking read reads reading look looks looked looking find ' +
-    'finds found finding show shows showed shown showing explain explains explained explaining describe describes ' +
-    'described describing summarise summarize summarises summarizes summarised summarized answer answers answered ' +
-    'answering question questions please help helps helped helping like likes liked well good bad better best right ' +
-    'wrong true false able keep keeps kept put puts go goes went gone going come comes came coming back also etc via per ' +
-    // The FORM of the deliverable, not its subject — "a one-paragraph
-    // description", "a few bullets", "a short summary", "in detail".
-    'paragraph paragraphs sentence sentences bullet bullets summary overview description brief briefly detail details ' +
-    'detailed word words line lines short long quick quickly ' +
-    // URL and domain furniture — "iris-eval.com" splits into iris, eval, com.
-    'com org net www http https'
-  ).split(' '),
-);
-
-/**
- * Light stemmer: plurals, -ing/-ed/-ly, -ation/-ator/-ate/-ion, a trailing
- * e, and a doubled final consonant. Crude on purpose (see the header):
- * both sides are stemmed identically.
- */
-export function stemTerm(word: string): string {
-  let w = word;
-  if (w.length <= 3) return w;
-  if (w.endsWith('ies')) w = w.slice(0, -3) + 'i';
-  else if (w.endsWith('sses')) w = w.slice(0, -2);
-  else if (w.endsWith('s') && !/(?:ss|us|is)$/.test(w)) w = w.slice(0, -1);
-  if (w.length > 5 && w.endsWith('ing')) w = w.slice(0, -3);
-  else if (w.length > 4 && w.endsWith('ed')) w = w.slice(0, -2);
-  else if (w.length > 4 && w.endsWith('ly')) w = w.slice(0, -2);
-  else if (w.length > 6 && w.endsWith('ation')) w = w.slice(0, -5);
-  else if (w.length > 5 && w.endsWith('ator')) w = w.slice(0, -4);
-  else if (w.length > 5 && w.endsWith('ate')) w = w.slice(0, -3);
-  else if (w.length > 5 && w.endsWith('ion')) w = w.slice(0, -3);
-  if (w.length > 3 && w.endsWith('e')) w = w.slice(0, -1);
-  if (w.length > 3 && /([^aeiou])\1$/.test(w) && !/[lsz]$/.test(w)) w = w.slice(0, -1);
-  return w;
-}
-
-const FENCED_CODE = /```[\s\S]*?```/g;
-const CAMEL_BOUNDARY = /([a-z])([A-Z])/g;
-const WORD = /[a-z]{3,}/g;
-
-/**
- * Content terms of a text: fenced code removed, camelCase split, everything
- * that is not a run of three or more letters treated as a separator (so
- * paths, flags, snake_case and dotted identifiers fall apart into their
- * words and numbers vanish), stopwords dropped, the rest stemmed.
- */
-export function contentTerms(text: string): string[] {
-  const terms: string[] = [];
-  const lowered = text.replace(FENCED_CODE, '\n').replace(CAMEL_BOUNDARY, '$1 $2').toLowerCase();
-  for (const match of lowered.matchAll(WORD)) {
-    if (STOPWORDS.has(match[0])) continue;
-    terms.push(stemTerm(match[0]));
-  }
-  return terms;
-}
+import { FENCED_CODE, contentTerms, stemTerm } from '../terms.js';
+import { toolChoice } from './tool-choice.js';
+// The tokenizer lives in src/eval/terms.ts (arc 9, N-13); re-exported so nothing that imported it from here moves.
+export { contentTerms, stemTerm };
 
 export const keywordOverlap: EvalRule = {
   name: 'keyword_overlap',
@@ -266,4 +201,64 @@ export const topicConsistency: EvalRule = {
   },
 };
 
-export const relevanceRules: EvalRule[] = [keywordOverlap, topicConsistency];
+/*
+ * answers_the_ask (arc 9, N-13) — the composer question, answered with a
+ * measurement. A truncated or off-topic answer used to read `clean`: the
+ * two relevance rules are measurements, which inform the score, and only
+ * policies and detections gate. Measured on the 141-case composite corpus
+ * before this rule existed: gating on BOTH measurements failing together
+ * flipped none of the classless clean cases, caught four of the eight
+ * off-task cases (the other four: two too short to measure, two that reuse
+ * the ask's words while ignoring it) and six stub cases the composer
+ * missed. So the pair decides: when the input is present and both
+ * keyword_overlap and topic_consistency fail at their thresholds (each
+ * rule's own, config-aware), the output answers something else. A POLICY
+ * with no number of its own — "both measurements failed" is structural —
+ * so it gates on every call, at the shipped defaults too, and the two
+ * measurements keep scoring. Not a critical detection: a critical rule that
+ * skips on every output-only call would stamp critical_skipped on the
+ * product's most common call shape. It skips whenever either measurement
+ * skipped (no input, an output too brief for the topic measure) and on an
+ * ask with fewer than two content terms, so a one-word right answer is
+ * never a fire.
+ */
+/** An ask with one content term ("Is the server up?") cannot be judged lexically: the answer need not repeat its one word. */
+export const MIN_ASK_TERMS_TO_JUDGE = 2;
+
+export const answersTheAsk: EvalRule = {
+  name: 'answers_the_ask',
+  description:
+    'The output answers THIS ask, not another: fails when the input is present and BOTH relevance measurements fail at their thresholds — fewer than 35% of the ask\'s content terms appear in the output (keyword_overlap) AND fewer than a third of the output\'s sentences connect to the ask (topic_consistency). One measurement alone never fires it. A policy with no number of its own, so it GATES at the shipped defaults; move the two measurements\' thresholds to move it. Skips whenever either measurement skips (no input, an output too brief to measure) and on an ask with fewer than two content terms, so a one-word right answer is never a fire. Lexical: a right answer that reuses none of the ask\'s words reads as off task — the published precision counts those',
+  evalType: 'relevance',
+  weight: 1,
+  kind: 'policy',
+  mechanism: 'formula',
+  needs: ['output', 'input'],
+  question: 'relevant',
+  classes: ['off_task'],
+  version: 1,
+  evaluate(context: EvalContext): EvalRuleResult {
+    const ko = keywordOverlap.evaluate(context);
+    const tc = topicConsistency.evaluate(context);
+    const askTerms = new Set(contentTerms(context.input ?? '')).size;
+    const skipped = ko.skipped ? ko : tc.skipped ? tc : askTerms < MIN_ASK_TERMS_TO_JUDGE ? { skipReason: `the ask has ${askTerms} content term${askTerms === 1 ? '' : 's'}; ${MIN_ASK_TERMS_TO_JUDGE} are needed to say an output answers something else` } : null;
+    if (skipped) {
+      // not_applicable, never "asked and could not answer": without an ask, or an output too brief to measure, the question does not apply — a critical rule's skip must not turn every output-only evaluation unknown.
+      return { ruleName: 'answers_the_ask', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: skipped.skipReason ?? 'a relevance measurement skipped', message: 'Not judged: a relevance measurement skipped' };
+    }
+    const fired = !ko.passed && !tc.passed;
+    const pct = (r: EvalRuleResult) => (r.value ? `${(r.value.value * 100).toFixed(0)}%` : '?');
+    return {
+      ruleName: 'answers_the_ask',
+      passed: !fired,
+      score: fired ? 0 : 1,
+      // Its own count, with no guess in it: how many of the two measurements failed, against the two the definition requires.
+      evidence: [{ type: 'count', stat: 'relevance_measurements_failed', unit: 'measurements', value: Number(!ko.passed) + Number(!tc.passed), threshold: 2, thresholdSource: 'rule' }],
+      message: fired
+        ? `The output answers something else: ${pct(ko)} of the ask's terms appear in it and ${pct(tc)} of its sentences connect to the ask — both below threshold`
+        : `${pct(ko)} of the ask's terms appear in the output and ${pct(tc)} of its sentences connect to it; at least one measurement passes`,
+    };
+  },
+};
+
+export const relevanceRules: EvalRule[] = [keywordOverlap, topicConsistency, toolChoice, answersTheAsk];

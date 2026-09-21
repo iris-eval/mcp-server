@@ -15,7 +15,7 @@ description: Evaluate AI agent output quality, safety, and cost using the Iris M
 # Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
-safety failures, and enforces cost budgets. 12 MCP tools, 21 built-in
+safety failures, and enforces cost budgets. 12 MCP tools, 25 built-in
 deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code changes.
 
 If this plugin is installed, the 12 tools are already available — no setup needed. If the tools are missing, the server starts with `npx -y @iris-eval/mcp-server` in any MCP client config (Quick Start below).
@@ -138,7 +138,7 @@ Each heuristic rule fires independently with a clear pass/fail result — every
 score is deterministic and reproducible. LLM-judge scores are semantic and
 carry the judge's reasoning.
 
-## The 21 built-in eval rules
+## The 25 built-in eval rules
 
 | Category | Rule | What It Checks |
 |----------|------|---------------|
@@ -163,6 +163,10 @@ carry the judge's reasoning.
 | Cost | no_tool_loop | The agent must not repeat itself. No tool called with the same input more than `max_tool_repeats` times (default 3); no 2- or 3-call sequence repeating more than twice; and, when you send `tools`, no single TARGET read more than `max_target_rereads` times (default 3) across every tool your catalogue marks `readOnlyHint` — the same file read through three different tools is one wasted read. A repetition at a REGULAR cadence is a poll, not a loop, and passes; that needs start times, which arrive with OpenTelemetry spans. Reads `tool_calls`; **skips** without them |
 | Cost | max_steps | A task must finish within a step budget — more tool calls than `max_steps` (default 50) fails. At the shipped default it ADVISES; set `max_steps` and it GATES, because only you know what your own agents do. Reads `tool_calls`; **skips** without them |
 | Cost | cost_anomaly | Cost against this agent's own recent history (modified z over its last 200 traces); a measurement that reports and never decides; skips below twenty prior costed traces |
+| Relevance | tool_choice | The right tool for the ask, from the `tools` catalogue: fires when an uncalled tool fits the ask's actionable terms at least 0.5 and beats the tools called by at least 0.34, naming both. Reads `input`, `tool_calls` and `tools`; **skips** without any of them. A heuristic detection: lowers the score, never vetoes |
+| Relevance | answers_the_ask | The output answers THIS ask: fails only when BOTH relevance measurements fail (keyword_overlap AND topic_consistency). A policy with no number of its own, so it **gates at the shipped defaults**; move the two measurements' thresholds to move it. Skips whenever either measurement skips and on an ask with fewer than two content terms, so a one-word right answer is never a fire |
+| Completeness | tool_sequence | The calls the caller expected against the calls made, in a mode (strict, unordered, subset, superset, ordered_subset — the default), matching by name and, when the expectation names arguments, by exact or subset input. Reads `tool_calls` and `expected_trajectory.tool_calls`; **skips** without either. A policy: gates because the caller stated the expectation |
+| Cost | step_budget | The tool-call count against THIS task's budget: `expected_trajectory.step_budget` (or the number of expected calls) × `tolerance` (default 1.5). Reads `tool_calls` and `expected_trajectory`; **skips** without either. A policy: gates because the caller stated the budget |
 
 How often each rule is right is measured and published, with intervals, at
 https://iris-eval.com/proof.

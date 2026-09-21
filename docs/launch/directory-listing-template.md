@@ -8,15 +8,15 @@ Use these when submitting Iris to any MCP directory, awesome list, or marketplac
 
 ## Short Description (1 line — Block A, 156 chars)
 
-Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 21 deterministic rules, local SQLite, MIT licensed.
+Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 25 deterministic rules, local SQLite, MIT licensed.
 
 ## Medium Description (short paragraph — Block B)
 
-Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 12 tools any MCP-compatible client lists on connect — no SDK, no code changes. 21 built-in rules (19 PII patterns, 37 prompt-injection patterns, 25 hallucination signals, cost thresholds, and 6 that read the agent's tool calls) score deterministically and free; a detected PII leak, injection, or blocklist hit fails the eval outright. Optional LLM judge and citation verification for the semantic questions. Self-hosted on SQLite, MIT-licensed core.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 12 tools any MCP-compatible client lists on connect — no SDK, no code changes. 25 built-in rules (19 PII patterns, 37 prompt-injection patterns, 25 hallucination signals, cost thresholds, and 9 that read the agent's tool calls) score deterministically and free; a detected PII leak, injection, or blocklist hit fails the eval outright. Optional LLM judge and citation verification for the semantic questions. Self-hosted on SQLite, MIT-licensed core.
 
 ## Long Description (full paragraph — Block C)
 
-Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 12 tools automatically — no SDK, no code changes. 21 built-in rules across completeness, relevance, safety, and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds, and 6 trajectory rules that read the agent's tool calls. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (6 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 12 tools automatically — no SDK, no code changes. 25 built-in rules across completeness, relevance, safety, and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds, and 9 trajectory rules that read the agent's tool calls. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (6 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
 
 ## Config Snippet (include in every listing)
 
@@ -34,7 +34,7 @@ Stop shipping agents on vibes. Iris is an open-source MCP server that scores eve
 ## Key Stats (for listings that show features)
 
 - 12 MCP tools: compare_runs, compare_traces, delete_rule, delete_trace, deploy_rule, evaluate_output, evaluate_runs, evaluate_with_llm_judge, get_traces, list_rules, log_trace, verify_citations
-- 21 built-in eval rules across 4 categories (completeness, relevance, safety, cost)
+- 25 built-in eval rules across 4 categories (completeness, relevance, safety, cost)
 - 19 PII patterns · 37 prompt-injection patterns · 25 context-grounded hallucination signals
 - A detected PII leak, injection, or blocklist hit fails the eval regardless of the weighted score
 - <1ms eval latency (heuristic layer; LLM-as-judge optional, 6 templates, BYOK, cost-capped)
@@ -57,5 +57,5 @@ mcp-server, mcp, model-context-protocol, eval, agent-eval, agent-evaluation, ai-
 ## Awesome List PR Template
 
 ```markdown
-- [Iris](https://github.com/iris-eval/mcp-server) - Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 21 deterministic rules, local SQLite, MIT licensed. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
+- [Iris](https://github.com/iris-eval/mcp-server) - Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 25 deterministic rules, local SQLite, MIT licensed. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
 ```

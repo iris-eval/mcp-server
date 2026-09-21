@@ -6,6 +6,7 @@ import { catalogueIndex } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
+import { toolSequence } from './expected-trajectory.js';
 
 export const minOutputLength: EvalRule = {
   name: 'min_output_length',
@@ -494,4 +495,4 @@ export const askCoverage: EvalRule = {
   },
 };
 
-export const completenessRules: EvalRule[] = [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage];
+export const completenessRules: EvalRule[] = [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence];

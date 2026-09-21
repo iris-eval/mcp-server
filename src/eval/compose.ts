@@ -41,6 +41,10 @@
  */
 import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict } from '../types/eval.js';
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { decides, isCritical } from './gate.js';
+
+// The gating predicate lives in gate.ts (arc 9, N-13) so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
+export { decides };
 
 export interface ComposeConfig {
   /**
@@ -84,38 +88,8 @@ export function tau(falsePassCost: number): number {
   return 1 / (1 + falsePassCost);
 }
 
-const isCritical = (r: EvalRuleResult): boolean => r.critical === true;
 const fired = (r: EvalRuleResult): boolean => !r.skipped && r.passed === false;
 
-/**
- * Whether a policy rule DECIDES the verdict here, or only advises.
- *
- * "A default is not your policy." A shipped threshold — a cost ceiling of
- * $0.50, a length floor of 50 characters — is our guess about a deployment
- * we have never seen, and stopping someone's build on it is presumptuous.
- * A threshold the deployment SET is their decision and gates.
- *
- * The distinction is not a list of rule names. For a BUILT-IN policy it is
- * whether the number the rule compared against is one we chose, which every
- * result already records as `thresholdSource` on its count evidence (0.9.0);
- * a policy with no number at all — "the output is empty" — is structural,
- * has no guess in it, and gates.
- *
- * A CUSTOM rule is different: its severity is the deployment's own statement
- * of how much it matters, made when the rule was deployed. High and critical
- * gate (they resolve to critical); medium and low advise, which is the
- * contract `deploy_rule` has always had. An inline rule passed in the call
- * carries no severity and advises, for the same reason.
- */
-export function decides(r: EvalRuleResult, defaultsGate: boolean): boolean {
-  if (isCritical(r)) return true;
-  if (defaultsGate) return true;
-  if (r.origin === 'custom') return false;
-  const ourDefault = (r.evidence ?? []).some(
-    (e) => e.type === 'count' && e.threshold !== undefined && (e.thresholdSource ?? 'default') === 'default',
-  );
-  return !ourDefault;
-}
 
 /**
  * The role a result plays under this configuration — resolved from the SAME

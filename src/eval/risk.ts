@@ -33,6 +33,7 @@ import { publishedAccuracyFor } from './accuracy.js';
 import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
 import { FAILURE_CLASS_IDS } from './failure-classes.js';
 import { beta, fnv1a, mulberry32, sensitivity, specificity } from './stats.js';
+import { decides } from './gate.js';
 
 /** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
 /*
@@ -264,7 +265,16 @@ const isEffectivelyCritical = (r: EvalRuleResult): boolean => r.critical === tru
  */
 export function riskVerdict(result: EvalResult, tau: number = DEFAULT_TAU, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): RiskVerdict {
   const rows = result.rule_results;
-  const gates = rows.filter((r) => r.kind === 'policy' && !r.skipped && r.passed === false && isEffectivelyCritical(r));
+  /*
+   * The product's rule (compose.ts, step 1, through gate.ts): a policy gates
+   * when the deployment or the caller decided its number, or when it has
+   * none — and advises at OUR default. Until 0.16.0 this harness gated a
+   * policy only when critical, so the composite measured a composer the
+   * product does not run: no_stub_output blocked in the product and was a
+   * "missed block" here. No deployment config in the harness, so
+   * defaultsGate is false.
+   */
+  const gates = rows.filter((r) => r.kind === 'policy' && !r.skipped && r.passed === false && (isEffectivelyCritical(r) || decides(r, false)));
   if (gates.length > 0) return { state: 'fail', basis: 'policy_gate', by: gates.map((r) => r.ruleName), risk: riskEstimate(result, prior, mode), confidence: null };
   const vetoes = rows.filter((r) => (r.kind === 'detection' || r.kind === 'inference') && !r.skipped && r.passed === false && isEffectivelyCritical(r));
   if (vetoes.length > 0) return { state: 'fail', basis: 'detector_veto', by: vetoes.map((r) => r.ruleName), risk: riskEstimate(result, prior, mode), confidence: null };

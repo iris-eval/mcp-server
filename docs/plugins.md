@@ -1,6 +1,6 @@
 # Plugin rules — a rule you wrote as code, loaded from a file you hash-pinned
 
-The built-in roster is twenty-one rules in this package. Custom rules ([custom-rules.md](custom-rules.md)) are eight shapes deployed as JSON. A **plugin** is the third kind: an ES module you wrote, named in `config.json`, pinned by the sha256 of its file, and loaded at startup. It fires on every evaluation of its type exactly as a deployed custom rule does, its result is stamped like a built-in's, and `list_rules` names it under `plugins`.
+The built-in roster is twenty-five rules in this package. Custom rules ([custom-rules.md](custom-rules.md)) are eight shapes deployed as JSON. A **plugin** is the third kind: an ES module you wrote, named in `config.json`, pinned by the sha256 of its file, and loaded at startup. It fires on every evaluation of its type exactly as a deployed custom rule does, its result is stamped like a built-in's, and `list_rules` names it under `plugins`.
 
 ## The contract
 

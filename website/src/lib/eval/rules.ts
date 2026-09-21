@@ -3,14 +3,14 @@
  *
  * Source: iris/src/eval/rules/{safety,relevance,completeness,cost}.ts and
  * the shipped thresholds in iris/src/config/defaults.ts.
- * Synced: 2026-09-21 against main + arc 8 R-12 (normalise gains dropInsertedBreaks for the pattern rules; ACKNOWLEDGEMENT_FORMS); previously 2026-09-03 against main after #416 — the five things real agent
+ * Synced: 2026-09-21 against main + arc 9 N-13 (four rules: answers_the_ask composes the two relevance measurements; tool_sequence, step_budget and tool_choice are skips here — no expectation, no catalogue); before that 2026-09-21 against arc 8 R-12 (normalise gains dropInsertedBreaks for the pattern rules; ACKNOWLEDGEMENT_FORMS); previously 2026-09-03 against main after #416 — the five things real agent
  * transcripts taught the evaluators: reserved IP addresses are not PII,
  * evaluator-directed imperatives hidden in comments, deferral stubs, the
  * continuity measure for topic_consistency, status-code contrasts. Those
  * behaviours ship in v0.7.0, which VENDORED_FROM_VERSION names; until that
  * tag exists the playground (deployed from main) runs exactly those fixes
  * ahead of the npm package.
- * Matching: 21 rules across 4 categories; no_hallucination_markers is
+ * Matching: 25 rules across 4 categories; no_hallucination_markers is
  * context-grounded and lives in `safety`; thresholds come from
  * VENDORED_THRESHOLDS, which a root test pins to the server's defaults.
  *
@@ -3275,11 +3275,64 @@ function costAnomaly(): EvalRuleResult {
   };
 }
 
+/*
+ * The expected-trajectory rules and tool_choice (arc 9, N-13) — vendored as
+ * skips, for the same reason as max_steps: the playground collects no
+ * expected trajectory and no tools catalogue, so on the server they skip
+ * before reading a call, and a skip on both sides is parity.
+ */
+const NO_EXPECTATION = 'context.expectedTrajectory not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do';
+
+function toolSequence(): EvalRuleResult {
+  return { ruleName: 'tool_sequence', category: 'completeness', passed: false, score: 0, message: 'No expected trajectory provided', skipped: true, skipReason: NO_EXPECTATION };
+}
+
+function stepBudget(): EvalRuleResult {
+  return { ruleName: 'step_budget', category: 'cost', passed: false, score: 0, message: 'No expected trajectory provided', skipped: true, skipReason: NO_EXPECTATION };
+}
+
+function toolChoice(ctx: EvalContext): EvalRuleResult {
+  if (!ctx.input) {
+    return { ruleName: 'tool_choice', category: 'relevance', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
+  }
+  const calls = ctx.toolCalls;
+  if (calls === undefined || calls.length === 0) {
+    return { ruleName: 'tool_choice', category: 'relevance', passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipReason: 'context.toolCalls not provided' };
+  }
+  return { ruleName: 'tool_choice', category: 'relevance', passed: false, score: 0, message: 'No tools catalogue provided', skipped: true, skipReason: 'context.tools not provided' };
+}
+
+/*
+ * answers_the_ask (arc 9, N-13) — the two relevance measurements as one
+ * detection: fires only when BOTH fail at their thresholds; skips whenever
+ * either skips, and on an ask with fewer than two content terms. The same
+ * composition as src/eval/rules/relevance.ts, over the vendored measurements.
+ */
+const MIN_ASK_TERMS_TO_JUDGE = 2;
+
+function answersTheAsk(ctx: EvalContext): EvalRuleResult {
+  const ko = keywordOverlap(ctx);
+  const tc = topicConsistency(ctx);
+  const askTerms = new Set(contentTerms(ctx.input ?? '')).size;
+  const skipReason = ko.skipped ? ko.skipReason : tc.skipped ? tc.skipReason : askTerms < MIN_ASK_TERMS_TO_JUDGE ? `the ask has ${askTerms} content term${askTerms === 1 ? '' : 's'}; ${MIN_ASK_TERMS_TO_JUDGE} are needed to say an output answers something else` : undefined;
+  if (skipReason !== undefined) {
+    return { ruleName: 'answers_the_ask', category: 'relevance', passed: false, score: 0, skipped: true, skipReason, message: 'Not judged: a relevance measurement skipped' };
+  }
+  const fired = !ko.passed && !tc.passed;
+  return {
+    ruleName: 'answers_the_ask',
+    category: 'relevance',
+    passed: !fired,
+    score: fired ? 0 : 1,
+    message: fired ? 'The output answers something else: both relevance measurements are below threshold' : 'At least one relevance measurement passes',
+  };
+}
+
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads, noInjectionCompliance],
-  relevance: [keywordOverlap, topicConsistency],
-  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage],
-  cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly],
+  relevance: [keywordOverlap, topicConsistency, toolChoice, answersTheAsk],
+  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence],
+  cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly, stepBudget],
 };
 
 export interface EvalSummary {
