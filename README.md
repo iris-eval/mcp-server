@@ -99,6 +99,32 @@ npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on de
 
 `ingest` reads one JSON trace (or NDJSON, one per line) from stdin or a file, stores it, evaluates it under exactly the rules `evaluate_output` runs, prints one JSON line per trace with the verdict and its basis, and exits 1 when a verdict matches `--fail-on`. The full recipe, the exit codes and the eight bases are in [docs/ci-gate.md](docs/ci-gate.md).
 
+### Use the engine in your own process
+
+The evaluation engine is importable — no server, no database, no model:
+
+```ts
+import { EvalEngine, defaultConfig } from '@iris-eval/mcp-server/engine';
+
+const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+const result = await engine.evaluateAll({ output: answer, input: prompt, toolCalls, costUsd });
+result.verdict.state;       // 'pass' | 'fail' | 'unknown', with result.verdict.basis and result.interpretations
+```
+
+The same engine, the same rules and the same composer the server runs; `builtInRules()`, `createCustomRule()`, `compose()` and the published-accuracy readers are exported beside it.
+
+### A typed client for the HTTP route
+
+```ts
+import { createClient } from '@iris-eval/mcp-server/client';
+
+const iris = createClient({ baseUrl: 'http://127.0.0.1:6920', apiKey: process.env.IRIS_API_KEY });
+const { trace_id, evaluation } = await iris.logTrace({ agent_name: 'support-bot', input, output, tool_calls, evaluate: true });
+evaluation?.verdict?.state;  // the same object evaluate_output returns
+```
+
+One body on every door: it is what `log_trace` and `iris-eval ingest` accept. A refusal throws `IrisClientError` with the server's own sentence and status. Both subpaths are checked from a packed tarball on every build.
+
 ### Verify your install
 
 ```bash

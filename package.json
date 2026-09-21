@@ -6,6 +6,23 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./engine": {
+      "types": "./dist/engine.d.ts",
+      "default": "./dist/engine.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json",
+    "./server.json": "./server.json"
+  },
   "bin": {
     "iris-eval": "dist/index.js",
     "iris-mcp": "dist/index.js"

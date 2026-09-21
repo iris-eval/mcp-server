@@ -35,7 +35,7 @@ describe('missingArtifacts', () => {
   it('names the dashboard files when only the server was built — the pre-0.13.0 npm pack', () => {
     const root = scratch(['dist/index.js']);
     try {
-      expect(missingArtifacts(root)).toEqual(['dist/dashboard/server.js', 'dist/dashboard/index.html']);
+      expect(missingArtifacts(root)).toEqual(['dist/dashboard/server.js', 'dist/dashboard/index.html', 'dist/engine.js', 'dist/client.js']);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

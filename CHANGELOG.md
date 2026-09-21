@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The engine and a client are importable from the package.** `package.json` gains an `exports` map: `@iris-eval/mcp-server/engine` is the evaluation engine with the shipped rules, the composer and the published-accuracy readers — no server, no database, no model — and `@iris-eval/mcp-server/client` is a typed client for the HTTP route (`createClient({ baseUrl, apiKey }).logTrace(body)` posts the body every door accepts, sends the Bearer key, returns the same evaluation `evaluate_output` returns, and throws `IrisClientError` with the server's own sentence on a refusal). A `./dist/*` passthrough keeps existing deep imports working for one minor. The CI build job packs the tree, installs the tarball into a never-used directory and imports both subpaths, evaluating one stub through the engine; the prepack guard refuses a pack without them. The 0.14.0 stranger wrote a script that spawned the CLI to score three files — this is the supported form of that script.
+
 ### Fixed
 
 - **The architecture guide's data-flow step no longer states the pre-0.10.0 rule for `passed`.** Step 4 said `passed` "requires the score to meet the configured threshold AND no critical rule to have failed" — four minors after the composer replaced it, and in the same file whose verdict section describes the composer correctly. It now says what decides `passed`: the verdict, composed by kind, with the score never consulted. The docs contract holds the retired sentence out and the current one in. (Found by the 0.14.0 distribution audit, which also corrected a "20 rules" comment in the playground's rule library.)
