@@ -313,8 +313,25 @@ export function acknowledgesFailure(output: string): string | null {
   for (const phrase of ACKNOWLEDGEMENT_PHRASES) {
     if (haystack.includes(phrase)) return phrase;
   }
+  for (const form of ACKNOWLEDGEMENT_FORMS) {
+    const m = form.exec(haystack);
+    if (m) return m[0].length > 60 ? `${m[0].slice(0, 57)}…` : m[0];
+  }
   return null;
 }
+
+/**
+ * Acknowledgements that are a SHAPE rather than a phrase. "Neither a.yml nor
+ * b.yml exists" acknowledges two failures in one clause and carried none of
+ * the phrases above — the published false positive silent-044 (arc 4), fixed
+ * here with a corpus case first (arc 8, R-12). The form is narrow on purpose:
+ * `neither … nor …` followed within the clause by a verb of existence,
+ * presence or success; "neither option is ideal" matches nothing.
+ */
+export const ACKNOWLEDGEMENT_FORMS: readonly RegExp[] = [
+  // The gaps admit a dot: the things named are files and hosts (a.yml, mirror.example). A sentence end is still a bound (! ? and the line).
+  /\bneither\b[^!?\n]{0,120}?\bnor\b[^!?\n]{0,120}?\b(?:exists?|existed|found|present|available|reachable|responded|succeeded|worked|returned|resolved)\b/,
+];
 
 /* ------------------------------------------------------------------ *
  * A CANDIDATE definition of acknowledgement — measured, not wired

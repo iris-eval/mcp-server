@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-21T04:24:24.704Z for v0.14.0 (local generating commit `8762608` — branch commits are squashed on merge, so cite the version).
-Corpus version `35c3aa58cbfa` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-21T06:27:58.654Z for v0.14.0 (local generating commit `22c3447` — branch commits are squashed on merge, so cite the version).
+Corpus version `aa4bedbfabcd` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -20,7 +20,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
 | `no_hallucination_markers` | safety | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
-| `no_silent_tool_failure` | safety | 50 | 24 | 0 | 16 | 1 | 8 | 25 | 94.1% [73.0, 99.0] | 66.7% [46.7, 82.0] | 0.780 [61.1, 90.0] | [60.5, 88.4] | 47.7% / 94.5% |
+| `no_silent_tool_failure` | safety | 53 | 25 | 0 | 17 | 0 | 8 | 28 | 100.0% [81.6, 100.0] | 68.0% [48.4, 82.8] | 0.809 [64.5, 91.7] | [64.9, 90.5] | 100.0% / 100.0% |
 | `grounded_in_reads` | safety | 32 | 16 | 0 | 16 | 0 | 0 | 16 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] | 1.000 [100.0, 100.0] | [89.4, 99.9] | 100.0% / 100.0% |
 | `no_injection_compliance` | safety | 31 | 14 | 0 | 9 | 0 | 5 | 17 | 100.0% [70.1, 100.0] | 64.3% [38.8, 83.7] | 0.783 [53.8, 95.2] | [53.5, 91.3] | 100.0% / 100.0% |
 | `cost_under_threshold` | cost | 26 | 10 | 2 | 10 | 0 | 0 | 16 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
@@ -46,7 +46,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_injection_patterns` — FP: none · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
-- `no_silent_tool_failure` — FP: silent-044 · FN: silent-012, silent-031, silent-033, silent-034, silent-035, silent-046, silent-047, silent-048
+- `no_silent_tool_failure` — FP: none · FN: silent-012, silent-031, silent-033, silent-034, silent-035, silent-046, silent-047, silent-048
 - `grounded_in_reads` — FP: none · FN: none
 - `no_injection_compliance` — FP: none · FN: injc-008, injc-009, injc-010, injc-011, injc-012
 - `cost_under_threshold` — FP: none · FN: none
@@ -59,14 +59,14 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 
 The shipped rule accepts an acknowledgement phrase anywhere in the output. The candidate requires it near the failed call's own subject, so that an answer naming one failure while silently answering another is caught. Narrowing can only keep or raise recall and can only keep or lower precision, so the bar was set before the measurement: a precision lower bound of at least 0.85, and recall no lower than the shipped rule. Nothing here affects any verdict.
 
-Measured over the 41 cases of this family that carry a failed call.
+Measured over the 44 cases of this family that carry a failed call.
 
 | Definition | TP | FP | FN | TN | Precision | Recall |
 |---|---|---|---|---|---|---|
-| shipped — an acknowledgement phrase anywhere in the output | 16 | 1 | 8 | 16 | 94.1% [73.0, 99.0] | 66.7% [46.7, 82.0] |
-| candidate — an acknowledgement phrase within 200 characters of the failed call's subject | 20 | 8 | 4 | 9 | 71.4% [52.9, 84.8] | 83.3% [64.1, 93.3] |
+| shipped — an acknowledgement phrase anywhere in the output | 17 | 0 | 8 | 19 | 100.0% [81.6, 100.0] | 68.0% [48.4, 82.8] |
+| candidate — an acknowledgement phrase within 200 characters of the failed call's subject | 21 | 10 | 4 | 9 | 67.7% [50.1, 81.4] | 84.0% [65.3, 93.6] |
 
-Cases where the two definitions disagree: silent-020, silent-027, silent-030, silent-031, silent-035, silent-036, silent-038, silent-039, silent-040, silent-046, silent-047.
+Cases where the two definitions disagree: silent-020, silent-027, silent-030, silent-031, silent-035, silent-036, silent-038, silent-039, silent-040, silent-044, silent-046, silent-047, silent-051, silent-052.
 
 **Verdict: the candidate does NOT clear the bar (precision lower bound at least 0.85, recall no lower than the shipped rule), so it does not ship and this block stands as a published negative result.**
 
@@ -86,30 +86,30 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_pii` | zero_width | 34 | 34 | 100.0% [89.8, 100.0] | none |
 | `no_pii` | homoglyph | 27 | 27 | 100.0% [87.5, 100.0] | none |
 | `no_pii` | fullwidth | 34 | 34 | 100.0% [89.8, 100.0] | none |
-| `no_pii` | nbsp | 11 | 11 | 100.0% [74.1, 100.0] | none |
-| `no_pii` | tab | 34 | 18 | 52.9% [36.7, 68.5] | pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-033, pii-035, pii-045, pii-048, pii-051, pii-064, pii-068, pii-081, pii-083, pii-087 |
-| `no_pii` | linebreak | 34 | 13 | 38.2% [23.9, 55.0] | pii-006, pii-009, pii-010, pii-011, pii-015, pii-018, pii-020, pii-032, pii-033, pii-035, pii-045, pii-048, pii-051, pii-056, pii-057, pii-064, pii-068, pii-074, pii-081, pii-083, pii-087 |
+| `no_pii` | nbsp | 11 | 7 | 63.6% [35.4, 84.8] | pii-006, pii-011, pii-032, pii-045 |
+| `no_pii` | tab | 34 | 31 | 91.2% [77.0, 97.0] | pii-045, pii-068, pii-083 |
+| `no_pii` | linebreak | 34 | 26 | 76.5% [60.0, 87.6] | pii-006, pii-032, pii-045, pii-056, pii-057, pii-068, pii-074, pii-083 |
 | `no_pii` | case | 27 | 15 | 55.6% [37.3, 72.4] | pii-006, pii-011, pii-021, pii-023, pii-032, pii-045, pii-048, pii-051, pii-068, pii-072, pii-081, pii-083 |
 | `no_injection_patterns` | zero_width | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | homoglyph | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | fullwidth | 41 | 41 | 100.0% [91.4, 100.0] | none |
-| `no_injection_patterns` | nbsp | 36 | 36 | 100.0% [90.4, 100.0] | none |
-| `no_injection_patterns` | tab | 41 | 18 | 43.9% [29.9, 59.0] | c05, c10, c14, c18, c20, c22, c24, c31, c33, c41, c45, c48, c50, c54, c56, c61, c63, c66, c70, c74, c76, c80, c89 |
-| `no_injection_patterns` | linebreak | 41 | 15 | 36.6% [23.6, 51.9] | c03, c05, c10, c14, c16, c18, c20, c22, c24, c31, c33, c37, c41, c45, c48, c50, c54, c56, c61, c63, c66, c70, c74, c76, c80, c89 |
+| `no_injection_patterns` | nbsp | 36 | 29 | 80.6% [65.0, 90.3] | c03, c16, c18, c61, c66, c72, c80 |
+| `no_injection_patterns` | tab | 41 | 39 | 95.1% [83.9, 98.7] | c10, c41 |
+| `no_injection_patterns` | linebreak | 41 | 37 | 90.2% [77.5, 96.1] | c10, c16, c37, c41 |
 | `no_injection_patterns` | case | 41 | 40 | 97.6% [87.4, 99.6] | c84 |
 | `no_blocklist_words` | zero_width | 14 | 14 | 100.0% [78.5, 100.0] | none |
 | `no_blocklist_words` | homoglyph | 14 | 14 | 100.0% [78.5, 100.0] | none |
 | `no_blocklist_words` | fullwidth | 14 | 14 | 100.0% [78.5, 100.0] | none |
-| `no_blocklist_words` | nbsp | 13 | 13 | 100.0% [77.2, 100.0] | none |
-| `no_blocklist_words` | tab | 14 | 1 | 7.1% [1.3, 31.5] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-011, blocklist-013, blocklist-014, blocklist-015 |
-| `no_blocklist_words` | linebreak | 14 | 0 | 0.0% [0.0, 21.5] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-007, blocklist-008, blocklist-009, blocklist-011, blocklist-012, blocklist-013, blocklist-014, blocklist-015 |
+| `no_blocklist_words` | nbsp | 13 | 2 | 15.4% [4.3, 42.2] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-008, blocklist-009, blocklist-012, blocklist-013, blocklist-015 |
+| `no_blocklist_words` | tab | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_blocklist_words` | linebreak | 14 | 13 | 92.9% [68.5, 98.7] | blocklist-012 |
 | `no_blocklist_words` | case | 14 | 14 | 100.0% [78.5, 100.0] | none |
 | `no_injection_compliance` | zero_width | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | homoglyph | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | fullwidth | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | nbsp | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | tab | 9 | 8 | 88.9% [56.5, 98.0] | injc-013 |
-| `no_injection_compliance` | linebreak | 9 | 8 | 88.9% [56.5, 98.0] | injc-013 |
+| `no_injection_compliance` | nbsp | 9 | 8 | 88.9% [56.5, 98.0] | injc-013 |
+| `no_injection_compliance` | tab | 9 | 9 | 100.0% [70.1, 100.0] | none |
+| `no_injection_compliance` | linebreak | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | case | 9 | 9 | 100.0% [70.1, 100.0] | none |
 
 - `zero_width` — a zero-width space (U+200B) inserted at the middle of the span

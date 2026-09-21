@@ -348,7 +348,7 @@ export const noPii: EvalRule = {
      * caller sent, and it covers the obfuscating characters as part of the
      * finding, which is what a redaction pass needs.
      */
-    const folded = normalise(context.output);
+    const folded = normalise(context.output, { dropInsertedBreaks: true });
     for (const { name, pattern, placeholders, validate } of PII_PATTERNS) {
       const { fired, suppressed: ignored } = piiPatternMatches(folded.text, pattern, placeholders, validate);
       if (fired) {
@@ -407,7 +407,7 @@ export const noBlocklistWords: EvalRule = {
      * line break inside a banned phrase defeated it completely, which is a
      * poor property for the one rule a deployment configures as a policy.
      */
-    const folded = normalise(context.output);
+    const folded = normalise(context.output, { dropInsertedBreaks: true });
     const lower = folded.text.toLowerCase();
     const found = blocklist.filter((word) => lower.includes(word.toLowerCase()));
     const passed = found.length === 0;
@@ -771,7 +771,7 @@ export const noInjectionPatterns: EvalRule = {
      * preserve offsets into the folded text, so an obfuscated match can now
      * be LOCATED in the raw output instead of merely named.
      */
-    const folded = normalise(raw);
+    const folded = normalise(raw, { dropInsertedBreaks: true });
     const normalized = normalizeObfuscation(folded.text);
     const rawSpans = quotedSpans(raw);
     const normalizedSpans = normalized === raw ? rawSpans : quotedSpans(normalized);
