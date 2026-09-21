@@ -54,7 +54,7 @@
     },
     {
       "name": "evaluate_with_llm_judge",
-      "description": "Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, per-dimension sub-scores and the exact spend."
+      "description": "Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, sub-scores and the spend."
     },
     {
       "name": "verify_citations",

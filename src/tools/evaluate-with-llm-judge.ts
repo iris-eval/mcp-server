@@ -4,6 +4,8 @@ import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { evaluateWithLLMJudge } from '../eval/llm-judge/evaluator.js';
 import { judgeEvalResult } from '../eval/llm-judge/persisted.js';
+import type { EvalEngine } from '../eval/engine.js';
+import { verdictSchema } from '../eval/response-schema.js';
 import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
@@ -91,6 +93,7 @@ export const judgeOutputSchema = z.looseObject({
   trace_id: z.string().optional().describe('the linked trace, when one was named'),
   score: z.number().describe('0..1 from the judge'),
   passed: z.boolean().describe('the verdict: the score against the template\'s threshold, which is pass_threshold below. Not the model\'s own boolean — that is self_reported_pass'),
+  verdict: verdictSchema.optional().describe('composer verdict, as evaluate_output prints'),
   pass_threshold: z.number().describe('the threshold the score was read against, so you can check the arithmetic'),
   self_reported_pass: z.boolean().optional().describe('what the model said about passing, when it said anything. Recorded, never obeyed'),
   disagreement: z.boolean().optional().describe('true when the model\'s own boolean disagrees with the threshold verdict — its rubric and its judgement have come apart on this output'),
@@ -113,6 +116,7 @@ export const judgeOutputSchema = z.looseObject({
 export function registerEvaluateWithLLMJudgeTool(
   server: McpServer,
   storage: IStorageAdapter,
+  engine: EvalEngine,
 ): void {
   server.registerTool(
     'evaluate_with_llm_judge',
@@ -120,7 +124,7 @@ export function registerEvaluateWithLLMJudgeTool(
       title: 'Evaluate With LLM Judge',
       description: describeTool({
         summary:
-          'Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, per-dimension sub-scores and the exact spend.',
+          'Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, sub-scores and the spend.',
         does:
           `Calls Anthropic or OpenAI directly with the key in this process's environment (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}); Iris never proxies. ` +
           'template picks the question: accuracy, helpfulness, safety, correctness (needs expected) or faithfulness (needs source_material); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
@@ -190,9 +194,8 @@ export function registerEvaluateWithLLMJudgeTool(
       // is the honest bucket. rule_results[0] captures per-dimension
       // breakdown + provider metadata for audit.
       const evalId = generateEvalId();
-      await insertLinkedEvalResult(
-        storage,
-        LOCAL_TENANT,
+      // The composer's verdict on the judgment, stored with it (arc 9, N-3).
+      const row = engine.verdictOf(
         judgeEvalResult({
           id: evalId,
           traceId: args.trace_id,
@@ -210,6 +213,7 @@ export function registerEvaluateWithLLMJudgeTool(
           outputTokens: result.outputTokens,
         }),
       );
+      await insertLinkedEvalResult(storage, LOCAL_TENANT, row);
 
       return respond(
         judgeOutputSchema,
@@ -217,7 +221,9 @@ export function registerEvaluateWithLLMJudgeTool(
           id: evalId,
           ...(args.trace_id ? { trace_id: args.trace_id } : {}),
           score: result.score,
-          passed: result.passed,
+          passed: row.passed,
+          ...(row.verdict ? { verdict: row.verdict } : {}),
+          ...(row.interpretations?.length ? { interpretations: row.interpretations } : {}),
           pass_threshold: result.passThreshold,
           ...(result.selfReportedPass !== undefined ? { self_reported_pass: result.selfReportedPass } : {}),
           ...(result.disagreement ? { disagreement: true } : {}),
