@@ -15,6 +15,7 @@ import { toolCallSchema, toolDescriptorSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
+import { storedTraceContext, traceContextOfCall } from '../otel/trace-context.js';
 
 /** The most inline custom rules one call may carry (see the argument description). */
 export const MAX_INLINE_CUSTOM_RULES = 10;
@@ -117,7 +118,7 @@ export function registerEvaluateOutputTool(
         openWorldHint: false,    // No external network in heuristic mode; LLM-as-judge has its own tool with openWorldHint:true
       },
     },
-    guarded(async (args) => {
+    guarded(async (args, extra) => {
       // Refuse an unknown trace_id up front (#376): the old path ran the
       // evaluation and then surfaced SQLite's "FOREIGN KEY constraint
       // failed", which names neither the field nor the fix.
@@ -130,6 +131,17 @@ export function registerEvaluateOutputTool(
       const trace = args.trace_id
         ? await getTraceOrThrow(storage, LOCAL_TENANT, args.trace_id)
         : undefined;
+      /*
+       * SEP-414 (arc 9, N-12): a W3C context on THIS call is written onto
+       * the linked trace when it carries none yet, so the trace joins the
+       * caller's on its next export. A trace that already has one keeps
+       * it — the first context is the one the export was built on. With
+       * no trace_id there is no trace to carry it, and nothing changes.
+       */
+      const callContext = traceContextOfCall(extra);
+      if (callContext && args.trace_id && trace && storedTraceContext(trace.metadata) === undefined) {
+        await storage.updateTraceMetadata(LOCAL_TENANT, args.trace_id, { trace_context: callContext });
+      }
       const toolCalls = args.tool_calls ?? trace?.tool_calls;
       const tools = args.tools ?? trace?.tools;
       /*

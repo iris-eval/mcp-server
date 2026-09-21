@@ -342,6 +342,19 @@ export class SqliteAdapter implements IStorageAdapter {
     return this.rowToTrace(row);
   }
 
+  async updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean> {
+    assertTenant(tenantId);
+    // Read-then-write under IMMEDIATE, so a concurrent writer waits instead of failing the snapshot.
+    const write = this.db.transaction((): boolean => {
+      const row = this.db.prepare('SELECT metadata FROM traces WHERE tenant_id = ? AND trace_id = ?').get(tenantId, traceId) as { metadata?: string | null } | undefined;
+      if (!row) return false;
+      const current = row.metadata ? (JSON.parse(row.metadata) as Record<string, unknown>) : {};
+      this.db.prepare('UPDATE traces SET metadata = ? WHERE tenant_id = ? AND trace_id = ?').run(JSON.stringify({ ...current, ...patch }), tenantId, traceId);
+      return true;
+    });
+    return write.immediate();
+  }
+
   async queryTraces(tenantId: TenantId, options: TraceQueryOptions): Promise<TraceQueryResult> {
     assertTenant(tenantId);
     const conditions: string[] = ['tenant_id = ?'];

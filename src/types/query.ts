@@ -261,6 +261,8 @@ export interface IStorageAdapter {
   migrations(): Promise<MigrationState>;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
   getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null>;
+  /** Merge `patch` into a stored trace's metadata (arc 9, N-12: the trace context a later call carried). False when no such trace. */
+  updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean>;
   queryTraces(tenantId: TenantId, options: TraceQueryOptions): Promise<TraceQueryResult>;
   insertSpan(tenantId: TenantId, span: Span): Promise<void>;
   getSpansByTraceId(tenantId: TenantId, traceId: string): Promise<Span[]>;

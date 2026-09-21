@@ -169,6 +169,12 @@ Without it, traces with only top-level fields (many quick agent calls have no sp
 
 ---
 
+## Trace context is carried (SEP-414)
+
+MCP's SEP-414 (Final) puts W3C trace context in a request's `_meta`: `traceparent`, `tracestate`, `baggage`. Iris reads them on `log_trace` and `evaluate_output` (from `_meta`, with the MCP session id when the transport has one) and on `POST /api/v1/traces` and `POST /v1/traces` (from the headers of the same names) and stores what arrived under `metadata.trace_context` — the header as sent, its trace id, the caller's parent span id, the sampled flag and the MCP session id. `evaluate_output` writes the context onto the trace it is linked to (`trace_id`) when that trace carries none yet; without a `trace_id` there is no trace to carry it. The API returns it with the trace and the trace drawer shows it under Metadata. When Iris exports to `IRIS_OTEL_ENDPOINT`, a trace stored with a context is exported **under the caller's trace id with its root span parented to the caller's span**, so the evaluation shows up inside the agent's own trace in Langfuse, Phoenix, Logfire or Jaeger rather than beside it. A root that joined the caller's trace also carries `mcp.method.name: tools/call` and, when known, `mcp.session.id`, per the OpenTelemetry MCP semantic conventions. A request without a context stores none, and the export carries Iris's own ids and attributes exactly as before. Iris reads the context and never mints one; a malformed `traceparent` (wrong shape, all-zero ids, version `ff`) is ignored, not refused.
+
+One client to know about: Claude Code sends `_meta` as null on `tools/call` (anthropics/claude-code#76391, closed as not planned), so from that client the hook-based capture plugin is the session link, not `_meta`.
+
 ## Traces arrive by OTLP
 
 `POST /v1/traces` on the dashboard port accepts an OTLP/HTTP `ExportTraceServiceRequest` as **JSON** (`Content-Type: application/json`) or **protobuf** (`application/x-protobuf`, since 0.16.0) — the path every OTLP exporter already posts to, so pointing a Collector's `otlphttp` exporter (either `encoding`) or an SDK's `OTEL_EXPORTER_OTLP_ENDPOINT` at `http://<iris>:6920` is the whole integration — for the Python SDK too, whose exporter sends protobuf only. It sits behind the same API key, DNS-rebinding guard and rate limit as the REST API; any other content type is answered `415` naming both encodings; a body that is not an `ExportTraceServiceRequest` is `400` (for protobuf, with the byte offset of what went wrong). gRPC is not served: a Collector bridges it —

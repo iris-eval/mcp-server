@@ -12,6 +12,7 @@ import { traceUri } from '../resources/uris.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { DormantRule } from '../eval/dormant.js';
 import { evaluateStoredTrace } from '../eval/ingest.js';
+import { traceContextOfCall, withTraceContext } from '../otel/trace-context.js';
 import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import { irisError } from './errors.js';
 
@@ -237,7 +238,9 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         openWorldHint: false,    // Local storage first. When IRIS_OTEL_ENDPOINT is set a best-effort async OTel export runs but is non-blocking (tool succeeds even if export fails).
       },
     },
-    guarded(async (args) => {
+    guarded(async (args, extra) => {
+      // W3C trace context in the request's _meta (SEP-414): stored with the trace, joined on export (arc 9, N-12).
+      const traceContext = traceContextOfCall(extra);
       // Refuse before storing anything: a half-done write — stored, not
       // evaluated, error returned — is the shape a caller cannot recover
       // from without reading the database.
@@ -266,7 +269,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         latency_ms: args.latency_ms,
         token_usage: args.token_usage,
         cost_usd: args.cost_usd,
-        metadata: args.metadata as Record<string, unknown> | undefined,
+        metadata: withTraceContext(args.metadata as Record<string, unknown> | undefined, traceContext),
         timestamp,
         /*
          * THE CATALOGUE WAS BEING DROPPED HERE.
