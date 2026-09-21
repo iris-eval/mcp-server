@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   traceQuerySchema,
   evalQuerySchema,
+  runsQuerySchema,
+  caseQuerySchema,
   summaryQuerySchema,
+  evalStatsPeriodSchema,
+  driftSchema,
+  evalStatsTrendSchema,
+  evalStatsFailuresSchema,
   failuresQuerySchema,
   ingestTraceSchema,
   strictBody,
@@ -246,4 +252,35 @@ describe('failuresQuerySchema', () => {
   it('should reject empty agent_name', () => {
     expect(() => failuresQuerySchema.parse({ agent_name: '' })).toThrow();
   });
+});
+
+/*
+ * The read routes' query schemas are strict (arc 9, N-4; #376): a
+ * misspelled filter is refused naming the key and the valid names, never
+ * stripped into "no filter". One table, every closed query shape.
+ */
+describe('strictQuery — every closed query shape refuses an unknown parameter', () => {
+  const cases: Array<{ name: string; schema: z.ZodTypeAny; valid: Record<string, string>; typo: string }> = [
+    { name: 'traceQuerySchema', schema: traceQuerySchema, valid: { agent_name: 'a', limit: '5' }, typo: 'agent_nme' },
+    { name: 'evalQuerySchema', schema: evalQuerySchema, valid: { eval_type: 'safety' }, typo: 'eval_typ' },
+    { name: 'runsQuerySchema', schema: runsQuerySchema, valid: { limit: '5' }, typo: 'limt' },
+    { name: 'caseQuerySchema', schema: caseQuerySchema, valid: { run: 'r1' }, typo: 'rn' },
+    { name: 'summaryQuerySchema', schema: summaryQuerySchema, valid: { hours: '24' }, typo: 'hour' },
+    { name: 'evalStatsPeriodSchema', schema: evalStatsPeriodSchema, valid: { period: '7d' }, typo: 'perod' },
+    { name: 'driftSchema', schema: driftSchema, valid: { period: '7d' }, typo: 'runs' },
+    { name: 'evalStatsTrendSchema', schema: evalStatsTrendSchema, valid: { period: '7d', cohort: 'run' }, typo: 'cohorts' },
+    { name: 'evalStatsFailuresSchema', schema: evalStatsFailuresSchema, valid: { period: '7d', limit: '3' }, typo: 'top' },
+    { name: 'failuresQuerySchema', schema: failuresQuerySchema, valid: { agent_name: 'a' }, typo: 'agent' },
+  ];
+  for (const c of cases) {
+    it(`${c.name} accepts its own parameters and refuses "${c.typo}" by name`, () => {
+      expect(c.schema.safeParse(c.valid).success).toBe(true);
+      const refused = c.schema.safeParse({ ...c.valid, [c.typo]: 'x' });
+      expect(refused.success).toBe(false);
+      const message = refused.success ? '' : refused.error.issues.map((i) => i.message).join(' ');
+      expect(message).toContain(`"${c.typo}"`);
+      expect(message).toContain('Unknown query parameter');
+      expect(message).toContain(Object.keys(c.valid)[0]);
+    });
+  }
 });
