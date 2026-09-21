@@ -155,8 +155,8 @@ You'll see raw POSTs to `/v1/traces` with JSON bodies matching
 **Why hand-rolled instead of `@opentelemetry/sdk-node`?**
 Three reasons. (1) Supply-chain surface — the SDK pulls in ~30 transitive deps (`semver`, `shimmer`, async-hooks integrations). Iris uses plain `fetch`. (2) Wire format stability — the OTLP JSON format is frozen by the OTel spec and we follow it byte-for-byte; we don't need API-stability guarantees from a vendor SDK. (3) Consistency — Iris already uses hand-rolled HTTP for LLM providers (`src/eval/llm-judge/client.ts`) and citation resolution (`src/eval/citation-verify/resolve.ts`); this module fits the same pattern.
 
-**Why only OTLP/HTTP JSON, not gRPC or protobuf?**
-gRPC would require `@grpc/grpc-js` + `@opentelemetry/proto` — back to the SDK footprint. Protobuf-over-HTTP is similar (needs a protobuf library). JSON-over-HTTP is supported by every OTel collector, is trivially debuggable with `curl`, and is the path of least dependency.
+**Why OTLP/HTTP JSON and protobuf, not gRPC?**
+gRPC would require `@grpc/grpc-js` + `@opentelemetry/proto` — back to the SDK footprint. JSON-over-HTTP is supported by every OTel collector, is trivially debuggable with `curl`, and is the path of least dependency — so the export side speaks JSON. The ingest door (`POST /v1/traces`) accepts protobuf too, since 0.16.0: the Python OTLP exporter sends protobuf only (its JSON encoding is not implemented — the spec's compliance matrix says so), so a JSON-only door meant every Python framework needed a Collector in between. Three ways to read protobuf were compared — `protobufjs` (reflection over vendored `.proto` files, 3.8 MB unpacked), `@bufbuild/protobuf` (generated code and a build step, 1.9 MB), or a wire-format reader for the one message Iris accepts — and `src/otel/protobuf.ts` is the third: about two hundred lines, no dependency, held by its test to reproducing the real Python exporter's payloads exactly as protobuf's own JSON mapping renders them (`tests/fixtures/otlp/`).
 
 **Why best-effort fire-and-forget instead of an in-memory queue?**
 The MCP server is mostly synchronous from the agent's perspective — agents call `log_trace` and wait for the response. Introducing a background queue adds lifecycle complexity (drain on shutdown, retry logic, deduplication) for questionable benefit. If operators need guaranteed delivery they should front Iris with an OTel Collector running `file_storage` — that's the right layer for durability. Iris's job is "emit the telemetry"; the Collector's job is "guarantee it lands."
@@ -171,7 +171,25 @@ Without it, traces with only top-level fields (many quick agent calls have no sp
 
 ## Traces arrive by OTLP
 
-`POST /v1/traces` on the dashboard port accepts an OTLP/HTTP **JSON** `ExportTraceServiceRequest` — the path every OTLP exporter already posts to, so pointing a Collector's `otlphttp` exporter (protocol `http/json`) or an SDK's `OTEL_EXPORTER_OTLP_ENDPOINT` at `http://<iris>:6920` is the whole integration. It sits behind the same API key, DNS-rebinding guard and rate limit as the REST API; protobuf is answered `415` naming the JSON encoding; a body that is not an `ExportTraceServiceRequest` is `400`.
+`POST /v1/traces` on the dashboard port accepts an OTLP/HTTP `ExportTraceServiceRequest` as **JSON** (`Content-Type: application/json`) or **protobuf** (`application/x-protobuf`, since 0.16.0) — the path every OTLP exporter already posts to, so pointing a Collector's `otlphttp` exporter (either `encoding`) or an SDK's `OTEL_EXPORTER_OTLP_ENDPOINT` at `http://<iris>:6920` is the whole integration — for the Python SDK too, whose exporter sends protobuf only. It sits behind the same API key, DNS-rebinding guard and rate limit as the REST API; any other content type is answered `415` naming both encodings; a body that is not an `ExportTraceServiceRequest` is `400` (for protobuf, with the byte offset of what went wrong). gRPC is not served: a Collector bridges it —
+
+```yaml
+# otel-collector.yaml — gRPC in, Iris out
+receivers:
+  otlp:
+    protocols:
+      grpc:
+exporters:
+  otlphttp/iris:
+    endpoint: http://127.0.0.1:6920
+    headers:
+      authorization: Bearer ${env:IRIS_API_KEY}
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlphttp/iris]
+```
 
 Each OTLP trace id becomes one Iris trace with its spans, read from the [GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) and Iris's own export attributes:
 

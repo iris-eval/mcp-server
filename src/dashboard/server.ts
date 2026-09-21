@@ -132,6 +132,8 @@ export function createDashboardServer(
 
   // Body parser with size limit
   app.use(express.json({ limit: config.security.requestSizeLimit }));
+  // OTLP/HTTP protobuf bodies (arc 9, N-10) — raw bytes, same size limit; the route decodes them.
+  app.use(express.raw({ type: 'application/x-protobuf', limit: config.security.requestSizeLimit }));
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));

@@ -23,6 +23,7 @@ import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { Trace } from '../../types/trace.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { fromOtlp, otlpTraceRequestSchema } from '../../otel/ingest.js';
+import { decodeExportTraceServiceRequest, OtlpProtobufError } from '../../otel/protobuf.js';
 import { toSteps } from '../../eval/steps.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
@@ -36,12 +37,31 @@ export interface OtlpRouteOptions {
 
 export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, options: OtlpRouteOptions): void {
   router.post('/traces', async (req, res) => {
-    const type = String(req.headers['content-type'] ?? '');
-    if (!type.toLowerCase().includes('application/json')) {
-      res.status(415).json({ error: 'This endpoint accepts OTLP/HTTP with JSON encoding (Content-Type: application/json); protobuf is not accepted. Set your exporter to the http/json protocol.' });
+    /*
+     * Two encodings, one path (arc 9, N-10). JSON is parsed by the app's
+     * body parser; protobuf arrives as raw bytes and is decoded into the
+     * same OTLP/JSON object here, so the schema, the mapping and every
+     * test below this line are the JSON path. The Python exporter sends
+     * protobuf only, so until 0.16.0 no Python framework reached this door
+     * without a Collector between.
+     */
+    const type = String(req.headers['content-type'] ?? '').toLowerCase();
+    let payload: unknown;
+    if (type.includes('application/x-protobuf')) {
+      try {
+        payload = decodeExportTraceServiceRequest(req.body instanceof Uint8Array ? req.body : new Uint8Array());
+      } catch (err) {
+        const message = err instanceof OtlpProtobufError ? err.message : err instanceof Error ? err.message : String(err);
+        res.status(400).json({ error: `Not a protobuf ExportTraceServiceRequest: ${message}` });
+        return;
+      }
+    } else if (type.includes('application/json')) {
+      payload = req.body;
+    } else {
+      res.status(415).json({ error: 'This endpoint accepts OTLP/HTTP as JSON (Content-Type: application/json) or protobuf (Content-Type: application/x-protobuf). gRPC is not served: point a Collector\'s otlphttp exporter here.' });
       return;
     }
-    const parsed = otlpTraceRequestSchema.safeParse(req.body);
+    const parsed = otlpTraceRequestSchema.safeParse(payload);
     if (!parsed.success) {
       res.status(400).json({
         error: 'Not an OTLP ExportTraceServiceRequest: expected { resourceSpans: [{ resource, scopeSpans: [{ spans: [...] }] }] }',
