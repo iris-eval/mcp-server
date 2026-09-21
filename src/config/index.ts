@@ -142,6 +142,11 @@ function loadEnvVars(): Partial<IrisConfig> {
   if (process.env.IRIS_API_KEY) {
     config.security = { ...(config.security as object), apiKey: process.env.IRIS_API_KEY };
   }
+  // The secret-file pattern (arc 8, R-6): the key ring reads the file at
+  // boot and refuses an unreadable or empty one with a sentence.
+  if (process.env.IRIS_API_KEY_FILE) {
+    config.security = { ...(config.security as object), apiKeyFile: process.env.IRIS_API_KEY_FILE };
+  }
   if (process.env.IRIS_ALLOW_UNAUTHENTICATED) {
     config.security = {
       ...(config.security as object),

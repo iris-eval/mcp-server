@@ -6,6 +6,7 @@ import {
   JSON_RPC_RATE_LIMITED,
 } from '../../../src/middleware/rate-limit.js';
 import type { IrisConfig } from '../../../src/types/config.js';
+import type { AuthedRequest } from '../../../src/middleware/auth.js';
 
 function makeConfig(apiLimit: number, mcpLimit = 20): Pick<IrisConfig, 'security'> {
   return {
@@ -108,6 +109,73 @@ describe('rate limit middleware', () => {
       expect(res.status).toBe(429);
     } finally {
       server.close();
+    }
+  });
+});
+
+/*
+ * What the MCP budget is counted against (arc 8, R-6): the client address
+ * by default (the pre-0.15.0 behaviour), or the API key that authenticated
+ * the request — so two agents behind one address each get their own
+ * minute, and a request no key authenticated falls back to its address.
+ */
+describe('MCP rate limiter — mcpKeyBy', () => {
+  function bootKeyed(keyBy: 'ip' | 'apiKey' | undefined, limit: number): { url: string; close: () => void } {
+    const config = makeConfig(600, limit);
+    if (keyBy) config.security.rateLimit = { ...config.security.rateLimit, mcpKeyBy: keyBy };
+    const app = express();
+    app.use(express.json());
+    // Stand-in for the Bearer middleware: the id of the key the request presented.
+    app.use((req, _res, next) => {
+      const id = req.headers['x-test-key-id'];
+      if (typeof id === 'string') (req as AuthedRequest).apiKeyId = id;
+      next();
+    });
+    app.post('/mcp', createMcpRateLimiter(config), (_req, res) => res.json({ jsonrpc: '2.0', id: 1, result: {} }));
+    const server = app.listen(0);
+    const addr = server.address() as { port: number };
+    return { url: `http://localhost:${addr.port}/mcp`, close: () => server.close() };
+  }
+
+  const postAs = (url: string, keyId?: string) =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(keyId ? { 'x-test-key-id': keyId } : {}) },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+    });
+
+  it("by default the budget is per address: two keys from one address share it, and the sentence says 'client address'", async () => {
+    const { url, close } = bootKeyed(undefined, 2);
+    try {
+      expect((await postAs(url, 'a')).status).toBe(200);
+      expect((await postAs(url, 'b')).status).toBe(200);
+      const third = await postAs(url, 'a');
+      expect(third.status).toBe(429);
+      const body = (await third.json()) as { error: { message: string } };
+      expect(body.error.message).toContain('2 requests per minute per client address');
+    } finally {
+      close();
+    }
+  });
+
+  it("with mcpKeyBy 'apiKey' each key has its own budget, an unkeyed request falls back to its address, and the sentence says 'API key'", async () => {
+    const { url, close } = bootKeyed('apiKey', 2);
+    try {
+      expect((await postAs(url, 'a')).status).toBe(200);
+      expect((await postAs(url, 'a')).status).toBe(200);
+      const aThird = await postAs(url, 'a');
+      expect(aThird.status).toBe(429);
+      expect(((await aThird.json()) as { error: { message: string } }).error.message).toContain('2 requests per minute per API key');
+      // b is untouched by a's spend.
+      expect((await postAs(url, 'b')).status).toBe(200);
+      expect((await postAs(url, 'b')).status).toBe(200);
+      expect((await postAs(url, 'b')).status).toBe(429);
+      // No key: the address bucket, still fresh.
+      expect((await postAs(url)).status).toBe(200);
+      expect((await postAs(url)).status).toBe(200);
+      expect((await postAs(url)).status).toBe(429);
+    } finally {
+      close();
     }
   });
 });

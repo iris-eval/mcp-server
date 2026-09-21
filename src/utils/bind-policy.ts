@@ -22,28 +22,30 @@
  */
 import type { IrisConfig } from '../types/index.js';
 import { isLoopbackHost } from '../middleware/rebinding-guard.js';
+import { hasAnyApiKey } from '../security/keys.js';
 
 export const ALLOW_UNAUTHENTICATED_VAR = 'IRIS_ALLOW_UNAUTHENTICATED';
 
 export interface BindPolicyInput {
   surface: 'HTTP transport' | 'dashboard';
   host: string;
-  apiKey: string | undefined;
+  /** Whether ANY key is configured — apiKey, apiKeyFile or apiKeys (src/security/keys.ts, hasAnyApiKey). */
+  hasApiKey: boolean;
   allowUnauthenticated: boolean;
 }
 
 /**
  * The refusal sentence when this bind must not happen, or null when it may.
- * An empty-string key is no key.
+ * An empty-string key is no key (hasAnyApiKey says so).
  */
 export function unauthenticatedBindRefusal(input: BindPolicyInput): string | null {
   if (isLoopbackHost(input.host)) return null;
-  if (input.apiKey) return null;
+  if (input.hasApiKey) return null;
   if (input.allowUnauthenticated) return null;
   return (
     `Refusing to bind the ${input.surface} to ${input.host} without an API key: every trace, verdict and rule ` +
-    `on this server would be reachable by anyone who can route to this host. Set IRIS_API_KEY (or --api-key), ` +
-    `bind to 127.0.0.1 instead, or set ${ALLOW_UNAUTHENTICATED_VAR}=1 to run open on purpose.`
+    `on this server would be reachable by anyone who can route to this host. Set IRIS_API_KEY (or --api-key, or ` +
+    `IRIS_API_KEY_FILE), bind to 127.0.0.1 instead, or set ${ALLOW_UNAUTHENTICATED_VAR}=1 to run open on purpose.`
   );
 }
 
@@ -59,11 +61,12 @@ export function assertAuthenticatedBind(input: BindPolicyInput): void {
  * dashboard only when it is enabled.
  */
 export function validateBindPolicy(config: IrisConfig): void {
-  const { apiKey, allowUnauthenticated } = config.security;
+  const { allowUnauthenticated } = config.security;
+  const hasApiKey = hasAnyApiKey(config.security);
   if (config.transport.type === 'http') {
-    assertAuthenticatedBind({ surface: 'HTTP transport', host: config.transport.host, apiKey, allowUnauthenticated });
+    assertAuthenticatedBind({ surface: 'HTTP transport', host: config.transport.host, hasApiKey, allowUnauthenticated });
   }
   if (config.dashboard.enabled) {
-    assertAuthenticatedBind({ surface: 'dashboard', host: config.dashboard.host, apiKey, allowUnauthenticated });
+    assertAuthenticatedBind({ surface: 'dashboard', host: config.dashboard.host, hasApiKey, allowUnauthenticated });
   }
 }

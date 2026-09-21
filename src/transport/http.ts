@@ -10,6 +10,7 @@ import { createErrorHandler } from '../middleware/error-handler.js';
 import { createMcpRateLimiter } from '../middleware/rate-limit.js';
 import { createRebindingGuard } from '../middleware/rebinding-guard.js';
 import { assertAuthenticatedBind } from '../utils/bind-policy.js';
+import { buildKeyRing, hasAnyApiKey } from '../security/keys.js';
 import { buildHealth, type HealthDeps } from '../health.js';
 
 export interface HttpTransportResult {
@@ -36,9 +37,11 @@ export async function createHttpTransport(
   assertAuthenticatedBind({
     surface: 'HTTP transport',
     host: config.transport.host,
-    apiKey: config.security.apiKey,
+    hasApiKey: hasAnyApiKey(config.security),
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
+  // Every configured key, read once (arc 8, R-6).
+  const keys = buildKeyRing(config.security);
 
   const app = express();
 
@@ -86,7 +89,7 @@ export async function createHttpTransport(
   });
 
   // Authentication
-  app.use(createAuthMiddleware(config));
+  app.use(createAuthMiddleware(config, keys));
 
   /*
    * DNS-rebinding protection (MCP spec: servers MUST validate Origin on

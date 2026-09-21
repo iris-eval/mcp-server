@@ -76,9 +76,26 @@ export const configFileSchema = z.strictObject({
   security: z
     .strictObject({
       apiKey: name.optional(),
+      apiKeyFile: name.optional(),
+      apiKeys: z
+        .array(
+          z.strictObject({
+            id: name,
+            keyFile: name.optional(),
+            keyHash: name.optional(),
+            expiresAt: name.optional(),
+          }),
+        )
+        .optional(),
       allowUnauthenticated: z.boolean().optional(),
       allowedOrigins: z.array(name).optional(),
-      rateLimit: z.strictObject({ api: z.number().int().min(1).optional(), mcp: z.number().int().min(1).optional() }).optional(),
+      rateLimit: z
+        .strictObject({
+          api: z.number().int().min(1).optional(),
+          mcp: z.number().int().min(1).optional(),
+          mcpKeyBy: z.enum(['ip', 'apiKey']).optional(),
+        })
+        .optional(),
       requestSizeLimit: name.optional(),
     })
     .optional(),
@@ -91,6 +108,13 @@ export const RESERVED_CONFIG_KEYS: ReadonlySet<string> = new Set(['eval.configur
 export function knownKeysAt(path: ReadonlyArray<PropertyKey>): string[] {
   let node: unknown = configFileSchema;
   for (const segment of path) {
+    if (typeof segment === 'number' || (typeof segment === 'string' && /^\d+$/.test(segment))) {
+      // An index into an array (security.apiKeys.0.…): descend into the element schema.
+      const element = elementOf(node);
+      if (!element) return [];
+      node = element;
+      continue;
+    }
     const shape = shapeOf(node);
     if (!shape || typeof segment !== 'string' || !(segment in shape)) return [];
     node = shape[segment];
@@ -99,16 +123,27 @@ export function knownKeysAt(path: ReadonlyArray<PropertyKey>): string[] {
   return shape ? Object.keys(shape) : [];
 }
 
-function shapeOf(node: unknown): Record<string, unknown> | null {
+type Def = { innerType?: unknown; element?: unknown; type?: string };
+
+/** Unwrap `.optional()` — zod 4 keeps the inner schema on `def.innerType`. */
+function unwrap(node: unknown): unknown {
   let current = node;
-  // Unwrap `.optional()` — zod 4 keeps the inner schema on `def.innerType`.
   for (let i = 0; i < 4; i++) {
-    const def = (current as { def?: { innerType?: unknown; type?: string } } | null)?.def;
+    const def = (current as { def?: Def } | null)?.def;
     if (def?.type === 'optional' && def.innerType) current = def.innerType;
     else break;
   }
-  const shape = (current as { shape?: Record<string, unknown> } | null)?.shape;
+  return current;
+}
+
+function shapeOf(node: unknown): Record<string, unknown> | null {
+  const shape = (unwrap(node) as { shape?: Record<string, unknown> } | null)?.shape;
   return shape && typeof shape === 'object' ? shape : null;
+}
+
+function elementOf(node: unknown): unknown {
+  const def = (unwrap(node) as { def?: Def } | null)?.def;
+  return def?.type === 'array' ? (def.element ?? null) : null;
 }
 
 /** Levenshtein distance, for the did-you-mean on a misspelled key. */

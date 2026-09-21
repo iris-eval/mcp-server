@@ -138,7 +138,23 @@ export interface IrisConfig {
     sweepIntervalHours: number;
   };
   security: {
+    /** The primary key, in plaintext (IRIS_API_KEY / --api-key). Its id is `primary`. */
     apiKey?: string;
+    /**
+     * The primary key read from a file — its trimmed contents
+     * (IRIS_API_KEY_FILE). The secret-file pattern Docker and Kubernetes
+     * mount. Set this or `apiKey`, not both. See src/security/keys.ts.
+     */
+    apiKeyFile?: string;
+    /**
+     * Further keys, so a rotation has no gap: add the new one, restart,
+     * move the clients, remove the old one, restart. Each has an `id`,
+     * exactly one of `keyFile` (a file whose trimmed contents are the key)
+     * or `keyHash` (the sha256 hex of the key, so the config file holds no
+     * secret), and an optional `expiresAt` (ISO 8601) after which it stops
+     * matching at that instant.
+     */
+    apiKeys?: Array<{ id: string; keyFile?: string; keyHash?: string; expiresAt?: string }>;
     /**
      * Run a non-loopback bind with no API key on purpose (IRIS_ALLOW_UNAUTHENTICATED=1).
      * Without it such a bind is refused at startup — see src/utils/bind-policy.ts.
@@ -148,6 +164,13 @@ export interface IrisConfig {
     rateLimit: {
       api: number;
       mcp: number;
+      /**
+       * What the MCP endpoint's per-minute limit is counted against: the
+       * client address (default), or the API key that authenticated the
+       * request — so several agents behind one NAT each get their own
+       * budget. A request with no key falls back to its address.
+       */
+      mcpKeyBy?: 'ip' | 'apiKey';
     };
     requestSizeLimit: string;
   };

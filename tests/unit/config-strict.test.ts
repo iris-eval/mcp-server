@@ -154,6 +154,17 @@ describe('config.json is strict', () => {
     expect(config.logging.level).toBe('warn');
   });
 
+  it('the key ring and the rate-limit keying are documented keys; a wrong keying value names the two allowed', () => {
+    writeConfig({ security: { apiKeys: [{ id: 'ci', keyHash: 'a'.repeat(64), expiresAt: '2027-01-01T00:00:00Z' }], rateLimit: { mcpKeyBy: 'apiKey' } } });
+    const config = loadConfig();
+    expect(config.security.apiKeys?.[0]?.id).toBe('ci');
+    expect(config.security.rateLimit.mcpKeyBy).toBe('apiKey');
+    writeConfig({ security: { rateLimit: { mcpKeyBy: 'user' } } });
+    expect(refusal()).toMatch(/"security\.rateLimit\.mcpKeyBy": .*"ip"|"apiKey"/);
+    writeConfig({ security: { apiKeys: [{ id: 'ci', keyHash: 'a'.repeat(64), expires: 'x' }] } });
+    expect(refusal()).toContain('unknown key "security.apiKeys.0.expires" — did you mean "security.apiKeys.0.expiresAt"?');
+  });
+
   it('an empty object and a missing file both load the defaults', () => {
     writeConfig({});
     expect(loadConfig().retention.days).toBe(30);
@@ -174,7 +185,8 @@ describe('the did-you-mean', () => {
 
   it('knownKeysAt walks optional objects and answers [] off the schema', () => {
     expect(knownKeysAt([])).toEqual(['storage', 'server', 'transport', 'dashboard', 'eval', 'logging', 'retention', 'security']);
-    expect(knownKeysAt(['security', 'rateLimit'])).toEqual(['api', 'mcp']);
+    expect(knownKeysAt(['security', 'rateLimit'])).toEqual(['api', 'mcp', 'mcpKeyBy']);
+    expect(knownKeysAt(['security', 'apiKeys', 0])).toEqual(['id', 'keyFile', 'keyHash', 'expiresAt']);
     expect(knownKeysAt(['nope'])).toEqual([]);
     expect(knownKeysAt(['eval', 'criticalRules'])).toEqual([]);
   });

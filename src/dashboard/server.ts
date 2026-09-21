@@ -31,6 +31,7 @@ import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { createSessionAuth } from './session-auth.js';
 import { assertAuthenticatedBind } from '../utils/bind-policy.js';
+import { buildKeyRing, hasAnyApiKey } from '../security/keys.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
@@ -64,9 +65,13 @@ export function createDashboardServer(
   assertAuthenticatedBind({
     surface: 'dashboard',
     host: config.dashboard.host,
-    apiKey: config.security.apiKey,
+    hasApiKey: hasAnyApiKey(config.security),
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
+
+  // Every configured key, read once (arc 8, R-6): the Bearer middleware and
+  // the browser session layer match against the same ring.
+  const keys = buildKeyRing(config.security);
 
   const app = express();
 
@@ -150,7 +155,7 @@ export function createDashboardServer(
    * ceiling every authorization decision sits behind.
    */
   app.use(createAuthGateRateLimiter(config));
-  app.use(createSessionAuth({ apiKey: config.security.apiKey, bearerAuth: createAuthMiddleware(config) }));
+  app.use(createSessionAuth({ keys, bearerAuth: createAuthMiddleware(config, keys) }));
 
   // Tenant resolution — attaches req.tenantId to every request.
   // OSS: always resolves to LOCAL_TENANT. Cloud: swaps for an auth-aware
@@ -306,7 +311,7 @@ export function createDashboardServer(
 
         const shown = isLoopbackHost(config.dashboard.host) ? 'localhost' : config.dashboard.host;
         logger.info(`Dashboard available at http://${shown}:${boundPort ?? config.dashboard.port}`);
-        if (!isLoopbackHost(config.dashboard.host) && !config.security.apiKey) {
+        if (!isLoopbackHost(config.dashboard.host) && keys.empty) {
           logger.warn(
             `Dashboard is bound to ${config.dashboard.host} with NO api key — the full trace ` +
               `history and rule management are reachable by anyone who can route to this host. ` +

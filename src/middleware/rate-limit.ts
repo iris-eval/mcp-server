@@ -1,6 +1,7 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request, Response } from 'express';
 import type { IrisConfig } from '../types/config.js';
+import type { AuthedRequest } from './auth.js';
 
 export function createApiRateLimiter(config: Pick<IrisConfig, 'security'>) {
   return rateLimit({
@@ -49,11 +50,29 @@ export const JSON_RPC_RATE_LIMITED = -32029;
  */
 export function createMcpRateLimiter(config: Pick<IrisConfig, 'security'>) {
   const limit = config.security.rateLimit.mcp;
+  /*
+   * What the budget is counted against (arc 8, R-6). `ip` is the default
+   * and the pre-0.15.0 behaviour. `apiKey` counts per authenticated key —
+   * the Bearer middleware runs ahead of this limiter and stamps the id of
+   * the key that matched — so several agents behind one NAT each get their
+   * own minute; a request no key authenticated falls back to its address
+   * (ipKeyGenerator, so IPv6 clients are bucketed by subnet as the default
+   * generator does).
+   */
+  const keyBy = config.security.rateLimit.mcpKeyBy ?? 'ip';
   return rateLimit({
     windowMs: 60_000,
     limit,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    ...(keyBy === 'apiKey'
+      ? {
+          keyGenerator: (req: Request): string => {
+            const id = (req as AuthedRequest).apiKeyId;
+            return id ? `key:${id}` : ipKeyGenerator(req.ip ?? '');
+          },
+        }
+      : {}),
     handler: (req: Request, res: Response) => {
       const body: unknown = req.body;
       const requestId =
@@ -70,7 +89,7 @@ export function createMcpRateLimiter(config: Pick<IrisConfig, 'security'>) {
         error: {
           code: JSON_RPC_RATE_LIMITED,
           message:
-            `Rate limit exceeded: this MCP endpoint allows ${limit} requests per minute. ` +
+            `Rate limit exceeded: this MCP endpoint allows ${limit} requests per minute per ${keyBy === 'apiKey' ? 'API key' : 'client address'}. ` +
             `Retry in ${retryAfterSeconds}s, or raise security.rateLimit.mcp in config.json for an interactive session.`,
           data: { limit, windowMs: 60_000, retryAfterSeconds },
         },

@@ -60,6 +60,37 @@ interface Verdict {
   criticalSkipped: string[];
 }
 
+/** What one evaluation looked like, for a log line: never the text, never a key. */
+export interface EvaluationEvent {
+  evaluation_id: string;
+  eval_type: string;
+  verdict: 'pass' | 'fail' | 'unknown';
+  basis: string;
+  passed: boolean;
+  score: number;
+  rules_evaluated: number;
+  rules_skipped: number;
+  critical_failures: string[];
+  prior_source: string | null;
+  duration_ms: number;
+}
+
+export function evaluationEvent(result: EvalResult, durationMs: number): EvaluationEvent {
+  return {
+    evaluation_id: result.id,
+    eval_type: result.eval_type,
+    verdict: result.verdict?.state ?? (result.passed ? 'pass' : 'fail'),
+    basis: result.verdict?.basis ?? 'no_rules',
+    passed: result.passed,
+    score: result.score,
+    rules_evaluated: result.rules_evaluated ?? 0,
+    rules_skipped: result.rules_skipped ?? 0,
+    critical_failures: result.critical_failures ?? [],
+    prior_source: result.provenance?.composer?.priorSource ?? null,
+    duration_ms: Math.round(durationMs * 100) / 100,
+  };
+}
+
 export class EvalEngine {
   private additionalRules: Map<EvalType, EvalRule[]> = new Map();
   /**
@@ -94,6 +125,19 @@ export class EvalEngine {
    * which then evaluates exactly as before.
    */
   private localLabels: LocalLabelSource | null = null;
+
+  private observer: ((event: EvaluationEvent) => void) | null = null;
+
+  /**
+   * One structured event per evaluation, whichever door asked for it (arc
+   * 8, R-6): the server wires it to the logger's `event('evaluation', …)`.
+   * The engine has no logger of its own on purpose — the tools, the ingest
+   * path and the CLI all reach it, so the seam is here, once. An observer
+   * that throws never fails the evaluation.
+   */
+  setObserver(observer: ((event: EvaluationEvent) => void) | null): void {
+    this.observer = observer;
+  }
 
   /** Install (or clear) the local-label source every later evaluation reads. */
   setLocalLabels(source: LocalLabelSource | null): void {
@@ -309,6 +353,24 @@ export class EvalEngine {
    * without re-touching every caller a second time.
    */
   private async run(
+    evalType: EvalResultType,
+    rules: EvalRule[],
+    categories: EvalType[] | undefined,
+    context: EvalContext,
+  ): Promise<EvalResult> {
+    const started = performance.now();
+    const result = await this.runRules(evalType, rules, categories, context);
+    if (this.observer) {
+      try {
+        this.observer(evaluationEvent(result, performance.now() - started));
+      } catch {
+        // The observer is a log seam; a failure there is not an evaluation failure.
+      }
+    }
+    return result;
+  }
+
+  private async runRules(
     evalType: EvalResultType,
     rules: EvalRule[],
     categories: EvalType[] | undefined,

@@ -24,6 +24,13 @@
           "name": "IRIS_API_KEY"
         },
         {
+          "description": "Path to a file whose trimmed contents are the API key (the secret-file pattern Docker and Kubernetes mount). Set this or IRIS_API_KEY, not both; further keys and rotation are security.apiKeys in config.json",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_API_KEY_FILE"
+        },
+        {
           "description": "Set to 1 to run a non-loopback bind with NO API key on purpose (lifts the startup refusal; the network is then your boundary)",
           "isRequired": false,
           "format": "string",

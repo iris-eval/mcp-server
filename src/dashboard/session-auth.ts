@@ -36,7 +36,8 @@
  * it (middleware/rate-limit.ts, createAuthGateRateLimiter), so no
  * authorization decision runs unthrottled.
  */
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import type { KeyRing } from '../security/keys.js';
 import express, { type Request, type RequestHandler, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 
@@ -46,24 +47,18 @@ export const MAX_SESSIONS = 256;
 const SIGN_IN_ATTEMPTS_PER_MINUTE = 10;
 
 export interface SessionAuthOptions {
-  apiKey: string | undefined;
+  /** Every configured key (src/security/keys.ts); an empty ring makes this layer a pass-through. */
+  keys: KeyRing;
   /** The Bearer middleware every non-session request still goes through. */
   bearerAuth: RequestHandler;
   /** Live-session cap; MAX_SESSIONS unless a test lowers it to reach the refusal path. */
   maxSessions?: number;
 }
 
-function keyMatches(candidateRaw: string, apiKey: string): boolean {
-  // Same shape as middleware/auth.ts: pad to the key length and compare
-  // fixed-size buffers so the compare path does not depend on the
-  // candidate's length.
-  const keyBuffer = Buffer.from(apiKey);
-  const tokenBuffer = Buffer.from(candidateRaw);
-  const candidate = Buffer.alloc(keyBuffer.length);
-  tokenBuffer.copy(candidate, 0, 0, keyBuffer.length);
-  const cmpEq = timingSafeEqual(candidate, keyBuffer);
-  const lenEq = tokenBuffer.length === keyBuffer.length;
-  return cmpEq && lenEq;
+function keyMatches(candidateRaw: string, keys: KeyRing): boolean {
+  // The same ring the Bearer middleware uses (arc 8, R-6): the candidate is
+  // hashed and compared to every configured key in constant time.
+  return keys.match(candidateRaw) !== null;
 }
 
 function readCookie(req: Request, name: string): string | undefined {
@@ -129,9 +124,9 @@ function signInPage(error?: string): string {
 }
 
 export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
-  const { apiKey, bearerAuth } = opts;
+  const { keys, bearerAuth } = opts;
   const maxSessions = opts.maxSessions ?? MAX_SESSIONS;
-  if (!apiKey) {
+  if (keys.empty) {
     // No key configured: the Bearer middleware is a pass-through and so is
     // this. A `?key=` on the URL is left alone — nothing to exchange.
     return bearerAuth;
@@ -209,7 +204,7 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
   const exchange: RequestHandler = (req, res, next) => {
     // 1. `?key=` on a page URL — the one-line team recipe.
     if (req.method === 'GET' && !req.path.startsWith('/api/') && typeof req.query.key === 'string') {
-      if (!keyMatches(req.query.key, apiKey)) {
+      if (!keyMatches(req.query.key, keys)) {
         sendSignIn(res, 403, 'That API key did not match.');
         return;
       }
@@ -232,7 +227,7 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
         }
         const body = req.body as { key?: unknown } | undefined;
         const key = typeof body?.key === 'string' ? body.key : '';
-        if (!key || !keyMatches(key, apiKey)) {
+        if (!key || !keyMatches(key, keys)) {
           sendSignIn(res, 403, 'That API key did not match.');
           return;
         }

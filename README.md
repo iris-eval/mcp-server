@@ -386,6 +386,7 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_DASHBOARD_PORT` | Dashboard port (1-65535, default `6920`) |
 | `IRIS_DASHBOARD_HOST` | Dashboard bind address (default `127.0.0.1`) |
 | `IRIS_API_KEY` | API key for HTTP authentication. Required to bind the HTTP transport or the dashboard beyond loopback (`0.0.0.0`, a LAN address, a container): without it the server refuses to start |
+| `IRIS_API_KEY_FILE` | Path to a file whose trimmed contents are the API key — the secret-file pattern Docker and Kubernetes mount, so the key never sits in an environment block. Set this or `IRIS_API_KEY`, not both |
 | `IRIS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a non-loopback bind with **no** key on purpose (lifts the refusal; the network is then your boundary) |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. `http://localhost:*`). HTTP transport: exact-match `Origin` allowlist for DNS-rebinding protection (globs ignored; the server's own loopback origins are always allowed) |
 | `IRIS_NO_AUTO_LAUNCH` | Set to `1` to disable the first-run dashboard auto-launch |
@@ -420,6 +421,8 @@ iris-eval --transport http --port 3000 --api-key "$(openssl rand -hex 32)" --das
 With a key set, API clients — MCP clients, capture SDKs, `POST /api/v1/traces` — send `Authorization: Bearer <key>`. To open the dashboard in a browser, append the key once to any dashboard URL, `http://localhost:6920/?key=<api key>`: Iris exchanges it for an HttpOnly, SameSite=Lax session cookie and redirects to the same page with the key removed from the address bar. A page opened without a session shows a sign-in form that does the same exchange. The key is never stored in the browser, and sessions live only in the server process (at most 256 live at a time; a sign-in that finds them all live is refused rather than evicting one).
 
 ### Production
+
+**Several keys, and rotation without a gap.** `security.apiKeys` in `config.json` holds any number of further keys, each with an `id` and exactly one of `keyFile` (a file whose trimmed contents are the key) or `keyHash` (the `sha256` hex of the key, so the config file holds no secret — `printf %s "$KEY" | openssl dgst -sha256`), and an optional `expiresAt` (ISO 8601) after which it stops matching at that instant. To rotate: add the new key, restart, move your clients, remove the old key, restart. Every key authenticates until it is removed or expires, on the Bearer path and on the browser sign-in alike; the startup log names the ids. `security.rateLimit.mcpKeyBy: "apiKey"` counts the MCP endpoint's per-minute budget per key instead of per client address, so several agents behind one address each get their own minute.
 
 Iris **refuses to start** when the HTTP transport or the dashboard is bound beyond loopback — `0.0.0.0`, a LAN address, a container — with no API key, and says so in one sentence naming `IRIS_API_KEY`. That includes a bare `docker run` of the image, which binds `0.0.0.0` inside the container because loopback is unreachable through a published port. Loopback without a key keeps working (with a warning on the HTTP transport): the machine boundary is the exposure control there.
 
