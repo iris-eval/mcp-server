@@ -394,7 +394,8 @@ const PATTERNS = [
     // website/public/claims-schema-v1.json is the published JSON Schema of
     // the same truthbase: its `proof.rules[].precision` property NAMES the
     // field the measurement fills, so the word is a key, not a claim.
-    skipPrefixes: ['docs/blog/', 'docs/launch/', 'docs/proof.md', 'docs/evaluators.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json'],
+    // website/src/lib/changelog.generated.json is CHANGELOG.md rendered verbatim (website/scripts/render-changelog.mjs) — the same dated artifact.
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/changelog.generated.json', 'docs/proof.md', 'docs/evaluators.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json'],
     skipComments: true,
     exemptIf: (text, index) => {
       const lineStart = text.lastIndexOf('\n', index - 1) + 1;

@@ -42,6 +42,8 @@ jobs:
       # nothing read it.
       - name: llms.txt matches templates + truthbase
         run: npm run llms:check
+      - name: The release narrative matches CHANGELOG.md
+        run: npm run changelog:check
       # The discovery manifest is rendered from the BUILT server — tools,
       # resources, templates and the prompt read over an in-memory MCP
       # transport — so it cannot describe a server that does not exist. It

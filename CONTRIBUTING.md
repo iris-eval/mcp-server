@@ -97,6 +97,10 @@ If you are picking something up: `good first issue` is scoped for a newcomer, an
 
 Dependabot opens dependency PRs weekly (config: [.github/dependabot.yml](.github/dependabot.yml)). If one required check is red on *every* Dependabot PR at once, the cause is on `main`, not in the PRs — typically a regenerated file (`.claims.json`) the branches were cut before. Fix `main` first, then comment `@dependabot rebase` on each PR; Dependabot rebuilds the branch on the repaired base. Never merge a Dependabot PR by bypassing the red check, and never "fix" one by pushing to its branch (Dependabot will overwrite it).
 
+## Contributing a built-in rule
+
+The path from an idea to a shipped, measured, documented rule — every file it touches and the test that refuses the PR if a step is skipped — is [docs/contributing-a-rule.md](docs/contributing-a-rule.md). For a rule that only your deployment needs, see [custom rules](docs/custom-rules.md) or [plugin rules](docs/plugins.md) instead.
+
 ## Coding Standards
 
 - TypeScript strict mode

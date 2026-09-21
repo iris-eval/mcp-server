@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "./theme-provider";
 import { IrisLogo } from "./iris-logo";
-import { CURRENT_RELEASE_HEADLINE, PUBLIC_REPO_URL, VERSION_MCP_SERVER } from "@/lib/claims";
+import { CURRENT_RELEASE_HEADLINE, VERSION_MCP_SERVER } from "@/lib/claims";
 
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
@@ -37,9 +37,9 @@ export function Nav(): React.ReactElement {
           list as prose beside a pill that rendered the live version, so the
           public site read "v0.5.0" next to "v0.4" for two releases. The
           headline is the CHANGELOG's own bold lead line for the current
-          release; the link goes to that release's notes. */}
+          release; the link goes to the release narrative, rendered from the changelog. */}
       <div className="relative z-50 border-b border-border-subtle bg-iris-600/8 px-4 py-2.5 text-center">
-        <a href={`${PUBLIC_REPO_URL}/releases/tag/v${VERSION_MCP_SERVER}`} target="_blank" rel="noopener noreferrer" className="inline-flex flex-wrap items-center justify-center gap-2 text-sm text-text-secondary transition-colors hover:text-text-primary">
+        <a href="/releases" className="inline-flex flex-wrap items-center justify-center gap-2 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <span className="rounded-full bg-iris-600 px-2 py-0.5 text-[11px] font-semibold text-white">v{VERSION_MCP_SERVER}</span>
           <span>
             {CURRENT_RELEASE_HEADLINE ?? `Iris v${VERSION_MCP_SERVER} is out`}
