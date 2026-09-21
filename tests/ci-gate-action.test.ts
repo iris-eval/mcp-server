@@ -4,26 +4,36 @@
  * decisions and its create-or-update against a local GitHub; the dogfood
  * job that runs it on every pull request; the fixtures it runs on.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
+// The two scripts run their main() on import unless told they are imported;
+// hoisted so it is set before the static imports below are evaluated.
+vi.hoisted(() => {
+  process.env.GATE_RECEIPT_IMPORTED = '1';
+  process.env.GATE_COMMENT_IMPORTED = '1';
+});
+import * as receiptScript from '../.github/actions/gate/receipt.mjs';
+import * as commentScript from '../.github/actions/gate/comment.mjs';
+
 const root = resolve(__dirname, '..');
 const actionDir = join(root, '.github', 'actions', 'gate');
-const read = (rel: string) => readFileSync(join(root, rel), 'utf8');
+// Normalised: a Windows checkout reads CRLF, and the contract is about lines, not line endings.
+const read = (rel: string) => readFileSync(join(root, rel), 'utf8').replace(/\r\n/g, '\n');
 
-process.env.GATE_RECEIPT_IMPORTED = '1';
-process.env.GATE_COMMENT_IMPORTED = '1';
-const receiptModule = () => import('../.github/actions/gate/receipt.mjs') as unknown as Promise<{ buildReceipt: (a: Record<string, unknown>) => { stored: number; evaluated: number; tripped: number; gated: number; markdown: string; emptyGreen: boolean } }>;
-const commentModule = () =>
-  import('../.github/actions/gate/comment.mjs') as unknown as Promise<{
+const receiptModule = async () => receiptScript as unknown as { buildReceipt: (a: Record<string, unknown>) => { stored: number; evaluated: number; tripped: number; gated: number; markdown: string; emptyGreen: boolean } };
+const commentModule = async () =>
+  commentScript as unknown as {
     decide: (a: Record<string, unknown>) => { outcome: string; number?: number };
     upsertComment: (a: Record<string, unknown>) => Promise<string>;
     markerFor: (p: string) => string;
-  }>;
+  };
+/** The spawn-based cases start node twice; a loaded machine needs more than the default five seconds. */
+const SPAWN_TIMEOUT = 30_000;
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -119,11 +129,11 @@ describe('the receipt', () => {
     expect(code).toBe(0);
     expect(readFileSync(join(work, 'summary.md'), 'utf8')).toContain('1 of 2 tripped');
     expect(readFileSync(summary, 'utf8')).toContain('1 of 2 tripped');
-    expect(readFileSync(output, 'utf8')).toContain('stored=3\nevaluated=3\ntripped=1\ngated=2\nsummary-file=');
+    expect(readFileSync(output, 'utf8').replace(/\r\n/g, '\n')).toContain('stored=3\nevaluated=3\ntripped=1\ngated=2\nsummary-file=');
     writeFileSync(join(work, 'receipts.ndjson'), '');
     const emptyCode = await new Promise<number>((resolve) => spawn(process.execPath, [join(actionDir, 'receipt.mjs')], { env: { ...env, GATE_EXIT_CODE: '0' }, windowsHide: true }).on('close', (c) => resolve(c ?? -1)));
     expect(emptyCode).toBe(1);
-  });
+  }, SPAWN_TIMEOUT);
 });
 
 describe('the comment', () => {
@@ -213,7 +223,7 @@ describe('the comment', () => {
     expect(code).toBe(0);
     expect(stdout).toContain('::warning::Iris gate: the comment was not posted (GET comments: HTTP 403)');
     expect(readFileSync(output, 'utf8')).toBe('comment=skipped-error\n');
-  });
+  }, SPAWN_TIMEOUT);
 });
 
 describe('the dogfood job and the fixtures', () => {
