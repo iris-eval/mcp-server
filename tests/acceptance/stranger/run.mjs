@@ -96,7 +96,7 @@ const ENV_NOTE_HTTP = `${ENV_NOTE_COMMON} No MCP servers are available to this s
  */
 const GATE_PROMPT =
   "You are the engineer who gates deploys for a team that runs its agents through Iris (the npm package @iris-eval/mcp-server). Do the four steps of its CI-gate walk-through, in order, using only the published package, and report what each one printed. Start by reading the walk-through: run `npx -y @iris-eval/mcp-server --help` and fetch https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/ci-gate.md. Step 1: try to start the server over HTTP bound to 0.0.0.0 without any API key and report the exact refusal (do not set a key first). Step 2: with a config file that sets eval.requiredEvidence to [\"tool_calls\"], evaluate ./release/notes.json (it has no tool calls) and report the verdict's state and basis. Step 3: deploy a custom rule of type action_policy at severity high that denies every tool whose name starts with delete_, evaluate ./release/cleanup.json (it calls delete_repo), and report the verdict's basis and which rule it names. Step 4: create a dataset labelled release-gate from the case keys deploy-config and release-notes, then run the ingest command with --file over ./release/traces.ndjson, --evaluate, --fail-on detector_veto and --dataset release-gate; report the exit code, which trace tripped, which rule tripped it, and where in the output the credential sits (the receipt's spans: offsets and label). Finish with four lines, one per step, each naming what was printed.";
-const ENV_NOTE_GATE = `${ENV_NOTE_COMMON} No MCP servers are attached to this session; use the package's CLI and HTTP surfaces. The three traces are in ./release/ (notes.json, cleanup.json, deploy-config.json) and together in ./release/traces.ndjson.`;
+const ENV_NOTE_GATE = `${ENV_NOTE_COMMON} No MCP servers are attached to this session; use the package's CLI and HTTP surfaces. IRIS_HOME is already set in this session's environment and a command prefixed with a variable assignment is refused, so pass settings through a config file (--config) or flags. The three traces are in ./release/ (notes.json, cleanup.json, deploy-config.json) and together in ./release/traces.ndjson.`;
 const ENV_NOTE_MCP1 = `${ENV_NOTE_COMMON} No MCP servers are attached to this session and none can be attached mid-run. Do the discovery and installation work now: find how Iris is installed and write, to ./mcp-config.json, the exact MCP server config you would attach for a client like Claude Code, then stop and say what you would do next once it is connected. Do not evaluate the outputs in this session.`;
 const ENV_NOTE_MCP2 = `${ENV_NOTE_COMMON} Iris is connected to this session as an MCP server named iris-eval; use it.`;
 /*
@@ -235,6 +235,12 @@ function claudeBinary() {
   return 'claude';
 }
 
+/** One dashboard port per phase, deterministic so a re-run of one phase lands on the same port; none of them is the default 6920. */
+const PHASE_PORTS = { mcp1: 6931, mcp2: 6932, a8: 6932, a9: 6932, a10: 6932, http: 6933, gate: 6934, capture: 6935, 'capture-both': 6936 };
+function phaseDashboardPort(phase) {
+  return PHASE_PORTS[phase] ?? 6940;
+}
+
 function runClaude({ phase, cwd, home, prompt, mcpConfig, resume, pluginDir, extraEnv }) {
   // Not `--bare`: it also skips the keychain and OAuth reads, so the session
   // runs "Not logged in" and ends on an api_error before a single call. The
@@ -247,7 +253,9 @@ function runClaude({ phase, cwd, home, prompt, mcpConfig, resume, pluginDir, ext
   if (resume) cli.push('--resume', resume);
   if (MODEL) cli.push('--model', MODEL);
   const started = Date.now();
-  const env = { ...process.env, IRIS_HOME: home, ...(extraEnv ?? {}) };
+  // A dashboard port of its own per phase (0.15.0): the discovery phase's server, which nothing kills, held the
+  // default port into the connected phase and the connected phase's server exited — a harness fault, not Iris's.
+  const env = { ...process.env, IRIS_HOME: home, IRIS_DASHBOARD_PORT: String(phaseDashboardPort(phase)), ...(extraEnv ?? {}) };
   for (const k of Object.keys(env)) if (/^IRIS_(ANTHROPIC|OPENAI)_API_KEY$/.test(k)) delete env[k];
   return new Promise((resolveRun, reject) => {
     // Never through a shell: on Windows the npm `claude` shim is a .cmd that
@@ -579,26 +587,33 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth, gate }) {
     const t = d.finalText;
     /*
      * The org reader's four steps (0.15.0), each graded on what the
-     * transcript shows was printed — by the CLI, the HTTP surface or the
-     * final answer — never on how the agent phrased the command.
+     * transcript shows was PRINTED BY IRIS — a refusal on stderr, a receipt
+     * line, a verdict — never on how the agent phrased the command, and
+     * never on documentation the agent fetched: the 0.15.0 run's first
+     * grade matched `docs/ci-gate.md` and `--help` output, both of which
+     * carry every one of these words. A result is evidence only when it is
+     * not a docs page or the usage text, and every call is searched, not
+     * the first one that contains the word.
      */
-    // H-G1: the refusal without a key, and the way out named.
-    const refused = d.calls.find((c) => /Refusing to bind the (HTTP transport|dashboard) to/.test(resultOf(c)) && /without an API key/.test(resultOf(c)));
-    const wayOut = refused ? /IRIS_API_KEY/.test(resultOf(refused)) : /IRIS_API_KEY/.test(t);
-    row('H-G1', Boolean(refused) && wayOut, refused ? resultOf(refused).slice(0, 220) : 'no refusal without a key was seen', `wayOut:${wayOut}`);
-    // H-G2: requiredEvidence — a verdict whose basis is required_evidence_missing.
-    const evidenceMissing = d.calls.find((c) => /required_evidence_missing/.test(resultOf(c)));
-    row('H-G2', Boolean(evidenceMissing) || /required_evidence_missing/.test(t), evidenceMissing ? resultOf(evidenceMissing).slice(0, 220) : t.slice(0, 220));
-    // H-G3: the policy gates — basis policy_gate, by a rule the agent deployed.
-    const policyGate = d.calls.find((c) => /policy_gate/.test(resultOf(c)));
-    const named = policyGate ? /"by"\s*:\s*\[\s*"[a-z][a-z0-9_-]*"/i.test(resultOf(policyGate)) : /policy_gate/.test(t);
-    row('H-G3', Boolean(policyGate) && named, policyGate ? resultOf(policyGate).slice(0, 220) : 'no policy_gate verdict was seen', `named:${named}`);
-    // H-G4: the gate fails the job on the leak and names the rule and the span.
-    const gated = d.calls.find((c) => /"tripped"\s*:\s*"detector_veto"/.test(resultOf(c)) && /no_pii/.test(resultOf(c)));
+    const isDocs = (c) => /# A CI gate with|Usage: iris-eval|<persisted-output>|raw\.githubusercontent\.com/.test(resultOf(c) + inputOf(c));
+    const evidence = d.calls.filter((c) => !isDocs(c));
+    // H-G1: the refusal without a key — Iris's own sentence, from a process the agent started.
+    const refused = evidence.find((c) => /Refusing to bind the (HTTP transport|dashboard) to \S+ without an API key/.test(resultOf(c)));
+    const wayOut = refused ? /IRIS_API_KEY/.test(resultOf(refused)) : false;
+    row('H-G1', Boolean(refused) && wayOut, refused ? resultOf(refused).slice(0, 220) : 'no refusal without a key was printed by a process the agent started', `wayOut:${wayOut}`);
+    // H-G2: requiredEvidence — a verdict whose basis is required_evidence_missing, as Iris printed it.
+    const evidenceMissing = evidence.find((c) => /"basis"\s*:\s*"required_evidence_missing"/.test(resultOf(c)));
+    row('H-G2', Boolean(evidenceMissing), evidenceMissing ? resultOf(evidenceMissing).slice(0, 220) : 'no verdict with basis required_evidence_missing was printed');
+    // H-G3: the policy gates — a verdict with basis policy_gate that names the rule the agent deployed.
+    const policyGate = evidence.find((c) => /"basis"\s*:\s*"policy_gate"/.test(resultOf(c)));
+    const named = policyGate ? /"by"\s*:\s*\[\s*"[A-Za-z][A-Za-z0-9_-]*"/.test(resultOf(policyGate)) : false;
+    row('H-G3', Boolean(policyGate) && named, policyGate ? resultOf(policyGate).slice(0, 220) : 'no verdict with basis policy_gate was printed', `named:${named}`);
+    // H-G4: the gate fails the job on the leak — a receipt line that tripped detector_veto by no_pii, with the span, in the release-gate scope.
+    const gated = evidence.find((c) => /"tripped"\s*:\s*"detector_veto"/.test(resultOf(c)) && /"trace_id"\s*:\s*"/.test(resultOf(c)) && /no_pii/.test(resultOf(c)));
     const span = gated ? /"spans"\s*:\s*\[/.test(resultOf(gated)) : false;
     const scoped = gated ? /in dataset "release-gate"|--dataset release-gate/.test(resultOf(gated) + inputOf(gated)) : false;
-    const exitNamed = /exit(?:ed)?(?: code| status)?\s*(?:=|:|of|was|is)?\s*1\b/i.test(t) || (gated && /exit code 1|Exit code: 1/i.test(resultOf(gated)));
-    row('H-G4', Boolean(gated) && span && scoped, gated ? resultOf(gated).slice(0, 220) : 'no tripped detector_veto receipt was seen', `span:${span} scoped:${scoped} exitNamed:${exitNamed}`);
+    const exitNamed = gated ? /Exit code 1|exit code 1|exited with 1|exit status 1/i.test(resultOf(gated)) || /exit(?:ed)?(?: code| status)?\s*(?:=|:|of|was|is)?\s*1\b/i.test(t) : false;
+    row('H-G4', Boolean(gated) && span && scoped, gated ? resultOf(gated).slice(0, 220) : 'no receipt that tripped detector_veto was printed', `span:${span} scoped:${scoped} exitNamed:${exitNamed}`);
   }
   return rows;
 }
@@ -669,7 +684,7 @@ async function phaseMcp1() {
 async function phaseMcp2(config) {
   const { dir, home } = makePhaseDir('mcp2');
   const resolved = JSON.parse(JSON.stringify(config));
-  for (const server of Object.values(resolved.mcpServers ?? {})) server.env = { ...(server.env ?? {}), IRIS_HOME: home };
+  for (const server of Object.values(resolved.mcpServers ?? {})) server.env = { ...(server.env ?? {}), IRIS_HOME: home, IRIS_DASHBOARD_PORT: String(phaseDashboardPort('mcp2')) };
   const cfgPath = join(dirname(dir), `iris-stranger-mcp2-config-${Date.now()}.json`);
   writeFileSync(cfgPath, JSON.stringify(resolved));
   writeFileSync(join(OUT, 'mcp-config-as-run.json'), JSON.stringify(resolved, null, 2));
@@ -772,7 +787,7 @@ async function phaseCapture(kind, connectedConfig) {
   let mcpConfig = null;
   if (kind === 'capture-both') {
     const resolved = JSON.parse(JSON.stringify(connectedConfig));
-    for (const server of Object.values(resolved.mcpServers ?? {})) server.env = { ...(server.env ?? {}), IRIS_HOME: home };
+    for (const server of Object.values(resolved.mcpServers ?? {})) server.env = { ...(server.env ?? {}), IRIS_HOME: home, IRIS_DASHBOARD_PORT: String(phaseDashboardPort(kind)) };
     mcpConfig = join(dirname(dir), `iris-stranger-${kind}-config-${Date.now()}.json`);
     writeFileSync(mcpConfig, JSON.stringify(resolved));
   }
