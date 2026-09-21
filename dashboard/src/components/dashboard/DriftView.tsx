@@ -20,7 +20,7 @@
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
-import { useMoments, useDrift } from '../../api/hooks';
+import { CADENCE, useMoments, useDrift } from '../../api/hooks';
 import { useRuleCategoryMap } from '../../hooks/useRuleCategoryMap';
 import {
   resolvePeriod,
@@ -70,15 +70,11 @@ export function DriftView() {
   const periodStartIso = isoDaysAgo(days);
   const priorPeriodStartIso = isoDaysAgo(days * 2);
 
-  const { data: currentMoments } = useMoments({
-    limit: '200',
-    since: periodStartIso,
-  });
-  const { data: priorMoments } = useMoments({
-    limit: '200',
-    since: priorPeriodStartIso,
-    until: periodStartIso,
-  });
+  const { data: currentMoments } = useMoments({ limit: '200', since: periodStartIso }, CADENCE.NORMAL);
+  const { data: priorMoments } = useMoments(
+    { limit: '200', since: priorPeriodStartIso, until: periodStartIso },
+    CADENCE.NORMAL,
+  );
   // The pass-rate comparison is computed server-side, with both
   // denominators and an interval — see ChangeBanner's header.
   const { data: drift } = useDrift({ period });

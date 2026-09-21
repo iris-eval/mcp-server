@@ -25,6 +25,7 @@ import {
   demoPreferencesPath,
   demoCustomRulesPath,
   demoAuditLogPath,
+  DEMO_DAYS,
 } from '../../../src/dashboard/seed-demo-data.js';
 
 // The vitest global setup points IRIS_HOME at a suite-wide scratch dir;
@@ -98,6 +99,71 @@ describe('seedDemoData', () => {
     } finally {
       await adapter.close();
     }
+  });
+
+  it('every evaluation is the engine\'s: a verdict with a basis, provenance, dated when its trace happened', async () => {
+    const summary = await seedDemoData({ count: 60 });
+    expect(summary.runs.map((r) => r.runId)).toEqual(['release-0.14', 'release-0.15']);
+    expect(summary.runs.every((r) => r.traceCount === 12)).toBe(true);
+    expect(summary.datasetLabel).toBe('release-gate');
+    expect(summary.customRuleCount).toBe(2);
+    expect(summary.dailyTraceCounts).toHaveLength(DEMO_DAYS);
+
+    const adapter = new SqliteAdapter(summary.dbPath);
+    await adapter.initialize();
+    try {
+      const traces = await adapter.queryTraces(LOCAL_TENANT, { limit: 1000 });
+      const traceById = new Map(traces.traces.map((t) => [t.trace_id, t]));
+      const evals = await adapter.queryEvalResults(LOCAL_TENANT, { limit: 1000 });
+      expect(evals.total).toBe(summary.evalCount);
+      for (const e of evals.results) {
+        // The rule rows say what kind of claim each is — the composer's own stamps, never a simulator's.
+        expect(e.rule_results.length).toBeGreaterThan(0);
+        expect(e.rule_results.every((r) => typeof r.kind === 'string')).toBe(true);
+        // Dated when the trace happened, not when the demo booted.
+        const trace = e.trace_id ? traceById.get(e.trace_id) : undefined;
+        expect(trace).toBeDefined();
+        expect(e.created_at).toBe(trace!.timestamp);
+      }
+      // A rule-engine verdict reads back with its basis on every non-judge row.
+      const engineRows = evals.results.filter((e) => !e.rule_results.some((r) => r.ruleName.startsWith('llm_judge:')));
+      expect(engineRows.length).toBeGreaterThan(0);
+      for (const e of engineRows) {
+        expect(e.provenance?.irisVersion).toBeTruthy();
+        expect(typeof e.verdict?.basis).toBe('string');
+      }
+      // A failing card always names what failed.
+      const failed = evals.results.filter((e) => !e.passed);
+      expect(failed.length).toBeGreaterThan(0);
+      for (const e of failed) expect(e.rule_results.some((r) => !r.passed)).toBe(true);
+
+      // The two runs share their twelve questions, and the earlier one is worse.
+      const runs = await adapter.listRuns(LOCAL_TENANT);
+      expect(runs.map((r) => r.runId).sort()).toEqual(['release-0.14', 'release-0.15']);
+      const before = await adapter.getRunResults(LOCAL_TENANT, 'release-0.14');
+      const after = await adapter.getRunResults(LOCAL_TENANT, 'release-0.15');
+      expect(before.length).toBe(12);
+      expect(after.length).toBe(12);
+      const beforeKeys = new Set(before.map((r) => r.caseKey));
+      expect(after.every((r) => beforeKeys.has(r.caseKey))).toBe(true);
+      const passedCount = (rows: typeof before) => rows.filter((r) => r.passed === true).length;
+      expect(passedCount(before)).toBeLessThan(passedCount(after));
+
+      // The dataset carries the same twelve keys.
+      const dataset = await adapter.getDataset(LOCAL_TENANT, 'release-gate');
+      expect(dataset?.caseKeys.map((c) => c.caseKey).sort()).toEqual([...beforeKeys].sort());
+
+      // The week before the last week exists, so Drift has a prior window.
+      const oldest = traces.traces.map((t) => t.timestamp).sort()[0];
+      expect(Date.now() - new Date(oldest).getTime()).toBeGreaterThan(10 * 86_400_000);
+    } finally {
+      await adapter.close();
+    }
+
+    // The demo's own rules went through the store: two deployed, one paused, three audit rows.
+    const audit = readFileSync(demoAuditLogPath(), 'utf-8').trim().split('\n').map((l) => JSON.parse(l) as { action: string; ruleName: string });
+    expect(audit.map((a) => a.action)).toEqual(['rule.deploy', 'rule.deploy', 'rule.toggle']);
+    expect(audit[2].ruleName).toBe('mentions_ticket_id');
   });
 
   it('never dates a demo trace in the future', async () => {

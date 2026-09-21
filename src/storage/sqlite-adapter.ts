@@ -487,6 +487,29 @@ export class SqliteAdapter implements IStorageAdapter {
     return rows.map((row) => this.rowToEvalResult(row));
   }
 
+  async getEvalsByTraceIds(tenantId: TenantId, traceIds: readonly string[]): Promise<Map<string, EvalResult[]>> {
+    assertTenant(tenantId);
+    const out = new Map<string, EvalResult[]>();
+    // SQLite binds at most 32766 variables; a page is at most a few hundred ids, chunked anyway.
+    const CHUNK = 500;
+    const ids = [...new Set(traceIds)];
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const marks = chunk.map(() => '?').join(', ');
+      const rows = this.db
+        .prepare(`SELECT * FROM eval_results WHERE tenant_id = ? AND trace_id IN (${marks}) ORDER BY trace_id, created_at DESC`)
+        .all(tenantId, ...chunk) as Array<Record<string, unknown>>;
+      for (const row of rows) {
+        const result = this.rowToEvalResult(row);
+        const key = result.trace_id ?? '';
+        const list = out.get(key);
+        if (list) list.push(result);
+        else out.set(key, [result]);
+      }
+    }
+    return out;
+  }
+
   /**
    * Every evaluation in a run, one per trace, newest first.
    *

@@ -29,7 +29,7 @@
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
-import {
+import { CADENCE,
   useEvalStats,
   useEvalTrend,
   useMoments,
@@ -95,15 +95,11 @@ export function HealthView() {
     limit: '500',
     since: periodStartIso,
   });
-  const currentMomentsRes = useMoments({
-    limit: '200',
-    since: periodStartIso,
-  });
-  const priorMomentsRes = useMoments({
-    limit: '200',
-    since: priorPeriodStartIso,
-    until: periodStartIso,
-  });
+  const currentMomentsRes = useMoments({ limit: '200', since: periodStartIso }, CADENCE.NORMAL);
+  const priorMomentsRes = useMoments(
+    { limit: '200', since: priorPeriodStartIso, until: periodStartIso },
+    CADENCE.NORMAL,
+  );
   const priorPeriodKey = `${days * 2}d`;
   const priorStatsRes = useEvalStats(priorPeriodKey);
   const ruleCategories = useRuleCategoryMap();

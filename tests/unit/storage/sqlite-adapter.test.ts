@@ -201,6 +201,36 @@ describe('SqliteAdapter', () => {
       expect(results[0].passed).toBe(true);
     });
 
+    it('reads the evaluations of many traces in one call, newest first per trace, absent when none', async () => {
+      const [a, b, c] = allSampleTraces.slice(0, 3);
+      for (const t of [a, b, c]) await adapter.insertTrace(LOCAL_TENANT, t);
+      const row = (traceId: string, score: number, createdAt: string) => ({
+        id: generateEvalId(),
+        trace_id: traceId,
+        eval_type: 'completeness' as const,
+        output_text: 'Test output',
+        score,
+        passed: score >= 0.7,
+        rule_results: [{ ruleName: 'test', passed: score >= 0.7, score, message: 'OK' }],
+        suggestions: [],
+        created_at: createdAt,
+      });
+      await adapter.insertEvalResult(LOCAL_TENANT, row(a.trace_id, 0.5, '2026-09-01T00:00:00.000Z'));
+      await adapter.insertEvalResult(LOCAL_TENANT, row(a.trace_id, 0.9, '2026-09-02T00:00:00.000Z'));
+      await adapter.insertEvalResult(LOCAL_TENANT, row(b.trace_id, 0.8, '2026-09-01T12:00:00.000Z'));
+
+      const byTrace = await adapter.getEvalsByTraceIds(LOCAL_TENANT, [a.trace_id, b.trace_id, c.trace_id, a.trace_id]);
+      expect([...byTrace.keys()].sort()).toEqual([a.trace_id, b.trace_id].sort());
+      expect(byTrace.get(a.trace_id)!.map((e) => e.score)).toEqual([0.9, 0.5]);
+      expect(byTrace.get(b.trace_id)!.map((e) => e.score)).toEqual([0.8]);
+      expect(byTrace.has(c.trace_id)).toBe(false);
+      // Row for row, the batched read agrees with the per-trace read.
+      const single = await adapter.getEvalsByTraceId(LOCAL_TENANT, a.trace_id);
+      expect(byTrace.get(a.trace_id)!.map((e) => e.id)).toEqual(single.map((e) => e.id));
+      // An empty request is an empty map, not a malformed query.
+      expect((await adapter.getEvalsByTraceIds(LOCAL_TENANT, [])).size).toBe(0);
+    });
+
     it('should query eval results with filters', async () => {
       await adapter.insertTrace(LOCAL_TENANT, sampleTrace);
       await adapter.insertEvalResult(LOCAL_TENANT, {

@@ -11,7 +11,7 @@
  */
 import { Link } from 'react-router';
 import { Users, ChevronRight } from 'lucide-react';
-import { useMoments } from '../../api/hooks';
+import { CADENCE, useMoments } from '../../api/hooks';
 import { Icon } from '../shared/Icon';
 import { Tooltip } from '../shared/Tooltip';
 import { formatTimeAgo } from '../../utils/formatters';
@@ -170,8 +170,8 @@ function VerdictRibbon({ summary }: { summary: AgentSummary }) {
 
 export function AgentList() {
   // Pull a generous slice of moments so the per-agent summary covers
-  // recent activity well. Polling reuses the existing 5s cadence.
-  const { data, loading } = useMoments({ limit: '200' });
+  // recent activity well. A whole window, not a tail: NORMAL cadence.
+  const { data, loading } = useMoments({ limit: '200' }, CADENCE.NORMAL);
   const agents = data ? summarizeAgents(data.moments) : [];
 
   return (

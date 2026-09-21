@@ -103,9 +103,21 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
   // earlier fetch could overwrite the newer fetch's data after a rapid
   // filter/route change.
   const requestIdRef = useRef(0);
+  /*
+   * Whether the LATEST request is still in flight. A poll tick that fires
+   * while one is pending is skipped rather than started: starting it would
+   * take the request id and the pending response would be discarded as
+   * stale — on a server where a window of 200 moments takes longer than the
+   * cadence, that discarded every response in turn and the widget stayed
+   * on its loading (or empty) state for ever. Found by the demo (arc 9,
+   * N-1): the Drift and Health prior windows never rendered. A manual
+   * refetch or a parameter change still supersedes, on purpose.
+   */
+  const inFlightRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     const myId = ++requestIdRef.current;
+    inFlightRef.current = true;
     try {
       const result = await fetcher();
       if (myId !== requestIdRef.current) return; // stale — newer call superseded us
@@ -136,9 +148,15 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
       // is still in flight.
       if (myId === requestIdRef.current) {
         setLoading(false);
+        inFlightRef.current = false;
       }
     }
   }, [fetcher]);
+
+  const pollTick = useCallback(() => {
+    if (inFlightRef.current) return;
+    void fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     fetchData();
@@ -154,7 +172,7 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
   // told us how long to wait. Browser visibility gating inside usePolling
   // still applies.
   const activePollInterval = rateLimitedUntil ? undefined : pollInterval;
-  usePolling(fetchData, activePollInterval);
+  usePolling(pollTick, activePollInterval);
 
   return { data, loading, error, rateLimitedUntil, refetch: fetchData };
 }
@@ -263,15 +281,18 @@ export function useDrift(params?: Record<string, string>) {
   return useApiData<DriftComparison>(fetcher, CADENCE.NORMAL);
 }
 
-export function useMoments(params?: Record<string, string>) {
+export function useMoments(params?: Record<string, string>, cadence: number = CADENCE.FAST) {
   const paramsKey = JSON.stringify(params);
-  // Moments are the Stream view's live tail — keep this fast.
+  // Moments are the Stream view's live tail — FAST by default. A view that
+  // reads a whole window (Drift, Health, the agent list) passes NORMAL: two
+  // hundred moments are not a tail, and a fetch slower than the cadence
+  // must never be raced by its own poll.
   const fetcher = useCallback(
     () => api.getMoments(params),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- paramsKey is the semantic key
     [paramsKey],
   );
-  return useApiData<MomentQueryResult>(fetcher, CADENCE.FAST);
+  return useApiData<MomentQueryResult>(fetcher, cadence);
 }
 
 export function useMomentDetail(id: string) {
