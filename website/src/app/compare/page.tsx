@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { DATA_RESIDENCY } from "@/lib/claims";
+import { COMPARISONS } from "@/lib/compare";
+import { NOT_SERVER_TESTING } from "@/lib/compare/iris";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { Nav } from "@/components/nav";
@@ -28,56 +30,7 @@ export const metadata: Metadata = {
   },
 };
 
-const comparisons = [
-  {
-    name: "Langfuse",
-    slug: "langfuse",
-    tagline: "MCP-Native Agent Eval vs SDK-Based Tracing",
-    category: "Observability",
-  },
-  {
-    name: "LangSmith",
-    slug: "langsmith",
-    tagline: "MCP-Native Eval vs LangChain Ecosystem Tracing",
-    category: "Observability",
-  },
-  {
-    name: "Helicone",
-    slug: "helicone",
-    tagline: "MCP-Native Agent Eval vs API Gateway Observability",
-    category: "Observability",
-  },
-  {
-    name: "Braintrust",
-    slug: "braintrust",
-    tagline: "MCP-Native Eval vs Experiment-Driven Evaluation",
-    category: "Evaluation",
-  },
-  {
-    name: "Arize",
-    slug: "arize",
-    tagline: "MCP-Native Eval vs Enterprise ML Observability",
-    category: "Observability",
-  },
-  {
-    name: "DeepEval",
-    slug: "deepeval",
-    tagline: "MCP-Native Heuristic Eval vs LLM-as-Judge Framework",
-    category: "Evaluation",
-  },
-  {
-    name: "Confident AI",
-    slug: "confident-ai",
-    tagline: "MCP-Native Eval vs Cloud Evaluation Platform",
-    category: "Evaluation",
-  },
-  {
-    name: "Patronus AI",
-    slug: "patronus-ai",
-    tagline: "MCP-Native Eval vs Enterprise AI Safety Platform",
-    category: "Safety",
-  },
-];
+
 
 export default function CompareIndex() {
   const jsonLd = JSON.stringify({
@@ -133,11 +86,13 @@ export default function CompareIndex() {
         <p className="mb-12 text-lg text-text-secondary max-w-2xl">
           Iris is agent eval for MCP — built so you stop shipping agents on vibes. See how it compares to
           other evaluation and observability platforms — feature by feature, with
-          no vendor lock-in.
+          no vendor lock-in. The same twelve features on every page; every cell
+          about the other product links the page it was read from, with the date.
         </p>
+        <p className="mb-12 -mt-8 max-w-2xl text-[14px] text-text-muted">{NOT_SERVER_TESTING}</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {comparisons.map((item) => (
+          {COMPARISONS.map((item) => (
             <Link
               key={item.slug}
               href={`/compare/${item.slug}`}

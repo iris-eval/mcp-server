@@ -1,0 +1,221 @@
+{
+  "slug": "confident-ai",
+  "name": "Confident AI",
+  "homepage": "https://www.confident-ai.com/",
+  "category": "Evaluation",
+  "tagline": "MCP-Native Eval vs Cloud Evaluation Platform",
+  "oneLine": "An AI quality platform built for enterprise teams to standardize evals and observability; the cloud platform built on top of DeepEval.",
+  "ogImage": "/og-compare-confident-ai.png",
+  "tldrVendor": "Confident AI is 'the cloud platform built on top of DeepEval', described by the vendor as an AI quality platform built for enterprise teams to standardize evals and observability: LLM-as-a-judge metrics, dashboards and alerting, CI/CD regression testing, dataset generation and curation from production, prompt versioning, and self-hosting on Enterprise plans.",
+  "tldrSourceUrl": "https://www.confident-ai.com/frameworks/deepeval",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Python or TypeScript SDKs (deepeval + confident-trace) with a CONFIDENT_API_KEY; OpenTelemetry also supported",
+      "verdict": "iris",
+      "sourceUrl": "https://www.confident-ai.com/docs/setup-and-installation",
+      "quote": "Set your project API key as an environment variable",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Managed cloud; Enterprise plans can self-host into your own VPC/VNet via Terraform + Helm (AWS, GCP, Azure)",
+      "verdict": "iris",
+      "sourceUrl": "https://www.confident-ai.com/docs/self-hosting",
+      "quote": "Self-hosting is available on Enterprise plans.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "Spans via confident-trace decorators or OpenTelemetry in your app; evals run on Confident AI as traces are ingested",
+      "verdict": "iris",
+      "sourceUrl": "https://www.confident-ai.com/docs/llm-tracing/introduction",
+      "quote": "in real-time as they're ingested, or retrospectively",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "LLM-as-Judge metrics (semantic)",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
+      "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Automatic or manual token cost per LLM span, per-model pricing lookup; cost per user via user_id",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost",
+      "quote": "if you provide a supported model on your LLM span and neither SDK-level nor project-level costs are configured, Confident AI will automatically look up the per-token pricing.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "MCP server for coding agents (75 tools: run evals, evaluate traces, simulate conversations); needs Confident AI account",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/docs/coding-agents/mcp",
+      "quote": "The Confident AI MCP server connects your coding agent to your Confident AI project over the Model Context Protocol",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Proprietary hosted platform on paid plans; the DeepEval framework underneath is Apache 2.0",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval",
+      "quote": "DeepEval is fully open-source under the Apache 2.0 license and free to use for any purpose.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Independent; Y Combinator-backed, $2.2M seed (YC, Flex Capital, Vermilion Cliffs, Liquid 2, January Capital, Rebel Fund)",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/blog/how-i-closed-confident-ais-2-2m-seed-round-in-5-days",
+      "quote": "what started off as a bootstrapped open-source package became the thing that got us into YC.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Agent graph view and user-level analytics dashboards; alerting to Slack, PagerDuty, email",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/products/llm-observability",
+      "quote": "Get notified the moment eval scores drop, latency spikes, or error rates climb. Slack, PagerDuty, email — wherever your team already lives.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "LangChain, CrewAI, OpenAI Agents SDK, LlamaIndex and more; native Python and TypeScript SDKs plus OpenTelemetry",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.confident-ai.com/products/llm-observability",
+      "quote": "native SDKs for Python and TypeScript and full OpenTelemetry support",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Prompt edits tracked as commits, promoted to versions, labelled (staging/production) and pulled in code by label",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts",
+      "quote": "Every change you make to a prompt is tracked as a commit. This ensures complete history and traceability of all prompt modifications.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "Team: custom RBAC, SOC2, SSO; Enterprise: dedicated on-prem deployment, HIPAA, custom data residency, 24x7 support",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.confident-ai.com/pricing",
+      "quote": "Dedicated On-Prem Deployment",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need team collaboration with shared dashboards and experiments",
+      "sourceUrl": "https://www.confident-ai.com/pricing"
+    },
+    {
+      "text": "You want LLM-as-Judge evaluation for nuanced semantic scoring",
+      "sourceUrl": "https://deepeval.com/docs/metrics-introduction"
+    },
+    {
+      "text": "You need regression testing to compare model versions",
+      "sourceUrl": "https://www.confident-ai.com/"
+    },
+    {
+      "text": "You want synthetic dataset generation for comprehensive test coverage",
+      "sourceUrl": "https://www.confident-ai.com/"
+    },
+    {
+      "text": "You prefer a managed platform without infrastructure overhead",
+      "sourceUrl": "https://www.confident-ai.com/"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Confident AI?",
+      "vendorPart": "Confident AI is the cloud platform built on top of DeepEval that adds centralized test management, observability, collaboration, and analytics. It is a commercial platform (Free, Starter, Team and Enterprise plans), with self-hosting into your own VPC available on Enterprise plans.",
+      "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval"
+    },
+    {
+      "question": "Should I use Iris or Confident AI for my AI project?",
+      "vendorPart": "Use Confident AI if you need a managed platform with team collaboration, CI/CD regression testing, dataset curation from production, and LLM-as-a-judge evaluation on every ingested trace.",
+      "sourceUrl": "https://www.confident-ai.com/"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Confident AI homepage",
+      "url": "https://www.confident-ai.com/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI pricing",
+      "url": "https://www.confident-ai.com/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI docs index",
+      "url": "https://www.confident-ai.com/docs",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI setup and installation",
+      "url": "https://www.confident-ai.com/docs/setup-and-installation",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI tracing introduction",
+      "url": "https://www.confident-ai.com/docs/llm-tracing/introduction",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI token usage and cost",
+      "url": "https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI users (per-user cost)",
+      "url": "https://www.confident-ai.com/docs/llm-tracing/features/users",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI self-hosting",
+      "url": "https://www.confident-ai.com/docs/self-hosting",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI MCP server for coding agents",
+      "url": "https://www.confident-ai.com/docs/coding-agents/mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI version prompts",
+      "url": "https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI LLM observability product page",
+      "url": "https://www.confident-ai.com/products/llm-observability",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI: DeepEval framework page",
+      "url": "https://www.confident-ai.com/frameworks/deepeval",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI seed round post",
+      "url": "https://www.confident-ai.com/blog/how-i-closed-confident-ais-2-2m-seed-round-in-5-days",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval metrics introduction (vendor-owned docs)",
+      "url": "https://deepeval.com/docs/metrics-introduction",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval integrations (vendor-owned docs)",
+      "url": "https://deepeval.com/integrations",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

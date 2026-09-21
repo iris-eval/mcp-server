@@ -1,0 +1,251 @@
+{
+  "slug": "judgment",
+  "name": "Judgment Labs",
+  "homepage": "https://judgmentlabs.ai/",
+  "category": "Evaluation",
+  "tagline": "MCP-Native Agent Eval vs SDK-Traced Hosted Agent Judge Platform",
+  "oneLine": "The continuous-improvement stack for agents. Monitor and improve your agent's behavior at scale.",
+  "ogImage": null,
+  "tldrVendor": "Judgment Labs calls Judgment the continuous-improvement stack for agents: the open-source judgeval SDK (Apache-2.0, Python and TypeScript) traces agents into a hosted platform where Agent Judges and Code Judges score traces and track behaviors, with a hosted MCP server for coding agents. The company, Judgment, Inc. of San Francisco, announced a $32M round led by Lightspeed on 2026-05-12; self-hosting is listed as coming soon.",
+  "tldrSourceUrl": "https://github.com/JudgmentLabs/judgeval",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Python/TypeScript SDK (install judgeval): Tracer.init, Tracer.wrap on provider clients, Tracer.observe on custom code",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/quickstart",
+      "quote": "openai = Tracer.wrap(OpenAI())",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Hosted platform only; self-hosting is listed as coming soon",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/self-hosting",
+      "quote": "Self-hosting capabilities for the Judgment Platform are coming soon.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "In-process SDK built on OpenTelemetry, initialized in every process that creates spans; exports to Judgment",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/tracing/instrumentation",
+      "quote": "Initialize once in every process that creates spans, before constructing wrapped clients, observed functions, workers, or the application.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "Agent Judge follows a natural-language rubric; Code Judge runs your Python; outputs tracked as behaviors online/offline",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/judges",
+      "quote": "An Agent Judge follows a natural-language rubric and reasons over the supplied trace or example.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Provider instrumentation captures token usage and cost; the traces table exposes a cost column per trace and span",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/tracing/instrumentation",
+      "quote": "Provider calls, token usage, and cost",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Hosted MCP server (mcp.judgmentlabs.ai) with OAuth for Cursor, Claude Code, Windsurf, Codex to query traces and judges",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools",
+      "quote": "The Judgment MCP server gives coding agents authenticated, project-scoped tools for investigating traces, inspecting evaluations, and performing approved actions.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "judgeval SDK is Apache-2.0; the Judgment platform is hosted and proprietary (self-hosting listed as coming soon)",
+      "verdict": "neither",
+      "sourceUrl": "https://raw.githubusercontent.com/JudgmentLabs/judgeval/main/LICENSE.md",
+      "quote": "Apache License Version 2.0, January 2004",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Judgment, Inc. (Judgment Labs), San Francisco; VC-backed, $32M round led by Lightspeed announced 2026-05-12",
+      "verdict": "iris",
+      "sourceUrl": "https://judgmentlabs.ai/blogs/announcing-32m-led-by-lightspeed",
+      "quote": "Announcing $32M in Funding Led by Lightspeed",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Web UI: Traces table (previews, exceptions, judges, duration, cost), Conversation/Tree views, Judges and Behaviors pages",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/monitoring/trace-investigation",
+      "quote": "Switch to Tree to inspect the span tree and execution timing.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "LangGraph, OpenAI Agents SDK, Claude Agent SDK, Google ADK, Vercel AI SDK; OpenAI, Anthropic, Gemini, Bedrock, LiteLLM",
+      "verdict": "vendor",
+      "sourceUrl": "https://github.com/JudgmentLabs/judgeval",
+      "quote": "Auto-instrumentation for OpenAI, Anthropic, Google GenAI, and Together AI. Framework support for LangGraph, OpenLit, and Claude Agent SDK.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Versioned prompts on the platform with commit IDs and tags (e.g. production), fetched via the SDK; CLI deprecated",
+      "verdict": "vendor",
+      "sourceUrl": "https://docs.judgmentlabs.ai/sdk-reference/python/prompts/prompt",
+      "quote": "A versioned prompt template with variable substitution.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "Not stated in the vendor's documentation as of 2026-09-21",
+      "verdict": "neither",
+      "sourceUrl": "https://judgmentlabs.ai/",
+      "quote": "Not stated: The docs index (docs.judgmentlabs.ai/llms.txt) has no security or compliance page. docs.judgmentlabs.ai/documentation/compliance (still titled \"Security & Compliance\" in search engines, with snippets claiming SOC 2 Type 1 complete and HIPAA) returned 404 on 2026-09-21, as did judgmentlabs.ai/security, judgmentlabs.ai/pricing and the careers page; trust.judgmentlabs.ai redirects to the homepage, which contains no SOC, HIPAA, GDPR, SSO or enterprise strings. Do not publish a compliance claim either way.",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need Agent Judges that apply a natural-language rubric to whole agent trajectories, alongside Code Judges written in Python.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/judges"
+    },
+    {
+      "text": "You need production behavior monitoring with detection rates per behavior and alerts when an agent regresses.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/monitoring"
+    },
+    {
+      "text": "You need auto-instrumentation for LangGraph, OpenAI Agents SDK, Claude Agent SDK, Google ADK or Vercel AI SDK with minimal code changes.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/integrations"
+    },
+    {
+      "text": "You need OpenTelemetry-based tracing with dual export to Judgment and to your existing OTEL backend.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/integrations"
+    },
+    {
+      "text": "You need offline tests that compare judge and agent versions across a fixed dataset built from production traces.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/judges"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Judgment Labs?",
+      "vendorPart": "Judgment Labs describes Judgment as the continuous-improvement stack for agents: its open-source judgeval SDK (Python and TypeScript, Apache-2.0) traces your agent into a hosted platform where Agent Judges and Code Judges score traces and track behaviors.",
+      "sourceUrl": "https://github.com/JudgmentLabs/judgeval"
+    },
+    {
+      "question": "Is Iris better than Judgment Labs for MCP agent evaluation?",
+      "vendorPart": "Judgment offers things Iris does not: rubric-driven Agent Judges over full trajectories, behavior monitoring with regression alerts, offline tests over datasets built from production traces, and a hosted MCP server that lets coding agents query traces and judges.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/judges"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Judgment Labs homepage",
+      "url": "https://judgmentlabs.ai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment Labs blog index",
+      "url": "https://judgmentlabs.ai/blog",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Funding announcement ($32M led by Lightspeed)",
+      "url": "https://judgmentlabs.ai/blogs/announcing-32m-led-by-lightspeed",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment privacy policy (legal entity)",
+      "url": "https://app.judgmentlabs.ai/privacy",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment docs home",
+      "url": "https://docs.judgmentlabs.ai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment docs index (llms.txt)",
+      "url": "https://docs.judgmentlabs.ai/llms.txt",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment quickstart",
+      "url": "https://docs.judgmentlabs.ai/documentation/quickstart",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment tracing data model",
+      "url": "https://docs.judgmentlabs.ai/documentation/tracing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment instrumentation",
+      "url": "https://docs.judgmentlabs.ai/documentation/tracing/instrumentation",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment judges",
+      "url": "https://docs.judgmentlabs.ai/documentation/judges",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment integrations",
+      "url": "https://docs.judgmentlabs.ai/documentation/integrations",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment integrations introduction",
+      "url": "https://docs.judgmentlabs.ai/documentation/integrations/introduction",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment MCP and agent tools",
+      "url": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment monitoring",
+      "url": "https://docs.judgmentlabs.ai/documentation/monitoring",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment trace investigation",
+      "url": "https://docs.judgmentlabs.ai/documentation/monitoring/trace-investigation",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment self-hosting",
+      "url": "https://docs.judgmentlabs.ai/documentation/self-hosting",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment SDK reference: Prompt",
+      "url": "https://docs.judgmentlabs.ai/sdk-reference/python/prompts/prompt",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment CLI reference: prompts",
+      "url": "https://docs.judgmentlabs.ai/cli-reference/prompts",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "JudgmentLabs/judgeval repository",
+      "url": "https://github.com/JudgmentLabs/judgeval",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "judgeval repository metadata (GitHub API)",
+      "url": "https://api.github.com/repos/JudgmentLabs/judgeval",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "judgeval LICENSE.md (Apache-2.0)",
+      "url": "https://raw.githubusercontent.com/JudgmentLabs/judgeval/main/LICENSE.md",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

@@ -1,0 +1,236 @@
+{
+  "slug": "helicone",
+  "name": "Helicone",
+  "homepage": "https://www.helicone.ai",
+  "category": "Observability",
+  "tagline": "MCP-Native Agent Eval vs API Gateway Observability",
+  "oneLine": "Open-source LLM observability platform and AI gateway; acquired by Mintlify on March 3, 2026 and now running in maintenance mode.",
+  "ogImage": "/og-compare-helicone.png",
+  "tldrVendor": "Helicone is an open-source, proxy-based AI gateway and observability platform with cost analytics by custom property, response caching, and routing across 100+ models; acquired by Mintlify in March 2026, it now runs in maintenance mode. If you need per-property cost analytics, response caching, or a unified gateway across many LLM providers, Helicone covers that ground.",
+  "tldrSourceUrl": "https://www.helicone.ai/blog/joining-mintlify",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Proxy-based (change base URL + add header)",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.helicone.ai/getting-started/quick-start",
+      "quote": "Use the familiar OpenAI SDK to access 100+ LLM models across OpenAI, Anthropic, Google, and more with automatic logging, observability, and fallbacks built in.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "All-in-one Docker image (web, API, PostgreSQL, ClickHouse, MinIO); Helm chart for Kubernetes",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.helicone.ai/getting-started/self-host/docker",
+      "quote": "docker run -d --name helicone -p 3000:3000 -p 8585:8585 -p 9080:9080 helicone/helicone-all-in-one:latest",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "Rust AI gateway; vendor-reported P95 latency under 5 ms",
+      "verdict": "iris",
+      "sourceUrl": "https://github.com/Helicone/ai-gateway",
+      "quote": "P95 Latency: <5ms",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "No built-in evaluators; accepts scores from external eval frameworks via API or the dashboard",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/scores",
+      "quote": "Helicone doesn't run evaluations for you - we're not an evaluation framework.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Cost per user, conversation, feature or environment via custom properties",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/custom-properties",
+      "quote": "Calculate cost per user, conversation, or feature to understand your application's profitability",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "MCP server for data access only",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.helicone.ai/integrations/tools/mcp",
+      "quote": "debug errors, search logs, analyze performance, and examine request/response bodies without leaving your AI assistant",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Apache 2.0 (permissive)",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/Helicone/helicone",
+      "quote": "Apache-2.0",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Acquired by Mintlify (Mar 3, 2026); product in maintenance mode; last changelog entry Nov 26, 2025",
+      "verdict": "iris",
+      "sourceUrl": "https://www.helicone.ai/blog/joining-mintlify",
+      "quote": "Helicone has been acquired by Mintlify, and our team will be joining them in San Francisco.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Dashboard with Requests, Sessions, Users, Segments and HQL query views",
+      "verdict": "neither",
+      "sourceUrl": "https://www.helicone.ai/",
+      "quote": "The world's fastest-growing AI companies rely on Helicone to route, debug, and analyze their applications.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "Gateway integrations for LangChain, LangGraph, LlamaIndex, Vercel AI SDK, Zapier, Codex",
+      "verdict": "vendor",
+      "sourceUrl": "https://docs.helicone.ai/gateway/integrations/overview",
+      "quote": "Integrate Helicone AI Gateway with popular frameworks and tools to access 100+ LLM providers with top tier observability",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Versioned prompts with rollback and per-environment deployment via the AI Gateway",
+      "verdict": "vendor",
+      "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/prompts/overview",
+      "quote": "Track every change, compare versions, and rollback instantly if something goes wrong.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "SOC 2 Type II + HIPAA (Team and Enterprise), GDPR via EU region, SAML SSO, on-prem, Helm chart",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.helicone.ai/pricing",
+      "quote": "SOC-2 & HIPAA compliance",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need cost analytics — per-user, per-conversation, per-feature spend breakdowns via custom properties",
+      "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/custom-properties"
+    },
+    {
+      "text": "You want response caching to avoid repeat charges on identical requests",
+      "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/caching"
+    },
+    {
+      "text": "You need a full AI gateway with retries, fallbacks, and rate limiting",
+      "sourceUrl": "https://github.com/Helicone/ai-gateway"
+    },
+    {
+      "text": "You need enterprise compliance today (SOC 2, GDPR)",
+      "sourceUrl": "https://www.helicone.ai/pricing"
+    },
+    {
+      "text": "You want a unified gateway across 100+ models and 20+ LLM providers",
+      "sourceUrl": "https://github.com/Helicone/ai-gateway"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Helicone?",
+      "vendorPart": "Helicone is an open-source, proxy-based AI gateway and observability platform with cost analytics by custom property, response caching, and routing across 100+ models; it was acquired by Mintlify in March 2026 and is in maintenance mode. Helicone offers cost breakdowns and gateway features, and does not run evaluations itself.",
+      "sourceUrl": "https://www.helicone.ai/blog/joining-mintlify"
+    },
+    {
+      "question": "Is Iris better than Helicone for MCP agent evaluation?",
+      "vendorPart": "Helicone uses a proxy-based approach (a Rust gateway with vendor-reported P95 latency under 5 ms) and offers response caching, rate limiting, fallbacks, and cost analytics by custom property; it does not run evaluations itself.",
+      "sourceUrl": "https://github.com/Helicone/ai-gateway"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Helicone homepage",
+      "url": "https://www.helicone.ai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone quick start",
+      "url": "https://docs.helicone.ai/getting-started/quick-start",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone self-host with Docker",
+      "url": "https://docs.helicone.ai/getting-started/self-host/docker",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone self-host on Kubernetes (Helm)",
+      "url": "https://docs.helicone.ai/getting-started/self-host/kubernetes",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone latency impact",
+      "url": "https://docs.helicone.ai/references/latency-affect",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone scores",
+      "url": "https://docs.helicone.ai/features/advanced-usage/scores",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone custom properties",
+      "url": "https://docs.helicone.ai/features/advanced-usage/custom-properties",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone caching",
+      "url": "https://docs.helicone.ai/features/advanced-usage/caching",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone MCP server",
+      "url": "https://docs.helicone.ai/integrations/tools/mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone gateway integrations overview",
+      "url": "https://docs.helicone.ai/gateway/integrations/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone prompt management overview",
+      "url": "https://docs.helicone.ai/features/advanced-usage/prompts/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone compliance FAQ",
+      "url": "https://docs.helicone.ai/faq/compliance",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone pricing",
+      "url": "https://www.helicone.ai/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone changelog",
+      "url": "https://www.helicone.ai/changelog",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone blog: Helicone is joining Mintlify (2026-03-03)",
+      "url": "https://www.helicone.ai/blog/joining-mintlify",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Mintlify blog: Mintlify acquires Helicone (2026-03-03)",
+      "url": "https://www.mintlify.com/blog/mintlify-acquires-helicone",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone GitHub README",
+      "url": "https://github.com/Helicone/helicone",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Helicone AI Gateway GitHub README",
+      "url": "https://github.com/Helicone/ai-gateway",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

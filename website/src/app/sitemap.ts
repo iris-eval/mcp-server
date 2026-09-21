@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { COMPARISONS } from "@/lib/compare";
 import { getAllPosts } from "@/lib/blog";
 import { PAGE_LAST_MODIFIED, type StaticRoute } from "@/lib/page-dates";
 
@@ -46,19 +47,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     PAGE_LAST_MODIFIED["/blog"],
   );
 
-  const comparePages = [
-    "langfuse",
-    "langsmith",
-    "helicone",
-    "braintrust",
-    "arize",
-    "deepeval",
-    "confident-ai",
-    "patronus-ai",
-  ] as const;
+  const comparePages = COMPARISONS.map((c) => c.slug);
 
+  // One route per data file; tests/compare-contract.test.ts holds page-dates to the same list.
   const compareEntries = comparePages.map((slug) =>
-    page(`/compare/${slug}`, "monthly", 0.6),
+    page(`/compare/${slug}` as keyof typeof PAGE_LAST_MODIFIED, "monthly", 0.6),
   );
 
   const learnTerms = [
