@@ -21,6 +21,7 @@
  * and that sentence must keep speaking.
  */
 import { z } from 'zod';
+import { WEBHOOK_EVENTS, WEBHOOK_FORMATS } from '../notify/event-names.js';
 import type { IrisConfig } from '../types/config.js';
 
 const port = z.number().int().min(1).max(65535);
@@ -28,6 +29,10 @@ const nonNegativeInt = z.number().int().min(0);
 const nonNegative = z.number().min(0);
 const unit = z.number().min(0).max(1);
 const name = z.string().min(1);
+const httpUrl = z.string().refine((u) => /^https?:\/\//i.test(u) && URL.canParse(u), 'an http(s) URL, e.g. https://hooks.slack.com/services/…');
+const webhookEvent = z.enum(WEBHOOK_EVENTS, {
+  error: (issue) => `"${String((issue as { input?: unknown }).input)}" is not an event Iris sends — the events: ${WEBHOOK_EVENTS.join(', ')}`,
+});
 
 const ruleThresholds = z.strictObject({
   min_output_length: nonNegativeInt.optional(),
@@ -75,6 +80,22 @@ export const configFileSchema = z.strictObject({
   otel: z.strictObject({ evaluateOnIngest: z.boolean().optional() }).optional(),
   logging: z.strictObject({ level: z.enum(['debug', 'info', 'warn', 'error']).optional() }).optional(),
   retention: z.strictObject({ days: nonNegativeInt.optional(), sweepIntervalHours: nonNegative.optional() }).optional(),
+  notify: z
+    .strictObject({
+      webhook: z
+        .strictObject({
+          url: httpUrl,
+          events: z.array(webhookEvent).min(1, 'at least one event, or omit the key to send every event').optional(),
+          secret: name.optional(),
+          secretFile: name.optional(),
+          cooldownMinutes: nonNegative.optional(),
+          format: z.enum(WEBHOOK_FORMATS).optional(),
+          timeoutMs: z.number().int().min(100).max(60_000).optional(),
+        })
+        .nullable()
+        .optional(),
+    })
+    .optional(),
   security: z
     .strictObject({
       apiKey: name.optional(),
@@ -127,12 +148,12 @@ export function knownKeysAt(path: ReadonlyArray<PropertyKey>): string[] {
 
 type Def = { innerType?: unknown; element?: unknown; type?: string };
 
-/** Unwrap `.optional()` — zod 4 keeps the inner schema on `def.innerType`. */
+/** Unwrap `.optional()` and `.nullable()` — zod 4 keeps the inner schema on `def.innerType` for both. */
 function unwrap(node: unknown): unknown {
   let current = node;
   for (let i = 0; i < 4; i++) {
     const def = (current as { def?: Def } | null)?.def;
-    if (def?.type === 'optional' && def.innerType) current = def.innerType;
+    if ((def?.type === 'optional' || def?.type === 'nullable') && def.innerType) current = def.innerType;
     else break;
   }
   return current;

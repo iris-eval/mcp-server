@@ -172,6 +172,16 @@ export interface CaseResultRow {
 export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
 export class SqliteAdapter implements IStorageAdapter {
+  /** After-insert listeners for evaluations (arc 9, N-16); see IStorageAdapter.onEvalResultInserted. */
+  private readonly evalListeners = new Set<(tenantId: TenantId, result: EvalResult) => void>();
+
+  onEvalResultInserted(listener: (tenantId: TenantId, result: EvalResult) => void): () => void {
+    this.evalListeners.add(listener);
+    return () => {
+      this.evalListeners.delete(listener);
+    };
+  }
+
   /** Which driver holds the file (arc 8, R-0): `better-sqlite3`, or `node` when the built-in was chosen or fallen back to. */
   get driver(): DriverName {
     return this.db.name;
@@ -532,6 +542,14 @@ export class SqliteAdapter implements IStorageAdapter {
       // whatever run its trace does — which is right for every normal call.
       result.run_id ?? null,
     );
+    // The row is durable; tell whoever asked. A listener's failure is its own.
+    for (const listener of this.evalListeners) {
+      try {
+        listener(tenantId, result);
+      } catch {
+        /* never the write's problem */
+      }
+    }
   }
 
   async getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]> {

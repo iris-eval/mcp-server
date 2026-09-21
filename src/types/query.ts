@@ -269,6 +269,12 @@ export interface IStorageAdapter {
   insertSpan(tenantId: TenantId, span: Span): Promise<void>;
   getSpansByTraceId(tenantId: TenantId, traceId: string): Promise<Span[]>;
   insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void>;
+  /**
+   * Called after an evaluation row is durable, whichever door wrote it
+   * (arc 9, N-16) — the webhook's seam. Returns the unsubscribe. A listener
+   * that throws never fails the write.
+   */
+  onEvalResultInserted(listener: (tenantId: TenantId, result: EvalResult) => void): () => void;
   getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]>;
   /**
    * The evaluations of many traces in one read, newest first per trace; a

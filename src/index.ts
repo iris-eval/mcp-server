@@ -10,6 +10,7 @@ import { createStorage } from './storage/index.js';
 import { withDemoIngestGuard } from './storage/demo-guard.js';
 import { createIrisServer } from './server.js';
 import { runRetentionSweep, scheduleRetentionSweep } from './retention.js';
+import { installWebhookNotifier } from './notify/index.js';
 import { createStdioTransport } from './transport/stdio.js';
 import { createHttpTransport } from './transport/http.js';
 import { createDashboardServer } from './dashboard/server.js';
@@ -429,6 +430,10 @@ async function main(): Promise<void> {
   // The deployment's own labels, read once at boot (arc 7, D-8); every label write refreshes them.
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
 
+  // The webhook (arc 9, N-16): installed on the store, so every door that
+  // writes an evaluation reaches it; never in demo mode (runDemo below).
+  const webhook = installWebhookNotifier(storage, config, logger);
+
   const httpServers: Server[] = [];
 
   // Retention: one sweep at boot and the same sweep on a timer that never
@@ -524,6 +529,7 @@ async function main(): Promise<void> {
       new Promise((resolve) => setTimeout(resolve, 10_000)),
     ]);
 
+    await webhook?.dispose();
     await storage.close();
     logger.info('Shutdown complete');
     process.exit(0);
