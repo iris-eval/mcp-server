@@ -28,7 +28,7 @@ function tempDb(): string {
 
 describe('migration 012 — the schema it adds', () => {
   it('is the twelfth known migration', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(12);
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[11]).toBe('012-datasets');
     expect(KNOWN_MIGRATION_IDS[10]).toBe('011-verdict-labels');
   });
