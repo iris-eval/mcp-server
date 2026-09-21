@@ -56,10 +56,10 @@ export const MAX_STEPS_DERIVED = 500;
  * `stepScopeNote` is what keeps the silence audible.
  */
 export const SPAN_ATTRIBUTE_PRECEDENCE = {
-  name: ['tool.name', 'tool_name', 'gen_ai.tool.name'],
-  input: ['tool.input', 'tool_input', 'gen_ai.tool.call.arguments', 'input'],
-  output: ['tool.output', 'tool_output', 'gen_ai.tool.call.result', 'output'],
-  callId: ['gen_ai.tool.call.id', 'tool.call_id', 'tool_call_id'],
+  name: ['tool.name', 'tool_name', 'gen_ai.tool.name', 'tool_call.function.name', 'traceloop.entity.name', 'ai.toolCall.name'],
+  input: ['tool.input', 'tool_input', 'gen_ai.tool.call.arguments', 'tool_call.function.arguments', 'input.value', 'traceloop.entity.input', 'ai.toolCall.args', 'input'],
+  output: ['tool.output', 'tool_output', 'gen_ai.tool.call.result', 'output.value', 'traceloop.entity.output', 'ai.toolCall.result', 'output'],
+  callId: ['gen_ai.tool.call.id', 'tool.call_id', 'tool_call_id', 'tool_call.id', 'ai.toolCall.id'],
   truncated: ['iris.output.truncated'],
 } as const;
 

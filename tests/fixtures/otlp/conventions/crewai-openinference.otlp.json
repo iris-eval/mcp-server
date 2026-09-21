@@ -1,0 +1,200 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "launch-crew"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "openinference.instrumentation.crewai"
+          },
+          "spans": [
+            {
+              "traceId": "4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+              "spanId": "d000000000000001",
+              "name": "Crew.kickoff",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456003000000000",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"topic\":\"Q4 launch\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "Launch plan: three phases over six weeks, research first."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "crew-run-19"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+              "spanId": "d000000000000002",
+              "name": "Task._execute_core",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000010000000",
+              "endTimeUnixNano": "1758456002910000000",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "AGENT"
+                  }
+                }
+              ],
+              "parentSpanId": "d000000000000001"
+            },
+            {
+              "traceId": "4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+              "spanId": "d000000000000003",
+              "name": "web_search",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000020000000",
+              "endTimeUnixNano": "1758456000320000000",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "TOOL"
+                  }
+                },
+                {
+                  "key": "tool.name",
+                  "value": {
+                    "stringValue": "web_search"
+                  }
+                },
+                {
+                  "key": "tool.description",
+                  "value": {
+                    "stringValue": "Search the web"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"query\":\"Q4 launch competitors\"}"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"results\":3}"
+                  }
+                }
+              ],
+              "parentSpanId": "d000000000000002"
+            },
+            {
+              "traceId": "4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+              "spanId": "d000000000000004",
+              "name": "ChatOpenAI.chat",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000340000000",
+              "endTimeUnixNano": "1758456002840000000",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt",
+                  "value": {
+                    "intValue": "640"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion",
+                  "value": {
+                    "intValue": "88"
+                  }
+                },
+                {
+                  "key": "llm.token_count.total",
+                  "value": {
+                    "intValue": "728"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "Plan the Q4 launch."
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.content",
+                  "value": {
+                    "stringValue": "Launch plan: three phases over six weeks, research first."
+                  }
+                }
+              ],
+              "parentSpanId": "d000000000000002"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

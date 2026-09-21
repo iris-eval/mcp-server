@@ -1,0 +1,177 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "gcp.vertex.agent"
+          },
+          "spans": [
+            {
+              "traceId": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+              "spanId": "b000000000000001",
+              "name": "invoke_agent weather_agent",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000000000000",
+              "endTimeUnixNano": "1758456000900000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "invoke_agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.agent.name",
+                  "value": {
+                    "stringValue": "weather_agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.agent.description",
+                  "value": {
+                    "stringValue": "Answers weather questions with the forecast tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.conversation.id",
+                  "value": {
+                    "stringValue": "session-4f2a"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "gcp.vertex.agent"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+              "spanId": "b000000000000002",
+              "name": "generate_content gemini-2.5-flash",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000005000000",
+              "endTimeUnixNano": "1758456000505000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "generate_content"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "gcp.vertex.agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gemini-2.5-flash"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "318"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "44"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.definitions",
+                  "value": {
+                    "stringValue": "[{\"name\":\"get_weather\",\"description\":\"Current weather for a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}}]"
+                  }
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Will it rain in Porto this weekend?\"}]}]"
+                  }
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"Porto this weekend: showers on Saturday, clearing Sunday afternoon.\"}]}]"
+                  }
+                }
+              ],
+              "parentSpanId": "b000000000000001"
+            },
+            {
+              "traceId": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+              "spanId": "b000000000000003",
+              "name": "execute_tool get_weather",
+              "kind": 1,
+              "startTimeUnixNano": "1758456000520000000",
+              "endTimeUnixNano": "1758456000580000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.description",
+                  "value": {
+                    "stringValue": "Current weather for a city"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.type",
+                  "value": {
+                    "stringValue": "function"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.id",
+                  "value": {
+                    "stringValue": "adk-c1"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.arguments",
+                  "value": {
+                    "stringValue": "{\"city\":\"Porto\"}"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.result",
+                  "value": {
+                    "stringValue": "{\"saturday\":\"showers\",\"sunday\":\"clearing\"}"
+                  }
+                }
+              ],
+              "parentSpanId": "b000000000000001"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
