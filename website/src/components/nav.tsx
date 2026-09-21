@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "./theme-provider";
 import { IrisLogo } from "./iris-logo";
-import { CURRENT_RELEASE_HEADLINE, PUBLIC_REPO_URL, VERSION_MCP_SERVER } from "@/lib/claims";
+import { CURRENT_RELEASE_HEADLINE, VERSION_MCP_SERVER } from "@/lib/claims";
 
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
