@@ -52,6 +52,23 @@ export interface IngestOptions {
 }
 
 /** Whether a verdict trips `--fail-on`. */
+/** The span evidence the tripping rules stamped: rule, label, source and offsets into the raw text — never the text itself. */
+export function spansOf(
+  ruleResults: ReadonlyArray<{ ruleName: string; evidence?: ReadonlyArray<Record<string, unknown>> }>,
+  by: ReadonlyArray<string>,
+): Array<{ rule: string; label: string; source: string; start: number; end: number }> {
+  const out: Array<{ rule: string; label: string; source: string; start: number; end: number }> = [];
+  for (const r of ruleResults) {
+    if (!by.includes(r.ruleName)) continue;
+    for (const e of r.evidence ?? []) {
+      if (e.type === 'span' && typeof e.start === 'number' && typeof e.end === 'number') {
+        out.push({ rule: r.ruleName, label: String(e.label ?? ''), source: String(e.source ?? 'output'), start: e.start, end: e.end });
+      }
+    }
+  }
+  return out;
+}
+
 export function trips(failOn: FailOn, verdict: { state: string; basis: string }): boolean {
   switch (failOn) {
     case 'any':
@@ -204,6 +221,10 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       if (o.failOn && gated && trips(o.failOn, verdict)) {
         tripped++;
         line.tripped = o.failOn;
+        // The span of what tripped (arc 8, R-11): offsets and the label, never the text —
+        // the org reader's job log can say WHERE the leaked credential sits without carrying it.
+        const spans = spansOf(result.rule_results, verdict.by ?? []);
+        if (spans.length > 0) line.spans = spans;
       }
       o.stdout.write(JSON.stringify(line) + '\n');
     }
