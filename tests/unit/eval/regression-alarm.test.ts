@@ -110,6 +110,8 @@ describe('the moments filter accepts the new kind', () => {
     return {
       queryTraces: async (_t: string, options: { limit?: number; offset?: number }) => ({ traces: traces.slice().reverse(), total: traces.length, limit: options.limit ?? 50, offset: options.offset ?? 0 }),
       getEvalsByTraceId: async (_t: string, id: string) => evalOf(log.find((e) => e.traceId === id)!),
+      getEvalsByTraceIds: async (_t: string, ids: readonly string[]) =>
+        new Map(ids.map((id) => [id, evalOf(log.find((e) => e.traceId === id)!)])),
       getAgentFailureLog: async () => log,
       getSpansByTraceId: async () => [],
       getTrace: async (_t: string, id: string) => traces.find((t) => t.trace_id === id) ?? null,

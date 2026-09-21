@@ -57,10 +57,15 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
         logs.set(agent, await storage.getAgentFailureLog(tenantId, agent));
       }
 
+      // The page's evaluations in one read (arc 9, N-1), as the moments route does.
+      const evalsByTrace = await storage.getEvalsByTraceIds(
+        tenantId,
+        traceResult.traces.map((t) => t.trace_id),
+      );
       const nowMs = Date.now();
       const failures: RankedFailure[] = [];
       for (const trace of traceResult.traces) {
-        const evals = await storage.getEvalsByTraceId(tenantId, trace.trace_id);
+        const evals = evalsByTrace.get(trace.trace_id) ?? [];
         const history = historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp);
         const moment = deriveMoment(trace, evals, history);
         if (!isFailureMoment(moment)) continue;

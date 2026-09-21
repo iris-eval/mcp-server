@@ -28,6 +28,14 @@ export interface EvaluateStoredTraceOptions {
   evalType?: IngestEvalType;
   /** The quarantined gating rules on this server, for coverage.dormant. */
   dormant?: DormantRule[];
+  /**
+   * When the evaluation should be dated — ISO-8601. No door exposes this:
+   * the demo seeder (arc 9, N-1) evaluates a week of backdated traces
+   * through this same function and the trend, drift and health views read
+   * the evaluation's date, so an undated demo would show a week of traffic
+   * judged in one second. Omitted, the store dates the row now.
+   */
+  createdAt?: string;
 }
 
 export interface StoredTraceEvaluation {
@@ -86,6 +94,7 @@ export async function evaluateStoredTrace(
   const result =
     evalType === 'all' ? await engine.evaluateAll(context) : await engine.evaluate(evalType as EvalType, context);
   result.trace_id = trace.trace_id;
+  if (options.createdAt !== undefined) result.created_at = options.createdAt;
   await storage.insertEvalResult(tenantId, result);
   return {
     result,

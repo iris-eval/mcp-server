@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { evaluateWithLLMJudge } from '../eval/llm-judge/evaluator.js';
+import { judgeEvalResult } from '../eval/llm-judge/persisted.js';
 import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
@@ -189,53 +190,26 @@ export function registerEvaluateWithLLMJudgeTool(
       // is the honest bucket. rule_results[0] captures per-dimension
       // breakdown + provider metadata for audit.
       const evalId = generateEvalId();
-      await insertLinkedEvalResult(storage, LOCAL_TENANT, {
-        id: evalId,
-        trace_id: args.trace_id,
-        eval_type: 'custom',
-        output_text: args.output,
-        expected_text: args.expected,
-        score: result.score,
-        passed: result.passed,
-        rule_results: [
-          {
-            ruleName: `llm_judge:${result.template}:${result.provider}/${result.model}`,
-            passed: result.passed,
-            score: result.score,
-            message: result.rationale || 'LLM judge evaluation',
-            /*
-             * The row says what KIND of claim it is (0.10.0). Without it a
-             * stored judge evaluation read back through the composer had no
-             * layer to fall into — not a policy, not a detector with a
-             * published rate — and a FAILED judgement read back as clean.
-             * A judgment the caller asked and paid for decides.
-             */
-            kind: 'judgment',
-            role: 'gate',
-            saw: ['output'],
-            evidence: [
-              {
-                type: 'sample',
-                score: result.score,
-                ...(result.selfReportedPass !== undefined ? { selfReportedPass: result.selfReportedPass } : {}),
-                rationaleHash: '',
-              },
-            ],
-            uncertainty: {
-              basis: 'unmeasured',
-              why: 'the judge is user-keyed and its accuracy is measured only by a run on a key you or the maintainer supplies (npm run proof:judge)',
-            },
-          },
-        ],
-        suggestions: result.passed ? [] : [result.rationale],
-        rules_evaluated: 1,
-        rules_skipped: 0,
-        insufficient_data: false,
-        // What the evaluation itself cost — the description promised it was
-        // kept and the write path stored none of it (arc zero, G15).
-        eval_cost_usd: result.costUsd ?? undefined,
-        eval_tokens: result.inputTokens + result.outputTokens,
-      });
+      await insertLinkedEvalResult(
+        storage,
+        LOCAL_TENANT,
+        judgeEvalResult({
+          id: evalId,
+          traceId: args.trace_id,
+          output: args.output,
+          expected: args.expected,
+          template: result.template,
+          provider: result.provider,
+          model: result.model,
+          score: result.score,
+          passed: result.passed,
+          rationale: result.rationale,
+          selfReportedPass: result.selfReportedPass,
+          costUsd: result.costUsd,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+        }),
+      );
 
       return respond(
         judgeOutputSchema,

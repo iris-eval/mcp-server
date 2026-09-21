@@ -55,8 +55,15 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
         sort_order: query.sort_order,
       });
 
-      // Hydrate moments by fetching evals per trace. Acceptable for limit ≤ 200;
-      // batching is a later optimization once we have moment-volume data.
+      // Hydrate the page's evaluations in ONE read. Until 0.16.0 this was
+      // one query per trace: a window of 200 moments took 2.4 s on a warm
+      // local file and longer under the dashboard's own concurrent reads —
+      // longer than the poll cadence, which is how the Drift and Health
+      // prior windows came to never render (arc 9, N-1).
+      const evalsByTrace = await storage.getEvalsByTraceIds(
+        tenantId,
+        traceResult.traces.map((t) => t.trace_id),
+      );
       /*
        * One failure log per distinct agent on this page, not one per trace.
        * "Has this rule failed before" has to be answered as of each trace,
@@ -70,7 +77,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
 
       const moments: DecisionMoment[] = [];
       for (const trace of traceResult.traces) {
-        const evals = await storage.getEvalsByTraceId(tenantId, trace.trace_id);
+        const evals = evalsByTrace.get(trace.trace_id) ?? [];
         const history = historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp);
         const moment = deriveMoment(trace, evals, history);
 

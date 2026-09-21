@@ -131,8 +131,23 @@ export interface ChangeBannerProps {
 }
 
 export function ChangeBanner({ currentMoments, priorMoments, periodLabel, drift }: ChangeBannerProps) {
-  const cur = currentMoments ?? [];
-  const pri = priorMoments ?? [];
+  /*
+   * Undefined means a window is still loading; an empty array means it
+   * loaded and holds nothing. The two used to render the same empty state,
+   * so for the seconds the prior window took to hydrate the banner claimed
+   * "No prior period to compare against yet" — a sentence a first visitor
+   * (the demo's, arc 9) read as a fact about their data.
+   */
+  if (currentMoments === undefined || priorMoments === undefined) {
+    return (
+      <div style={styles.banner} role="status" aria-busy="true" data-change-banner="loading">
+        <Icon as={Sparkles} size={20} style={styles.icon} />
+        <p style={styles.empty}>Comparing this {periodLabel} with the {periodLabel} before it…</p>
+      </div>
+    );
+  }
+  const cur = currentMoments;
+  const pri = priorMoments;
 
   if (cur.length === 0) {
     return (

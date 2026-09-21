@@ -266,6 +266,12 @@ export interface IStorageAdapter {
   getSpansByTraceId(tenantId: TenantId, traceId: string): Promise<Span[]>;
   insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void>;
   getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]>;
+  /**
+   * The evaluations of many traces in one read, newest first per trace; a
+   * trace with none is absent from the map. What a page of moments needs —
+   * one query for the page, not one per trace (arc 9, N-1).
+   */
+  getEvalsByTraceIds(tenantId: TenantId, traceIds: readonly string[]): Promise<Map<string, EvalResult[]>>;
   /** One stored evaluation by id, in the same derived-on-read shape as every other reader; null when absent. */
   getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null>;
   /** Every evaluation in a run, one per trace, newest first — what a comparison counts. */

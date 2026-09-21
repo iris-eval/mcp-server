@@ -33,6 +33,7 @@ import {
   demoPreferencesPath,
   demoCustomRulesPath,
   demoAuditLogPath,
+  DEMO_DAYS,
   type SeedDemoDataSummary,
 } from './dashboard/seed-demo-data.js';
 
@@ -536,7 +537,7 @@ function printDemoBanner(summary: SeedDemoDataSummary, url: string): void {
   const line = '='.repeat(60);
   const counts = summary.alreadySeeded
     ? `  Reusing the existing demo database (${summary.traceCount} traces, ${summary.evalCount} evaluations).`
-    : `  Seeded ${summary.traceCount} traces / ${summary.evalCount} evaluations across the last 7 days.`;
+    : `  Seeded ${summary.traceCount} traces / ${summary.evalCount} evaluations across the last ${DEMO_DAYS} days — every verdict the engine's own.`;
   process.stderr.write(`
 ${line}
   IRIS DEMO MODE — everything on screen is demo data
@@ -550,7 +551,10 @@ ${counts}
 
   Worth clicking into:
     - a PII leak (a synthetic SSN in an agent reply) caught by the safety rules
-    - a prompt-injection attempt flagged in summarized forum posts
+    - a hidden directive in a forum post that the summarizer complied with
+    - a number the source document never said, and a cost spike
+    - two runs on the same twelve questions (Runs), compared with an interval
+    - a deployed custom rule and a paused one, with their audit rows
     - a failed LLM-judge score, with the judge's rationale
 
   Dashboard: ${url}
@@ -577,7 +581,21 @@ ${counts}
 async function runDemo(): Promise<void> {
   logger.info(`Starting Iris demo mode v${config.server.version}`);
 
-  const seedSummary = await seedDemoData();
+  /*
+   * The store and the engine come first so the seeder judges its week of
+   * traces with the SAME rules this server will serve with (arc 9, N-1):
+   * the demo's custom rules are deployed through this store and registered
+   * on this engine before anything is evaluated.
+   */
+  const customRuleStore = createCustomRuleStore({
+    pathFor: () => demoCustomRulesPath(),
+    auditPath: demoAuditLogPath(),
+  });
+  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
+  // One structured log line per evaluation, whichever door asked (arc 8, R-6).
+  evalEngine.setObserver((event) => logger.event?.('evaluation', { ...event }));
+
+  const seedSummary = await seedDemoData({ engine: evalEngine, customRuleStore });
   if (seedSummary.alreadySeeded) {
     logger.info(`Demo database already seeded (${seedSummary.traceCount} traces) — reusing it`);
   } else {
@@ -593,15 +611,9 @@ async function runDemo(): Promise<void> {
   const storage = withDemoIngestGuard(createStorage(config));
   await storage.initialize();
 
-  const customRuleStore = createCustomRuleStore({
-    pathFor: () => demoCustomRulesPath(),
-    auditPath: demoAuditLogPath(),
-  });
-  const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
-  // One structured log line per evaluation, whichever door asked (arc 8, R-6).
-  evalEngine.setObserver((event) => logger.event?.('evaluation', { ...event }));
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
-    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
+    // A fresh seed registered its own rules already; a reused database has them only in the store.
+    if (!evalEngine.hasRule(rule.id)) evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }
   await registerPlugins(evalEngine, config, { log: (line) => logger.info(line) });
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);

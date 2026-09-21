@@ -83,6 +83,11 @@ function makeStubStorage(data: StubData): {
       seenTenants.push(tenantId);
       return data.evalsByTrace[traceId] ?? [];
     },
+    // The page's evaluations in one read (arc 9, N-1) — the same fixture, keyed by trace.
+    getEvalsByTraceIds: async (tenantId: string, traceIds: readonly string[]) => {
+      seenTenants.push(tenantId);
+      return new Map(traceIds.filter((id) => (data.evalsByTrace[id] ?? []).length > 0).map((id) => [id, data.evalsByTrace[id]]));
+    },
     // The route reads one failure log per agent (D-7a): the scanned traces as
     // entries, plus whatever older baseline the fixture supplies.
     getAgentFailureLog: async (tenantId: string, agentName: string): Promise<AgentFailureLogEntry[]> => {

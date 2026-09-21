@@ -27,7 +27,7 @@ No agent wiring, no config — one command:
 npx @iris-eval/mcp-server --demo
 ```
 
-This seeds a demo database — a handful of small agents with a week of runs — and serves the dashboard against it at **http://localhost:6920** (your browser opens automatically on first run). The dashboard lands on **Failures**: what failed, worst and newest first. Worth clicking into — a PII leak caught by the safety rules, a flagged prompt-injection attempt, and a failed LLM-judge score with its rationale.
+This seeds a demo database — five small agents, two weeks of runs, every verdict the engine's own — and serves the dashboard against it at **http://localhost:6920** (your browser opens automatically on first run). The dashboard lands on **Failures**: what failed, worst and newest first, each card naming the rule and its evidence. Worth clicking into — a PII leak caught by the safety rules, a hidden directive in a forum post that the summarizer complied with, a number the source document never said, two runs on the same twelve questions compared with an interval (**Runs**), a deployed custom rule and a paused one with their audit rows, and a failed LLM-judge score with its rationale.
 
 Demo data lives in its own database (`demo.db` in your Iris home directory — `~/.iris` on macOS/Linux, `%USERPROFILE%\.iris` on Windows) and never mixes with your real traces. Remove all of it with one command:
 
