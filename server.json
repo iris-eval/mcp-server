@@ -176,6 +176,20 @@
           "format": "number",
           "isSecret": false,
           "name": "IRIS_OTEL_TIMEOUT_MS"
+        },
+        {
+          "description": "The receiver of the webhook that fires on a moment (docs/webhooks.md); merged over notify.webhook in config.json",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_WEBHOOK_URL"
+        },
+        {
+          "description": "The signing key of that webhook (any string, or whsec_ + base64); the iris format refuses to run without one",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "IRIS_WEBHOOK_SECRET"
         }
       ]
     }

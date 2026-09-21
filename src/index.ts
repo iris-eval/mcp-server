@@ -207,6 +207,10 @@ Environment variables (CLI flags take precedence):
   IRIS_DASHBOARD                       true/1/yes/on enables the web dashboard; false/0/no/off disables it (overrides config.json)
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)
   IRIS_DASHBOARD_HOST                  Dashboard bind address (default: 127.0.0.1)
+  IRIS_WEBHOOK_URL                     The receiver of the webhook that fires on a moment (docs/webhooks.md);
+                                       merged over notify.webhook in config.json
+  IRIS_WEBHOOK_SECRET                  Its signing key (any string, or whsec_ + base64); the iris format refuses
+                                       to run without one
   IRIS_API_KEY                         API key for HTTP authentication. Required to bind the HTTP transport or the
                                        dashboard beyond loopback (0.0.0.0, a LAN address, a container): without it
                                        the server refuses to start.
