@@ -67,8 +67,12 @@ const PROSE_SURFACES: string[] = [
   'src/prompts.ts',
   'src/judge-enablement.ts',
   'src/capabilities.ts',
+  // The Python client's README (arc 9, N-18): a recipe a reader copies, held to the same routes and variables.
+  'packages/python/README.md',
   // The gate action (arc 9, N-17): a workflow file a reader copies, held to the same flags and variables.
   '.github/actions/gate/action.yml',
+  // The Python client's README (arc 9, N-18): a recipe a reader copies, held to the same routes and variables.
+  'packages/python/README.md',
 ];
 
 const prose = PROSE_SURFACES.map((rel) => ({ rel, text: read(rel) }));
@@ -106,6 +110,8 @@ const FOREIGN_FLAGS = new Set([
   'provenance', // npm publish --provenance
   'certificate-oidc-issuer', // cosign verify-blob
   'certificate-identity-regexp', // cosign verify-blob
+  'iris-url', // pytest --iris-url (the Python client's plugin, packages/python)
+  'iris-api-key', // pytest --iris-api-key (the same plugin)
 ]);
 
 describe('docs contract — every --flag in prose is a flag the CLI parses', () => {
@@ -232,6 +238,16 @@ function envVarsReadByCapturePlugin(): Set<string> {
   return names;
 }
 
+/** The variables the Python client reads (packages/python): its own, beside the server's. */
+function envVarsReadByPythonClient(): Set<string> {
+  const names = new Set<string>();
+  const dir = join(root, 'packages', 'python', 'src', 'iris_eval');
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.py'))) {
+    for (const m of readFileSync(join(dir, f), 'utf8').matchAll(/os\.environ(?:\.get\(|\[)"(IRIS_[A-Z0-9_]+)"/g)) names.add(m[1]);
+  }
+  return names;
+}
+
 function envVarsInServerJson(): Set<string> {
   const j = JSON.parse(read('server.json')) as { packages: Array<{ environmentVariables?: Array<{ name: string }> }> };
   return new Set(j.packages.flatMap((p) => (p.environmentVariables ?? []).map((e) => e.name)));
@@ -243,6 +259,7 @@ const INTERNAL_ENV_VARS = new Set(['IRIS_NO_AUTO_LAUNCH']);
 describe('docs contract — IRIS_* variables', () => {
   const read_ = envVarsReadBySrc();
   const pluginRead = envVarsReadByCapturePlugin();
+  const pythonRead = envVarsReadByPythonClient();
   const listed = envVarsInServerJson();
 
   it('the extractor found the variables (guards the regex itself)', () => {
@@ -256,7 +273,7 @@ describe('docs contract — IRIS_* variables', () => {
         // The error catalogue shares the prefix; a code is not a variable.
         if ((ERROR_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
         if ((WARNING_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
-        if (!read_.has(m[0]) && !pluginRead.has(m[0])) unknown.push(`${rel}: ${m[0]}`);
+        if (!read_.has(m[0]) && !pluginRead.has(m[0]) && !pythonRead.has(m[0])) unknown.push(`${rel}: ${m[0]}`);
       }
     }
     expect([...new Set(unknown)]).toEqual([]);
@@ -265,6 +282,13 @@ describe('docs contract — IRIS_* variables', () => {
   it('the capture plugin reads its own variables, and none of them is a server setting in server.json', () => {
     expect(pluginRead.has('IRIS_CAPTURE_WAIT')).toBe(true);
     expect([...pluginRead].filter((v) => listed.has(v))).toEqual([]);
+  });
+
+  it('the Python client reads its own variables (IRIS_URL, IRIS_REQUIRE) and shares two with the server (IRIS_HOME, IRIS_API_KEY); its own are not server settings', () => {
+    expect([...pythonRead].sort()).toEqual(['IRIS_API_KEY', 'IRIS_HOME', 'IRIS_REQUIRE', 'IRIS_URL']);
+    const own = [...pythonRead].filter((v) => !read_.has(v)).sort();
+    expect(own).toEqual(['IRIS_REQUIRE', 'IRIS_URL']);
+    expect(own.filter((v) => listed.has(v))).toEqual([]);
   });
 
   it('every variable the server reads is listed in server.json (the reverse of manifest-env-parity)', () => {
