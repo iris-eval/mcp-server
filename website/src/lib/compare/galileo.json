@@ -1,0 +1,241 @@
+{
+  "slug": "galileo",
+  "name": "Galileo",
+  "homepage": "https://galileo.ai/",
+  "category": "Observability",
+  "tagline": "MCP-Native Agent Eval vs SDK-Instrumented Enterprise AI Observability",
+  "oneLine": "An observability, evaluation, and guardrail platform for GenAI and agentic applications; as of 2026-08-07 it is Splunk Agent Observability.",
+  "ogImage": null,
+  "tldrVendor": "Galileo is an observability, evaluation, and guardrail platform for GenAI and agentic applications, logged through its SDK and scored with out-of-the-box or custom metrics. As of August 7, 2026 it is Splunk Agent Observability, following Cisco's acquisition.",
+  "tldrSourceUrl": "https://docs.galileo.ai/",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Python/TypeScript SDK: GalileoLogger, @log decorator, wrapped OpenAI client, LangChain callback; plus OpenTelemetry.",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
+      "quote": "You can decorate or wrap functions with the log decorator to have spans created automatically.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Enterprise plan lists hosted, VPC, or on-prem deployment; Free and Pro tiers are hosted.",
+      "verdict": "iris",
+      "sourceUrl": "https://galileo.ai/pricing",
+      "quote": "Deploy: Hosted, VPC, or on-prem",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "In-process SDK instrumentation; SDK integrations capture prompts and responses without explicit logging code.",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
+      "quote": "Galileo's third-party SDK integrations automatically capture prompts, responses, and performance metrics without requiring you to add explicit logging code throughout your application.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "Out-of-the-box metrics plus custom LLM-as-a-judge or code-based metrics; Luna-2 small language models score at scale.",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.galileo.ai/concepts/metrics/overview",
+      "quote": "You can then expand these metrics with custom metrics, using LLM-as-a-judge, or custom code-based metrics.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Experiment comparison shows cost per response and metric cost, plus input/output token counts and latency.",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.galileo.ai/concepts/experiments/compare",
+      "quote": "Galileo allows you to compare up to five different experiments, showing the difference in outputs, metrics, latency, and token usage.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Ships an MCP server (api.galileo.ai/mcp/http/mcp) for IDEs: datasets, prompt templates, experiments, log-stream signals.",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.galileo.ai/getting-started/mcp/setup-galileo-mcp",
+      "quote": "The Galileo MCP server works with both Cursor and VS Code.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Platform is proprietary (paid tiers); the galileo-python SDK on GitHub is under the Apache License 2.0.",
+      "verdict": "neither",
+      "sourceUrl": "https://raw.githubusercontent.com/rungalileo/galileo-python/main/LICENSE",
+      "quote": "Apache License Version 2.0, January 2004",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Cisco acquisition announced 2026-04-09, completed per Splunk; as of 2026-08-07 Galileo is Splunk Agent Observability.",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.galileo.ai/",
+      "quote": "As of August 7, 2026, Galileo is now Splunk Agent Observability.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Web console at app.galileo.ai with projects and Log streams; a Playground runs experiments in the console.",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.galileo.ai/getting-started/quickstart",
+      "quote": "Open the Log stream for your project in the Galileo console using the URL output to your terminal.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "Integrations: OpenAI, OpenAI Agents SDK, LangChain, LangGraph, CrewAI, Google ADK, Strands, Vercel AI, Bedrock, OTel.",
+      "verdict": "vendor",
+      "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
+      "quote": "Automatically log all the steps in your LangChain or LangGraph application with the Galileo callback.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Prompt templates created, stored and retrieved by name via the SDK for experiments; docs advise versioning them.",
+      "verdict": "vendor",
+      "sourceUrl": "https://docs.galileo.ai/sdk-api/experiments/prompts",
+      "quote": "Prompts in Galileo allow you to create, store, and reuse LLM prompts across your experiments.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "SOC 2 Type II and HIPAA (BAAs) stated on its trust page; Enterprise plan lists RBAC, SSO, VPC or on-prem deployment.",
+      "verdict": "vendor",
+      "sourceUrl": "https://galileo.ai/trust-security",
+      "quote": "We maintain SOC 2 Type II certification, demonstrating our commitment to security, availability, processing integrity, confidentiality, and privacy controls.",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need Luna-2 small language models tuned for low-latency, reduced-cost metric evaluation at production scale.",
+      "sourceUrl": "https://docs.galileo.ai/concepts/luna/luna"
+    },
+    {
+      "text": "You need an enterprise VPC or on-prem deployment with RBAC, SSO and real-time guardrails.",
+      "sourceUrl": "https://galileo.ai/pricing"
+    },
+    {
+      "text": "You need out-of-the-box metrics you can extend with custom LLM-as-a-judge or code-based metrics.",
+      "sourceUrl": "https://docs.galileo.ai/concepts/metrics/overview"
+    },
+    {
+      "text": "You need SDK integrations for OpenAI, LangChain/LangGraph, CrewAI and OpenTelemetry that capture traces without explicit logging code.",
+      "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview"
+    },
+    {
+      "text": "You need a platform with SOC 2 Type II certification and HIPAA Business Associate Agreements.",
+      "sourceUrl": "https://galileo.ai/trust-security"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Galileo?",
+      "vendorPart": "Galileo is an observability, evaluation, and guardrail platform for GenAI and agentic applications, instrumented through its Python/TypeScript SDK and OpenTelemetry; as of August 7, 2026 it is Splunk Agent Observability.",
+      "sourceUrl": "https://docs.galileo.ai/"
+    },
+    {
+      "question": "Is Iris better than Galileo for MCP agent evaluation?",
+      "vendorPart": "Galileo offers Luna-2 small language models for low-latency, reduced-cost metric evaluation, real-time guardrails, and hosted, VPC or on-prem enterprise deployment.",
+      "sourceUrl": "https://docs.galileo.ai/concepts/luna/luna"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Galileo homepage",
+      "url": "https://galileo.ai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo pricing",
+      "url": "https://galileo.ai/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo trust & security",
+      "url": "https://galileo.ai/trust-security",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs home (Splunk Agent Observability banner)",
+      "url": "https://docs.galileo.ai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Galileo MCP Server",
+      "url": "https://docs.galileo.ai/getting-started/mcp/setup-galileo-mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Logging basics",
+      "url": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Third-party integrations",
+      "url": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Evaluate and improve",
+      "url": "https://docs.galileo.ai/getting-started/evaluate-and-improve/evaluate-and-improve",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Quickstart",
+      "url": "https://docs.galileo.ai/getting-started/quickstart",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Metrics overview",
+      "url": "https://docs.galileo.ai/concepts/metrics/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Luna-2 overview",
+      "url": "https://docs.galileo.ai/concepts/luna/luna",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Compare experiments",
+      "url": "https://docs.galileo.ai/concepts/experiments/compare",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Prompts (SDK)",
+      "url": "https://docs.galileo.ai/sdk-api/experiments/prompts",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Galileo docs: Run experiments in Playgrounds",
+      "url": "https://docs.galileo.ai/concepts/experiments/running-experiments-in-console",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "galileo-python GitHub repository (README)",
+      "url": "https://github.com/rungalileo/galileo-python",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "galileo-python LICENSE (raw)",
+      "url": "https://raw.githubusercontent.com/rungalileo/galileo-python/main/LICENSE",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Cisco blog: intent to acquire Galileo (2026-04-09)",
+      "url": "https://blogs.cisco.com/news/cisco-announces-the-intent-to-acquire-galileo",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Splunk: Galileo acquisition page",
+      "url": "https://www.splunk.com/en_us/about-splunk/acquisitions/galileo.html",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Splunk: Agent Observability product page (galileo.ai/products redirect target)",
+      "url": "https://www.splunk.com/en_us/products/agent-observability.html",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

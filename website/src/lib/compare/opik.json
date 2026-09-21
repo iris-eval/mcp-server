@@ -1,0 +1,221 @@
+{
+  "slug": "opik",
+  "name": "Opik",
+  "homepage": "https://www.comet.com/site/products/opik/",
+  "category": "Observability",
+  "tagline": "MCP-Native Agent Eval vs Open-Source SDK-Traced LLM Observability",
+  "oneLine": "Open-source LLM observability and evaluation platform for AI agent tracing, LLM evaluation, prompt management, and production monitoring, built by Comet.",
+  "ogImage": null,
+  "tldrVendor": "Opik is the open-source LLM observability and evaluation platform for AI agent tracing, LLM evaluation, prompt management, and production monitoring, built by Comet. It is Apache-2.0 licensed and free to self-host as the full platform.",
+  "tldrSourceUrl": "https://github.com/comet-ml/opik",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Python and TypeScript SDKs with a @track decorator, framework integrations, a REST API, and OpenTelemetry.",
+      "verdict": "iris",
+      "sourceUrl": "https://www.comet.com/docs/opik/tracing/log_traces",
+      "quote": "When you add the @track decorator to a function, Opik will create a span for that function call and log the input parameters and function output for that function.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Self-host via Docker Compose (opik.sh; MySQL, Redis, ClickHouse, MinIO) or a Kubernetes Helm chart for production.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.comet.com/docs/opik/self-host/overview",
+      "quote": "Production ready Opik platform that runs on a Kubernetes cluster.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "In-process SDK instrumentation (decorator or integration) sends traces to the Opik server; OpenTelemetry supported.",
+      "verdict": "iris",
+      "sourceUrl": "https://github.com/comet-ml/opik",
+      "quote": "Opik is framework-agnostic and supports its SDK, OpenTelemetry, and framework-specific integrations.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "LLM-as-a-judge natural-language assertions, 30+ pre-built metrics, custom metrics, annotation queues for human review.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.comet.com/docs/opik/evaluation/overview",
+      "quote": "Define natural-language assertions and let an LLM judge check them automatically.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Token usage measured per trace; USD cost estimates for OpenAI, Anthropic, Google, Bedrock, Groq; custom cost settable.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.comet.com/docs/opik/tracing/cost_tracking",
+      "quote": "Opik has been designed to track and monitor costs for your LLM applications by measuring token usage across all traces.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Official MCP server (opik-mcp) lets Claude Code, Cursor, VS Code and others read traces, log scores, save prompts.",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/comet-ml/opik-mcp",
+      "quote": "Plug your AI host (Claude Code, Cursor, VS Code Copilot, Codex, opencode, or any MCP client) directly into your Opik workspace: read traces, log scores, and save prompt versions, all from the chat.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Apache 2.0 for the full platform (server, web app, evaluation); self-hosted deployments lack user-management features.",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/comet-ml/opik",
+      "quote": "Opik is licensed under Apache 2.0. Its server, web application, and core observability and evaluation capabilities can be self-hosted without a commercial license.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Built by Comet (Comet ML, Inc.), headquartered in New York City, launched 2017, with $70M in funding per its about page.",
+      "verdict": "iris",
+      "sourceUrl": "https://www.comet.com/site/about-us/",
+      "quote": "Headquartered in New York City, with Offices in Tel Aviv",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Web dashboard for traces, experiments, feedback scores, trace counts and token usage over time; online evaluation rules.",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/comet-ml/opik",
+      "quote": "Scalable dashboards and online evaluation rules.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "Integrations: LangChain, LangGraph, LlamaIndex, CrewAI, OpenAI Agents, Pydantic AI, Vercel AI SDK, Google ADK, more.",
+      "verdict": "vendor",
+      "sourceUrl": "https://github.com/comet-ml/opik",
+      "quote": "Extensive 3rd-party integrations for easy observability: Seamlessly integrate with a growing list of frameworks, supporting many of the largest and most popular ones natively",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Prompt Library versions each change automatically and links the version that ran to its trace; retrieved via get_prompt.",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.comet.com/docs/opik/prompt_engineering/prompt_management",
+      "quote": "The Prompt Library lets you manage them outside your codebase, version each change automatically, and link the exact version that ran to its trace.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "Enterprise plan lists SOC 2, ISO 27001, ISO 9001, HIPAA and GDPR compliance, single sign-on, and flexible deployments.",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.comet.com/site/pricing/",
+      "quote": "SOC 2, ISO 27001, ISO 9001, HIPAA, and GDPR compliance",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need a fully Apache-2.0 platform you can self-host, backend included, without a commercial license.",
+      "sourceUrl": "https://github.com/comet-ml/opik"
+    },
+    {
+      "text": "You need native integrations for LangChain, LlamaIndex, CrewAI, OpenAI Agents and dozens of other frameworks.",
+      "sourceUrl": "https://www.comet.com/docs/opik/tracing/integrations/overview"
+    },
+    {
+      "text": "You need a Prompt Library that versions every change and links the exact version to each trace.",
+      "sourceUrl": "https://www.comet.com/docs/opik/prompt_engineering/prompt_management"
+    },
+    {
+      "text": "You need estimated USD cost tracking per trace across OpenAI, Anthropic, Google, Bedrock and Groq.",
+      "sourceUrl": "https://www.comet.com/docs/opik/tracing/cost_tracking"
+    },
+    {
+      "text": "You need annotation queues for human-in-the-loop review alongside 30+ pre-built LLM-as-a-judge metrics.",
+      "sourceUrl": "https://www.comet.com/docs/opik/evaluation/overview"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Opik?",
+      "vendorPart": "Opik is Comet's open-source LLM observability and evaluation platform: you instrument your app with its SDK or OpenTelemetry, and traces, experiments and prompts are managed in its dashboard.",
+      "sourceUrl": "https://github.com/comet-ml/opik"
+    },
+    {
+      "question": "Is Iris better than Opik for MCP agent evaluation?",
+      "vendorPart": "Opik offers production monitoring dashboards with online evaluation rules, a Prompt Library with automatic versioning, estimated cost tracking, and a large set of native framework integrations.",
+      "sourceUrl": "https://github.com/comet-ml/opik"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Opik product page (Comet)",
+      "url": "https://www.comet.com/site/products/opik/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik GitHub repository (README)",
+      "url": "https://github.com/comet-ml/opik",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik LICENSE (raw)",
+      "url": "https://raw.githubusercontent.com/comet-ml/opik/main/LICENSE",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Comet pricing (Opik tiers)",
+      "url": "https://www.comet.com/site/pricing/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs home",
+      "url": "https://www.comet.com/docs/opik/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Self-host overview",
+      "url": "https://www.comet.com/docs/opik/self-host/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Local (Docker Compose) deployment",
+      "url": "https://www.comet.com/docs/opik/self-host/local_deployment",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Kubernetes deployment",
+      "url": "https://www.comet.com/docs/opik/self-host/kubernetes",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Cost tracking",
+      "url": "https://www.comet.com/docs/opik/tracing/cost_tracking",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Evaluation overview",
+      "url": "https://www.comet.com/docs/opik/evaluation/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Prompt management",
+      "url": "https://www.comet.com/docs/opik/prompt_engineering/prompt_management",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Log traces",
+      "url": "https://www.comet.com/docs/opik/tracing/log_traces",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik docs: Integrations overview",
+      "url": "https://www.comet.com/docs/opik/tracing/integrations/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik MCP server GitHub repository (README)",
+      "url": "https://github.com/comet-ml/opik-mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Comet about page",
+      "url": "https://www.comet.com/site/about-us/",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

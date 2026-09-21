@@ -1,0 +1,227 @@
+{
+  "slug": "deepeval",
+  "name": "DeepEval",
+  "homepage": "https://deepeval.com/",
+  "category": "Evaluation",
+  "tagline": "MCP-Native Heuristic Eval vs LLM-as-Judge Framework",
+  "oneLine": "The open-source LLM evaluation framework (Apache 2.0) from the Confident AI team; runs eval files the way pytest would, with 50+ mostly LLM-as-a-judge metrics.",
+  "ogImage": "/og-compare-deepeval.png",
+  "tldrVendor": "DeepEval is the open-source LLM evaluation framework from the Confident AI team: eval files run the same way pytest would, almost all predefined metrics are LLM-as-a-judge (QAG, DAG, G-Eval), and it is built to run as a gate in a CI/CD pipeline.",
+  "tldrSourceUrl": "https://deepeval.com/",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Python library (TypeScript SDK in beta); `deepeval test run` collects and runs eval files the way pytest would",
+      "verdict": "iris",
+      "sourceUrl": "https://deepeval.com/docs/getting-started",
+      "quote": "deepeval test run collects and runs your eval files the same way pytest would.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "pip install, local execution",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/getting-started",
+      "quote": "pip install -U deepeval",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "Almost all metrics are LLM-as-a-judge calls to a model provider; tracing via the @observe decorator in-process",
+      "verdict": "iris",
+      "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
+      "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "50+ ready-to-use metrics, almost all LLM-as-a-judge (QAG, DAG, G-Eval); custom metrics via G-Eval or BaseMetric",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
+      "quote": "deepeval offers 50+ SOTA, ready-to-use metrics for you to quickly get started with.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Token cost fields on traced spans",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/evaluation-llm-tracing",
+      "quote": "cost_per_input_token, cost_per_output_token (decorator); input_token_count, output_token_count via update_llm_span",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Evaluates MCP use (MCPUseMetric, MultiTurnMCPUseMetric); MCPServer objects via mcp_servers; not itself an MCP server",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/evaluation-mcp",
+      "quote": "The MCPServer class is an abstraction provided by deepeval to contain information about different MCP servers and the primitives they provide.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Apache 2.0",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/confident-ai/deepeval/blob/main/LICENSE.md",
+      "quote": "Apache License Version 2.0, January 2004",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Created and maintained by Confident AI (independent, Y Combinator-backed; $2.2M seed round)",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval",
+      "quote": "The team behind Confident AI created and maintains DeepEval.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Confident AI cloud dashboard (separate product)",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/getting-started",
+      "quote": "Confident AI is free and allows you to keep all evaluation results on the cloud.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "LangChain, LangGraph, LlamaIndex, CrewAI, Pydantic AI, OpenAI Agents, Google ADK, Strands; TS: Mastra, Vercel AI SDK",
+      "verdict": "vendor",
+      "sourceUrl": "https://deepeval.com/integrations",
+      "quote": "Framework integrations let DeepEval evaluate entire execution traces without manually instrumenting every intermediate step.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Prompt class works locally from files or code; versioned store with pull() by alias, version or label via Confident AI",
+      "verdict": "vendor",
+      "sourceUrl": "https://deepeval.com/docs/evaluation-prompts",
+      "quote": "Prompts work entirely locally from files or code.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "None in the library; RBAC, SOC2, SSO (Team) and on-prem, HIPAA (Enterprise) come from the Confident AI platform",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/pricing",
+      "quote": "Dedicated On-Prem Deployment",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You're building in Python (or TypeScript) and want pytest-style eval workflows",
+      "sourceUrl": "https://deepeval.com/docs/getting-started"
+    },
+    {
+      "text": "You want to run eval suites in CI/CD pipelines before deployment",
+      "sourceUrl": "https://deepeval.com/"
+    },
+    {
+      "text": "You need a mature ecosystem with extensive documentation and community",
+      "sourceUrl": "https://github.com/confident-ai/deepeval"
+    },
+    {
+      "text": "You want the Confident AI cloud platform for team collaboration",
+      "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and DeepEval?",
+      "vendorPart": "DeepEval is the open-source LLM evaluation framework (Apache 2.0) whose `deepeval test run` collects and runs eval files the same way pytest would; almost all of its 50+ metrics are LLM-as-a-judge. It is Python-first with a TypeScript SDK in beta, and it can also trace apps with @observe and stream traces to Confident AI.",
+      "sourceUrl": "https://deepeval.com/docs/getting-started"
+    },
+    {
+      "question": "Should I use Iris or DeepEval for agent evaluation?",
+      "vendorPart": "Use DeepEval if you're building in Python (or TypeScript) and want pytest-style eval suites with LLM-as-a-judge metrics running in CI/CD.",
+      "sourceUrl": "https://deepeval.com/docs/getting-started"
+    }
+  ],
+  "sources": [
+    {
+      "label": "DeepEval homepage / docs index",
+      "url": "https://deepeval.com/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval GitHub README",
+      "url": "https://github.com/confident-ai/deepeval",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval LICENSE.md (Apache 2.0)",
+      "url": "https://github.com/confident-ai/deepeval/blob/main/LICENSE.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval getting started",
+      "url": "https://deepeval.com/docs/getting-started",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval metrics introduction",
+      "url": "https://deepeval.com/docs/metrics-introduction",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval MCP Use metric",
+      "url": "https://deepeval.com/docs/metrics-mcp-use",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval MCP evaluation",
+      "url": "https://deepeval.com/docs/evaluation-mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval test cases",
+      "url": "https://deepeval.com/docs/evaluation-test-cases",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval LLM tracing",
+      "url": "https://deepeval.com/docs/evaluation-llm-tracing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval prompts",
+      "url": "https://deepeval.com/docs/evaluation-prompts",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval integrations",
+      "url": "https://deepeval.com/integrations",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval changelog 2026",
+      "url": "https://deepeval.com/changelog/changelog-2026",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "DeepEval TypeScript beta post",
+      "url": "https://deepeval.com/blog/introducing-deepeval-typescript",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI: DeepEval framework page",
+      "url": "https://www.confident-ai.com/frameworks/deepeval",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI pricing",
+      "url": "https://www.confident-ai.com/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI seed round post",
+      "url": "https://www.confident-ai.com/blog/how-i-closed-confident-ais-2-2m-seed-round-in-5-days",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Confident AI MCP server for coding agents",
+      "url": "https://www.confident-ai.com/docs/coding-agents/mcp",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

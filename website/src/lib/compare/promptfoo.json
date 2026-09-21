@@ -1,0 +1,246 @@
+{
+  "slug": "promptfoo",
+  "name": "Promptfoo",
+  "homepage": "https://www.promptfoo.dev/",
+  "category": "Testing",
+  "tagline": "MCP-Native Agent Eval vs Config-Driven CLI Eval and Red-Teaming",
+  "oneLine": "An open-source CLI and library for evaluating and red-teaming LLM apps; evals run on your machine from declarative test configs.",
+  "ogImage": null,
+  "tldrVendor": "Promptfoo is an open-source CLI and library for evaluating and red-teaming LLM apps. Evals run on your machine and talk directly with the LLM, with results in a local web viewer.",
+  "tldrSourceUrl": "https://www.promptfoo.dev/docs/intro/",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "Open-source CLI and Node library driven by declarative YAML test cases; also runs in CI/CD.",
+      "verdict": "iris",
+      "sourceUrl": "https://www.promptfoo.dev/docs/intro/",
+      "quote": "promptfoo is an open-source CLI and library for evaluating and red-teaming LLM apps.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Runs locally; a basic Docker image hosts a server that stores evals (SQLite); not recommended for production.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.promptfoo.dev/docs/usage/self-hosting/",
+      "quote": "Promptfoo provides a basic Docker image that allows you to host a server that stores evals.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "No in-app instrumentation; evals run on your machine and call the LLM directly. The Enterprise MCP Proxy is in-path.",
+      "verdict": "iris",
+      "sourceUrl": "https://www.promptfoo.dev/docs/intro/",
+      "quote": "This software runs completely locally. The evals run on your machine and talk directly with the LLM.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "Deterministic assertions plus model-graded (LLM rubric) assertions; custom JavaScript and Python assertions.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.promptfoo.dev/docs/configuration/expected-outputs/",
+      "quote": "These metrics are programmatic tests that are run on LLM output.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "A cost assertion checks provider-reported cost against a threshold; requires the provider to return cost information.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/",
+      "quote": "The cost assertion checks whether the cost reported by the selected provider is at or below a specified threshold.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "MCP provider tests MCP servers directly; ships an MCP server exposing its eval tools; Enterprise MCP Proxy product.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.promptfoo.dev/docs/providers/mcp/",
+      "quote": "The mcp provider allows you to use Model Context Protocol (MCP) servers directly as providers in promptfoo.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Open-source core is MIT licensed; Promptfoo Enterprise (hosted SaaS) and Enterprise On-Prem are commercial.",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/promptfoo/promptfoo",
+      "quote": "Promptfoo remains open source and MIT licensed.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Announced 2026-03-09 that it agreed to be acquired by OpenAI; its about page states Promptfoo is now part of OpenAI.",
+      "verdict": "iris",
+      "sourceUrl": "https://www.promptfoo.dev/blog/promptfoo-joining-openai/",
+      "quote": "Today we are announcing that Promptfoo has agreed to be acquired by OpenAI.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Local web viewer opens eval results in the browser; results can be shared to promptfoo.app or a self-hosted server.",
+      "verdict": "neither",
+      "sourceUrl": "https://www.promptfoo.dev/docs/usage/web-ui/",
+      "quote": "After running an eval, view results in your browser: npx promptfoo@latest view",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "Providers for OpenAI, Anthropic, Azure, Google, HuggingFace, local models, HTTP, custom JS/Python scripts, MCP, n8n.",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.promptfoo.dev/docs/intro/",
+      "quote": "Use OpenAI, Anthropic, Azure, Google, HuggingFace, open-source models like Llama, or integrate custom API providers",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Prompts inline or in Git-tracked files; external stores (Langfuse, Portkey, Helicone) referenced by version or label.",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.promptfoo.dev/docs/configuration/prompts/",
+      "quote": "Store prompts in external files for better organization",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "Enterprise tier lists SSO, granular permission profiles, RBAC and teams; site shows SOC2 and ISO 27001 badges.",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.promptfoo.dev/pricing/",
+      "quote": "SSO and granular permission profiles",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need red-teaming probes and vulnerability scanning of your LLM app alongside evals.",
+      "sourceUrl": "https://www.promptfoo.dev/pricing/"
+    },
+    {
+      "text": "You need declarative YAML test cases that run as a CLI step in CI/CD and compare models side-by-side.",
+      "sourceUrl": "https://www.promptfoo.dev/docs/intro/"
+    },
+    {
+      "text": "You need evals that run entirely on your machine and talk directly to the LLM, with no server.",
+      "sourceUrl": "https://www.promptfoo.dev/docs/intro/"
+    },
+    {
+      "text": "You need a proxy that governs which MCP servers your organization's applications and users may reach.",
+      "sourceUrl": "https://www.promptfoo.dev/mcp/"
+    },
+    {
+      "text": "You need an on-premises enterprise deployment with a dedicated runner behind your firewall.",
+      "sourceUrl": "https://www.promptfoo.dev/docs/enterprise/"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Promptfoo?",
+      "vendorPart": "Promptfoo is an open-source CLI and library for evaluating and red-teaming LLM apps: tests are declared in config, run locally against the LLM, and viewed in a local web viewer.",
+      "sourceUrl": "https://www.promptfoo.dev/docs/intro/"
+    },
+    {
+      "question": "Is Iris better than Promptfoo for MCP agent evaluation?",
+      "vendorPart": "Promptfoo offers red-teaming and vulnerability scanning, side-by-side model comparison across many providers, and an enterprise MCP Proxy that controls which MCP servers an organization can reach.",
+      "sourceUrl": "https://www.promptfoo.dev/pricing/"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Promptfoo homepage",
+      "url": "https://www.promptfoo.dev/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Intro",
+      "url": "https://www.promptfoo.dev/docs/intro/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo pricing",
+      "url": "https://www.promptfoo.dev/pricing/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo GitHub repository (README)",
+      "url": "https://github.com/promptfoo/promptfoo",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo LICENSE (raw)",
+      "url": "https://raw.githubusercontent.com/promptfoo/promptfoo/main/LICENSE",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Self-hosting",
+      "url": "https://www.promptfoo.dev/docs/usage/self-hosting/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: MCP provider",
+      "url": "https://www.promptfoo.dev/docs/providers/mcp/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Using MCP",
+      "url": "https://www.promptfoo.dev/docs/integrations/mcp/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Promptfoo MCP Server",
+      "url": "https://www.promptfoo.dev/docs/integrations/mcp-server/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo MCP Proxy",
+      "url": "https://www.promptfoo.dev/mcp/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Assertions & metrics",
+      "url": "https://www.promptfoo.dev/docs/configuration/expected-outputs/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Deterministic assertions (cost, latency)",
+      "url": "https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Web viewer",
+      "url": "https://www.promptfoo.dev/docs/usage/web-ui/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Enterprise",
+      "url": "https://www.promptfoo.dev/docs/enterprise/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo about page",
+      "url": "https://www.promptfoo.dev/about/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Node package",
+      "url": "https://www.promptfoo.dev/docs/usage/node-package/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Providers index",
+      "url": "https://www.promptfoo.dev/docs/providers/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo docs: Prompts",
+      "url": "https://www.promptfoo.dev/docs/configuration/prompts/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo blog: Promptfoo is joining OpenAI (2026-03-09)",
+      "url": "https://www.promptfoo.dev/blog/promptfoo-joining-openai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Promptfoo security page",
+      "url": "https://www.promptfoo.dev/security/",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

@@ -1,0 +1,250 @@
+{
+  "slug": "arize",
+  "name": "Arize",
+  "homepage": "https://arize.com/",
+  "category": "Observability",
+  "tagline": "MCP-Native Eval vs Enterprise ML Observability",
+  "oneLine": "The agent observability and evaluation platform: Phoenix (open-source observability and evals) plus Arize AX (managed AI engineering platform).",
+  "ogImage": "/og-compare-arize.png",
+  "tldrVendor": "Arize describes itself as 'the agent observability and evaluation platform': Phoenix (open-source observability and evals, Elastic License 2.0) for self-hosted tracing, evaluation, experimentation and prompt iteration, plus Arize AX (managed AI engineering platform) with online evals, dashboards, the Alyx agent, SOC 2 Type II, SSO and RBAC. Embedding drift monitoring lives in its ML observability product. In August 2026 Arize announced a definitive agreement to be acquired by Dynatrace.",
+  "tldrSourceUrl": "https://arize.com/",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "OpenTelemetry SDK + auto-instrumentation",
+      "verdict": "iris",
+      "sourceUrl": "https://github.com/Arize-ai/phoenix",
+      "quote": "built on top of OpenTelemetry and is vendor, language, and framework agnostic",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Phoenix: pip install arize-phoenix; SQLite by default, PostgreSQL supported; Docker, Kubernetes/Helm options",
+      "verdict": "neither",
+      "sourceUrl": "https://arize.com/docs/phoenix/self-hosting/configuration",
+      "quote": "If URL is not specified, by default Phoenix starts with a file-based SQLite database in a temporary folder.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "OpenTelemetry SDK + OpenInference auto-instrumentation in the app, exporting to the Phoenix collector endpoint",
+      "verdict": "iris",
+      "sourceUrl": "https://arize.com/docs/phoenix/tracing/llm-traces-1",
+      "quote": "the OpenInference CrewAI auto-instrumentation package, which handles tracing for us without requiring manual instrumentation.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "LLM-as-a-Judge, agent-as-a-judge or code evaluators (AX); Phoenix response and retrieval evals",
+      "verdict": "neither",
+      "sourceUrl": "https://arize.com/docs/ax",
+      "quote": "Evaluate agent performance with LLM-as-a-Judge, agent-as-a-judge, or code evaluators.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Token and cost tracking across models",
+      "verdict": "neither",
+      "sourceUrl": "https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking",
+      "quote": "The costs are calculated from token counts and model pricing data, then rolled up to the trace and project level for comprehensive cost analysis.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Phoenix MCP server (prompts, traces, datasets, experiments, SQL); no tool runs an eval",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/js/packages/phoenix-mcp/README.md",
+      "quote": "Phoenix MCP Server is an implementation of the Model Context Protocol for the Arize Phoenix platform. It provides a unified interface to Phoenix's capabilities.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Phoenix: Elastic License 2.0 (ELv2)",
+      "verdict": "iris",
+      "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/LICENSE",
+      "quote": "You may not provide the software to third parties as a hosted or managed service, where the service provides users with access to any substantial set of the features or functionality of the software.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Definitive agreement signed for acquisition by Dynatrace (announced Aug 2026); close pending",
+      "verdict": "iris",
+      "sourceUrl": "https://arize.com/blog/a-new-chapter-with-dynatrace/",
+      "quote": "Today we are announcing the signing of a definitive agreement for the acquisition of Arize by Dynatrace to accelerate that proposition.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "AX dashboards from templates or blank, widget-based; Alyx AI engineering agent; Prompt Playground",
+      "verdict": "neither",
+      "sourceUrl": "https://arize.com/docs/ax/observe/dashboards",
+      "quote": "Two ways to get started: pick a pre-configured template or start with a blank dashboard.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "40+ models, frameworks and AI tools; 21 Python tracing integrations in Phoenix (OpenAI Agents, LangGraph, CrewAI, DSPy…)",
+      "verdict": "vendor",
+      "sourceUrl": "https://arize.com/",
+      "quote": "Arize integrates with 40+ models, frameworks, and AI tools",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Prompt Playground + Prompt Hub versioning; optimization manually, via Alyx, or automated Prompt Learning",
+      "verdict": "vendor",
+      "sourceUrl": "https://arize.com/docs/ax/concepts/prompts/optimizing-prompts",
+      "quote": "Every iteration is committed back to the Prompt Hub as a new version, so the optimization history is auditable and the winner is deployable like any other version.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "SOC 2 Type II (Pro/Enterprise); Enterprise SSO, org and space RBAC, self-hosted deployment; online evals on all tiers",
+      "verdict": "vendor",
+      "sourceUrl": "https://arize.com/pricing/",
+      "quote": "Organization and space RBAC",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need embedding drift monitoring for NLP, computer vision, or multi-variate tabular model data",
+      "sourceUrl": "https://arize.com/products/ml-cv-observability/"
+    },
+    {
+      "text": "You need LLM-as-a-Judge, agent-as-a-judge, or code evaluators",
+      "sourceUrl": "https://arize.com/docs/ax"
+    },
+    {
+      "text": "You need enterprise compliance and RBAC today",
+      "sourceUrl": "https://arize.com/pricing/"
+    },
+    {
+      "text": "You're using non-MCP frameworks and need broad OpenTelemetry-based instrumentation",
+      "sourceUrl": "https://github.com/Arize-ai/phoenix"
+    },
+    {
+      "text": "You want a Prompt Playground and Prompt Hub with versioning and automated Prompt Learning",
+      "sourceUrl": "https://arize.com/docs/ax/concepts/prompts/optimizing-prompts"
+    },
+    {
+      "text": "You're monitoring traditional ML models alongside LLM applications",
+      "sourceUrl": "https://arize.com/products/ml-cv-observability/"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Arize?",
+      "vendorPart": "Arize calls itself 'the agent observability and evaluation platform': Phoenix (open-source observability and evals, Elastic License 2.0) for self-hosting, and Arize AX (managed AI engineering platform) in the cloud. In August 2026 Arize announced a definitive agreement to be acquired by Dynatrace.",
+      "sourceUrl": "https://arize.com/"
+    },
+    {
+      "question": "Is Iris better than Arize for MCP agent evaluation?",
+      "vendorPart": "Arize requires OpenTelemetry instrumentation (Phoenix is built on top of OpenTelemetry with OpenInference auto-instrumentation) but offers embedding drift monitoring for ML models, LLM-as-a-Judge, agent-as-a-judge and code evaluators, and enterprise features such as SSO and RBAC.",
+      "sourceUrl": "https://github.com/Arize-ai/phoenix"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Arize homepage",
+      "url": "https://arize.com/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX pricing",
+      "url": "https://arize.com/pricing/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix GitHub README",
+      "url": "https://github.com/Arize-ai/phoenix",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix LICENSE (ELv2)",
+      "url": "https://github.com/Arize-ai/phoenix/blob/main/LICENSE",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix MCP server README",
+      "url": "https://github.com/Arize-ai/phoenix/blob/main/js/packages/phoenix-mcp/README.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix MCP SQL blog (Aug 2026)",
+      "url": "https://arize.com/blog/phoenix-mcp-sql-code-mode/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix self-hosting overview",
+      "url": "https://arize.com/docs/phoenix/self-hosting",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix self-hosting configuration (database)",
+      "url": "https://arize.com/docs/phoenix/self-hosting/configuration",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix tracing setup (register / auto-instrument)",
+      "url": "https://arize.com/docs/phoenix/tracing/llm-traces-1",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix cost tracking",
+      "url": "https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Phoenix integrations list",
+      "url": "https://arize.com/docs/phoenix/integrations",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX docs overview",
+      "url": "https://arize.com/docs/ax",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX Alyx",
+      "url": "https://arize.com/docs/ax/alyx",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX dashboards",
+      "url": "https://arize.com/docs/ax/observe/dashboards",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX optimizing prompts",
+      "url": "https://arize.com/docs/ax/concepts/prompts/optimizing-prompts",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX compliance",
+      "url": "https://arize.com/docs/ax/security-and-settings/compliance",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize Trust Center",
+      "url": "https://arize.com/trust-center/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize ML/CV observability (embedding drift)",
+      "url": "https://arize.com/products/ml-cv-observability/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize AX embedding drift docs",
+      "url": "https://arize.com/docs/ax/machine-learning/computer-vision/how-to-cv/embedding-drift",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Arize blog: A new chapter with Dynatrace (acquisition)",
+      "url": "https://arize.com/blog/a-new-chapter-with-dynatrace/",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

@@ -1,0 +1,240 @@
+{
+  "slug": "braintrust",
+  "name": "Braintrust",
+  "homepage": "https://www.braintrust.dev",
+  "category": "Evaluation",
+  "tagline": "MCP-Native Eval vs Experiment-Driven Evaluation",
+  "oneLine": "Active observability platform for instrumenting, understanding, and improving agents: SDKs in six languages, evals, datasets, playground.",
+  "ogImage": "/og-compare-braintrust.png",
+  "tldrVendor": "Braintrust is an eval and observability platform with dataset management, experiment tracking, a prompt playground, and span-level tracing. If you need production-grade experimentation workflows, human review, or CI-integrated regression testing, Braintrust is the deeper eval platform.",
+  "tldrSourceUrl": "https://www.braintrust.dev/docs",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "SDK imports or OpenTelemetry (Python, TypeScript, Java, Go, Ruby, C#)",
+      "verdict": "iris",
+      "sourceUrl": "https://www.braintrust.dev/blog/new-language-sdks",
+      "quote": "We've built native SDKs for Java, Go, Ruby, and C#",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Enterprise plan only; hybrid: you run the data plane, Braintrust hosts the UI",
+      "verdict": "iris",
+      "sourceUrl": "https://www.braintrust.dev/docs/self-hosting",
+      "quote": "Self-hosting is only available on the Enterprise plan.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "Background-thread logging by default; synchronous flush optional",
+      "verdict": "iris",
+      "sourceUrl": "https://www.braintrust.dev/docs/instrument/advanced-tracing",
+      "quote": "All logging operations run in a background thread, including api key validation, project/experiment registration, and flushing logs.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "LLM, code, and human scoring + datasets + experiments",
+      "verdict": "neither",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/evals",
+      "quote": "To build them, use built-in autoevals, LLM-as-a-judge, or custom code.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Latency, token counts and cost captured per span and trace; dashboards filter and group by metadata",
+      "verdict": "neither",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/tracing",
+      "quote": "Metrics: Latency, token counts, costs",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "MCP server that creates scorers and evaluators, runs evals, and edits datasets (Aug 2026)",
+      "verdict": "neither",
+      "sourceUrl": "https://www.braintrust.dev/blog/braintrust-mcp",
+      "quote": "create and test evaluators, build datasets, run evals, configure Topics, build monitor views, and set up alerts without moving data between tools or sharing context manually.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Proprietary (proxy is MIT)",
+      "verdict": "neither",
+      "sourceUrl": "https://github.com/braintrustdata/braintrust-proxy",
+      "quote": "MIT",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Venture-backed company; $80M Series B led by ICONIQ (Feb 17, 2026)",
+      "verdict": "iris",
+      "sourceUrl": "https://www.braintrust.dev/blog/announcing-series-b",
+      "quote": "Braintrust has raised $80M to become the observability layer for production AI. Our Series B is led by ICONIQ",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Dashboards track requests, latency, tokens, cost, scores, topics; filters and groupings apply to all charts",
+      "verdict": "neither",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/monitor",
+      "quote": "Use dashboards to track request counts, latency, token usage, costs, scores, topics, and custom metrics over time.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "Integrations for OpenAI, Anthropic, Vercel AI SDK, LangChain, LlamaIndex, OpenTelemetry, LangGraph, CrewAI + more",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.braintrust.dev/docs/integrations",
+      "quote": "Connect Braintrust with your AI providers and frameworks",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Versioned prompts (new version per save); invoke() by slug from code, pin versions in production",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/prompts",
+      "quote": "Every prompt save creates a new version with a unique ID.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "SOC 2 Type II, SAML SSO, BAA (HIPAA), RBAC, on-prem or hosted deployment, premium support",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.braintrust.dev/pricing",
+      "quote": "Custom data retention and export, RBAC, and premium support with on-prem or hosted deployment",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need deep eval capabilities — datasets, experiments, human review, LLM scoring",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/evals"
+    },
+    {
+      "text": "You need a prompt playground for iterating on prompts with real data",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/playground"
+    },
+    {
+      "text": "You need enterprise compliance today (SOC 2 Type II, SAML SSO, on-prem or hosted deployment)",
+      "sourceUrl": "https://www.braintrust.dev/pricing"
+    },
+    {
+      "text": "You need multi-language SDK support (Python, TypeScript, Java, Go, Ruby, C#)",
+      "sourceUrl": "https://www.braintrust.dev/blog/new-language-sdks"
+    },
+    {
+      "text": "You need cost and token analytics you can filter and group across dashboards",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/monitor"
+    },
+    {
+      "text": "You need CI/CD-integrated regression testing against production datasets",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/evals"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Braintrust?",
+      "vendorPart": "Braintrust is an SDK-based eval and observability platform with datasets, experiments, a prompt playground, and CI/CD-integrated regression testing. Braintrust offers deeper evaluation workflows with LLM-as-a-judge, code scorers, and human review.",
+      "sourceUrl": "https://www.braintrust.dev/docs/guides/evals"
+    },
+    {
+      "question": "Is Iris better than Braintrust for MCP agent evaluation?",
+      "vendorPart": "Braintrust requires SDK imports (or OpenTelemetry) but offers experiment workflows, dataset management, and SDKs for Python, TypeScript, Java, Go, Ruby, and C#.",
+      "sourceUrl": "https://www.braintrust.dev/blog/new-language-sdks"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Braintrust docs home",
+      "url": "https://www.braintrust.dev/docs",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust blog: AI observability beyond Python and TypeScript (2025-12-22)",
+      "url": "https://www.braintrust.dev/blog/new-language-sdks",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust self-hosting",
+      "url": "https://www.braintrust.dev/docs/self-hosting",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust advanced tracing (background thread)",
+      "url": "https://www.braintrust.dev/docs/instrument/advanced-tracing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust tracing guide",
+      "url": "https://www.braintrust.dev/docs/guides/tracing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust evals guide",
+      "url": "https://www.braintrust.dev/docs/guides/evals",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust human review guide",
+      "url": "https://www.braintrust.dev/docs/guides/human-review",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust dashboards / monitor guide",
+      "url": "https://www.braintrust.dev/docs/guides/monitor",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust logs guide",
+      "url": "https://www.braintrust.dev/docs/guides/logs",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust playground guide",
+      "url": "https://www.braintrust.dev/docs/guides/playground",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust datasets guide",
+      "url": "https://www.braintrust.dev/docs/guides/datasets",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust prompts guide",
+      "url": "https://www.braintrust.dev/docs/guides/prompts",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust integrations",
+      "url": "https://www.braintrust.dev/docs/integrations",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust MCP docs",
+      "url": "https://www.braintrust.dev/docs/integrations/developer-tools/mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust blog: Use Braintrust with your coding agent (2026-08-26)",
+      "url": "https://www.braintrust.dev/blog/braintrust-mcp",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust AI proxy GitHub README (MIT)",
+      "url": "https://github.com/braintrustdata/braintrust-proxy",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust pricing",
+      "url": "https://www.braintrust.dev/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust blog: Series B (2026-02-17)",
+      "url": "https://www.braintrust.dev/blog/announcing-series-b",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

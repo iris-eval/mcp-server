@@ -1,0 +1,221 @@
+{
+  "slug": "patronus-ai",
+  "name": "Patronus AI",
+  "homepage": "https://www.patronus.ai/",
+  "category": "Safety",
+  "tagline": "MCP-Native Eval vs Enterprise AI Safety Platform",
+  "oneLine": "Develops 'simulation research and infrastructure to accelerate progress toward human-aligned AGI'; also ships eval models Lynx and GLIDER and an eval API.",
+  "ogImage": "/og-compare-patronus-ai.png",
+  "tldrVendor": "Patronus AI today leads with simulation: 'simulation research and infrastructure to accelerate progress toward human-aligned AGI', built on Digital World Models. Its evaluation line remains: Lynx (SOTA hallucination detection model), GLIDER (3B evaluator scoring text on user-defined criteria), Percival (20+ agent failure modes), a usage-priced eval API ($10 per 1k small evaluator calls), toxicity and PII evaluators, and an Enterprise plan with on-prem/VPC deployment and SOC, TISAX and HIPAA badges.",
+  "tldrSourceUrl": "https://www.patronus.ai/",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "REST API + SDK",
+      "verdict": "iris",
+      "sourceUrl": "https://www.patronus.ai/announcements/patronus-ai-launches-industry-first-self-serve-api-for-ai-evaluation-and-guardrails",
+      "quote": "programming language-agnostic, with a Python SDK available for easy integration",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Vendor-hosted API by default; Enterprise plan offers on-prem / dedicated VPC deployment",
+      "verdict": "iris",
+      "sourceUrl": "https://www.patronus.ai/pricing",
+      "quote": "On-prem / dedicated VPC, custom data retention, SSO.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "Each evaluation is a remote evaluator API call (RemoteEvaluator.evaluate); tracing via @traced decorator + OpenInference",
+      "verdict": "iris",
+      "sourceUrl": "https://patronus-ai.github.io/patronus-py/getting-started/quickstart/",
+      "quote": "The OpenInference instrumentation automatically adds spans for all OpenAI API calls, capturing prompts, responses, and model parameters without any code changes.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "Fine-tuned eval models (Lynx, Glider)",
+      "verdict": "neither",
+      "sourceUrl": "https://www.patronus.ai/products",
+      "quote": "Glider: Powerful 3B evaluator LLM that can score any text input on user-defined criteria",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Not a primary feature",
+      "verdict": "neither",
+      "sourceUrl": "https://www.patronus.ai/",
+      "quote": "Not stated: No fetched vendor page mentions cost tracking. Looked at: homepage, /products, /pricing, /percival, /company, /llm-testing/llm-observability, the self-serve API announcement, the Series B announcement, the MCP server post, and the SDK quickstart/index on patronus-ai.github.io. docs.patronus.ai returned 401 on every path. A negative cannot be sourced, so the cell is kept and flagged.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Patronus MCP server (evaluate, batch_evaluate, custom_evaluate, run_experiment, create_criteria); API key required",
+      "verdict": "neither",
+      "sourceUrl": "https://www.patronus.ai/blog/introducing-the-patronus-mcp-server",
+      "quote": "Create an account at https://app.patronus.ai and grab an API key. You need this because the Patronus MCP Server is interacting with the Patronus API under the hood.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "Proprietary platform with usage-priced API; Lynx and GLIDER model weights released as open source / open weights",
+      "verdict": "iris",
+      "sourceUrl": "https://www.patronus.ai/pricing",
+      "quote": "$10 / 1k small evaluator API calls",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Independent, venture-backed; $50M Series B led by Greenfield Partners with Lightspeed, Notable Capital, Datadog, Samsung",
+      "verdict": "neither",
+      "sourceUrl": "https://www.patronus.ai/announcements",
+      "quote": "Announcing our $50M Series B to Simulate the Entire World's Intelligence and Unveiling our First Digital World Model for AI Agent Training and Simulation",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Web dashboard for API logs, traces, experiments, comparisons and datasets; Percival agent-trace debugger",
+      "verdict": "neither",
+      "sourceUrl": "https://www.patronus.ai/announcements/patronus-ai-launches-industry-first-self-serve-api-for-ai-evaluation-and-guardrails",
+      "quote": "Developers can also access a web dashboard to track and filter Patronus API logs, compare AI product performance snapshots, and experiment with different LLM systems.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "OpenAI, Anthropic, smolagents, Pydantic AI, OpenAI Agents SDK, LangGraph, CrewAI, LangChain via SDK; OpenTelemetry",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.patronus.ai/llm-testing/llm-observability",
+      "quote": "Integrates with OpenTelemetry, OpenAI, LangChain, etc. via SDK",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Not a documented standalone feature; Percival proposes prompt rewrites as remedies",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.patronus.ai/llm-testing/llm-observability",
+      "quote": "Actionable remedies, such as rewriting prompts or reassigning tools.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "AICPA SOC, TISAX and HIPAA badges on pricing page; Enterprise: on-prem / dedicated VPC, custom data retention, SSO",
+      "verdict": "vendor",
+      "sourceUrl": "https://www.patronus.ai/pricing",
+      "quote": "On-prem / dedicated VPC, custom data retention, SSO.",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need deep semantic hallucination detection with purpose-built models",
+      "sourceUrl": "https://www.patronus.ai/"
+    },
+    {
+      "text": "You're in a regulated industry requiring enterprise-grade safety scoring",
+      "sourceUrl": "https://www.patronus.ai/pricing"
+    },
+    {
+      "text": "You need custom fine-tuned evaluation models for your specific domain",
+      "sourceUrl": "https://www.patronus.ai/pricing"
+    },
+    {
+      "text": "You want managed infrastructure with SOC, TISAX and HIPAA attestations (badges on the vendor's pricing page)",
+      "sourceUrl": "https://www.patronus.ai/pricing"
+    },
+    {
+      "text": "You need toxicity and PII evaluators and custom policies beyond heuristic rules",
+      "sourceUrl": "https://www.patronus.ai/llm-testing/llm-observability"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Patronus AI?",
+      "vendorPart": "Patronus AI now describes itself as 'Simulating the World's Intelligence' — developing simulation research and infrastructure (Digital World Models) toward human-aligned AGI — while still offering its evaluation models Lynx (hallucination detection) and GLIDER, Percival for agent-trace debugging, and a usage-priced evaluation API with a Python SDK and an MCP server.",
+      "sourceUrl": "https://www.patronus.ai/"
+    },
+    {
+      "question": "Is Iris or Patronus AI better for detecting hallucinations?",
+      "vendorPart": "Patronus AI's Lynx is a fine-tuned hallucination detection model that the vendor says 'outperforms GPT-4o, Claude-3-Sonnet and closed and open-source LLM-as-a-judge models'; GLIDER scores text against user-defined criteria with reasoning chains.",
+      "sourceUrl": "https://www.patronus.ai/blog/lynx-state-of-the-art-open-source-hallucination-detection-model"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Patronus AI homepage",
+      "url": "https://www.patronus.ai/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI pricing",
+      "url": "https://www.patronus.ai/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI products",
+      "url": "https://www.patronus.ai/products",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI Percival",
+      "url": "https://www.patronus.ai/percival",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI company page",
+      "url": "https://www.patronus.ai/company",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI announcements index",
+      "url": "https://www.patronus.ai/announcements",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI $50M Series B announcement",
+      "url": "https://www.patronus.ai/announcements/announcing-our-50m-series-b",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI self-serve API announcement (Oct 2024)",
+      "url": "https://www.patronus.ai/announcements/patronus-ai-launches-industry-first-self-serve-api-for-ai-evaluation-and-guardrails",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI GLIDER judge model announcement (Dec 2024)",
+      "url": "https://www.patronus.ai/announcements/patronus-ai-launches-small-high-performance-judge-model-for-fast-and-explainable-ai-evaluations",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI Lynx blog post",
+      "url": "https://www.patronus.ai/blog/lynx-state-of-the-art-open-source-hallucination-detection-model",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI MCP server blog post",
+      "url": "https://www.patronus.ai/blog/introducing-the-patronus-mcp-server",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI LLM observability page",
+      "url": "https://www.patronus.ai/llm-testing/llm-observability",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus Python SDK docs index (vendor GitHub Pages)",
+      "url": "https://patronus-ai.github.io/patronus-py/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus Python SDK quickstart (vendor GitHub Pages)",
+      "url": "https://patronus-ai.github.io/patronus-py/getting-started/quickstart/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus AI GitHub organization",
+      "url": "https://github.com/patronus-ai",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}

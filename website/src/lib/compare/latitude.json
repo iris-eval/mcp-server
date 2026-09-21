@@ -1,0 +1,251 @@
+{
+  "slug": "latitude",
+  "name": "Latitude",
+  "homepage": "https://latitude.so/",
+  "category": "Observability",
+  "tagline": "MCP-Native Agent Eval vs Open-Source Agent Observability Platform",
+  "oneLine": "Open-source AI agent monitoring platform. Full observability into what's failing in production.",
+  "ogImage": null,
+  "tldrVendor": "Latitude is an open-source, MIT-licensed observability platform for production AI agents, operated by Latitude Data, S.L. in Barcelona. It ingests traces through a TypeScript or Python SDK or OpenTelemetry, groups failures into signals, scores sessions with LLM-as-judge, deterministic or JavaScript evaluations, tracks token cost, exposes an MCP server for coding agents, and can be self-hosted for free or run as Latitude Cloud.",
+  "tldrSourceUrl": "https://docs.latitude.so/getting-started/introduction.md",
+  "rows": [
+    {
+      "id": "integration",
+      "vendor": "TypeScript (@latitude-data/telemetry) or Python (latitude-telemetry) SDK; OpenTelemetry exporter for other languages",
+      "verdict": "iris",
+      "sourceUrl": "https://docs.latitude.so/telemetry/start-tracing.md",
+      "quote": "Install @latitude-data/telemetry and instrument TypeScript or JavaScript apps.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "self_hosting",
+      "vendor": "Free self-hosting (Docker Compose or Helm): five services + Postgres/pgvector, ClickHouse, Redis, Temporal, object store",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.latitude.so/deployment/overview",
+      "quote": "five application services (web, api, ingest, workers, workflows) backed by Postgres (+ pgvector), ClickHouse, Redis, Temporal, and an object store",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "overhead",
+      "vendor": "In-process telemetry SDK in your app, or your existing OpenTelemetry pipeline exporting to Latitude; no proxy described",
+      "verdict": "iris",
+      "sourceUrl": "https://latitude.so/",
+      "quote": "Drop in our sdk or point your existing Open Telemetry pipeline at Latitude",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "eval",
+      "vendor": "LLM-as-judge, deterministic conditions or custom JavaScript score completed sessions; human annotations check alignment",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.latitude.so/evaluations/detection-methods.md",
+      "quote": "An LLM reads each session and decides",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "cost_tracking",
+      "vendor": "Input/output/total tokens and estimated cost per trace and session; Cost dashboard with per-model spend, cache advice",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.latitude.so/observability/features/token-cost-tracking.md",
+      "quote": "Cost values are estimates based on the usage and model/provider information available in telemetry.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "mcp_support",
+      "vendor": "Remote OAuth MCP server (api.latitude.so/v1/mcp) with tools generated from the Latitude API, for coding agents",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.latitude.so/getting-started/mcp.md",
+      "quote": "The Latitude MCP is a remote, OAuth-authenticated, streamable HTTP Model Context Protocol server",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "license",
+      "vendor": "MIT on the default branch (development); the older main branch still carries an LGPL-3.0 LICENSE and README",
+      "verdict": "neither",
+      "sourceUrl": "https://raw.githubusercontent.com/latitude-dev/latitude-llm/development/LICENSE",
+      "quote": "MIT License Copyright (c) 2026 Latitude Data SL",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "ownership",
+      "vendor": "Operated by Latitude Data, S.L., Barcelona, Spain; funding and investors are not stated on its pages",
+      "verdict": "iris",
+      "sourceUrl": "https://latitude.so/privacy",
+      "quote": "LATITUDE DATA, S.L.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "dashboard",
+      "vendor": "Web UI with Traces, Sessions, Signals, Evaluations, Cost, Users, Tools, Memory, Search, Behaviors and Experiments views",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.latitude.so/getting-started/introduction.md",
+      "quote": "where spend goes, what caching saves, and cost per session in the Cost view",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "frameworks",
+      "vendor": "OpenAI, Anthropic, Bedrock, Vercel AI SDK, LangChain and more, plus any OpenTelemetry-compatible application",
+      "verdict": "vendor",
+      "sourceUrl": "https://github.com/latitude-dev/latitude-llm",
+      "quote": "Telemetry works out of the box with most model providers and frameworks (OpenAI, Anthropic, Bedrock, Vercel AI SDK, LangChain, and more), plus any OTEL-compatible application.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "prompt_management",
+      "vendor": "Not stated in the vendor's documentation as of 2026-09-21",
+      "verdict": "neither",
+      "sourceUrl": "https://latitude.so/",
+      "quote": "Not stated: The current docs index (docs.latitude.so/llms.txt) has no prompt-manager or prompt-versioning section and the introduction page does not mention prompts. Older URLs that web search still lists (docs.latitude.so/guides/prompt-manager/version-control, docs.latitude.so/guides/prompt-manager/overview) returned 404 on 2026-09-21, as did the changelog. Do not publish a prompt-management claim either way.",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "id": "enterprise",
+      "vendor": "SOC 2 Type II; ISO 27001 reports; GDPR; SAML SSO, RBAC, custom on-prem or cloud deployment on the Enterprise plan",
+      "verdict": "vendor",
+      "sourceUrl": "https://docs.latitude.so/security/compliance/soc2.md",
+      "quote": "Latitude is SOC II certified as part of its security and compliance program.",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "vendorReasons": [
+    {
+      "text": "You need to self-host the entire platform for free on Docker Compose or Kubernetes, with your data staying in your own infrastructure.",
+      "sourceUrl": "https://docs.latitude.so/deployment/overview"
+    },
+    {
+      "text": "You need recurring production failures auto-grouped into tracked signals with status, size and trend, Sentry-style.",
+      "sourceUrl": "https://docs.latitude.so/getting-started/introduction.md"
+    },
+    {
+      "text": "You need a fix loop that dispatches Claude Code or Cursor with the failing traces and replays the fix against those traces.",
+      "sourceUrl": "https://github.com/latitude-dev/latitude-llm"
+    },
+    {
+      "text": "You need a Cost dashboard with per-model economics and cache recommendations computed from your own traffic.",
+      "sourceUrl": "https://docs.latitude.so/observability/cost.md"
+    },
+    {
+      "text": "You need OpenTelemetry-native ingestion from any language, not only Python or TypeScript.",
+      "sourceUrl": "https://docs.latitude.so/telemetry/start-tracing.md"
+    }
+  ],
+  "faq": [
+    {
+      "question": "What is the difference between Iris and Latitude?",
+      "vendorPart": "Latitude is an open-source, MIT-licensed platform for improving production AI agents: it captures agent traffic through a telemetry SDK or OpenTelemetry, groups repeated failures into signals, scores sessions with evaluations, and can be self-hosted or used as Latitude Cloud.",
+      "sourceUrl": "https://docs.latitude.so/getting-started/introduction.md"
+    },
+    {
+      "question": "Is Iris better than Latitude for MCP agent evaluation?",
+      "vendorPart": "Latitude offers things Iris does not: a free self-hostable platform with Sessions, Signals, Cost and Experiments views, LLM-as-judge and JavaScript evaluations that keep scoring live traffic, and a dispatch loop that hands failing traces to Claude Code or Cursor.",
+      "sourceUrl": "https://github.com/latitude-dev/latitude-llm"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Latitude homepage",
+      "url": "https://latitude.so/",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude pricing",
+      "url": "https://latitude.so/pricing",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude about",
+      "url": "https://latitude.so/about",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude privacy policy (legal entity)",
+      "url": "https://latitude.so/privacy",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude docs index (llms.txt)",
+      "url": "https://docs.latitude.so/llms.txt",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude docs introduction",
+      "url": "https://docs.latitude.so/getting-started/introduction.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude MCP server docs",
+      "url": "https://docs.latitude.so/getting-started/mcp.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude start tracing",
+      "url": "https://docs.latitude.so/telemetry/start-tracing.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude deployment overview",
+      "url": "https://docs.latitude.so/deployment/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude evaluations overview",
+      "url": "https://docs.latitude.so/evaluations/overview",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude evaluation detection methods",
+      "url": "https://docs.latitude.so/evaluations/detection-methods.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude evaluation alignment",
+      "url": "https://docs.latitude.so/evaluations/alignment.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude token and cost tracking",
+      "url": "https://docs.latitude.so/observability/features/token-cost-tracking.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude Cost view",
+      "url": "https://docs.latitude.so/observability/cost.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Latitude SOC 2 page",
+      "url": "https://docs.latitude.so/security/compliance/soc2.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "latitude-dev/latitude-llm repository",
+      "url": "https://github.com/latitude-dev/latitude-llm",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "latitude-llm repository metadata (GitHub API)",
+      "url": "https://api.github.com/repos/latitude-dev/latitude-llm",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "latitude-llm LICENSE (development branch, MIT)",
+      "url": "https://raw.githubusercontent.com/latitude-dev/latitude-llm/development/LICENSE",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "latitude-llm README (development branch)",
+      "url": "https://raw.githubusercontent.com/latitude-dev/latitude-llm/development/README.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "latitude-llm LICENSE (main branch, LGPL-3.0, stale)",
+      "url": "https://raw.githubusercontent.com/latitude-dev/latitude-llm/main/LICENSE",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "latitude-llm README (main branch, stale)",
+      "url": "https://raw.githubusercontent.com/latitude-dev/latitude-llm/main/README.md",
+      "lastVerified": "2026-09-21"
+    }
+  ],
+  "lastVerified": "2026-09-21"
+}
