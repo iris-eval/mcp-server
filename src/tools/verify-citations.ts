@@ -9,6 +9,8 @@ import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_KEY_VARS } from '../judge-enablement.js';
 import { strictInput } from './strict-input.js';
 import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
+import type { EvalEngine } from '../eval/engine.js';
+import { verdictSchema } from '../eval/response-schema.js';
 import { inferProvider, resolveApiKey } from './evaluate-with-llm-judge.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { irisError } from './errors.js';
@@ -91,6 +93,7 @@ export const verifyCitationsOutputSchema = z.looseObject({
     .describe(
       'true when every judged citation was supported; false when any judged citation was not; NULL when nothing was judged — no verdict, because nothing was verified. Until 0.10.0 that last case returned true.',
     ),
+  verdict: verdictSchema.optional().describe('the composer verdict as evaluate_output prints it; state unknown when nothing was judged'),
   total_unsupported: z.number().int().describe('judged citations the judge ruled unsupported — the number the verdict turns on'),
   total_citations_found: z.number().int().describe('citations extracted from the output'),
   total_resolved: z.number().int().describe('citations whose source was fetched'),
@@ -100,7 +103,7 @@ export const verifyCitationsOutputSchema = z.looseObject({
   citations: z.array(z.looseObject({ resolve_status: z.string() })).describe('per citation: the citation (raw, kind, identifier, offsets), resolve_status ok | skipped | error, resolve_error, source (url, status, content_type, bytes_fetched, truncated), judge (supported, confidence, rationale, cost_usd, latency_ms, tokens)'),
 });
 
-export function registerVerifyCitationsTool(server: McpServer, storage: IStorageAdapter): void {
+export function registerVerifyCitationsTool(server: McpServer, storage: IStorageAdapter, engine: EvalEngine): void {
   server.registerTool(
     'verify_citations',
     {
@@ -166,8 +169,9 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
 
       // Persist so dashboard can surface. eval_type='custom' — same
       // rationale as evaluate_with_llm_judge (spans all 4 heuristic
-      // categories). rule_results[0] carries per-citation summary.
-      await insertLinkedEvalResult(storage, LOCAL_TENANT, {
+      // categories). rule_results[0] carries per-citation summary. The
+      // composer's verdict is stored with it (arc 9, N-3).
+      const row = engine.verdictOf({
         id: evalId,
         trace_id: args.trace_id,
         eval_type: 'custom',
@@ -206,6 +210,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         insufficient_data: result.overallScore === null,
         eval_cost_usd: result.totalCostUsd,
       });
+      await insertLinkedEvalResult(storage, LOCAL_TENANT, row);
 
       return respond(
         verifyCitationsOutputSchema,
@@ -214,6 +219,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
           ...(args.trace_id ? { trace_id: args.trace_id } : {}),
           overall_score: result.overallScore,
           passed: result.passed,
+          ...(row.verdict ? { verdict: row.verdict } : {}),
           // Derived rather than read: the verifier reports it, but the tool
           // must not break if a caller hands it an older shape.
           total_unsupported: result.totalUnsupported ?? Math.max(0, result.totalJudged - result.totalSupported),

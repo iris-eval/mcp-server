@@ -59,6 +59,6 @@ export function registerAllTools(
   registerDeployRuleTool(server, customRuleStore, evalEngine);
   registerDeleteRuleTool(server, customRuleStore, evalEngine);
   registerDeleteTraceTool(server, storage);
-  registerEvaluateWithLLMJudgeTool(server, storage);
-  registerVerifyCitationsTool(server, storage);
+  registerEvaluateWithLLMJudgeTool(server, storage, evalEngine);
+  registerVerifyCitationsTool(server, storage, evalEngine);
 }

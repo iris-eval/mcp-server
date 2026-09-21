@@ -202,6 +202,45 @@ export class EvalEngine {
    * was using it as a gradient keeps it, and a reader who was using it as a
    * safety signal was reading a number that arc zero measured as inert.
    */
+  /**
+   * The composer's word on a row another tool judged (arc 9, N-3; #375).
+   * evaluate_with_llm_judge and verify_citations store one judgment row
+   * each and used to report their own pass/fail beside it, so `passed`
+   * meant the threshold on those two and the composer everywhere else.
+   * Every stored row now carries the same verdict, basis and
+   * interpretations, from the one composer, under this engine's config.
+   */
+  verdictOf(result: EvalResult): EvalResult {
+    /*
+     * The receipt too: a stored row derives its verdict on read only under
+     * the composer facts its provenance carries (rowToEvalResult), so a
+     * judgment stored without provenance read back with no verdict at all.
+     * The ruleset hash is this engine's whole roster — the hash a call of
+     * every bundle would stamp — since a judgment ran no built-in rule.
+     */
+    result.provenance ??= buildProvenance({
+      irisVersion: PKG_VERSION,
+      rulesetHash: this.rulesetHashForAll(),
+      configHash: configHash({
+        threshold: this.threshold,
+        ruleThresholds: this.ruleThresholds,
+        criticalRules: this.criticalityOverrides?.criticalRules,
+        nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
+      }),
+      threshold: this.threshold,
+      ruleThresholds: this.ruleThresholds,
+      composer: {
+        defaultsGate: this.compose.defaultsGate,
+        falsePassCost: this.compose.falsePassCost,
+        onCriticalSkipped: this.compose.onCriticalSkipped,
+        prior: this.effectivePrior().pi,
+        priorSource: this.effectivePrior().source,
+      },
+      judgedAt: new Date().toISOString(),
+    });
+    return this.decide(result);
+  }
+
   private decide(result: EvalResult): EvalResult {
     // The role each result played, from the composer's own predicates — the
     // one writer, after every stamp and before anything reads it.
