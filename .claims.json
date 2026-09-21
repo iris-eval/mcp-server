@@ -1279,6 +1279,162 @@
     "total": 60,
     "version": 1
   },
+  "clients": {
+    "about": "Every MCP client Iris names as a place it runs, one row each. A row is `verified` when a test in this repository drives that client's real integration surface on every CI run. A row is `claimed` when the installer writes the configuration shape the client's own documentation describes and that writer is tested on the shape — but nobody on the Iris side has watched that client connect. No client is called supported without a row. Locked by tests/clients-contract.test.ts: the rows are exactly the installer's profiles, every evidence path exists, every source is a URL with the date it was last read, and the README and the site render their client lists from these rows.",
+    "counts": {
+      "claimed": 9,
+      "verified": 1
+    },
+    "rows": [
+      {
+        "config": "`~/.claude.json`, written by `claude mcp add`; the capture plugin installs from the repository's plugin marketplace",
+        "configMode": "embedded-in-config-json",
+        "evidence": [
+          "tests/unit/capture-hooks.test.ts",
+          "claude-plugin-capture/hooks/hooks.json",
+          "claude-plugin/.mcp.json"
+        ],
+        "id": "claude-code",
+        "lastChecked": "2026-09-21",
+        "name": "Claude Code",
+        "source": "https://code.claude.com/docs/en/mcp",
+        "status": "verified",
+        "summary": "The capture plugin's three hooks (UserPromptSubmit, PostToolUse, Stop) are driven through the real hook scripts with the payload shapes Claude Code documents, ending in a real ingest read back from the store — on every CI run. The MCP plugin's manifest is checked by the docs contract. What is not verified by a test: a live `claude` session listing the tools; the stranger harness connects over the SDK client, not the product."
+      },
+      {
+        "config": "`claude_desktop_config.json` in the Claude application-data directory, an `mcpServers` block",
+        "configMode": "dedicated-mcp-json",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "claude-desktop",
+        "lastChecked": "2026-09-21",
+        "name": "Claude Desktop",
+        "source": "https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers",
+        "status": "claimed",
+        "summary": "The installer writes the `mcpServers` entry into a dedicated JSON file at the path Claude Desktop documents, keeping existing servers; the writer is tested on that shape. No test launches Claude Desktop."
+      },
+      {
+        "config": "`~/.cursor/mcp.json` (or a workspace `.cursor/mcp.json`), an `mcpServers` block; a one-click install link on the site",
+        "configMode": "dedicated-mcp-json",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "cursor",
+        "lastChecked": "2026-09-21",
+        "name": "Cursor",
+        "source": "https://cursor.com/docs/mcp",
+        "status": "claimed",
+        "summary": "The installer writes the `mcpServers` entry into `mcp.json` as Cursor's documentation describes; the writer is tested on that shape. No test launches Cursor."
+      },
+      {
+        "config": "`~/.codeium/windsurf/mcp_config.json`, an `mcpServers` block",
+        "configMode": "dedicated-mcp-json",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "windsurf",
+        "lastChecked": "2026-09-21",
+        "name": "Windsurf",
+        "source": "https://docs.devin.ai/desktop/cascade/mcp",
+        "status": "claimed",
+        "summary": "The installer writes the `mcpServers` entry into `mcp_config.json` as Windsurf's documentation (now hosted by Cognition) describes; the writer is tested on that shape. No test launches Windsurf."
+      },
+      {
+        "config": "`~/.continue/config.json`, an `mcpServers` block beside Continue's other settings",
+        "configMode": "embedded-in-config-json",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "continue",
+        "lastChecked": "2026-09-21",
+        "name": "Continue",
+        "source": "https://docs.continue.dev/customize/deep-dives/mcp",
+        "status": "claimed",
+        "summary": "The installer embeds the `mcpServers` entry in Continue's `config.json` without touching its other top-level fields; the writer is tested on that shape. No test launches Continue."
+      },
+      {
+        "config": "`mcp.json` in the VS Code user directory (or `.vscode/mcp.json` in a workspace), a `servers` block — VS Code's own key, not `mcpServers`",
+        "configMode": "vscode-servers",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "vscode",
+        "lastChecked": "2026-09-21",
+        "name": "VS Code",
+        "source": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
+        "status": "claimed",
+        "summary": "The installer writes under `servers`, the key VS Code's native MCP support documents, and uninstalls only its own entry; the writer is tested on that shape. No test launches VS Code."
+      },
+      {
+        "config": "`cline_mcp_settings.json` in Cline's global storage under VS Code, an `mcpServers` block",
+        "configMode": "dedicated-mcp-json",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "cline",
+        "lastChecked": "2026-09-21",
+        "name": "Cline",
+        "source": "https://docs.cline.bot/mcp/mcp-overview",
+        "status": "claimed",
+        "summary": "The installer writes the `mcpServers` entry into Cline's own settings file as its documentation describes; the writer is tested on that shape. No test launches Cline."
+      },
+      {
+        "config": "Zed's `settings.json`, a `context_servers` entry with a nested `command` object",
+        "configMode": "zed-context-servers",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "zed",
+        "lastChecked": "2026-09-21",
+        "name": "Zed",
+        "source": "https://zed.dev/docs/ai/mcp",
+        "status": "claimed",
+        "summary": "The installer writes a nested command object under `context_servers`, Zed's own key, and preserves unrelated settings; the writer is tested on that shape. No test launches Zed."
+      },
+      {
+        "config": "`~/.codex/config.toml`, an `[mcp_servers.iris-eval]` section",
+        "configMode": "codex-toml",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "codex",
+        "lastChecked": "2026-09-21",
+        "name": "OpenAI Codex CLI",
+        "source": "https://github.com/openai/codex/blob/main/docs/config.md",
+        "status": "claimed",
+        "summary": "The installer writes an `[mcp_servers.iris-eval]` TOML section as the Codex configuration reference describes; the writer is tested on that shape. No test launches Codex."
+      },
+      {
+        "config": "`~/.gemini/settings.json`, an `mcpServers` block",
+        "configMode": "dedicated-mcp-json",
+        "evidence": [
+          "packages/init/tests/config-writer.test.ts",
+          "packages/init/src/detect.ts"
+        ],
+        "id": "gemini",
+        "lastChecked": "2026-09-21",
+        "name": "Gemini CLI",
+        "source": "https://geminicli.com/docs/tools/mcp-server/",
+        "status": "claimed",
+        "summary": "The installer writes the `mcpServers` entry into Gemini CLI's `settings.json` as its documentation describes; the writer is tested on that shape. No test launches Gemini CLI."
+      }
+    ],
+    "statuses": [
+      "verified",
+      "claimed"
+    ],
+    "total": 10,
+    "version": 1
+  },
   "evalRules": {
     "builtInCount": 21,
     "categories": [
@@ -4432,8 +4588,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-21T04:57:22.436Z",
-  "generatedFromCommit": "3ef1e58",
+  "generatedAt": "2026-09-21T05:17:57.399Z",
+  "generatedFromCommit": "80efd2c",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,

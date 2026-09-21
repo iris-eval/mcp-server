@@ -43,7 +43,7 @@ First, prove the install works on this machine — it runs offline and opens not
 npx @iris-eval/mcp-server --self-test   # exit 0 = healthy
 ```
 
-Then add Iris to your MCP config. Works with Claude Desktop, Claude Code, Cursor, Windsurf, Continue, VS Code, Cline, Zed, Codex CLI, Gemini CLI — and any other MCP-compatible agent. One block, dashboard included:
+Then add Iris to your MCP config. It runs in any MCP client, and every client it names has a row with what was actually checked. **Verified on every CI run: Claude Code** — the capture plugin's hooks and the MCP plugin are driven through the real scripts. **Claimed from each client's own MCP documentation** — the installer writes the configuration shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect: Claude Desktop, Cursor, Windsurf, Continue, VS Code, Cline, Zed, OpenAI Codex CLI, Gemini CLI. Every row with its source and the date it was read: https://iris-eval.com/clients. One block, dashboard included:
 
 ```json
 {
