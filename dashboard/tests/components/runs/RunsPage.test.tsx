@@ -26,6 +26,7 @@ const run = (runId: string, passed: number, evaluated: number): RunSummaryRow =>
   runId,
   label: null,
   reevaluationOf: null,
+  baseline: false,
   traces: evaluated,
   evaluated,
   passed,
