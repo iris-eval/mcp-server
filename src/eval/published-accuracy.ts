@@ -5,7 +5,7 @@
  * are the numbers on https://iris-eval.com/proof, for the release named below.
  */
 
-export const PUBLISHED_ACCURACY_CORPUS_VERSION = 'a2825049eb4f';
+export const PUBLISHED_ACCURACY_CORPUS_VERSION = '6a01ef7f62f8';
 export const PUBLISHED_ACCURACY_RELEASE = '0.15.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
@@ -40,6 +40,11 @@ export const PUBLISHED_ACCURACY = {
     precision: 0.75, recall: 0.8571, f1: 0.8,
     ci95: { precision: [0.505, 0.8982], recall: [0.6006, 0.9599], f1: [0.6087, 0.9333] },
   },
+  tool_sequence: {
+    n: 47, tp: 25, fp: 0, fn: 0, tn: 22,
+    precision: 1, recall: 1, f1: 1,
+    ci95: { precision: [0.8668, 1], recall: [0.8668, 1], f1: [1, 1] },
+  },
   keyword_overlap: {
     n: 30, tp: 10, fp: 0, fn: 0, tn: 20,
     precision: 1, recall: 1, f1: 1,
@@ -49,6 +54,16 @@ export const PUBLISHED_ACCURACY = {
     n: 31, tp: 11, fp: 0, fn: 1, tn: 19,
     precision: 1, recall: 0.9167, f1: 0.9565,
     ci95: { precision: [0.7412, 1], recall: [0.6461, 0.9851], f1: [0.8333, 1] },
+  },
+  tool_choice: {
+    n: 46, tp: 18, fp: 0, fn: 2, tn: 26,
+    precision: 1, recall: 0.9, f1: 0.9474,
+    ci95: { precision: [0.8241, 1], recall: [0.699, 0.9721], f1: [0.8571, 1] },
+  },
+  answers_the_ask: {
+    n: 45, tp: 20, fp: 3, fn: 0, tn: 22,
+    precision: 0.8696, recall: 1, f1: 0.9302,
+    ci95: { precision: [0.6787, 0.9546], recall: [0.8389, 1], f1: [0.8372, 1] },
   },
   no_pii: {
     n: 93, tp: 34, fp: 5, fn: 11, tn: 43,
@@ -114,5 +129,10 @@ export const PUBLISHED_ACCURACY = {
     n: 27, tp: 13, fp: 0, fn: 0, tn: 14,
     precision: 1, recall: 1, f1: 1,
     ci95: { precision: [0.7719, 1], recall: [0.7719, 1], f1: [1, 1] },
+  },
+  step_budget: {
+    n: 44, tp: 22, fp: 0, fn: 0, tn: 22,
+    precision: 1, recall: 1, f1: 1,
+    ci95: { precision: [0.8513, 1], recall: [0.8513, 1], f1: [1, 1] },
   },
 } as const;

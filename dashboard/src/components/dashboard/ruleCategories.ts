@@ -88,7 +88,7 @@ export const CATEGORY_ORDER: RuleCategory[] = [
 
 /**
  * Built-in rule → category map.
- * Total: 21 rules (8 safety + 1 cost-bundle step budget + 2 relevance + 6 completeness + 4 cost) — pinned to the engine by the sync test.
+ * Total: 25 rules (8 safety + 1 cost-bundle step budget + 4 relevance + 7 completeness + 5 cost) — pinned to the engine by the sync test.
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   // safety (7)
@@ -104,6 +104,8 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   // relevance (2)
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
+  tool_choice: 'relevance',
+  answers_the_ask: 'relevance',
   // completeness (6)
   min_output_length: 'completeness',
   non_empty_output: 'completeness',
@@ -111,11 +113,13 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   expected_coverage: 'completeness',
   valid_tool_arguments: 'completeness',
   ask_coverage: 'completeness',
+  tool_sequence: 'completeness',
   // cost (4; max_steps is listed above with the safety block for historical order)
   cost_under_threshold: 'cost',
   verbosity_ratio: 'cost',
   no_tool_loop: 'cost',
   cost_anomaly: 'cost',
+  step_budget: 'cost',
 };
 
 /** Authoritative roster of built-in rules in canonical display order. */
@@ -131,14 +135,18 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'max_steps', category: 'cost' },
   { name: 'keyword_overlap', category: 'relevance' },
   { name: 'topic_consistency', category: 'relevance' },
+  { name: 'tool_choice', category: 'relevance' },
+  { name: 'answers_the_ask', category: 'relevance' },
   { name: 'min_output_length', category: 'completeness' },
   { name: 'non_empty_output', category: 'completeness' },
   { name: 'sentence_count', category: 'completeness' },
   { name: 'expected_coverage', category: 'completeness' },
   { name: 'valid_tool_arguments', category: 'completeness' },
   { name: 'ask_coverage', category: 'completeness' },
+  { name: 'tool_sequence', category: 'completeness' },
   { name: 'cost_under_threshold', category: 'cost' },
   { name: 'verbosity_ratio', category: 'cost' },
   { name: 'no_tool_loop', category: 'cost' },
   { name: 'cost_anomaly', category: 'cost' },
+  { name: 'step_budget', category: 'cost' },
 ];

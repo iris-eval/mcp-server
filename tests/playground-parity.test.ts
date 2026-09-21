@@ -66,6 +66,8 @@ const FIXTURES = resolve(ROOT, 'tests', 'fixtures', 'real-transcripts');
 const VENDORED_FILE = 'website/src/lib/eval/rules.ts';
 const SERVER_SAFETY_FILE = 'src/eval/rules/safety.ts';
 const SERVER_RELEVANCE_FILE = 'src/eval/rules/relevance.ts';
+// The tokenizer moved to its own module in arc 9 (N-13) so tool_choice could read it without a cycle.
+const SERVER_TERMS_FILE = 'src/eval/terms.ts';
 const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
 /*
  * The shared text modules (0.10.0). They are not rule files: every rule that
@@ -421,7 +423,8 @@ const SHARED_SAFETY_BLOCKS = [
   'HALLUCINATION_MARKERS',
 ];
 
-const SHARED_RELEVANCE_BLOCKS = ['STOPWORDS', 'stemTerm', 'FENCED_CODE', 'CAMEL_BOUNDARY', 'WORD', 'contentTerms', 'LIST_ITEM'];
+const SHARED_TERMS_BLOCKS = ['STOPWORDS', 'stemTerm', 'FENCED_CODE', 'CAMEL_BOUNDARY', 'WORD', 'contentTerms'];
+const SHARED_RELEVANCE_BLOCKS = ['LIST_ITEM'];
 
 /*
  * The trajectory vocabulary — the definitions no_silent_tool_failure and
@@ -456,6 +459,12 @@ describe('playground parity — shared source blocks are identical (comments and
   const vendored = source(VENDORED_FILE);
   const safety = source(SERVER_SAFETY_FILE);
   const relevance = source(SERVER_RELEVANCE_FILE);
+  const terms = source(SERVER_TERMS_FILE);
+  for (const name of SHARED_TERMS_BLOCKS) {
+    it(`${name} (terms.ts)`, () => {
+      expect(normalize(block(vendored, name, VENDORED_FILE))).toBe(normalize(block(terms, name, SERVER_TERMS_FILE)));
+    });
+  }
   for (const name of SHARED_SAFETY_BLOCKS) {
     it(`${name} (safety.ts)`, () => {
       expect(normalize(block(vendored, name, VENDORED_FILE))).toBe(normalize(block(safety, name, SERVER_SAFETY_FILE)));

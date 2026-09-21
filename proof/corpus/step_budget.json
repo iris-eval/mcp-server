@@ -1,0 +1,5488 @@
+{
+  "schemaVersion": 1,
+  "rule": "step_budget",
+  "category": "cost",
+  "family": "step_budget",
+  "positiveClass": "fail",
+  "definition": "step_budget — a task must finish within ITS budget. The rule counts the tool calls in the derived trajectory and FAILS when that count is strictly GREATER than budget × tolerance, so a trajectory exactly at the ceiling passes and the ceiling is not rounded (a budget of 5 at 1.5 allows 7 and refuses 8). The budget is expected_trajectory.step_budget when it is a finite number of at least 1 (floored to an integer); otherwise the number of expected calls in expected_trajectory.tool_calls when there are any; a zero, negative, non-numeric or missing step_budget leaves the expected-call count standing rather than inventing a number. The tolerance is expected_trajectory.tolerance when it is a finite number of at least 1, and 1.5 otherwise — a tolerance below 1, negative or non-numeric leaves the default standing. The count is the only thing measured: what the calls did belongs to other rules. The rule SKIPS without a trajectory and without any budget (no step_budget and no expected calls). Positive = the trajectory exceeds the ceiling in force (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-21 for arc 9 (N-13). Trajectories are generated at a length, because length is the only thing this rule reads; the cases that carry the weight are the boundary pairs (at the ceiling and one over it) for nine expected-call counts at the default tolerance, an explicit budget over the count, four tolerances, the unrounded ceiling, and the malformed-value cases where the question is whether the default quietly stands or the rule invents something.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-21, by computing the budget and the tolerance in force and comparing the call count to their product — a policy family measures conformance to its own definition, so a disagreement here is a rule defect or a definition error and never an opinion about whether an agent was wasteful.",
+  "authored": "2026-09-21",
+  "cases": [
+    {
+      "id": "budget-001",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            }
+          ]
+        }
+      },
+      "notes": "1 expected calls, tolerance default 1.5, ceiling 1.5: 1 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-002",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            }
+          ]
+        }
+      },
+      "notes": "1 expected calls, tolerance default 1.5, ceiling 1.5: 2 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-003",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            }
+          ]
+        }
+      },
+      "notes": "2 expected calls, tolerance default 1.5, ceiling 3.0: 3 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-004",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            }
+          ]
+        }
+      },
+      "notes": "2 expected calls, tolerance default 1.5, ceiling 3.0: 4 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-005",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            }
+          ]
+        }
+      },
+      "notes": "3 expected calls, tolerance default 1.5, ceiling 4.5: 4 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-006",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            }
+          ]
+        }
+      },
+      "notes": "3 expected calls, tolerance default 1.5, ceiling 4.5: 5 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-007",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ]
+        }
+      },
+      "notes": "4 expected calls, tolerance default 1.5, ceiling 6.0: 6 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-008",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ]
+        }
+      },
+      "notes": "4 expected calls, tolerance default 1.5, ceiling 6.0: 7 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-009",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            }
+          ]
+        }
+      },
+      "notes": "5 expected calls, tolerance default 1.5, ceiling 7.5: 7 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-010",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            }
+          ]
+        }
+      },
+      "notes": "5 expected calls, tolerance default 1.5, ceiling 7.5: 8 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-011",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            }
+          ]
+        }
+      },
+      "notes": "6 expected calls, tolerance default 1.5, ceiling 9.0: 9 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-012",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            }
+          ]
+        }
+      },
+      "notes": "6 expected calls, tolerance default 1.5, ceiling 9.0: 10 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-013",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            },
+            {
+              "tool_name": "t6"
+            },
+            {
+              "tool_name": "t7"
+            }
+          ]
+        }
+      },
+      "notes": "8 expected calls, tolerance default 1.5, ceiling 12.0: 12 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-014",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            },
+            {
+              "tool_name": "t6"
+            },
+            {
+              "tool_name": "t7"
+            }
+          ]
+        }
+      },
+      "notes": "8 expected calls, tolerance default 1.5, ceiling 12.0: 13 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-015",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 13
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 14
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            },
+            {
+              "tool_name": "t6"
+            },
+            {
+              "tool_name": "t7"
+            },
+            {
+              "tool_name": "t8"
+            },
+            {
+              "tool_name": "t9"
+            }
+          ]
+        }
+      },
+      "notes": "10 expected calls, tolerance default 1.5, ceiling 15.0: 15 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-016",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 13
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 14
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 15
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            },
+            {
+              "tool_name": "t6"
+            },
+            {
+              "tool_name": "t7"
+            },
+            {
+              "tool_name": "t8"
+            },
+            {
+              "tool_name": "t9"
+            }
+          ]
+        }
+      },
+      "notes": "10 expected calls, tolerance default 1.5, ceiling 15.0: 16 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-017",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 13
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 14
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 15
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 16
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 17
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 18
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 19
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 20
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 21
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 22
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 23
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 24
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 25
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 26
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 27
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 28
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 29
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            },
+            {
+              "tool_name": "t6"
+            },
+            {
+              "tool_name": "t7"
+            },
+            {
+              "tool_name": "t8"
+            },
+            {
+              "tool_name": "t9"
+            },
+            {
+              "tool_name": "t10"
+            },
+            {
+              "tool_name": "t11"
+            },
+            {
+              "tool_name": "t12"
+            },
+            {
+              "tool_name": "t13"
+            },
+            {
+              "tool_name": "t14"
+            },
+            {
+              "tool_name": "t15"
+            },
+            {
+              "tool_name": "t16"
+            },
+            {
+              "tool_name": "t17"
+            },
+            {
+              "tool_name": "t18"
+            },
+            {
+              "tool_name": "t19"
+            }
+          ]
+        }
+      },
+      "notes": "20 expected calls, tolerance default 1.5, ceiling 30.0: 30 calls is at or under it. PASSES."
+    },
+    {
+      "id": "budget-018",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 13
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 14
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 15
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 16
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 17
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 18
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 19
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 20
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 21
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 22
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 23
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 24
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 25
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 26
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 27
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 28
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 29
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 30
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            },
+            {
+              "tool_name": "t4"
+            },
+            {
+              "tool_name": "t5"
+            },
+            {
+              "tool_name": "t6"
+            },
+            {
+              "tool_name": "t7"
+            },
+            {
+              "tool_name": "t8"
+            },
+            {
+              "tool_name": "t9"
+            },
+            {
+              "tool_name": "t10"
+            },
+            {
+              "tool_name": "t11"
+            },
+            {
+              "tool_name": "t12"
+            },
+            {
+              "tool_name": "t13"
+            },
+            {
+              "tool_name": "t14"
+            },
+            {
+              "tool_name": "t15"
+            },
+            {
+              "tool_name": "t16"
+            },
+            {
+              "tool_name": "t17"
+            },
+            {
+              "tool_name": "t18"
+            },
+            {
+              "tool_name": "t19"
+            }
+          ]
+        }
+      },
+      "notes": "20 expected calls, tolerance default 1.5, ceiling 30.0: 31 calls is over it. FAILS."
+    },
+    {
+      "id": "budget-019",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            }
+          ],
+          "step_budget": 4
+        }
+      },
+      "notes": "two expected calls but an explicit budget of 4: ceiling 6, six calls. PASSES."
+    },
+    {
+      "id": "budget-020",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            }
+          ],
+          "step_budget": 4
+        }
+      },
+      "notes": "two expected calls but an explicit budget of 4: ceiling 6, seven calls. FAILS."
+    },
+    {
+      "id": "budget-021",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 2
+        }
+      },
+      "notes": "a budget with no expected calls: ceiling 3, three calls. PASSES."
+    },
+    {
+      "id": "budget-022",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 2
+        }
+      },
+      "notes": "a budget with no expected calls: ceiling 3, four calls. FAILS."
+    },
+    {
+      "id": "budget-023",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 1
+        }
+      },
+      "notes": "tolerance 1: exactly the budget passes. PASSES."
+    },
+    {
+      "id": "budget-024",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 1
+        }
+      },
+      "notes": "tolerance 1: one over the budget fails. FAILS."
+    },
+    {
+      "id": "budget-025",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 2
+        }
+      },
+      "notes": "tolerance 2: twice the budget passes. PASSES."
+    },
+    {
+      "id": "budget-026",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 2
+        }
+      },
+      "notes": "tolerance 2: one past twice the budget fails. FAILS."
+    },
+    {
+      "id": "budget-027",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 1.25
+        }
+      },
+      "notes": "tolerance 1.25: ceiling 5, five calls. PASSES."
+    },
+    {
+      "id": "budget-028",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 1.25
+        }
+      },
+      "notes": "tolerance 1.25: ceiling 5, six calls. FAILS."
+    },
+    {
+      "id": "budget-029",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 5,
+          "tolerance": 1.5
+        }
+      },
+      "notes": "ceiling 7.5 is not rounded: seven calls pass. PASSES."
+    },
+    {
+      "id": "budget-030",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 5,
+          "tolerance": 1.5
+        }
+      },
+      "notes": "ceiling 7.5 is not rounded: eight calls fail. FAILS."
+    },
+    {
+      "id": "budget-031",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 0.5
+        }
+      },
+      "notes": "a tolerance below 1 is malformed: the default 1.5 stands, ceiling 6, six calls. PASSES."
+    },
+    {
+      "id": "budget-032",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": 0.5
+        }
+      },
+      "notes": "a tolerance below 1 is malformed: the default 1.5 stands, ceiling 6, seven calls. FAILS."
+    },
+    {
+      "id": "budget-033",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": "lots"
+        }
+      },
+      "notes": "a non-numeric tolerance: the default stands, ceiling 6, six calls. PASSES."
+    },
+    {
+      "id": "budget-034",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 4,
+          "tolerance": -3
+        }
+      },
+      "notes": "a negative tolerance: the default stands, ceiling 6, seven calls. FAILS."
+    },
+    {
+      "id": "budget-035",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ],
+          "step_budget": 0
+        }
+      },
+      "notes": "a zero budget is malformed: the expected-call count (4) stands, ceiling 6. PASSES."
+    },
+    {
+      "id": "budget-036",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ],
+          "step_budget": 0
+        }
+      },
+      "notes": "a zero budget is malformed: the expected-call count (4) stands, ceiling 6, seven calls. FAILS."
+    },
+    {
+      "id": "budget-037",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ],
+          "step_budget": "four"
+        }
+      },
+      "notes": "a non-numeric budget is malformed: the expected-call count stands. PASSES."
+    },
+    {
+      "id": "budget-038",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ],
+          "step_budget": -1
+        }
+      },
+      "notes": "a negative budget is malformed: the expected-call count stands, seven calls over a ceiling of 6. FAILS."
+    },
+    {
+      "id": "budget-039",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ],
+          "step_budget": 4.9
+        }
+      },
+      "notes": "a fractional budget is floored to 4: ceiling 6, six calls. PASSES."
+    },
+    {
+      "id": "budget-040",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "t0"
+            },
+            {
+              "tool_name": "t1"
+            },
+            {
+              "tool_name": "t2"
+            },
+            {
+              "tool_name": "t3"
+            }
+          ],
+          "step_budget": 4.9
+        }
+      },
+      "notes": "a fractional budget is floored to 4: ceiling 6, seven calls. FAILS."
+    },
+    {
+      "id": "budget-041",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 1,
+          "tolerance": 1
+        }
+      },
+      "notes": "the floor: one call against a budget of one at tolerance 1. PASSES."
+    },
+    {
+      "id": "budget-042",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 1,
+          "tolerance": 1
+        }
+      },
+      "notes": "the floor: two calls against a budget of one at tolerance 1. FAILS."
+    },
+    {
+      "id": "budget-043",
+      "rule": "step_budget",
+      "label": "negative",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 13
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 14
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 15
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 16
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 17
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 18
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 19
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 20
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 21
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 22
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 23
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 24
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 25
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 26
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 27
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 28
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 29
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 30
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 31
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 32
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 33
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 34
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 35
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 36
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 37
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 38
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 39
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 40
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 41
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 42
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 43
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 44
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 45
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 46
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 47
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 48
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 49
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 50
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 51
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 52
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 53
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 54
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 55
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 56
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 57
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 58
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 59
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 60
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 61
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 62
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 63
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 64
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 65
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 66
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 67
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 68
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 69
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 70
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 71
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 72
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 73
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 74
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 75
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 76
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 77
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 78
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 79
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 80
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 81
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 82
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 83
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 84
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 85
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 86
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 87
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 88
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 89
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 90
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 91
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 92
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 93
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 94
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 95
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 96
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 97
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 98
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 99
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 100
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 101
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 102
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 103
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 104
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 105
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 106
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 107
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 108
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 109
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 110
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 111
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 112
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 113
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 114
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 115
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 116
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 117
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 118
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 119
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 120
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 121
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 122
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 123
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 124
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 125
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 126
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 127
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 128
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 129
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 130
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 131
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 132
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 133
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 134
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 135
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 136
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 137
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 138
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 139
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 140
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 141
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 142
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 143
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 144
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 145
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 146
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 147
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 148
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 149
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 100
+        }
+      },
+      "notes": "a large budget: ceiling 150, 150 calls. PASSES."
+    },
+    {
+      "id": "budget-044",
+      "rule": "step_budget",
+      "label": "positive",
+      "output": "The task is done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 0
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 1
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 2
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 3
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 4
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 5
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 6
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 7
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 8
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 9
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 10
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 11
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 12
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 13
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 14
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 15
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 16
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 17
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 18
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 19
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 20
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 21
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 22
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 23
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 24
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 25
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 26
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 27
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 28
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 29
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 30
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 31
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 32
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 33
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 34
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 35
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 36
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 37
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 38
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 39
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 40
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 41
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 42
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 43
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 44
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 45
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 46
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 47
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 48
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 49
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 50
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 51
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 52
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 53
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 54
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 55
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 56
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 57
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 58
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 59
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 60
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 61
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 62
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 63
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 64
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 65
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 66
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 67
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 68
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 69
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 70
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 71
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 72
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 73
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 74
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 75
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 76
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 77
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 78
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 79
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 80
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 81
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 82
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 83
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 84
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 85
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 86
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 87
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 88
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 89
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 90
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 91
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 92
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 93
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 94
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 95
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 96
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 97
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 98
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 99
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 100
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 101
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 102
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 103
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 104
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 105
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 106
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 107
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 108
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 109
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 110
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 111
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 112
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 113
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 114
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 115
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 116
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 117
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 118
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 119
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 120
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 121
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 122
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 123
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 124
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 125
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 126
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 127
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 128
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 129
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 130
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 131
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 132
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 133
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 134
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 135
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 136
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 137
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 138
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 139
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 140
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 141
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 142
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 143
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 144
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 145
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 146
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 147
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 148
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 149
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "tool",
+            "input": {
+              "i": 150
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "step_budget": 100
+        }
+      },
+      "notes": "a large budget: ceiling 150, 151 calls. FAILS."
+    }
+  ],
+  "counts": {
+    "n": 44,
+    "positive": 22,
+    "negative": 22
+  }
+}

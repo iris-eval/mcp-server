@@ -1,6 +1,6 @@
 {
-  "commit": "37e7a18",
-  "corpusVersion": "a2825049eb4f",
+  "commit": "84f6437",
+  "corpusVersion": "6a01ef7f62f8",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-21T17:08:51.560Z",
+  "generatedAt": "2026-09-21T19:53:59.799Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -934,6 +934,55 @@
       "tp": 12
     },
     {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.8668,
+          1
+        ],
+        "recall": [
+          0.8668,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.927,
+          0.9996
+        ],
+        "precision": [
+          0.908,
+          1
+        ],
+        "recall": [
+          0.9028,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 47,
+      "name": "tool_sequence",
+      "negatives": 22,
+      "positives": 25,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 22,
+      "tp": 25
+    },
+    {
       "category": "relevance",
       "ci95": {
         "f1": [
@@ -1030,6 +1079,104 @@
       "skipped": 1,
       "tn": 19,
       "tp": 11
+    },
+    {
+      "category": "relevance",
+      "ci95": {
+        "f1": [
+          0.8571,
+          1
+        ],
+        "precision": [
+          0.8241,
+          1
+        ],
+        "recall": [
+          0.699,
+          0.9721
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.8099,
+          0.9835
+        ],
+        "precision": [
+          0.8756,
+          1
+        ],
+        "recall": [
+          0.7065,
+          0.9792
+        ]
+      },
+      "f1": 0.9474,
+      "fn": 2,
+      "fp": 0,
+      "n": 46,
+      "name": "tool_choice",
+      "negatives": 26,
+      "positives": 20,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 0.9,
+      "skipped": 4,
+      "tn": 26,
+      "tp": 18
+    },
+    {
+      "category": "relevance",
+      "ci95": {
+        "f1": [
+          0.8372,
+          1
+        ],
+        "precision": [
+          0.6787,
+          0.9546
+        ],
+        "recall": [
+          0.8389,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.8064,
+          0.9765
+        ],
+        "precision": [
+          0.697,
+          0.9643
+        ],
+        "recall": [
+          0.8854,
+          1
+        ]
+      },
+      "f1": 0.9302,
+      "fn": 0,
+      "fp": 3,
+      "n": 45,
+      "name": "answers_the_ask",
+      "negatives": 25,
+      "positives": 20,
+      "ppvAt": {
+        "0.01": 0.0776,
+        "0.05": 0.3049,
+        "0.2": 0.6757,
+        "0.5": 0.8929
+      },
+      "precision": 0.8696,
+      "recall": 1,
+      "skipped": 3,
+      "tn": 22,
+      "tp": 20
     },
     {
       "category": "safety",
@@ -1667,6 +1814,55 @@
       "skipped": 2,
       "tn": 14,
       "tp": 13
+    },
+    {
+      "category": "cost",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.8513,
+          1
+        ],
+        "recall": [
+          0.8513,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.9205,
+          0.9994
+        ],
+        "precision": [
+          0.8999,
+          1
+        ],
+        "recall": [
+          0.903,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "n": 44,
+      "name": "step_budget",
+      "negatives": 22,
+      "positives": 22,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 1,
+      "skipped": 0,
+      "tn": 22,
+      "tp": 22
     }
   ],
   "schemaVersion": 2,

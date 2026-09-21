@@ -23,7 +23,7 @@ export type EvalResultType = EvalType | 'all';
 export type ClaimKind = 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
 export type Mechanism = 'formula' | 'pattern' | 'heuristic' | 'model' | 'external';
 /** An input a rule reads. A rule skips — never passes — when a declared need is absent. */
-export type Need = 'output' | 'input' | 'expected' | 'tool_calls' | 'tool_outputs' | 'tools_catalogue' | 'cost' | 'tokens' | 'citations';
+export type Need = 'output' | 'input' | 'expected' | 'expected_trajectory' | 'tool_calls' | 'tool_outputs' | 'tools_catalogue' | 'cost' | 'tokens' | 'citations';
 /** The evaluation question a rule answers; the registry is src/eval/questions.ts. */
 export type QuestionId = 'safe_output' | 'grounded' | 'complete' | 'relevant' | 'task_completed' | 'tool_use_correct' | 'within_budget';
 /** What went wrong, in the reader's words, independent of which rule caught it; the registry is src/eval/failure-classes.ts. */
@@ -41,7 +41,9 @@ export type FailureClass =
   | 'off_task'
   | 'over_budget'
   | 'format'
-  | 'invalid_tool_call';
+  | 'invalid_tool_call'
+  | 'wrong_trajectory'
+  | 'wrong_tool';
 
 export interface EvalRule {
   name: string;
@@ -88,9 +90,43 @@ export interface EvalRule {
   evaluate(context: EvalContext): EvalRuleResult;
 }
 
+/**
+ * What the caller expected the agent to DO (arc 9, N-13) — the trajectory
+ * counterpart of `expected`. Read by tool_sequence (the calls, in a mode)
+ * and step_budget (the count, with a tolerance). Supplied per call on
+ * evaluate_output as `expected_trajectory`; a dataset case's expected
+ * trajectory reaching the ingest path is arc-10 work.
+ */
+export interface ExpectedToolCall {
+  tool_name: string;
+  /** When present, the call's arguments are compared under `args` (exact or subset). */
+  input?: unknown;
+}
+export type ExpectedTrajectoryMode = 'strict' | 'unordered' | 'subset' | 'superset' | 'ordered_subset';
+export type ExpectedArgsMode = 'exact' | 'subset';
+export interface ExpectedTrajectory {
+  /** The calls the caller expected, in order. */
+  tool_calls?: ExpectedToolCall[];
+  /**
+   * strict = the actual calls equal the expected, in order; unordered =
+   * equal as multisets; subset = every expected call is present;
+   * superset = no call outside the expected set; ordered_subset = the
+   * expected calls appear in order among the actual ones (default).
+   */
+  mode?: ExpectedTrajectoryMode;
+  /** How an expected call's `input` is matched: exact (normalised) or subset (every expected key present with the same value). Default subset. */
+  args?: ExpectedArgsMode;
+  /** The step budget for THIS task; defaults to the number of expected calls when tool_calls is given. */
+  step_budget?: number;
+  /** step_budget × tolerance is the ceiling; default 1.5. */
+  tolerance?: number;
+}
+
 export interface EvalContext {
   output: string;
   expected?: string;
+  /** The trajectory the caller expected (arc 9, N-13). */
+  expectedTrajectory?: ExpectedTrajectory;
   input?: string;
   /**
    * The agent's trajectory — what it actually DID, in call order.

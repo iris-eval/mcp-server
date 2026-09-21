@@ -1,0 +1,1963 @@
+{
+  "schemaVersion": 1,
+  "rule": "tool_sequence",
+  "category": "completeness",
+  "family": "tool_sequence",
+  "positiveClass": "fail",
+  "definition": "tool_sequence — the calls the caller expected against the calls the agent made, compared in a mode. strict: the actual calls equal the expected, pairwise and in order, with nothing beyond them. unordered: equal as multisets — every expected call consumed by a distinct actual call, none left over. subset: every expected call has SOME matching actual call (set semantics; extras and repeats allowed). superset: every actual call matches SOME expected call (set semantics; omissions and repeats allowed). ordered_subset (the default, and what an unknown mode string falls back to): the expected calls appear in order among the actual ones — each expected call is satisfied by the first later actual call that matches it. A call matches by tool name, and by arguments only when the expectation carries an input: under args exact the normalised inputs must be equal (object keys sorted, whitespace collapsed); under args subset (the default) every key of the expected input must be present in the actual input with the same value, recursively, arrays and scalars compared whole. In a one-to-one matching, an expectation that names arguments is placed before one that does not. The rule FAILS when the mode is not satisfied and SKIPS without a trajectory or without expected calls. Positive = the mode is not satisfied (the rule should FAIL).",
+  "source": "LLM-authored on 2026-09-21 for arc 9 (N-13). One task narrative (read, grep, write) carried through every mode, then research and test-and-commit narratives; the cases that carry the weight are the boundary pairs per mode (in order vs swapped, present vs missing, an extra call, a repeat), the argument pairs (subset vs exact, a named path that matches vs one that does not, keys in another order, a string against an object) and the unknown-mode pair.",
+  "labelling": "LLM-authored and LLM-labelled against the documented definition above on 2026-09-21, by reading the expected calls, the actual calls and the mode and applying the definition by hand — a policy family measures conformance to its own definition, so a disagreement here is a rule defect or a definition error, never an opinion about the agent.",
+  "authored": "2026-09-21",
+  "cases": [
+    {
+      "id": "seq-001",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "strict"
+        }
+      },
+      "notes": "strict: the three expected calls, in order, nothing else. PASSES."
+    },
+    {
+      "id": "seq-002",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "strict"
+        }
+      },
+      "notes": "strict: the first two calls swapped. Position 1 is grep, expected read_file. FAILS."
+    },
+    {
+      "id": "seq-003",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "strict"
+        }
+      },
+      "notes": "strict: a fourth call beyond the three expected. FAILS."
+    },
+    {
+      "id": "seq-004",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "strict"
+        }
+      },
+      "notes": "strict: the third expected call, write_file, never came. FAILS."
+    },
+    {
+      "id": "seq-005",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "strict"
+        }
+      },
+      "notes": "strict with a named argument: the read carries the expected path; args default to subset. PASSES."
+    },
+    {
+      "id": "seq-006",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/b.ts"
+              }
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "strict"
+        }
+      },
+      "notes": "strict with a named argument: the read was of a.ts, expected b.ts. FAILS."
+    },
+    {
+      "id": "seq-007",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts",
+              "mode": "text"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "mode": "text",
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "strict",
+          "args": "exact"
+        }
+      },
+      "notes": "strict, args exact: the same arguments with the keys in another order are the same call. PASSES."
+    },
+    {
+      "id": "seq-008",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts",
+              "mode": "text"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "strict",
+          "args": "exact"
+        }
+      },
+      "notes": "strict, args exact: the actual call carries an extra key (mode), so the whole input differs. FAILS."
+    },
+    {
+      "id": "seq-009",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts",
+              "mode": "text"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "strict",
+          "args": "subset"
+        }
+      },
+      "notes": "strict, args subset: the expected key is present with the same value; the extra key is the agent's business. PASSES."
+    },
+    {
+      "id": "seq-010",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered: the same three calls in another order. PASSES."
+    },
+    {
+      "id": "seq-011",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered: grep twice — four calls against three expected. FAILS."
+    },
+    {
+      "id": "seq-012",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered: grep never came. FAILS."
+    },
+    {
+      "id": "seq-013",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "read_file"
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered: two reads expected, one made — multiset, not set. FAILS."
+    },
+    {
+      "id": "seq-014",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/c.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "read_file"
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered: two reads expected, two made. PASSES."
+    },
+    {
+      "id": "seq-015",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "FIXME"
+              }
+            },
+            {
+              "tool_name": "read_file"
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered with an argument: the grep was for TODO, expected FIXME. FAILS."
+    },
+    {
+      "id": "seq-016",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "x"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/z.ts"
+            },
+            "output": "y"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "unordered"
+        }
+      },
+      "notes": "unordered: the specific expectation (a.ts) is matched first, so the unspecific one takes z.ts. PASSES."
+    },
+    {
+      "id": "seq-017",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {},
+            "output": "a.ts"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "ok"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "subset"
+        }
+      },
+      "notes": "subset: every expected call is somewhere among five, order free, extras allowed. PASSES."
+    },
+    {
+      "id": "seq-018",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {},
+            "output": "a.ts"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "subset"
+        }
+      },
+      "notes": "subset: grep never came. FAILS."
+    },
+    {
+      "id": "seq-019",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/b.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "write_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "subset"
+        }
+      },
+      "notes": "subset with an argument: a write happened, but not to the expected file. FAILS."
+    },
+    {
+      "id": "seq-020",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/b.ts"
+            },
+            "output": "w"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts",
+              "create": true
+            },
+            "output": "w"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "write_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "subset"
+        }
+      },
+      "notes": "subset with an argument: the second write is to the expected file, with an extra key. PASSES."
+    },
+    {
+      "id": "seq-021",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            }
+          ],
+          "mode": "subset"
+        }
+      },
+      "notes": "subset: set semantics — one expected read, two made. PASSES."
+    },
+    {
+      "id": "seq-022",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "run_tests"
+            },
+            {
+              "tool_name": "git_commit"
+            }
+          ],
+          "mode": "subset"
+        }
+      },
+      "notes": "subset: the commit never came (two of three). FAILS."
+    },
+    {
+      "id": "seq-023",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "superset"
+        }
+      },
+      "notes": "superset: only expected tools were called; a repeat and an omission are allowed. PASSES."
+    },
+    {
+      "id": "seq-024",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "rm -rf build"
+            },
+            "output": ""
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "superset"
+        }
+      },
+      "notes": "superset: bash is outside the expected set. FAILS."
+    },
+    {
+      "id": "seq-025",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/secrets.env"
+            },
+            "output": "x"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            }
+          ],
+          "mode": "superset"
+        }
+      },
+      "notes": "superset with an argument: a read of a file that was not expected is a call outside the set. FAILS."
+    },
+    {
+      "id": "seq-026",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": {
+                "path": "src/a.ts"
+              }
+            },
+            {
+              "tool_name": "grep"
+            }
+          ],
+          "mode": "superset"
+        }
+      },
+      "notes": "superset with an argument: both calls are in the set. PASSES."
+    },
+    {
+      "id": "seq-027",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "superset"
+        }
+      },
+      "notes": "superset: one of the three expected calls made, nothing else. PASSES."
+    },
+    {
+      "id": "seq-028",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "http_post",
+            "input": {
+              "url": "https://example.test"
+            },
+            "output": "200"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "superset"
+        }
+      },
+      "notes": "superset: the three expected and one http_post outside them. FAILS."
+    },
+    {
+      "id": "seq-029",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset (mode omitted): the expected calls in order, nothing else. PASSES."
+    },
+    {
+      "id": "seq-030",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_dir",
+            "input": {},
+            "output": "a"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "ls"
+            },
+            "output": ""
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: the expected calls appear in order among seven, with noise between and a repeated read. PASSES."
+    },
+    {
+      "id": "seq-031",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: grep before read_file — the expected order is broken. FAILS."
+    },
+    {
+      "id": "seq-032",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: grep never came. FAILS."
+    },
+    {
+      "id": "seq-033",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: write_file never came after grep. FAILS."
+    },
+    {
+      "id": "seq-034",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: two expected calls, the grep between them is noise. PASSES."
+    },
+    {
+      "id": "seq-035",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "TODO"
+              }
+            },
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "FIXME"
+              }
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset with arguments: two greps for TODO, the FIXME one never came. FAILS."
+    },
+    {
+      "id": "seq-036",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "FIXME",
+              "path": "src"
+            },
+            "output": "0 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "TODO"
+              }
+            },
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "FIXME"
+              }
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset with arguments: TODO then FIXME, the second with an extra key (subset). PASSES."
+    },
+    {
+      "id": "seq-037",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "FIXME",
+              "path": "src"
+            },
+            "output": "0 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "FIXME"
+              }
+            }
+          ],
+          "args": "exact"
+        }
+      },
+      "notes": "ordered_subset, args exact: the actual carries an extra key, so under exact it is not the same call. FAILS."
+    },
+    {
+      "id": "seq-038",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "path": "src",
+              "pattern": "FIXME"
+            },
+            "output": "0 hits"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "grep",
+              "input": {
+                "pattern": "FIXME",
+                "path": "src"
+              }
+            }
+          ],
+          "args": "exact"
+        }
+      },
+      "notes": "ordered_subset, args exact: same keys, another order. PASSES."
+    },
+    {
+      "id": "seq-039",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "sometimes"
+        }
+      },
+      "notes": "an unknown mode string falls back to ordered_subset, under which this passes. PASSES."
+    },
+    {
+      "id": "seq-040",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "written"
+          },
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "3 hits"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file"
+            },
+            {
+              "tool_name": "grep"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ],
+          "mode": "sometimes"
+        }
+      },
+      "notes": "an unknown mode string falls back to ordered_subset, under which the reversed order fails. FAILS."
+    },
+    {
+      "id": "seq-041",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Find the Iris docs and save the install steps to notes.md.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "q": "iris eval mcp"
+            },
+            "output": "3 results"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "https://iris-eval.com"
+            },
+            "output": "html"
+          },
+          {
+            "tool_name": "http_get",
+            "input": {
+              "url": "https://iris-eval.com/docs"
+            },
+            "output": "html"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "notes.md"
+            },
+            "output": "ok"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "web_search"
+            },
+            {
+              "tool_name": "http_get"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset on a research task: search, fetch (twice), write. PASSES."
+    },
+    {
+      "id": "seq-042",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Find the Iris docs and save the install steps to notes.md.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "notes.md"
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "web_search",
+            "input": {
+              "q": "iris eval mcp"
+            },
+            "output": "3 results"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "web_search"
+            },
+            {
+              "tool_name": "http_get"
+            },
+            {
+              "tool_name": "write_file"
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset on a research task: the notes were written before any search, and nothing was fetched. FAILS."
+    },
+    {
+      "id": "seq-043",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Run the tests and commit the parser fix.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "12 passed"
+          },
+          {
+            "tool_name": "git_commit",
+            "input": {
+              "message": "fix: parser",
+              "all": true
+            },
+            "output": "c1a2b3"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "run_tests"
+            },
+            {
+              "tool_name": "git_commit",
+              "input": {
+                "message": "fix: parser"
+              }
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset with an argument on the commit: message matches, the extra flag is allowed. PASSES."
+    },
+    {
+      "id": "seq-044",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Run the tests and commit the parser fix.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "git_commit",
+            "input": {
+              "message": "fix: parser"
+            },
+            "output": "c1a2b3"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "12 passed"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "run_tests"
+            },
+            {
+              "tool_name": "git_commit",
+              "input": {
+                "message": "fix: parser"
+              }
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: committed before the tests ran. FAILS."
+    },
+    {
+      "id": "seq-045",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Run the tests and commit the parser fix.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "12 passed"
+          },
+          {
+            "tool_name": "git_commit",
+            "input": {
+              "message": "wip"
+            },
+            "output": "c1a2b3"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "run_tests"
+            },
+            {
+              "tool_name": "git_commit",
+              "input": {
+                "message": "fix: parser"
+              }
+            }
+          ]
+        }
+      },
+      "notes": "ordered_subset: the commit came, with another message. FAILS."
+    },
+    {
+      "id": "seq-046",
+      "rule": "tool_sequence",
+      "label": "negative",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": "src/a.ts",
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": "src/a.ts"
+            }
+          ]
+        }
+      },
+      "notes": "a string input on both sides: subset of a scalar is equality. PASSES."
+    },
+    {
+      "id": "seq-047",
+      "rule": "tool_sequence",
+      "label": "positive",
+      "input": "Apply the fix and verify it.",
+      "output": "Done — the change is in and the tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "contents"
+          }
+        ],
+        "expectedTrajectory": {
+          "tool_calls": [
+            {
+              "tool_name": "read_file",
+              "input": "src/a.ts"
+            }
+          ]
+        }
+      },
+      "notes": "a string expectation against an object input is not a match. FAILS."
+    }
+  ],
+  "counts": {
+    "n": 47,
+    "positive": 25,
+    "negative": 22
+  }
+}

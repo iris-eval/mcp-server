@@ -192,6 +192,7 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | `output` | `string` | Yes | -- | The output text to evaluate |
 | `eval_type` | `enum` | No | `"all"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom`, `all` (every bundle in one pass, with a per-category breakdown). Omitted → every bundle runs and the response carries a `note` saying the default ran |
 | `expected` | `string` | No | -- | Expected output for comparison (used by completeness rules) |
+| `expected_trajectory` | `object` | No | -- | What the agent was expected to DO: `tool_calls` `[{ tool_name, input? }]` with `mode` (`strict` \| `unordered` \| `subset` \| `superset` \| `ordered_subset`, default `ordered_subset`) and `args` (`exact` \| `subset`, default `subset`) for `tool_sequence`; `step_budget` and `tolerance` (default 1.5) for `step_budget`. Both rules skip without it |
 | `input` | `string` | No | -- | Original input for context (used by relevance rules) |
 | `trace_id` | `string` | No | -- | Link this evaluation to an existing trace |
 | `custom_rules` | `CustomRule[]` | No | -- | Custom evaluation rules (required when `eval_type` is `custom`) |
@@ -1445,7 +1446,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 
 ## Evaluation Rules
 
-Iris ships with 21 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
+Iris ships with 25 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
 
 ### Completeness Rules
 

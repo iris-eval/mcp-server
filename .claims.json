@@ -331,16 +331,25 @@
         "summary": "Coverage of an expected answer's terms is measured when one is supplied; nothing yet reads the structure of the ask to see which parts were answered."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "tool_sequence"
+          },
+          {
+            "kind": "proof",
+            "name": "tool_sequence"
+          }
+        ],
         "id": "Q3xS3",
         "needs": [
-          "output",
-          "tool_calls"
+          "tool_calls",
+          "expected_trajectory"
         ],
         "question": "Q3",
-        "status": "gap",
+        "status": "has",
         "subject": "S3",
-        "summary": "No completeness rule reads the trajectory to see which parts of the ask were acted on."
+        "summary": "The trajectory against the one the caller expected: tool_sequence compares the calls made with expected_trajectory.tool_calls in a mode (strict, unordered, subset, superset, ordered_subset — the default, a two-pointer subsequence check), matching by name and, when the expectation names arguments, by exact or subset input; a policy, so it gates because the caller stated the expectation; measured with intervals. Which parts of the ASK were acted on, without an expectation to compare against, is still the judge's question."
       },
       {
         "evidence": [
@@ -423,6 +432,14 @@
             "name": "topic_consistency"
           },
           {
+            "kind": "rule",
+            "name": "answers_the_ask"
+          },
+          {
+            "kind": "proof",
+            "name": "answers_the_ask"
+          },
+          {
             "kind": "template",
             "name": "helpfulness"
           }
@@ -433,21 +450,31 @@
           "input"
         ],
         "question": "Q4",
-        "status": "partial",
+        "status": "has",
         "subject": "S2",
-        "summary": "Lexical: the share of the input's content terms the output carries, and continuity of topic across sentences, with a stated tokenizer and thresholds; a keyed helpfulness judge template exists and is unmeasured."
+        "summary": "Lexical, three rules: the share of the input's content terms the output carries (keyword_overlap) and continuity of topic across sentences (topic_consistency) are measurements that score; answers_the_ask is the pair as a policy with no number of its own — when both fail at their thresholds the output answers something else and the verdict fails on policy_gate at the shipped defaults, and it skips whenever either measurement skips and on a one-term ask, so a one-word right answer is never a fire. Measured on the composite corpus before it existed: no classless clean case flipped, four of eight off-task cases caught (two too short to measure, two reuse the ask's words), six stub misses caught. A keyed helpfulness judge template exists and is unmeasured."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "tool_choice"
+          },
+          {
+            "kind": "proof",
+            "name": "tool_choice"
+          }
+        ],
         "id": "Q4xS3",
         "needs": [
-          "output",
-          "tool_calls"
+          "input",
+          "tool_calls",
+          "tools_catalogue"
         ],
         "question": "Q4",
-        "status": "gap",
+        "status": "has",
         "subject": "S3",
-        "summary": "Nothing relates the trajectory to the ask, so a wrong tool for the question goes unjudged on every path."
+        "summary": "The wrong tool for the ask, from the catalogue valid_tool_arguments already takes: tool_choice scores the ask's content terms against each tool's name, description and input property names (the relevance tokenizer) and fires when an uncalled tool fits the ask at least 0.5 and beats the union of the tools called by at least 0.34, naming both; judged over the whole trajectory so several tools that each serve part of the ask are not wrong; a heuristic detection, so it degrades the score and never vetoes; measured with intervals. Lexical: a tool whose description never mentions the ask's words is invisible to it."
       },
       {
         "evidence": [
@@ -648,7 +675,7 @@
         "question": "Q6",
         "status": "has",
         "subject": "S3",
-        "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — still has no deterministic evaluator."
+        "summary": "Three deterministic trajectory rules, each measured with intervals: a failed tool call the output never acknowledges, a repeated call with the same input, and a call whose arguments the tool’s own JSON Schema rejects and the agent never retried. Argument validity needs the tools catalogue; tool CHOICE — whether a valid call was the right one — is judged in the on-task row (Q4×S3, tool_choice)."
       },
       {
         "evidence": [
@@ -753,21 +780,30 @@
           },
           {
             "kind": "rule",
+            "name": "step_budget"
+          },
+          {
+            "kind": "rule",
             "name": "no_tool_loop"
           },
           {
             "kind": "proof",
             "name": "max_steps"
+          },
+          {
+            "kind": "proof",
+            "name": "step_budget"
           }
         ],
         "id": "Q7xS3",
         "needs": [
-          "tool_calls"
+          "tool_calls",
+          "expected_trajectory"
         ],
         "question": "Q7",
         "status": "has",
         "subject": "S3",
-        "summary": "A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the budget in force, advising at the shipped default and gating once a deployment sets its own, and no_tool_loop counts the repeated work inside it. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row."
+        "summary": "A step budget is judged from the trajectory itself: max_steps fails a task that takes more tool calls than the deployment's ceiling, advising at the shipped default and gating once a deployment sets its own; step_budget fails a task that takes more than the budget the CALLER stated for it (expected_trajectory.step_budget, or the number of expected calls) times a tolerance, and gates because the caller stated it; no_tool_loop counts the repeated work inside either. Per-call tokens and cost are carried on a call and not yet read; the trace TOTAL is judged elsewhere in this row."
       },
       {
         "evidence": [
@@ -1193,10 +1229,10 @@
       }
     ],
     "counts": {
-      "gap": 6,
-      "has": 27,
+      "gap": 4,
+      "has": 30,
       "n/a": 4,
-      "partial": 23
+      "partial": 22
     },
     "questions": [
       {
@@ -1436,7 +1472,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 21,
+    "builtInCount": 25,
     "categories": [
       "completeness",
       "relevance",
@@ -1460,6 +1496,7 @@
     "hallucinationMarkers": 25,
     "injectionPatterns": 37,
     "names": [
+      "answersTheAsk",
       "askCoverage",
       "costAnomaly",
       "costUnderThreshold",
@@ -1478,6 +1515,9 @@
       "noToolLoop",
       "nonEmptyOutput",
       "sentenceCount",
+      "stepBudget",
+      "toolChoice",
+      "toolSequence",
       "topicConsistency",
       "validToolArguments",
       "verbosityRatio"
@@ -1536,6 +1576,20 @@
       }
     ],
     "roster": [
+      {
+        "classes": [
+          "off_task"
+        ],
+        "kind": "policy",
+        "mechanism": "formula",
+        "name": "answers_the_ask",
+        "needs": [
+          "output",
+          "input"
+        ],
+        "question": "relevant",
+        "version": 1
+      },
       {
         "classes": [
           "incomplete_ask"
@@ -1781,6 +1835,49 @@
       },
       {
         "classes": [
+          "over_budget"
+        ],
+        "kind": "policy",
+        "mechanism": "formula",
+        "name": "step_budget",
+        "needs": [
+          "tool_calls",
+          "expected_trajectory"
+        ],
+        "question": "within_budget",
+        "version": 1
+      },
+      {
+        "classes": [
+          "wrong_tool"
+        ],
+        "kind": "detection",
+        "mechanism": "heuristic",
+        "name": "tool_choice",
+        "needs": [
+          "input",
+          "tool_calls",
+          "tools_catalogue"
+        ],
+        "question": "relevant",
+        "version": 1
+      },
+      {
+        "classes": [
+          "wrong_trajectory"
+        ],
+        "kind": "policy",
+        "mechanism": "formula",
+        "name": "tool_sequence",
+        "needs": [
+          "tool_calls",
+          "expected_trajectory"
+        ],
+        "question": "complete",
+        "version": 1
+      },
+      {
+        "classes": [
           "off_task"
         ],
         "kind": "measurement",
@@ -1855,19 +1952,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 21,
-          "measuredThreeOrMore": 21
+          "evaluators": 25,
+          "measuredThreeOrMore": 25
         }
       },
       "byStatus": {
-        "measurable": 181,
-        "measured": 125,
-        "n/a": 94,
-        "partial": 17,
-        "stated": 77
+        "measurable": 197,
+        "measured": 141,
+        "n/a": 102,
+        "partial": 21,
+        "stated": 85
       },
-      "evaluators": 38,
-      "measuredThreeOrMore": 31,
+      "evaluators": 42,
+      "measuredThreeOrMore": 35,
       "questions": 13
     },
     "evaluators": [
@@ -2282,6 +2379,74 @@
       {
         "cells": {
           "q1": {
+            "evidence": "proof/results.json → rules[tool_sequence]",
+            "note": "precision, recall and F1 on 47 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[tool_sequence].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[wrong_trajectory]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: policy, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:tool_sequence",
+        "measured": 4,
+        "name": "tool_sequence"
+      },
+      {
+        "cells": {
+          "q1": {
             "evidence": "proof/results.json → rules[keyword_overlap]",
             "note": "precision, recall and F1 on 30 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
@@ -2414,6 +2579,142 @@
         "id": "rule:topic_consistency",
         "measured": 4,
         "name": "topic_consistency"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[tool_choice]",
+            "note": "precision, recall and F1 on 46 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[tool_choice].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[wrong_tool]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: detection, mechanism: heuristic; proof/corpus → definition",
+            "note": "a detection or inference: the family measures detection of the named failure classes",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label names the claim; what it appears to measure beyond that is not measured",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:tool_choice",
+        "measured": 4,
+        "name": "tool_choice"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[answers_the_ask]",
+            "note": "precision, recall and F1 on 45 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[answers_the_ask].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[off_task]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: policy, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:answers_the_ask",
+        "measured": 4,
+        "name": "answers_the_ask"
       },
       {
         "cells": {
@@ -3302,6 +3603,74 @@
         "id": "rule:cost_anomaly",
         "measured": 4,
         "name": "cost_anomaly"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[step_budget]",
+            "note": "precision, recall and F1 on 44 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[step_budget].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[over_budget]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: policy, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:step_budget",
+        "measured": 4,
+        "name": "step_budget"
       },
       {
         "cells": {
@@ -4569,13 +4938,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "2e93146fa04b"
+        "compositeVersion": "a87653d43de4"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "a2825049eb4f",
+        "corpusVersion": "6a01ef7f62f8",
         "customCorpusVersion": "7f0a2fdc0855"
       }
     },
@@ -4588,8 +4957,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-21T19:34:55.917Z",
-  "generatedFromCommit": "e3f4779",
+  "generatedAt": "2026-09-21T20:32:07.431Z",
+  "generatedFromCommit": "ddfb04a",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -4662,10 +5031,10 @@
     ]
   },
   "proof": {
-    "commit": "37e7a18",
+    "commit": "84f6437",
     "composite": {
-      "compositeVersion": "2e93146fa04b",
-      "corpusVersion": "a2825049eb4f",
+      "compositeVersion": "a87653d43de4",
+      "corpusVersion": "6a01ef7f62f8",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -4681,15 +5050,17 @@
           "silent_tool_failure": 16,
           "stub": 8,
           "tool_loop": 7,
-          "ungrounded": 7
+          "ungrounded": 7,
+          "wrong_tool": 1,
+          "wrong_trajectory": 1
         },
-        "cases": 141,
-        "clean": 49,
-        "composed": 117,
-        "dev": 108,
-        "mustNotShip": 92,
+        "cases": 145,
+        "clean": 45,
+        "composed": 121,
+        "dev": 111,
+        "mustNotShip": 100,
         "realTranscripts": 24,
-        "test": 33,
+        "test": 34,
         "unlabelled": 0
       },
       "difference": {
@@ -4701,9 +5072,9 @@
             "lo": -0.0265
           },
           "test": {
-            "delta": 0.303,
-            "hi": 0.4979,
-            "lo": 0.0646
+            "delta": 0.4118,
+            "hi": 0.5889,
+            "lo": 0.1766
           }
         },
         "riskPerClass": {
@@ -4713,9 +5084,9 @@
             "lo": 0.0159
           },
           "test": {
-            "delta": 0.2121,
-            "hi": 0.4199,
-            "lo": -0.0268
+            "delta": 0.3529,
+            "hi": 0.5397,
+            "lo": 0.1157
           }
         }
       },
@@ -4723,34 +5094,34 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.4343,
-              0.6194
+              0.4042,
+              0.5871
             ],
-            "k": 57,
-            "n": 108,
-            "rate": 0.5278
+            "k": 55,
+            "n": 111,
+            "rate": 0.4955
           },
           "calibration": {
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0426,
-                "n": 76,
-                "observedRate": 0.6184,
+                "meanPredicted": 0.0443,
+                "n": 81,
+                "observedRate": 0.6296,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1211,
-                "n": 28,
-                "observedRate": 0.75,
+                "meanPredicted": 0.1254,
+                "n": 24,
+                "observedRate": 0.8333,
                 "to": 0.2
               },
               {
                 "from": 0.2,
-                "meanPredicted": 0.2197,
-                "n": 4,
-                "observedRate": 0.75,
+                "meanPredicted": 0.2228,
+                "n": 6,
+                "observedRate": 0.8333,
                 "to": 0.3
               },
               {
@@ -4803,27 +5174,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.5592,
-            "ece": 0.5879,
-            "n": 108
+            "brier": 0.5755,
+            "ece": 0.6132,
+            "n": 111
           },
           "falseBlock": {
             "ci95": [
-              0.015,
-              0.177
+              0.0158,
+              0.1861
             ],
             "k": 2,
-            "n": 37,
-            "rate": 0.0541
+            "n": 35,
+            "rate": 0.0571
           },
           "missedBlock": {
             "ci95": [
-              0.5752,
-              0.7856
+              0.6004,
+              0.8004
             ],
-            "k": 49,
-            "n": 71,
-            "rate": 0.6901
+            "k": 54,
+            "n": 76,
+            "rate": 0.7105
           }
         },
         "realTranscripts": {
@@ -4840,15 +5211,15 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0385,
-                "n": 22,
-                "observedRate": 0.7273,
+                "meanPredicted": 0.0394,
+                "n": 23,
+                "observedRate": 0.7391,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.108,
-                "n": 2,
+                "meanPredicted": 0.109,
+                "n": 1,
                 "observedRate": 1,
                 "to": 0.2
               },
@@ -4909,8 +5280,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.6651,
-            "ece": 0.7057,
+            "brier": 0.6688,
+            "ece": 0.7077,
             "n": 24
           },
           "falseBlock": {
@@ -4935,33 +5306,33 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.2724,
-              0.5919
+              0.2149,
+              0.5209
             ],
-            "k": 14,
-            "n": 33,
-            "rate": 0.4242
+            "k": 12,
+            "n": 34,
+            "rate": 0.3529
           },
           "calibration": {
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0421,
-                "n": 26,
-                "observedRate": 0.6923,
+                "meanPredicted": 0.041,
+                "n": 27,
+                "observedRate": 0.6667,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1515,
-                "n": 6,
-                "observedRate": 0.3333,
+                "meanPredicted": 0.1766,
+                "n": 5,
+                "observedRate": 0.8,
                 "to": 0.2
               },
               {
                 "from": 0.2,
-                "meanPredicted": 0.22,
-                "n": 1,
+                "meanPredicted": 0.2325,
+                "n": 2,
                 "observedRate": 1,
                 "to": 0.3
               },
@@ -5015,27 +5386,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.5494,
-            "ece": 0.569,
-            "n": 33
+            "brier": 0.5867,
+            "ece": 0.6337,
+            "n": 34
           },
           "falseBlock": {
             "ci95": [
-              0.0149,
-              0.3539
+              0.0179,
+              0.4042
             ],
             "k": 1,
-            "n": 12,
-            "rate": 0.0833
+            "n": 10,
+            "rate": 0.1
           },
           "missedBlock": {
             "ci95": [
-              0.6536,
-              0.9502
+              0.69,
+              0.9566
             ],
-            "k": 18,
-            "n": 21,
-            "rate": 0.8571
+            "k": 21,
+            "n": 24,
+            "rate": 0.875
           }
         }
       },
@@ -5196,18 +5567,38 @@
           "class": "invalid_tool_call",
           "present": 7,
           "recall": 0.5714
+        },
+        {
+          "caught": 1,
+          "ci95": [
+            0.2065,
+            1
+          ],
+          "class": "wrong_trajectory",
+          "present": 1,
+          "recall": 1
+        },
+        {
+          "caught": 1,
+          "ci95": [
+            0.2065,
+            1
+          ],
+          "class": "wrong_tool",
+          "present": 1,
+          "recall": 1
         }
       ],
       "risk": {
         "dev": {
           "accuracy": {
             "ci95": [
-              0.6706,
-              0.8301
+              0.6984,
+              0.8502
             ],
-            "k": 82,
-            "n": 108,
-            "rate": 0.7593
+            "k": 87,
+            "n": 111,
+            "rate": 0.7838
           },
           "calibration": {
             "bins": [
@@ -5220,9 +5611,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1554,
-                "n": 47,
-                "observedRate": 0.3404,
+                "meanPredicted": 0.1546,
+                "n": 49,
+                "observedRate": 0.4082,
                 "to": 0.2
               },
               {
@@ -5262,9 +5653,9 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.774,
-                "n": 12,
-                "observedRate": 0.6667,
+                "meanPredicted": 0.7735,
+                "n": 13,
+                "observedRate": 0.6923,
                 "to": 0.8
               },
               {
@@ -5282,27 +5673,27 @@
                 "to": 1
               }
             ],
-            "brier": 0.1804,
-            "ece": 0.1858,
-            "n": 108
+            "brier": 0.2008,
+            "ece": 0.2123,
+            "n": 111
           },
           "falseBlock": {
             "ci95": [
-              0.0765,
-              0.3114
+              0.1004,
+              0.3589
             ],
-            "k": 6,
-            "n": 37,
-            "rate": 0.1622
+            "k": 7,
+            "n": 35,
+            "rate": 0.2
           },
           "missedBlock": {
             "ci95": [
-              0.1904,
-              0.3954
+              0.1446,
+              0.3293
             ],
-            "k": 20,
-            "n": 71,
-            "rate": 0.2817
+            "k": 17,
+            "n": 76,
+            "rate": 0.2237
           }
         },
         "realTranscripts": {
@@ -5414,12 +5805,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.5578,
-              0.8493
+              0.6,
+              0.8756
             ],
-            "k": 24,
-            "n": 33,
-            "rate": 0.7273
+            "k": 26,
+            "n": 34,
+            "rate": 0.7647
           },
           "calibration": {
             "bins": [
@@ -5432,9 +5823,9 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1552,
-                "n": 16,
-                "observedRate": 0.3125,
+                "meanPredicted": 0.1543,
+                "n": 17,
+                "observedRate": 0.4706,
                 "to": 0.2
               },
               {
@@ -5488,33 +5879,33 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9275,
+                "meanPredicted": 0.9225,
                 "n": 2,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.187,
-            "ece": 0.189,
-            "n": 33
+            "brier": 0.2421,
+            "ece": 0.2678,
+            "n": 34
           },
           "falseBlock": {
             "ci95": [
-              0.0149,
-              0.3539
+              0.0179,
+              0.4042
             ],
             "k": 1,
-            "n": 12,
-            "rate": 0.0833
+            "n": 10,
+            "rate": 0.1
           },
           "missedBlock": {
             "ci95": [
-              0.2075,
-              0.5912
+              0.1491,
+              0.4917
             ],
-            "k": 8,
-            "n": 21,
-            "rate": 0.381
+            "k": 7,
+            "n": 24,
+            "rate": 0.2917
           }
         }
       },
@@ -5522,12 +5913,12 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.5639,
-              0.7401
+              0.5933,
+              0.7637
             ],
-            "k": 71,
-            "n": 108,
-            "rate": 0.6574
+            "k": 76,
+            "n": 111,
+            "rate": 0.6847
           },
           "calibration": {
             "bins": [
@@ -5577,7 +5968,7 @@
                 "from": 0.6,
                 "meanPredicted": 0.6511,
                 "n": 6,
-                "observedRate": 0.5,
+                "observedRate": 1,
                 "to": 0.7
               },
               {
@@ -5589,39 +5980,39 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.816,
-                "n": 40,
-                "observedRate": 0.325,
+                "meanPredicted": 0.8168,
+                "n": 42,
+                "observedRate": 0.3333,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9903,
-                "n": 61,
-                "observedRate": 0.9016,
+                "meanPredicted": 0.9904,
+                "n": 62,
+                "observedRate": 0.9032,
                 "to": 1
               }
             ],
-            "brier": 0.2451,
-            "ece": 0.247,
-            "n": 108
+            "brier": 0.237,
+            "ece": 0.2569,
+            "n": 111
           },
           "falseBlock": {
             "ci95": [
-              0.9059,
+              0.9011,
               1
             ],
-            "k": 37,
-            "n": 37,
+            "k": 35,
+            "n": 35,
             "rate": 1
           },
           "missedBlock": {
             "ci95": [
               0,
-              0.0513
+              0.0481
             ],
             "k": 0,
-            "n": 71,
+            "n": 76,
             "rate": 0
           }
         },
@@ -5734,12 +6125,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.4662,
-              0.7781
+              0.5383,
+              0.8317
             ],
-            "k": 21,
-            "n": 33,
-            "rate": 0.6364
+            "k": 24,
+            "n": 34,
+            "rate": 0.7059
           },
           "calibration": {
             "bins": [
@@ -5789,7 +6180,7 @@
                 "from": 0.6,
                 "meanPredicted": 0.6511,
                 "n": 4,
-                "observedRate": 0,
+                "observedRate": 0.75,
                 "to": 0.7
               },
               {
@@ -5801,9 +6192,9 @@
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8164,
-                "n": 12,
-                "observedRate": 0.4167,
+                "meanPredicted": 0.8182,
+                "n": 13,
+                "observedRate": 0.3846,
                 "to": 0.9
               },
               {
@@ -5814,26 +6205,26 @@
                 "to": 1
               }
             ],
-            "brier": 0.2285,
-            "ece": 0.2491,
-            "n": 33
+            "brier": 0.2158,
+            "ece": 0.2015,
+            "n": 34
           },
           "falseBlock": {
             "ci95": [
-              0.7575,
+              0.7225,
               1
             ],
-            "k": 12,
-            "n": 12,
+            "k": 10,
+            "n": 10,
             "rate": 1
           },
           "missedBlock": {
             "ci95": [
               0,
-              0.1546
+              0.138
             ],
             "k": 0,
-            "n": 21,
+            "n": 24,
             "rate": 0
           }
         }
@@ -5844,175 +6235,175 @@
         "note": "utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the argmax is a check on the loss model, never adopted",
         "rows": [
           {
-            "accuracy": 0.6574,
+            "accuracy": 0.6847,
             "fn": 0,
-            "fp": 37,
+            "fp": 35,
             "tau": 0.05,
             "tn": 0,
-            "tp": 71,
-            "utility": -37
+            "tp": 76,
+            "utility": -35
           },
           {
-            "accuracy": 0.6574,
+            "accuracy": 0.6847,
             "fn": 0,
-            "fp": 37,
+            "fp": 35,
             "tau": 0.1,
             "tn": 0,
-            "tp": 71,
-            "utility": -37
+            "tp": 76,
+            "utility": -35
           },
           {
-            "accuracy": 0.6852,
+            "accuracy": 0.7207,
             "fn": 3,
-            "fp": 31,
+            "fp": 28,
             "tau": 0.15,
-            "tn": 6,
-            "tp": 68,
-            "utility": -34
+            "tn": 7,
+            "tp": 73,
+            "utility": -31
           },
           {
-            "accuracy": 0.787,
-            "fn": 16,
-            "fp": 7,
+            "accuracy": 0.7928,
+            "fn": 15,
+            "fp": 8,
             "tau": 0.2,
-            "tn": 30,
-            "tp": 55,
+            "tn": 27,
+            "tp": 61,
             "utility": -23
           },
           {
-            "accuracy": 0.787,
-            "fn": 16,
-            "fp": 7,
+            "accuracy": 0.7928,
+            "fn": 15,
+            "fp": 8,
             "tau": 0.25,
-            "tn": 30,
-            "tp": 55,
+            "tn": 27,
+            "tp": 61,
             "utility": -23
           },
           {
-            "accuracy": 0.787,
-            "fn": 16,
-            "fp": 7,
+            "accuracy": 0.7928,
+            "fn": 15,
+            "fp": 8,
             "tau": 0.3,
-            "tn": 30,
-            "tp": 55,
+            "tn": 27,
+            "tp": 61,
             "utility": -23
           },
           {
-            "accuracy": 0.787,
-            "fn": 16,
-            "fp": 7,
+            "accuracy": 0.7928,
+            "fn": 15,
+            "fp": 8,
             "tau": 0.35,
-            "tn": 30,
-            "tp": 55,
+            "tn": 27,
+            "tp": 61,
             "utility": -23
           },
           {
-            "accuracy": 0.7685,
-            "fn": 18,
-            "fp": 7,
+            "accuracy": 0.7748,
+            "fn": 17,
+            "fp": 8,
             "tau": 0.4,
-            "tn": 30,
-            "tp": 53,
+            "tn": 27,
+            "tp": 59,
             "utility": -25
           },
           {
-            "accuracy": 0.7593,
-            "fn": 20,
-            "fp": 6,
+            "accuracy": 0.7838,
+            "fn": 17,
+            "fp": 7,
             "tau": 0.45,
-            "tn": 31,
-            "tp": 51,
-            "utility": -26
+            "tn": 28,
+            "tp": 59,
+            "utility": -24
           },
           {
-            "accuracy": 0.7593,
-            "fn": 20,
-            "fp": 6,
+            "accuracy": 0.7838,
+            "fn": 17,
+            "fp": 7,
             "tau": 0.5,
-            "tn": 31,
-            "tp": 51,
-            "utility": -26
+            "tn": 28,
+            "tp": 59,
+            "utility": -24
           },
           {
-            "accuracy": 0.75,
-            "fn": 21,
-            "fp": 6,
+            "accuracy": 0.7748,
+            "fn": 18,
+            "fp": 7,
             "tau": 0.55,
-            "tn": 31,
-            "tp": 50,
-            "utility": -27
+            "tn": 28,
+            "tp": 58,
+            "utility": -25
           },
           {
-            "accuracy": 0.75,
-            "fn": 21,
-            "fp": 6,
+            "accuracy": 0.7748,
+            "fn": 18,
+            "fp": 7,
             "tau": 0.6,
-            "tn": 31,
-            "tp": 50,
-            "utility": -27
+            "tn": 28,
+            "tp": 58,
+            "utility": -25
           },
           {
-            "accuracy": 0.75,
-            "fn": 21,
-            "fp": 6,
+            "accuracy": 0.7748,
+            "fn": 18,
+            "fp": 7,
             "tau": 0.65,
-            "tn": 31,
-            "tp": 50,
-            "utility": -27
+            "tn": 28,
+            "tp": 58,
+            "utility": -25
           },
           {
-            "accuracy": 0.6759,
-            "fn": 29,
-            "fp": 6,
+            "accuracy": 0.7027,
+            "fn": 26,
+            "fp": 7,
             "tau": 0.7,
-            "tn": 31,
-            "tp": 42,
-            "utility": -35
+            "tn": 28,
+            "tp": 50,
+            "utility": -33
           },
           {
-            "accuracy": 0.6759,
-            "fn": 29,
+            "accuracy": 0.7117,
+            "fn": 26,
             "fp": 6,
             "tau": 0.75,
-            "tn": 31,
-            "tp": 42,
-            "utility": -35
+            "tn": 29,
+            "tp": 50,
+            "utility": -32
           },
           {
-            "accuracy": 0.6389,
-            "fn": 37,
-            "fp": 2,
+            "accuracy": 0.6577,
+            "fn": 35,
+            "fp": 3,
             "tau": 0.8,
-            "tn": 35,
-            "tp": 34,
-            "utility": -39
+            "tn": 32,
+            "tp": 41,
+            "utility": -38
           },
           {
-            "accuracy": 0.6019,
-            "fn": 41,
-            "fp": 2,
+            "accuracy": 0.6216,
+            "fn": 39,
+            "fp": 3,
             "tau": 0.85,
-            "tn": 35,
-            "tp": 30,
-            "utility": -43
+            "tn": 32,
+            "tp": 37,
+            "utility": -42
           },
           {
-            "accuracy": 0.6019,
-            "fn": 41,
-            "fp": 2,
+            "accuracy": 0.6216,
+            "fn": 39,
+            "fp": 3,
             "tau": 0.9,
-            "tn": 35,
-            "tp": 30,
-            "utility": -43
+            "tn": 32,
+            "tp": 37,
+            "utility": -42
           },
           {
-            "accuracy": 0.537,
-            "fn": 48,
-            "fp": 2,
+            "accuracy": 0.5586,
+            "fn": 46,
+            "fp": 3,
             "tau": 0.95,
-            "tn": 35,
-            "tp": 23,
-            "utility": -50
+            "tn": 32,
+            "tp": 30,
+            "utility": -49
           }
         ],
         "shippedTau": 0.5,
@@ -6021,7 +6412,7 @@
       },
       "version": "0.15.0"
     },
-    "corpusVersion": "a2825049eb4f",
+    "corpusVersion": "6a01ef7f62f8",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -6646,7 +7037,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-21T17:08:51.560Z",
+    "generatedAt": "2026-09-21T19:53:59.799Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -6960,6 +7351,55 @@
         "tp": 12
       },
       {
+        "category": "completeness",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.8668,
+            1
+          ],
+          "recall": [
+            0.8668,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.927,
+            0.9996
+          ],
+          "precision": [
+            0.908,
+            1
+          ],
+          "recall": [
+            0.9028,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 47,
+        "name": "tool_sequence",
+        "negatives": 22,
+        "positives": 25,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 22,
+        "tp": 25
+      },
+      {
         "category": "relevance",
         "ci95": {
           "f1": [
@@ -7056,6 +7496,104 @@
         "skipped": 1,
         "tn": 19,
         "tp": 11
+      },
+      {
+        "category": "relevance",
+        "ci95": {
+          "f1": [
+            0.8571,
+            1
+          ],
+          "precision": [
+            0.8241,
+            1
+          ],
+          "recall": [
+            0.699,
+            0.9721
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8099,
+            0.9835
+          ],
+          "precision": [
+            0.8756,
+            1
+          ],
+          "recall": [
+            0.7065,
+            0.9792
+          ]
+        },
+        "f1": 0.9474,
+        "fn": 2,
+        "fp": 0,
+        "n": 46,
+        "name": "tool_choice",
+        "negatives": 26,
+        "positives": 20,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 0.9,
+        "skipped": 4,
+        "tn": 26,
+        "tp": 18
+      },
+      {
+        "category": "relevance",
+        "ci95": {
+          "f1": [
+            0.8372,
+            1
+          ],
+          "precision": [
+            0.6787,
+            0.9546
+          ],
+          "recall": [
+            0.8389,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8064,
+            0.9765
+          ],
+          "precision": [
+            0.697,
+            0.9643
+          ],
+          "recall": [
+            0.8854,
+            1
+          ]
+        },
+        "f1": 0.9302,
+        "fn": 0,
+        "fp": 3,
+        "n": 45,
+        "name": "answers_the_ask",
+        "negatives": 25,
+        "positives": 20,
+        "ppvAt": {
+          "0.01": 0.0776,
+          "0.05": 0.3049,
+          "0.2": 0.6757,
+          "0.5": 0.8929
+        },
+        "precision": 0.8696,
+        "recall": 1,
+        "skipped": 3,
+        "tn": 22,
+        "tp": 20
       },
       {
         "category": "safety",
@@ -7693,6 +8231,55 @@
         "skipped": 2,
         "tn": 14,
         "tp": 13
+      },
+      {
+        "category": "cost",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.8513,
+            1
+          ],
+          "recall": [
+            0.8513,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.9205,
+            0.9994
+          ],
+          "precision": [
+            0.8999,
+            1
+          ],
+          "recall": [
+            0.903,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "n": 44,
+        "name": "step_budget",
+        "negatives": 22,
+        "positives": 22,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 0,
+        "tn": 22,
+        "tp": 22
       }
     ],
     "schemaVersion": 2,
@@ -8305,7 +8892,7 @@
       "passed": null,
       "total": 34
     },
-    "totalCombined": 3082,
+    "totalCombined": 3113,
     "vitestDashboard": {
       "failed": 0,
       "passed": 329,
@@ -8313,8 +8900,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2719,
-      "total": 2719
+      "passed": 2750,
+      "total": 2750
     }
   },
   "version": {

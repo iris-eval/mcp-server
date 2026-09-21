@@ -2,6 +2,7 @@ import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResul
 import { thresholdSourceOf } from '../thresholds.js';
 import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
+import { stepBudget } from './expected-trajectory.js';
 import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
 import type { Step } from '../../types/trace.js';
 import { COST_ANOMALY_FLAT_MARGIN, COST_ANOMALY_MIN_HISTORY, COST_ANOMALY_WINDOW, COST_ANOMALY_Z, costAnomaly as anomalyOf, describeCostAnomaly } from '../cost-anomaly.js';
@@ -490,4 +491,4 @@ function dearestCall(context: EvalContext, costUsd: number): { evidence: Evidenc
   };
 }
 
-export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly];
+export const costRules: EvalRule[] = [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly, stepBudget];

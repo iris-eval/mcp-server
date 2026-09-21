@@ -19,6 +19,7 @@ export function contextFor(c: ReturnType<typeof materialiseCase>, fileConfig?: R
     if (extra.tokenUsage !== undefined) ctx.tokenUsage = extra.tokenUsage;
     if (extra.toolCalls !== undefined) ctx.toolCalls = extra.toolCalls;
     if (extra.tools !== undefined) ctx.tools = extra.tools;
+    if (extra.expectedTrajectory !== undefined) ctx.expectedTrajectory = extra.expectedTrajectory;
     if (extra.spans !== undefined) ctx.spans = extra.spans;
     if (extra.metadata !== undefined) ctx.metadata = extra.metadata;
     if (extra.customConfig !== undefined) ctx.customConfig = { ...(ctx.customConfig ?? {}), ...extra.customConfig };

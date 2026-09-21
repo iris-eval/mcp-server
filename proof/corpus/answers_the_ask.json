@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 1,
+  "rule": "answers_the_ask",
+  "category": "relevance",
+  "family": "answers_the_ask",
+  "positiveClass": "fail",
+  "definition": "answers_the_ask — the output answers THIS ask, not another. The rule runs the two relevance measurements and FAILS only when BOTH fail at their thresholds: fewer than 35% of the ask's content terms appear in the output (keyword_overlap) AND fewer than a third of the output's content-bearing sentences connect to the ask, directly or through an earlier connected sentence (topic_consistency). One measurement alone never fires it. It SKIPS whenever either measurement skips — no input, an ask with no content terms, an output with fewer than six words of four or more letters — so a one-word right answer is never a fire. Critical: a fire vetoes the verdict. The labels below are a reader's: positive = the output does not address what was asked (another subject, filler, a sign-off, placeholder text); negative = it answers the ask, in whatever shape (a sentence, a list, a command, a query, one word, a hedge followed by the answer). Lexical, no model: an on-task paraphrase that reuses none of the ask's words can read as off task, and such cases are named in their notes.",
+  "source": "LLM-authored on 2026-09-21 for arc 9 (N-13), from the composer probe that motivated the rule (a truncated and an off-topic answer both read clean). Twenty asks a user of this product would type, each paired with an off-task output (another subject, generic filler, a sign-off, placeholder text) and an on-task one; plus short answers the rule must decline to judge, a terse command and a query, a hedge before the answer, and one paraphrase with none of the ask's words, flagged as a possible false positive.",
+  "labelling": "LLM-authored and LLM-labelled on 2026-09-21 by reading each ask and output and asking whether the output addresses what was asked — never by running the rule or either measurement. The measured gap between that reading and the lexical pair is the number published.",
+  "authored": "2026-09-21",
+  "cases": [
+    {
+      "id": "ask-001",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Summarize the latest quarterly report for the board meeting",
+      "output": "The weather in San Francisco is currently 62 degrees Fahrenheit with partly cloudy skies. Traffic on the Bay Bridge is moderate with a 25-minute estimated crossing time.",
+      "notes": "A weather and traffic bulletin for a request about a quarterly report. OFF TASK."
+    },
+    {
+      "id": "ask-002",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "What does the --purge flag do in iris-eval?",
+      "output": "Our premium plan includes unlimited seats, priority support and a dedicated success manager. Contact sales to upgrade your workspace today and unlock advanced analytics.",
+      "notes": "A sales pitch for a question about a command-line flag. OFF TASK."
+    },
+    {
+      "id": "ask-003",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Explain how the retention sweep decides which traces to delete",
+      "output": "Photosynthesis converts light energy into chemical energy in the chloroplasts. Chlorophyll absorbs mostly blue and red light, which is why leaves look green to us.",
+      "notes": "Biology for a software question. OFF TASK."
+    },
+    {
+      "id": "ask-004",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "List the environment variables the dashboard reads on startup",
+      "output": "Remember to drink water regularly during the day. Adults are generally advised to aim for around two litres, adjusted for exercise and climate.",
+      "notes": "Hydration advice for a configuration question. OFF TASK."
+    },
+    {
+      "id": "ask-005",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Which migration added the critical_failures column?",
+      "output": "The recipe calls for two eggs, a cup of flour and a pinch of salt. Whisk the eggs first, then fold the flour in gently so the batter stays light.",
+      "notes": "A recipe for a database-migration question. OFF TASK."
+    },
+    {
+      "id": "ask-006",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "How do I point a Pydantic AI agent at the Iris OTLP endpoint?",
+      "output": "The Treaty of Westphalia in 1648 ended the Thirty Years War and is often cited as the origin of the modern state system in Europe.",
+      "notes": "History for an integration question. OFF TASK."
+    },
+    {
+      "id": "ask-007",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Draft a two-line release note for the 2.3 update",
+      "output": "Yoga improves flexibility and balance. Beginners should start with gentle sessions two or three times a week and focus on breathing rather than depth of pose.",
+      "notes": "Fitness advice for a release-note request. OFF TASK."
+    },
+    {
+      "id": "ask-008",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Compare the runs nightly-7 and nightly-8 and tell me which is better",
+      "output": "Mount Everest stands at 8,849 metres above sea level on the border between Nepal and China, and its height is remeasured periodically by both governments.",
+      "notes": "Geography for a run-comparison request. OFF TASK."
+    },
+    {
+      "id": "ask-009",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Where is my order 4471 and when will it arrive?",
+      "output": "Our store hours are nine to six on weekdays and ten to four on Saturdays. The café on the second floor serves breakfast until eleven.",
+      "notes": "Store hours for an order-status question. OFF TASK."
+    },
+    {
+      "id": "ask-010",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Why did the deploy to staging fail last night?",
+      "output": "Jupiter is the largest planet in the solar system, with a mass more than twice that of all the other planets combined, and a storm that has raged for centuries.",
+      "notes": "Astronomy for an incident question. OFF TASK."
+    },
+    {
+      "id": "ask-011",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Write a SQL query that returns the ten most expensive traces of the last week",
+      "output": "Great question! There are many ways to approach problems like this one, and the best choice depends on your goals, your constraints and the resources available to your team.",
+      "notes": "Generic filler that engages nothing in the ask. OFF TASK."
+    },
+    {
+      "id": "ask-012",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "What is the default port of the Iris dashboard?",
+      "output": "I appreciate you reaching out. Feel free to let me know if there is anything else I can assist with, and have a wonderful rest of your day.",
+      "notes": "A sign-off with no answer. OFF TASK."
+    },
+    {
+      "id": "ask-013",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Rank the three vendors by their monthly price",
+      "output": "The novel opens in a rain-soaked harbour town where the narrator, a retired cartographer, receives an unsigned letter that changes the course of her final year.",
+      "notes": "A book blurb for a pricing question. OFF TASK."
+    },
+    {
+      "id": "ask-014",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Explain the difference between a policy and a detection in the composer",
+      "output": "Compound interest is calculated on both the initial principal and the accumulated interest of previous periods, which is why small rates matter enormously over decades.",
+      "notes": "Finance for an evaluator-design question. OFF TASK."
+    },
+    {
+      "id": "ask-015",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Give me the curl command to post a trace to the HTTP door",
+      "output": "The marathon distance of 42.195 kilometres was standardised in 1921. Elite runners finish in just over two hours; most participants take four to five.",
+      "notes": "Sport for a command request. OFF TASK."
+    },
+    {
+      "id": "ask-016",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Which failure classes does the safety bundle stamp?",
+      "output": "Sourdough starters need feeding every twelve to twenty-four hours at room temperature. A sluggish starter usually wants warmth and a stiffer flour-to-water ratio.",
+      "notes": "Baking for a taxonomy question. OFF TASK."
+    },
+    {
+      "id": "ask-017",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Summarise the changelog entries for 0.15.0",
+      "output": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "notes": "Placeholder text for a summary request. OFF TASK."
+    },
+    {
+      "id": "ask-018",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "How many tests does the dashboard workspace have?",
+      "output": "Bees communicate the location of flowers through a waggle dance whose angle encodes direction relative to the sun and whose duration encodes distance.",
+      "notes": "Entomology for a count question. OFF TASK."
+    },
+    {
+      "id": "ask-019",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "What changed in the OTLP door for Python exporters?",
+      "output": "The best way to learn a language is daily exposure: short sessions, spaced repetition for vocabulary, and speaking from the first week even when it feels early.",
+      "notes": "Language-learning advice for a product question. OFF TASK."
+    },
+    {
+      "id": "ask-020",
+      "rule": "answers_the_ask",
+      "label": "positive",
+      "input": "Tell me whether the nightly run regressed on the safety bundle",
+      "output": "Thank you for your patience. Our team values your feedback and is committed to delivering an excellent experience across all of our products and services.",
+      "notes": "Corporate boilerplate for a regression question. OFF TASK."
+    },
+    {
+      "id": "ask-021",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Summarize the latest quarterly report for the board meeting",
+      "output": "The Q4 report shows revenue growth of 18% year over year, reaching $47.3M. Operating margins improved to 23%. The enterprise segment grew 31%, and the board should note the churn uptick in SMB.",
+      "notes": "A summary of the quarterly report for the board. ON TASK."
+    },
+    {
+      "id": "ask-022",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "What does the --purge flag do in iris-eval?",
+      "output": "It deletes stored traces and evaluations older than the retention window, then VACUUMs the database and checkpoints the write-ahead log so the text does not survive in iris.db-wal.",
+      "notes": "Answers the flag question directly, with the product's own vocabulary. ON TASK."
+    },
+    {
+      "id": "ask-023",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Explain how the retention sweep decides which traces to delete",
+      "output": "The sweep runs at startup and on a timer. A trace is deleted when its timestamp is older than storage.retentionDays; its evaluations go with it in the same transaction, and secure_delete zeroes the freed pages.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-024",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "List the environment variables the dashboard reads on startup",
+      "output": "IRIS_HOME, IRIS_DASHBOARD_PORT, IRIS_API_KEY, IRIS_OTEL_ENDPOINT, IRIS_SQLITE_DRIVER and IRIS_NO_AUTO_LAUNCH. Anything else is read from config.json.",
+      "notes": "A list answering the ask. ON TASK."
+    },
+    {
+      "id": "ask-025",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Which migration added the critical_failures column?",
+      "output": "Migration 006 added critical_failures to eval_results; it shipped in 0.9.0 and every later read of a stored verdict depends on it.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-026",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "How do I point a Pydantic AI agent at the Iris OTLP endpoint?",
+      "output": "Set OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:6920 and call Agent.instrument_all() before running; the exporter posts protobuf to /v1/traces, which Iris accepts since 0.16.0.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-027",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Draft a two-line release note for the 2.3 update",
+      "output": "2.3 ships faster search and fixes the export crash on large workspaces.\nUpdate from the settings page; no migration is needed.",
+      "notes": "Two lines, a release note. ON TASK."
+    },
+    {
+      "id": "ask-028",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Compare the runs nightly-7 and nightly-8 and tell me which is better",
+      "output": "nightly-8 is better: 41 of 48 cases pass against 37, and the six discordant cases all flipped in its favour; the interval on the difference excludes zero.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-029",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Where is my order 4471 and when will it arrive?",
+      "output": "Order 4471 shipped on 19 September from the Leeds warehouse and is out for delivery tomorrow before 6 pm; the tracking link is in your confirmation email.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-030",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Why did the deploy to staging fail last night?",
+      "output": "The staging deploy failed at the migration step: the database user lacked ALTER on eval_results after the permissions rotation, so migration 014 rolled back and the pod restarted in a loop.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-031",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Write a SQL query that returns the ten most expensive traces of the last week",
+      "output": "SELECT trace_id, agent_name, cost_usd FROM traces WHERE timestamp >= datetime('now', '-7 days') ORDER BY cost_usd DESC LIMIT 10;",
+      "notes": "A query is the answer; its identifiers carry the ask's vocabulary. ON TASK."
+    },
+    {
+      "id": "ask-032",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "What is the default port of the Iris dashboard?",
+      "output": "The dashboard listens on port 6920 by default; set IRIS_DASHBOARD_PORT to change it.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-033",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Rank the three vendors by their monthly price",
+      "output": "Cheapest first: Phoenix (self-hosted, free), Langfuse Cloud at $59 a month for the Core plan, then Braintrust at $249 a month for Pro. Prices as listed on 21 September.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-034",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Explain the difference between a policy and a detection in the composer",
+      "output": "A policy is a threshold the deployment chose: it gates when the number is theirs and advises at the shipped default. A detection reports evidence it found in the output; when it is critical it vetoes the verdict outright, and otherwise it lowers the score.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-035",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Give me the curl command to post a trace to the HTTP door",
+      "output": "curl -X POST http://localhost:6920/api/v1/traces -H 'content-type: application/json' -d '{\"agent_name\":\"bot\",\"input\":\"q\",\"output\":\"a\"}'",
+      "notes": "A command, terse, with the ask's terms in it. ON TASK."
+    },
+    {
+      "id": "ask-036",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Which failure classes does the safety bundle stamp?",
+      "output": "pii_leak, credential_leak, injection, injection_compliance, silent_tool_failure, stub, fabrication and ungrounded — one per safety rule, listed in src/eval/failure-classes.ts.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-037",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Summarise the changelog entries for 0.15.0",
+      "output": "0.15.0 made the demo the engine's own output, gave the dashboard a phone-width header, unified passed across the four eval tools, and made every read route refuse a misspelled filter.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-038",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "How many tests does the dashboard workspace have?",
+      "output": "329.",
+      "notes": "A one-word right answer: too short for the topic measure, so the pair is not judged — a negative that skips is still a negative. ON TASK."
+    },
+    {
+      "id": "ask-039",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "What changed in the OTLP door for Python exporters?",
+      "output": "It now accepts protobuf. The Python exporter only sends protobuf, so before 0.16.0 every Python framework needed a Collector in between; now it posts straight to /v1/traces.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-040",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Tell me whether the nightly run regressed on the safety bundle",
+      "output": "No regression on safety: the nightly run passes the same 22 of 22 safety cases as the baseline. The two failures are both in completeness.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-041",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "What is the capital of France?",
+      "output": "Paris.",
+      "notes": "A one-word right answer with none of the ask's terms; too short to judge, so not fired. ON TASK."
+    },
+    {
+      "id": "ask-042",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Is the server up?",
+      "output": "Yes — it answered the health check at 12:04 with status ok and 1,204 traces stored.",
+      "notes": "Short ask, short answer, the answer is the answer. ON TASK."
+    },
+    {
+      "id": "ask-043",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Summarize the latest quarterly report for the board meeting",
+      "output": "Revenue is up eighteen percent and margins widened four points; enterprise led the growth while small business churn crept up. Two slides cover each.",
+      "notes": "On task with almost none of the ask's words: a paraphrase that never says report, quarterly or board. A reader calls this a fine summary; the lexical pair may not — a named false positive if it fires. ON TASK."
+    },
+    {
+      "id": "ask-044",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "How do I stop the demo server?",
+      "output": "Press Ctrl-C in the terminal that started it, or kill the process listening on 6920.",
+      "notes": "ON TASK."
+    },
+    {
+      "id": "ask-045",
+      "rule": "answers_the_ask",
+      "label": "negative",
+      "input": "Explain the retention sweep",
+      "output": "I cannot see your configuration from here, but the sweep deletes traces older than storage.retentionDays at startup and on a timer, and takes their evaluations with them.",
+      "notes": "A hedge followed by the answer. ON TASK."
+    }
+  ],
+  "counts": {
+    "n": 45,
+    "positive": 20,
+    "negative": 25
+  }
+}

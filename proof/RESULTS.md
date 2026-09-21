@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-21T17:08:51.560Z for v0.15.0 (local generating commit `37e7a18` — branch commits are squashed on merge, so cite the version).
-Corpus version `a2825049eb4f` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-21T19:53:59.799Z for v0.15.0 (local generating commit `84f6437` — branch commits are squashed on merge, so cite the version).
+Corpus version `6a01ef7f62f8` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -13,8 +13,11 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `expected_coverage` | completeness | 29 | 14 | 0 | 14 | 0 | 0 | 15 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [87.0, 99.9] | 100.0% / 100.0% |
 | `valid_tool_arguments` | completeness | 33 | 15 | 0 | 15 | 0 | 0 | 18 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] | 1.000 [100.0, 100.0] | [88.1, 99.9] | 100.0% / 100.0% |
 | `ask_coverage` | completeness | 31 | 14 | 5 | 12 | 4 | 2 | 13 | 75.0% [50.5, 89.8] | 85.7% [60.1, 96.0] | 0.800 [60.9, 93.3] | [59.1, 90.7] | 16.1% / 78.5% |
+| `tool_sequence` | completeness | 47 | 25 | 0 | 25 | 0 | 0 | 22 | 100.0% [86.7, 100.0] | 100.0% [86.7, 100.0] | 1.000 [100.0, 100.0] | [92.7, 100.0] | 100.0% / 100.0% |
 | `keyword_overlap` | relevance | 30 | 10 | 0 | 10 | 0 | 0 | 20 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [82.2, 99.9] | 100.0% / 100.0% |
 | `topic_consistency` | relevance | 31 | 12 | 1 | 11 | 0 | 1 | 19 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [83.3, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
+| `tool_choice` | relevance | 46 | 20 | 4 | 18 | 0 | 2 | 26 | 100.0% [82.4, 100.0] | 90.0% [69.9, 97.2] | 0.947 [85.7, 100.0] | [81.0, 98.4] | 100.0% / 100.0% |
+| `answers_the_ask` | relevance | 45 | 20 | 3 | 20 | 3 | 0 | 22 | 87.0% [67.9, 95.5] | 100.0% [83.9, 100.0] | 0.930 [83.7, 100.0] | [80.6, 97.7] | 30.5% / 89.3% |
 | `no_pii` | safety | 93 | 45 | 0 | 34 | 5 | 11 | 43 | 87.2% [73.3, 94.4] | 75.6% [61.3, 85.8] | 0.809 [70.8, 89.3] | [70.0, 88.2] | 27.6% / 87.9% |
 | `no_blocklist_words` | safety | 32 | 15 | 0 | 14 | 1 | 1 | 16 | 93.3% [70.2, 98.8] | 93.3% [70.2, 98.8] | 0.933 [81.5, 100.0] | [76.4, 98.2] | 45.5% / 94.1% |
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
@@ -28,6 +31,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_tool_loop` | cost | 42 | 19 | 0 | 19 | 0 | 0 | 23 | 100.0% [83.2, 100.0] | 100.0% [83.2, 100.0] | 1.000 [100.0, 100.0] | [90.8, 100.0] | 100.0% / 100.0% |
 | `max_steps` | cost | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.1, 99.9] | 100.0% / 100.0% |
 | `cost_anomaly` | cost | 27 | 13 | 2 | 13 | 0 | 0 | 14 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [86.2, 99.9] | 100.0% / 100.0% |
+| `step_budget` | cost | 44 | 22 | 0 | 22 | 0 | 0 | 22 | 100.0% [85.1, 100.0] | 100.0% [85.1, 100.0] | 1.000 [100.0, 100.0] | [92.0, 99.9] | 100.0% / 100.0% |
 
 ## Misses, by case id
 
@@ -39,8 +43,11 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `expected_coverage` — FP: none · FN: none
 - `valid_tool_arguments` — FP: none · FN: none
 - `ask_coverage` — FP: ask-015, ask-018, ask-019, ask-021 · FN: ask-008, ask-010
+- `tool_sequence` — FP: none · FN: none
 - `keyword_overlap` — FP: none · FN: none
 - `topic_consistency` — FP: none · FN: topic-021
+- `tool_choice` — FP: none · FN: choice-005, choice-016
+- `answers_the_ask` — FP: ask-037, ask-043, ask-044 · FN: none
 - `no_pii` — FP: pii-008, pii-037, pii-053, pii-062, pii-075 · FN: pii-001, pii-004, pii-027, pii-041, pii-043, pii-061, pii-067, pii-071, pii-076, pii-088, pii-089
 - `no_blocklist_words` — FP: blocklist-016 · FN: blocklist-010
 - `no_injection_patterns` — FP: none · FN: c08
@@ -54,6 +61,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_tool_loop` — FP: none · FN: none
 - `max_steps` — FP: none · FN: none
 - `cost_anomaly` — FP: none · FN: none
+- `step_budget` — FP: none · FN: none
 
 ## Transforms — do the critical rules survive the evasions a leak arrives in?
 

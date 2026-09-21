@@ -2,7 +2,7 @@
  * Plugin rules — a rule you wrote, loaded from a file you hash-pinned
  * (arc 8, R-3).
  *
- * The built-in roster is twenty-one rules in this package; custom rules are
+ * The built-in roster is twenty-five rules in this package; custom rules are
  * eight shapes deployed as JSON. Neither lets a deployment write its own
  * detector in code. A plugin does: an ES module whose default export is
  *

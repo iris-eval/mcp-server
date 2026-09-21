@@ -1,0 +1,5376 @@
+{
+  "schemaVersion": 1,
+  "rule": "tool_choice",
+  "category": "relevance",
+  "family": "tool_choice",
+  "positiveClass": "fail",
+  "definition": "tool_choice — the wrong tool for the ask, when a tool in the catalogue plainly serves it. The rule tokenises the ask into content terms (the relevance tokenizer: stopwords out, identifiers split, stems folded), and each catalogue tool into the terms of its name, description and input property names; fit(T) is the share of the ask's terms found in T's terms, and fit(called) the share found in the UNION of the tools the agent called. It FAILS when the best tool the agent did NOT call has fit ≥ 0.5 and beats fit(called) by ≥ 0.34 — an available tool describes at least half of the ask and what was called covers far less of it. Judged over the whole trajectory, so several tools that each serve one part of the ask are together the right tools. It SKIPS without the input, a trajectory or a catalogue, and when the ask has fewer than two content terms. It never fires when every catalogue tool was called. The labels below are a reader's: positive = the agent called a tool that does not serve the ask while one in the catalogue plainly does (the rule should FAIL); negative = the tools called serve the ask, or nothing in the catalogue serves it better. A reader's judgement and the lexical formula can disagree — those cases are named in their notes and counted.",
+  "source": "LLM-authored on 2026-09-21 for arc 9 (N-13). Two realistic catalogues (a coding agent with eight tools, a support agent with six) and asks a user would actually type; positives are one clearly wrong tool for a clearly served ask, negatives are the right tool, several tools each serving one part, an ask nothing in the catalogue serves (a web search is the best there is), a two-term ask the rule declines to judge, and one reasonable-but-lexically-off route flagged as a possible false positive.",
+  "labelling": "LLM-authored and LLM-labelled on 2026-09-21 by reading the ask, the catalogue and the calls and asking whether a person would say the agent picked the wrong tool while a right one sat in the catalogue — never by running the rule. This is a heuristic family: the definition states the formula, the labels state the reader's judgement, and the measured gap between them is the number published.",
+  "authored": "2026-09-21",
+  "cases": [
+    {
+      "id": "choice-001",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Count the lines and bytes in the README file",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "."
+            },
+            "output": "README.md src"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The ask is a line and byte count of one file; count_lines does exactly that and was not called. list_files serves none of it. WRONG TOOL."
+    },
+    {
+      "id": "choice-002",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Search the repository for every use of the pattern deprecatedHandler",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A repository-wide pattern search; search_code is the tool. Reading one file is not a search. WRONG TOOL."
+    },
+    {
+      "id": "choice-003",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Run the test suite and tell me which tests fail",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "git_log",
+            "input": {
+              "count": 5
+            },
+            "output": "c1 c2"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The ask is to run the tests; run_tests exists. The commit log answers nothing here. WRONG TOOL."
+    },
+    {
+      "id": "choice-004",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Show me the recent commit history of the repository",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "git history"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The repository's own history is git_log; a web search cannot see this repository. WRONG TOOL."
+    },
+    {
+      "id": "choice-005",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Create a new file docs/notes.md with the meeting summary contents",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "docs/notes.md"
+            },
+            "output": "not found"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The ask is to create a file with contents; write_file does that. Reading a file that does not exist is not it. WRONG TOOL."
+    },
+    {
+      "id": "choice-006",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Search the web for the latest OpenTelemetry release notes",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_code",
+            "input": {
+              "pattern": "OpenTelemetry"
+            },
+            "output": "2 hits"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The ask is a web search; searching the repository for the word is not it. WRONG TOOL."
+    },
+    {
+      "id": "choice-007",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "List the files and folders in the src directory",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "count_lines",
+            "input": {
+              "file": "src"
+            },
+            "output": "error"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A directory listing; list_files. Counting lines of a directory is not it. WRONG TOOL."
+    },
+    {
+      "id": "choice-008",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Count the lines, words and bytes in CHANGELOG.md",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "CHANGELOG.md"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Reading the file gets its contents, not the counts the ask names; count_lines is the tool. WRONG TOOL."
+    },
+    {
+      "id": "choice-009",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Search the repository for the pattern TODO and return the matching lines",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "src"
+            },
+            "output": "a.ts b.ts"
+          },
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "tests"
+            },
+            "output": "x.ts"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Two directory listings for a pattern search; search_code was never called. WRONG TOOL."
+    },
+    {
+      "id": "choice-010",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Run the test suite for the parser and report the failures",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "tests/parser.test.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/parser.ts"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Reading the tests is not running them; run_tests exists. WRONG TOOL."
+    },
+    {
+      "id": "choice-011",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Look up order number 4471 and tell me its shipping status",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_kb",
+            "input": {
+              "question": "shipping status"
+            },
+            "output": "article"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A specific order's status is lookup_order; a knowledge-base search returns an article about shipping in general. WRONG TOOL."
+    },
+    {
+      "id": "choice-012",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Issue a full refund for order 9012",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "send_email",
+            "input": {
+              "to": "c@x.test",
+              "body": "We will refund you."
+            },
+            "output": "sent"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The ask is to issue the refund; issue_refund exists. An email promising it is not the refund. WRONG TOOL."
+    },
+    {
+      "id": "choice-013",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Change the shipping address on order 3310 to 12 Rose Lane",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_number": "3310"
+            },
+            "output": "unshipped"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Looking the order up is not changing its address; update_address is the tool and was never called. WRONG TOOL."
+    },
+    {
+      "id": "choice-014",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Cancel order 2201, it has not shipped",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "issue_refund",
+            "input": {
+              "order_number": "2201",
+              "amount": 40
+            },
+            "output": "refunded"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A cancellation of an unshipped order is cancel_order; a refund on a live order is a different action. WRONG TOOL."
+    },
+    {
+      "id": "choice-015",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Search the knowledge base for how returns work for sale items",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_number": "1"
+            },
+            "output": "not found"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A knowledge-base question; search_kb. Looking up an order is not it. WRONG TOOL."
+    },
+    {
+      "id": "choice-016",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Send the customer an email confirming the refund on order 5150",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "issue_refund",
+            "input": {
+              "order_number": "5150",
+              "amount": 20
+            },
+            "output": "refunded"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The ask is the confirmation email; send_email exists. Refunding again is not it. WRONG TOOL."
+    },
+    {
+      "id": "choice-017",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Show the recent commit history and list the files in src",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "commit history"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Two things asked, git_log and list_files serve them, neither called; a web search serves neither. WRONG TOOL."
+    },
+    {
+      "id": "choice-018",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Search the code for the pattern retryPolicy",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "filter": "retryPolicy"
+            },
+            "output": "0 tests"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Running tests filtered by the word is not searching the code for it. WRONG TOOL."
+    },
+    {
+      "id": "choice-019",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Look up order 7788 and its items",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "cancel_order",
+            "input": {
+              "order_number": "7788"
+            },
+            "output": "cancelled"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A look-up was asked for; the agent cancelled the order. lookup_order was the tool. WRONG TOOL."
+    },
+    {
+      "id": "choice-020",
+      "rule": "tool_choice",
+      "label": "positive",
+      "input": "Count the lines in src/index.ts and src/server.ts",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_code",
+            "input": {
+              "pattern": "index"
+            },
+            "output": "40 hits"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Line counts of two files; count_lines twice. A pattern search is not a count. WRONG TOOL."
+    },
+    {
+      "id": "choice-021",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Count the lines and bytes in the README file",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "count_lines",
+            "input": {
+              "file": "README.md"
+            },
+            "output": "212 lines"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The tool that does the ask was called. RIGHT TOOL."
+    },
+    {
+      "id": "choice-022",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Search the repository for every use of the pattern deprecatedHandler",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_code",
+            "input": {
+              "pattern": "deprecatedHandler"
+            },
+            "output": "4 hits"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-023",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Run the test suite and tell me which tests fail",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {},
+            "output": "2 failures"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-024",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Show me the recent commit history of the repository",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "git_log",
+            "input": {
+              "count": 10
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-025",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "List the files in src and count the lines in each file",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "src"
+            },
+            "output": "a.ts b.ts"
+          },
+          {
+            "tool_name": "count_lines",
+            "input": {
+              "file": "src/a.ts"
+            },
+            "output": "40"
+          },
+          {
+            "tool_name": "count_lines",
+            "input": {
+              "file": "src/b.ts"
+            },
+            "output": "12"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Two tools, each serving one part of the ask; together they cover it. RIGHT TOOLS."
+    },
+    {
+      "id": "choice-026",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Search the code for the pattern TODO, then read the first file it names",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_code",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "src/a.ts:3"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Search then read, as asked. RIGHT TOOLS."
+    },
+    {
+      "id": "choice-027",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Read the file src/config.ts and report its contents",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/config.ts"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-028",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Search the web for the latest OpenTelemetry release notes",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "OpenTelemetry release notes"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-029",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Create the file docs/notes.md with the meeting summary contents",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "docs/notes.md",
+              "contents": "# Notes"
+            },
+            "output": "ok"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-030",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Read src/index.ts and write a summary to docs/index.md",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/index.ts"
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "docs/index.md",
+              "contents": "…"
+            },
+            "output": "ok"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Read then write, both parts served. RIGHT TOOLS."
+    },
+    {
+      "id": "choice-031",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Look up order number 4471 and tell me its shipping status",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_number": "4471"
+            },
+            "output": "shipped 19 Sep"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-032",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Issue a full refund for order 9012",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_number": "9012"
+            },
+            "output": "$40, delivered"
+          },
+          {
+            "tool_name": "issue_refund",
+            "input": {
+              "order_number": "9012",
+              "amount": 40
+            },
+            "output": "refunded"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A look-up before the refund, then the refund: the tool that does the ask was called. RIGHT TOOLS."
+    },
+    {
+      "id": "choice-033",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Change the shipping address on order 3310 to 12 Rose Lane",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "update_address",
+            "input": {
+              "order_number": "3310",
+              "address": "12 Rose Lane"
+            },
+            "output": "updated"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-034",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Cancel order 2201, it has not shipped",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "cancel_order",
+            "input": {
+              "order_number": "2201"
+            },
+            "output": "cancelled"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-035",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Search the knowledge base for how returns work for sale items",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_kb",
+            "input": {
+              "question": "returns sale items"
+            },
+            "output": "article 12"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-036",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Send the customer an email confirming the refund on order 5150",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "send_email",
+            "input": {
+              "to": "c@x.test",
+              "body": "Your refund on 5150 is issued."
+            },
+            "output": "sent"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-037",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "What is the weather in Lisbon tomorrow?",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "Lisbon weather tomorrow"
+            },
+            "output": "24 °C"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "No tool in a coding catalogue is about weather; the web search is the only tool that could serve it, and it was called. RIGHT TOOL (nothing better)."
+    },
+    {
+      "id": "choice-038",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Tell me a joke about compilers",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "compiler joke"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Nothing in the catalogue serves the ask better than a web search. NOTHING BETTER."
+    },
+    {
+      "id": "choice-039",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Check whether the parser tests pass after the change",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "filter": "parser"
+            },
+            "output": "all pass"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-040",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Find where retryPolicy is defined",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_code",
+            "input": {
+              "pattern": "retryPolicy"
+            },
+            "output": "src/http.ts:12"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-041",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Read the README",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "README.md"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL. (An ask this short has only one content term and is not judged; a negative that skips is still a negative.)"
+    },
+    {
+      "id": "choice-042",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Look up order 7788 and, if it has not shipped, cancel it",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_number": "7788"
+            },
+            "output": "unshipped"
+          },
+          {
+            "tool_name": "cancel_order",
+            "input": {
+              "order_number": "7788"
+            },
+            "output": "cancelled"
+          }
+        ],
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up an order by its number: status, items, shipping",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "issue_refund",
+            "description": "Issue a refund for an order, in full or for one item",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "name": "update_address",
+            "description": "Change the shipping address on an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "send_email",
+            "description": "Send an email to the customer",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_kb",
+            "description": "Search the knowledge base articles for a question",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "cancel_order",
+            "description": "Cancel an order that has not shipped",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "order_number": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Both parts served in order. RIGHT TOOLS."
+    },
+    {
+      "id": "choice-043",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "List the files in the tests directory",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "tests"
+            },
+            "output": "a.test.ts"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "RIGHT TOOL."
+    },
+    {
+      "id": "choice-044",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Count the lines in every file under src",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "src"
+            },
+            "output": "a.ts b.ts"
+          },
+          {
+            "tool_name": "count_lines",
+            "input": {
+              "file": "src/a.ts"
+            },
+            "output": "40"
+          },
+          {
+            "tool_name": "count_lines",
+            "input": {
+              "file": "src/b.ts"
+            },
+            "output": "12"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "A listing to find the files, then the counts. RIGHT TOOLS."
+    },
+    {
+      "id": "choice-045",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Search the code for the pattern TODO and count the lines of the file it names",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_code",
+            "input": {
+              "pattern": "TODO"
+            },
+            "output": "src/a.ts:3"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/a.ts"
+            },
+            "output": "…"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "The agent read the file instead of counting its lines — a reasonable route to the count (the contents can be counted) and the search part was served. A HUMAN CALLS THIS FINE; the ask's count vocabulary is covered by neither tool called, so the rule may fire — a named false positive if it does."
+    },
+    {
+      "id": "choice-046",
+      "rule": "tool_choice",
+      "label": "negative",
+      "input": "Show the recent commit history and list the files in src",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "git_log",
+            "input": {
+              "count": 5
+            },
+            "output": "…"
+          },
+          {
+            "tool_name": "list_files",
+            "input": {
+              "directory": "src"
+            },
+            "output": "a.ts"
+          }
+        ],
+        "tools": [
+          {
+            "name": "list_files",
+            "description": "List the files and folders in a directory",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "directory": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "read_file",
+            "description": "Return the contents of a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Create or overwrite a file with the given contents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "contents": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_code",
+            "description": "Search the repository for a pattern and return the matching lines",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "run_tests",
+            "description": "Run the test suite and return the failures",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "git_log",
+            "description": "Show the recent commit history of the repository",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "count_lines",
+            "description": "Count the lines, words and bytes in a file",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for a query and return the top results",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "notes": "Both parts served. RIGHT TOOLS."
+    }
+  ],
+  "counts": {
+    "n": 46,
+    "positive": 20,
+    "negative": 26
+  }
+}
