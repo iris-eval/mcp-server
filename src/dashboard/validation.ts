@@ -109,6 +109,7 @@ export const ingestTraceSchema = strictBody(
 export const traceQuerySchema = strictQuery({
   agent_name: z.string().optional(),
   framework: z.string().optional(),
+  session: z.string().min(1).max(200).optional(),
   since: isoTimestamp.optional(),
   until: isoTimestamp.optional(),
   min_score: z.coerce.number().min(0).max(1).optional(),

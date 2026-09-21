@@ -80,6 +80,7 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output` |
 | `run` | `string` | No | -- | The batch this execution belongs to, for `compare_runs`; never inferred |
 | `case_key` | `string` | No | derived from `input` | What makes this the same question as a trace in another run |
+| `session_id` | `string` | No | the SEP-414 baggage `session_id`, when sent | The conversation this turn belongs to; the trace drawer shows the other turns, `get_traces` and `GET /api/v1/traces` filter by it, `compare_traces` can group by it |
 | `spans` | `Span[]` | No | -- | Detailed execution spans |
 | `timestamp` | `string` | No | Current time | Trace timestamp (ISO 8601) |
 | `evaluate` | `boolean` | No | `false` | Score the stored trace in the same call, under exactly the rules `evaluate_output` runs; requires `output`. The response gains an `evaluation` — the same object `evaluate_output` returns — and links it |
@@ -328,6 +329,7 @@ Query stored traces with filters, pagination, and optional summary stats.
 |-----------|------|----------|---------|-------------|
 | `agent_name` | `string` | No | -- | Filter by agent name (exact match) |
 | `framework` | `string` | No | -- | Filter by framework (exact match) |
+| `session` | `string` | No | -- | The turns of one conversation, as logged with `session_id` |
 | `since` | `string` | No | -- | ISO 8601 timestamp lower bound |
 | `until` | `string` | No | -- | ISO 8601 timestamp upper bound |
 | `min_score` | `number` | No | -- | Minimum eval score filter |
@@ -568,6 +570,8 @@ Deterministic, local, no model call.
 |-----------|------|----------|-------------|
 | `run` | `string` | No | Narrow to one run; omit to read every evaluation that carries a case key |
 | `case_key` | `string` | No | Narrow to a single case — the fastest way to ask "is this one question flaky?" |
+| `session` | `string` | No | Narrow to one session (the turns logged with that `session_id`) |
+| `group_by` | `string` | No | `case_key` (default): repeats of one question; `session`: the turns of one conversation — a session answered both ways reads as flaky, and `by_case` rows carry session ids |
 | `min_attempts` | `number` | No | Ignore cases asked fewer than this many times (default 1). A case asked once cannot be shown to be flaky |
 | `question` | `enum` | No | Read the rate for ONE question (0.15.0): `safe_output`, `grounded`, `complete`, `relevant`, `task_completed`, `tool_use_correct` or `within_budget`. Only evaluations that judged it count, and an attempt passes when every rule answering it passed — not the composed verdict. The response echoes it as `question` |
 
@@ -929,6 +933,7 @@ List traces with filtering and pagination.
 |-----------|------|---------|-------------|-------------|
 | `agent_name` | `string` | -- | -- | Filter by agent name |
 | `framework` | `string` | -- | -- | Filter by framework |
+| `session` | `string` | -- | -- | The turns of one conversation, as logged with `session_id` |
 | `since` | `string` | -- | ISO 8601 timestamp or date | Timestamp lower bound (inclusive) |
 | `until` | `string` | -- | ISO 8601 timestamp or date; not earlier than `since` | Timestamp upper bound (inclusive) |
 | `min_score` | `number` | -- | 0..1; not above `max_score` | Minimum latest-eval score |

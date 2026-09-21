@@ -77,6 +77,31 @@ export function storedTraceContext(metadata: Record<string, unknown> | undefined
   return traceContextFrom(bag, { sessionId: typeof bag.mcp_session_id === 'string' ? bag.mcp_session_id : undefined });
 }
 
+/**
+ * The session named in the baggage (arc 9, N-15): W3C baggage is
+ * `key=value;prop,key=value`, percent-encoded; `session_id` is the member
+ * Iris reads (the name SEP-414's examples use). Undefined when there is no
+ * baggage or no such member.
+ */
+export function sessionFromBaggage(context: TraceContext | undefined): string | undefined {
+  const baggage = context?.baggage;
+  if (baggage === undefined) return undefined;
+  for (const member of baggage.split(',')) {
+    const [pair] = member.split(';');
+    const eq = pair.indexOf('=');
+    if (eq <= 0) continue;
+    const key = pair.slice(0, eq).trim();
+    if (key !== 'session_id') continue;
+    try {
+      const value = decodeURIComponent(pair.slice(eq + 1).trim());
+      return value.length > 0 ? value.slice(0, 200) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 /** Metadata with the context written under one key, leaving everything else the caller sent. */
 export function withTraceContext(metadata: Record<string, unknown> | undefined, context: TraceContext | undefined): Record<string, unknown> | undefined {
   if (!context) return metadata;

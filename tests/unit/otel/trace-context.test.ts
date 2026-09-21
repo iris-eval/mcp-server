@@ -3,7 +3,7 @@
  */
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { parseTraceparent, traceContextFrom, traceContextOfCall, storedTraceContext, withTraceContext } from '../../../src/otel/trace-context.js';
+import { parseTraceparent, sessionFromBaggage, traceContextFrom, traceContextOfCall, storedTraceContext, withTraceContext } from '../../../src/otel/trace-context.js';
 import { buildExportPayload } from '../../../src/otel/mapper.js';
 import { OtelExporter } from '../../../src/otel/exporter.js';
 import type { Trace } from '../../../src/types/trace.js';
@@ -41,6 +41,14 @@ describe('traceContextFrom', () => {
     expect(traceContextOfCall({ _meta: { traceparent: TP } })).not.toHaveProperty('mcp_session_id');
     expect(traceContextOfCall({ sessionId: 'sess-1' })).toBeUndefined();
     expect(traceContextOfCall(undefined)).toBeUndefined();
+  });
+  it('sessionFromBaggage reads the session_id member of the baggage, percent-decoded, and nothing else', () => {
+    expect(sessionFromBaggage(traceContextFrom({ traceparent: TP, baggage: 'session_id=s-9' }))).toBe('s-9');
+    expect(sessionFromBaggage(traceContextFrom({ traceparent: TP, baggage: 'user=u1;prop=1, session_id=conv%2042 ,other=x' }))).toBe('conv 42');
+    expect(sessionFromBaggage(traceContextFrom({ traceparent: TP, baggage: 'user=u1' }))).toBeUndefined();
+    expect(sessionFromBaggage(traceContextFrom({ traceparent: TP }))).toBeUndefined();
+    expect(sessionFromBaggage(undefined)).toBeUndefined();
+    expect(sessionFromBaggage(traceContextFrom({ traceparent: TP, baggage: 'session_id=' }))).toBeUndefined();
   });
   it('withTraceContext writes one key and leaves the rest; storedTraceContext reads it back', () => {
     const meta = withTraceContext({ requestId: 'r-9' }, traceContextFrom({ traceparent: TP }));

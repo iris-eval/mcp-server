@@ -161,6 +161,8 @@ export interface CaseResultRow {
   evalId: string;
   traceId: string | null;
   caseKey: string | null;
+  /** The conversation the trace belongs to (arc 9, N-15); null when it carried none. */
+  sessionId: string | null;
   runId: string | null;
   passed: boolean;
   createdAt: string;
@@ -275,8 +277,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
     assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertSpanStmt = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
@@ -310,6 +312,7 @@ export class SqliteAdapter implements IStorageAdapter {
          */
         resolveCaseKey(t.case_key, t.input),
         t.source ?? null,
+        t.session_id ?? null,
       );
 
       if (t.spans) {
@@ -370,6 +373,10 @@ export class SqliteAdapter implements IStorageAdapter {
     if (filter?.framework) {
       conditions.push('framework = ?');
       params.push(filter.framework);
+    }
+    if (filter?.session_id !== undefined) {
+      conditions.push('session_id = ?');
+      params.push(filter?.session_id);
     }
     if (filter?.since) {
       conditions.push('timestamp >= ?');
@@ -862,10 +869,15 @@ export class SqliteAdapter implements IStorageAdapter {
    * attempt is a real attempt — collapsing them would erase the very
    * repetition being measured.
    */
-  async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string; question?: QuestionId } = {}): Promise<CaseResultRow[]> {
+  async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string; question?: QuestionId; session?: string; groupBy?: 'case_key' | 'session' } = {}): Promise<CaseResultRow[]> {
     assertTenant(tenantId);
-    const where: string[] = ['e.tenant_id = ?', 't.case_key IS NOT NULL'];
+    // Grouped by session (arc 9, N-15), a turn without a case key still counts; grouped by case, a turn without one never did.
+    const where: string[] = ['e.tenant_id = ?', filter.groupBy === 'session' ? 't.session_id IS NOT NULL' : 't.case_key IS NOT NULL'];
     const params: unknown[] = [tenantId];
+    if (filter.session !== undefined) {
+      where.push('t.session_id = ?');
+      params.push(filter.session);
+    }
     if (filter.run !== undefined) {
       where.push('COALESCE(e.run_id, t.run_id) = ?');
       params.push(filter.run);
@@ -876,7 +888,7 @@ export class SqliteAdapter implements IStorageAdapter {
     }
     const rows = this.db
       .prepare(
-        `SELECT e.id, e.trace_id, e.passed, e.created_at, e.rule_results, t.case_key, COALESCE(e.run_id, t.run_id) AS run_id
+        `SELECT e.id, e.trace_id, e.passed, e.created_at, e.rule_results, t.case_key, t.session_id, COALESCE(e.run_id, t.run_id) AS run_id
            FROM eval_results e
            JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
           WHERE ${where.join(' AND ')}
@@ -897,6 +909,7 @@ export class SqliteAdapter implements IStorageAdapter {
         evalId: String(row.id),
         traceId: (row.trace_id as string | null) ?? null,
         caseKey: (row.case_key as string | null) ?? null,
+        sessionId: (row.session_id as string | null) ?? null,
         runId: (row.run_id as string | null) ?? null,
         passed,
         createdAt: String(row.created_at),
@@ -1666,6 +1679,7 @@ export class SqliteAdapter implements IStorageAdapter {
       tools: row.tools ? JSON.parse(row.tools as string) : undefined,
       run_id: (row.run_id as string | null) ?? undefined,
       case_key: (row.case_key as string | null) ?? undefined,
+      ...(row.session_id != null ? { session_id: row.session_id as string } : {}),
       ...(row.source != null ? { source: row.source as Trace['source'] } : {}),
     };
   }

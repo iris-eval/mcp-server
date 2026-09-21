@@ -35,6 +35,7 @@ const caseRowSchema = z.looseObject({
 
 export const compareTracesOutputSchema = z.looseObject({
   case_key: z.string().nullable().describe('set when one case was asked for'),
+  group_by: z.enum(['case_key', 'session']).describe('what a row is: a question, or a conversation'),
   question: z.string().nullable().describe('the one question the rates were read for, or null for the composed verdict'),
   cases: z.number().describe('distinct questions counted'),
   attempts: z.number().describe('total evaluations, repeats included'),
@@ -78,6 +79,8 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
       inputSchema: strictInput({
         run: z.string().optional().describe('narrow to one run; omit to read every evaluation that carries a case key'),
         case_key: z.string().optional().describe('narrow to a single case — the fastest way to ask "is this one question flaky?"'),
+        session: z.string().optional().describe('narrow to one session (the turns logged with that session_id)'),
+        group_by: z.enum(['case_key', 'session']).optional().describe('case_key (default): repeats of one question; session: the turns of one conversation, so a session answered both ways reads as flaky and by_case rows carry session ids'),
         min_attempts: z.number().int().min(1).optional().describe('ignore cases asked fewer than this many times (default 1). A case asked once cannot be shown to be flaky'),
         question: z
           .enum(['safe_output', 'grounded', 'complete', 'relevant', 'task_completed', 'tool_use_correct', 'within_budget'])
@@ -93,17 +96,19 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
       },
     },
     guarded(async (args) => {
-      const rows = await storage.getCaseResults(LOCAL_TENANT, { run: args.run, caseKey: args.case_key, question: args.question });
+      const groupBy = args.group_by ?? 'case_key';
+      const rows = await storage.getCaseResults(LOCAL_TENANT, { run: args.run, caseKey: args.case_key, question: args.question, session: args.session, groupBy });
       const minAttempts = args.min_attempts ?? 1;
 
       const grouped = new Map<string, { passed: number; attempts: number; runs: Set<string> }>();
       for (const r of rows) {
-        if (r.caseKey === null) continue;
-        const g = grouped.get(r.caseKey) ?? { passed: 0, attempts: 0, runs: new Set<string>() };
+        const key = groupBy === 'session' ? r.sessionId : r.caseKey;
+        if (key === null) continue;
+        const g = grouped.get(key) ?? { passed: 0, attempts: 0, runs: new Set<string>() };
         g.attempts += 1;
         if (r.passed) g.passed += 1;
         if (r.runId) g.runs.add(r.runId);
-        grouped.set(r.caseKey, g);
+        grouped.set(key, g);
       }
 
       const cases = [...grouped.entries()]
@@ -131,7 +136,9 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
       const pct = (v: number): string => `${(v * 100).toFixed(1)}%`;
       const summary =
         cases.length === 0
-          ? 'No evaluations carry a case key for that filter. Pass case_key on log_trace, or send an input — a key is derived from it — and the repeats become comparable.'
+          ? groupBy === 'session'
+            ? 'No evaluations carry a session id for that filter. Pass session_id on log_trace, or send it as the SEP-414 baggage member, and the turns of a conversation become comparable.'
+            : 'No evaluations carry a case key for that filter. Pass case_key on log_trace, or send an input — a key is derived from it — and the repeats become comparable.'
           : [
               `${cases.length} case${cases.length === 1 ? '' : 's'} across ${attempts} attempt${attempts === 1 ? '' : 's'}.`,
               boot ? `Pass rate ${pct(boot.rate)}, 95% interval [${pct(boot.lo)}, ${pct(boot.hi)}] over CASES.` : '',
@@ -147,6 +154,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
 
       return respond(compareTracesOutputSchema, {
         case_key: args.case_key ?? null,
+        group_by: groupBy,
         question: args.question ?? null,
         cases: cases.length,
         attempts,

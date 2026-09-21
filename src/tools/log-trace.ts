@@ -12,7 +12,7 @@ import { traceUri } from '../resources/uris.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { DormantRule } from '../eval/dormant.js';
 import { evaluateStoredTrace } from '../eval/ingest.js';
-import { traceContextOfCall, withTraceContext } from '../otel/trace-context.js';
+import { sessionFromBaggage, traceContextOfCall, withTraceContext } from '../otel/trace-context.js';
 import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import { irisError } from './errors.js';
 
@@ -175,6 +175,7 @@ export const logTraceInputShape = {
   tools: toolsCatalogueSchema.optional().describe('What the agent COULD have called — your MCP tools/list result, pasted verbatim: [{ name, description?, inputSchema, annotations? }]. Stored on the trace and reused by evaluate_output when given this trace_id. Without it a tool call can be seen but not CHECKED, and the rules that judge argument validity skip rather than pass'),
   run: z.string().optional().describe('Name the batch this execution belongs to — a CI job id, a nightly sweep, an afternoon of manual pokes. Two runs of the same agent can then be compared with compare_runs. Never inferred: a guessed grouping produces a comparison nobody can act on'),
   case_key: z.string().optional().describe('What makes this the same QUESTION as a trace in another run — a fixture name, a test id. Supplying it PAIRS the two, and a paired comparison sees a regression an unpaired one cannot. Omit it and a key is derived from the input, so pairing still works'),
+  session_id: z.string().min(1).max(200).optional().describe('The conversation this turn belongs to — the same id on every turn groups them: the trace drawer shows the other turns, get_traces filters by session, compare_traces can group by it. Read from the SEP-414 baggage session_id when omitted'),
   spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events); a span without start_time takes the trace timestamp'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
   /*
@@ -287,6 +288,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         tools: args.tools,
         run_id: args.run,
         case_key: args.case_key,
+        session_id: args.session_id ?? sessionFromBaggage(traceContext),
         source: 'tool' as const,
         spans: args.spans?.map((s) => ({
           ...s,

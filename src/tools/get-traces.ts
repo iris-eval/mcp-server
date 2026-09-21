@@ -69,6 +69,7 @@ export function addTraceRangeIssues(args: TraceRangeArgs, ctx: z.RefinementCtx):
 const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards)'),
   framework: z.string().optional().describe('Filter by agent framework — exact match (e.g., langchain, autogen)'),
+  session: z.string().optional().describe('Filter by session id — the turns of one conversation, as logged with session_id'),
   since: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) lower bound — return traces with timestamp >= this; anything that is not an ISO timestamp is rejected, never treated as "no bound"'),
   until: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) upper bound — return traces with timestamp <= this; must not be earlier than `since`'),
   min_score: z.number().min(0).max(1).optional().describe('Minimum eval score filter (0..1; values outside are rejected) — applied to LATEST eval per trace, not all evals; must be <= max_score when both are set'),
@@ -132,6 +133,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         filter: {
           agent_name: args.agent_name,
           framework: args.framework,
+          session_id: args.session,
           since: args.since,
           until: args.until,
           min_score: args.min_score,

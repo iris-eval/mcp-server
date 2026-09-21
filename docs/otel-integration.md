@@ -205,7 +205,7 @@ Each OTLP trace id becomes one Iris trace with its spans, read from the [GenAI s
 | `input` | `iris.input`, `gen_ai.input.messages`, `gen_ai.prompt`, OpenInference `input.value`, Traceloop `traceloop.entity.input`, Vercel `ai.prompt` — on the root span, then any span in start order; then Traceloop's indexed `gen_ai.prompt.N.content` joined in order; then a `gen_ai.content.prompt` event |
 | `output` | the same for `iris.output`, `gen_ai.output.messages`, `gen_ai.completion`, `output.value`, `traceloop.entity.output`, `ai.response.text`, indexed `gen_ai.completion.N.content`, `gen_ai.content.completion` |
 | `metadata.model` | `gen_ai.request.model`, `gen_ai.response.model`, OpenInference `llm.model_name`, `llm.request.model`, Vercel `ai.model.id` — what the judge's same-family check reads |
-| `metadata.session_id` | resource or span `gen_ai.conversation.id`, `session.id` |
+| `session_id` | resource or span `gen_ai.conversation.id`, `session.id` — the trace's session (arc 9, N-15): the drawer shows the other turns, `GET /api/v1/traces?session=` lists them |
 | `tools` | `gen_ai.tool.definitions` (a JSON list of `{ name, description, inputSchema \| parameters }`) — the catalogue `valid_tool_arguments` checks against |
 | `token_usage` | `gen_ai.usage.input_tokens` / `output_tokens` (the older `prompt_tokens` / `completion_tokens`, `iris.*_tokens`, OpenInference `llm.token_count.prompt` / `completion`, Semantic Kernel `gen_ai.response.prompt_tokens` / `completion_tokens`, Vercel `ai.usage.promptTokens` / `completionTokens`) — summed over the LEAF carriers only, so a framework that puts the run's totals on `invoke_agent` beside `chat` children that carry their own is counted once; Pydantic AI's whole-run `gen_ai.aggregated_usage.*` is the answer when present |
 | `cost_usd` | `iris.cost_usd`, `gen_ai.usage.cost`, `llm.usage.total_cost`, summed |
@@ -222,7 +222,7 @@ Every vocabulary above is held by a fixture in [`tests/fixtures/otlp/conventions
 | Framework | Fixture | What a buyer will test |
 |---|---|---|
 | Pydantic AI | `pydantic-ai.otlp.json` | `gen_ai.aggregated_usage.*` is the run's usage; the per-call `chat` usage is not added to it; cache-read tokens stay on the span |
-| Google ADK | `google-adk.otlp.json` | `gen_ai.agent.name` names the agent when the resource has no `service.name`; `gen_ai.conversation.id` → `metadata.session_id`; `gen_ai.tool.definitions` → `tools[]` |
+| Google ADK | `google-adk.otlp.json` | `gen_ai.agent.name` names the agent when the resource has no `service.name`; `gen_ai.conversation.id` → `session_id`; `gen_ai.tool.definitions` → `tools[]` |
 | LangGraph via LangSmith's OTel export | `langsmith.otlp.json` | `langsmith.span.kind` finds the `tool` and `llm` spans; content in `gen_ai.prompt` / `gen_ai.completion` |
 | CrewAI via OpenInference | `crewai-openinference.otlp.json` | `input.value` / `output.value`, `llm.token_count.*`, `llm.model_name`, `session.id`, `openinference.span.kind` |
 | OpenLLMetry (Traceloop) | `traceloop.otlp.json` | `traceloop.entity.input` / `output`, `traceloop.span.kind = tool`, indexed `gen_ai.prompt.N.content`, `llm.usage.total_tokens` |
