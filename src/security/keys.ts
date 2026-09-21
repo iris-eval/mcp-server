@@ -20,12 +20,21 @@
  *                        it is removed or expires; a key past `expiresAt`
  *                        stops matching at that instant, no restart needed.
  *
- * Matching is one shape for every key: the candidate is hashed and compared
- * to every stored hash with `timingSafeEqual` on 32-byte buffers, the whole
- * ring every time — the compare does not depend on the candidate's length,
- * on which key matched, or on whether any did. The ring is built once at
- * boot (`buildKeyRing`), which is also when a missing or empty key file, a
- * malformed hash or a duplicate id refuses startup with a sentence.
+ * Matching walks the whole ring on every candidate and compares with
+ * `timingSafeEqual` on same-width buffers, so the compare depends neither
+ * on the candidate's length, nor on which key matched, nor on whether any
+ * did. A plaintext key (apiKey, apiKeyFile, keyFile) is compared padded —
+ * the candidate copied into a buffer of the key's width, the widths
+ * compared separately, both results computed before they are combined —
+ * the same shape middleware/auth.ts has used since #135. A `keyHash` key is
+ * compared as the sha256 of the CANDIDATE against the stored digest. The
+ * configured key itself is never hashed: CodeQL's password-hash rule cannot
+ * tell "hash a credential for storage" (where sha256 is wrong) from "hash
+ * for a constant-time compare" (where it is the idiom), and #135's record
+ * (feedback_codeql_password_hash) is that no keyed variant clears it. The
+ * ring is built once at boot (`buildKeyRing`), which is also when a missing
+ * or empty key file, a malformed hash or a duplicate id refuses startup
+ * with a sentence.
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -47,18 +56,14 @@ export interface KeyRing {
   match(candidate: string, now?: number): string | null;
 }
 
-interface Entry {
-  id: string;
-  hash: Buffer;
-  expiresAt: number | null;
-}
+type Entry = { id: string; expiresAt: number | null } & ({ kind: 'plain'; raw: Buffer } | { kind: 'hash'; digest: Buffer });
 
 /** Whether ANY key is configured — the bind policy's question, answerable without reading a file. */
 export function hasAnyApiKey(security: Pick<SecurityConfig, 'apiKey' | 'apiKeyFile' | 'apiKeys'>): boolean {
   return Boolean(security.apiKey) || Boolean(security.apiKeyFile) || (security.apiKeys?.length ?? 0) > 0;
 }
 
-/** The sha256 of a key as lowercase hex — what `security.apiKeys[].keyHash` holds. */
+/** The sha256 of a value as lowercase hex — the recipe for `security.apiKeys[].keyHash` (`openssl dgst -sha256`). */
 export function sha256Hex(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
@@ -87,6 +92,15 @@ function parseExpiry(value: string | undefined, id: string): number | null {
   return ms;
 }
 
+/** Padded compare against a plaintext key: same-width buffers, width checked separately, neither short-circuiting the other. */
+function plainEquals(candidate: Buffer, key: Buffer): boolean {
+  const padded = Buffer.alloc(key.length);
+  candidate.copy(padded, 0, 0, key.length);
+  const cmpEq = timingSafeEqual(padded, key);
+  const lenEq = candidate.length === key.length;
+  return cmpEq && lenEq;
+}
+
 /**
  * Build the ring from the config. Reads key files here, once, so a bad path
  * is a startup sentence rather than a 403 later. `read` is injectable for
@@ -98,10 +112,13 @@ export function buildKeyRing(
 ): KeyRing {
   const entries: Entry[] = [];
   const seen = new Set<string>();
-  const add = (id: string, key: string, expiresAt: number | null): void => {
+  const claim = (id: string): void => {
     if (seen.has(id)) throw new Error(`security.apiKeys: two keys carry the id "${id}"; ids must be unique (the single security.apiKey / IRIS_API_KEY is "${PRIMARY_KEY_ID}").`);
     seen.add(id);
-    entries.push({ id, hash: createHash('sha256').update(key, 'utf8').digest(), expiresAt });
+  };
+  const addPlain = (id: string, key: string, expiresAt: number | null): void => {
+    claim(id);
+    entries.push({ id, expiresAt, kind: 'plain', raw: Buffer.from(key, 'utf8') });
   };
 
   if (security.apiKey && security.apiKeyFile) {
@@ -109,8 +126,8 @@ export function buildKeyRing(
       'security.apiKey (IRIS_API_KEY / --api-key) and security.apiKeyFile (IRIS_API_KEY_FILE) are both set — one primary key, from one place. Further keys go in security.apiKeys.',
     );
   }
-  if (security.apiKey) add(PRIMARY_KEY_ID, security.apiKey, null);
-  else if (security.apiKeyFile) add(PRIMARY_KEY_ID, readKeyFile(security.apiKeyFile, 'the API key file (IRIS_API_KEY_FILE / security.apiKeyFile)', read), null);
+  if (security.apiKey) addPlain(PRIMARY_KEY_ID, security.apiKey, null);
+  else if (security.apiKeyFile) addPlain(PRIMARY_KEY_ID, readKeyFile(security.apiKeyFile, 'the API key file (IRIS_API_KEY_FILE / security.apiKeyFile)', read), null);
 
   for (const [index, entry] of (security.apiKeys ?? []).entries()) {
     const where = `security.apiKeys[${index}]`;
@@ -124,11 +141,10 @@ export function buildKeyRing(
     const expiresAt = parseExpiry(entry.expiresAt, id);
     if (hasHash) {
       if (!HEX_64.test(entry.keyHash as string)) throw new Error(`${where} ("${id}"): keyHash must be the sha256 of the key as 64 hex characters (openssl dgst -sha256).`);
-      if (seen.has(id)) throw new Error(`security.apiKeys: two keys carry the id "${id}"; ids must be unique (the single security.apiKey / IRIS_API_KEY is "${PRIMARY_KEY_ID}").`);
-      seen.add(id);
-      entries.push({ id, hash: Buffer.from((entry.keyHash as string).toLowerCase(), 'hex'), expiresAt });
+      claim(id);
+      entries.push({ id, expiresAt, kind: 'hash', digest: Buffer.from((entry.keyHash as string).toLowerCase(), 'hex') });
     } else {
-      add(id, readKeyFile(entry.keyFile as string, `the key file for security.apiKeys "${id}"`, read), expiresAt);
+      addPlain(id, readKeyFile(entry.keyFile as string, `the key file for security.apiKeys "${id}"`, read), expiresAt);
     }
   }
 
@@ -138,11 +154,13 @@ export function buildKeyRing(
     ids: entries.map((e) => e.id),
     expired: entries.filter((e) => e.expiresAt !== null && e.expiresAt <= builtAt).map((e) => e.id),
     match(candidate: string, now: number = Date.now()): string | null {
-      const probe = createHash('sha256').update(candidate, 'utf8').digest();
+      // The candidate is the request's token, never a configured key.
+      const raw = Buffer.from(candidate, 'utf8');
+      const digest = createHash('sha256').update(raw).digest();
       let found: string | null = null;
       // Every entry, every time: the compare must not say which key matched by how long it took.
       for (const entry of entries) {
-        const equal = timingSafeEqual(probe, entry.hash);
+        const equal = entry.kind === 'hash' ? timingSafeEqual(digest, entry.digest) : plainEquals(raw, entry.raw);
         const live = entry.expiresAt === null || entry.expiresAt > now;
         if (equal && live && found === null) found = entry.id;
       }
