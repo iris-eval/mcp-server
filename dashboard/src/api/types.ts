@@ -800,6 +800,8 @@ export interface RunSummaryRow {
   rulesetHashes: string[];
   startedAt: string | null;
   lastActivityAt: string | null;
+  /** Pinned as the baseline every later run is compared against (arc 9, N-14); at most one per tenant. */
+  baseline: boolean;
 }
 
 /** GET /api/v1/runs/:id → results[]: one evaluation per trace, the most recent. */
@@ -848,7 +850,8 @@ export interface CaseResponse {
 
 /** POST /api/v1/compare body — the compare_runs tool's input. */
 export interface CompareRunsRequest {
-  before: string;
+  /** Omitted: the run pinned as the baseline. */
+  before?: string;
   after: string;
   force?: boolean;
   /** δ for the equivalence test, as a difference in pass rate in (0, 1]; absent, the smallest detectable difference. */
@@ -910,5 +913,17 @@ export interface CompareRunsResult {
   rules_tested: number;
   regressions: CompareRuleDelta[];
   improvements: CompareRuleDelta[];
+  /** The paired cases that disagreed, regressions first (arc 9, N-14); absent from an older server. */
+  discordant?: CompareDiscordantCase[];
+  discordant_total?: number;
   summary: string;
+}
+
+/** One case whose verdict flipped between the two runs, with the rules that flipped and the ids to open the moment. */
+export interface CompareDiscordantCase {
+  case_key: string;
+  before: { eval_id: string; trace_id: string | null; passed: boolean };
+  after: { eval_id: string; trace_id: string | null; passed: boolean };
+  direction: 'regressed' | 'recovered';
+  rules: Array<{ rule: string; before: boolean; after: boolean }>;
 }

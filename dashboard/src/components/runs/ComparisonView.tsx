@@ -241,6 +241,56 @@ export function ComparisonView({ result }: { result: CompareRunsResult }) {
           <DataTable columns={columns} data={movement} emptyMessage="No rule moved" />
         </div>
       )}
+      {result.discordant !== undefined && result.discordant.length > 0 && (
+        <div style={{ marginTop: 'var(--space-4)' }} data-discordant-count={result.discordant_total ?? result.discordant.length}>
+          <div style={styles.perRuleHead}>
+            <h3 style={{ margin: 0, fontSize: 'var(--text-body)' }}>Cases that disagreed</h3>
+            <Tooltip content="The paired cases whose verdict flipped between the runs — the b + c McNemar counts, named. Regressions first. Each row opens the evaluation it flipped to.">
+              <span style={styles.muted} tabIndex={0}>
+                {result.discordant_total ?? result.discordant.length} case{(result.discordant_total ?? result.discordant.length) === 1 ? '' : 's'}
+                {(result.discordant_total ?? 0) > result.discordant.length ? ` · first ${result.discordant.length}` : ''}
+              </span>
+            </Tooltip>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left' }}>Case</th>
+                <th style={{ textAlign: 'left' }}>Went</th>
+                <th style={{ textAlign: 'left' }}>Rules that flipped</th>
+                <th style={{ textAlign: 'left' }}>Open</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.discordant.map((d) => {
+                const target = d.after.trace_id ?? d.before.trace_id;
+                return (
+                  <tr key={d.case_key} data-discordant-row={d.case_key} data-discordant-direction={d.direction}>
+                    <td>
+                      <Link to={`/cases/${encodeURIComponent(d.case_key)}`} style={styles.mono}>
+                        {d.case_key}
+                      </Link>
+                    </td>
+                    <td style={{ color: d.direction === 'regressed' ? 'var(--eval-fail)' : 'var(--eval-pass)' }}>
+                      {d.direction === 'regressed' ? 'pass → fail' : 'fail → pass'}
+                    </td>
+                    <td style={styles.mono}>{d.rules.length === 0 ? <span style={styles.muted}>the verdict alone</span> : d.rules.map((r) => r.rule).join(', ')}</td>
+                    <td>
+                      {target ? (
+                        <Link to={`/traces/${encodeURIComponent(target)}`} data-discordant-open={d.case_key}>
+                          the moment
+                        </Link>
+                      ) : (
+                        <span style={styles.muted}>no trace</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

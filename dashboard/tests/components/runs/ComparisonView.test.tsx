@@ -157,3 +157,35 @@ describe('ComparisonView (D-5)', () => {
     expect((await axe(container)).violations).toEqual([]);
   });
 });
+
+describe('the discordant cases (N-14)', () => {
+  it('renders each flipped case, regressions first, with the rules that flipped and a link to the moment', () => {
+    const result: CompareRunsResult = {
+      ...worse,
+      discordant_total: 2,
+      discordant: [
+        { case_key: 'case-5', before: { eval_id: 'e1', trace_id: 't-before-5', passed: false }, after: { eval_id: 'e2', trace_id: 't-after-5', passed: true }, direction: 'recovered', rules: [{ rule: 'no_pii', before: false, after: true }] },
+        { case_key: 'case-1', before: { eval_id: 'e3', trace_id: 't-before-1', passed: true }, after: { eval_id: 'e4', trace_id: 't-after-1', passed: false }, direction: 'regressed', rules: [{ rule: 'min_output_length', before: true, after: false }] },
+      ],
+    };
+    const { container } = render(
+      <MemoryRouter>
+        <ComparisonView result={result} />
+      </MemoryRouter>,
+    );
+    const rows = container.querySelectorAll('[data-discordant-row]');
+    expect(rows).toHaveLength(2);
+    expect(container.querySelector('[data-discordant-count]')?.getAttribute('data-discordant-count')).toBe('2');
+    expect(container.querySelector('[data-discordant-row="case-1"]')?.textContent).toContain('min_output_length');
+    expect(container.querySelector('[data-discordant-open="case-1"]')?.getAttribute('href')).toBe('/traces/t-after-1');
+  });
+
+  it('renders nothing for an answer without the list (an older server)', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <ComparisonView result={worse} />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector('[data-discordant-count]')).toBeNull();
+  });
+});

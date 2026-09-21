@@ -9,13 +9,17 @@ import { IrisError } from '../../tools/errors.js';
 /** The body of POST /compare: the compare_runs tool's input, and nothing the tool would not take. */
 const compareBodySchema = z
   .object({
-    before: z.string().min(1),
+    /** Omitted: the run pinned as the baseline (arc 9, N-14). */
+    before: z.string().min(1).optional(),
     after: z.string().min(1),
     force: z.boolean().optional(),
     equivalence_margin: z.number().gt(0).lte(1).optional(),
     dataset: z.string().min(1).optional(),
   })
   .strict();
+
+/** The body of PATCH /runs/:id: the one flag a run carries that is not derived. */
+const baselineBodySchema = z.object({ baseline: z.boolean() }).strict();
 
 /*
  * The read side of a comparison, over HTTP.
@@ -67,6 +71,33 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
   });
 
   /**
+   * PATCH /runs/:id (arc 9, N-14)
+   * Pin a run as the baseline every later run is compared against, or
+   * unpin it. One baseline per tenant: pinning another unpins the old one.
+   * The one write on this router, and a flag rather than a run: a run is
+   * still created by tagging traces with it.
+   */
+  router.patch('/runs/:id', async (req, res) => {
+    try {
+      const tenantId = requireTenant(req);
+      const body = baselineBodySchema.parse(req.body);
+      const run = await storage.getRun(tenantId, req.params.id);
+      if (!run) {
+        res.status(404).json({ error: 'Run not found' });
+        return;
+      }
+      await storage.setRunBaseline(tenantId, req.params.id, body.baseline);
+      res.json({ run_id: req.params.id, baseline: body.baseline });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        return;
+      }
+      throw err;
+    }
+  });
+
+  /**
    * GET /cases/:key
    * Every attempt at one case, across runs. Not collapsed: the repetition
    * IS the measurement here, which is the whole difference between this
@@ -91,6 +122,11 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
       // An unknown dataset is the caller's argument, not a server fault (arc 8, R-8).
       if (err instanceof IrisError && err.envelope.field === 'dataset') {
         res.status(404).json({ error: err.envelope.message });
+        return;
+      }
+      // `before` omitted with no baseline pinned (arc 9, N-14): the same, as a 400 that says how to pin one.
+      if (err instanceof IrisError && err.envelope.field === 'before') {
+        res.status(400).json({ error: err.envelope.message, recovery: err.envelope.recovery });
         return;
       }
       throw err;

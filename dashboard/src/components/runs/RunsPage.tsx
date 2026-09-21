@@ -3,7 +3,7 @@
  * counts and its pass rate; and the compare action — pick a baseline and a
  * candidate, and the compare_runs tool answers through POST /api/v1/compare.
  */
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { api } from '../../api/client';
 import { useRuns } from '../../api/hooks';
@@ -60,8 +60,26 @@ export function RunsPage() {
   const [comparing, setComparing] = useState(false);
   const [comparison, setComparison] = useState<CompareRunsResult | null>(null);
   const [compareError, setCompareError] = useState<ApiError | null>(null);
+  const [pinning, setPinning] = useState<string | null>(null);
 
   const runs = data?.runs ?? [];
+  const baseline = runs.find((r) => r.baseline) ?? null;
+
+  // The compare form starts from the pinned baseline (arc 9, N-14); a reader's own choice is never overwritten.
+  useEffect(() => {
+    if (baseline && before === '') setBefore(baseline.runId);
+  }, [baseline, before]);
+
+  async function pin(r: RunSummaryRow) {
+    setPinning(r.runId);
+    try {
+      await api.setRunBaseline(r.runId, !r.baseline);
+      if (!r.baseline) setBefore(r.runId);
+      refetch();
+    } finally {
+      setPinning(null);
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -89,6 +107,25 @@ export function RunsPage() {
       ),
     },
     { key: 'label', header: 'Label', render: (r) => r.label ?? <span style={styles.muted}>—</span> },
+    {
+      key: 'baseline',
+      header: 'Baseline',
+      render: (r) => (
+        <button
+          type="button"
+          className="iris-btn"
+          onClick={() => void pin(r)}
+          disabled={pinning !== null}
+          aria-pressed={r.baseline}
+          title={r.baseline ? 'The baseline every later run is compared against. Click to unpin.' : 'Pin as the baseline every later run is compared against.'}
+          data-run-pin={r.runId}
+          {...(r.baseline ? { 'data-run-baseline': r.runId } : {})}
+        >
+          {r.baseline ? 'baseline' : 'pin'}
+        </button>
+      ),
+      width: '7rem',
+    },
     { key: 'traces', header: 'Traces', render: (r) => String(r.traces), width: '6rem' },
     {
       key: 'evaluated',

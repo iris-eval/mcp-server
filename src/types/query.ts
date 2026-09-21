@@ -283,6 +283,10 @@ export interface IStorageAdapter {
   listRuns(tenantId: TenantId, limit?: number): Promise<RunSummaryRow[]>;
   /** One run, or null when nothing mentions it. */
   getRun(tenantId: TenantId, runId: string): Promise<RunSummaryRow | null>;
+  /** Pin a run as the tenant's baseline (unpinning any other), or unpin it. A run known only through its traces gets its row. */
+  setRunBaseline(tenantId: TenantId, runId: string, baseline: boolean): Promise<void>;
+  /** The pinned baseline's run id, or null. */
+  getBaselineRun(tenantId: TenantId): Promise<string | null>;
   /** Each trace in a run and whether its latest evaluation already came from the given ruleset. */
   getRunTraceEvaluationState(tenantId: TenantId, runId: string, rulesetHash: string): Promise<Array<{ traceId: string; evaluatedUnderRuleset: boolean }>>;
   getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]>;

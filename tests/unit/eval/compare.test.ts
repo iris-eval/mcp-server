@@ -11,7 +11,7 @@
  * the honest answers are worthless too, because nobody reads them.
  */
 import { describe, expect, it } from 'vitest';
-import { compareRuns } from '../../../src/eval/compare.js';
+import { MAX_DISCORDANT, compareRuns } from '../../../src/eval/compare.js';
 import type { RunResultRow } from '../../../src/storage/sqlite-adapter.js';
 
 const row = (over: Partial<RunResultRow> = {}): RunResultRow => ({
@@ -187,5 +187,58 @@ describe('the run summary carries what a reader needs to judge it', () => {
     expect(c.difference!.delta).toBeCloseTo(0.3, 10);
     expect(c.difference!.lo).toBeCloseTo(0.0294, 3);
     expect(c.difference!.hi).toBeCloseTo(0.5252, 3);
+  });
+});
+
+describe('N-14 — the discordant cases are named', () => {
+  const paired = (spec: Array<[string, boolean, string[]]>) => spec.map(([caseKey, passed, failedRules]) => row({ caseKey, passed, failedRules }));
+
+  it('lists each paired case whose verdict flipped, regressions first, with the rules that flipped and both evaluations', () => {
+    const before = paired([
+      ['case-0', true, []],
+      ['case-1', true, []],
+      ['case-2', false, ['no_pii']],
+      ['case-3', true, []],
+      ['case-5', false, ['no_pii', 'no_tool_loop']],
+    ]);
+    const after = paired([
+      ['case-0', true, []],
+      ['case-1', false, ['min_output_length']],
+      ['case-2', false, ['no_pii']],
+      ['case-3', true, []],
+      ['case-5', true, []],
+    ]);
+    const c = compareRuns('before', before, 'after', after);
+    expect(c.paired).toMatchObject({ b: 1, c: 1, concordant: 3 });
+    expect(c.discordantTotal).toBe(2);
+    expect(c.discordant.map((d) => [d.caseKey, d.direction])).toEqual([
+      ['case-1', 'regressed'],
+      ['case-5', 'recovered'],
+    ]);
+    const [regressed, recovered] = c.discordant;
+    expect(regressed.rules).toEqual([{ rule: 'min_output_length', before: true, after: false }]);
+    expect(regressed.before).toEqual({ evalId: before[1].evalId, traceId: before[1].traceId, passed: true });
+    expect(regressed.after).toEqual({ evalId: after[1].evalId, traceId: after[1].traceId, passed: false });
+    expect(recovered.rules).toEqual([
+      { rule: 'no_pii', before: false, after: true },
+      { rule: 'no_tool_loop', before: false, after: true },
+    ]);
+  });
+
+  it('is empty when the runs do not pair, and the total says so', () => {
+    const c = compareRuns('before', run(10, 8), 'after', run(10, 9));
+    expect(c.method).toBe('unpaired-newcombe');
+    expect(c.discordant).toEqual([]);
+    expect(c.discordantTotal).toBe(0);
+  });
+
+  it('caps the list and reports the whole count', () => {
+    const n = MAX_DISCORDANT + 50;
+    const before = paired(Array.from({ length: n }, (_, i) => [`case-${String(i).padStart(4, '0')}`, true, []] as [string, boolean, string[]]));
+    const after = paired(Array.from({ length: n }, (_, i) => [`case-${String(i).padStart(4, '0')}`, false, ['no_pii']] as [string, boolean, string[]]));
+    const c = compareRuns('before', before, 'after', after);
+    expect(c.discordant).toHaveLength(MAX_DISCORDANT);
+    expect(c.discordantTotal).toBe(n);
+    expect(c.discordant[0].caseKey).toBe('case-0000');
   });
 });

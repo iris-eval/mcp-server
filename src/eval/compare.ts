@@ -85,6 +85,24 @@ export interface Equivalence {
   holds: boolean;
 }
 
+/**
+ * A shared case whose verdict flipped between the runs — one of the b + c
+ * McNemar counts, named (arc 9, N-14): the two evaluations, which way it
+ * went, and the rules whose own pass/fail differ between them. The ids are
+ * what a reader needs to open the moment.
+ */
+export interface DiscordantCase {
+  caseKey: string;
+  before: { evalId: string; traceId: string | null; passed: boolean };
+  after: { evalId: string; traceId: string | null; passed: boolean };
+  /** regressed = passed before and failed after; recovered = the other way. */
+  direction: 'regressed' | 'recovered';
+  rules: Array<{ rule: string; before: boolean; after: boolean }>;
+}
+
+/** Discordant cases listed per comparison; the total is always reported. */
+export const MAX_DISCORDANT = 200;
+
 export interface Comparison {
   comparable: boolean;
   /** Present when comparable is false, or when force made it proceed anyway. */
@@ -108,6 +126,10 @@ export interface Comparison {
   /** Worst first; a rule that improved is never listed as a regression. */
   regressions: RuleDelta[];
   improvements: RuleDelta[];
+  /** The cases that disagreed, regressions first — empty when the runs do not pair. */
+  discordant: DiscordantCase[];
+  /** How many disagreed in all, when the list is capped. */
+  discordantTotal: number;
   summary: string;
 }
 
@@ -314,6 +336,8 @@ export function compareRuns(
     rulesTested: 0,
     regressions: [],
     improvements: [],
+    discordant: [],
+    discordantTotal: 0,
     summary: '',
   };
 
@@ -337,18 +361,39 @@ export function compareRuns(
   const { regressions, improvements, tested } = ruleDeltas(beforeRows, afterRows, pairing);
 
   let paired: (McNemarResult & { method: 'mcnemar-exact' }) | null = null;
+  const discordants: DiscordantCase[] = [];
   if (pairing.shared.length > 0) {
     let b = 0;
     let c = 0;
     let concordant = 0;
     for (const key of pairing.shared) {
-      const was = pairing.before.get(key)!.passed;
-      const now = pairing.after.get(key)!.passed;
-      if (was === now) concordant += 1;
-      else if (was && !now) b += 1;
+      const wasRow = pairing.before.get(key)!;
+      const nowRow = pairing.after.get(key)!;
+      const was = wasRow.passed;
+      const now = nowRow.passed;
+      if (was === now) {
+        concordant += 1;
+        continue;
+      }
+      if (was && !now) b += 1;
       else c += 1;
+      // The pair, named: which rules answered differently on the two evaluations.
+      const failedBefore = new Set(wasRow.failedRules);
+      const failedAfter = new Set(nowRow.failedRules);
+      const rules = [...new Set([...failedBefore, ...failedAfter])]
+        .filter((rule) => failedBefore.has(rule) !== failedAfter.has(rule))
+        .sort((x, y) => Number(failedBefore.has(x)) - Number(failedBefore.has(y)) || x.localeCompare(y))
+        .map((rule) => ({ rule, before: !failedBefore.has(rule), after: !failedAfter.has(rule) }));
+      discordants.push({
+        caseKey: key,
+        before: { evalId: wasRow.evalId, traceId: wasRow.traceId, passed: was },
+        after: { evalId: nowRow.evalId, traceId: nowRow.traceId, passed: now },
+        direction: was && !now ? 'regressed' : 'recovered',
+        rules,
+      });
     }
     paired = { ...mcnemarExact(b, c, concordant), method: 'mcnemar-exact' };
+    discordants.sort((x, y) => Number(y.direction === 'regressed') - Number(x.direction === 'regressed') || x.caseKey.localeCompare(y.caseKey));
   }
 
   const difference = newcombeDifference(after.passed, after.n, before.passed, before.n);
@@ -376,6 +421,8 @@ export function compareRuns(
     rulesTested: tested,
     regressions,
     improvements,
+    discordant: discordants.slice(0, MAX_DISCORDANT),
+    discordantTotal: discordants.length,
     summary: renderSummary({
       before,
       after,
