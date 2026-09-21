@@ -65,6 +65,9 @@ jobs:
       - run: cd dashboard && npm run build-storybook
 
   test:
+    # Branch protection requires the checks "test (20)" and "test (22)" by
+    # name; the native cells keep those names, the built-in cells add theirs.
+    name: ${{ matrix.driver == 'native' && format('test ({0})', matrix.node-version) || format('test ({0}, {1})', matrix.node-version, matrix.driver) }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
