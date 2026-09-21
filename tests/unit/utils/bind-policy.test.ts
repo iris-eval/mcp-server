@@ -27,7 +27,7 @@ const LOOPBACK = ['127.0.0.1', 'localhost', '::1', '[::1]'];
 
 describe('unauthenticatedBindRefusal', () => {
   it.each(NON_LOOPBACK)('refuses %s with no key, naming IRIS_API_KEY and the override', (host) => {
-    const refusal = unauthenticatedBindRefusal({ surface: 'HTTP transport', host, apiKey: undefined, allowUnauthenticated: false });
+    const refusal = unauthenticatedBindRefusal({ surface: 'HTTP transport', host, hasApiKey: false, allowUnauthenticated: false });
     expect(refusal).not.toBeNull();
     expect(refusal).toContain('IRIS_API_KEY');
     expect(refusal).toContain(ALLOW_UNAUTHENTICATED_VAR);
@@ -36,19 +36,19 @@ describe('unauthenticatedBindRefusal', () => {
   });
 
   it.each(LOOPBACK)('%s with no key is not refused (the warning path stays)', (host) => {
-    expect(unauthenticatedBindRefusal({ surface: 'dashboard', host, apiKey: undefined, allowUnauthenticated: false })).toBeNull();
+    expect(unauthenticatedBindRefusal({ surface: 'dashboard', host, hasApiKey: false, allowUnauthenticated: false })).toBeNull();
   });
 
   it.each(NON_LOOPBACK)('%s with a key is not refused', (host) => {
-    expect(unauthenticatedBindRefusal({ surface: 'dashboard', host, apiKey: 'k', allowUnauthenticated: false })).toBeNull();
+    expect(unauthenticatedBindRefusal({ surface: 'dashboard', host, hasApiKey: true, allowUnauthenticated: false })).toBeNull();
   });
 
   it.each(NON_LOOPBACK)('%s with no key but the override set on purpose is not refused', (host) => {
-    expect(unauthenticatedBindRefusal({ surface: 'HTTP transport', host, apiKey: undefined, allowUnauthenticated: true })).toBeNull();
+    expect(unauthenticatedBindRefusal({ surface: 'HTTP transport', host, hasApiKey: false, allowUnauthenticated: true })).toBeNull();
   });
 
   it('an empty-string key is no key', () => {
-    expect(unauthenticatedBindRefusal({ surface: 'dashboard', host: '0.0.0.0', apiKey: '', allowUnauthenticated: false })).not.toBeNull();
+    expect(unauthenticatedBindRefusal({ surface: 'dashboard', host: '0.0.0.0', hasApiKey: false, allowUnauthenticated: false })).not.toBeNull();
   });
 });
 
@@ -96,6 +96,10 @@ describe('validateBindPolicy — the CLI pre-flight over the whole config', () =
       dashboard: { ...defaultConfig.dashboard, enabled: true, host: '0.0.0.0' },
     };
     expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKey: 'k' } })).not.toThrow();
+    // Any configured key clears it (arc 8, R-6): a key file, or further keys by hash.
+    expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKeyFile: '/run/secrets/iris-key' } })).not.toThrow();
+    expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKeys: [{ id: 'ci', keyHash: 'a'.repeat(64) }] } })).not.toThrow();
+    expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKeys: [] } })).toThrow(/IRIS_API_KEY_FILE/);
     expect(() => validateBindPolicy({ ...open, security: { ...open.security, allowUnauthenticated: true } })).not.toThrow();
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import express from 'express';
-import { createAuthMiddleware } from '../../../src/middleware/auth.js';
+import { createAuthMiddleware, type AuthedRequest } from '../../../src/middleware/auth.js';
+import { buildKeyRing, sha256Hex } from '../../../src/security/keys.js';
 import type { IrisConfig } from '../../../src/types/config.js';
 
 function makeConfig(apiKey?: string): Pick<IrisConfig, 'security'> {
@@ -89,5 +90,66 @@ describe('auth middleware', () => {
       const { status } = await testRequest(app, '/test', { Authorization: `Bearer ${wrong}` });
       expect(status).toBe(403);
     }
+  });
+});
+
+/*
+ * The key ring behind the middleware (arc 8, R-6): several keys, each with
+ * an id the request carries afterwards; an expired key is a wrong key; the
+ * ring can be handed in (the server builds it once for both layers).
+ */
+describe('auth middleware — the key ring', () => {
+  function ringConfig(): Pick<IrisConfig, 'security'> {
+    return {
+      security: {
+        apiKey: 'old-key',
+        apiKeys: [
+          { id: 'ci-2026-10', keyHash: sha256Hex('new-key') },
+          { id: 'gone', keyHash: sha256Hex('expired-key'), expiresAt: '2020-01-01T00:00:00Z' },
+        ],
+        allowUnauthenticated: false,
+        allowedOrigins: ['http://localhost:*'],
+        rateLimit: { api: 100, mcp: 20 },
+        requestSizeLimit: '1mb',
+      },
+    };
+  }
+
+  function appWithRing(): express.Application {
+    const app = express();
+    app.use(createAuthMiddleware(ringConfig()));
+    app.get('/whoami', (req, res) => res.json({ id: (req as AuthedRequest).apiKeyId ?? null }));
+    return app;
+  }
+
+  it('every live key authenticates, and the request carries the id of the key it presented', async () => {
+    const app = appWithRing();
+    const old = await testRequest(app, '/whoami', { authorization: 'Bearer old-key' });
+    expect(old.status).toBe(200);
+    expect(old.body).toEqual({ id: 'primary' });
+    const fresh = await testRequest(app, '/whoami', { authorization: 'Bearer new-key' });
+    expect(fresh.status).toBe(200);
+    expect(fresh.body).toEqual({ id: 'ci-2026-10' });
+  });
+
+  it('an expired key and an unknown key are both 403 with the same sentence', async () => {
+    const app = appWithRing();
+    const expired = await testRequest(app, '/whoami', { authorization: 'Bearer expired-key' });
+    expect(expired.status).toBe(403);
+    expect(expired.body).toEqual({ error: 'Invalid API key' });
+    const unknown = await testRequest(app, '/whoami', { authorization: 'Bearer nope' });
+    expect(unknown.status).toBe(403);
+    expect(unknown.body).toEqual({ error: 'Invalid API key' });
+  });
+
+  it('a ring handed in is used as given, and health stays open on it', async () => {
+    const ring = buildKeyRing({ apiKeys: [{ id: 'only', keyHash: sha256Hex('k') }] });
+    const app = express();
+    app.use(createAuthMiddleware(makeConfig(undefined), ring));
+    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+    app.get('/x', (_req, res) => res.json({ ok: true }));
+    expect((await testRequest(app, '/x')).status).toBe(401);
+    expect((await testRequest(app, '/x', { authorization: 'Bearer k' })).status).toBe(200);
+    expect((await testRequest(app, '/health')).status).toBe(200);
   });
 });

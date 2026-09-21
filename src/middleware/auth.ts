@@ -1,16 +1,33 @@
-import { timingSafeEqual } from 'node:crypto';
-import type { RequestHandler } from 'express';
+import type { Request, RequestHandler } from 'express';
 import type { IrisConfig } from '../types/config.js';
+import { buildKeyRing, type KeyRing } from '../security/keys.js';
 
-export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): RequestHandler {
-  const apiKey = config.security.apiKey;
+/** A request the Bearer middleware authenticated carries the id of the key it presented. */
+export interface AuthedRequest extends Request {
+  apiKeyId?: string;
+}
 
-  if (!apiKey) {
+/**
+ * Bearer authentication over the key ring (arc 8, R-6).
+ *
+ * With no key configured anywhere this is a pass-through — the loopback
+ * bind is the exposure control, and a bind beyond loopback with no key is
+ * refused at startup (src/utils/bind-policy.ts). With keys, every request
+ * except health must carry `Authorization: Bearer <key>`; the ring hashes
+ * the candidate and compares it to every configured key in constant time
+ * (src/security/keys.ts), so the compare depends neither on the candidate's
+ * length nor on which key matched. The id of the key that matched is set
+ * on the request for the per-key rate limiter and for logs; the key itself
+ * is never stored on it.
+ *
+ * `ring` is built from the config when not given, so an embedder that
+ * calls this directly gets the same behaviour; the server builds it once
+ * and shares it with the dashboard's session layer.
+ */
+export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>, ring: KeyRing = buildKeyRing(config.security)): RequestHandler {
+  if (ring.empty) {
     return (_req, _res, next) => next();
   }
-
-  const keyBuffer = Buffer.from(apiKey);
-  const keyLen = keyBuffer.length;
 
   return (req, res, next) => {
     if (req.path === '/health' || req.path === '/api/v1/health') {
@@ -23,22 +40,12 @@ export function createAuthMiddleware(config: Pick<IrisConfig, 'security'>): Requ
       return;
     }
 
-    // Pad the incoming token to the configured-key length and run
-    // timingSafeEqual on same-size buffers. The byte-compare and the
-    // length-equality check are computed independently before being
-    // combined, so the request takes the same compare path regardless
-    // of whether the token's length matches — eliminating the precise
-    // length-equality fast-path the original code had.
-    const tokenBuffer = Buffer.from(authHeader.slice(7));
-    const candidate = Buffer.alloc(keyLen);
-    tokenBuffer.copy(candidate, 0, 0, keyLen);
-    const cmpEq = timingSafeEqual(candidate, keyBuffer);
-    const lenEq = tokenBuffer.length === keyLen;
-    if (!(cmpEq && lenEq)) {
+    const id = ring.match(authHeader.slice(7));
+    if (id === null) {
       res.status(403).json({ error: 'Invalid API key' });
       return;
     }
-
+    (req as AuthedRequest).apiKeyId = id;
     next();
   };
 }

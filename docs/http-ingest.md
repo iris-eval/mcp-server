@@ -17,7 +17,7 @@ to turn the dashboard on; `POST /api/v1/traces` is not there until you do.
 
 Two things to know before pointing production traffic at it:
 
-- **Writes are unauthenticated unless you set `--api-key` (or `IRIS_API_KEY`).** With
+- **Writes are unauthenticated unless you set `--api-key` (or `IRIS_API_KEY`, `IRIS_API_KEY_FILE`, or `security.apiKeys` in `config.json` — every configured key authenticates).** With
   no key, anything that can reach the dashboard port can store traces. The loopback
   bind and the rebinding guard are what keep that to your own machine by default; if
   you bind beyond loopback (`--dashboard-host`) you must set one — the server refuses

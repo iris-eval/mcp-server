@@ -23,6 +23,7 @@ import { refreshLocalLabels } from './eval/local-labels.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { validatePortConfig } from './utils/validate-port-config.js';
 import { validateBindPolicy } from './utils/bind-policy.js';
+import { buildKeyRing } from './security/keys.js';
 import { irisHome } from './utils/iris-home.js';
 import {
   seedDemoData,
@@ -199,6 +200,9 @@ Environment variables (CLI flags take precedence):
   IRIS_API_KEY                         API key for HTTP authentication. Required to bind the HTTP transport or the
                                        dashboard beyond loopback (0.0.0.0, a LAN address, a container): without it
                                        the server refuses to start.
+  IRIS_API_KEY_FILE                    Path to a file whose trimmed contents are the API key (the secret-file pattern
+                                       Docker and Kubernetes mount). Set this or IRIS_API_KEY, not both; further keys
+                                       and rotation: security.apiKeys in config.json.
   IRIS_ALLOW_UNAUTHENTICATED           Set to 1 to run a non-loopback bind with NO key on purpose (lifts the refusal)
   IRIS_ALLOWED_ORIGINS                 Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. http://localhost:*).
                                        HTTP transport: exact-match Origin allowlist for DNS-rebinding protection (globs ignored;
@@ -371,6 +375,10 @@ async function main(): Promise<void> {
 
   // F-006: fail fast on HTTP+dashboard port collision. See validatePortConfig.
   validatePortConfig(config);
+  // Every configured key, read now (arc 8, R-6): an unreadable key file, a
+  // malformed hash or a duplicate id is one sentence here, before any port
+  // is bound, rather than a 403 later.
+  const keyRing = buildKeyRing(config.security);
   // A6-7: refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
   validateBindPolicy(config);
 
@@ -481,10 +489,13 @@ async function main(): Promise<void> {
     );
   }
 
-  if (config.security.apiKey) {
-    logger.info('API key authentication enabled');
+  if (!keyRing.empty) {
+    logger.info(`API key authentication enabled: ${keyRing.ids.length} key(s) (${keyRing.ids.join(', ')})`);
+    for (const id of keyRing.expired) {
+      logger.warn(`API key "${id}" is past its expiresAt and will not authenticate — remove it from security.apiKeys`);
+    }
   } else if (config.transport.type === 'http') {
-    logger.warn('HTTP transport running without API key authentication — set IRIS_API_KEY for production');
+    logger.warn('HTTP transport running without API key authentication — set IRIS_API_KEY (or IRIS_API_KEY_FILE) for production');
   }
 
   const shutdown = async () => {
@@ -574,6 +585,8 @@ async function runDemo(): Promise<void> {
     auditPath: demoAuditLogPath(),
   });
   const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
+  // One structured log line per evaluation, whichever door asked (arc 8, R-6).
+  evalEngine.setObserver((event) => logger.event?.('evaluation', { ...event }));
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
     evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
   }

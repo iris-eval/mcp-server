@@ -80,5 +80,7 @@ We ask that you:
 
 - Run Iris behind a reverse proxy with TLS
 - Restrict dashboard access to trusted networks
+- Keep the API key out of the environment block: `IRIS_API_KEY_FILE` reads it from a mounted secret file, and `security.apiKeys[].keyHash` lets `config.json` hold only the sha256 of a key
+- Rotate keys without a gap: add the new key to `security.apiKeys`, restart, move the clients, remove the old key, restart; give a temporary key an `expiresAt`
 - Keep Iris updated to the latest version
 - Review eval rule configurations for your specific compliance requirements

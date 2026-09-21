@@ -14,6 +14,8 @@ import { describe, it, expect, afterEach } from 'vitest';
 import type { Server } from 'node:http';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
+import { sha256Hex } from '../../src/security/keys.js';
+import type { IrisConfig } from '../../src/types/config.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { SESSION_COOKIE } from '../../src/dashboard/session-auth.js';
 
@@ -228,3 +230,52 @@ describe('session auth — without --api-key', () => {
   });
 });
 
+/*
+ * The key ring on the dashboard (arc 8, R-6): the browser sign-in and the
+ * Bearer path both match every configured key, so a rotation — add the new
+ * key, move the clients, remove the old — never locks a browser out.
+ */
+describe('session auth — every configured key signs in', () => {
+  async function bootWithKeys(security: Partial<IrisConfig['security']>): Promise<BootedServer> {
+    const storage = new SqliteAdapter(':memory:');
+    await storage.initialize();
+    const config = {
+      ...defaultConfig,
+      dashboard: { ...defaultConfig.dashboard, port: 0 },
+      security: { ...defaultConfig.security, ...security },
+    };
+    const server = createDashboardServer(storage, config, mockLogger).start();
+    await new Promise((r) => server.once('listening', r));
+    const port = (server.address() as { port: number }).port;
+    const entry = { storage, server, base: `http://127.0.0.1:${port}` };
+    booted.push(entry);
+    return entry;
+  }
+
+  const signIn = (base: string, key: string) =>
+    fetch(`${base}/session`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: base },
+      body: new URLSearchParams({ key }).toString(),
+    });
+
+  it('the old key and the new key both sign a browser in and both pass the Bearer path; a key past its date does neither', async () => {
+    const { base } = await bootWithKeys({
+      apiKey: 'old-key',
+      apiKeys: [
+        { id: 'next', keyHash: sha256Hex('new-key') },
+        { id: 'gone', keyHash: sha256Hex('expired-key'), expiresAt: '2020-01-01T00:00:00Z' },
+      ],
+    });
+    expect((await signIn(base, 'old-key')).status).toBe(303);
+    expect((await signIn(base, 'new-key')).status).toBe(303);
+    expect((await signIn(base, 'expired-key')).status).toBe(403);
+    expect((await signIn(base, 'nope')).status).toBe(403);
+    for (const key of ['old-key', 'new-key']) {
+      expect((await fetch(`${base}/api/v1/summary`, { headers: { authorization: `Bearer ${key}` } })).status).toBe(200);
+    }
+    expect((await fetch(`${base}/api/v1/summary`, { headers: { authorization: 'Bearer expired-key' } })).status).toBe(403);
+    expect((await fetch(`${base}/api/v1/health`)).status).toBe(200);
+  });
+});

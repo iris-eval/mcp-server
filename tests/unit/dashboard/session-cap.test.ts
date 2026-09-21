@@ -22,6 +22,7 @@ import type { Server } from 'node:http';
 import { createSessionAuth, SESSION_COOKIE } from '../../../src/dashboard/session-auth.js';
 import { createAuthGateRateLimiter } from '../../../src/middleware/rate-limit.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
+import { buildKeyRing } from '../../../src/security/keys.js';
 
 const KEY = 'cap-test-key-1a2b';
 const HTML = { accept: 'text/html,application/xhtml+xml' };
@@ -43,7 +44,7 @@ async function boot(maxSessions: number): Promise<string> {
   };
   // The same per-address limiter the dashboard mounts ahead of every authorization decision.
   app.use(createAuthGateRateLimiter(defaultConfig));
-  app.use(createSessionAuth({ apiKey: KEY, bearerAuth, maxSessions }));
+  app.use(createSessionAuth({ keys: buildKeyRing({ apiKey: KEY }), bearerAuth, maxSessions }));
   app.get('/', (_req, res) => res.type('html').send('<h1>dashboard</h1>'));
   app.get('/api/v1/traces', (_req, res) => res.json({ ok: true }));
   const server = app.listen(0, '127.0.0.1');
