@@ -1157,6 +1157,10 @@ One run with its counts and provenance, plus the evaluations in it — **collaps
 
 ---
 
+### PATCH /api/v1/runs/:id
+
+Pin a run as the baseline every later run is compared against, or unpin it (arc 9, N-14). Body `{ "baseline": true | false }`, strict. One baseline per tenant: pinning another run unpins the old one. Answers `{ "run_id", "baseline" }`; 404 when nothing mentions the run. `GET /api/v1/runs` and `GET /api/v1/runs/:id` carry `baseline` on every run, and `POST /api/v1/compare` and `compare_runs` take an omitted `before` as the pinned baseline (400 with the pin recipe when none is pinned).
+
 ### GET /api/v1/cases/:key
 
 Every attempt at one case, across runs. Deliberately **not** collapsed: here the repetition is the measurement. Reports `attempts`, `passed`, `flaky` (answered both ways) and the runs involved. 404 when no evaluation carries the key.
@@ -1170,6 +1174,8 @@ Query: `run` narrows to one run.
 The `compare_runs` tool over HTTP — the same handler, the same answer — for the dashboard's compare action and for a pipeline that would rather not speak MCP. Body: `{ "before": "<run id>", "after": "<run id>", "force": false, "equivalence_margin": 0.05, "dataset": "release-gate" }` — `dataset` (0.15.0) restricts both runs to a dataset's case keys; an unknown one is `404`. (the tool's input; an unknown field is refused). Response: the tool's output — `comparable`, `incomparable_because`, `method` (`paired-mcnemar` when the runs share case keys, `unpaired-newcombe` otherwise), `before` and `after` summaries with their Wilson intervals, `difference`, `paired`, `worse`, `better`, `smallest_detectable`, `equivalent_within`, `rules_tested`, `regressions` and `improvements` per rule (each with its one-sided `p`, corrected `q`, `test` and `difference`), and a one-paragraph `summary`. An unknown run is not an error: its `n` is 0 and the summary says so. `400` names an invalid body.
 
 ---
+
+The answer also carries `discordant[]` — the paired cases whose verdict flipped, regressions first, each with both evaluations (`eval_id`, `trace_id`, `passed`), the direction and the rules whose own pass/fail differ — and `discordant_total` (the list holds at most 200). `before` may be omitted when a run is pinned as the baseline (`PATCH /api/v1/runs/:id`).
 
 ### GET /api/v1/eval-stats/drift
 

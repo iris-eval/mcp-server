@@ -106,6 +106,8 @@ export interface RunSummaryRow {
   rulesetHashes: string[];
   startedAt: string | null;
   lastActivityAt: string | null;
+  /** Pinned as the baseline every later run is compared against (arc 9, N-14); at most one per tenant. */
+  baseline: boolean;
 }
 
 /** One trace's latest evaluation inside a run — the unit a comparison counts. */
@@ -712,6 +714,7 @@ export class SqliteAdapter implements IStorageAdapter {
            SELECT i.run_id                                                                              AS run_id,
                   r.label                                                                               AS label,
                   r.reevaluation_of                                                                     AS reevaluation_of,
+                  COALESCE(r.baseline, 0)                                                               AS baseline,
                   (SELECT COUNT(*) FROM traces t WHERE t.tenant_id = ? AND t.run_id = i.run_id)         AS traces,
                   COALESCE(r.started_at,
                            (SELECT MIN(t.timestamp) FROM traces t WHERE t.tenant_id = ? AND t.run_id = i.run_id)) AS started_at,
@@ -743,9 +746,27 @@ export class SqliteAdapter implements IStorageAdapter {
         rulesetHashes: [...new Set(results.map((r) => r.rulesetHash).filter((v): v is string => v !== null))].sort(),
         startedAt: (row.started_at as string | null) ?? null,
         lastActivityAt: lastEval !== null && (lastTrace === null || lastEval > lastTrace) ? lastEval : lastTrace,
+        baseline: Number(row.baseline ?? 0) === 1,
       });
     }
     return out;
+  }
+
+  async setRunBaseline(tenantId: TenantId, runId: string, baseline: boolean): Promise<void> {
+    assertTenant(tenantId);
+    const write = this.db.transaction(() => {
+      // A run that exists only because traces carried its id gets its row here; the label stays whatever it was.
+      this.db.prepare('INSERT OR IGNORE INTO runs (run_id, tenant_id) VALUES (?, ?)').run(runId, tenantId);
+      if (baseline) this.db.prepare('UPDATE runs SET baseline = 0 WHERE tenant_id = ? AND baseline = 1').run(tenantId);
+      this.db.prepare('UPDATE runs SET baseline = ? WHERE tenant_id = ? AND run_id = ?').run(baseline ? 1 : 0, tenantId, runId);
+    });
+    write.immediate();
+  }
+
+  async getBaselineRun(tenantId: TenantId): Promise<string | null> {
+    assertTenant(tenantId);
+    const row = this.db.prepare('SELECT run_id FROM runs WHERE tenant_id = ? AND baseline = 1 LIMIT 1').get(tenantId) as { run_id: string } | undefined;
+    return row ? String(row.run_id) : null;
   }
 
   /** One run, or null when no trace, evaluation or registration mentions it. */

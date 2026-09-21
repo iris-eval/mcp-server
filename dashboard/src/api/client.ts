@@ -133,6 +133,11 @@ export const api = {
     return fetchJson<RunDetailResponse>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`);
   },
 
+  /** Pin a run as the baseline every later run is compared against, or unpin it (arc 9, N-14). */
+  setRunBaseline(runId: string, baseline: boolean): Promise<{ run_id: string; baseline: boolean }> {
+    return patchJson<{ run_id: string; baseline: boolean }>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`, { baseline });
+  },
+
   getCase(caseKey: string, run?: string): Promise<CaseResponse> {
     return fetchJson<CaseResponse>(`${API_BASE_URL}/cases/${encodeURIComponent(caseKey)}`, run ? { run } : undefined);
   },

@@ -31,6 +31,25 @@ test.describe('runs and cases', () => {
     await expect(cmp.locator('[data-rule-q]')).toHaveCount(2);
     await expect(cmp.locator('[data-equivalent-within]')).toHaveAttribute('data-equivalent-within', /true|false/);
 
+    // N-14: the discordant cases are listed — case-4 regressed, case-0 and case-7 recovered — regressions first.
+    await expect(cmp.locator('[data-discordant-row]')).toHaveCount(3);
+    await expect(cmp.locator('[data-discordant-row]').first()).toHaveAttribute('data-discordant-direction', 'regressed');
+    await expect(cmp.locator('[data-discordant-row="case-4"]')).toContainText('min_output_length');
+
+    // Pin the baseline: the compare form starts from it after a reload, and a discordant row opens the moment.
+    // Both browser projects share one server, so the click sets rather than toggles.
+    const pin = page.locator('[data-run-pin="baseline"]');
+    if ((await pin.getAttribute('aria-pressed')) !== 'true') await pin.click();
+    await expect(page.locator('[data-run-baseline="baseline"]')).toBeVisible();
+    await page.reload();
+    await expect(page.locator('[data-compare-before]')).toHaveValue('baseline');
+    await page.locator('[data-compare-after]').selectOption('candidate');
+    await page.locator('[data-compare-submit]').click();
+    await expect(page.locator('[data-comparison]')).toBeVisible();
+    await page.locator('[data-discordant-open="case-4"]').click();
+    await expect(page).toHaveURL(/\/traces\//);
+    await page.goto('/runs');
+
     await page.locator('[data-run-link="baseline"]').click();
     await expect(page.locator('[data-run-detail="baseline"]')).toBeVisible();
     await expect(page.locator('[data-run-passed]')).toHaveText('8 of 10 passed');

@@ -58,28 +58,38 @@ const equivalenceSchema = z.looseObject({
   holds: z.boolean().describe('the whole 90% interval lies inside (−δ, +δ)'),
 });
 
+const discordantSchema = z.looseObject({
+  case_key: z.string(),
+  before: z.looseObject({ eval_id: z.string(), trace_id: z.string().nullable(), passed: z.boolean() }),
+  after: z.looseObject({ eval_id: z.string(), trace_id: z.string().nullable(), passed: z.boolean() }),
+  direction: z.enum(['regressed', 'recovered']).describe('regressed: passed before, failed after'),
+  rules: z.array(z.looseObject({ rule: z.string(), before: z.boolean(), after: z.boolean() })).describe('the rules whose pass/fail differ'),
+});
+
 export const compareRunsOutputSchema = z.looseObject({
   comparable: z.boolean().describe('false when the runs measure different things'),
   incomparable_because: z.array(z.string()).describe('one sentence per reason; empty when comparable'),
   forced: z.boolean().describe('true when force compared across a boundary'),
-  method: z.enum(['paired-mcnemar', 'unpaired-newcombe', 'none']).describe('paired when the runs share case keys; paired sees changes unpaired cannot'),
+  method: z.enum(['paired-mcnemar', 'unpaired-newcombe', 'none']).describe('paired when the runs share case keys'),
   before: runSummarySchema.describe('the baseline run and its provenance'),
   after: runSummarySchema.describe('the run compared against it'),
   difference: differenceSchema.nullable().describe('after minus before, 95% Newcombe interval'),
   paired: z
     .looseObject({ method: z.string(), b: z.number(), c: z.number(), concordant: z.number(), pairs: z.number(), p_value: z.number(), significant: z.boolean() })
     .nullable()
-    .describe('McNemar exact on the disagreeing cases; null when nothing paired'),
+    .describe('McNemar exact on the disagreeing cases; null unpaired'),
   worse: z.boolean().describe('true ONLY when the evidence excludes no change; NOT the inverse of better'),
   better: z.boolean().describe('the same, in the other direction'),
   smallest_detectable: z
     .number()
     .nullable()
-    .describe('when neither: the smallest change this many cases could have detected'),
-  equivalent_within: equivalenceSchema.nullable().describe('the third answer: equivalent within a margin; null when a run is empty'),
+    .describe('when neither: the smallest change these cases could detect'),
+  equivalent_within: equivalenceSchema.nullable().describe('equivalent within a margin; null when a run is empty'),
   rules_tested: z.number().describe('rules the per-rule tests covered'),
   regressions: z.array(ruleDeltaSchema).describe('rules failing more often, worst first, with p and q'),
   improvements: z.array(ruleDeltaSchema).describe('rules failing less often, kept separate from regressions'),
+  discordant: z.array(discordantSchema).describe('the paired cases that disagreed, regressions first, with the rules that flipped'),
+  discordant_total: z.number().describe('how many disagreed; the list is capped'),
   summary: z.string().describe('the finding in prose, including what it could NOT establish'),
   dataset: z
     .looseObject({ id: z.string(), label: z.string(), version: z.number(), cases: z.number(), matched_before: z.number(), matched_after: z.number() })
@@ -93,20 +103,20 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
     {
       title: 'Compare Runs',
       description: describeTool({
-        summary: 'Did this change make the agent worse? Compares two runs of stored evaluations and answers with an interval — or says the data cannot tell, or that the runs are equivalent within a margin.',
+        summary: 'Did this change make the agent worse? Compares two runs of stored evaluations with an interval — or says the data cannot tell, or that the runs are equivalent within a margin.',
         does:
-          'Reads every evaluation in each run (most recent per trace) and compares their pass rates. ' +
-          'When the runs share case keys it PAIRS them and runs McNemar exact on the cases that disagreed, which sees a change an unpaired test of the same data cannot; otherwise it uses a Newcombe interval on two independent proportions. ' +
+          'Reads every evaluation in each run (most recent per trace) and compares pass rates. ' +
+          'When the runs share case keys it PAIRS them and runs McNemar exact on the cases that disagreed (named, with the rules that flipped), which sees a change an unpaired test cannot; else a Newcombe interval on two proportions. ' +
           'Says "not enough evidence" — with the smallest change that many cases could have seen — rather than guessing. ' +
           `Tests each rule one-sided and corrects the p-values together (Benjamini–Hochberg): a rule is marked worse only at q ≤ ${RULE_ALPHA}. ` +
           'States equivalence within equivalence_margin (default: the smallest detectable difference) when the 90% interval lies inside ±δ. ' +
-          'Refuses runs that measure different things (ruleset, configuration, engine minor, agent), naming which; force compares anyway and still names what changed. ' +
+          'Refuses runs that measure different things (ruleset, config, engine minor, agent), naming which; force compares anyway. ' +
           'Deterministic, local, no model call.',
         whenNot:
-          'To score one output (evaluate_output). To find the traces themselves (get_traces). To gate a deploy automatically: this tool reports, and whether a difference should block is your policy, not ours.',
+          'To score one output (evaluate_output). To find the traces (get_traces). To gate a deploy: this tool reports; whether a difference blocks is your policy.',
         returns: compareRunsOutputSchema,
         errors:
-          'IRIS_INVALID_ARGUMENT when a run id is empty, equivalence_margin is outside (0, 1], or dataset names none. IRIS_STORAGE_ERROR when the database cannot be read. ' +
+          'IRIS_INVALID_ARGUMENT when a run id is empty, no baseline is pinned for an omitted before, equivalence_margin is outside (0, 1], or dataset names none. IRIS_STORAGE_ERROR when the database cannot be read. ' +
           'An unknown or empty run is not an error: n is 0 and the summary says which. ' +
           ERROR_ENVELOPE_SENTENCE,
         siblings: {
@@ -117,7 +127,7 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
       }),
       inputSchema: strictInput(
         {
-          before: z.string().min(1).describe('the run id to treat as the baseline — whatever you passed as `run` on log_trace'),
+          before: z.string().min(1).optional().describe('the baseline run id (`run` on log_trace); omit to use the run pinned with PATCH /api/v1/runs/:id'),
           after: z.string().min(1).describe('the run id to compare against it'),
           force: z
             .boolean()
@@ -149,7 +159,8 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
 }
 
 export interface CompareStoredRunsArgs {
-  before: string;
+  /** Omitted: the run pinned as the baseline (arc 9, N-14). */
+  before?: string;
   after: string;
   force?: boolean;
   equivalence_margin?: number;
@@ -168,8 +179,16 @@ export async function compareStoredRuns(
   tenantId: TenantId,
   args: CompareStoredRunsArgs,
 ): Promise<z.infer<typeof compareRunsOutputSchema>> {
+  const beforeId = args.before ?? (await storage.getBaselineRun(tenantId));
+  if (beforeId === null || beforeId === undefined) {
+    throw irisError('IRIS_INVALID_ARGUMENT', 'No run is pinned as the baseline and `before` was not given.', {
+      field: 'before',
+      recovery: ['Pass before (the run id to treat as the baseline), or pin one with PATCH /api/v1/runs/:id { "baseline": true }.'],
+      retryable: false,
+    });
+  }
   const [allBefore, allAfter] = await Promise.all([
-    storage.getRunResults(tenantId, args.before),
+    storage.getRunResults(tenantId, beforeId),
     storage.getRunResults(tenantId, args.after),
   ]);
   /*
@@ -195,7 +214,7 @@ export async function compareStoredRuns(
     afterRows = allAfter.filter((r) => r.caseKey !== null && keys.has(r.caseKey));
     dataset = { id: found.id, label: found.label, version: found.version, cases: found.cases, matched_before: beforeRows.length, matched_after: afterRows.length };
   }
-  const c = compareRuns(args.before, beforeRows, args.after, afterRows, { force: args.force === true, equivalenceMargin: args.equivalence_margin });
+  const c = compareRuns(beforeId, beforeRows, args.after, afterRows, { force: args.force === true, equivalenceMargin: args.equivalence_margin });
 
   const summary = (s: typeof c.before): z.infer<typeof runSummarySchema> => ({
     run_id: s.runId,
@@ -242,6 +261,14 @@ export async function compareStoredRuns(
     rules_tested: c.rulesTested,
     regressions: c.regressions.map(rule),
     improvements: c.improvements.map(rule),
+    discordant: c.discordant.map((d) => ({
+      case_key: d.caseKey,
+      before: { eval_id: d.before.evalId, trace_id: d.before.traceId, passed: d.before.passed },
+      after: { eval_id: d.after.evalId, trace_id: d.after.traceId, passed: d.after.passed },
+      direction: d.direction,
+      rules: d.rules.map((r) => ({ ...r })),
+    })),
+    discordant_total: c.discordantTotal,
     summary: dataset
       ? `Restricted to dataset "${dataset.label}" (${dataset.cases} case${dataset.cases === 1 ? '' : 's'}): ${dataset.matched_before} row${dataset.matched_before === 1 ? '' : 's'} of ${args.before} and ${dataset.matched_after} of ${args.after} matched. ${c.summary}`
       : c.summary,
