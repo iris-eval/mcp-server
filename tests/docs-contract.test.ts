@@ -504,3 +504,29 @@ describe('docs contract — the composer is described as shipped', () => {
     }
   });
 });
+
+/*
+ * The README ships in the npm package alone — `files` is dist, LICENSE,
+ * README.md and server.json — so a relative link to docs/, examples/ or a
+ * sibling package is dead for everyone who reads it from node_modules
+ * (#369 item 1). Every link is absolute, or names a file the package
+ * carries. `cursor://` and `#anchors` are not files.
+ */
+describe('docs contract — every README link survives the npm package', () => {
+  const pkg = JSON.parse(read('package.json')) as { files: string[] };
+  const shipped = new Set(pkg.files);
+  it('the pack list is what this contract assumes', () => {
+    for (const f of ['dist', 'LICENSE', 'README.md', 'server.json']) expect(shipped.has(f), f).toBe(true);
+  });
+  it('no README link is relative to a file the package does not carry', () => {
+    const readme = read('README.md');
+    const offenders: string[] = [];
+    for (const m of readme.matchAll(/\]\(([^)\s]+)\)/g)) {
+      const target = m[1];
+      if (/^(https?:|mailto:|cursor:|vscode:|#)/.test(target)) continue;
+      const top = target.split(/[/#?]/)[0];
+      if (!shipped.has(top)) offenders.push(target);
+    }
+    expect(offenders, `relative README links to files the package does not ship: ${offenders.join(', ')}`).toEqual([]);
+  });
+});
