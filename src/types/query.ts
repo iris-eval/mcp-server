@@ -210,6 +210,17 @@ export interface EvalStatsFailure {
   timestamp: string;
 }
 
+/** One agent's spend over a window — traces, how many carried a cost, and the total, mean and largest. */
+export interface AgentCostRow {
+  agent: string;
+  traces: number;
+  costedTraces: number;
+  totalCostUsd: number;
+  /** Null when no trace carried a cost. */
+  avgCostUsd: number | null;
+  maxCostUsd: number | null;
+}
+
 export interface DashboardSummary {
   total_traces: number;
   avg_latency_ms: number;
@@ -276,6 +287,8 @@ export interface IStorageAdapter {
   listDatasets(tenantId: TenantId): Promise<DatasetSummary[]>;
   /** The distinct case keys the traces of one run carry — what `POST /api/v1/datasets` promotes. */
   caseKeysInRun(tenantId: TenantId, runId: string): Promise<string[]>;
+  /** Cost per agent since `since` (null = all time), most expensive first (arc 8, R-9: the cost_by_agent view). */
+  costByAgent(tenantId: TenantId, since: string | null, limit: number): Promise<AgentCostRow[]>;
   queryEvalResults(
     tenantId: TenantId,
     options: {

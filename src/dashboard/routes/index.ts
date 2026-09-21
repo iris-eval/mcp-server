@@ -4,6 +4,7 @@ export { registerEvaluationRoutes } from './evaluations.js';
 export { registerEvalStatsRoutes } from './eval-stats.js';
 export { registerRunRoutes } from './runs.js';
 export { registerDatasetRoutes } from './datasets.js';
+export { registerViewRoutes } from './views.js';
 export { registerFilterRoutes } from './filters.js';
 export { registerHealthRoutes } from './health.js';
 export { registerMomentRoutes } from './moments.js';

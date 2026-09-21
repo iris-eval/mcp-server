@@ -1107,6 +1107,26 @@ One dataset by id or by label, with its case keys. `404` when neither matches.
 
 ---
 
+### Views (0.15.0)
+
+Five named questions an org reader asks every week, each one read over the existing storage and the existing statistics — nothing here computes a number the tools do not, and no caller text reaches a query: the name is matched against a closed list, every parameter is a closed enum or a bounded number.
+
+`GET /api/v1/views` lists them: `{ "views": [{ "name", "answers", "path" }], "count": 5 }`. `GET /api/v1/views/:name` answers one; an unknown name is `404` (naming the five), a parameter outside its range — or one the view does not take — is `400`.
+
+Query, for every view: `period` (`24h` … `180d`, `all`; default `7d`), `limit` (1–500, default 50). `run` narrows `flaky_cases` and `regression_alarms`; `agent` narrows `regression_alarms`; `min_attempts` (1–1000, default 2) hides one-off cases in `flaky_cases`.
+
+Every answer is `{ "view", "answers", "period", "since", "params", "rows", "count", "note"?, "generated_at" }`; `rows` by view:
+
+| View | Row | Order |
+|---|---|---|
+| `failures_by_rule` | `{ rule, failed, evaluated, passRate }` — rules that failed at least once in the period | most failures first |
+| `cost_by_agent` | `{ agent, traces, costedTraces, totalCostUsd, avgCostUsd, maxCostUsd }` (`avg`/`max` null when no trace carried a cost) | most expensive first |
+| `flaky_cases` | `{ caseKey, attempts, passed, rate, runs }` — cases answered both ways with at least `min_attempts` | least reliable first |
+| `unjudged_questions` | `{ question, unjudged, judged, notApplicable, reasons: [{ why, count }] }` per question; `note` says how many evaluations were scanned (the most recent 2000 of the period) | most unjudged first |
+| `regression_alarms` | `{ agent, rule, run, traceId, p0, baselineN, monitoredN, monitoredFails, sentence }` — where an agent's CUSUM stream crossed its line; `note` says how many agents were walked (at most 200 when none is named) | by agent, rule, run |
+
+---
+
 ### GET /api/v1/runs
 
 Every run, newest first — registered runs and runs that exist only because a trace carried the id, so a caller who passed `run` on `log_trace` and nothing else still finds their run.
