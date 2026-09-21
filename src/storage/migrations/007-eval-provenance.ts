@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 export const id = '007-eval-provenance';
 
@@ -17,7 +17,7 @@ export const id = '007-eval-provenance';
  * kept here, so rows written before this migration read back the same way
  * without a backfill.
  */
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     ALTER TABLE eval_results ADD COLUMN provenance TEXT;
     ALTER TABLE eval_results ADD COLUMN engine_version TEXT;

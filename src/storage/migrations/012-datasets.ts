@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 /*
  * Datasets (arc 8, R-8; plan §8).
@@ -19,7 +19,7 @@ import type Database from 'better-sqlite3';
  */
 export const id = '012-datasets';
 
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS datasets (
       id TEXT PRIMARY KEY,

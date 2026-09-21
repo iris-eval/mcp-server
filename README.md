@@ -385,6 +385,7 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_PORT` | HTTP transport port (1-65535, default `3000`) |
 | `IRIS_HOME` | Directory for all per-user files: `config.json`, `iris.db`, `custom-rules.json`, `audit.log`, `preferences.json` (default `~/.iris`) |
 | `IRIS_DB_PATH` | SQLite database path (overrides `IRIS_HOME` for the DB only) |
+| `IRIS_SQLITE_DRIVER` | Which SQLite driver holds the database: `native` (better-sqlite3, the default) or `node` (Node's built-in `node:sqlite`, Node 22.13+). Unset: native, and when the native module cannot load Iris warns once and falls back to the built-in |
 | `IRIS_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
 | `IRIS_DASHBOARD` | `true`/`1`/`yes`/`on` enables the web dashboard; `false`/`0`/`no`/`off` disables it (also overrides `dashboard.enabled` in `config.json`) |
 | `IRIS_DASHBOARD_PORT` | Dashboard port (1-65535, default `6920`) |
@@ -506,6 +507,10 @@ npx --yes @iris-eval/mcp-server@latest
 # If installed globally
 npm update -g @iris-eval/mcp-server
 ```
+
+### The storage driver
+
+Iris keeps everything in one SQLite file, opened by `better-sqlite3` — a native addon that is downloaded or compiled for your Node and platform. **When that module cannot load, Iris falls back to Node's built-in SQLite** (`node:sqlite`, Node 22.13 or later) with one warning on stderr, so a missing prebuild is a slower start rather than a dead one; `IRIS_SQLITE_DRIVER=node` chooses the built-in on purpose, `native` forbids the fallback. The built-in is opened with extension loading off and `trusted_schema` off. `--self-test` and `GET /health` name the driver in use; every number on the proof page was measured on the native driver, and the test suite runs on both in CI.
 
 ### Node.js version
 

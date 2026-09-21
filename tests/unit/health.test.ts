@@ -45,8 +45,10 @@ describe('buildHealth', () => {
       const { status, body } = await buildHealth({ storage, version: '9.9.9', mode: 'demo' });
       expect(status).toBe(200);
       expect(body.status).toBe('ok');
-      expect(body.driver).toBe(SQLITE_DRIVER);
-      expect(body.driver).toBe('better-sqlite3');
+      // The word is the driver that holds the file — the native addon by default, the built-in when IRIS_SQLITE_DRIVER=node (the CI matrix runs both).
+      expect(body.driver).toBe(storage.driver);
+      expect(['better-sqlite3', 'node']).toContain(body.driver);
+      expect(SQLITE_DRIVER).toBe('better-sqlite3');
       expect(body.checks.storage).toBe('ok');
       expect(KNOWN_MIGRATION_IDS.length).toBeGreaterThanOrEqual(11);
       expect(body.checks.migrations).toEqual({ status: 'ok', applied: KNOWN_MIGRATION_IDS.length, known: KNOWN_MIGRATION_IDS.length });

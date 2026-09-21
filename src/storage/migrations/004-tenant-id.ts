@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 export const id = '004-tenant-id';
 
@@ -23,7 +23,7 @@ export const id = '004-tenant-id';
  * swaps from SQLite to Postgres. The tenant_id column + index
  * conventions translate 1:1.
  */
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     -- traces
     ALTER TABLE traces ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'local';

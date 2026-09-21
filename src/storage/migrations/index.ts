@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 import * as migration001 from './001-initial-schema.js';
 import * as migration002 from './002-eval-skip-fields.js';
 import * as migration003 from './003-eval-passed-index.js';
@@ -15,7 +15,7 @@ import { PKG_VERSION } from '../../config/defaults.js';
 
 interface Migration {
   id: string;
-  up(db: Database.Database): void;
+  up(db: Driver): void;
 }
 
 const migrations: Migration[] = [
@@ -50,13 +50,13 @@ export interface MigrationState {
  * R-6): the health contract reports it so an operator can see a schema is
  * behind before a query fails on a missing column. Reads only.
  */
-export function migrationState(db: Database.Database): MigrationState {
+export function migrationState(db: Driver): MigrationState {
   const applied = new Set((db.prepare('SELECT id FROM _iris_migrations').all() as Array<{ id: string }>).map((r) => r.id));
   const pending = KNOWN_MIGRATION_IDS.filter((id) => !applied.has(id));
   return { applied: KNOWN_MIGRATION_IDS.length - pending.length, known: KNOWN_MIGRATION_IDS.length, pending };
 }
 
-export function runMigrations(db: Database.Database): void {
+export function runMigrations(db: Driver): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS _iris_migrations (
       id TEXT PRIMARY KEY,

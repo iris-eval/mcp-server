@@ -19,7 +19,7 @@
  *   - DELETE operations scope to the tenant — a tenant can only delete
  *     its own data.
  */
-import Database from 'better-sqlite3';
+import { openDriver, type Driver, type DriverName } from './driver.js';
 import { resolveCaseKey } from '../eval/case-key.js';
 
 /** How long a statement waits on another connection's lock before SQLITE_BUSY — on the connection and as the pragma, one number. */
@@ -74,6 +74,8 @@ export type RedactMode = 'none' | 'critical_spans';
 export interface SqliteAdapterOptions {
   /** storage.redact — replace the spans a critical detector flagged in the stored text. */
   redact?: RedactMode;
+  /** Force a driver (tests, the self-test); unset reads IRIS_SQLITE_DRIVER, then native with the fallback. */
+  driver?: 'native' | 'node';
 }
 /** What every text field of an erased evaluation reads afterwards. */
 export const ERASED_MESSAGE = 'erased with the trace';
@@ -162,16 +164,15 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
-/**
- * The word the health contract reports for the driver behind this adapter.
- * Arc 8's R-0 adds Node's built-in SQLite as a fallback; this constant is
- * the seam that row changes.
- */
-export const SQLITE_DRIVER = 'better-sqlite3';
+/** The native driver's name — the default, and what the proof was measured on. */
+export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
 export class SqliteAdapter implements IStorageAdapter {
-  readonly driver = SQLITE_DRIVER;
-  private db: Database.Database;
+  /** Which driver holds the file (arc 8, R-0): `better-sqlite3`, or `node` when the built-in was chosen or fallen back to. */
+  get driver(): DriverName {
+    return this.db.name;
+  }
+  private db: Driver;
   private readonly dbPath: string;
 
   /** storage.redact — see SqliteAdapterOptions. */
@@ -190,7 +191,7 @@ export class SqliteAdapter implements IStorageAdapter {
      * wait at all. The migration race was closed in 0.13.0 with
      * BEGIN IMMEDIATE; the statement before it was never covered.
      */
-    this.db = new Database(dbPath, { timeout: BUSY_TIMEOUT_MS });
+    this.db = openDriver(dbPath, { timeout: BUSY_TIMEOUT_MS, ...(options?.driver ? { driver: options.driver } : {}) });
   }
 
   /** Applied against known (arc 8, R-6) — the health contract's `checks.migrations`. */

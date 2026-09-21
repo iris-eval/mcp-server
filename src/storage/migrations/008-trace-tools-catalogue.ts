@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 export const id = '008-trace-tools-catalogue';
 
@@ -31,7 +31,7 @@ export const id = '008-trace-tools-catalogue';
  * delete_trace already removes, and the critical-span redactor only rewrites
  * text a detector flagged in the output.
  */
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     ALTER TABLE traces ADD COLUMN tools TEXT;
     ALTER TABLE traces ADD COLUMN tools_hash TEXT;

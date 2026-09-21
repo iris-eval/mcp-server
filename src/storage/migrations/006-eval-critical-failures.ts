@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Driver } from '../driver.js';
 
 export const id = '006-eval-critical-failures';
 
@@ -19,7 +19,7 @@ export const id = '006-eval-critical-failures';
  * evaluations predate the veto, so "no recorded veto" is the truth rather
  * than an empty array asserting there was none.
  */
-export function up(db: Database.Database): void {
+export function up(db: Driver): void {
   db.exec(`
     ALTER TABLE eval_results ADD COLUMN critical_failures TEXT;
   `);
