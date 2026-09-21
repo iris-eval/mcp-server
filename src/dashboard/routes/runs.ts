@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { runsQuerySchema, caseQuerySchema } from '../validation.js';
 import { compareStoredRuns } from '../../tools/compare-runs.js';
+import { IrisError } from '../../tools/errors.js';
 
 /** The body of POST /compare: the compare_runs tool's input, and nothing the tool would not take. */
 const compareBodySchema = z
@@ -12,6 +13,7 @@ const compareBodySchema = z
     after: z.string().min(1),
     force: z.boolean().optional(),
     equivalence_margin: z.number().gt(0).lte(1).optional(),
+    dataset: z.string().min(1).optional(),
   })
   .strict();
 
@@ -84,6 +86,11 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        return;
+      }
+      // An unknown dataset is the caller's argument, not a server fault (arc 8, R-8).
+      if (err instanceof IrisError && err.envelope.field === 'dataset') {
+        res.status(404).json({ error: err.envelope.message });
         return;
       }
       throw err;

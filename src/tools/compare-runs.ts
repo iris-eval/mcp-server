@@ -6,6 +6,7 @@ import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { guarded, respond } from './respond.js';
 import { compareRuns, RULE_ALPHA } from '../eval/compare.js';
+import { irisError } from './errors.js';
 
 /*
  * "Did my change make it worse?"
@@ -80,6 +81,10 @@ export const compareRunsOutputSchema = z.looseObject({
   regressions: z.array(ruleDeltaSchema).describe('rules failing more often, worst first, with p and q'),
   improvements: z.array(ruleDeltaSchema).describe('rules failing less often, kept separate from regressions'),
   summary: z.string().describe('the finding in prose, including what it could NOT establish'),
+  dataset: z
+    .looseObject({ id: z.string(), label: z.string(), version: z.number(), cases: z.number(), matched_before: z.number(), matched_after: z.number() })
+    .nullable()
+    .describe('the dataset both runs were restricted to; null when none'),
 });
 
 export function registerCompareRunsTool(server: McpServer, storage: IStorageAdapter): void {
@@ -96,13 +101,13 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
           `Tests each rule one-sided and corrects the p-values together (Benjamini–Hochberg): a rule is marked worse only at q ≤ ${RULE_ALPHA}. ` +
           'States equivalence within equivalence_margin (default: the smallest detectable difference) when the 90% interval lies inside ±δ. ' +
           'Refuses runs that measure different things (ruleset, configuration, engine minor, agent), naming which; force compares anyway and still names what changed. ' +
-          'Deterministic, local, no model call. Tag traces with run and case_key on log_trace.',
+          'Deterministic, local, no model call.',
         whenNot:
           'To score one output (evaluate_output). To find the traces themselves (get_traces). To gate a deploy automatically: this tool reports, and whether a difference should block is your policy, not ours.',
         returns: compareRunsOutputSchema,
         errors:
-          'IRIS_INVALID_ARGUMENT when a run id is empty or equivalence_margin is outside (0, 1]. IRIS_STORAGE_ERROR when the database cannot be read. ' +
-          'An unknown or empty run is NOT an error: comparable is true, n is 0 and the summary says which run has no evaluations. ' +
+          'IRIS_INVALID_ARGUMENT when a run id is empty, equivalence_margin is outside (0, 1], or dataset names none. IRIS_STORAGE_ERROR when the database cannot be read. ' +
+          'An unknown or empty run is not an error: n is 0 and the summary says which. ' +
           ERROR_ENVELOPE_SENTENCE,
         siblings: {
           log_trace: 'record an execution into a run',
@@ -124,6 +129,11 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
             .lte(1)
             .optional()
             .describe('δ for the equivalence test, as a difference in pass rate (0.05 = five points). Absent: the smallest difference these sizes could detect, and the response says so'),
+          dataset: z
+            .string()
+            .min(1)
+            .optional()
+            .describe('Restrict both runs to the case keys in this dataset (its id or label — POST /api/v1/datasets promotes the case keys of a run into one). Pairing and every count then cover only those cases; the response says how many rows each run matched'),
         },
       ),
       outputSchema: compareRunsOutputSchema,
@@ -143,6 +153,8 @@ export interface CompareStoredRunsArgs {
   after: string;
   force?: boolean;
   equivalence_margin?: number;
+  /** A dataset id or label: only rows whose case key is in it are compared (arc 8, R-8). */
+  dataset?: string;
 }
 
 /**
@@ -156,10 +168,33 @@ export async function compareStoredRuns(
   tenantId: TenantId,
   args: CompareStoredRunsArgs,
 ): Promise<z.infer<typeof compareRunsOutputSchema>> {
-  const [beforeRows, afterRows] = await Promise.all([
+  const [allBefore, allAfter] = await Promise.all([
     storage.getRunResults(tenantId, args.before),
     storage.getRunResults(tenantId, args.after),
   ]);
+  /*
+   * A dataset restricts both sides to the case keys the reader chose (arc 8,
+   * R-8). No statistic changes: the same pairing, the same tests, over a
+   * chosen set of cases. Rows with no case key cannot be in a dataset and
+   * are dropped with the rest.
+   */
+  let beforeRows = allBefore;
+  let afterRows = allAfter;
+  let dataset: z.infer<typeof compareRunsOutputSchema>['dataset'] = null;
+  if (args.dataset !== undefined) {
+    const found = await storage.getDataset(tenantId, args.dataset);
+    if (!found) {
+      throw irisError('IRIS_INVALID_ARGUMENT', `No dataset has the id or label "${args.dataset}".`, {
+        field: 'dataset',
+        recovery: ['List them at GET /api/v1/datasets, or create one with POST /api/v1/datasets from the case keys of a run.'],
+        retryable: false,
+      });
+    }
+    const keys = new Set(found.caseKeys.map((k) => k.caseKey));
+    beforeRows = allBefore.filter((r) => r.caseKey !== null && keys.has(r.caseKey));
+    afterRows = allAfter.filter((r) => r.caseKey !== null && keys.has(r.caseKey));
+    dataset = { id: found.id, label: found.label, version: found.version, cases: found.cases, matched_before: beforeRows.length, matched_after: afterRows.length };
+  }
   const c = compareRuns(args.before, beforeRows, args.after, afterRows, { force: args.force === true, equivalenceMargin: args.equivalence_margin });
 
   const summary = (s: typeof c.before): z.infer<typeof runSummarySchema> => ({
@@ -207,6 +242,9 @@ export async function compareStoredRuns(
     rules_tested: c.rulesTested,
     regressions: c.regressions.map(rule),
     improvements: c.improvements.map(rule),
-    summary: c.summary,
+    summary: dataset
+      ? `Restricted to dataset "${dataset.label}" (${dataset.cases} case${dataset.cases === 1 ? '' : 's'}): ${dataset.matched_before} row${dataset.matched_before === 1 ? '' : 's'} of ${args.before} and ${dataset.matched_after} of ${args.after} matched. ${c.summary}`
+      : c.summary,
+    dataset,
   };
 }

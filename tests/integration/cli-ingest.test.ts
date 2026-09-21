@@ -131,3 +131,69 @@ describe('iris-eval ingest', () => {
     await again.close();
   }, 60_000);
 });
+
+/*
+ * --dataset restricts the gate to the case keys the reader chose (arc 8,
+ * R-8): every trace is stored and evaluated; only a trace whose case key is
+ * in the dataset can trip --fail-on, each receipt says whether it was in
+ * the gate, and the summary counts them.
+ */
+describe('iris-eval ingest — NDJSON of three or more traces', () => {
+  it('stores every line of a three-trace NDJSON file, and of the same three on stdin', async () => {
+    // Before 0.15.0 the reader took only the first complete line as a trace and buffered the rest together,
+    // so three lines died on the second with a JSON syntax error; two lines happened to work.
+    const three = [CLEAN, { ...CLEAN, input: 'What is 3+3?', output: 'Six. Three plus three is six, and that is the whole of it.' }, PII].map((t) => JSON.stringify(t)).join('\n') + '\n';
+    const file = join(home, 'traces.ndjson');
+    writeFileSync(file, three);
+    const fromFile = await run(['ingest', '--file', file]);
+    expect(fromFile.code, fromFile.stderr).toBe(0);
+    expect(lines(fromFile.stdout)).toHaveLength(3);
+    expect(fromFile.stderr).toMatch(/3 stored/);
+    const fromStdin = await run(['ingest'], three);
+    expect(fromStdin.code, fromStdin.stderr).toBe(0);
+    expect(lines(fromStdin.stdout)).toHaveLength(3);
+  }, 60_000);
+});
+
+describe('iris-eval ingest --dataset', () => {
+  async function createDataset(label: string, caseKeys: string[]): Promise<void> {
+    const storage = new SqliteAdapter(join(home, 'iris.db'));
+    await storage.initialize();
+    await storage.createDataset(LOCAL_TENANT, { label, cases: caseKeys.map((caseKey) => ({ caseKey, expected: null })) });
+    await storage.close();
+  }
+
+  it('fails the job only on a case in the dataset; a trace outside it is stored, evaluated and marked gated: false', async () => {
+    await createDataset('release-gate', ['in-gate']);
+    const ndjson = [JSON.stringify({ ...PII, case_key: 'in-gate' }), JSON.stringify({ ...PII, case_key: 'outside' }), JSON.stringify({ ...CLEAN, case_key: 'in-gate' })].join('\n');
+    const { code, stdout, stderr } = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto', '--dataset', 'release-gate'], ndjson);
+    expect(code, stderr).toBe(1);
+    const receipts = lines(stdout);
+    expect(receipts).toHaveLength(3);
+    expect(receipts[0]).toMatchObject({ gated: true, tripped: 'detector_veto' });
+    expect(receipts[1]).toMatchObject({ gated: false });
+    expect(receipts[1]).not.toHaveProperty('tripped');
+    expect(receipts[2]).toMatchObject({ gated: true });
+    expect(receipts[2]).not.toHaveProperty('tripped');
+    expect(stderr).toMatch(/3 stored, 1 tripped --fail-on detector_veto \(2 of 3 evaluated in dataset "release-gate"\)/);
+  }, 60_000);
+
+  it('a PII trace outside the dataset does not fail the job', async () => {
+    await createDataset('release-gate', ['in-gate']);
+    const { code, stdout, stderr } = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto', '--dataset', 'release-gate'], JSON.stringify({ ...PII, case_key: 'outside' }));
+    expect(code, stderr).toBe(0);
+    expect(lines(stdout)[0]).toMatchObject({ gated: false, passed: false });
+    expect(stderr).toMatch(/1 stored, 0 tripped --fail-on detector_veto \(0 of 1 evaluated in dataset "release-gate"\)/);
+  }, 60_000);
+
+  it('--dataset without --fail-on, or an unknown dataset, is a usage error before any trace is read', async () => {
+    const noGate = await run(['ingest', '--evaluate', '--dataset', 'release-gate'], JSON.stringify(CLEAN));
+    expect(noGate.code).toBe(2);
+    expect(noGate.stderr).toMatch(/--dataset restricts the gate, so it needs --fail-on/);
+    expect(noGate.stdout.trim()).toBe('');
+    const unknown = await run(['ingest', '--evaluate', '--fail-on', 'any', '--dataset', 'nope'], JSON.stringify(CLEAN));
+    expect(unknown.code).toBe(2);
+    expect(unknown.stderr).toMatch(/no dataset has the id or label "nope"/);
+    expect(unknown.stdout.trim()).toBe('');
+  }, 60_000);
+});
