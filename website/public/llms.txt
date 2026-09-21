@@ -19,6 +19,7 @@ Of 60 capability cells (10 evaluation questions by 6 subjects), 30 are answered 
 - [Proof](https://iris-eval.com/proof): how accurate the built-in evaluators are — method, per-rule results with confidence intervals, and the command to reproduce them
 - [Capabilities](https://iris-eval.com/capabilities): what Iris can judge and what it cannot yet — ten questions by six subjects, each answered cell naming its evidence
 - [Security](https://iris-eval.com/security): security posture, signed releases, disclosure policy, measured issue-close times
+- [OTel recipes](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md): one recipe per framework — Pydantic AI, Google ADK, LangGraph via LangSmith, CrewAI via OpenInference, AutoGen, Microsoft Agent Framework, Semantic Kernel, Vercel AI SDK, Mastra — the vendor's own setup lines with Iris as the OTLP endpoint, what Iris reads from each vocabulary, and the fixture in the repository that proves it
 
 ## Learn — Agent Eval Concepts
 
