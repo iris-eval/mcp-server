@@ -164,18 +164,61 @@ function graphemes(raw: string): Intl.Segments | string[] {
   return [...raw];
 }
 
+/**
+ * A lone line break or tab with a token on both sides (see insideToken): the
+ * one shape the plain-text fast path must not wave through, because it is the
+ * evasion the pass exists to fold.
+ */
+const TOKEN_BREAK = /(?:\p{N}[\n\t][-._@/:+\p{N}]|[-._@/:+][\n\t]\p{N}|\p{L}[\n\t]\p{Ll}|\p{Lu}[\n\t]\p{Lu}\p{Lu})/u;
+/** The punctuation a number or an identifier carries between its digits: 123-45-6789, 4111 1111, a@b.c, AKIA…/…. */
+const TOKEN_PUNCT = /[-._@/:+]/;
+/**
+ * Whether a character inserted between `prev` and `next` sits inside one
+ * token rather than between two. Inside a number or an identifier (a digit
+ * on either side of the punctuation it carries) it always is. Between two
+ * letters it is when the next letter is lowercase — a word continuing
+ * (previ|ous), or a capital run continuing on both sides (AKIAIOSF|ODNN…);
+ * a lone capital or a digit after the break may start a line or a column
+ * ("done" then "System:"), and line structure is meaning the injection
+ * rule reads, so that break stays.
+ */
+function insideToken(prev: string, next: string): boolean {
+  const p = prev.slice(-1);
+  const n = next.slice(0, 1);
+  const digit = /\p{N}/u;
+  if (digit.test(p) && digit.test(n)) return true;
+  if ((digit.test(p) && TOKEN_PUNCT.test(n)) || (TOKEN_PUNCT.test(p) && digit.test(n))) return true;
+  if (/\p{L}/u.test(p) && /\p{Ll}/u.test(n)) return true;
+  // A capital run continuing (AKIAIOSF|ODNN…): a capital on both sides and another after — not a new line's first word.
+  return /\p{Lu}/u.test(p) && /^\p{Lu}\p{Lu}/u.test(next);
+}
 const WHITESPACE = /\s/u;
 const LINE_BREAK = /[\n\r\u2028\u2029]/u;
 
 /** Folds `raw` for matching and returns the offset map that puts evidence back on the raw text. */
-export function normalise(raw: string): Normalised {
+export interface NormaliseOptions {
+  /**
+   * Drop a lone tab or line break inserted inside a token (see insideToken)
+   * instead of folding it to whitespace. The PATTERN rules ask for this —
+   * no_pii, no_blocklist_words, no_injection_patterns, no_injection_compliance —
+   * because the thing they match is one token an evader splits. Rules that
+   * compare TOKENS between texts (grounded_in_reads) must not: joining two
+   * hard-wrapped words in a file the agent read, but not in the answer that
+   * cites them, turns a grounded citation into a miss (measured: precision
+   * 100% → 80% when this was applied to every rule). Default off.
+   */
+  dropInsertedBreaks?: boolean;
+}
+
+export function normalise(raw: string, options: NormaliseOptions = {}): Normalised {
+  const dropBreaks = options.dropInsertedBreaks === true;
   // Already in normal form: two linear scans and no allocation at all.
-  if (PLAIN_TEXT.test(raw) && !WHITESPACE_RUN.test(raw)) return identity(raw);
+  if (PLAIN_TEXT.test(raw) && !WHITESPACE_RUN.test(raw) && !(dropBreaks && TOKEN_BREAK.test(raw))) return identity(raw);
 
   const out: string[] = [];
   const offsets: number[] = [];
-  /** The whitespace run being accumulated: where it started, and whether it broke a line. */
-  let run: { at: number; hadBreak: boolean } | null = null;
+  /** The whitespace run being accumulated: where it started and ended, and whether it broke a line. */
+  let run: { at: number; end: number; hadBreak: boolean } | null = null;
   let changed = false;
   /** False as soon as one output character does not sit at its own raw offset. */
   let identityMap = true;
@@ -188,9 +231,29 @@ export function normalise(raw: string): Normalised {
     }
   };
 
-  /** Emits the pending whitespace run as one character: a newline if it broke a line, else a space. */
-  const flushRun = (): void => {
+  /**
+   * Emits the pending whitespace run as one character: a newline if it broke
+   * a line, else a space — unless the run is ONE character that is not a
+   * space, sitting between two characters of one token (a letter or digit on
+   * both sides, or a digit against the punctuation a number carries). That is
+   * not whitespace; it is a tab or a line break inserted inside a word, an
+   * SSN or a key so the pattern will not match — the two evasions the
+   * transforms table measured at 38–53% recall (arc 8, R-12) — and it is
+   * dropped like a zero-width space, the offset map still indexing the raw
+   * text. A run that contains a real space, or sits between words, is
+   * whitespace and folds as before.
+   */
+  const flushRun = (next?: string): void => {
     if (run === null) return;
+    if (dropBreaks && run.end - run.at === 1 && next !== undefined && out.length > 0) {
+      const inserted = raw.slice(run.at, run.end);
+      const prev = out[out.length - 1];
+      if (inserted !== ' ' && insideToken(prev, next)) {
+        changed = true;
+        run = null;
+        return;
+      }
+    }
     const ch = run.hadBreak ? '\n' : ' ';
     if (raw.slice(run.at, run.at + 1) !== ch) changed = true;
     push(ch, run.at);
@@ -217,14 +280,15 @@ export function normalise(raw: string): Normalised {
     if (cluster === '') return;
     if (WHITESPACE.test(cluster)) {
       const hadBreak = LINE_BREAK.test(cluster);
-      if (run === null) run = { at: index, hadBreak };
+      if (run === null) run = { at: index, end: index + rawCluster.length, hadBreak };
       else {
+        run.end = index + rawCluster.length;
         run.hadBreak ||= hadBreak;
         changed = true;
       }
       return;
     }
-    flushRun();
+    flushRun(raw.slice(index, index + 2));
     let folded = cluster.normalize('NFKC');
     if (folded !== cluster) changed = true;
     if (CONFUSABLES.size > 0) {

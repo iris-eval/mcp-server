@@ -135,6 +135,14 @@ describe('acknowledgesFailure — the documented acknowledgement definition', ()
       expect(acknowledgesFailure(text), text).not.toBeNull();
     }
   });
+
+  it('accepts the negated-conjunction form — "neither … nor … exists" — and not a "neither" about options (arc 8, R-12)', () => {
+    expect(acknowledgesFailure('Neither a.yml nor b.yml exists in this repository, so I have nothing to compare.')).not.toBeNull();
+    expect(acknowledgesFailure('Neither config.yaml nor config.yml is present in the repository.')).not.toBeNull();
+    expect(acknowledgesFailure('Neither the primary endpoint nor the mirror responded.')).not.toBeNull();
+    expect(acknowledgesFailure('Neither option is ideal, but I went with the first one and the migration is applied.')).toBeNull();
+    expect(acknowledgesFailure('Neither of the two approaches is faster; both finished.')).toBeNull();
+  });
 });
 
 describe('no_tool_loop', () => {

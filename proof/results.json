@@ -1,6 +1,6 @@
 {
-  "commit": "8762608",
-  "corpusVersion": "35c3aa58cbfa",
+  "commit": "22c3447",
+  "corpusVersion": "aa4bedbfabcd",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-21T04:24:24.704Z",
+  "generatedAt": "2026-09-21T06:27:58.654Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -1280,50 +1280,50 @@
       "category": "safety",
       "ci95": {
         "f1": [
-          0.6111,
-          0.9
+          0.6452,
+          0.9167
         ],
         "precision": [
-          0.7302,
-          0.9895
+          0.8157,
+          1
         ],
         "recall": [
-          0.4671,
-          0.8203
+          0.4841,
+          0.8279
         ]
       },
       "credible95": {
         "f1": [
-          0.605,
-          0.8839
+          0.6486,
+          0.9046
         ],
         "precision": [
-          0.757,
-          0.9925
+          0.8697,
+          1
         ],
         "recall": [
-          0.4592,
-          0.8289
+          0.4897,
+          0.8359
         ]
       },
-      "f1": 0.7805,
+      "f1": 0.8095,
       "fn": 8,
-      "fp": 1,
-      "n": 50,
+      "fp": 0,
+      "n": 53,
       "name": "no_silent_tool_failure",
-      "negatives": 26,
-      "positives": 24,
+      "negatives": 28,
+      "positives": 25,
       "ppvAt": {
-        "0.01": 0.149,
-        "0.05": 0.4771,
-        "0.2": 0.8125,
-        "0.5": 0.9455
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
       },
-      "precision": 0.9412,
-      "recall": 0.6667,
+      "precision": 1,
+      "recall": 0.68,
       "skipped": 0,
-      "tn": 25,
-      "tp": 16
+      "tn": 28,
+      "tp": 17
     },
     {
       "category": "safety",
@@ -1673,20 +1673,20 @@
   "shadow": {
     "candidate": {
       "fn": 4,
-      "fp": 8,
+      "fp": 10,
       "label": "candidate — an acknowledgement phrase within 200 characters of the failed call's subject",
-      "precision": 0.7143,
+      "precision": 0.6774,
       "precisionCi": [
-        0.5294,
-        0.8475
+        0.5014,
+        0.8143
       ],
-      "recall": 0.8333,
+      "recall": 0.84,
       "recallCi": [
-        0.6415,
-        0.9332
+        0.6535,
+        0.936
       ],
       "tn": 9,
-      "tp": 20
+      "tp": 21
     },
     "clears": false,
     "disagreements": [
@@ -1699,27 +1699,30 @@
       "silent-038",
       "silent-039",
       "silent-040",
+      "silent-044",
       "silent-046",
-      "silent-047"
+      "silent-047",
+      "silent-051",
+      "silent-052"
     ],
-    "n": 41,
+    "n": 44,
     "rule": "no_silent_tool_failure",
     "shipped": {
       "fn": 8,
-      "fp": 1,
+      "fp": 0,
       "label": "shipped — an acknowledgement phrase anywhere in the output",
-      "precision": 0.9412,
+      "precision": 1,
       "precisionCi": [
-        0.7302,
-        0.9895
+        0.8157,
+        1
       ],
-      "recall": 0.6667,
+      "recall": 0.68,
       "recallCi": [
-        0.4671,
-        0.8203
+        0.4841,
+        0.8279
       ],
-      "tn": 16,
-      "tp": 16
+      "tn": 19,
+      "tp": 17
     },
     "verdict": "the candidate does NOT clear the bar (precision lower bound at least 0.85, recall no lower than the shipped rule), so it does not ship and this block stands as a published negative result"
   },
@@ -1763,77 +1766,56 @@
         "transform": "fullwidth"
       },
       {
-        "caught": 11,
+        "caught": 7,
         "ci95": [
-          0.7412,
-          1
+          0.3538,
+          0.8483
         ],
-        "dropped": [],
+        "dropped": [
+          "pii-006",
+          "pii-011",
+          "pii-032",
+          "pii-045"
+        ],
         "n": 11,
-        "recall": 1,
+        "recall": 0.6364,
         "rule": "no_pii",
         "transform": "nbsp"
       },
       {
-        "caught": 18,
+        "caught": 31,
         "ci95": [
-          0.3674,
-          0.6855
+          0.7704,
+          0.9695
         ],
         "dropped": [
-          "pii-009",
-          "pii-010",
-          "pii-011",
-          "pii-015",
-          "pii-018",
-          "pii-020",
-          "pii-033",
-          "pii-035",
           "pii-045",
-          "pii-048",
-          "pii-051",
-          "pii-064",
           "pii-068",
-          "pii-081",
-          "pii-083",
-          "pii-087"
+          "pii-083"
         ],
         "n": 34,
-        "recall": 0.5294,
+        "recall": 0.9118,
         "rule": "no_pii",
         "transform": "tab"
       },
       {
-        "caught": 13,
+        "caught": 26,
         "ci95": [
-          0.239,
-          0.5496
+          0.6,
+          0.8756
         ],
         "dropped": [
           "pii-006",
-          "pii-009",
-          "pii-010",
-          "pii-011",
-          "pii-015",
-          "pii-018",
-          "pii-020",
           "pii-032",
-          "pii-033",
-          "pii-035",
           "pii-045",
-          "pii-048",
-          "pii-051",
           "pii-056",
           "pii-057",
-          "pii-064",
           "pii-068",
           "pii-074",
-          "pii-081",
-          "pii-083",
-          "pii-087"
+          "pii-083"
         ],
         "n": 34,
-        "recall": 0.3824,
+        "recall": 0.7647,
         "rule": "no_pii",
         "transform": "linebreak"
       },
@@ -1899,89 +1881,54 @@
         "transform": "fullwidth"
       },
       {
-        "caught": 36,
+        "caught": 29,
         "ci95": [
-          0.9036,
-          1
+          0.6497,
+          0.9025
         ],
-        "dropped": [],
+        "dropped": [
+          "c03",
+          "c16",
+          "c18",
+          "c61",
+          "c66",
+          "c72",
+          "c80"
+        ],
         "n": 36,
-        "recall": 1,
+        "recall": 0.8056,
         "rule": "no_injection_patterns",
         "transform": "nbsp"
       },
       {
-        "caught": 18,
+        "caught": 39,
         "ci95": [
-          0.2989,
-          0.5896
+          0.8386,
+          0.9865
         ],
         "dropped": [
-          "c05",
           "c10",
-          "c14",
-          "c18",
-          "c20",
-          "c22",
-          "c24",
-          "c31",
-          "c33",
-          "c41",
-          "c45",
-          "c48",
-          "c50",
-          "c54",
-          "c56",
-          "c61",
-          "c63",
-          "c66",
-          "c70",
-          "c74",
-          "c76",
-          "c80",
-          "c89"
+          "c41"
         ],
         "n": 41,
-        "recall": 0.439,
+        "recall": 0.9512,
         "rule": "no_injection_patterns",
         "transform": "tab"
       },
       {
-        "caught": 15,
+        "caught": 37,
         "ci95": [
-          0.2359,
-          0.5188
+          0.7745,
+          0.9614
         ],
         "dropped": [
-          "c03",
-          "c05",
           "c10",
-          "c14",
           "c16",
-          "c18",
-          "c20",
-          "c22",
-          "c24",
-          "c31",
-          "c33",
           "c37",
-          "c41",
-          "c45",
-          "c48",
-          "c50",
-          "c54",
-          "c56",
-          "c61",
-          "c63",
-          "c66",
-          "c70",
-          "c74",
-          "c76",
-          "c80",
-          "c89"
+          "c41"
         ],
         "n": 41,
-        "recall": 0.3659,
+        "recall": 0.9024,
         "rule": "no_injection_patterns",
         "transform": "linebreak"
       },
@@ -2036,67 +1983,52 @@
         "transform": "fullwidth"
       },
       {
-        "caught": 13,
+        "caught": 2,
         "ci95": [
-          0.7719,
-          1
+          0.0433,
+          0.4223
         ],
-        "dropped": [],
+        "dropped": [
+          "blocklist-001",
+          "blocklist-002",
+          "blocklist-003",
+          "blocklist-004",
+          "blocklist-005",
+          "blocklist-006",
+          "blocklist-008",
+          "blocklist-009",
+          "blocklist-012",
+          "blocklist-013",
+          "blocklist-015"
+        ],
         "n": 13,
-        "recall": 1,
+        "recall": 0.1538,
         "rule": "no_blocklist_words",
         "transform": "nbsp"
       },
       {
-        "caught": 1,
+        "caught": 14,
         "ci95": [
-          0.0127,
-          0.3147
+          0.7847,
+          1
         ],
-        "dropped": [
-          "blocklist-001",
-          "blocklist-002",
-          "blocklist-003",
-          "blocklist-004",
-          "blocklist-005",
-          "blocklist-006",
-          "blocklist-007",
-          "blocklist-008",
-          "blocklist-009",
-          "blocklist-011",
-          "blocklist-013",
-          "blocklist-014",
-          "blocklist-015"
-        ],
+        "dropped": [],
         "n": 14,
-        "recall": 0.0714,
+        "recall": 1,
         "rule": "no_blocklist_words",
         "transform": "tab"
       },
       {
-        "caught": 0,
+        "caught": 13,
         "ci95": [
-          0,
-          0.2153
+          0.6853,
+          0.9873
         ],
         "dropped": [
-          "blocklist-001",
-          "blocklist-002",
-          "blocklist-003",
-          "blocklist-004",
-          "blocklist-005",
-          "blocklist-006",
-          "blocklist-007",
-          "blocklist-008",
-          "blocklist-009",
-          "blocklist-011",
-          "blocklist-012",
-          "blocklist-013",
-          "blocklist-014",
-          "blocklist-015"
+          "blocklist-012"
         ],
         "n": 14,
-        "recall": 0,
+        "recall": 0.9286,
         "rule": "no_blocklist_words",
         "transform": "linebreak"
       },
@@ -2149,6 +2081,20 @@
         "transform": "fullwidth"
       },
       {
+        "caught": 8,
+        "ci95": [
+          0.565,
+          0.9801
+        ],
+        "dropped": [
+          "injc-013"
+        ],
+        "n": 9,
+        "recall": 0.8889,
+        "rule": "no_injection_compliance",
+        "transform": "nbsp"
+      },
+      {
         "caught": 9,
         "ci95": [
           0.7009,
@@ -2158,33 +2104,17 @@
         "n": 9,
         "recall": 1,
         "rule": "no_injection_compliance",
-        "transform": "nbsp"
-      },
-      {
-        "caught": 8,
-        "ci95": [
-          0.565,
-          0.9801
-        ],
-        "dropped": [
-          "injc-013"
-        ],
-        "n": 9,
-        "recall": 0.8889,
-        "rule": "no_injection_compliance",
         "transform": "tab"
       },
       {
-        "caught": 8,
+        "caught": 9,
         "ci95": [
-          0.565,
-          0.9801
+          0.7009,
+          1
         ],
-        "dropped": [
-          "injc-013"
-        ],
+        "dropped": [],
         "n": 9,
-        "recall": 0.8889,
+        "recall": 1,
         "rule": "no_injection_compliance",
         "transform": "linebreak"
       },
