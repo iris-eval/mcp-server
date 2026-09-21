@@ -46,7 +46,14 @@ import { LOCAL_TENANT, type TenantId } from './types/tenant.js';
 
 const SEVERITY_VALUES: RuleSeverity[] = ['low', 'medium', 'high', 'critical'];
 const EVAL_TYPE_VALUES: EvalType[] = ['completeness', 'relevance', 'safety', 'cost', 'custom'];
-const RULE_TYPE_VALUES = [
+/**
+ * The custom rule types, once. The deploy_rule tool and the REST route
+ * (`POST /api/v1/rules/custom`) build their enums from this list — until
+ * 0.16.0 each carried its own copy and the route's stopped at eight, so
+ * an `action_policy` the tool accepted was refused over HTTP (found by the
+ * 0.15.0 stranger's gate phase). Two surfaces, one constant.
+ */
+export const RULE_TYPE_VALUES = [
   'regex_match',
   'regex_no_match',
   'min_length',

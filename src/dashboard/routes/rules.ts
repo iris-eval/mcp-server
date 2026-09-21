@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { IStorageAdapter } from '../../types/query.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
+import { RULE_TYPE_VALUES } from '../../custom-rule-store.js';
 import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
 import { builtInRuleRoster, type BuiltInRuleMeta } from '../../eval/criticality.js';
@@ -14,16 +15,9 @@ import { strictBody } from '../validation.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
-const RuleTypeSchema = z.enum([
-  'regex_match',
-  'regex_no_match',
-  'min_length',
-  'max_length',
-  'contains_keywords',
-  'excludes_keywords',
-  'json_schema',
-  'cost_threshold',
-]);
+// One list for every surface that deploys a rule (arc 9, N-8): the route's
+// own copy used to stop at eight and refused the action_policy the tool accepted.
+const RuleTypeSchema = z.enum(RULE_TYPE_VALUES);
 
 /*
  * Strict at every level the dashboard owns. `config` stays a free-form
