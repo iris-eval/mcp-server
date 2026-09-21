@@ -568,6 +568,7 @@ Deterministic, local, no model call.
 | `run` | `string` | No | Narrow to one run; omit to read every evaluation that carries a case key |
 | `case_key` | `string` | No | Narrow to a single case — the fastest way to ask "is this one question flaky?" |
 | `min_attempts` | `number` | No | Ignore cases asked fewer than this many times (default 1). A case asked once cannot be shown to be flaky |
+| `question` | `enum` | No | Read the rate for ONE question (0.15.0): `safe_output`, `grounded`, `complete`, `relevant`, `task_completed`, `tool_use_correct` or `within_budget`. Only evaluations that judged it count, and an attempt passes when every rule answering it passed — not the composed verdict. The response echoes it as `question` |
 
 #### Response
 

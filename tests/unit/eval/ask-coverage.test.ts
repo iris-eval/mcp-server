@@ -126,3 +126,43 @@ describe('ask_coverage — the three ways an ask declares its parts', () => {
     expect(r.skipped).toBe(true);
   });
 });
+
+/*
+ * Covering by tool call (arc 8, R-10, Q5). A part the answer never mentions
+ * may have been DONE: the trajectory shows a call whose name, arguments or
+ * result carry the part's terms. Same input and output twice — once with
+ * the trajectory, once without — so the trajectory is the only difference.
+ */
+describe('ask_coverage — covering by tool call', () => {
+  const input = 'Please (1) run the database migration for the invoices table, and (2) summarise the three open incidents in a paragraph each.';
+  const output = 'Here are the three open incidents: INC-201 is the checkout timeout after a pool leak, INC-198 the stale search results from a lagging replica, INC-195 the intermittent 401 on token refresh.';
+
+  it('a part the answer never mentions fails without a trajectory', () => {
+    const r = askCoverage.evaluate({ input, output } as EvalContext);
+    expect(r.skipped).not.toBe(true);
+    expect(r.passed).toBe(false);
+    expect(r.message).toMatch(/1\/2 measurable parts addressed/);
+    expect(r.message).toMatch(/Unaddressed: ".*database migration/);
+  });
+
+  it('the same part passes when a tool call the trace shows carries its terms, and the evidence says how many were covered that way', () => {
+    const r = askCoverage.evaluate({
+      input,
+      output,
+      toolCalls: [{ tool_name: 'run_migration', input: { table: 'invoices', direction: 'up' }, output: 'migration 0042_invoices applied to the database' }],
+    } as EvalContext);
+    expect(r.skipped).not.toBe(true);
+    expect(r.passed).toBe(true);
+    expect(r.message).toMatch(/All 2 measurable parts of the ask are addressed \(1 covered by a tool call the trace shows, not by the answer\)/);
+    expect(r.evidence).toEqual(expect.arrayContaining([{ type: 'count', stat: 'ask_parts_covered_by_tool_call', unit: 'parts', value: 1 }]));
+  });
+
+  it('a tool call about something else adds nothing', () => {
+    const r = askCoverage.evaluate({ input, output, toolCalls: [{ tool_name: 'read_file', input: { path: 'README.md' }, output: '# Project' }] } as EvalContext);
+    expect(r.passed).toBe(false);
+  });
+
+  it('the rule declares version 2 for this change of meaning', () => {
+    expect(askCoverage.version).toBe(2);
+  });
+});

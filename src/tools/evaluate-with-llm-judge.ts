@@ -19,9 +19,9 @@ import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
 const inputSchema = {
   output: z.string().min(1).describe('The agent output text to evaluate'),
   template: z
-    .enum(['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness'])
+    .enum(['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed'])
     .describe(
-      'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`).',
+      'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`), task_completed (did the task actually complete — pass the trajectory as `source_material` when you have it).',
     ),
   model: z
     .string()

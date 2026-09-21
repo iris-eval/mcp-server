@@ -1,6 +1,6 @@
 import type { CaseResultRow, DatasetCase, DatasetDetail, DatasetSummary, RunResultRow, RunSummaryRow } from '../storage/sqlite-adapter.js';
 import type { Trace, Span } from './trace.js';
-import type { EvalResult } from './eval.js';
+import type { EvalResult, QuestionId } from './eval.js';
 import type { TenantId } from './tenant.js';
 import type { RegressionAlarm } from '../eval/cusum.js';
 import type { MigrationState } from '../storage/migrations/index.js';
@@ -279,7 +279,13 @@ export interface IStorageAdapter {
   getRunTraceEvaluationState(tenantId: TenantId, runId: string, rulesetHash: string): Promise<Array<{ traceId: string; evaluatedUnderRuleset: boolean }>>;
   getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]>;
   /** Every attempt at every case, optionally narrowed — repeats kept, because they are the measurement. */
-  getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string }): Promise<CaseResultRow[]>;
+  /**
+   * Every attempt at every case. With `question` (arc 8, R-10), only the
+   * evaluations that JUDGED that question, and `passed` becomes the
+   * question's own answer — every rule answering it passed — rather than
+   * the composed verdict, so a case's rate can be read for one question.
+   */
+  getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string; question?: QuestionId }): Promise<CaseResultRow[]>;
   /** Datasets (arc 8, R-8): a named set of case keys a comparison and a gate can be restricted to. */
   createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail>;
   /** By id, else by label; null when neither matches. */

@@ -31,7 +31,7 @@ import {
 const OPEN_RE = /<untrusted_([a-z]+) id="([0-9a-f]{8,})">/;
 
 describe('LLM-judge templates — snapshot guard', () => {
-  it('ALL_TEMPLATES enumerates exactly 5 named templates in stable order', () => {
+  it('ALL_TEMPLATES enumerates exactly 6 named templates in stable order', () => {
     // The order is the discovery order surfaced in tools/list and in the
     // dashboard's template picker. Reordering shifts UX (defaults change)
     // and may surprise downstream callers iterating ALL_TEMPLATES.
@@ -41,6 +41,7 @@ describe('LLM-judge templates — snapshot guard', () => {
       'safety',
       'correctness',
       'faithfulness',
+      'task_completed',
     ]);
   });
 

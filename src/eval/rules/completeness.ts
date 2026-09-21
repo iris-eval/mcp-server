@@ -1,7 +1,7 @@
 import type { EvalRule, EvalContext, EvalRuleResult, Evidence } from '../../types/eval.js';
 import { MAX_EVIDENCE_ITEMS } from '../../types/eval.js';
 import { countSentences } from '../text/sentences.js';
-import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, measurableParts, splitAsk } from '../text/asks.js';
+import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
 import { catalogueIndex } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
@@ -362,7 +362,7 @@ export const validToolArguments: EvalRule = {
 export const askCoverage: EvalRule = {
   name: 'ask_coverage',
   description:
-    'A multi-part ask must be answered in every part. Splits the input on enumerations, bullet lists and multi-word connectors — a bare "and" never splits, so "review and merge" is one ask — then reports the parts the output never engages with. Measures only parts carrying at least two content terms and says how many it could not measure, because a one-term part makes any lexical test a coin flip. Skips when the input is absent, when it is longer than 1500 characters (an input that long usually carries source material rather than an ask), or when fewer than two parts can be measured',
+    'A multi-part ask must be answered in every part. Splits the input on enumerations, bullet lists and multi-word connectors — a bare "and" never splits, so "review and merge" is one ask — then reports the parts neither the output nor the trajectory engages with: a part is covered when the answer addresses it, or when a tool call the trace shows acted on it (0.15.0). Measures only parts carrying at least two content terms and says how many it could not measure, because a one-term part makes any lexical test a coin flip. Skips when the input is absent, when it is longer than 1500 characters (an input that long usually carries source material rather than an ask), or when fewer than two parts can be measured',
   evalType: 'completeness',
   weight: 1.5,
   kind: 'inference',
@@ -370,7 +370,7 @@ export const askCoverage: EvalRule = {
   needs: ['output', 'input'],
   question: 'task_completed',
   classes: ['incomplete_ask'],
-  version: 1,
+  version: 2,
   /*
    * Not critical. A lexical covering test has an honest false-positive
    * surface — an answer in wholly different words with no ordinal to mirror
@@ -431,7 +431,27 @@ export const askCoverage: EvalRule = {
     }
 
     const index = answerIndex(context.output);
-    const uncovered = measurable.filter((p) => !coversPart(p, context.output, index));
+    /*
+     * Covering by tool call (arc 8, R-10, Q5): a part the answer never
+     * mentions may still have been DONE — the trajectory shows a call whose
+     * name, arguments or result carry the part's terms. The same lexical
+     * test as the answer's, over the steps' text, so the trajectory can only
+     * add coverage, never remove it (recall-only for the proof family).
+     */
+    const steps = stepsOf(context);
+    const trajectoryText = steps
+      .map((st) => [st.name, typeof st.input === 'string' ? st.input : JSON.stringify(st.input ?? ''), typeof st.output === 'string' ? st.output : JSON.stringify(st.output ?? '')].join(' '))
+      .join(' ');
+    const trajectoryIndex = steps.length > 0 ? answerIndex(trajectoryText) : null;
+    const coveredByAction = new Set<AskPart>();
+    const uncovered = measurable.filter((p) => {
+      if (coversPart(p, context.output, index)) return false;
+      if (trajectoryIndex && hitsPart(p, trajectoryIndex) >= requiredHits(p)) {
+        coveredByAction.add(p);
+        return false;
+      }
+      return true;
+    });
     const covered = measurable.length - uncovered.length;
     const unmeasured = parts.length - measurable.length;
 
@@ -440,6 +460,7 @@ export const askCoverage: EvalRule = {
       { type: 'count', stat: 'uncovered_ask_parts', unit: 'parts', value: uncovered.length, threshold: 0, thresholdSource: 'rule' },
       { type: 'count', stat: 'measurable_ask_parts', unit: 'parts', value: measurable.length },
       { type: 'count', stat: 'ask_parts', unit: 'parts', value: parts.length },
+      ...(coveredByAction.size > 0 ? [{ type: 'count' as const, stat: 'ask_parts_covered_by_tool_call', unit: 'parts', value: coveredByAction.size }] : []),
     ];
     for (const p of uncovered) {
       if (evidence.length >= MAX_EVIDENCE_ITEMS) break;
@@ -449,6 +470,7 @@ export const askCoverage: EvalRule = {
     }
     const unmeasuredNote = unmeasured > 0 ? `; ${unmeasured} part${unmeasured === 1 ? '' : 's'} not measurable (fewer than ${MIN_MEASURABLE_TERMS} content terms)` : '';
 
+    const actionNote = coveredByAction.size > 0 ? ` (${coveredByAction.size} covered by a tool call the trace shows, not by the answer)` : '';
     if (uncovered.length === 0) {
       return {
         ruleName: 'ask_coverage',
@@ -456,7 +478,7 @@ export const askCoverage: EvalRule = {
         score: 1,
         value,
         evidence,
-        message: `All ${measurable.length} measurable parts of the ask are addressed${unmeasuredNote}`,
+        message: `All ${measurable.length} measurable parts of the ask are addressed${actionNote}${unmeasuredNote}`,
       };
     }
 
@@ -467,7 +489,7 @@ export const askCoverage: EvalRule = {
       score: measurable.length === 0 ? 0 : covered / measurable.length,
       value,
       evidence,
-      message: `Ask coverage: ${covered}/${measurable.length} measurable parts addressed${unmeasuredNote}. Unaddressed: ${named}`,
+      message: `Ask coverage: ${covered}/${measurable.length} measurable parts addressed${actionNote}${unmeasuredNote}. Unaddressed: ${named}`,
     };
   },
 };

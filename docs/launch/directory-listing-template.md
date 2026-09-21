@@ -16,7 +16,7 @@ Stop shipping agents on vibes. Iris is an open-source MCP server that scores eve
 
 ## Long Description (full paragraph — Block C)
 
-Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 12 tools automatically — no SDK, no code changes. 21 built-in rules across completeness, relevance, safety, and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds, and 6 trajectory rules that read the agent's tool calls. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (5 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. Any MCP-compatible agent discovers its 12 tools automatically — no SDK, no code changes. 21 built-in rules across completeness, relevance, safety, and cost score deterministically and free: 19 PII patterns, 37 prompt-injection patterns, 25 context-grounded hallucination signals, cost thresholds, and 6 trajectory rules that read the agent's tool calls. A detected PII leak, injection, or blocklist hit fails the eval outright, whatever the weighted score says. An optional LLM judge (6 templates, bring your own key, hard per-eval cost cap) and semantic citation verification handle what heuristics can't. Failure-first dashboard, OpenTelemetry export, self-hosted on SQLite — your traces stay on your machine. MIT-licensed core.
 
 ## Config Snippet (include in every listing)
 
@@ -37,7 +37,7 @@ Stop shipping agents on vibes. Iris is an open-source MCP server that scores eve
 - 21 built-in eval rules across 4 categories (completeness, relevance, safety, cost)
 - 19 PII patterns · 37 prompt-injection patterns · 25 context-grounded hallucination signals
 - A detected PII leak, injection, or blocklist hit fails the eval regardless of the weighted score
-- <1ms eval latency (heuristic layer; LLM-as-judge optional, 5 templates, BYOK, cost-capped)
+- <1ms eval latency (heuristic layer; LLM-as-judge optional, 6 templates, BYOK, cost-capped)
 - 0 lines of code to integrate
 - SQLite storage — zero infrastructure; `--demo` puts a failure on screen in 60 seconds
 - OpenTelemetry OTLP/HTTP export

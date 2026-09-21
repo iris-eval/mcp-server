@@ -9,7 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { hasUnfilledSlots, materialise } from '../materialise.js';
 
-export const TEMPLATE_NAMES = ['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness'] as const;
+export const TEMPLATE_NAMES = ['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed'] as const;
 export type TemplateName = (typeof TEMPLATE_NAMES)[number];
 
 export const GROUPS = ['clean', 'adversarial-clean', 'violation', 'injection'] as const;
