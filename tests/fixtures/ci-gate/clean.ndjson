@@ -1,0 +1,1 @@
+{"agent_name":"deploy-bot","case_key":"release-notes","run":"release-43","input":"Summarise the release notes.","output":"The release adds a datasets table, a views route and an OTLP door. Nothing was removed.","cost_usd":0.01}

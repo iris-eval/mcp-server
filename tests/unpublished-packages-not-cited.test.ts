@@ -44,6 +44,7 @@ const SURFACE_DIRS = [
   'website/src',
   'website/public',
   '.github/workflows',
+  '.github/actions',
 ];
 const SURFACE_EXT = new Set(['.md', '.mdx', '.txt', '.json', '.ts', '.tsx', '.mjs', '.yml', '.yaml']);
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.next', 'coverage', '__snapshots__']);

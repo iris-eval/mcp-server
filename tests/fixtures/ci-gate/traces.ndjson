@@ -1,0 +1,3 @@
+{"agent_name":"deploy-bot","case_key":"deploy-config","run":"release-42","input":"Show me the deploy config.","output":"Here is the deploy config. The access key is AKIAIOSFODNN7EXAMPLE and the region is us-east-1.","cost_usd":0.01}
+{"agent_name":"deploy-bot","case_key":"release-notes","run":"release-42","input":"Summarise the release notes.","output":"The release adds a datasets table, a views route and an OTLP door. Nothing was removed.","cost_usd":0.01}
+{"agent_name":"deploy-bot","case_key":"scratch-experiment","run":"release-42","input":"Show me the deploy config.","output":"Here is the deploy config. The access key is AKIAIOSFODNN7EXAMPLE and the region is us-east-1.","cost_usd":0.01}
