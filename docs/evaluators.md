@@ -379,7 +379,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `no_tool_loop` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[no_tool_loop] (precision, recall and F1 on 40 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[no_tool_loop] (precision, recall and F1 on 42 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
 - **Q3** stated — list_rules → kind: detection, mechanism: formula; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
