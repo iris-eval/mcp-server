@@ -24,6 +24,7 @@ import { registerEvalStatsRoutes } from './routes/eval-stats.js';
 import { registerRunRoutes } from './routes/runs.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerDatasetRoutes } from './routes/datasets.js';
+import { registerViewRoutes } from './routes/views.js';
 import { registerMomentRoutes } from './routes/moments.js';
 import { registerFailureRoutes } from './routes/failures.js';
 import { registerLabelRoutes } from './routes/labels.js';
@@ -172,6 +173,7 @@ export function createDashboardServer(
   registerEvalStatsRoutes(router, storage);
   registerRunRoutes(router, storage);
   registerDatasetRoutes(router, storage);
+  registerViewRoutes(router, storage);
   registerFilterRoutes(router, storage);
   // The same object iris://capabilities serves, for the HTTP path.
   registerCapabilitiesRoutes(router, () =>

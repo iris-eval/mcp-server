@@ -35,6 +35,7 @@ import type {
   EvalStatsPeriod,
   EvalStats,
   AgentFailureLogEntry,
+  AgentCostRow,
   DriftWindow,
   EvalStatsTrendBucket,
   TrendCohort,
@@ -600,6 +601,33 @@ export class SqliteAdapter implements IStorageAdapter {
       .prepare('SELECT DISTINCT case_key FROM traces WHERE tenant_id = ? AND run_id = ? AND case_key IS NOT NULL ORDER BY case_key')
       .all(tenantId, runId) as Array<{ case_key: string }>;
     return rows.map((r) => r.case_key);
+  }
+
+  async costByAgent(tenantId: TenantId, since: string | null, limit: number): Promise<AgentCostRow[]> {
+    assertTenant(tenantId);
+    const rows = this.db
+      .prepare(
+        `SELECT agent_name,
+                COUNT(*)                     AS traces,
+                COUNT(cost_usd)              AS costed,
+                COALESCE(SUM(cost_usd), 0)   AS total,
+                AVG(cost_usd)                AS avg,
+                MAX(cost_usd)                AS max
+           FROM traces
+          WHERE tenant_id = ? AND (? IS NULL OR timestamp >= ?)
+          GROUP BY agent_name
+          ORDER BY total DESC, agent_name ASC
+          LIMIT ?`,
+      )
+      .all(tenantId, since, since, limit) as Array<{ agent_name: string; traces: number; costed: number; total: number; avg: number | null; max: number | null }>;
+    return rows.map((r) => ({
+      agent: r.agent_name,
+      traces: r.traces,
+      costedTraces: r.costed,
+      totalCostUsd: Math.round(r.total * 1e6) / 1e6,
+      avgCostUsd: r.avg === null ? null : Math.round(r.avg * 1e6) / 1e6,
+      maxCostUsd: r.max,
+    }));
   }
 
   async listRuns(tenantId: TenantId, limit = 50): Promise<RunSummaryRow[]> {
