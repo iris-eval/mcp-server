@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/observability-quickstart",
       "quote": "@traceable(run_type=\"tool\")",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/self-hosted",
       "quote": "Self-hosted LangSmith is an add-on to the Enterprise plan designed for our largest, most security-conscious customers.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/mask-inputs-outputs",
       "quote": "LangSmith processes runs in a background thread, which does not block your application.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.langchain.com/langsmith/evaluation-concepts",
       "quote": "LLM-as-judge evaluators use LLMs to score application outputs.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.langchain.com/langsmith/log-llm-trace",
       "quote": "Token counts enable cost calculation, which LangSmith displays in the Tracing Projects UI.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/langchain-ai/langsmith-mcp-server",
       "quote": "\"run_experiment\" | \"Documentation-only: how to run experiments and evaluations in LangSmith.\"",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/langchain-ai/langsmith-sdk",
       "quote": "MIT license",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.langchain.com/about",
       "quote": "Harrison teamed up with co-founder Ankush Gola to start LangChain, the company, in early 2023",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.langchain.com/langsmith/insights",
       "quote": "Insights automatically analyzes your traces to detect usage patterns, common agent behaviors, and failure modes, so you do not need to review thousands of traces manually.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/integrations",
       "quote": "LangSmith provides integrations for a growing set of popular LLM providers and agent frameworks",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/prompt-engineering-concepts",
       "quote": "Every saved update to a prompt creates a new commit with a unique commit hash.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/shared-responsibility-model",
       "quote": "We maintain SOC 2 Type II, GDPR, and HIPAA compliance and undergo annual third-party audits and penetration testing.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -237,5 +249,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

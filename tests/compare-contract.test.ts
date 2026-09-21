@@ -30,11 +30,12 @@ const HTTPS = /^https:\/\/[^\s]+$/;
 /** Words that grade rather than state; a vendor cell states. */
 const EDITORIAL = /\b(powerful|slow|costly|weak|best|worst|clunky|bloated|superior|inferior)\b/i;
 
-interface Row { id: string; vendor: string; verdict: string; sourceUrl: string; quote: string; lastVerified: string }
+interface Row { id: string; vendor: string; verdict: string; sourceUrl: string; quote: string; lastVerified: string; quoteVerified: boolean | null }
 interface Data {
   slug: string; name: string; homepage: string; category: string; tagline: string; oneLine: string; ogImage: string | null;
   tldrVendor: string; tldrSourceUrl: string; rows: Row[]; vendorReasons: { text: string; sourceUrl: string }[];
   faq: { question: string; vendorPart: string; sourceUrl: string }[]; sources: { label: string; url: string; lastVerified: string }[]; lastVerified: string;
+  quotesCheckedOn: string;
 }
 
 const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
@@ -86,6 +87,21 @@ describe('the compare data', () => {
       for (const r of d.rows) expect(urls.has(r.sourceUrl), `${d.slug}/${r.id}: source not in the sources list`).toBe(true);
       if (d.ogImage) expect(existsSync(join(root, 'website', 'public', d.ogImage.replace(/^\//, ''))), `${d.slug}: ${d.ogImage}`).toBe(true);
     }
+  });
+
+  it('every quote carries its verification: true when found verbatim on a plain download of the page, false when not, null when the page does not answer; the file says when it checked', () => {
+    for (const d of data) {
+      expect(d.quotesCheckedOn, d.slug).toMatch(DATE);
+      expect(d.quotesCheckedOn <= today, d.slug).toBe(true);
+      for (const r of d.rows) {
+        const at = `${d.slug}/${r.id}`;
+        if (/Not stated in the vendor/.test(r.vendor)) expect(r.quoteVerified, at).toBeNull();
+        else expect(typeof r.quoteVerified, at).toBe('boolean');
+      }
+    }
+    const page = read('website/src/app/compare/[slug]/page.tsx');
+    expect(page).toMatch(/row\.quoteVerified \? \{ title: row\.quote \}/);
+    expect(page).toContain('quote unverified');
   });
 
   it('a cell the vendor’s pages do not answer says so in the vendor’s own words, never with an invented value', () => {

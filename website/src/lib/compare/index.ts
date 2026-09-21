@@ -35,6 +35,14 @@ export interface CompareRow {
   sourceUrl: string;
   quote: string;
   lastVerified: string;
+  /**
+   * Whether the quote was found verbatim on a plain download of the source
+   * page (tags stripped, whitespace folded) on `quotesCheckedOn`; null when
+   * the cell says the page does not answer. The quotes were first extracted
+   * through a summarising fetch, so only a verified quote is shown as the
+   * source link's title — the link and the date stand either way.
+   */
+  quoteVerified: boolean | null;
 }
 export interface CompareSource {
   label: string;
@@ -56,6 +64,8 @@ export interface CompareData {
   faq: { question: string; vendorPart: string; sourceUrl: string }[];
   sources: CompareSource[];
   lastVerified: string;
+  /** The date every quote in `rows` was checked against a plain download of its page. */
+  quotesCheckedOn: string;
 }
 
 export const COMPARISONS: readonly CompareData[] = [

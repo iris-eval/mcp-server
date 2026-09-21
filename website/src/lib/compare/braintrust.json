@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.braintrust.dev/blog/new-language-sdks",
       "quote": "We've built native SDKs for Java, Go, Ruby, and C#",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.braintrust.dev/docs/self-hosting",
       "quote": "Self-hosting is only available on the Enterprise plan.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.braintrust.dev/docs/instrument/advanced-tracing",
       "quote": "All logging operations run in a background thread, including api key validation, project/experiment registration, and flushing logs.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.braintrust.dev/docs/guides/evals",
       "quote": "To build them, use built-in autoevals, LLM-as-a-judge, or custom code.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.braintrust.dev/docs/guides/tracing",
       "quote": "Metrics: Latency, token counts, costs",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.braintrust.dev/blog/braintrust-mcp",
       "quote": "create and test evaluators, build datasets, run evals, configure Topics, build monitor views, and set up alerts without moving data between tools or sharing context manually.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": false
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/braintrustdata/braintrust-proxy",
       "quote": "MIT",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.braintrust.dev/blog/announcing-series-b",
       "quote": "Braintrust has raised $80M to become the observability layer for production AI. Our Series B is led by ICONIQ",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.braintrust.dev/docs/guides/monitor",
       "quote": "Use dashboards to track request counts, latency, token usage, costs, scores, topics, and custom metrics over time.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.braintrust.dev/docs/integrations",
       "quote": "Connect Braintrust with your AI providers and frameworks",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.braintrust.dev/docs/guides/prompts",
       "quote": "Every prompt save creates a new version with a unique ID.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.braintrust.dev/pricing",
       "quote": "Custom data retention and export, RBAC, and premium support with on-prem or hosted deployment",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -236,5 +248,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

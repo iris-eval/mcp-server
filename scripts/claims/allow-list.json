@@ -202,7 +202,7 @@
     {
       "file": "website/src/lib/compare/confident-ai.json",
       "pattern": "tool-count-in-words",
-      "line": 54,
+      "line": 59,
       "reason": "Confident AI's own MCP server tool count (75 tools), quoted from their docs on the comparison row (the page renders from this data file since arc 8 R-5) — not Iris's count, so the truthbase cannot supply it. Line-pinned so any other count in this file still flags."
     }
   ]

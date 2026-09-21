@@ -15,7 +15,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.comet.com/docs/opik/tracing/log_traces",
       "quote": "When you add the @track decorator to a function, Opik will create a span for that function call and log the input parameters and function output for that function.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -23,7 +24,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.comet.com/docs/opik/self-host/overview",
       "quote": "Production ready Opik platform that runs on a Kubernetes cluster.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -31,7 +33,8 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/comet-ml/opik",
       "quote": "Opik is framework-agnostic and supports its SDK, OpenTelemetry, and framework-specific integrations.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -39,7 +42,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.comet.com/docs/opik/evaluation/overview",
       "quote": "Define natural-language assertions and let an LLM judge check them automatically.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -47,7 +51,8 @@
       "verdict": "neither",
       "sourceUrl": "https://www.comet.com/docs/opik/tracing/cost_tracking",
       "quote": "Opik has been designed to track and monitor costs for your LLM applications by measuring token usage across all traces.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -55,7 +60,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/comet-ml/opik-mcp",
       "quote": "Plug your AI host (Claude Code, Cursor, VS Code Copilot, Codex, opencode, or any MCP client) directly into your Opik workspace: read traces, log scores, and save prompt versions, all from the chat.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -63,7 +69,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/comet-ml/opik",
       "quote": "Opik is licensed under Apache 2.0. Its server, web application, and core observability and evaluation capabilities can be self-hosted without a commercial license.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "ownership",
@@ -71,7 +78,8 @@
       "verdict": "iris",
       "sourceUrl": "https://www.comet.com/site/about-us/",
       "quote": "Headquartered in New York City, with Offices in Tel Aviv",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
@@ -79,7 +87,8 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/comet-ml/opik",
       "quote": "Scalable dashboards and online evaluation rules.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -87,7 +96,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://github.com/comet-ml/opik",
       "quote": "Extensive 3rd-party integrations for easy observability: Seamlessly integrate with a growing list of frameworks, supporting many of the largest and most popular ones natively",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -95,7 +105,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.comet.com/docs/opik/prompt_engineering/prompt_management",
       "quote": "The Prompt Library lets you manage them outside your codebase, version each change automatically, and link the exact version that ran to its trace.",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -103,7 +114,8 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.comet.com/site/pricing/",
       "quote": "SOC 2, ISO 27001, ISO 9001, HIPAA, and GDPR compliance",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -217,5 +229,6 @@
       "lastVerified": "2026-09-21"
     }
   ],
-  "lastVerified": "2026-09-21"
+  "lastVerified": "2026-09-21",
+  "quotesCheckedOn": "2026-09-21"
 }

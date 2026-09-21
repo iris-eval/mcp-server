@@ -64,10 +64,11 @@ function VendorCell({ row, name }: { row: CompareRow; name: string }): React.Rea
     <>
       <span>{row.vendor}</span>
       <span className="mt-1 block font-mono text-[11px] text-text-muted">
-        <a href={row.sourceUrl} className={link} rel="noopener noreferrer" title={row.quote}>
+        <a href={row.sourceUrl} className={link} rel="noopener noreferrer" {...(row.quoteVerified ? { title: row.quote } : {})}>
           {name}&apos;s page
         </a>{" "}
         · read {row.lastVerified}
+        {row.quoteVerified === false ? <span title="The sentence this cell was read from was not found verbatim on a plain download of the page (a client-rendered page, or a paraphrase); the link and the date stand."> · quote unverified</span> : null}
       </span>
     </>
   );
@@ -149,7 +150,9 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-text-accent">Feature comparison</p>
             <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text-primary md:text-4xl">Side by side.</h2>
             <p className="mx-auto mt-4 max-w-2xl text-[14px] text-text-muted">
-              Twelve features, the same twelve on every comparison. Every {c.name} cell links the page it was read from and the date. The
+              Twelve features, the same twelve on every comparison. Every {c.name} cell links the page it was read from and the date; where
+              the sentence it was read from was found verbatim on a plain download of that page (checked {c.quotesCheckedOn}), the link
+              carries it as its title, and where it was not, the cell says so. The
               highlighted cells are Iris&apos;s own call on which side is stronger for a team running MCP agents — {irisWins} to Iris,{" "}
               {vendorWins} to {c.name} — not a measurement.
             </p>
