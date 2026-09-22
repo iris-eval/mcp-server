@@ -67,19 +67,41 @@ jobs:
   test:
     # Branch protection requires the checks "test (20)" and "test (22)" by
     # name; the native cells keep those names, the built-in cells add theirs.
-    name: ${{ matrix.driver == 'native' && format('test ({0})', matrix.node-version) || format('test ({0}, {1})', matrix.node-version, matrix.driver) }}
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os == 'macos-latest' && format('test ({0}, macOS)', matrix.node-version) || (matrix.driver == 'native' && format('test ({0})', matrix.node-version) || format('test ({0}, {1})', matrix.node-version, matrix.driver)) }}
+    runs-on: ${{ matrix.os }}
     strategy:
+      # One red cell must not cancel its siblings. Dependabot #308 sat open for
+      # six weeks on the reading that better-sqlite3 13 crashed on Node 20, 22
+      # AND 24; the 22 and 24 cells had never run — fail-fast cancelled them
+      # the moment Node 20 went red, and `cancelled` was read as `failed`.
+      fail-fast: false
       matrix:
         node-version: [20, 22]
         driver: [native]
+        os: [ubuntu-latest]
         # The storage driver seam (arc 8, R-0): the whole suite once more on
         # Node's built-in SQLite, on the two Node lines that ship it.
         include:
           - node-version: 22
             driver: node
+            os: ubuntu-latest
           - node-version: 24
             driver: node
+            os: ubuntu-latest
+          # Node 24 on the native addon. Node 20 reached end of life on
+          # 2026-04-30 and better-sqlite3 13 declares `engines: node >=22`, so
+          # 24 is the line Iris stands on next; nothing measured it until now.
+          - node-version: 24
+            driver: native
+            os: ubuntu-latest
+          # The first macOS cell this repository has ever had: every other job
+          # runs on ubuntu, so the native SQLite addon has never been exercised
+          # on Apple Silicon at all. That is the platform where
+          # WiseLibs/better-sqlite3#1514 reports a crash on Node 20 and 22 —
+          # a crash a Linux-only matrix cannot see, and would ship.
+          - node-version: 22
+            driver: native
+            os: macos-latest
     env:
       IRIS_SQLITE_DRIVER: ${{ matrix.driver }}
     steps:
