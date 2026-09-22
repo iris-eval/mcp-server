@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DATA_RESIDENCY } from "@/lib/claims";
 import { COMPARISONS } from "@/lib/compare";
-import { NOT_SERVER_TESTING } from "@/lib/compare/iris";
+import { FEATURE_IDS, NOT_SERVER_TESTING } from "@/lib/compare/iris";
 import Link from "next/link";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { Nav } from "@/components/nav";
@@ -86,7 +86,7 @@ export default function CompareIndex() {
         <p className="mb-12 text-lg text-text-secondary max-w-2xl">
           Iris is agent eval for MCP — built so you stop shipping agents on vibes. See how it compares to
           other evaluation and observability platforms — feature by feature, with
-          no vendor lock-in. The same twelve features on every page; every cell
+          no vendor lock-in. The same {FEATURE_IDS.length} features on every page; every cell
           about the other product links the page it was read from, with the date.
         </p>
         <p className="mb-12 -mt-8 max-w-2xl text-[14px] text-text-muted">{NOT_SERVER_TESTING}</p>

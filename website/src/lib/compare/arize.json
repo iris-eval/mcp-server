@@ -23,9 +23,9 @@
       "vendor": "Phoenix: pip install arize-phoenix; SQLite by default, PostgreSQL supported; Docker, Kubernetes/Helm options",
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/phoenix/self-hosting/configuration",
-      "quote": "If URL is not specified, by default Phoenix starts with a file-based SQLite database in a temporary folder.",
+      "quote": "If URL is not specified, by default Phoenix starts with a file-based SQLite database in a temporary folder",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -56,7 +56,7 @@
     },
     {
       "id": "mcp_support",
-      "vendor": "Phoenix MCP server (prompts, traces, datasets, experiments, SQL); no tool runs an eval",
+      "vendor": "Phoenix MCP server (prompts, traces, datasets, experiments, SQL); no Phoenix MCP tool runs an eval; the AX pages say coding agents can set Arize up over MCP",
       "verdict": "neither",
       "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/js/packages/phoenix-mcp/README.md",
       "quote": "Phoenix MCP Server is an implementation of the Model Context Protocol for the Arize Phoenix platform. It provides a unified interface to Phoenix's capabilities.",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/pricing/",
       "quote": "Organization and space RBAC",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "AX Free $0 (25k spans a month, 1 GB, 15-day retention); AX Pro $50/month (50k spans, 10 GB, 30 days); Enterprise custom; Phoenix is free to self-host",
+      "verdict": "neither",
+      "sourceUrl": "https://arize.com/pricing/",
+      "quote": "Trace spans 25k spans per month Ingestion volume 1 GB per month Retention 15 days",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -259,5 +268,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

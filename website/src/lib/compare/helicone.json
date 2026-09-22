@@ -23,18 +23,18 @@
       "vendor": "All-in-one Docker image (web, API, PostgreSQL, ClickHouse, MinIO); Helm chart for Kubernetes",
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/getting-started/self-host/docker",
-      "quote": "docker run -d --name helicone -p 3000:3000 -p 8585:8585 -p 9080:9080 helicone/helicone-all-in-one:latest",
+      "quote": "To run all services in a single Docker container, you can use the helicone-all-in-one image.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "overhead",
       "vendor": "Rust AI gateway; vendor-reported P95 latency under 5 ms",
       "verdict": "iris",
       "sourceUrl": "https://github.com/Helicone/ai-gateway",
-      "quote": "P95 Latency: <5ms",
+      "quote": "P95 Latency <5ms",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "eval",
@@ -104,9 +104,9 @@
       "vendor": "Versioned prompts with rollback and per-environment deployment via the AI Gateway",
       "verdict": "vendor",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/prompts/overview",
-      "quote": "Track every change, compare versions, and rollback instantly if something goes wrong.",
+      "quote": "Track every change, compare versions, and rollback instantly if something goes wrong",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.helicone.ai/pricing",
       "quote": "SOC-2 & HIPAA compliance",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Hobby free (10,000 requests a month, 1 GB storage, 1 seat); Pro $79/month; Team $799/month; usage-based pricing applies; Enterprise custom",
+      "verdict": "neither",
+      "sourceUrl": "https://www.helicone.ai/pricing",
+      "quote": "10,000 free requests 1 GB storage 1 seat, 1 organization",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -245,5 +254,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

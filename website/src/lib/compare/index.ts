@@ -2,7 +2,7 @@
  * The compare pages, from data (arc 8, R-5).
  *
  * One JSON file per vendor under website/src/lib/compare/: the vendor's side
- * of the twelve features in compare-iris.ts, every cell with the vendor's own
+ * of the features in iris.ts FEATURE_IDS, every cell with the vendor's own
  * page as its source and the date it was read, plus the vendor's reasons,
  * FAQ halves and TL;DR — all sourced. This index is the only list of them;
  * app/compare/[slug]/page.tsx renders one page per entry, the compare index
@@ -37,7 +37,10 @@ export interface CompareRow {
   lastVerified: string;
   /**
    * Whether the quote was found verbatim on a plain download of the source
-   * page (tags stripped, whitespace folded) on `quotesCheckedOn`; null when
+   * page on `quotesCheckedOn`, read as a reader would — tags stripped, inline
+   * Markdown markup stripped (most vendors' docs answer a plain fetch with
+   * Markdown), the spacing a stripped tag leaves before punctuation closed,
+   * whitespace folded (scripts/verify-compare-quotes.mjs); null when
    * the cell says the page does not answer. The quotes were first extracted
    * through a summarising fetch, so only a verified quote is shown as the
    * source link's title — the link and the date stand either way.

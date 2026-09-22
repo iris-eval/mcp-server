@@ -134,6 +134,13 @@ async function main() {
       continue;
     }
 
+    // A draft (`published: false`) stays off Dev.to the way it stays off the site.
+    if (String(parsed.meta.published ?? 'true').trim().toLowerCase() === 'false') {
+      console.log(`  SKIP: ${filename} (published: false)`);
+      skipped++;
+      continue;
+    }
+
     // Skip future-dated posts — website handles scheduling, Dev.to should not publish early
     if (parsed.meta.date) {
       const postDate = new Date(parsed.meta.date);

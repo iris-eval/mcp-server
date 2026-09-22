@@ -38,7 +38,7 @@
     },
     {
       "id": "eval",
-      "vendor": "LLM-as-a-judge natural-language assertions, 30+ pre-built metrics, custom metrics, annotation queues for human review.",
+      "vendor": "LLM-as-a-judge natural-language assertions, 40+ pre-built metrics, custom metrics, annotation queues for human review.",
       "verdict": "neither",
       "sourceUrl": "https://www.comet.com/docs/opik/evaluation/overview",
       "quote": "Define natural-language assertions and let an LLM judge check them automatically.",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.comet.com/site/pricing/",
       "quote": "SOC 2, ISO 27001, ISO 9001, HIPAA, and GDPR compliance",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Open source free to self-host (same codebase as hosted); Free Cloud $0 (10 team members, 25k spans a month); Pro Cloud $19/month (100k spans, 60-day retention)",
+      "verdict": "neither",
+      "sourceUrl": "https://www.comet.com/site/pricing/",
+      "quote": "Up to 50 team members 100k spans per month 60-day data retention",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -227,8 +236,13 @@
       "label": "Comet about page",
       "url": "https://www.comet.com/site/about-us/",
       "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Opik metrics overview",
+      "url": "https://www.comet.com/docs/opik/evaluation/metrics/overview",
+      "lastVerified": "2026-09-21"
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

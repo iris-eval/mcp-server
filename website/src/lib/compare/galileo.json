@@ -43,7 +43,7 @@
       "sourceUrl": "https://docs.galileo.ai/concepts/metrics/overview",
       "quote": "You can then expand these metrics with custom metrics, using LLM-as-a-judge, or custom code-based metrics.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -83,12 +83,12 @@
     },
     {
       "id": "dashboard",
-      "vendor": "Web console at app.galileo.ai with projects and Log streams; a Playground runs experiments in the console.",
+      "vendor": "Web console with projects and Log streams per environment (dev, staging, production); metrics configured per Log stream; experiments run in the console",
       "verdict": "neither",
-      "sourceUrl": "https://docs.galileo.ai/getting-started/quickstart",
-      "quote": "Open the Log stream for your project in the Galileo console using the URL output to your terminal.",
+      "sourceUrl": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
+      "quote": "Log streams belong to a project, with one project containing one or more Log streams.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://galileo.ai/trust-security",
       "quote": "We maintain SOC 2 Type II certification, demonstrating our commitment to security, availability, processing integrity, confidentiality, and privacy controls.",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Free $0/month (5,000 traces a month, unlimited users, unlimited custom evals); Pro $100/month billed yearly (50,000 traces); Enterprise custom",
+      "verdict": "neither",
+      "sourceUrl": "https://galileo.ai/pricing",
+      "quote": "Our Free plan includes: 5,000 traces per month Unlimited users Unlimited custom evals",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -250,5 +259,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

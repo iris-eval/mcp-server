@@ -43,16 +43,16 @@
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
       "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
       "vendor": "Automatic or manual token cost per LLM span, per-model pricing lookup; cost per user via user_id",
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost",
-      "quote": "if you provide a supported model on your LLM span and neither SDK-level nor project-level costs are configured, Confident AI will automatically look up the per-token pricing.",
+      "quote": "If you provide a supported model on your LLM span and neither SDK-level nor project-level costs are configured, Confident AI will automatically look up the per-token pricing and calculate the cost",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -106,7 +106,7 @@
       "sourceUrl": "https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts",
       "quote": "Every change you make to a prompt is tracked as a commit. This ensures complete history and traceability of all prompt modifications.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.confident-ai.com/pricing",
       "quote": "Dedicated On-Prem Deployment",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Free Forever $0 (2 seats, 1 project, 5 test runs a week, 1 GB-month of spans); Starter $200/month; Team $2,000/month; Enterprise custom",
+      "verdict": "neither",
+      "sourceUrl": "https://www.confident-ai.com/pricing",
+      "quote": "Starter and Team are billed per organization per month at $200 and $2,000 respectively.",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -230,5 +239,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

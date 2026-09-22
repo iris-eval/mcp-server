@@ -38,21 +38,21 @@
     },
     {
       "id": "eval",
-      "vendor": "Fine-tuned eval models (Lynx, Glider)",
+      "vendor": "Fine-tuned eval models (Lynx, Glider) and a judge evaluator run against criteria defined in the platform console, called through RemoteEvaluator",
       "verdict": "neither",
-      "sourceUrl": "https://www.patronus.ai/products",
-      "quote": "Glider: Powerful 3B evaluator LLM that can score any text input on user-defined criteria",
+      "sourceUrl": "https://patronus-ai.github.io/patronus-py/evaluations/patronus-evaluators/",
+      "quote": "You can use Patronus evaluators through the RemoteEvaluator class",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
-      "vendor": "Not a primary feature",
+      "vendor": "Not stated in the vendor's pages read on 2026-09-21",
       "verdict": "neither",
       "sourceUrl": "https://www.patronus.ai/",
       "quote": "Not stated: No fetched vendor page mentions cost tracking. Looked at: homepage, /products, /pricing, /percival, /company, /llm-testing/llm-observability, the self-serve API announcement, the Series B announcement, the MCP server post, and the SDK quickstart/index on patronus-ai.github.io. docs.patronus.ai returned 401 on every path. A negative cannot be sourced, so the cell is kept and flagged.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": null
     },
     {
       "id": "mcp_support",
@@ -104,9 +104,9 @@
       "vendor": "Not a documented standalone feature; Percival proposes prompt rewrites as remedies",
       "verdict": "vendor",
       "sourceUrl": "https://www.patronus.ai/llm-testing/llm-observability",
-      "quote": "Actionable remedies, such as rewriting prompts or reassigning tools.",
+      "quote": "Actionable remedies, such as rewriting prompts or reassigning tools",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.patronus.ai/pricing",
       "quote": "On-prem / dedicated VPC, custom data retention, SSO.",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Developer plan free with no credit card (2 projects; logs and traces for the last 2 weeks); the API starts with $10 in free credits; Enterprise by sales",
+      "verdict": "neither",
+      "sourceUrl": "https://www.patronus.ai/pricing",
+      "quote": "Patronus API (optional) Get started with $10 in free credits!",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -227,8 +236,13 @@
       "label": "Patronus AI GitHub organization",
       "url": "https://github.com/patronus-ai",
       "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Patronus SDK: Patronus evaluators",
+      "url": "https://patronus-ai.github.io/patronus-py/evaluations/patronus-evaluators/",
+      "lastVerified": "2026-09-21"
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

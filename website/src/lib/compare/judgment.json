@@ -56,10 +56,10 @@
     },
     {
       "id": "mcp_support",
-      "vendor": "Hosted MCP server (mcp.judgmentlabs.ai) with OAuth for Cursor, Claude Code, Windsurf, Codex to query traces and judges",
+      "vendor": "Hosted MCP server (mcp.judgmentlabs.ai) with OAuth for Cursor, Claude Code, Windsurf, Codex; tools query traces, create judges, run tests and evaluate traces",
       "verdict": "neither",
-      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools",
-      "quote": "The Judgment MCP server gives coding agents authenticated, project-scoped tools for investigating traces, inspecting evaluations, and performing approved actions.",
+      "sourceUrl": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools/mcp-tools",
+      "quote": "Evaluate up to 100 named traces, optionally with selected judges.",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     },
@@ -114,6 +114,15 @@
       "verdict": "neither",
       "sourceUrl": "https://judgmentlabs.ai/",
       "quote": "Not stated: The docs index (docs.judgmentlabs.ai/llms.txt) has no security or compliance page. docs.judgmentlabs.ai/documentation/compliance (still titled \"Security & Compliance\" in search engines, with snippets claiming SOC 2 Type 1 complete and HIPAA) returned 404 on 2026-09-21, as did judgmentlabs.ai/security, judgmentlabs.ai/pricing and the careers page; trust.judgmentlabs.ai redirects to the homepage, which contains no SOC, HIPAA, GDPR, SSO or enterprise strings. Do not publish a compliance claim either way.",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": null
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Not stated in the vendor's pages read on 2026-09-21",
+      "verdict": "neither",
+      "sourceUrl": "https://docs.judgmentlabs.ai/llms.txt",
+      "quote": "Not stated: judgmentlabs.ai/pricing and www.judgmentlabs.ai/pricing returned 404 on 2026-09-21, and the docs index lists no pricing page.",
       "lastVerified": "2026-09-21",
       "quoteVerified": null
     }
@@ -256,6 +265,11 @@
     {
       "label": "judgeval LICENSE.md (Apache-2.0)",
       "url": "https://raw.githubusercontent.com/JudgmentLabs/judgeval/main/LICENSE.md",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Judgment MCP tools",
+      "url": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools/mcp-tools",
       "lastVerified": "2026-09-21"
     }
   ],

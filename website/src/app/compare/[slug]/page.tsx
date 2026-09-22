@@ -7,7 +7,8 @@ import { IrisLogo } from "@/components/iris-logo";
 import { CompareDisclaimer } from "@/components/compare-disclaimer";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { COMPARISONS, compareBySlug, type CompareData, type CompareRow } from "@/lib/compare";
-import { FEATURE_LABEL, IRIS_CELL, IRIS_FAQ_SENTENCE, IRIS_NEUTRAL, IRIS_REASONS, NOT_SERVER_TESTING } from "@/lib/compare/iris";
+import { FEATURE_IDS, FEATURE_LABEL, IRIS_CELL, IRIS_NEUTRAL, IRIS_REASONS, NOT_SERVER_TESTING } from "@/lib/compare/iris";
+import { faqFor } from "@/lib/compare/faq";
 
 /*
  * One page for every comparison, rendered from website/src/lib/compare/
@@ -17,7 +18,8 @@ import { FEATURE_LABEL, IRIS_CELL, IRIS_FAQ_SENTENCE, IRIS_NEUTRAL, IRIS_REASONS
  * page and shows the date it was read. Winner marks are Iris's editorial
  * call and the page says so; the sources are what a reader can check.
  * tests/compare-contract.test.ts locks the files to the schema, the
- * sources and the dates.
+ * sources and the dates. The FAQ is five questions: two written in the
+ * JSON, three derived from the table by lib/compare/faq.ts (arc 9, N-21).
  */
 
 export const dynamicParams = false;
@@ -79,6 +81,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   const c = compareBySlug(slug);
   if (!c) notFound();
   const url = `https://iris-eval.com/compare/${c.slug}`;
+  const faq = faqFor(c);
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -92,10 +95,10 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
       },
       {
         "@type": "FAQPage",
-        mainEntity: c.faq.map((f, i) => ({
+        mainEntity: faq.map((f) => ({
           "@type": "Question",
           name: sanitizeText(f.question),
-          acceptedAnswer: { "@type": "Answer", text: sanitizeText(i === 0 ? `${IRIS_FAQ_SENTENCE} ${f.vendorPart}` : f.vendorPart) },
+          acceptedAnswer: { "@type": "Answer", text: sanitizeText(f.irisPart ? `${f.irisPart} ${f.vendorPart}` : f.vendorPart) },
         })),
       },
     ],
@@ -150,7 +153,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-text-accent">Feature comparison</p>
             <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text-primary md:text-4xl">Side by side.</h2>
             <p className="mx-auto mt-4 max-w-2xl text-[14px] text-text-muted">
-              Twelve features, the same twelve on every comparison. Every {c.name} cell links the page it was read from and the date; where
+              {FEATURE_IDS.length} features, the same {FEATURE_IDS.length} on every comparison. Every {c.name} cell links the page it was read from and the date; where
               the sentence it was read from was found verbatim on a plain download of that page (checked {c.quotesCheckedOn}), the link
               carries it as its title, and where it was not, the cell says so. The
               highlighted cells are Iris&apos;s own call on which side is stronger for a team running MCP agents — {irisWins} to Iris,{" "}
@@ -241,6 +244,30 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
+      {/* FAQ — two written halves from the JSON, three derived from the table (lib/compare/faq.ts) */}
+      <section className="bg-bg-base pb-20">
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="mb-10 text-center">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-text-accent">FAQ</p>
+            <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text-primary md:text-4xl">The questions buyers ask.</h2>
+          </div>
+          <dl className="divide-y divide-border-subtle rounded-2xl border border-border-default bg-bg-card">
+            {faq.map((f) => (
+              <div key={f.question} className="px-8 py-6">
+                <dt className="font-display text-lg font-bold text-text-primary">{f.question}</dt>
+                <dd className="mt-3 text-[14px] leading-relaxed text-text-secondary">
+                  {f.irisPart ? <span className="text-text-primary">{f.irisPart} </span> : null}
+                  {f.vendorPart}{" "}
+                  <a href={f.sourceUrl} className={`${link} font-mono text-[11px]`} rel="noopener noreferrer">
+                    source
+                  </a>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
       {/* Sources */}
       <section className="bg-bg-base pb-12">
         <div className="mx-auto max-w-5xl px-6">
@@ -275,6 +302,12 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
               className="inline-flex items-center gap-2 rounded-xl bg-iris-600 px-8 py-4 text-[15px] font-semibold text-white shadow-lg shadow-iris-600/20 transition-all hover:bg-iris-500"
             >
               Install Iris
+            </Link>
+            <Link
+              href="/playground"
+              className="inline-flex items-center rounded-xl border border-border-default px-8 py-4 text-[15px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary"
+            >
+              Try the playground
             </Link>
             <Link
               href="/compare"
