@@ -77,7 +77,8 @@ describe('the seam', () => {
   it('IRIS_SQLITE_DRIVER=node in the environment opens the built-in with no option passed — the CI matrix cell', async () => {
     process.env[DRIVER_VAR] = 'node';
     if (!builtIn) {
-      // The adapter opens the store in its constructor, so the refusal is synchronous (Node 20 in the matrix).
+      // The adapter opens the store in its constructor, so the refusal is synchronous.
+      // Every CI cell now ships node:sqlite; this branch is the Node 22.0-22.12 user.
       expect(() => new SqliteAdapter(tempDb())).toThrow(/IRIS_SQLITE_DRIVER=node needs Node 22\.13\.0 or later/);
       return;
     }

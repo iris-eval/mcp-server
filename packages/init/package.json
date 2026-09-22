@@ -44,7 +44,7 @@
     "url": "https://github.com/iris-eval/mcp-server/issues"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {},
   "devDependencies": {

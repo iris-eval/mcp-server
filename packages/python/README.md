@@ -4,7 +4,7 @@
 
 ```bash
 pip install iris-eval
-npx -y @iris-eval/mcp-server --dashboard      # the server, in another terminal (Node 20+)
+npx -y @iris-eval/mcp-server --dashboard      # the server, in another terminal (Node 22+)
 ```
 
 ```python
