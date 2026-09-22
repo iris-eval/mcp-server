@@ -2,17 +2,20 @@
  * The compare pages are data, and every vendor cell has a source and a date
  * (arc 8, R-5).
  *
- * website/src/lib/compare/<vendor>.json is the vendor's side of twelve fixed
- * features — the same twelve on every page (lib/compare/iris.ts) — with, for
+ * website/src/lib/compare/<vendor>.json is the vendor's side of a fixed set of
+ * features — the same set on every page (lib/compare/iris.ts) — with, for
  * every cell, the vendor's own page as its source, a verbatim quote from it,
  * and the date it was read. This file locks the set: every JSON file in the
  * directory is in the index and vice versa; every file carries exactly the
- * twelve feature ids in order; every cell, reason, FAQ half and TL;DR has an
+ * feature ids in order; every cell, reason, FAQ half and TL;DR has an
  * https source and a real date not in the future; the vendor text carries no
  * editorial adjectives; the Iris side carries no typed number (its counts
  * come from the truthbase); the eight hand-written pages are gone and the
  * one dynamic page renders the index; the compare index page and the sitemap
- * read the same list; and every OG image a file names exists.
+ * read the same list; and every OG image a file names exists. Arc 9, N-21
+ * added the cost_to_run row (read from a pricing page or saying the page does
+ * not answer), the five-question FAQ (two written, three derived from the
+ * rows by lib/compare/faq.ts) rendered on the page, and the playground link.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -22,7 +25,9 @@ const root = resolve(__dirname, '..');
 const dir = join(root, 'website', 'src', 'lib', 'compare');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8').replace(/\r\n/g, '\n');
 
-const FEATURE_IDS = ['integration', 'self_hosting', 'overhead', 'eval', 'cost_tracking', 'mcp_support', 'license', 'ownership', 'dashboard', 'frameworks', 'prompt_management', 'enterprise'];
+const FEATURE_IDS = ['integration', 'self_hosting', 'overhead', 'eval', 'cost_tracking', 'mcp_support', 'license', 'ownership', 'dashboard', 'frameworks', 'prompt_management', 'enterprise', 'cost_to_run'];
+/** The three FAQ questions derived from the table, in page order (lib/compare/faq.ts). */
+const DERIVED_FAQ_IDS = ['cost_to_run', 'self_hosting', 'mcp_support'];
 const VERDICTS = ['iris', 'vendor', 'neither'];
 const CATEGORIES = ['Observability', 'Evaluation', 'Safety', 'Testing'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -51,7 +56,7 @@ describe('the compare data', () => {
     expect(data.length).toBeGreaterThanOrEqual(14);
   });
 
-  it('every file carries the twelve features in order, a verdict the page knows, a category the index knows, and a name', () => {
+  it(`every file carries the ${FEATURE_IDS.length} features in order, a verdict the page knows, a category the index knows, and a name`, () => {
     for (const d of data) {
       expect(d.rows.map((r) => r.id), d.slug).toEqual(FEATURE_IDS);
       for (const r of d.rows) expect(VERDICTS, `${d.slug}/${r.id}`).toContain(r.verdict);
@@ -104,6 +109,16 @@ describe('the compare data', () => {
     expect(page).toContain('quote unverified');
   });
 
+  it('the cost_to_run row is read from a pricing page, or names free in the vendor’s words, or says the page does not answer', () => {
+    for (const d of data) {
+      const r = d.rows.find((x) => x.id === 'cost_to_run')!;
+      const ok = /pricing/i.test(r.sourceUrl) || /^Not stated in the vendor/.test(r.vendor) || /\bfree\b/i.test(r.quote);
+      expect(ok, `${d.slug}/cost_to_run: ${r.sourceUrl}`).toBe(true);
+    }
+    const iris = read('website/src/lib/compare/iris.ts');
+    expect(iris).toMatch(/cost_to_run: "Free/);
+  });
+
   it('a cell the vendor’s pages do not answer says so in the vendor’s own words, never with an invented value', () => {
     for (const d of data) for (const r of d.rows) {
       if (/Not stated in the vendor/.test(r.vendor)) expect(r.quote, `${d.slug}/${r.id}`).toMatch(/not stated|no page|nothing found|does not mention/i);
@@ -135,6 +150,25 @@ describe('the Iris side and the pages', () => {
     const sitemap = read('website/src/app/sitemap.ts');
     expect(sitemap).toMatch(/COMPARISONS/);
     expect(sitemap).not.toMatch(/"langfuse",/);
+  });
+
+  it('the FAQ is five questions — two written in the JSON, three derived from the rows — rendered on the page and emitted as FAQPage JSON-LD, and the page links the playground', () => {
+    const faq = read('website/src/lib/compare/faq.ts');
+    const ids = [...faq.matchAll(/\{ id: "([a-z_]+)", question:/g)].map((m) => m[1]);
+    expect(ids).toEqual(DERIVED_FAQ_IDS);
+    for (const id of DERIVED_FAQ_IDS) expect(FEATURE_IDS).toContain(id);
+    expect(faq).toContain('IRIS_CELL[id]');
+    expect(faq).toMatch(/derivedVendorPart\(c\.name, row\.vendor, row\.lastVerified\)/);
+    const page = read('website/src/app/compare/[slug]/page.tsx');
+    expect(page).toContain('const faq = faqFor(c);');
+    expect(page).toMatch(/mainEntity: faq\.map/);
+    expect(page).not.toMatch(/c\.faq\.map/);
+    expect(page).toContain('{faq.map((f) => (');
+    expect(page).toContain('The questions buyers ask.');
+    expect(page).toContain('href="/playground"');
+    expect(page).toContain('{FEATURE_IDS.length} features, the same {FEATURE_IDS.length} on every comparison');
+    expect(read('website/src/app/compare/page.tsx')).toContain('The same {FEATURE_IDS.length} features on every page');
+    for (const d of data) for (const id of DERIVED_FAQ_IDS) expect(d.rows.some((r) => r.id === id), `${d.slug}/${id}`).toBe(true);
   });
 
   it('page-dates carries every comparison route', () => {

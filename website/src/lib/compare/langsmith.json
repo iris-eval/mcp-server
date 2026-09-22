@@ -14,9 +14,9 @@
       "vendor": "SDK imports + @traceable decorators",
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/observability-quickstart",
-      "quote": "@traceable(run_type=\"tool\")",
+      "quote": "Use @traceable in Python, traceable in TypeScript and Kotlin, and Tracing.traceFunction in Java.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -52,16 +52,16 @@
       "sourceUrl": "https://docs.langchain.com/langsmith/log-llm-trace",
       "quote": "Token counts enable cost calculation, which LangSmith displays in the Tracing Projects UI.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
       "vendor": "MCP server reads runs, projects, datasets, experiments (run_experiment is docs-only); Agent Server exposes MCP + A2A",
       "verdict": "neither",
       "sourceUrl": "https://github.com/langchain-ai/langsmith-mcp-server",
-      "quote": "\"run_experiment\" | \"Documentation-only: how to run experiments and evaluations in LangSmith.\"",
+      "quote": "run_experiment Documentation-only: how to run experiments and evaluations in LangSmith.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/shared-responsibility-model",
       "quote": "We maintain SOC 2 Type II, GDPR, and HIPAA compliance and undergo annual third-party audits and penetration testing.",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Developer $0 per seat with 5k base traces a month, then pay as you go; Plus $39 per seat per month with 10k base traces; Enterprise custom",
+      "verdict": "neither",
+      "sourceUrl": "https://www.langchain.com/pricing",
+      "quote": "$39 / seat per month then pay as you go",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -250,5 +259,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

@@ -6,7 +6,7 @@
   "tagline": "MCP-Native Eval vs Experiment-Driven Evaluation",
   "oneLine": "Active observability platform for instrumenting, understanding, and improving agents: SDKs in six languages, evals, datasets, playground.",
   "ogImage": "/og-compare-braintrust.png",
-  "tldrVendor": "Braintrust is an eval and observability platform with dataset management, experiment tracking, a prompt playground, and span-level tracing. If you need production-grade experimentation workflows, human review, or CI-integrated regression testing, Braintrust is the deeper eval platform.",
+  "tldrVendor": "Braintrust is an eval and observability platform with dataset management, experiment tracking, a prompt playground, and span-level tracing. If you need production-grade experimentation workflows, human review, or CI-integrated regression testing, Braintrust is the deeper eval platform. Online scoring rules score production logs at span, trace or group scope.",
   "tldrSourceUrl": "https://www.braintrust.dev/docs",
   "rows": [
     {
@@ -14,18 +14,18 @@
       "vendor": "SDK imports or OpenTelemetry (Python, TypeScript, Java, Go, Ruby, C#)",
       "verdict": "iris",
       "sourceUrl": "https://www.braintrust.dev/blog/new-language-sdks",
-      "quote": "We've built native SDKs for Java, Go, Ruby, and C#",
+      "quote": "we built native SDKs for Java, Go, Ruby, and C#, all built on OpenTelemetry for vendor-neutral observability",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
       "vendor": "Enterprise plan only; hybrid: you run the data plane, Braintrust hosts the UI",
       "verdict": "iris",
       "sourceUrl": "https://www.braintrust.dev/docs/self-hosting",
-      "quote": "Self-hosting is only available on the Enterprise plan.",
+      "quote": "only available on the Enterprise plan",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -43,7 +43,7 @@
       "sourceUrl": "https://www.braintrust.dev/docs/guides/evals",
       "quote": "To build them, use built-in autoevals, LLM-as-a-judge, or custom code.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -52,7 +52,7 @@
       "sourceUrl": "https://www.braintrust.dev/docs/guides/tracing",
       "quote": "Metrics: Latency, token counts, costs",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
@@ -61,7 +61,7 @@
       "sourceUrl": "https://www.braintrust.dev/blog/braintrust-mcp",
       "quote": "create and test evaluators, build datasets, run evals, configure Topics, build monitor views, and set up alerts without moving data between tools or sharing context manually.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.braintrust.dev/pricing",
       "quote": "Custom data retention and export, RBAC, and premium support with on-prem or hosted deployment",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Starter $0/month (1 GB processed data, 10k scores, 14-day retention); Pro $249/month (5 GB, 50k scores, 30-day retention); Enterprise custom",
+      "verdict": "neither",
+      "sourceUrl": "https://www.braintrust.dev/pricing",
+      "quote": "Free usage is included for traces, evals, and your whole team",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -246,8 +255,13 @@
       "label": "Braintrust blog: Series B (2026-02-17)",
       "url": "https://www.braintrust.dev/blog/announcing-series-b",
       "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Braintrust online scoring",
+      "url": "https://www.braintrust.dev/docs/evaluate/score-online",
+      "lastVerified": "2026-09-21"
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

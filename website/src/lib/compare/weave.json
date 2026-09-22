@@ -25,7 +25,7 @@
       "sourceUrl": "https://docs.wandb.ai/weave/guides/platform/weave-self-managed/",
       "quote": "W&B license: Weave-enabled license from W&B Support",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -34,16 +34,16 @@
       "sourceUrl": "https://docs.wandb.ai/weave/guides/integrations/",
       "quote": "After you import the Weave SDK into your code and initialize it with weave.init, Weave records each request as a Call with inputs, outputs, latency, token usage, and cost.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "eval",
       "vendor": "Evaluation over a Dataset with scorers: function-based, Scorer class, LLM-as-a-judge, predefined and local SLM scorers",
       "verdict": "neither",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/evaluation/scorers/",
-      "quote": "Although this guide shows you how to create custom scorers, Weave comes with predefined scorers and local SLM scorers that you can use right away.",
+      "quote": "Although this guide shows you how to create custom scorers, Weave comes with predefined scorers and local SLM scorers that you can use right away",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "cost_tracking",
@@ -74,19 +74,19 @@
     },
     {
       "id": "ownership",
-      "vendor": "Built by Weights & Biases, which announced on 2025-05-05 that it had been acquired by CoreWeave",
+      "vendor": "Built by Weights & Biases; CoreWeave completed its acquisition of Weights & Biases on 2025-05-05",
       "verdict": "iris",
-      "sourceUrl": "https://wandb.ai/wandb_fc/cw-announcement/reports/Weights-Biases-completes-acquisition-by-CoreWeave--VmlldzoxMjU4MzE5OQ",
-      "quote": "Today we announced that we have been acquired by CoreWeave, the #1 AI Cloud Platform.",
+      "sourceUrl": "https://www.coreweave.com/blog/coreweave-completes-acquisition-of-weights-biases",
+      "quote": "We are thrilled to share that we have completed our acquisition of Weights & Biases.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "dashboard",
-      "vendor": "Web UI with trace tree and calls table; product page adds evaluation comparisons, playground, leaderboards, monitors",
+      "vendor": "Web UI with trace tree and calls table; Signals score every production trace automatically with 13 preset signals (monitors are the previous approach)",
       "verdict": "neither",
-      "sourceUrl": "https://docs.wandb.ai/weave/guides/tracking/costs/",
-      "quote": "Costs appear in the trace tree and in the calls table in the Weave UI.",
+      "sourceUrl": "https://docs.wandb.ai/weave/guides/evaluation/monitors",
+      "quote": "For new implementations, use Signals under Weave for Agents.",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     },
@@ -95,18 +95,18 @@
       "vendor": "OpenAI, Anthropic, Bedrock, Google, Mistral, LiteLLM; LangChain, LlamaIndex, CrewAI, DSPy, OpenAI and Claude Agent SDKs",
       "verdict": "vendor",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/integrations/",
-      "quote": "Weave integrates with these frameworks to trace the entire pipeline: OpenAI Agents SDK, Claude Agent SDK, LangChain, LlamaIndex",
+      "quote": "Weave integrates with these frameworks to trace the entire pipeline",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
       "vendor": "Prompt objects (StringPrompt, MessagesPrompt) published with weave.publish and versioned on the project's Prompts page",
       "verdict": "vendor",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/core-types/prompts/",
-      "quote": "When you publish a prompt with weave.publish, it appears in your Weave project on the Prompts page.",
+      "quote": "When you publish a prompt with weave.publish, it appears in your Weave project on the Prompts page",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "enterprise",
@@ -115,7 +115,16 @@
       "sourceUrl": "https://wandb.ai/site/security",
       "quote": "We are certified under ISO/IEC 27001:2022, ISO/IEC 27017:2015, and ISO/IEC 27018:2019, and remain compliant with SOC 2 Type 2 and HIPAA standards.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Free $0/mo for personal use; Pro starts at $60/month billed monthly, Weave data ingestion billed in arrears; Enterprise custom; self-hosting needs a license",
+      "verdict": "neither",
+      "sourceUrl": "https://wandb.ai/site/pricing/",
+      "quote": "Starts at $60/month, billed monthly",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
     }
   ],
   "vendorReasons": [
@@ -242,8 +251,23 @@
       "label": "W&B acquisition by CoreWeave announcement",
       "url": "https://wandb.ai/wandb_fc/cw-announcement/reports/Weights-Biases-completes-acquisition-by-CoreWeave--VmlldzoxMjU4MzE5OQ",
       "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "CoreWeave: acquisition of Weights & Biases completed",
+      "url": "https://www.coreweave.com/blog/coreweave-completes-acquisition-of-weights-biases",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Weave: monitor using built-in signals",
+      "url": "https://docs.wandb.ai/weave/guides/evaluation/monitors",
+      "lastVerified": "2026-09-21"
+    },
+    {
+      "label": "Weights & Biases pricing",
+      "url": "https://wandb.ai/site/pricing/",
+      "lastVerified": "2026-09-21"
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

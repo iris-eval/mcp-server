@@ -38,10 +38,10 @@
     },
     {
       "id": "eval",
-      "vendor": "Deterministic assertions plus model-graded (LLM rubric) assertions; custom JavaScript and Python assertions.",
+      "vendor": "Deterministic assertions including trajectory and tool-call assertions, plus model-graded (LLM rubric) assertions; custom JavaScript and Python assertions",
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/configuration/expected-outputs/",
-      "quote": "These metrics are programmatic tests that are run on LLM output.",
+      "quote": "Ensure a traced agent trajectory used specific tools",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     },
@@ -59,7 +59,7 @@
       "vendor": "MCP provider tests MCP servers directly; ships an MCP server exposing its eval tools; Enterprise MCP Proxy product.",
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/providers/mcp/",
-      "quote": "The mcp provider allows you to use Model Context Protocol (MCP) servers directly as providers in promptfoo.",
+      "quote": "The mcp provider calls Model Context Protocol (MCP) tools directly, so you can test or red team the server itself.",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     },
@@ -88,7 +88,7 @@
       "sourceUrl": "https://www.promptfoo.dev/docs/usage/web-ui/",
       "quote": "After running an eval, view results in your browser: npx promptfoo@latest view",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.promptfoo.dev/pricing/",
       "quote": "SSO and granular permission profiles",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Community edition free forever (open source; red teaming 10k probes a month); Enterprise by sales",
+      "verdict": "neither",
+      "sourceUrl": "https://www.promptfoo.dev/pricing/",
+      "quote": "Community Free Forever Our open-source tool, perfect for individual developers and small teams",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -255,5 +264,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

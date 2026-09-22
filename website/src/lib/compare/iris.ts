@@ -2,7 +2,7 @@
  * The Iris side of every comparison, in one place (arc 8, R-5).
  *
  * Each compare page is `website/src/lib/compare/<vendor>.json` — the vendor's
- * side of twelve fixed features, every cell with the vendor's own page as its
+ * side of the fixed features in FEATURE_IDS, every cell with the vendor's own page as its
  * source and the date it was read — rendered by app/compare/[slug]/page.tsx.
  * The Iris side is not in those files: it is here, once, with every count
  * read from the truthbase, so fourteen pages cannot disagree about what Iris
@@ -32,6 +32,7 @@ export const FEATURE_IDS = [
   "frameworks",
   "prompt_management",
   "enterprise",
+  "cost_to_run",
 ] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
@@ -48,6 +49,7 @@ export const FEATURE_LABEL: Record<FeatureId, string> = {
   frameworks: "Framework support",
   prompt_management: "Prompt management",
   enterprise: "Enterprise and compliance",
+  cost_to_run: "Cost to run",
 };
 
 /** What Iris is, feature by feature — counts from the truthbase, never typed. */
@@ -65,6 +67,8 @@ export const IRIS_CELL: Record<FeatureId, string> = {
   frameworks: `Any MCP client (${CLIENTS.counts.verified} verified, ${CLIENTS.counts.claimed} claimed — see /clients); OTLP/HTTP from anything else`,
   prompt_management: "Not included",
   enterprise: `Self-hosted. ${DATA_RESIDENCY} No compliance certification is claimed before it is held`,
+  // The vendor side of this row is read from the vendor's pricing page and dated.
+  cost_to_run: "Free — MIT, one process on your machine; the only spend is a judge call on a key you supply, when you opt in",
 };
 
 /** Rows where Iris deliberately has less; the cell is shown muted, never as a loss to hide. */

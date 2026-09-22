@@ -16,7 +16,7 @@
       "sourceUrl": "https://docs.latitude.so/telemetry/start-tracing.md",
       "quote": "Install @latitude-data/telemetry and instrument TypeScript or JavaScript apps.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "self_hosting",
@@ -25,7 +25,7 @@
       "sourceUrl": "https://docs.latitude.so/deployment/overview",
       "quote": "five application services (web, api, ingest, workers, workflows) backed by Postgres (+ pgvector), ClickHouse, Redis, Temporal, and an object store",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "overhead",
@@ -61,7 +61,7 @@
       "sourceUrl": "https://docs.latitude.so/getting-started/mcp.md",
       "quote": "The Latitude MCP is a remote, OAuth-authenticated, streamable HTTP Model Context Protocol server",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -88,7 +88,7 @@
       "sourceUrl": "https://docs.latitude.so/getting-started/introduction.md",
       "quote": "where spend goes, what caching saves, and cost per session in the Cost view",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "frameworks",
@@ -97,7 +97,7 @@
       "sourceUrl": "https://github.com/latitude-dev/latitude-llm",
       "quote": "Telemetry works out of the box with most model providers and frameworks (OpenAI, Anthropic, Bedrock, Vercel AI SDK, LangChain, and more), plus any OTEL-compatible application.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "prompt_management",
@@ -114,6 +114,15 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.latitude.so/security/compliance/soc2.md",
       "quote": "Latitude is SOC II certified as part of its security and compliance program.",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "Starter free (20K credits a month, 30-day retention, unlimited seats); Pro $99/month (100K credits, 90-day retention); Enterprise custom; MIT to self-host",
+      "verdict": "neither",
+      "sourceUrl": "https://latitude.so/pricing",
+      "quote": "$99 /month 100K credits/month 90d data retention Unlimited seats Priority support",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -260,5 +269,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }

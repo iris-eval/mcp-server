@@ -53,6 +53,7 @@
     "claims:generate:live": "node scripts/claims/generate.mjs --live",
     "claims:check": "node scripts/claims/generate.mjs --check",
     "claims:check-hardcoded": "node scripts/claims/check-no-hardcoded.mjs",
+    "compare:verify": "node scripts/verify-compare-quotes.mjs",
     "proof": "tsx proof/run.ts",
     "proof:typecheck": "tsc -p proof/tsconfig.json",
     "proof:review": "tsx proof/human-review.ts",

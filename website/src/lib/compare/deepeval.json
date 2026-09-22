@@ -34,11 +34,11 @@
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
       "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "eval",
-      "vendor": "50+ ready-to-use metrics, almost all LLM-as-a-judge (QAG, DAG, G-Eval); custom metrics via G-Eval or BaseMetric",
+      "vendor": "50+ ready-to-use metrics, almost all LLM-as-a-judge (QAG, DAG, G-Eval); Tool Correctness and JSON Correctness need no judge; custom via G-Eval or BaseMetric",
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
       "quote": "deepeval offers 50+ SOTA, ready-to-use metrics for you to quickly get started with.",
@@ -52,16 +52,16 @@
       "sourceUrl": "https://deepeval.com/docs/evaluation-llm-tracing",
       "quote": "cost_per_input_token, cost_per_output_token (decorator); input_token_count, output_token_count via update_llm_span",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "mcp_support",
       "vendor": "Evaluates MCP use (MCPUseMetric, MultiTurnMCPUseMetric); MCPServer objects via mcp_servers; not itself an MCP server",
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/evaluation-mcp",
-      "quote": "The MCPServer class is an abstraction provided by deepeval to contain information about different MCP servers and the primitives they provide.",
+      "quote": "The MCPServer class is an abstraction provided by deepeval to contain information about different MCP servers and the primitives they provide",
       "lastVerified": "2026-09-21",
-      "quoteVerified": false
+      "quoteVerified": true
     },
     {
       "id": "license",
@@ -114,6 +114,15 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/pricing",
       "quote": "Dedicated On-Prem Deployment",
+      "lastVerified": "2026-09-21",
+      "quoteVerified": true
+    },
+    {
+      "id": "cost_to_run",
+      "vendor": "The library is free to run under Apache 2.0; each metric is a call to the judge model you configure, billed by that provider; Confident AI cloud has a free tier",
+      "verdict": "neither",
+      "sourceUrl": "https://deepeval.com/docs/getting-started",
+      "quote": "Confident AI is free and allows you to keep all evaluation results on the cloud",
       "lastVerified": "2026-09-21",
       "quoteVerified": true
     }
@@ -236,5 +245,5 @@
     }
   ],
   "lastVerified": "2026-09-21",
-  "quotesCheckedOn": "2026-09-21"
+  "quotesCheckedOn": "2026-09-22"
 }
