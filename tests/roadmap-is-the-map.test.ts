@@ -22,13 +22,20 @@ const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8').replace(/\r\n/g, '\n');
 const claims = JSON.parse(read('.claims.json')) as { mcpTools: { names: string[] }; capabilityMap?: unknown };
 
-/** Every tracked text surface a reader could follow, minus the dated artifacts that are frozen by design. */
+/**
+ * Every tracked text surface a reader could follow, minus the dated
+ * artifacts that are frozen by design: the blog and the launch drafts say
+ * what was true when they were written, and changelog.generated.json is
+ * CHANGELOG.md rendered — a release note that says a file was REMOVED has
+ * to be able to name it. (The same exclusions the hardcoded-claim scanner
+ * makes, for the same reason.)
+ */
 function liveSurfaces(): string[] {
   const out: string[] = ['README.md'];
   const walk = (rel: string): void => {
     for (const entry of readdirSync(join(root, rel))) {
       const child = `${rel}/${entry}`;
-      if (['node_modules', '.next', 'dist', 'blog', 'launch'].includes(entry)) continue;
+      if (['node_modules', '.next', 'dist', 'blog', 'launch', 'changelog.generated.json'].includes(entry)) continue;
       if (statSync(join(root, child)).isDirectory()) walk(child);
       else if (/\.(md|mdx|ts|tsx|json|mjs)$/.test(entry)) out.push(child);
     }

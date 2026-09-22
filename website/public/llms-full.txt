@@ -2,7 +2,7 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
-Current release: v0.15.0 (2026-09-21) — Reach, honestly.
+Current release: v0.16.0 (2026-09-22) — Earn the comparison.
 
 ## What Iris is
 

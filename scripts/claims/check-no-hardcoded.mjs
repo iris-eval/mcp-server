@@ -106,7 +106,11 @@ const PATTERNS = [
     // retired-positioning): a v0.4 release post that says "9 tools" is a
     // record of v0.4, and the posts that are still read carry a dated
     // editor's note at the top instead of a rewrite.
-    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    // changelog.generated.json is CHANGELOG.md rendered, and a release
+    // note is the most dated artifact there is: "the four eval tools" in
+    // the 0.16.0 section is a sentence about what changed in 0.16.0, not
+    // a claim about how many tools the server registers today.
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/changelog.generated.json'],
     expected: c => [c.mcpTools?.count],
     fix: 'Import MCP_TOOL_COUNT from ~/lib/claims (code), or state the current count from .claims.json mcpTools.count (prose) — in digits or words, it must be the shipped one',
   },

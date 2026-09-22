@@ -1,6 +1,6 @@
 {
   "name": "iris-eval",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Stop shipping agents on vibes. Iris scores every agent output for quality, safety, and cost — 25 built-in rules, an LLM judge on your own key, a dashboard — as an MCP server your agent calls.",
   "author": {
     "name": "Iris",

@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.16.0] - 2026-09-22
+
+**Earn the comparison.** 0.16.0 is the release where Iris can be opened beside any incumbent and every noun on the table is either shipped and measured or named as a gap in Iris's own words. A trace carries a session; a run can be a baseline and a comparison lists the cases the two runs disagree on; a moment fires a webhook; a CI job gets a one-line Action; Python gets a client and a pytest plugin; every OpenTelemetry framework gets a recipe bound to a fixture that proves it; every listing renders from the truthbase; the fourteen compare pages hold against the vendors' pages as they read today, with a cost-to-run row and a five-question FAQ; the response schema is published and locked; the verdict's decision path is exported; and how long an evaluation takes is measured rather than asserted.
+
+**Check before upgrading.**
+
+- **`suggestions` is gone from every evaluation response**, deprecated in 0.13.0 and removed here on the two-minor schedule. Read `interpretations[]` (who the sentence is for, and the setting that changes it) and `rule_results[]` (the failing rules and each skip's reason) instead. The database column stays, written as `[]`, so a database 0.16.0 writes still opens on 0.15.0.
+- **`docs/roadmap.md` is gone.** The capability map is the roadmap: `docs/capabilities.md` and https://iris-eval.com/capabilities. `iris-eval.com/roadmap` redirects there.
+- **A trace's `session_id` is a column, not metadata.** Migration 014 adds it with its index on first start, beside 001–013. A trace that carried a session id in `metadata` keeps it there; new writes fill the column from `session_id`, `gen_ai.conversation.id`, or SEP-414 baggage.
+- **Migration 013 adds `runs.baseline` and its partial unique index** — one baseline per agent, enforced by the database rather than by a read.
+- **`notify.webhook` is strict like the rest of the configuration**: an unknown key refuses startup and names the nearest known one.
+- **The compare pages carry a thirteenth row** (cost to run), so a tool that parsed the twelve-row table by position needs to read by `id`.
 
 ### Added
 
