@@ -41,6 +41,7 @@ describe('the verifier reads a page as its words', () => {
 
   it('a script or style block ends at a closing tag with space inside it too, and an escaped entity is decoded once, never twice', () => {
     expect(plainText('<p>a</p><script >var x = 1;</script ><style type="text/css" >p{}</style >b')).toBe('a b');
+    expect(plainText('<p>a</p><script>var x = 1;</script\t\n bar>b')).toBe('a b');
     expect(plainText('&amp;lt;b&amp;gt; and &amp;amp;')).toBe('&lt;b&gt; and &amp;');
     expect(plainText('&lt;b&gt;')).toBe('<b>');
   });

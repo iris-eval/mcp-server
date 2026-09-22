@@ -52,8 +52,8 @@ function closePunctuation(text) {
 export function plainText(html) {
   return unmarkdown(
     html
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ') // the block, to a closing tag with any spacing
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ')
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, ' ') // the block, to its closing tag however that tag is written
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, ' ')
       .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/<![^>]*>/g, ' ') // a doctype
       .replace(/<\/?[a-zA-Z][^>]*>/g, ' ') // a tag starts with a letter; "<5ms" in a table is text
