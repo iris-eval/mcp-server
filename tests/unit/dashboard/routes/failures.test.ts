@@ -41,7 +41,6 @@ function makeEval(traceId: string, overrides: Partial<EvalResult> = {}): EvalRes
     score: 1,
     passed: true,
     rule_results: [],
-    suggestions: [],
     ...overrides,
   };
 }

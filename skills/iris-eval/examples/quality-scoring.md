@@ -52,8 +52,7 @@ Request for Prompt A, completeness bundle (Prompt B is identical except for `out
     { "ruleName": "non_empty_output", "passed": true, "score": 1, "message": "Output is non-empty" },
     { "ruleName": "sentence_count", "passed": true, "score": 1, "message": "Sentence count (3) meets minimum (2)" },
     { "ruleName": "expected_coverage", "passed": true, "score": 1, "message": "Covered 6/6 expected terms (100%)" }
-  ],
-  "suggestions": [],
+  ]
   "rules_evaluated": 4,
   "rules_skipped": 0,
   "insufficient_data": false
@@ -73,11 +72,7 @@ Request for Prompt A, completeness bundle (Prompt B is identical except for `out
     { "ruleName": "sentence_count", "passed": false, "score": 0.5, "message": "Sentence count (1) below minimum (2)" },
     { "ruleName": "expected_coverage", "passed": false, "score": 0.16666666666666666, "message": "Covered 1/6 expected terms (17%)" }
   ],
-  "suggestions": [
-    "[min_output_length] Output length (16) below minimum (50)",
-    "[sentence_count] Sentence count (1) below minimum (2)",
-    "[expected_coverage] Covered 1/6 expected terms (17%)"
-  ],
+  "verdict": { "state": "fail", "passed": false, "basis": "risk_over_loss", "by": ["quality"], "risk": { "pBad": 0.71, "lo": 0.52, "hi": 0.85 } },
   "rules_evaluated": 4,
   "rules_skipped": 0,
   "insufficient_data": false
@@ -94,8 +89,7 @@ Request for Prompt A, completeness bundle (Prompt B is identical except for `out
   "rule_results": [
     { "ruleName": "keyword_overlap", "passed": true, "score": 1, "message": "5/10 input keywords found in output (50%)" },
     { "ruleName": "topic_consistency", "passed": true, "score": 0.7894736842105263, "message": "Topic consistency: 15.8% of output words relate to input" }
-  ],
-  "suggestions": [],
+  ]
   "rules_evaluated": 2,
   "rules_skipped": 0,
   "insufficient_data": false
@@ -113,9 +107,8 @@ Request for Prompt A, completeness bundle (Prompt B is identical except for `out
     { "ruleName": "keyword_overlap", "passed": false, "score": 0.2, "message": "1/10 input keywords found in output (10%)" },
     { "ruleName": "topic_consistency", "passed": true, "score": 1, "message": "Output too brief for meaningful topic analysis (2 words ≥ 4 chars; min 6)", "skipped": true, "skipReason": "output has < 6 words ≥ 4 chars" }
   ],
-  "suggestions": [
-    "[keyword_overlap] 1/10 input keywords found in output (10%)",
-    "1 rule(s) skipped — excluded from the weighted score: topic_consistency (output has < 6 words ≥ 4 chars)"
+  "interpretations": [
+    { "severity": "note", "addressee": "operator", "rule": "keyword_overlap", "text": "keyword_overlap failed but the verdict passed: on its published accuracy this rule alone does not carry the risk past your loss threshold. Lower eval.falsePassCost to block on weaker evidence.", "configKey": "eval.falsePassCost" }
   ],
   "rules_evaluated": 1,
   "rules_skipped": 1,

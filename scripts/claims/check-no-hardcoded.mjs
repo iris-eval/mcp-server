@@ -194,10 +194,29 @@ const PATTERNS = [
   /*
    * The hosted tier that is not being built. Four tool descriptions said
    * "Tenant-scoped in Cloud tier" / "Postgres in Cloud tier" to every agent
-   * that listed the tools, while docs/roadmap.md says hosted features are
+   * that listed the tools, while the roadmap says hosted features are
    * "under consideration, not under construction". Value-free; dated
    * artifacts keep their period voice; code comments are engineering notes.
    */
+  {
+    /*
+     * The evaluation's own latency, once it is measured (arc 9, N-22). The
+     * pattern next to this one refuses a latency number with no measurement
+     * behind it at all; this one refuses a number that disagrees with the
+     * measurement in the truthbase. Keyed on `p50`/`p95` so a timeout in a
+     * config example ("5000ms") is not mistaken for a claim about Iris.
+     */
+    name: 'eval-latency',
+    re: /\bp(?:50|95)\b[^\n]{0,40}?(?<![\w.$])(\d+(?:\.\d+)?)\s*ms\b/gi,
+    expected: c => [c.proof?.latency?.p50Ms, c.proof?.latency?.p95Ms],
+    onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/', 'src/tools/'],
+    // website/src/lib/compare/ carries the VENDORS' own latency numbers,
+    // each quoted from the vendor's page with the date it was read. They
+    // are not claims about Iris, and the truthbase has nothing to say
+    // about them; tests/compare-contract.test.ts holds their sourcing.
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/changelog.generated.json', 'website/src/lib/compare/'],
+    fix: 'Read the number from .claims.json proof.latency (PROOF.latency in ~/lib/claims) — it is re-measured by `npm run proof`, and a typed one goes stale the first time the engine changes.',
+  },
   {
     name: 'retired-cloud-tier',
     re: /\bCloud\s+tier\b/gi,
@@ -207,7 +226,7 @@ const PATTERNS = [
     onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/'],
     skipPrefixes: ['docs/blog/', 'docs/launch/'],
     skipComments: true,
-    fix: 'No hosted tier exists or is under construction (docs/roadmap.md). Describe what the local server does; delete the tier.',
+    fix: 'No hosted tier exists or is under construction (https://iris-eval.com/#roadmap). Describe what the local server does; delete the tier.',
   },
   /*
    * Era stamps inside the MCP tool descriptions. "v0.4 adds an llm_as_judge
@@ -391,11 +410,13 @@ const PATTERNS = [
     onlyPrefixes: ['README.md', 'docs/', 'website/src/', 'website/public/', 'src/tools/'],
     // website/src/lib/claims.ts is the truthbase reader: it TYPES the proof
     // schema (`precision: number`), which is an identifier, not a claim.
-    // website/public/claims-schema-v1.json is the published JSON Schema of
-    // the same truthbase: its `proof.rules[].precision` property NAMES the
-    // field the measurement fills, so the word is a key, not a claim.
+    // website/public/claims-schema-v1.json and response-schema-v1.json are
+    // published JSON Schemas, and `precision` in either is the name of a
+    // FIELD in a rendered artifact rather than a claim about a measurement:
+    // the first names the property the truthbase's measurement fills, the
+    // second the property an evaluation response carries.
     // website/src/lib/changelog.generated.json is CHANGELOG.md rendered verbatim (website/scripts/render-changelog.mjs) — the same dated artifact.
-    skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/changelog.generated.json', 'docs/proof.md', 'docs/evaluators.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json'],
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/changelog.generated.json', 'docs/proof.md', 'docs/evaluators.md', 'website/src/app/proof/', 'website/src/lib/claims.ts', 'website/public/claims-schema-v1.json', 'website/public/response-schema-v1.json'],
     skipComments: true,
     exemptIf: (text, index) => {
       const lineStart = text.lastIndexOf('\n', index - 1) + 1;

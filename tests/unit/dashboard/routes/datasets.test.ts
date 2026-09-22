@@ -30,7 +30,6 @@ describe('the datasets routes and the dataset-restricted comparison', () => {
     score: passed ? 0.9 : 0.2,
     passed,
     rule_results: [{ ruleName: 'min_output_length', passed, score: passed ? 1 : 0, message: 'm' }],
-    suggestions: [],
     run_id: runId,
   });
 

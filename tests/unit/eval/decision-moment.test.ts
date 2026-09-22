@@ -26,7 +26,6 @@ function makeEval(overrides: Partial<EvalResult> = {}): EvalResult {
     score: 1,
     passed: true,
     rule_results: [],
-    suggestions: [],
     ...overrides,
   };
 }
@@ -202,7 +201,6 @@ describe('deriveMomentDetail', () => {
         rule_results: [
           { ruleName: 'no_pii', passed: true, score: 1, message: 'No PII' },
         ],
-        suggestions: ['Looks clean'],
       }),
     ];
     const spans = [
@@ -216,7 +214,6 @@ describe('deriveMomentDetail', () => {
     const detail = deriveMomentDetail(trace, evals, spans as never);
     expect(detail.evals).toHaveLength(1);
     expect(detail.evals[0].ruleResults[0].ruleName).toBe('no_pii');
-    expect(detail.evals[0].suggestions).toEqual(['Looks clean']);
     expect(detail.toolCalls?.[0].tool_name).toBe('search');
     expect(detail.spans?.[0].span_id).toBe('s1');
   });

@@ -825,21 +825,6 @@
   font-size: var(--text-caption);
 }
 
-.eval-card__suggestions {
-  font-size: var(--text-body-sm);
-}
-
-.eval-card__suggestions-label {
-  color: var(--text-muted);
-  margin-bottom: var(--space-1);
-}
-
-.eval-card__suggestions-list {
-  margin: 0;
-  padding-left: var(--space-5);
-  color: var(--text-secondary);
-}
-
 /* ── RulesPage (rules/RulesPage.tsx) ───────────────────────────────── */
 .rule-card {
   padding: var(--space-4);

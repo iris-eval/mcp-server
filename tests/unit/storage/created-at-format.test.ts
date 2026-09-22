@@ -60,7 +60,6 @@ function makeEval(id: string, traceId: string): EvalResult {
     score: 0.9,
     passed: true,
     rule_results: [],
-    suggestions: [],
   };
 }
 

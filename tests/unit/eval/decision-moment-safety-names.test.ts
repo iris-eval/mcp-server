@@ -36,7 +36,6 @@ function failingEval(ruleName: string): EvalResult {
     score: 0.5,
     passed: false,
     rule_results: [{ ruleName, passed: false, score: 0, message: 'failed' }],
-    suggestions: [],
   };
 }
 

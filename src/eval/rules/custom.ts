@@ -141,7 +141,7 @@ function validateRegex(
  * killed mid-backtrack has not judged the output, and a skipped rule neither
  * deflates the weighted score nor (for high/critical deployed rules) vetoes
  * the eval on evidence it never gathered. The skipReason tells the author
- * exactly what to fix, and the engine already surfaces it in suggestions.
+ * exactly what to fix, and the engine surfaces it on the rule's own result.
  */
 function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult {
   const message =

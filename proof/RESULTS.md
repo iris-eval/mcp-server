@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-21T19:53:59.799Z for v0.15.0 (local generating commit `84f6437` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-22T05:51:28.210Z for v0.15.0 (local generating commit `aaa178d` — branch commits are squashed on merge, so cite the version).
 Corpus version `6a01ef7f62f8` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -148,4 +148,12 @@ each custom rule type built by createCustomRule under the family's config and ru
 | `regex_match` | `{"pattern":"^Ticket #[0-9]{6}\\b"}` | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] |
 | `regex_no_match` | `{"pattern":"\\bTODO\\b"}` | 24 | 12 | 0 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] |
 
+<!-- latency:start -->
+## How long one evaluation takes
+
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1082; p50 8.894 ms, p95 17.232 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+
+Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
+
+<!-- latency:end -->
 Human agreement: pending (founder blind label of a 140-case stratified sample, twenty per judgment family).

@@ -165,7 +165,7 @@ The evaluation stands and is stored; nothing is refused — you may have no othe
 LLM-judge evals show up in the same tables as heuristic evals, with:
 
 - `rule_results[0].ruleName` set to `llm_judge:<template>:<provider>/<model>`
-- `rationale` surfaced in the suggestions column when `passed === false`
+- `rationale` carried as the rule result's `message`, which the dashboard shows beside the verdict
 - `cost_usd` aggregated into the Drift view's cost treemap under the new "LLM Judge" category
 
 They're stored under `eval_type='custom'` because LLM-judge spans all four heuristic categories (completeness/relevance/safety/cost); the custom bucket is the cleanest home.

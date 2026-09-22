@@ -89,7 +89,6 @@ describe('--purge', () => {
       score: 0,
       passed: false,
       rule_results: [],
-      suggestions: [],
     });
     await seed.close();
     // Anti-theater: the text is on disk before the purge.

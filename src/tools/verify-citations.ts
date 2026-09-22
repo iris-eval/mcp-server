@@ -199,17 +199,28 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
                 : `${result.totalSupported}/${result.totalJudged} judged sources supported the output`,
           },
         ],
-        suggestions:
-          result.passed === null
-            ? ['No citation was judged, so nothing about the sources was verified. This is not a pass.']
-            : result.passed
-              ? []
-              : [`${result.totalUnsupported} of ${result.totalJudged} judged sources did not support the claim.`],
         rules_evaluated: 1,
         rules_skipped: 0,
         insufficient_data: result.overallScore === null,
         eval_cost_usd: result.totalCostUsd,
       });
+      /*
+       * The one sentence the fields do not already carry: a citation check
+       * that judged nothing is not a pass, and a caller who reads only
+       * `passed` would take it for one. Appended after the composer has
+       * written its own notes, never in place of them.
+       */
+      if (result.passed === null) {
+        row.interpretations = [
+          ...(row.interpretations ?? []),
+          {
+            severity: 'block',
+            addressee: 'operator',
+            rule: `semantic_citation_verify:${provider}/${args.model}`,
+            text: 'No citation was judged, so nothing about the sources was verified. This is not a pass.',
+          },
+        ];
+      }
       await insertLinkedEvalResult(storage, LOCAL_TENANT, row);
 
       return respond(

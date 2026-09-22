@@ -24,7 +24,6 @@ function evalResult(extra: Partial<EvalResult> = {}): EvalResult {
       { ruleName: 'no_pii', passed: true, score: 1, message: 'No PII detected', kind: 'detection' },
       { ruleName: 'no_stub_output', passed: false, score: 0, message: 'Stub marker found: TODO', kind: 'inference' },
     ],
-    suggestions: [],
     ...extra,
   };
 }

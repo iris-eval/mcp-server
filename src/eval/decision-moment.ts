@@ -148,7 +148,6 @@ export function deriveMomentDetail(
       ...(e.interpretations?.length ? { interpretations: e.interpretations } : {}),
       ...(e.provenance ? { provenance: e.provenance } : {}),
       ...(e.critical_skipped?.length ? { criticalSkipped: e.critical_skipped } : {}),
-      suggestions: e.suggestions ?? [],
       /*
        * Carried through so the moment detail can say WHY an eval failed.
        * Without it the UI renders "safety · fail  score 0.92" with no way to

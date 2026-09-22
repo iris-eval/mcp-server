@@ -34,7 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
 
 import { rulesByType } from '../src/eval/rules/index.js';
-import type { EvalRule, EvalType } from '../src/types/eval.js';
+import type { EvalContext, EvalRule, EvalType } from '../src/types/eval.js';
 import { loadCorpus, validateCorpusFile, PII_ENTITIES, type CorpusFile } from './lib/corpus.js';
 import { materialiseCase } from './lib/materialise.js';
 import { summarise, F1_CI_METHOD, type Observation, type RuleSummary } from './lib/metrics.js';
@@ -44,6 +44,9 @@ import { TRANSCRIPTS_MD, TRANSCRIPT_RESULTS_JSON, measureTranscripts, renderTran
 import { measureTransforms, type TransformResults } from './lib/transforms.js';
 import { loadCustomCorpus, validateCustomCorpusFile, measureCustom, type CustomRow } from './lib/custom-corpus.js';
 import { wilson } from './judge/lib/wilson.js';
+import { measureLatency, type LatencyResults } from './lib/latency.js';
+import { EvalEngine } from '../src/eval/engine.js';
+import { defaultConfig } from '../src/config/defaults.js';
 
 export { contextFor };
 import { measureComposite, renderCompositeMarkdown, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from './lib/composite-report.js';
@@ -149,6 +152,8 @@ export interface ProofResults {
     }>;
   };
   humanAgreement: { status: 'pending'; note: string };
+  /** How long one evaluation takes, on the machine named in it (proof/lib/latency.ts). Excluded from `--check`. */
+  latency?: LatencyResults;
 }
 
 /** PPV of a fire at a prevalence, from the family's sensitivity and specificity; null when either is undefined. */
@@ -228,6 +233,20 @@ export function observe(file: CorpusFile, rule: EvalRule): Observation[] {
   });
 }
 
+/**
+ * Every corpus case as the EvalContext the engine would receive, in a
+ * stable order — the same materialisation the per-rule runner uses, so the
+ * latency is measured over the outputs the accuracy was measured over.
+ */
+export async function corpusContexts(root: string): Promise<EvalContext[]> {
+  const { files } = await loadCorpus(root);
+  const out: EvalContext[] = [];
+  for (const file of [...files].sort((a, b) => a.rule.localeCompare(b.rule))) {
+    for (const raw of file.cases) out.push(contextFor(materialiseCase(raw), file.config));
+  }
+  return out;
+}
+
 export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVersion: string; customCorpusVersion: string; missing: string[]; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[] }> {
   const { files, corpusVersion } = await loadCorpus(root);
   const { files: customFiles, customCorpusVersion } = await loadCustomCorpus(root);
@@ -299,7 +318,7 @@ export function toResults(
   generatedAt: string,
   commit: string,
   version: string,
-  extra: { customCorpusVersion: string; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[] },
+  extra: { customCorpusVersion: string; transforms: TransformResults; entities: ProofResults['entities']; custom: CustomRow[]; latency?: LatencyResults },
 ): ProofResults {
   return {
     schemaVersion: 2,
@@ -360,7 +379,24 @@ export function toResults(
       status: 'pending',
       note: 'founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)',
     },
+    ...(extra.latency ? { latency: extra.latency } : {}),
   };
+}
+
+/** The markers around the latency section of RESULTS.md, so `--check` can ignore what the machine decides. */
+export const LATENCY_START = '<!-- latency:start -->';
+export const LATENCY_END = '<!-- latency:end -->';
+
+/** RESULTS.md without its latency section, for the byte comparison. */
+export function stripLatency(md: string): string {
+  const from = md.indexOf(LATENCY_START);
+  if (from < 0) return md;
+  const to = md.indexOf(LATENCY_END, from);
+  if (to < 0) return md.slice(0, from);
+  // The newline after the closing marker too, so a stripped file and a file
+  // rendered without the section are byte-identical rather than off by one.
+  const after = to + LATENCY_END.length;
+  return md.slice(0, from) + md.slice(md[after] === String.fromCharCode(10) ? after + 1 : after);
 }
 
 /** JSON with every object's keys sorted, two-space indent, LF, trailing newline. */
@@ -450,6 +486,21 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
     for (const c of results.custom.types) L.push(`| \`${c.type}\` | \`${JSON.stringify(c.config)}\` | ${c.n} | ${c.positives} | ${c.skipped} | ${c.tp} | ${c.fp} | ${c.fn} | ${c.tn} | ${pct(c.precision)} ${ci(c.ci95.precision)} | ${pct(c.recall)} ${ci(c.ci95.recall)} |`);
     L.push('');
   }
+  if (results?.latency) {
+    const l = results.latency;
+    // Between the markers so `--check` can strip it: the numbers are the
+    // machine's, and the machine differs between a laptop and CI's runner.
+    L.push(LATENCY_START);
+    L.push('## How long one evaluation takes');
+    L.push('');
+    L.push(`${l.method}. n=${l.n}; p50 ${l.p50Ms} ms, p95 ${l.p95Ms} ms on ${l.machine.cpu} (${l.machine.platform}/${l.machine.arch}, node ${l.machine.node}).`);
+    L.push('');
+    L.push('Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.');
+    // The blank line belongs INSIDE the markers: stripping the section must
+    // leave exactly what a render without it produces, not one line more.
+    L.push('');
+    L.push(LATENCY_END);
+  }
   L.push('Human agreement: pending (founder blind label of a 140-case stratified sample, twenty per judgment family).');
   L.push('');
   return L.join('\n');
@@ -493,9 +544,18 @@ export function normaliseForCheck(json: string, md: string): { json: string; md:
   const parsed = JSON.parse(json) as Record<string, unknown>;
   delete parsed.generatedAt;
   delete parsed.commit;
+  /*
+   * Latency is a property of the machine, not of the code: CI's runner and
+   * a laptop disagree by more than any threshold worth setting, so holding
+   * the committed number byte-for-byte would fail every run. What holds it
+   * honest instead: the block names the machine it came from, and the
+   * hardcoded-claim scanner refuses a latency number anywhere that
+   * disagrees with the one in the truthbase.
+   */
+  delete parsed.latency;
   return {
     json: stableJson(parsed),
-    md: md.replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('Generated ')).join('\n'),
+    md: stripLatency(md).replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('Generated ')).join('\n'),
   };
 }
 
@@ -607,10 +667,17 @@ async function main(): Promise<void> {
   }
 
   const { rows, corpusVersion, customCorpusVersion, missing, transforms, entities, custom } = await measure(repoRoot);
+  /*
+   * How long one evaluation takes, over the same corpus the rules were
+   * measured on, through the call `evaluate_output` makes. Under `--check`
+   * it is skipped: the comparison deletes the block anyway, and there is no
+   * reason to spend a thousand evaluations proving nothing.
+   */
+  const latency = check ? undefined : await measureLatency(new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval), await corpusContexts(repoRoot));
   const generatedAt = new Date().toISOString();
   const commit = gitCommit(repoRoot);
   const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-  const results = toResults(rows, corpusVersion, generatedAt, commit, version, { customCorpusVersion, transforms, entities, custom });
+  const results = toResults(rows, corpusVersion, generatedAt, commit, version, { customCorpusVersion, transforms, entities, custom, latency });
   const json = stableJson(results);
   const md = renderMarkdown(rows, corpusVersion, generatedAt, commit, missing, version, results);
   const ts = renderPublishedAccuracy(results);
@@ -621,6 +688,7 @@ async function main(): Promise<void> {
     );
   }
   for (const t of transforms.rows) if (t.n > 0) process.stdout.write(`  transform ${t.rule.padEnd(22)} ${t.transform.padEnd(10)} n=${String(t.n).padStart(3)} caught=${String(t.caught).padStart(3)} R=${pct(t.recall).padStart(6)}\n`);
+  if (latency) process.stdout.write(`  latency  n=${latency.n} p50=${latency.p50Ms}ms p95=${latency.p95Ms}ms on ${latency.machine.platform}/${latency.machine.arch} node ${latency.machine.node}\n`);
   for (const c of custom) process.stdout.write(`  custom ${c.type.padEnd(18)} n=${String(c.n).padStart(3)} tp=${c.tp} fp=${c.fp} fn=${c.fn} tn=${c.tn} skip=${c.skipped}\n`);
   if (missing.length > 0) {
     process.stderr.write(`proof — ${missing.length} registry rule(s) have no family: ${missing.join(', ')}\n`);

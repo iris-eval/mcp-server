@@ -254,6 +254,21 @@ export interface ProofClaims {
   custom?: ProofCustom;
   composite?: ProofComposite;
   transcripts?: ProofTranscripts;
+  /** How long one evaluation takes, with the machine that produced the numbers (proof/lib/latency.ts). */
+  latency?: ProofLatency;
+}
+
+/**
+ * The evaluation's own latency. Present once `npm run proof` has run on the
+ * machine that generated this truthbase; the numbers are that machine's, so
+ * every surface that shows them shows the machine too.
+ */
+export interface ProofLatency {
+  method: string;
+  n: number;
+  p50Ms: number;
+  p95Ms: number;
+  machine: { node: string; platform: string; arch: string; cpu: string };
 }
 export const PROOF: ProofClaims | null =
   (claimsRaw as unknown as { proof?: ProofClaims }).proof ?? null;

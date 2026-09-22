@@ -34,7 +34,6 @@ function evaluation(id: string, traceId: string | undefined, rows: Array<{ ruleN
     score: 0.5,
     passed: rows.every((r) => r.passed || r.skipped),
     rule_results: rows.map((r) => ({ ruleName: r.ruleName, passed: r.passed, score: r.passed ? 1 : 0, message: r.message ?? 'm', ...(r.skipped ? { skipped: true } : {}), ...(r.evidence ? { evidence: r.evidence } : {}) })) as EvalResult['rule_results'],
-    suggestions: [],
     created_at: createdAt,
   };
 }

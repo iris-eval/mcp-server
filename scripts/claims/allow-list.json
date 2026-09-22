@@ -26,24 +26,6 @@
       "reason": "Generator regex source — not a real test-count claim."
     },
     {
-      "file": "docs/roadmap.md",
-      "pattern": "mcp-tool-count",
-      "line": "*",
-      "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 3 tools). Current-state claims are truthbase-driven elsewhere."
-    },
-    {
-      "file": "docs/roadmap.md",
-      "pattern": "builtin-rule-count",
-      "line": "*",
-      "reason": "Roadmap sections are versioned snapshots by design (v0.1 = 12 rules; v0.3.1 documents the 12→13 expansion)."
-    },
-    {
-      "file": "docs/roadmap.md",
-      "pattern": "pii-pattern-count",
-      "line": "*",
-      "reason": "The v0.3.1 section records the 4→10 PII expansion as shipped then; the safety-corpus release took it to 19. Past-tense release history, correct as-of-version."
-    },
-    {
       "file": "docs/blog/016-the-eval-loop.md",
       "pattern": "builtin-rule-count",
       "line": "*",
@@ -138,12 +120,6 @@
       "pattern": "test-count",
       "line": "*",
       "reason": "Fixture prose inside seeded demo agent outputs (a fictional CI status report) — not a claim about iris's own test suite."
-    },
-    {
-      "file": "docs/roadmap.md",
-      "pattern": "injection-pattern-count",
-      "line": "*",
-      "reason": "The v0.3.1 section records the 5→13 injection expansion as shipped then; the safety-corpus release took it to 37. Past-tense release history, correct as-of-version. Surfaced when the scanner learned the 'no_injection_patterns … N patterns' spelling."
     },
     {
       "file": "website/src/app/api/playground/eval/route.ts",

@@ -58,7 +58,6 @@ describe('POST /api/v1/compare', () => {
           rule_results: [
             { ruleName: 'min_output_length', passed: passes[i], score: passes[i] ? 1 : 0, message: passes[i] ? 'OK' : 'too short' },
           ],
-          suggestions: [],
         });
       }
     }

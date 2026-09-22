@@ -102,7 +102,7 @@ describe('the seam', () => {
       await storage.insertTrace(LOCAL_TENANT, { trace_id: 't1', agent_name: 'a', input: 'q', output: 'The answer, in full.', timestamp: '2026-09-01T10:00:00Z', cost_usd: 0.01 });
       expect((await storage.getTrace(LOCAL_TENANT, 't1'))?.output).toBe('The answer, in full.');
       expect((await storage.queryTraces(LOCAL_TENANT, { limit: 10, offset: 0 })).total).toBe(1);
-      await storage.insertEvalResult(LOCAL_TENANT, { id: 'e1', trace_id: 't1', eval_type: 'all', output_text: 'x', score: 0.9, passed: true, rule_results: [], suggestions: [] });
+      await storage.insertEvalResult(LOCAL_TENANT, { id: 'e1', trace_id: 't1', eval_type: 'all', output_text: 'x', score: 0.9, passed: true, rule_results: [] });
       expect((await storage.getEvalsByTraceId(LOCAL_TENANT, 't1')).map((e) => e.id)).toEqual(['e1']);
       const health = await buildHealth({ storage, version: '9.9.9' });
       expect(health.status).toBe(200);

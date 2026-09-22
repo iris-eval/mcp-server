@@ -66,7 +66,11 @@ describe('a critical cost_threshold rule that could not run', () => {
     expect(rule?.skipped).toBe(true);
     expect(result.critical_failures).toBeUndefined();
     expect(result.critical_skipped).toEqual(['cost_ceiling']);
-    expect(result.suggestions.join(' ')).toContain('did NOT judge this output');
+    // The sentence a reader needs beside a clean verdict: a must-not-ship
+    // check never ran, so the verdict is not clean on that question.
+    const notes = (result.interpretations ?? []).map((i) => i.text).join(' ');
+    expect(notes).toContain('did not judge this output');
+    expect(notes).toContain('cost_ceiling');
   });
 
   it('is still named in critical_skipped when it was the ONLY rule (insufficient_data path)', async () => {

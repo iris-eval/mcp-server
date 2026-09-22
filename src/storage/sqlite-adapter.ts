@@ -518,7 +518,11 @@ export class SqliteAdapter implements IStorageAdapter {
       result.score,
       result.passed ? 1 : 0,
       JSON.stringify(result.rule_results),
-      JSON.stringify(result.suggestions),
+      // The `suggestions` column outlived the field (0.16.0 removed it for
+      // interpretations[]). It is written as an empty array rather than
+      // dropped so a database this version writes still opens — and reads
+      // back without a crash — on 0.15.0, which parses this column.
+      '[]',
       result.rules_evaluated ?? null,
       result.rules_skipped ?? null,
       result.insufficient_data ? 1 : 0,
@@ -1734,7 +1738,6 @@ export class SqliteAdapter implements IStorageAdapter {
       score: row.score as number,
       passed: (row.passed as number) === 1,
       rule_results: JSON.parse(row.rule_results as string),
-      suggestions: JSON.parse(row.suggestions as string),
       created_at: row.created_at as string,
       rules_evaluated: row.rules_evaluated as number | undefined,
       rules_skipped: row.rules_skipped as number | undefined,

@@ -22,7 +22,7 @@ import type { CustomRuleDefinition } from '../../../src/types/eval.js';
  * That behaviour is deliberate — failing closed would let the same
  * adversary force false violations on benign output, which is worse for an
  * eval product. What was NOT acceptable was leaving it undocumented and
- * untested, with the only signal a prose line in `suggestions`. These tests
+ * untested, with the only signal a prose line beside the result. These tests
  * pin the fail-open contract so a future change to it has to be a decision,
  * and assert the machine-readable `critical_skipped` marker a fail-closed
  * gate consumes instead of walking rule_results[].budgetExceeded.
@@ -120,8 +120,10 @@ describe('a critical rule killed by the sandbox budget', () => {
     const result = await engine.evaluate('custom', { output: HOSTILE_FUEL });
 
     expect(result.critical_skipped).toEqual(['crafted_stall']);
-    // And it is stated in prose too, for the human reading suggestions.
-    expect(result.suggestions.join(' ')).toContain('did NOT judge this output');
+    // And it is stated in prose too, for the human reading the interpretations.
+    const notes = (result.interpretations ?? []).map((i) => i.text).join(' ');
+    expect(notes).toContain('could not answer');
+    expect(notes).toContain('crafted_stall');
   });
 
   it('leaves critical_skipped absent when every critical rule actually ran', async () => {

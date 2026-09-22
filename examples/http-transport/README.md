@@ -154,8 +154,7 @@ Response (inside the JSON-RPC result):
     {"ruleName": "non_empty_output", "passed": true, "score": 1, "message": "Output is non-empty"},
     {"ruleName": "sentence_count", "passed": true, "score": 1, "message": "Sentence count (1) meets minimum (1)"},
     {"ruleName": "expected_coverage", "passed": true, "score": 0.8, "message": "Covered 8/10 expected terms (80%)"}
-  ],
-  "suggestions": []
+  ]
 }
 ```
 

@@ -32,7 +32,6 @@ function evalRow(traceId: string | undefined, outputText: string): EvalResult {
     score: 0,
     passed: false,
     rule_results: [{ ruleName: 'no_pii', passed: false, score: 0, message: 'Potential PII detected: SSN' }],
-    suggestions: [],
   };
 }
 

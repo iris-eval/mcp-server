@@ -82,8 +82,8 @@ MCP Client                    Iris MCP Server    EvalEngine        SqliteAdapter
     |                              |-- insertEvalResult(result) -------->|
     |                              |                                     |
     |<-- { id, score, passed,  ----|                                     |
-    |      rule_results,           |                                     |
-    |      suggestions }           |                                     |
+    |      verdict, rule_results,  |                                     |
+    |      interpretations }       |                                     |
 ```
 
 1. The MCP client calls `evaluate_output` with the output text, eval type, and optionally the original input, expected output, cost, token usage, and custom rules.
@@ -382,7 +382,7 @@ CREATE TABLE eval_results (
     score          REAL NOT NULL,          -- 0.0 to 1.0
     passed         INTEGER NOT NULL,       -- 0 or 1
     rule_results   TEXT,                   -- JSON array of { ruleName, passed, score, message }
-    suggestions    TEXT,                   -- JSON array of strings
+    suggestions    TEXT,                   -- always '[]' since 0.16.0; the field it held is gone
     created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

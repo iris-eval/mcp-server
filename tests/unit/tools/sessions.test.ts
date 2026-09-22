@@ -72,7 +72,7 @@ describe('sessions over MCP', () => {
     ];
     for (const a of attempts) {
       await storage.insertTrace(LOCAL_TENANT, { trace_id: `t-${a.id}`, agent_name: 'bot', input: `ask ${a.id}`, output: 'o', timestamp: '2026-09-21T12:00:00.000Z', run_id: 'nightly-1', case_key: a.caseKey, ...(a.session ? { session_id: a.session } : {}) });
-      const result: EvalResult = { id: `e-${a.id}`, trace_id: `t-${a.id}`, eval_type: 'all', output_text: 'o', score: a.verdict ? 1 : 0, passed: a.verdict, rule_results: [], suggestions: [], run_id: 'nightly-1' };
+      const result: EvalResult = { id: `e-${a.id}`, trace_id: `t-${a.id}`, eval_type: 'all', output_text: 'o', score: a.verdict ? 1 : 0, passed: a.verdict, rule_results: [], run_id: 'nightly-1' };
       await storage.insertEvalResult(LOCAL_TENANT, result);
     }
 

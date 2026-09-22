@@ -42,6 +42,18 @@ const nextConfig: NextConfig = {
       destination: "/#waitlist",
       permanent: true,
     },
+    // The capability map IS the roadmap (arc 9, N-22): every question Iris
+    // can be asked against every subject, with what it has, what it has
+    // with a stated limit, and what it lacks — rendered from the truthbase
+    // at every release and drift-locked, so it cannot describe the product
+    // as older or newer than it is. docs/roadmap.md said the same thing in
+    // prose that went stale between releases; it is gone, and the links
+    // that pointed at it land here.
+    {
+      source: "/roadmap",
+      destination: "/capabilities",
+      permanent: true,
+    },
     // The dashboard's command palette ("Open Iris docs") and older listings
     // link to iris-eval.com/docs. The docs live in the repo; send readers
     // there until a hosted docs site exists. Temporary on purpose.

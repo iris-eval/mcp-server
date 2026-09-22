@@ -91,7 +91,6 @@ describe('a paid-for judgement decides', () => {
           kind: 'judgment',
         },
       ],
-      suggestions: [],
       rules_evaluated: 1,
       rules_skipped: 0,
       insufficient_data: false,

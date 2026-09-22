@@ -45,7 +45,6 @@ const evalOf = (e: AgentFailureLogEntry): EvalResult[] => [
     score: e.failed.length ? 0.2 : 0.9,
     passed: e.failed.length === 0,
     rule_results: RULES.map((ruleName) => ({ ruleName, passed: !e.failed.includes(ruleName), score: e.failed.includes(ruleName) ? 0 : 1, message: 'x' })),
-    suggestions: [],
   },
 ];
 

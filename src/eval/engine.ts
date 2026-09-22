@@ -434,7 +434,11 @@ export class EvalEngine {
     };
 
     if (rules.length === 0) {
-      return {
+      // Through decide(), like every other return: the composer stamps the
+      // verdict and writes the sentence that says nothing was judged, so
+      // "no rules are configured for this eval type" is one writer's line
+      // rather than a string this branch keeps in its own hand.
+      return this.decide({
         id: generateEvalId(),
         eval_type: evalType,
         output_text: context.output,
@@ -442,12 +446,10 @@ export class EvalEngine {
         score: 0,
         passed: false,
         rule_results: [],
-        suggestions: ['No rules configured for this eval type'],
         rules_evaluated: 0,
         rules_skipped: 0,
         insufficient_data: true,
-        verdict: { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null },
-      };
+      });
     }
 
     /*
@@ -564,9 +566,6 @@ export class EvalEngine {
 
     // Handle "all rules skipped" — insufficient data
     if (overall.rulesEvaluated === 0) {
-      const skipMessages = ruleResults
-        .filter((r) => r.skipped)
-        .map((r) => `[${r.ruleName}] ${r.skipReason ?? r.message}`);
       // Same field as the main path below: the tool description promises
       // that EVERY critical rule that skipped is named here, and a caller
       // whose only rules were critical ones should not have to infer that
@@ -579,10 +578,6 @@ export class EvalEngine {
         score: 0,
         passed: false,
         rule_results: ruleResults,
-        suggestions: [
-          'Insufficient context to evaluate. Provide: expected, input, costUsd, or tokenUsage.',
-          ...skipMessages,
-        ],
         rules_evaluated: 0,
         rules_skipped: overall.rulesSkipped,
         insufficient_data: true,
@@ -594,42 +589,18 @@ export class EvalEngine {
       return this.decide(unknown);
     }
 
-    const suggestions: string[] = [];
-    for (const result of ruleResults) {
-      if (!result.passed && !result.skipped) {
-        suggestions.push(`[${result.ruleName}] ${result.message}`);
-      }
-    }
-    if (overall.criticalFailures.length > 0 && overall.score >= this.threshold) {
-      suggestions.push(
-        `Critical rule(s) failed (${overall.criticalFailures.join(', ')}) — passed=false regardless of the weighted score`,
-      );
-    }
-    if (overall.rulesSkipped > 0) {
-      /*
-       * Say WHY each rule skipped. The old line hardcoded "(missing
-       * context)" — but a rule whose regex was killed at the sandbox budget
-       * did not lack context, it was DEFEATED by this output, and labeling
-       * that "missing context" hid the one signal a fail-closed consumer
-       * needs. Each rule's own skipReason is the truth; missing context is
-       * only the default for rules that skip without stating a reason.
-       */
-      const skippedParts = ruleResults
-        .filter((r) => r.skipped)
-        .map((r) => `${r.ruleName} (${r.skipReason ?? 'missing context'})`);
-      suggestions.push(
-        `${overall.rulesSkipped} rule(s) skipped — excluded from the weighted score: ${skippedParts.join('; ')}`,
-      );
-    }
-    if (overall.criticalSkipped.length > 0) {
-      suggestions.push(
-        `Critical rule(s) did NOT judge this output (${overall.criticalSkipped.join(', ')}) — ` +
-          'they skipped, so they could not veto. This evaluation is "unknown" on those ' +
-          'checks, not "clean"; a gate that must fail closed should treat critical_skipped ' +
-          'as a failure.',
-      );
-    }
-
+    /*
+     * There was a `suggestions: string[]` built here, and every line in it
+     * restated a field this result already carries: the failing rules
+     * (rule_results), the veto (verdict.basis `detector_veto` and
+     * critical_failures), each skip and its reason (rule_results[].skipped
+     * and .skipReason), and the critical rules that could not judge
+     * (critical_skipped, and the composer's block-severity sentence). A
+     * second copy of a verdict is a second verdict, and the day the two
+     * disagree a reader cannot tell which one the product meant.
+     * interpretations[] is where a sentence lives now — it says who it is
+     * for and which setting changes it, which a flat string could not.
+     */
     const result: EvalResult = {
       id: generateEvalId(),
       eval_type: evalType,
@@ -638,7 +609,6 @@ export class EvalEngine {
       score: Math.round(overall.score * 1000) / 1000,
       passed: overall.passed,
       rule_results: ruleResults,
-      suggestions,
       rules_evaluated: overall.rulesEvaluated,
       rules_skipped: overall.rulesSkipped,
       insufficient_data: false,
@@ -675,7 +645,7 @@ export class EvalEngine {
    * nobody actually cleared. The trade-off is deliberate (failing closed
    * would let the same adversary force false violations on benign
    * output), but before `criticalSkipped` the only trace of it was a
-   * suggestions line — prose. A gate that must fail closed should not
+   * interpretation — prose. A gate that must fail closed should not
    * have to walk rule_results[].budgetExceeded to discover it was defeated.
    */
   private summarize(rules: EvalRule[], ruleResults: EvalRuleResult[]): Verdict {

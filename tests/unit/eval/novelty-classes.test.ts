@@ -29,7 +29,6 @@ const failing = (rules: string[]): EvalResult[] => [
     score: 0.2,
     passed: false,
     rule_results: rules.map((ruleName) => ({ ruleName, passed: false, score: 0, message: 'failed' })),
-    suggestions: [],
   },
 ];
 

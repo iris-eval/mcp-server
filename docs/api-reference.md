@@ -289,8 +289,7 @@ The response echoes the `eval_type` that ran. When `eval_type` is omitted, every
       "score": 0.8,
       "message": "Covered 8/10 expected terms (80%)"
     }
-  ],
-  "suggestions": []
+  ]
 }
 ```
 
@@ -481,7 +480,7 @@ Remove a deployed custom rule by ID. Idempotent-ish: re-deleting a removed rule 
 
 ### delete_trace
 
-Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns. Spans cascade. Every evaluation linked to the trace keeps its verdict, scores, criticality and evidence offsets and loses its text — `output_text`, the expected text, the suggestions and the rule messages are erased in the same transaction and `erased_at` is stamped — so no text from the trace survives in any evaluation. The retention sweep erases the same way for the traces it deletes.
+Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns. Spans cascade. Every evaluation linked to the trace keeps its verdict, scores, criticality and evidence offsets and loses its text — `output_text`, the expected text and the rule messages are erased in the same transaction and `erased_at` is stamped — so no text from the trace survives in any evaluation. The retention sweep erases the same way for the traces it deletes.
 
 #### Parameters
 
@@ -843,8 +842,7 @@ Returns full trace detail including spans and linked evaluation results.
       "eval_type": "completeness",
       "score": 0.925,
       "passed": true,
-      "rule_results": [...],
-      "suggestions": []
+      "rule_results": [...]
     }
   ]
 }
@@ -909,7 +907,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 
 `tool_calls` on the body are forwarded into the evaluation, so the trajectory rules judge the same trajectory the request just stored.
 
-`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `suggestions`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, `categories` when `eval_type` is `all` (a bundle nothing judged is `passed: null` / `score: null` there), and `note` when `eval_type` was omitted.
+`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `verdict`, `interpretations`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, `categories` when `eval_type` is `all` (a bundle nothing judged is `passed: null` / `score: null` there), and `note` when `eval_type` was omitted.
 
 #### Error Responses
 
@@ -1030,8 +1028,7 @@ List evaluation results with filtering and pagination.
       "passed": true,
       "rule_results": [
         { "ruleName": "no_pii", "passed": true, "score": 1, "message": "No PII detected" }
-      ],
-      "suggestions": [],
+      ]
       "created_at": "2026-03-16T10:00:04.000Z"
     }
   ],
@@ -1506,7 +1503,7 @@ Used when `eval_type` is `"safety"`. These rules check for PII leakage, blocked 
 | `no_pii` | 2.0 | Regex patterns for 19 PII types | None | Zero PII patterns matched |
 | `no_blocklist_words` | 2.0 | Presence of blocklisted phrases | `blocklist` (custom word list) | Zero blocklisted phrases found |
 | `no_injection_patterns` | 2.0 | Regex patterns for 37 prompt injection attempts (phrase + structural). no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. | None | Zero injection patterns matched |
-| `no_stub_output` | 1.5 | Detects placeholder/stub markers (TODO, FIXME, PLACEHOLDER, etc.), marker-free stub shapes, and **deferred work** — an output that is mostly a promise ("I'll look into it and get back to you") instead of the work: the deferral is at least 60% of the text, or the output has at most two sentences and ends on the promise | `stub_markers` (custom marker list) | Zero stub markers, shapes or deferrals detected |
+| `no_stub_output` | 1.5 | Detects placeholder/stub markers (TODO, FIXME, @@DROP@@, etc.), marker-free stub shapes, and **deferred work** — an output that is mostly a promise ("I'll look into it and get back to you") instead of the work: the deferral is at least 60% of the text, or the output has at most two sentences and ends on the promise | `stub_markers` (custom marker list) | Zero stub markers, shapes or deferrals detected |
 | `no_hallucination_markers` | 1.0 | Context-grounded fabrication/contradiction signals (v0.5.0 rewrite; moved from relevance) | None | Zero hallucination signals detected |
 | `no_silent_tool_failure` | 1.5 | **Trajectory rule** — a tool call that failed must be acknowledged by the output. Asserting a result no tool produced is a fabrication, which is why this sits in the safety bundle. Requires `tool_calls`; **skips** without them | None | No failed tool call goes unacknowledged |
 

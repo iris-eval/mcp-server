@@ -63,7 +63,7 @@ describe('per-evaluation regex circuit breaker', () => {
     expect(benign.rule_results[0].passed).toBe(true);
   });
 
-  it('suggestions quote the real skip reason, not "(missing context)"', async () => {
+  it('the rule that skipped carries the real reason, not "(missing context)"', async () => {
     const engine = new EvalEngine(0.7);
     // Mix: one hostile rule (budget skip) + one benign rule that evaluates,
     // so we exercise the MIXED path, not the all-skipped path.
@@ -71,9 +71,9 @@ describe('per-evaluation regex circuit breaker', () => {
       hostileRule('stalled-policy'),
       { name: 'has-an-a', type: 'regex_match', config: { pattern: 'a' } },
     ]);
-    const skipLine = result.suggestions.find((s) => s.includes('stalled-policy'));
-    expect(skipLine).toBeDefined();
-    expect(skipLine).toContain('matching budget');
-    expect(skipLine).not.toContain('missing context');
+    const stalled = result.rule_results.find((r) => r.ruleName === 'stalled-policy');
+    expect(stalled?.skipped).toBe(true);
+    expect(stalled?.skipReason).toContain('matching budget');
+    expect(stalled?.skipReason).not.toContain('missing context');
   });
 });

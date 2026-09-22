@@ -87,7 +87,6 @@ function makeEval(trace: Trace, index: number): EvalResult {
           uncertainty: { basis: 'policy' },
         },
       ],
-      suggestions: [],
       provenance: {
         irisVersion: '0.13.0',
         rulesetHash: 'e2e-seed',
@@ -115,7 +114,6 @@ function makeEval(trace: Trace, index: number): EvalResult {
         message: passed ? 'OK' : 'output too short',
       },
     ],
-    suggestions: passed ? [] : ['Expand the response'],
   };
 }
 

@@ -25,10 +25,11 @@ describe('EvalEngine', () => {
     expect(result.score).toBeGreaterThan(0);
   });
 
-  it('should generate suggestions for failing rules', async () => {
+  it('names every rule that judged and failed', async () => {
     const engine = new EvalEngine(0.7);
     const result = await engine.evaluate('completeness', failingContext);
-    expect(result.suggestions.length).toBeGreaterThan(0);
+    expect(result.rule_results.filter((r) => !r.passed && !r.skipped).length).toBeGreaterThan(0);
+    expect(result.verdict).toBeDefined();
   });
 
   it('should handle custom eval type with no rules', async () => {

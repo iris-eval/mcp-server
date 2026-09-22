@@ -36,7 +36,7 @@ async function seeded(): Promise<SqliteAdapter> {
   ];
   for (const a of attempts) {
     await storage.insertTrace(LOCAL_TENANT, { trace_id: `t-${a.id}`, agent_name: 'bot', input: 'do the three things', output: 'did some', timestamp: '2026-09-01T10:00:00Z', run_id: 'nightly-1', case_key: 'k1' });
-    const result: EvalResult = { id: `e-${a.id}`, trace_id: `t-${a.id}`, eval_type: 'all', output_text: 'did some', score: 0.5, passed: a.verdict, rule_results: a.rules, suggestions: [], run_id: 'nightly-1' };
+    const result: EvalResult = { id: `e-${a.id}`, trace_id: `t-${a.id}`, eval_type: 'all', output_text: 'did some', score: 0.5, passed: a.verdict, rule_results: a.rules, run_id: 'nightly-1' };
     await storage.insertEvalResult(LOCAL_TENANT, result);
   }
   return storage;

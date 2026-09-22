@@ -108,7 +108,6 @@ describe('the moment classifier reads the agent\'s own baseline', () => {
     score: 1,
     passed: true,
     rule_results: [{ ruleName: 'min_output_length', passed: true, score: 1, message: 'OK' }],
-    suggestions: [],
   };
   const log = (costs: number[]): AgentFailureLogEntry[] =>
     costs.map((c, i) => ({ traceId: `t${i}`, timestamp: `2026-09-1${i % 9}T0${i % 10}:${String(i % 60).padStart(2, '0')}:00.000Z`, failed: [], costUsd: c }));

@@ -81,7 +81,6 @@ const momentFixture: DecisionMomentDetail = {
         { ruleName: 'no_pii', passed: true, score: 1, message: 'No PII detected' },
         { ruleName: 'no_blocklist_words', passed: true, score: 1, message: 'clean' },
       ],
-      suggestions: [],
     },
   ],
 };
@@ -109,7 +108,6 @@ const traceFixture: TraceDetail = {
       rule_results: [
         { ruleName: 'min_output_length', passed: true, score: 1, message: 'OK' },
       ],
-      suggestions: [],
     },
   ],
 };

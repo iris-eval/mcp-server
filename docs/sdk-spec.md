@@ -1,6 +1,6 @@
 # `@iris-eval/client` — SDK Specification
 
-> **Status:** design spec. **Not implemented.** This is the design for the SDK item in **Track 3 (Reach)** of the [roadmap](./roadmap.md) — it is not a commitment to a date. The MCP-native path described below is the supported install today.
+> **Status:** design spec. **Not implemented.** This is the design for the SDK item in **Track 3 (Reach)** of the [roadmap](https://iris-eval.com/#roadmap) — it is not a commitment to a date. The MCP-native path described below is the supported install today.
 >
 > **Why this exists:** Iris's primary install path is MCP-native — the MCP server runs as a subprocess and any MCP-aware client (Claude Code, Cursor, Windsurf, Continue, Cline, Zed, custom MCP clients) discovers it. That's the right fit for hosted agents. Teams building **custom agents** in TypeScript hit two limits: MCP's process-boundary cost on every call, and the fact that under MCP a tool call is always the model's decision — so capture is best-effort. In early testing one user wrote a 249-line ad-hoc bridge precisely because the MCP path did not fit their high-volume real-time loop. An in-process SDK is the right shape for that use case, and it makes capture unconditional.
 
@@ -130,7 +130,7 @@ Both share: rule library, dashboard, scoring algorithms, custom-rule format, sto
 
 ## Where this sits on the roadmap
 
-This spec is the design for the **SDK item in Track 3 (Reach)** — see [roadmap.md](./roadmap.md).
+This spec is the design for the **SDK item in Track 3 (Reach)** — see [the roadmap](https://iris-eval.com/#roadmap).
 
 One thing has changed since the spec was written, and it strengthens the case rather than weakening it. The original motivation was *performance*: MCP's process boundary is costly in a high-volume loop. That still holds. But the more important reason is **capture reliability**: under MCP a tool call is always the model's decision, so a trace is recorded only if the agent chooses to record it. An in-process SDK makes capture unconditional.
 

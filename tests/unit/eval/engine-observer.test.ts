@@ -53,7 +53,6 @@ describe('EvalEngine.setObserver', () => {
         score: 0,
         passed: false,
         rule_results: [],
-        suggestions: [],
         rules_evaluated: 0,
         rules_skipped: 0,
         insufficient_data: true,

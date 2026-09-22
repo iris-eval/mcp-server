@@ -5,7 +5,7 @@
  * leave its evaluations behind with output_text verbatim — including the
  * SSN no_pii had flagged — orphaned and readable by every query (arc zero,
  * G15). Now delete_trace and the retention sweep blank the text, the
- * expected text, the suggestions and the rule messages, stamp erased_at,
+ * expected text and the rule messages, stamp erased_at,
  * and keep the scores and the evidence offsets.
  */
 import { describe, expect, it } from 'vitest';
@@ -42,7 +42,6 @@ describe('erasure', () => {
     const after = (await storage.getEvalById(LOCAL_TENANT, evalId))!;
     expect(after.output_text).toBe('');
     expect(after.expected_text).toBeUndefined();
-    expect(after.suggestions).toEqual([]);
     expect(after.erased_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(after.trace_id ?? undefined).toBeUndefined();
     expect(after.score).toBe(before.score);
