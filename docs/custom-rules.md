@@ -99,7 +99,7 @@ Every custom rule has the same structure:
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `name` | `string` | Yes | -- | Your identifier for this rule |
-| `type` | `string` | Yes | -- | One of the 8 types below |
+| `type` | `string` | Yes | -- | One of the 9 types below |
 | `config` | `object` | Yes | -- | Type-specific configuration |
 | `weight` | `number` | No | `1` | Weight in the final score calculation |
 
@@ -352,6 +352,35 @@ The rule reads `cost_usd` from the `evaluate_output` call. When `cost_usd` is no
 ```
 
 ---
+
+### action_policy
+
+What the agent may DO, not what it wrote: the tools it is allowed to call, and with what arguments. Needs `tool_calls` on the trace — a trace without them is `not_applicable`, never a silent pass.
+
+```json
+{
+  "name": "no-delete-tools",
+  "type": "action_policy",
+  "config": {
+    "deny": [{ "tool": "delete_*" }]
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `allow` | `object[]` | No | Only these calls are permitted; anything else fails the rule |
+| `deny` | `object[]` | No | These calls fail the rule |
+
+**Each entry is an OBJECT, not a bare glob.** `{ "tool": "<glob>" }` matches by tool name; add `"args"` to match on arguments too:
+
+```json
+{ "deny": [{ "tool": "shell", "args": { "command": "rm -rf *" } }] }
+```
+
+A bare string (`"deny": ["delete_*"]`) is refused with a 400 that names the shape. At least one of `allow` or `deny` is required.
+
+Deployed at `severity: high` or `critical` the rule GATES: a denied call makes the verdict `fail` with `basis: policy_gate`. At `medium` or `low` it advises — the deployment's own statement of how much it matters (see [Rule severity](#combining-built-in-and-custom-rules)).
 
 ## Scoring and Weights
 

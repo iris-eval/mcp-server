@@ -206,7 +206,7 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `name` | `string` | Yes | -- | Rule identifier |
-| `type` | `enum` | Yes | -- | One of: `regex_match`, `regex_no_match`, `min_length`, `max_length`, `contains_keywords`, `excludes_keywords`, `json_schema`, `cost_threshold` |
+| `type` | `enum` | Yes | -- | One of: `regex_match`, `regex_no_match`, `min_length`, `max_length`, `contains_keywords`, `excludes_keywords`, `json_schema`, `cost_threshold`, `action_policy` |
 | `config` | `Record<string, unknown>` | Yes | -- | Rule-specific configuration (see [Custom Rules](#custom-rules)) |
 | `weight` | `number` | No | `1` | Weight in the final score calculation |
 
@@ -1422,7 +1422,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `definition` | `object` | -- | `{ name?, type, config, weight? }`, strict. `name` is optional here too |
-| `evalType` | `string` | `"custom"` | Accepted for symmetry with deploy |
+| `evalType` | `string` | `"custom"` | Accepted for symmetry with deploy. **This route spells it `evalType`**; the `deploy_rule` MCP tool spells the same field `eval_type`, and each door refuses the other spelling with a 400 naming the key |
 | `windowDays` | `integer` | `7` | 1-30 — how far back to replay |
 | `maxTraces` | `integer` | `1000` | 1-5000 — trace cap for the replay |
 | `sampleOutput` | `string` | -- | Up to 100,000 chars. When present, the rule is **also** evaluated against exactly this text and the verdict comes back under `sample` |
