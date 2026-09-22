@@ -69,8 +69,8 @@ what a caller sees, say so in the PR description and write that sentence.
   | Check | What it covers |
   |---|---|
   | `lint-and-typecheck` | ESLint + `tsc --noEmit` over `src/` and `tests/` |
-  | `test (20)` | Unit suite on Node 20 |
   | `test (22)` | Unit suite on Node 22 |
+  | `test (24)` | Unit suite on Node 24 |
   | `integration` | `tests/integration/` |
   | `e2e` | Playwright end-to-end |
   | `build` | `tsc -p tsconfig.build.json` |

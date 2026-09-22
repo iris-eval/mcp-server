@@ -65,8 +65,10 @@ jobs:
       - run: cd dashboard && npm run build-storybook
 
   test:
-    # Branch protection requires the checks "test (20)" and "test (22)" by
-    # name; the native cells keep those names, the built-in cells add theirs.
+    # Branch protection requires "test (22)" and "test (24)" by name; the
+    # native cells carry those names, the built-in and macOS cells add theirs.
+    # "test (20)" is gone with Node 20 and must be removed from the required
+    # set, or it blocks every PR waiting for a check that can never report.
     name: ${{ matrix.os == 'macos-latest' && format('test ({0}, macOS)', matrix.node-version) || (matrix.driver == 'native' && format('test ({0})', matrix.node-version) || format('test ({0}, {1})', matrix.node-version, matrix.driver)) }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -76,23 +78,17 @@ jobs:
       # the moment Node 20 went red, and `cancelled` was read as `failed`.
       fail-fast: false
       matrix:
-        node-version: [20, 22]
+        node-version: [22, 24]
         driver: [native]
         os: [ubuntu-latest]
         # The storage driver seam (arc 8, R-0): the whole suite once more on
-        # Node's built-in SQLite, on the two Node lines that ship it.
+        # Node's built-in SQLite, on both supported lines.
         include:
           - node-version: 22
             driver: node
             os: ubuntu-latest
           - node-version: 24
             driver: node
-            os: ubuntu-latest
-          # Node 24 on the native addon. Node 20 reached end of life on
-          # 2026-04-30 and better-sqlite3 13 declares `engines: node >=22`, so
-          # 24 is the line Iris stands on next; nothing measured it until now.
-          - node-version: 24
-            driver: native
             os: ubuntu-latest
           # The first macOS cell this repository has ever had: every other job
           # runs on ubuntu, so the native SQLite addon has never been exercised

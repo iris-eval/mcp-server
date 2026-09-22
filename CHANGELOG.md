@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+
+- **Node 20 is no longer supported. The minimum is now Node 22.13.** Node 20 reached end of life on 2026-04-30 and stopped receiving security fixes then. The floor is 22.13 rather than 22.0 for a reason you can check: 22.13.0 is the first release that ships `node:sqlite`, so it is the first version on which the storage driver seam added in 0.15.0 actually has a second driver to fall back to when the native addon will not load. On Node 20, and on 22.0 through 22.12, a missing prebuild is still a dead start. `engines` now says `>=22.13.0` in the server and in `@iris-eval/init`, and the CI matrix tests Node 22 and Node 24. For scale: 22.13.0 shipped 2025-01-06 and the current 22.x line is 22.23.2, so this excludes no maintained runtime.
+
+### Changed
+
+- **CI stopped hiding its own results, and runs on macOS.** The test matrix is `fail-fast: false`, so one red cell no longer cancels its siblings — a reading that kept Dependabot #308 open for six weeks on the belief that `better-sqlite3` 13 crashed on three Node versions when it crashes on one. Every `runs-on:` line in this repository was `ubuntu-latest`, so the native SQLite addon had never been exercised on Apple Silicon; `test (22, macOS)` now runs the whole suite there. **If you pin required checks for a fork, `test (20)` is gone and `test (24)` and `test (22, macOS)` are new.**
+
 ## [0.16.0] - 2026-09-22
 
 **Earn the comparison.** 0.16.0 is the release where Iris can be opened beside any incumbent and every noun on the table is either shipped and measured or named as a gap in Iris's own words. A trace carries a session; a run can be a baseline and a comparison lists the cases the two runs disagree on; a moment fires a webhook; a CI job gets a one-line Action; Python gets a client and a pytest plugin; every OpenTelemetry framework gets a recipe bound to a fixture that proves it; every listing renders from the truthbase; the fourteen compare pages hold against the vendors' pages as they read today, with a cost-to-run row and a five-question FAQ; the response schema is published and locked; the verdict's decision path is exported; and how long an evaluation takes is measured rather than asserted.

@@ -16,7 +16,7 @@
 
 **Iris scores every agent run for quality, safety, and cost — on your machine, with no SDK and no account.** Most agent projects check quality by running a few remembered prompts and eyeballing the output. Iris replaces that with numbers you can audit: your agent's runs land in a SQLite database on your disk, 25 built-in rules score them deterministically — PII, prompt injection, hallucination markers, cost thresholds, and the agent's own tool calls — free, with no LLM calls, and an optional LLM judge with a hard per-eval cost cap handles the semantic questions. Every rule is inspectable and editable, because a judge you can't audit is just vibes with a number on it. MIT licensed, no telemetry. Nothing leaves your machine unless you set `IRIS_OTEL_ENDPOINT`, which exports traces to the collector you name, or enable the LLM judge with your own key.
 
-**Requires Node.js 20 or later.** Check with `node --version`.
+**Requires Node.js 22.13 or later.** Check with `node --version`.
 
 ![The demo: Failures, a failure opened, two runs compared](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/demo.gif)
 
@@ -554,10 +554,12 @@ Iris keeps everything in one SQLite file, opened by `better-sqlite3` — a nativ
 
 ### Node.js version
 
-Iris requires Node.js 20 or later. Node 18 reached EOL in April 2025 and is not supported.
+Iris requires Node.js 22.13 or later. Node 20 reached end of life on 2026-04-30 and is not supported; Node 18 went in April 2025.
+
+The floor is 22.13 rather than 22.0 because 22.13.0 is the first release that ships `node:sqlite`. That makes it the first version on which every supported Iris install has a *second* storage driver: when the native `better-sqlite3` addon will not load, Iris falls back to Node's built-in SQLite instead of failing to start. Below 22.13 — and on Node 20, for its whole life — there was only ever one driver, and a missing prebuild was a dead start.
 
 ```bash
-node --version  # Must be v20.x or v22.x+
+node --version  # Must be v22.13.0 or newer
 ```
 
 ### Windows: `cmd /c` not needed
