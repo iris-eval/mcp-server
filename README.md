@@ -1,7 +1,8 @@
 # Iris — stop shipping agents on vibes
 
 [![Glama Score](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server)
-[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19)
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdfQ==)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Iris-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=iris-eval&config=%7B%22name%22%3A%22iris-eval%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40iris-eval%2Fmcp-server%22%5D%7D)
 [![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![npm downloads](https://img.shields.io/npm/dt/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![GitHub stars](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
@@ -11,13 +12,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/iris-eval/mcp-server/pkgs/container/mcp-server)
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
-[![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/server/iris/iris-eval)
+[![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/servers/mcp-server-iris-eval)
 
 **Iris scores every agent run for quality, safety, and cost — on your machine, with no SDK and no account.** Most agent projects check quality by running a few remembered prompts and eyeballing the output. Iris replaces that with numbers you can audit: your agent's runs land in a SQLite database on your disk, 25 built-in rules score them deterministically — PII, prompt injection, hallucination markers, cost thresholds, and the agent's own tool calls — free, with no LLM calls, and an optional LLM judge with a hard per-eval cost cap handles the semantic questions. Every rule is inspectable and editable, because a judge you can't audit is just vibes with a number on it. MIT licensed, no telemetry. Nothing leaves your machine unless you set `IRIS_OTEL_ENDPOINT`, which exports traces to the collector you name, or enable the LLM judge with your own key.
 
 **Requires Node.js 20 or later.** Check with `node --version`.
 
-![Iris Dashboard](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png)
+![The demo: Failures, a failure opened, two runs compared](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/demo.gif)
+
+<sub>The demo database, recorded by `scripts/demo-media.mts`; the source is [`demo.mp4`](https://iris-eval.com/demo.mp4). A still: [`dashboard-overview.png`](https://raw.githubusercontent.com/iris-eval/mcp-server/main/docs/assets/dashboard-overview.png).</sub>
 
 ## A failure on screen in 60 seconds
 
@@ -156,6 +159,23 @@ npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 0.5.1
 
 <details>
 <summary><strong>Setup by tool</strong></summary>
+
+<!-- iris:clients-table:start -->
+| Client | Status | What that means | Read |
+|---|---|---|---|
+| Claude Code | verified | driven through the real scripts on every CI run | [2026-09-21](https://code.claude.com/docs/en/mcp) |
+| Claude Desktop | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers) |
+| Cursor | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://cursor.com/docs/mcp) |
+| Windsurf | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://docs.devin.ai/desktop/cascade/mcp) |
+| Continue | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://docs.continue.dev/customize/deep-dives/mcp) |
+| VS Code | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://code.visualstudio.com/docs/agent-customization/mcp-servers) |
+| Cline | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://docs.cline.bot/mcp/mcp-overview) |
+| Zed | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://zed.dev/docs/ai/mcp) |
+| OpenAI Codex CLI | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://github.com/openai/codex/blob/main/docs/config.md) |
+| Gemini CLI | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://geminicli.com/docs/tools/mcp-server/) |
+
+Every row with what was checked: [iris-eval.com/clients](https://iris-eval.com/clients). No client is called supported without a row.
+<!-- iris:clients-table:end -->
 
 #### Claude Desktop
 

@@ -50,6 +50,10 @@ const FILES = [
     description: "Claude Code plugin manifest (repo root)",
   },
   {
+    path: ".cursor-plugin/plugin.json",
+    description: "Cursor plugin manifest (arc 9, N-20)",
+  },
+  {
     // .claude-plugin/marketplace.json points plugin installs at
     // `./claude-plugin` — so THIS is the manifest a marketplace user sees,
     // not the root one above. It was never in this list: it shipped 0.1.0

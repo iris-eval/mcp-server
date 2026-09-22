@@ -9,8 +9,9 @@ The **send is the listing owner's act** — a sign-in, a form, a PR from the org
 | Glama | `glama.md` | Build & Release (runs the server, reads `tools/list`), then Sync Server |
 | mcp.so | `mcp-so.md` | ingests the Official MCP Registry; hand edit only as the claimed owner |
 | PulseMCP | `pulsemcp.md` | ingests the Official MCP Registry; re-check before editing |
-| Smithery | `smithery.md` | driven by `smithery.yaml`; listing is a publish |
+| Smithery | `smithery.md` | retired: Smithery lists a local server as an MCPB bundle through `smithery mcp publish`, or a hosted URL — the `smithery.yaml` stdio form this repository carried is not that path, and the docs page it cited returns 404 (read 2026-09-21); the file is gone and the copy says why |
 | cursor.directory | `cursor-directory.md` | sign-in edit; the slug `iris` should become `iris-eval` |
 | awesome-mcp-servers | `awesome-mcp-servers.md` | a one-line PR from the organisation's fork; mcpservers.org mirrors it |
+| Docker MCP Catalog | `docker.md` + `docker/server.yaml` | a pull request to `docker/mcp-registry` with the file beside the copy; Docker reviews |
 
 The general blocks (one-liner, short and long descriptions, tags, the awesome-list row) live one level up in `docs/launch/directory-listing-template.md`, rendered the same way.

@@ -82,7 +82,7 @@ export const TARGETS = [
   },
   // One paste-ready file per directory (A6-8): the send is the listing
   // owner's act; the copy is the truthbase's on the day it is pasted.
-  ...['glama', 'mcp-so', 'pulsemcp', 'smithery', 'cursor-directory', 'awesome-mcp-servers'].map((d) => ({
+  ...['glama', 'mcp-so', 'pulsemcp', 'smithery', 'cursor-directory', 'awesome-mcp-servers', 'docker'].map((d) => ({
     template: `docs/launch/listings/${d}.template.md`,
     output: `docs/launch/listings/${d}.md`,
   })),
@@ -309,6 +309,44 @@ export function render(template, slots, templateName = 'template') {
   return out;
 }
 
+/**
+ * A block inside a hand-written file (arc 9, N-20): the text between
+ * `<!-- iris:<name>:start -->` and `<!-- iris:<name>:end -->` is replaced by
+ * the render; the rest of the file is the author's. `--check` reads the
+ * file, re-renders the block and compares, so a stale block fails CI the
+ * way a stale rendered file does.
+ */
+export function spliceBlock(text, name, body, fileName) {
+  const start = `<!-- iris:${name}:start -->`;
+  const end = `<!-- iris:${name}:end -->`;
+  const i = text.indexOf(start);
+  const j = text.indexOf(end);
+  if (i < 0 || j < 0 || j < i) throw new Error(`render-llms: ${fileName} has no ${start} … ${end} block`);
+  return `${text.slice(0, i + start.length)}\n${body}\n${text.slice(j)}`;
+}
+
+/** The works-with table the README carries, from clients.json through the truthbase: one row per client, its status and the date it was read. */
+export function clientsTable(claims) {
+  const site = claims.brand.websiteUrl;
+  const lines = [
+    '| Client | Status | What that means | Read |',
+    '|---|---|---|---|',
+    ...claims.clients.rows.map((r) => {
+      const meaning =
+        r.status === 'verified'
+          ? 'driven through the real scripts on every CI run'
+          : 'the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect';
+      return `| ${r.name} | ${r.status} | ${meaning} | [${r.lastChecked}](${r.source}) |`;
+    }),
+    '',
+    `Every row with what was checked: [${site.replace(/^https?:\/\//, '')}/clients](${site}/clients). No client is called supported without a row.`,
+  ];
+  return lines.join('\n');
+}
+
+/** Blocks inside hand-written files, rendered after the targets so the targets' order is theirs. */
+export const BLOCKS = [{ file: 'README.md', name: 'clients-table', body: (claims) => clientsTable(claims) }];
+
 export async function renderAll(rootDir = root) {
   const claims = JSON.parse(await readFile(resolve(rootDir, '.claims.json'), 'utf-8'));
   const base = slotsFrom(claims);
@@ -320,6 +358,10 @@ export async function renderAll(rootDir = root) {
     // renders from the shared set alone.
     const slots = t.slots ? { ...base, ...t.slots(base) } : base;
     results.push({ template: t.template, output: t.output, text: render(template, slots, `${t.template} → ${t.output}`) });
+  }
+  for (const b of BLOCKS) {
+    const current = await readFile(resolve(rootDir, b.file), 'utf-8');
+    results.push({ template: `${b.file} (the ${b.name} block)`, output: b.file, text: spliceBlock(current, b.name, b.body(claims), b.file) });
   }
   return results;
 }

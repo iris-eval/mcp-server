@@ -90,6 +90,15 @@ describe('the prose surfaces render their client lists from the rows', () => {
     expect(readme).toContain(`Verified on every CI run: ${verifiedNames.join(', ')}`);
     expect(readme).toContain(`nobody on the Iris side has watched it connect: ${claimedNames.join(', ')}.`);
     expect(readme).toContain('https://iris-eval.com/clients');
+    // The works-with table (arc 9, N-20): rendered from clients.json through the truthbase, between markers llms:render rewrites.
+    const block = readme.match(/<!-- iris:clients-table:start -->\n([\s\S]*?)\n<!-- iris:clients-table:end -->/);
+    expect(block, 'the README carries the clients-table block').not.toBeNull();
+    const tableRows = block![1]
+      .split('\n')
+      .filter((l) => l.startsWith('| ') && !l.startsWith('| Client') && !l.startsWith('|---'))
+      .map((l) => l.split('|').map((c) => c.trim()));
+    expect(tableRows.map((r) => r[1])).toEqual(rows.map((r) => r.name));
+    expect(tableRows.map((r) => r[2])).toEqual(rows.map((r) => r.status));
   });
 
   it('the install section renders the names from the reader, not from a typed list', () => {

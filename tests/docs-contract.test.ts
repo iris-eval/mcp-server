@@ -56,7 +56,6 @@ const PROSE_SURFACES: string[] = [
   'claude-plugin/skills/iris-eval/SKILL.md',
   'claude-plugin-capture/README.md',
   'server.json',
-  'smithery.yaml',
   ...readdirSync(join(root, 'src', 'tools'))
     .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
     .map((f) => `src/tools/${f}`),
