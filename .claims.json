@@ -4957,8 +4957,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-22T05:02:05.605Z",
-  "generatedFromCommit": "9fbea67",
+  "generatedAt": "2026-09-22T06:21:29.842Z",
+  "generatedFromCommit": "01a1df8",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5031,7 +5031,7 @@
     ]
   },
   "proof": {
-    "commit": "84f6437",
+    "commit": "aaa178d",
     "composite": {
       "compositeVersion": "a87653d43de4",
       "corpusVersion": "6a01ef7f62f8",
@@ -7037,7 +7037,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-21T19:53:59.799Z",
+    "generatedAt": "2026-09-22T05:51:28.210Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7046,6 +7046,18 @@
       "note": "run npm run proof:judge with a judge API key, or dispatch the proof-judge workflow",
       "schemaVersion": 1,
       "status": "pending"
+    },
+    "latency": {
+      "machine": {
+        "arch": "x64",
+        "cpu": "12th Gen Intel(R) Core(TM) i9-12900HK",
+        "node": "v24.11.0",
+        "platform": "win32"
+      },
+      "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
+      "n": 1082,
+      "p50Ms": 8.894,
+      "p95Ms": 17.232
     },
     "method": {
       "ci": "wilson-95",
