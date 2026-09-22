@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **Node 20 is no longer supported. The minimum is now Node 22.** Node 20 reached end of life on 2026-04-30 and stopped receiving security fixes then. It was also the only supported line with no second storage driver: `node:sqlite` needs Node 22.13 or later, so when the native `better-sqlite3` addon failed to load on Node 20 there was nothing to fall back to. `engines` now says `>=22.0.0` in the server and in `@iris-eval/init`, and the CI matrix tests Node 22 and Node 24.
+- **Node 20 is no longer supported. The minimum is now Node 22.13.** Node 20 reached end of life on 2026-04-30 and stopped receiving security fixes then. The floor is 22.13 rather than 22.0 for a reason you can check: 22.13.0 is the first release that ships `node:sqlite`, so it is the first version on which the storage driver seam added in 0.15.0 actually has a second driver to fall back to when the native addon will not load. On Node 20, and on 22.0 through 22.12, a missing prebuild is still a dead start. `engines` now says `>=22.13.0` in the server and in `@iris-eval/init`, and the CI matrix tests Node 22 and Node 24. For scale: 22.13.0 shipped 2025-01-06 and the current 22.x line is 22.23.2, so this excludes no maintained runtime.
 
 ### Changed
 

@@ -78,7 +78,8 @@ describe('the seam', () => {
     process.env[DRIVER_VAR] = 'node';
     if (!builtIn) {
       // The adapter opens the store in its constructor, so the refusal is synchronous.
-      // Every CI cell now ships node:sqlite; this branch is the Node 22.0-22.12 user.
+      // With the floor at 22.13 every SUPPORTED runtime ships node:sqlite, so this
+      // branch is the unsupported one — kept because the refusal must stay readable.
       expect(() => new SqliteAdapter(tempDb())).toThrow(/IRIS_SQLITE_DRIVER=node needs Node 22\.13\.0 or later/);
       return;
     }
