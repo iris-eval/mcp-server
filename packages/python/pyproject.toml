@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "iris-eval"
+version = "0.1.0"
+description = "The Python client for Iris, the open-source agent-evaluation MCP server: log a trace, get its verdict, gate a test on it."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Iris" }]
+keywords = ["iris", "evaluation", "agents", "llm", "mcp", "pytest"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Pytest",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
+dependencies = ["httpx>=0.27,<1"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.24"]
+
+[project.urls]
+Homepage = "https://iris-eval.com"
+Documentation = "https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md"
+Source = "https://github.com/iris-eval/mcp-server/tree/main/packages/python"
+Changelog = "https://github.com/iris-eval/mcp-server/blob/main/CHANGELOG.md"
+
+[project.entry-points.pytest11]
+iris_eval = "iris_eval.pytest_plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/iris_eval"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/iris_eval", "tests", "README.md", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

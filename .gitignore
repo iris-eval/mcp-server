@@ -50,3 +50,10 @@ proof/judge/RESULTS.md
 # The stranger harness writes its records to a private directory; never commit a run here.
 tests/acceptance/stranger/records/
 stranger-records/
+
+# The Python client (packages/python): its virtual environment and build artefacts
+packages/python/.venv/
+packages/python/dist/
+packages/python/**/__pycache__/
+packages/python/.pytest_cache/
+packages/python/**/*.egg-info/

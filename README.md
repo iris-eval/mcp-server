@@ -91,6 +91,20 @@ Returns `201` with the stored `trace_id` and the evaluation result (in `--demo` 
 
 A second, separately installed plugin: three hooks record each turn's prompt, tool calls and final answer and hand them to `iris-eval ingest`, detached, with critical spans redacted in the stored evaluation text — capture that does not depend on the model deciding to call a tool. It never logs a turn the model already logged, never prints, never blocks, never sends anything anywhere. Installing `iris-eval` alone changes nothing about your turn loop. Limits and removal: [claude-plugin-capture/README.md](https://github.com/iris-eval/mcp-server/blob/main/claude-plugin-capture/README.md).
 
+### Python
+
+```bash
+pip install iris-eval
+```
+
+```python
+from iris_eval import IrisClient
+iris = IrisClient()                       # IRIS_URL, or the running dashboard's runtime.json
+iris.evaluate_output("…", input="…", agent_name="support-bot")["verdict"]   # {"state": "pass", "basis": "clean", "by": []}
+```
+
+A thin client over the HTTP API (0.16.0): `log_trace()`, `evaluate_output()`, `get_traces()`, `get_trace()`, `health()`, `capabilities()`, sync and async, typed answers, the server's own sentence on a refusal — and a pytest plugin: an `iris` fixture and `assert_iris(output, expect="pass")` that asserts on the verdict's state. [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
+
 ### A CI gate, no server needed
 
 ```bash
