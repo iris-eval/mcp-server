@@ -66,7 +66,7 @@ describe('one identifier', () => {
 
   it('no live surface documents the legacy command', () => {
     const live = [
-      'README.md', 'server.json', 'docker-compose.yml', 'smithery.yaml', 'src/index.ts', 'skills/iris-eval/SKILL.template.md',
+      'README.md', 'server.json', 'docker-compose.yml', 'src/index.ts', 'skills/iris-eval/SKILL.template.md',
       ...readdirSync(join(root, 'docs')).filter((f) => f.endsWith('.md')).map((f) => `docs/${f}`),
       ...walk(join(root, 'website', 'src')).map(rel),
       ...walk(join(root, 'claude-plugin')).map(rel),

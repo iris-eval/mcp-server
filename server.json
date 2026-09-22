@@ -2,6 +2,24 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.iris-eval/mcp-server",
   "description": "Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.",
+  "title": "Iris",
+  "websiteUrl": "https://iris-eval.com",
+  "icons": [
+    {
+      "src": "https://iris-eval.com/iris-logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    },
+    {
+      "src": "https://iris-eval.com/iris-logo-white-bg.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "180x180"
+      ]
+    }
+  ],
   "repository": {
     "url": "https://github.com/iris-eval/mcp-server",
     "source": "github"

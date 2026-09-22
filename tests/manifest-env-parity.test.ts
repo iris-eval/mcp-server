@@ -13,7 +13,7 @@
  * The lock: every IRIS_* name a manifest mentions is read somewhere under
  * src/, and the judge/citation variables appear in server.json.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
@@ -42,11 +42,6 @@ function envVarsInServerJson(): string[] {
   return j.packages.flatMap((p: { environmentVariables?: { name: string }[] }) =>
     (p.environmentVariables ?? []).map((e) => e.name),
   );
-}
-
-function envVarsInSmithery(): string[] {
-  const y = readFileSync(join(root, 'smithery.yaml'), 'utf8');
-  return [...new Set([...y.matchAll(/\b(IRIS_[A-Z0-9_]+)\b/g)].map((m) => m[1]))];
 }
 
 const JUDGE_AND_CITATION_VARS = [
@@ -83,15 +78,7 @@ describe('discovery manifests name only environment variables the server reads',
     expect(dash?.description).toMatch(/IRIS_PORT/);
   });
 
-  it('smithery.yaml names no variable the server does not read', () => {
-    const unknown = envVarsInSmithery().filter((n) => !read.has(n));
-    expect(unknown).toEqual([]);
-  });
-
-  it('smithery.yaml offers no port field: its start command is stdio, where IRIS_PORT is never read (A6-7)', () => {
-    const y = readFileSync(join(root, 'smithery.yaml'), 'utf8');
-    expect(y).toMatch(/type:\s*stdio/);
-    expect(y).not.toMatch(/irisPort/);
-    expect(y).not.toMatch(/IRIS_PORT\b/);
+  it('smithery.yaml is gone (arc 9, N-20): its stdio form was not Smithery\'s publish path and it drifted from server.json', () => {
+    expect(existsSync(join(root, 'smithery.yaml'))).toBe(false);
   });
 });

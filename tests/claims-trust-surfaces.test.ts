@@ -23,7 +23,7 @@ import { parseDisclosure } from '../scripts/claims/generators/security-policy.mj
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { computeMaintenance, generate as generateMaintenance, percentile, sampleLive, wantsLive } from '../scripts/claims/generators/issues.mjs';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
-import { proofSummary, render, renderAll, slotsFrom, TARGETS } from '../scripts/claims/render-llms.mjs';
+import { proofSummary, render, renderAll, slotsFrom, TARGETS, BLOCKS } from '../scripts/claims/render-llms.mjs';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8');
@@ -208,7 +208,8 @@ describe('maintenance — measured issue-close latency', () => {
 describe('llms.txt / llms-full.txt — rendered from templates + the truthbase', () => {
   it('the committed files equal the render (what `npm run llms:check` enforces in CI)', async () => {
     const rendered = (await renderAll(root)) as Array<{ output: string; text: string }>;
-    expect(rendered.map(r => r.output)).toEqual(TARGETS.map((t: { output: string }) => t.output));
+    // The rendered targets in their order, then the blocks inside hand-written files (arc 9, N-20: the README's clients table).
+    expect(rendered.map(r => r.output)).toEqual([...TARGETS.map((t: { output: string }) => t.output), ...BLOCKS.map((b: { file: string }) => b.file)]);
     for (const r of rendered) expect(read(r.output)).toBe(r.text);
   });
 

@@ -27,7 +27,7 @@ export function DashboardMockup(): React.ReactElement {
         <span className="window-dot bg-[#febc2e]" />
         <span className="window-dot bg-[#28c840]" />
         <span className="ml-3 min-w-0 truncate font-mono text-[12px] text-text-muted">
-          Iris Dashboard<span className="hidden sm:inline"> — localhost:3838</span>
+          Iris Dashboard<span className="hidden sm:inline"> — localhost:6920</span>
         </span>
         {/* Below `sm` only the disclaimer survives: at 375px the three
             chips pushed the bar 44px past the frame and wrapped the title

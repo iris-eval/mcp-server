@@ -1,0 +1,33 @@
+{
+  "name": "iris-eval",
+  "version": "0.15.0",
+  "description": "Stop shipping agents on vibes. Iris scores every agent output for quality, safety, and cost — 25 built-in rules, an LLM judge on your own key, a dashboard — as an MCP server your agent calls.",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com"
+  },
+  "homepage": "https://iris-eval.com",
+  "repository": "https://github.com/iris-eval/mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "evaluation",
+    "agents",
+    "mcp",
+    "safety",
+    "quality",
+    "observability"
+  ],
+  "logo": "website/public/iris-logo.svg",
+  "mcpServers": {
+    "iris-eval": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@iris-eval/mcp-server"
+      ],
+      "env": {
+        "IRIS_LOG_LEVEL": "info"
+      }
+    }
+  }
+}

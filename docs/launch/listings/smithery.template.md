@@ -2,7 +2,7 @@
 > **Rendered from `.claims.json` by `npm run llms:render`; `llms:check` fails if this file and its template disagree.** Edit `docs/launch/listings/smithery.template.md`, never this file. Every number is a slot. Never write "first", "best", "leading" or "standard"; never say Iris captures or scores anything "automatically" — under MCP a tool call is the model's decision, and the two capture paths that do not depend on it (`POST /api/v1/traces`, the `iris-eval-capture` plugin) are named as such. The paste is the listing owner's act.
 
 
-**Listing:** not yet listed. Smithery's install form is driven by `smithery.yaml` at the repository root (a stdio start over `npx {{npmPackage}}`; its config fields are exactly the variables the server reads — a test holds that parity). A listing is a publish: it is the maintainer's act, and the two judge-key secret fields go into `smithery.yaml` on the same word.
+**Listing:** retired, not listed. Smithery's publish path today (https://smithery.ai/docs/build/publish, read 2026-09-21) is a hosted HTTPS URL, or a local server shipped as an MCPB bundle through `smithery mcp publish ./server.mcpb -n <org>/<name>`. The `smithery.yaml` stdio form this repository carried (a `startCommand` over `npx {{npmPackage}}` with a config schema) was not that path, cited a project-configuration docs page that now returns 404, and named four of the server's variables while the manifest named more — a second source of truth that drifted. It was removed with the listings row of arc 9; if a Smithery listing is wanted, the act is an MCPB bundle built from the published package and one `publish` — the founder's, with the copy below.
 
 ## Description field
 

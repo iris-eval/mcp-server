@@ -97,6 +97,9 @@ check_version "claude-plugin/.claude-plugin/plugin.json" ".version"
 # The capture plugin's manifest: its version is what its Stop hook installs.
 check_version "claude-plugin-capture/.claude-plugin/plugin.json" ".version"
 
+# The Cursor plugin manifest (arc 9, N-20): the version the Cursor Marketplace shows.
+check_version ".cursor-plugin/plugin.json" ".version"
+
 # @iris-eval/langchain's dependency range on this package. Not a `.version`
 # field and not synced (the adapter releases on its own cadence), but the
 # range must admit the version being released: `^0.4.0` excluded every

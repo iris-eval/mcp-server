@@ -108,7 +108,7 @@ export function ActThree({ track }: { track: (event: string, data?: Record<strin
               <span className="window-dot bg-[#febc2e]" />
               <span className="window-dot bg-[#28c840]" />
               <span className="ml-3 font-mono text-[12px] text-text-muted">
-                Iris Dashboard — localhost:3838
+                Iris Dashboard — localhost:6920
               </span>
               <div className="ml-auto flex items-center gap-4 text-[11px] text-text-muted">
                 <span>
