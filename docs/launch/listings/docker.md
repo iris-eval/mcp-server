@@ -1,7 +1,7 @@
 # Docker MCP Catalog — the submission
 > **Rendered from `.claims.json` by `npm run llms:render`; `llms:check` fails if this file and its template disagree.** Edit `docs/launch/listings/docker.template.md`, never this file. Every number is a slot. Never write "first", "best", "leading" or "standard"; never say Iris captures or scores anything "automatically" — under MCP a tool call is the model's decision. The paste is the listing owner's act.
 
-**Listing:** not yet listed. The Docker MCP Catalog (Docker Desktop's MCP Toolkit) takes a pull request to `docker/mcp-registry` adding `servers/iris-eval/server.yaml`; Docker's review lands it in the catalog within a day of approval. The file is beside this one: [`docker/server.yaml`](docker/server.yaml). The image is the one this repository already publishes, `ghcr.io/iris-eval/mcp-server` (the README's Docker badge), so the entry is the "external image" kind — no Docker-built image, no Dockerfile path — and `source.commit` is the release commit, filled at submission from the tag: `git rev-list -n 1 v0.15.0`.
+**Listing:** not yet listed. The Docker MCP Catalog (Docker Desktop's MCP Toolkit) takes a pull request to `docker/mcp-registry` adding `servers/iris-eval/server.yaml`; Docker's review lands it in the catalog within a day of approval. The file is beside this one: [`docker/server.yaml`](docker/server.yaml). The image is the one this repository already publishes, `ghcr.io/iris-eval/mcp-server` (the README's Docker badge), so the entry is the "external image" kind — no Docker-built image, no Dockerfile path — and `source.commit` is the release commit, filled at submission from the tag: `git rev-list -n 1 v0.16.0`.
 
 ## The check before you save
 
