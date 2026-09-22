@@ -126,7 +126,6 @@ export interface DecisionMomentDetail extends DecisionMoment {
     provenance?: Provenance;
     /** Critical rules that could not judge — unknown, not clean. */
     criticalSkipped?: string[];
-    suggestions: string[];
     /**
      * Rules that HARD-FAILED this evaluation — a critical safety rule
      * (no_pii / no_injection_patterns / no_blocklist_words) or a deployed

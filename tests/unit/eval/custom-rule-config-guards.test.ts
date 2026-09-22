@@ -85,7 +85,10 @@ describe('the engine survives an inline rule with a malformed config', () => {
     expect(result.insufficient_data).toBe(true);
     expect(result.rules_skipped).toBe(1);
     expect(result.rule_results[0]).toMatchObject({ ruleName: 'x', skipped: true, configInvalid: true });
-    expect(result.suggestions.join(' ')).toContain('config.pattern');
+    // Nothing was judged, and the sentence that says so names the reason.
+    const notes = (result.interpretations ?? []).map((i) => i.text).join(' ');
+    expect(notes).toContain('Nothing was judged');
+    expect(notes).toContain('config.pattern');
   });
 
   it('keeps scoring the rules that are well-formed', async () => {

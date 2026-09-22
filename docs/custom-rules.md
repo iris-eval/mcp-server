@@ -62,8 +62,7 @@ Response:
       "score": 1,
       "message": "Output is valid JSON"
     }
-  ],
-  "suggestions": []
+  ]
 }
 ```
 
@@ -465,7 +464,7 @@ https?://[^\s]+                   — URL detection
 
 A **statically rejected** pattern (length, syntax, safe-regex2) makes the rule report `skipped: true` with `configInvalid` — the rule could not run at all, so it neither passes nor deflates the score, and the message names the exact problem. Deploy-time validation rejects these outright with a 400 before they are ever persisted.
 
-A **budget-exceeded** match reports `skipped: true` + `budgetExceeded: true` for that evaluation only (no `configInvalid` — the same pattern may be fine on the next output; the breach is a property of pattern × input). The rule's skip reason appears verbatim in the evaluation's `suggestions` (each skipped rule is listed with its own reason), telling the rule author to bound quantifiers (e.g. `\s{0,8}` rather than `\s*`) and remove overlapping alternatives.
+A **budget-exceeded** match reports `skipped: true` + `budgetExceeded: true` for that evaluation only (no `configInvalid` — the same pattern may be fine on the next output; the breach is a property of pattern × input). The rule's skip reason appears verbatim on its own row in `rule_results` as `skipReason`, telling the rule author to bound quantifiers (e.g. `\s{0,8}` rather than `\s*`) and remove overlapping alternatives.
 
 ---
 

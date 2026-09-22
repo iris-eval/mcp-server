@@ -317,8 +317,9 @@ export interface Coverage {
  * that would change it — "cost_under_threshold failed" beside
  * "passed: true" reads as a bug to anyone who has not read the composer.
  *
- * `suggestions` remains for now and is rendered from these; it is deprecated
- * from 0.13.0 and removed at 1.0, per VERSIONING.md's two-minor rule.
+ * These replaced `suggestions`, a flat `string[]` that said who the sentence
+ * was for nowhere and what to change nowhere. It was deprecated in 0.13.0
+ * and removed in 0.16.0, two minors later, per VERSIONING.md.
  */
 export interface Interpretation {
   severity: 'block' | 'warn' | 'note';
@@ -328,6 +329,26 @@ export interface Interpretation {
   text: string;
   /** The configuration key that changes this behaviour, when there is one. */
   configKey?: string;
+}
+
+/**
+ * One layer of the composer's decision, in the order it is asked
+ * (`verdictPath` in eval/compose.ts). `by` is what that layer found: rule
+ * names for the gate, veto and unknown layers, the missing inputs for the
+ * evidence layer, and the failure classes over even odds for the risk
+ * layer — the same vocabulary `Verdict.by` carries, because the verdict is
+ * stamped from the node that decided.
+ *
+ * A path ends at the node that decided; the layers after it were never
+ * asked. A node with an empty `by` was asked and found nothing.
+ */
+export interface VerdictNode {
+  node: 'nothing_judged' | 'gate' | 'veto' | 'unknown' | 'evidence' | 'risk';
+  by: string[];
+  /** Whether this layer decided the verdict. At most one node in a path is true. */
+  decided: boolean;
+  /** The risk estimate, on the risk node only, whether or not it decided; null when nothing carried a published rate. */
+  risk?: Verdict['risk'];
 }
 
 /** Placed on EvalResult by the engine; see Interpretation above. */
@@ -555,7 +576,6 @@ export interface EvalResult {
   score: number;
   passed: boolean;
   rule_results: EvalRuleResult[];
-  suggestions: string[];
   created_at?: string;
   rules_evaluated?: number;
   rules_skipped?: number;

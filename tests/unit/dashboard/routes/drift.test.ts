@@ -51,7 +51,6 @@ describe('the drift comparison', () => {
       score: passed ? 0.9 : 0.1,
       passed,
       rule_results: [],
-      suggestions: [],
       created_at: ts,
     });
   };
@@ -173,7 +172,7 @@ describe('the drift comparison', () => {
       });
       await storage.insertEvalResult(LOCAL_TENANT, {
         id: `er${i}`, trace_id: `r${i}`, eval_type: 'all', output_text: 'a',
-        score: 0.9, passed: true, rule_results: [], suggestions: [], created_at: ts,
+        score: 0.9, passed: true, rule_results: [], created_at: ts,
       });
     }
     for (let i = 0; i < 12; i += 1) await seed(`x${i}`, 2, false); // no run

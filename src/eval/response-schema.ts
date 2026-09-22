@@ -139,7 +139,6 @@ export const evaluateOutputResponseSchema = z.looseObject({
     score: z.number().describe('0..1 weighted quality over the rules that ran'),
     passed: z.boolean().describe('the ship verdict; false when nothing was judged'),
     rule_results: z.array(evalRuleResultSchema).describe('per rule: verdict, message, kind, role, question, saw, evidence, uncertainty'),
-    suggestions: z.array(z.string()).describe('what to change'),
     rules_evaluated: z.number().int().describe('rules that judged'),
     rules_skipped: z.number().int().describe('rules that skipped'),
     insufficient_data: z.boolean().describe('true when no rule could judge'),

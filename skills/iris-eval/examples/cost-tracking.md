@@ -77,9 +77,7 @@ Actual response (captured 2026-09-03 against the shipped server):
     { "ruleName": "cost_under_threshold", "passed": false, "score": 0, "message": "Cost ($0.4700) exceeds threshold ($0.1000)" },
     { "ruleName": "verbosity_ratio", "passed": true, "score": 1, "message": "Token ratio (0.32) is within limits (max 5)" }
   ],
-  "suggestions": [
-    "[cost_under_threshold] Cost ($0.4700) exceeds threshold ($0.1000)"
-  ],
+  "verdict": { "state": "fail", "passed": false, "basis": "policy_gate", "by": ["cost_under_threshold"], "risk": null },
   "rules_evaluated": 2,
   "rules_skipped": 0,
   "insufficient_data": false

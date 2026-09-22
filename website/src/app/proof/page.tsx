@@ -208,6 +208,37 @@ function RuleTable({ category, rules }: { category: string; rules: ProofRule[] }
   );
 }
 
+/**
+ * How long an evaluation takes. Every number is read from the truthbase —
+ * typing one here would be a claim nobody measured, and the hardcoded-claim
+ * scanner's `eval-latency` pattern refuses it.
+ */
+function Latency(): React.ReactElement | null {
+  const l = PROOF?.latency;
+  if (!l) return null;
+  return (
+    <section className="mt-10 rounded-2xl border border-border-default bg-bg-card p-6">
+      <h3 className="font-display text-lg font-bold text-text-primary">How long one evaluation takes</h3>
+      <dl className="mt-4 grid grid-cols-2 gap-3">
+        {[
+          { k: "Median (p50)", v: `${l.p50Ms} ms` },
+          { k: "95th percentile", v: `${l.p95Ms} ms` },
+        ].map((t) => (
+          <div key={t.k} className="rounded-xl border border-border-subtle bg-bg-surface p-4">
+            <dt className="text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">{t.k}</dt>
+            <dd className="mt-1 font-mono text-xl font-semibold tabular-nums text-text-primary">{t.v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-4 text-[13px] leading-relaxed text-text-muted">
+        {l.method}. Over {l.n} evaluations on {l.machine.cpu} ({l.machine.platform}/{l.machine.arch}, node{" "}
+        {l.machine.node}). Your machine is not this machine: the number is here so there is one to
+        check rather than a word like &ldquo;fast&rdquo;, and it is re-measured on every proof run.
+      </p>
+    </section>
+  );
+}
+
 function Results(): React.ReactElement {
   const proof = PROOF!;
   const corpusSize = proof.rules.reduce((sum, r) => sum + r.n, 0);
@@ -237,6 +268,8 @@ function Results(): React.ReactElement {
         five, is a violation: the corpus is about half positive, and a deployment
         rarely is, so the precision column overstates a fire at field prevalence.
       </p>
+
+      <Latency />
 
       {groups.map((g) => (
         <RuleTable key={g.category} category={g.category} rules={g.rules} />
@@ -458,10 +491,10 @@ git diff proof/results.json`}
                 — Track 1 is this page; what comes after it.
               </li>
               <li>
-                <a href={`${PUBLIC_REPO_URL}/blob/main/docs/roadmap.md`} className={link} rel="noopener noreferrer" target="_blank">
-                  docs/roadmap.md
-                </a>{" "}
-                — the measurement commitments in full, including the ones not yet met.
+                <Link href="/capabilities" className={link}>
+                  Capabilities
+                </Link>{" "}
+                — every question Iris can be asked about every subject, with what it lacks said in its own words.
               </li>
             </ul>
           </section>

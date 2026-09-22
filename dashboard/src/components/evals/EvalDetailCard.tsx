@@ -124,17 +124,6 @@ export function EvalDetailCard({
         </div>
       )}
 
-      {/* Suggestions */}
-      {evalResult.suggestions.length > 0 && (
-        <div className="eval-card__suggestions">
-          <div className="eval-card__suggestions-label">Suggestions:</div>
-          <ul className="eval-card__suggestions-list">
-            {evalResult.suggestions.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

@@ -73,7 +73,6 @@ export function judgeEvalResult(input: JudgeEvalRowInput): EvalResult {
         },
       },
     ],
-    suggestions: input.passed ? [] : [input.rationale],
     rules_evaluated: 1,
     rules_skipped: 0,
     insufficient_data: false,

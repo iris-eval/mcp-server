@@ -39,7 +39,7 @@
  * COUNCIL-REPORT.md; each surface that shows a default says it is a
  * recommendation until it is ruled.
  */
-import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict } from '../types/eval.js';
+import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictNode } from '../types/eval.js';
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { decides, isCritical } from './gate.js';
 
@@ -112,18 +112,30 @@ function inputsSeen(rows: readonly EvalRuleResult[]): Set<Need> {
 }
 
 /**
- * The verdict for one evaluation. The weighted mean is never consulted: it
- * survives as a quality gradient on the score field and is never re-meant.
+ * The path the verdict took, node by node, in the order the composer asks.
+ *
+ * This is the single writer of the decision: compose() reads the node that
+ * decided and stamps the verdict from it, so the verdict and the path can
+ * never disagree. It exists because `basis` names only the WINNER — an
+ * embedder that wants to show a reader why (or a dashboard that wants to
+ * draw the chain) had to re-implement these five questions, and a second
+ * implementation of a decision is a second decision.
+ *
+ * Nodes after the one that decided are not in the path: they were never
+ * asked. A node that was asked and found nothing is in the path with an
+ * empty `by` — "we looked, there was nothing" is different from "we never
+ * looked", and the difference is the whole point of the unknown layer.
  */
-export function compose(
+export function verdictPath(
   result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
   cfg: ComposeConfig,
-): Verdict {
+): VerdictNode[] {
   const rows = result.rule_results;
   const evaluated = result.rules_evaluated ?? rows.filter((r) => !r.skipped).length;
   if (result.insufficient_data || evaluated === 0) {
-    return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
+    return [{ node: 'nothing_judged', by: [], decided: true }];
   }
+  const path: VerdictNode[] = [];
 
   /*
    * 1. Gates: a policy whose author has already decided — and a JUDGMENT,
@@ -135,9 +147,8 @@ export function compose(
    * drop it silently and a paid-for "fail" would read as clean.
    */
   const gates = rows.filter((r) => fired(r) && ((r.kind === 'policy' && decides(r, cfg.defaultsGate)) || r.kind === 'judgment'));
-  if (gates.length > 0) {
-    return { state: 'fail', passed: false, basis: 'policy_gate', by: gates.map((r) => r.ruleName), risk: null };
-  }
+  path.push({ node: 'gate', by: gates.map((r) => r.ruleName), decided: gates.length > 0 });
+  if (gates.length > 0) return path;
 
   /*
    * 2. Vetoes: an effectively-critical rule that is not a policy. Keyed on
@@ -148,47 +159,85 @@ export function compose(
    * composer exists to remove, not one to introduce.
    */
   const vetoes = rows.filter((r) => r.kind !== 'policy' && fired(r) && isCritical(r));
-  if (vetoes.length > 0) {
-    return { state: 'fail', passed: false, basis: 'detector_veto', by: vetoes.map((r) => r.ruleName), risk: null };
-  }
+  path.push({ node: 'veto', by: vetoes.map((r) => r.ruleName), decided: vetoes.length > 0 });
+  if (vetoes.length > 0) return path;
 
   /*
    * 3. Asked and could not answer. `not_applicable` is NEVER this: a
    * trajectory rule with no tool calls was not asked, and treating that as
    * unknown would make every text-only evaluation unknown, which is worse
-   * than the fail-open it replaces.
+   * than the fail-open it replaces. A deployment that set
+   * `onCriticalSkipped: "pass"` still sees the node — it accepted this
+   * risk, which is not the same as there being none.
    */
   const unknown = rows.filter((r) => isCritical(r) && r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable');
-  if (unknown.length > 0 && cfg.onCriticalSkipped !== 'pass') {
-    const by = unknown.map((r) => r.ruleName);
-    return cfg.onCriticalSkipped === 'fail'
-      ? { state: 'fail', passed: false, basis: 'critical_unknown', by, risk: null }
-      : { state: 'unknown', passed: false, basis: 'critical_unknown', by, risk: null };
-  }
+  path.push({ node: 'unknown', by: unknown.map((r) => r.ruleName), decided: unknown.length > 0 && cfg.onCriticalSkipped !== 'pass' });
+  if (unknown.length > 0 && cfg.onCriticalSkipped !== 'pass') return path;
 
-  // 4. Evidence the deployment insists on.
+  // 4. Evidence the deployment insists on. `by` is the missing inputs, not rules.
+  const seen = cfg.requiredEvidence.length > 0 ? inputsSeen(rows) : null;
+  const missing = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
   if (cfg.requiredEvidence.length > 0) {
-    const seen = inputsSeen(rows);
-    const missing = cfg.requiredEvidence.filter((n) => !seen.has(n));
-    if (missing.length > 0) {
-      return { state: 'unknown', passed: false, basis: 'required_evidence_missing', by: [...missing], risk: null };
-    }
+    path.push({ node: 'evidence', by: [...missing], decided: missing.length > 0 });
+    if (missing.length > 0) return path;
   }
 
-  // 5. Everything that carries a published error rate, as one probability.
+  /*
+   * 5. Everything that carries a published error rate, as one probability.
+   * The node carries the estimate whether or not it decided: a clean
+   * verdict that came through a measured risk is a different sentence from
+   * one where nothing could be estimated, and both end here.
+   */
   const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
-  if (risk === null) {
-    return { state: 'pass', passed: true, basis: 'clean', by: [], risk: null };
-  }
   const t = tau(cfg.falsePassCost);
-  const confidence: Verdict['confidence'] = risk.lo <= t && t <= risk.hi ? 'marginal' : 'decisive';
-  if (risk.pBad > t) {
-    const by = Object.entries(risk.perClass)
-      .filter(([, q]) => q !== null && q !== undefined && q > 0.5)
-      .map(([cls]) => cls);
-    return { state: 'fail', passed: false, basis: 'risk_over_loss', by, risk, confidence };
+  const by =
+    risk === null
+      ? []
+      : Object.entries(risk.perClass)
+          .filter(([, q]) => q !== null && q !== undefined && q > 0.5)
+          .map(([cls]) => cls);
+  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? by : [], decided: risk !== null && risk.pBad > t, risk });
+  return path;
+}
+
+/**
+ * The verdict for one evaluation. The weighted mean is never consulted: it
+ * survives as a quality gradient on the score field and is never re-meant.
+ *
+ * Every question this asks is asked by verdictPath() above; this reads the
+ * node that decided and stamps it. Adding a layer means adding a node.
+ */
+export function compose(
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  cfg: ComposeConfig,
+): Verdict {
+  const path = verdictPath(result, cfg);
+  const decided = path.find((n) => n.decided);
+  const riskNode = path.find((n) => n.node === 'risk');
+  const risk = riskNode?.risk ?? null;
+  const t = tau(cfg.falsePassCost);
+  const confidence: Verdict['confidence'] = risk === null ? undefined : risk.lo <= t && t <= risk.hi ? 'marginal' : 'decisive';
+
+  switch (decided?.node) {
+    case 'nothing_judged':
+      return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
+    case 'gate':
+      return { state: 'fail', passed: false, basis: 'policy_gate', by: decided.by, risk: null };
+    case 'veto':
+      return { state: 'fail', passed: false, basis: 'detector_veto', by: decided.by, risk: null };
+    case 'unknown':
+      return cfg.onCriticalSkipped === 'fail'
+        ? { state: 'fail', passed: false, basis: 'critical_unknown', by: decided.by, risk: null }
+        : { state: 'unknown', passed: false, basis: 'critical_unknown', by: decided.by, risk: null };
+    case 'evidence':
+      return { state: 'unknown', passed: false, basis: 'required_evidence_missing', by: decided.by, risk: null };
+    case 'risk':
+      return { state: 'fail', passed: false, basis: 'risk_over_loss', by: decided.by, risk, confidence };
+    default:
+      return risk === null
+        ? { state: 'pass', passed: true, basis: 'clean', by: [], risk: null }
+        : { state: 'pass', passed: true, basis: 'clean', by: [], risk, confidence };
   }
-  return { state: 'pass', passed: true, basis: 'clean', by: [], risk, confidence };
 }
 
 /**
@@ -214,6 +263,25 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       severity: 'note',
       addressee: 'agent',
       text: `${q.id} was not judged — ${q.why}. Supply it to have this question judged.`,
+    });
+  }
+  /*
+   * Nothing was judged — the line `suggestions` used to carry as
+   * "Insufficient context to evaluate. Provide: ..." or "No rules
+   * configured for this eval type". It is the agent's to act on: it names
+   * what to supply, or says the deployment configured no rule for this
+   * bundle, and it is the difference between a clean answer and no answer
+   * at all.
+   */
+  if (verdict.basis === 'no_rules') {
+    const skipped = result.rule_results.filter((r) => r.skipped);
+    out.push({
+      severity: 'block',
+      addressee: 'agent',
+      text:
+        skipped.length > 0
+          ? `Nothing was judged: every rule skipped (${skipped.map((r) => `${r.ruleName} — ${r.skipReason ?? 'missing context'}`).join('; ')}). Supply what each one needs and ask again.`
+          : 'Nothing was judged: no rule is configured for this eval type. Deploy a rule for it, or ask for an eval type that has one.',
     });
   }
   for (const r of result.rule_results) {
@@ -244,6 +312,23 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       severity: 'block',
       addressee: 'operator',
       text: `A critical check was asked and could not answer (${verdict.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`,
+      configKey: 'eval.onCriticalSkipped',
+    });
+  }
+  /*
+   * A critical rule that skipped but did NOT make the verdict unknown —
+   * because what it needed was never applicable, or because the deployment
+   * set `onCriticalSkipped: "pass"`. `critical_skipped` names it in the
+   * fields; this is the sentence that used to ride in `suggestions`, and
+   * without it a reader sees a clean verdict with no hint that a
+   * must-not-ship check never ran.
+   */
+  const skippedCritical = result.rule_results.filter((r) => isCritical(r) && r.skipped === true).map((r) => r.ruleName);
+  if (skippedCritical.length > 0 && verdict.basis !== 'critical_unknown') {
+    out.push({
+      severity: 'warn',
+      addressee: 'operator',
+      text: `Critical check(s) did not judge this output (${skippedCritical.join(', ')}), so they could not veto it. This verdict is clean on everything else, not on those; a gate that must fail closed should treat a skipped critical check as a failure.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }

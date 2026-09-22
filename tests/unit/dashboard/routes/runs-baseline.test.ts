@@ -60,7 +60,6 @@ describe('PATCH /api/v1/runs/:id — the baseline', () => {
           score: passes[i] ? 1 : 0,
           passed: passes[i],
           rule_results: [{ ruleName: 'min_output_length', passed: passes[i], score: passes[i] ? 1 : 0, message: passes[i] ? 'OK' : 'too short' }],
-          suggestions: [],
         });
       }
     }

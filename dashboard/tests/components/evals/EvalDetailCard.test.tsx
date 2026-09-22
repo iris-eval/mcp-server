@@ -34,7 +34,6 @@ function evalResult(): EvalResult {
         skipReason: 'no cost data',
       },
     ],
-    suggestions: [],
   };
 }
 

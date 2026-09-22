@@ -105,7 +105,6 @@ describe('SqliteAdapter', () => {
         score,
         passed: score >= 0.7,
         rule_results: [],
-        suggestions: [],
       });
     }
 
@@ -192,7 +191,6 @@ describe('SqliteAdapter', () => {
         score: 0.85,
         passed: true,
         rule_results: [{ ruleName: 'test', passed: true, score: 1, message: 'OK' }],
-        suggestions: [],
       };
       await adapter.insertEvalResult(LOCAL_TENANT, evalResult);
       const results = await adapter.getEvalsByTraceId(LOCAL_TENANT, sampleTrace.trace_id);
@@ -212,7 +210,6 @@ describe('SqliteAdapter', () => {
         score,
         passed: score >= 0.7,
         rule_results: [{ ruleName: 'test', passed: score >= 0.7, score, message: 'OK' }],
-        suggestions: [],
         created_at: createdAt,
       });
       await adapter.insertEvalResult(LOCAL_TENANT, row(a.trace_id, 0.5, '2026-09-01T00:00:00.000Z'));
@@ -241,7 +238,6 @@ describe('SqliteAdapter', () => {
         score: 0.9,
         passed: true,
         rule_results: [],
-        suggestions: [],
       });
       await adapter.insertEvalResult(LOCAL_TENANT, {
         id: generateEvalId(),
@@ -251,7 +247,6 @@ describe('SqliteAdapter', () => {
         score: 0.3,
         passed: false,
         rule_results: [],
-        suggestions: [],
       });
 
       const passed = await adapter.queryEvalResults(LOCAL_TENANT, { passed: true });

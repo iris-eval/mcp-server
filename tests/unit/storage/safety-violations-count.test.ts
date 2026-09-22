@@ -147,7 +147,6 @@ describe('safety violation counting', () => {
         { ruleName: 'no_stub_output', passed: true, score: 1, message: 'No stub markers' },
         { ruleName: 'no_hallucination_markers', passed: true, score: 1, message: 'No markers' },
       ],
-      suggestions: ['[no_pii] Potential PII detected: SSN'],
       rules_evaluated: 5,
       rules_skipped: 0,
       insufficient_data: false,

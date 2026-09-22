@@ -43,7 +43,6 @@ async function stored(s: SqliteAdapter, traceOver: Record<string, unknown>, eval
     score: 1,
     passed: true,
     rule_results: [rule('no_pii', true)],
-    suggestions: [],
     verdict: verdict('pass', 'clean', []),
     created_at: `2026-09-21T12:${String(seq % 60).padStart(2, '0')}:01.000Z`,
     ...evalOver,

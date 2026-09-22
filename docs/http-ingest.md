@@ -65,8 +65,7 @@ curl -s -X POST "http://127.0.0.1:6920/api/v1/traces" \
     "eval_type": "safety",
     "score": 1,
     "passed": true,
-    "rule_results": [ … ],
-    "suggestions": [],
+    "rule_results": [ … ]
     "rules_evaluated": …,
     "rules_skipped": …,
     "insufficient_data": false

@@ -64,7 +64,6 @@ export interface EvaluationResponse {
   provenance?: Provenance;
   critical_failures?: string[];
   critical_skipped?: string[];
-  suggestions?: string[];
   [key: string]: unknown;
 }
 

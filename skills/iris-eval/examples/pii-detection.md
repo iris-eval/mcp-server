@@ -43,10 +43,8 @@ Request (`input` is optional here; it grounds the hallucination signals):
     { "ruleName": "no_stub_output", "passed": true, "score": 1, "message": "No stub/placeholder markers detected" },
     { "ruleName": "no_hallucination_markers", "passed": true, "score": 1, "message": "No hallucination signals detected against the provided input context" }
   ],
-  "suggestions": [
-    "[no_pii] Potential PII detected: Credit Card",
-    "Critical rule(s) failed (no_pii) — passed=false regardless of the weighted score"
-  ],
+  "verdict": { "state": "fail", "passed": false, "basis": "detector_veto", "by": ["no_pii"], "risk": null },
+  "critical_failures": ["no_pii"],
   "rules_evaluated": 5,
   "rules_skipped": 0,
   "insufficient_data": false
@@ -85,11 +83,8 @@ The same request with `eval_type` omitted. The default runs every bundle, so the
     { "ruleName": "cost_under_threshold", "category": "cost", "passed": false, "score": 0, "message": "Cost data not provided", "skipped": true, "skipReason": "context.costUsd not provided" },
     { "ruleName": "verbosity_ratio", "category": "cost", "passed": false, "score": 0, "message": "Token usage not provided", "skipped": true, "skipReason": "context.tokenUsage not provided" }
   ],
-  "suggestions": [
-    "[no_pii] Potential PII detected: Credit Card",
-    "Critical rule(s) failed (no_pii) — passed=false regardless of the weighted score",
-    "3 rule(s) skipped — excluded from the weighted score: expected_coverage (context.expected not provided); cost_under_threshold (context.costUsd not provided); verbosity_ratio (context.tokenUsage not provided)"
-  ],
+  "verdict": { "state": "fail", "passed": false, "basis": "detector_veto", "by": ["no_pii"], "risk": null },
+  "critical_failures": ["no_pii"],
   "rules_evaluated": 10,
   "rules_skipped": 3,
   "insufficient_data": false,

@@ -12,7 +12,7 @@ export const id = '006-eval-critical-failures';
  * with no way to say WHY it failed.
  *
  * JSON text rather than a join table: it mirrors how rule_results and
- * suggestions are already stored, keeps the read path a single row, and the
+ * rule results are already stored, keeps the read path a single row, and the
  * array is small and read-only after write.
  *
  * NULL for every row written before this migration, which is honest — those

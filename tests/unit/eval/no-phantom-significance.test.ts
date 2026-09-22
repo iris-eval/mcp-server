@@ -41,7 +41,6 @@ const evalOf = (rules: string[], passed: boolean, evalType = 'completeness'): Ev
   score: passed ? 0.9 : 0.2,
   passed,
   rule_results: rules.map((ruleName) => ({ ruleName, passed: false, score: 0, message: 'failed' })),
-  suggestions: [],
 });
 
 /** Five quiet prior traces: enough history for the novelty classes to speak. */

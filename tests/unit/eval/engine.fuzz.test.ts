@@ -62,7 +62,7 @@ describe('EvalEngine — property-based fuzz (robustness)', () => {
         // Result shape is intact regardless of input.
         expect(typeof r.passed).toBe('boolean');
         expect(Array.isArray(r.rule_results)).toBe(true);
-        expect(Array.isArray(r.suggestions)).toBe(true);
+        expect(r.interpretations === undefined || Array.isArray(r.interpretations)).toBe(true);
         expect(r.eval_type).toBe(type);
       }),
       { numRuns: 300 },

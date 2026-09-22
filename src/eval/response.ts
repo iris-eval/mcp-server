@@ -54,7 +54,6 @@ export function toEvaluationResponse(result: EvalResult, options: EvaluationResp
     // is named so a fail-closed gate can treat the evaluation as unknown.
     ...(result.critical_skipped?.length ? { critical_skipped: result.critical_skipped } : {}),
     rule_results: result.rule_results,
-    suggestions: result.suggestions,
     rules_evaluated: result.rules_evaluated,
     rules_skipped: result.rules_skipped,
     insufficient_data: result.insufficient_data,

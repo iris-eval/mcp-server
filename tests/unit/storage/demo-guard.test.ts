@@ -28,7 +28,7 @@ describe('withDemoIngestGuard', () => {
       ).rejects.toBeInstanceOf(DemoIngestRefusedError);
       await expect(
         guarded.insertEvalResult(LOCAL_TENANT, {
-          id: generateEvalId(), eval_type: 'safety', output_text: 'x', score: 1, passed: true, rule_results: [], suggestions: [],
+          id: generateEvalId(), eval_type: 'safety', output_text: 'x', score: 1, passed: true, rule_results: [], 
         }),
       ).rejects.toBeInstanceOf(DemoIngestRefusedError);
 

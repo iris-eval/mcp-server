@@ -27,7 +27,6 @@ function result(rows: EvalRuleResult[], over: Partial<EvalResult> = {}): EvalRes
     score: 1,
     passed: true,
     rule_results: rows,
-    suggestions: [],
     rules_evaluated: rows.filter((r) => !r.skipped).length,
     rules_skipped: rows.filter((r) => r.skipped).length,
     insufficient_data: false,

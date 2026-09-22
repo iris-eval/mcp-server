@@ -347,7 +347,6 @@ export interface EvalResult {
   /** The composed verdict (0.10.0+); absent on rows older than that. */
   verdict?: Verdict;
   rule_results: EvalRuleResult[];
-  suggestions: string[];
   rules_evaluated?: number;
   rules_skipped?: number;
   insufficient_data?: boolean;
@@ -509,7 +508,6 @@ export interface DecisionMomentDetail extends DecisionMoment {
     interpretations?: Interpretation[];
     provenance?: Provenance;
     criticalSkipped?: string[];
-    suggestions: string[];
     /** See EvalResult.critical_failures — the rules that vetoed this eval. */
     criticalFailures?: string[];
     createdAt?: string;

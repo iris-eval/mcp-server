@@ -17,7 +17,7 @@
  * subpath is the supported form of that script.
  */
 export { EvalEngine, ALL_EVAL_TYPES, DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from './eval/engine.js';
-export { compose, interpretations, roleOf, tau, DEFAULT_COMPOSE, type ComposeConfig } from './eval/compose.js';
+export { compose, verdictPath, interpretations, roleOf, tau, DEFAULT_COMPOSE, type ComposeConfig } from './eval/compose.js';
 export { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode, type RiskEstimate } from './eval/risk.js';
 export { builtInRules, builtInRuleRoster, type CriticalityOverrides, type EffectiveCriticality } from './eval/criticality.js';
 export { rulesByType, getRulesForType } from './eval/rules/index.js';
@@ -35,6 +35,7 @@ export type {
   EvalType,
   EvalResultType,
   Verdict,
+  VerdictNode,
   Provenance,
   Uncertainty,
   Evidence,

@@ -45,7 +45,6 @@ function makeEval(id: string, opts: { traceId?: string; passed: boolean }): Eval
     score: opts.passed ? 1 : 0,
     passed: opts.passed,
     rule_results: [{ ruleName: 'response_length', passed: opts.passed, score: opts.passed ? 1 : 0, message: 'm' }],
-    suggestions: [],
   };
 }
 

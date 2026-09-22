@@ -65,7 +65,7 @@ Your client lists Iris's twelve tools on connect, and the dashboard serves at **
 
 The trace lands on the dashboard with its scores. Prefer the MCP server headless? Drop `--dashboard` from the args — you can open the same dashboard any time with `npx @iris-eval/mcp-server --dashboard`.
 
-**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md)). The CLI and SDKs on the [roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md) will be thin clients over the same endpoint.
+**One thing worth knowing up front:** MCP tools are called when the model decides to call them. Iris doesn't intercept your agent, so traces are logged when your agent asks it to log them — either because you told it to, or because your code calls the tools directly. Ask your agent to "log this to Iris and evaluate it" and it will. If you want capture that doesn't depend on the model choosing, `POST /api/v1/traces` does exactly that — your code sends the trace over plain HTTP, no model in the loop (see [docs/http-ingest.md](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md)). The CLI and host hooks on the [roadmap](https://iris-eval.com/#roadmap) will be thin clients over the same endpoint.
 
 ### Capture over HTTP (no model in the loop)
 
@@ -282,7 +282,7 @@ docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
 | **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
 | **Local-first** | Everything lives in SQLite on your disk. No account, no sign-up, no telemetry. Outbound HTTP happens only where you opt in: your own LLM-judge key, citation fetching, or an OTel exporter you configure. |
 
-Where this is going next: [the roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md).
+Where this is going next: [the capability map](https://iris-eval.com/capabilities) — every question Iris can be asked about every subject, with what it has and what it lacks — and [the three tracks](https://iris-eval.com/#roadmap).
 
 ### Measured, not claimed
 
@@ -384,7 +384,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
 - [Contributing Guide](https://github.com/iris-eval/mcp-server/blob/main/CONTRIBUTING.md) — How to contribute
 - [HTTP Ingest](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
-- [Roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md) — What's coming next
+- [Capability map](https://iris-eval.com/capabilities) — Every question Iris can be asked, and what it lacks
 - [Versioning policy](https://github.com/iris-eval/mcp-server/blob/main/VERSIONING.md) — What each version number promises, and what has to be true before 1.0
 
 <details>
@@ -487,7 +487,7 @@ A webhook fires on a moment (0.16.0): `notify.webhook` in `config.json` (or `IRI
 
 ### Your data on disk
 
-Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact unless you ask it to: `storage.redact: "critical_spans"` in `config.json` stores each evaluation's output with the spans a critical detector flagged replaced by `[REDACTED:<pattern>]` (off by default; the evidence offsets still index the text the caller saw). At startup, and every `retention.sweepIntervalHours` (default `24`, `0` disables the timer) after that, traces and evaluations older than `retention.days` (default `30`, `0` disables, set in `config.json`) are deleted and the write-ahead log is checkpointed. Deleting a trace — by `delete_trace` or by the sweep — erases the text of every evaluation linked to it (the output, the expected text, the suggestions and the rule messages) and stamps `erased_at`; the verdict, the scores and the evidence offsets stay. To remove everything now, stop the server and run `--purge`: it deletes every stored trace, span and evaluation, compacts the database and truncates the write-ahead log so the text is gone from disk, and keeps your deployed rules, audit log and preferences.
+Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact unless you ask it to: `storage.redact: "critical_spans"` in `config.json` stores each evaluation's output with the spans a critical detector flagged replaced by `[REDACTED:<pattern>]` (off by default; the evidence offsets still index the text the caller saw). At startup, and every `retention.sweepIntervalHours` (default `24`, `0` disables the timer) after that, traces and evaluations older than `retention.days` (default `30`, `0` disables, set in `config.json`) are deleted and the write-ahead log is checkpointed. Deleting a trace — by `delete_trace` or by the sweep — erases the text of every evaluation linked to it (the output, the expected text, and the rule messages) and stamps `erased_at`; the verdict, the scores and the evidence offsets stay. To remove everything now, stop the server and run `--purge`: it deletes every stored trace, span and evaluation, compacts the database and truncates the write-ahead log so the text is gone from disk, and keeps your deployed rules, audit log and preferences.
 
 </details>
 

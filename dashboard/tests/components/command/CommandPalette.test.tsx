@@ -65,7 +65,6 @@ function makeEval(overrides: Partial<EvalResult> = {}): EvalResult {
     score: 0,
     passed: false,
     rule_results: [],
-    suggestions: [],
     ...overrides,
   };
 }

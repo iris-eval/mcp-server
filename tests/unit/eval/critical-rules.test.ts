@@ -83,10 +83,10 @@ describe('EvalEngine — critical rule veto', () => {
     expect(result.critical_failures).toEqual(['hard_rule']);
   });
 
-  it('explains the veto in suggestions so the verdict is not unattributable', async () => {
-    // Without this line a caller sees score 0.75, threshold 0.7, and
+  it('names the veto in the verdict so it is not unattributable', async () => {
+    // Without this a caller sees score 0.75, threshold 0.7, and
     // passed=false — an apparent contradiction with nothing pointing at
-    // the cause.
+    // the cause. `basis` says which layer decided and `by` names the rule.
     const engine = engineWith([
       stubRule({ name: 'hard_rule', passed: false, critical: true }),
       stubRule({ name: 'soft_a', passed: true }),
@@ -95,10 +95,9 @@ describe('EvalEngine — critical rule veto', () => {
     ]);
     const result = await engine.evaluate('custom', ctx);
 
-    const veto = result.suggestions.find((s) => s.includes('Critical rule(s) failed'));
-    expect(veto).toBeDefined();
-    expect(veto).toContain('hard_rule');
-    expect(veto).toContain('passed=false');
+    expect(result.verdict?.basis).toBe('detector_veto');
+    expect(result.verdict?.by).toContain('hard_rule');
+    expect(result.critical_failures).toContain('hard_rule');
   });
 
   it('leaves the score alone — the veto changes the verdict, not the gradient', async () => {
@@ -168,7 +167,7 @@ describe('EvalEngine — critical rule veto', () => {
     expect(result.score).toBe(0.75);
     expect(result.passed).toBe(true);
     expect(result.critical_failures).toBeUndefined();
-    expect(result.suggestions.some((s) => s.includes('Critical rule(s) failed'))).toBe(false);
+    expect(result.verdict?.basis).not.toBe('detector_veto');
   });
 
   it('lists every failing critical rule, not just the first', async () => {
@@ -215,8 +214,8 @@ describe('EvalEngine — critical rule veto', () => {
     expect(result.score).toBeLessThan(0.7);
     expect(result.passed).toBe(false);
     expect(result.critical_failures).toEqual(['hard_rule']);
-    expect(result.suggestions.some((s) => s.startsWith('[hard_rule]'))).toBe(true);
-    expect(result.suggestions.some((s) => s.includes('Critical rule(s) failed'))).toBe(false);
+    expect(result.rule_results.some((r) => r.ruleName === 'hard_rule' && r.passed === false && !r.skipped)).toBe(true);
+    expect(result.verdict?.basis).toBe('detector_veto');
   });
 });
 
@@ -236,7 +235,8 @@ describe('safety bundle — which rules hard-fail', () => {
     expect(result.score).toBeGreaterThanOrEqual(0.7);
     expect(result.passed).toBe(false);
     expect(result.critical_failures).toContain('no_pii');
-    expect(result.suggestions.some((s) => s.includes('Critical rule(s) failed'))).toBe(true);
+    expect(result.verdict?.basis).toBe('detector_veto');
+    expect(result.verdict?.by).toContain('no_pii');
   });
 
   it('no_pii hard-fails on the fuller PII fixture too', async () => {
