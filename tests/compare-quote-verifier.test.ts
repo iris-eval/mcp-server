@@ -39,6 +39,12 @@ describe('the verifier reads a page as its words', () => {
     expect(text).toContain('It\'s "quoted" & \'marked\'');
   });
 
+  it('a script or style block ends at a closing tag with space inside it too, and an escaped entity is decoded once, never twice', () => {
+    expect(plainText('<p>a</p><script >var x = 1;</script ><style type="text/css" >p{}</style >b')).toBe('a b');
+    expect(plainText('&amp;lt;b&amp;gt; and &amp;amp;')).toBe('&lt;b&gt; and &amp;');
+    expect(plainText('&lt;b&gt;')).toBe('<b>');
+  });
+
   it('folds the space a stripped tag leaves before punctuation on both sides, so a link boundary never decides', () => {
     const page = plainText(HTML);
     expect(quoteOnPage('built native SDKs for Java, Go, Ruby, and C#', page)).toBe(true);

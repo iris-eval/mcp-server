@@ -52,13 +52,12 @@ function closePunctuation(text) {
 export function plainText(html) {
   return unmarkdown(
     html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ') // the block, to a closing tag with any spacing
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ')
       .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/<![^>]*>/g, ' ') // a doctype
       .replace(/<\/?[a-zA-Z][^>]*>/g, ' ') // a tag starts with a letter; "<5ms" in a table is text
       .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
@@ -66,6 +65,7 @@ export function plainText(html) {
       .replace(/&ldquo;|&rdquo;/g, '"')
       .replace(/&ndash;|&mdash;/g, '-')
       .replace(/&hellip;/g, '…')
+      .replace(/&amp;/g, '&') // last, so an escaped entity is decoded once, never twice
       .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
       .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
       .replace(/[‘’]/g, "'")
