@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatedCounter } from "./animated-counter";
-import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN } from "@/lib/claims";
+import { MCP_TOOL_COUNT, PROOF, RULE_COUNT_BUILT_IN } from "@/lib/claims";
 
 /*
  * BOTH COUNTS COME FROM THE TRUTHBASE, and the reason is written here
@@ -20,8 +20,12 @@ import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN } from "@/lib/claims";
 const STATS = [
   { value: MCP_TOOL_COUNT, suffix: "", label: "MCP tools", detail: "Log, evaluate, query, deploy/delete rules, delete traces, LLM judge (BYOK), citation verify (BYOK)", static: true },
   { value: RULE_COUNT_BUILT_IN, suffix: "", label: "Built-in eval rules", detail: "Completeness, relevance, safety, cost", static: true },
-  { prefix: "<", value: 1, suffix: "ms", label: "Eval latency", detail: "Heuristic rules. Fast and deterministic.", static: true },
-  { value: 0, suffix: "", label: "Lines of code to integrate", detail: "Add to MCP config. You're done.", static: true },
+  // The median the proof measured, never a literal: "<1ms" stood here while
+  // /proof measured 8.8 ms (2026-09-23 review).
+  ...(PROOF?.latency
+    ? [{ prefix: "~", value: Math.max(1, Math.round(PROOF.latency.p50Ms)), suffix: "ms", label: "Median eval latency", detail: "Every built-in rule, measured on the proof corpus. Deterministic, no model call.", static: true }]
+    : []),
+  { value: 1, suffix: "", label: "Config block to connect", detail: "Your client lists Iris's tools on connect. Your agent, a host hook or the CLI hands it the runs to score.", static: true },
 ];
 
 export function Stats(): React.ReactElement {

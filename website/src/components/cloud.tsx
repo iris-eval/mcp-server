@@ -23,7 +23,7 @@ const TIERS = [
       "Production security (auth, rate limiting)",
       "Cost tracking per trace",
       "Docker + npm + npx install",
-      "Community support (GitHub + Discord)",
+      "Community support (GitHub Issues + Discussions)",
     ],
   },
   {

@@ -44,7 +44,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "How do you eliminate the eval tax?",
-    answer: "By scoring every agent output inline, with deterministic rules that run in under a millisecond, so nothing stands between you and full coverage. Iris exposes scoring as an MCP tool the agent calls; traffic that must be scored regardless of what the model chooses goes through POST /api/v1/traces from your own code. When eval runs on 100% of outputs, the tax drops to near zero. The key is making eval effortless — if it requires pipelines or manual review, teams skip it and the tax compounds.",
+    answer: "By scoring every agent output inline, with deterministic rules that run in milliseconds, so nothing stands between you and full coverage. Iris exposes scoring as an MCP tool the agent calls; traffic that must be scored regardless of what the model chooses goes through POST /api/v1/traces from your own code. When eval runs on 100% of outputs, the tax drops to near zero. The key is making eval effortless — if it requires pipelines or manual review, teams skip it and the tax compounds.",
   },
 ];
 

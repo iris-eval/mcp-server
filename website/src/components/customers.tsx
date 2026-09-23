@@ -8,7 +8,7 @@ const USE_CASES = [
   {
     audience: "Developers shipping MCP agents",
     problem: "You deployed an agent and you have no idea what it's doing.",
-    solution: "Iris traces every execution, tool call, and token automatically. No SDK. No code changes. Add it to your MCP config and start seeing everything.",
+    solution: "Add one config block and every session lists Iris's tools on connect. No SDK. Your agent calls log_trace, a host hook forwards each turn, or iris-eval ingest loads a trace file, and every run Iris receives is scored.",
     metric: "60s",
     metricLabel: "to first trace",
     icon: (

@@ -6,7 +6,7 @@ Current release: v{{version}} ({{releaseDate}}) — {{releaseHeadline}}.
 
 ## What Iris is
 
-Iris is an open-source MCP (Model Context Protocol) server for agent evaluation. It scores output quality, catches safety failures, and enforces cost budgets across AI agents. Because it speaks MCP natively, any MCP-compatible agent or client discovers and uses it automatically — no SDK, no code changes, no instrumentation.
+Iris is an open-source MCP (Model Context Protocol) server for agent evaluation. It scores output quality, catches safety failures, and enforces cost budgets across AI agents. Because it speaks MCP natively, any MCP client lists its tools on connect — no SDK. It never intercepts: it scores what your agent sends through its tools, what a host hook forwards, or what `iris-eval ingest` loads.
 
 - Package: `{{npmPackage}}` (npm)
 - Repository: {{repoUrl}} (MIT-licensed core)
