@@ -346,7 +346,11 @@ export function compareRuns(
   }
   if (before.n === 0 || after.n === 0) {
     const empty = before.n === 0 ? beforeId : afterId;
-    return { ...blank, summary: `Nothing to compare: run "${empty}" has no evaluations.` };
+    // Not comparable, and said so in the field a caller branches on: this
+    // used to answer comparable: true beside a summary saying there was
+    // nothing to compare (2026-09-23 review).
+    const why = `run "${empty}" has no evaluations`;
+    return { ...blank, comparable: false, incomparableBecause: [...incomparableBecause, why], summary: `Nothing to compare: ${why}.` };
   }
 
   /*
@@ -402,10 +406,17 @@ export function compareRuns(
   // The paired test decides when there is pairing, because it is the one
   // with the power. The unpaired interval is still reported, so a reader
   // can see the size of the move as well as its significance.
-  const declaresChange = paired ? paired.significant : (difference?.significant ?? false);
-  const direction = paired ? (paired.b > paired.c ? -1 : 1) : Math.sign(difference?.delta ?? 0);
-  const worse = declaresChange && direction < 0;
-  const better = declaresChange && direction > 0;
+  //
+  // ONE-SIDED, like every per-rule row: the question is "did it get worse?"
+  // (or better), not "is it different?". The top line used the two-sided
+  // McNemar, whose exact p cannot fall below 0.0625 on five discordant
+  // pairs, so 12/12 -> 7/12 read "not enough evidence" while the per-rule
+  // row for the same data read worse at q = 0.031 (2026-09-23 review).
+  const pWorse = paired ? mcnemarOneSidedWorse(paired.b, paired.c) : newcombeOneSidedWorse(before.passed, before.n, after.passed, after.n);
+  const pBetter = paired ? mcnemarOneSidedWorse(paired.c, paired.b) : newcombeOneSidedWorse(after.passed, after.n, before.passed, before.n);
+  const worse = pWorse !== null && pWorse <= RULE_ALPHA;
+  const better = !worse && pBetter !== null && pBetter <= RULE_ALPHA;
+  const declaresChange = worse || better;
   const smallestDetectable = declaresChange ? null : smallestDetectableDifference(before.n, after.n);
   const equivalentWithin = equivalence(before, after, options.equivalenceMargin);
 
@@ -430,6 +441,7 @@ export function compareRuns(
       difference,
       worse,
       better,
+      pDirectional: worse ? pWorse : better ? pBetter : pWorse,
       smallestDetectable,
       equivalentWithin,
       shared: pairing.shared.length,
@@ -448,6 +460,8 @@ function renderSummary(x: {
   difference: Difference | null;
   worse: boolean;
   better: boolean;
+  /** The one-sided p behind the verdict: for the direction it reports, or for "worse" when it reports neither. */
+  pDirectional: number | null;
   smallestDetectable: number | null;
   equivalentWithin: Equivalence | null;
   shared: number;
@@ -462,17 +476,19 @@ function renderSummary(x: {
   parts.push(`"${x.before.runId}" passed ${x.before.passed} of ${x.before.n} (${pct(x.before.rate)}); "${x.after.runId}" passed ${x.after.passed} of ${x.after.n} (${pct(x.after.rate)}).`);
 
   if (x.paired) {
-    parts.push(`Compared as ${x.shared} matched pairs by case key, McNemar exact: ${x.paired.b} case${x.paired.b === 1 ? '' : 's'} passed before and failed after, ${x.paired.c} the other way, ${x.paired.concordant} unchanged, p = ${x.paired.pValue.toFixed(4)}.`);
+    const side = x.better ? 'better' : 'worse';
+    const p = x.pDirectional === null ? '' : `, one-sided p (${side}) = ${x.pDirectional.toFixed(4)}`;
+    parts.push(`Compared as ${x.shared} matched pairs by case key, McNemar exact: ${x.paired.b} case${x.paired.b === 1 ? '' : 's'} passed before and failed after, ${x.paired.c} the other way, ${x.paired.concordant} unchanged${p}.`);
   } else {
     parts.push('No case keys are shared, so the runs are compared as two independent samples. Supplying a case key on ingest pairs them, and a paired comparison sees a change an unpaired one cannot.');
   }
 
-  if (x.worse) parts.push('**This is a regression**: the evidence excludes no change.');
-  else if (x.better) parts.push('**This is an improvement**: the evidence excludes no change.');
+  if (x.worse) parts.push(`**This is a regression**: a one-sided test at α = ${RULE_ALPHA} excludes no change.`);
+  else if (x.better) parts.push(`**This is an improvement**: a one-sided test at α = ${RULE_ALPHA} excludes no change.`);
   else {
     const floor = x.smallestDetectable === null ? null : `${(x.smallestDetectable * 100).toFixed(0)} points`;
     parts.push(
-      `**Not enough evidence to call it either way.** That is a statement about the data, not about the agent: ${x.before.n} against ${x.after.n} cases could not have detected a change smaller than about ${floor ?? 'any size'}. Run more cases, or pair them with case keys.`,
+      `**Not enough evidence to call it either way.** That is a statement about the data, not about the agent: ${x.before.n} against ${x.after.n} cases could not have detected a change smaller than about ${floor ?? 'any size'}. ${x.paired ? 'Run more cases.' : 'Run more cases, or pair them with case keys.'}`,
     );
   }
 

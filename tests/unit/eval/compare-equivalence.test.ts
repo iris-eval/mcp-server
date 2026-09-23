@@ -158,3 +158,47 @@ describe('the tool\'s shape carries the new fields on both doors', () => {
     expect(out.equivalent_within?.margin).toBe(smallestDetectableDifference(60, 60));
   });
 });
+
+/*
+ * 2026-09-23 review (ADOPT-4, ADOPT-10). The top line tested two-sided while
+ * every per-rule row tested one-sided, so 12/12 -> 7/12 on paired cases
+ * (five regressed, none recovered: two-sided exact p = 0.0625) answered
+ * worse: false and "not enough evidence" while its own per-rule row read
+ * worse. And comparing against a run with no evaluations said comparable.
+ */
+describe('the top line asks the same one-sided question as the per-rule rows', () => {
+  it('12/12 -> 7/12 on paired cases is a regression, and its per-rule row agrees', () => {
+    const c = compareRuns('before', run(12, 0), 'after', run(12, 5));
+    expect(c.method).toBe('paired-mcnemar');
+    expect(c.worse).toBe(true);
+    expect(c.better).toBe(false);
+    expect(c.regressions[0]?.worse).toBe(true);
+    expect(c.summary).toContain('This is a regression');
+    expect(c.summary).toContain('one-sided p (worse) = 0.0313');
+  });
+
+  it('the mirror image is an improvement', () => {
+    const c = compareRuns('before', run(12, 5), 'after', run(12, 0));
+    expect(c.better).toBe(true);
+    expect(c.worse).toBe(false);
+  });
+
+  it('an undecided paired comparison does not advise pairing runs that are already paired', () => {
+    const c = compareRuns('before', run(12, 0), 'after', run(12, 1));
+    expect(c.worse).toBe(false);
+    expect(c.summary).toContain('Run more cases.');
+    expect(c.summary).not.toContain('pair them with case keys');
+  });
+
+  it(`still holds a one-change-in-many to "not enough evidence" at α = ${RULE_ALPHA}`, () => {
+    const c = compareRuns('before', run(200, 20), 'after', run(200, 22));
+    expect(c.worse).toBe(false);
+    expect(c.better).toBe(false);
+  });
+
+  it('a run with no evaluations is not comparable, and says why', () => {
+    const c = compareRuns('before', [], 'after', run(12, 0));
+    expect(c.comparable).toBe(false);
+    expect(c.incomparableBecause.join(' ')).toContain('has no evaluations');
+  });
+});
