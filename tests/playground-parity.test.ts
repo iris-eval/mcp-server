@@ -335,6 +335,7 @@ const SHARED_SAFETY_BLOCKS = [
   // no_pii
   'piiPatternMatches',
   'describeSuppressedPlaceholders',
+  'emailsInInput',
   // no_injection_patterns
   'PHRASE_PATTERN_COUNT',
   'buildSpanIndex',
