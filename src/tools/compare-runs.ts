@@ -78,7 +78,7 @@ export const compareRunsOutputSchema = z.looseObject({
     .looseObject({ method: z.string(), b: z.number(), c: z.number(), concordant: z.number(), pairs: z.number(), p_value: z.number(), significant: z.boolean() })
     .nullable()
     .describe('McNemar exact on the disagreeing cases; null unpaired'),
-  worse: z.boolean().describe('true ONLY when the evidence excludes no change; NOT the inverse of better'),
+  worse: z.boolean().describe('true ONLY when a one-sided test shows the rate fell; NOT better inverted'),
   better: z.boolean().describe('the same, in the other direction'),
   smallest_detectable: z
     .number()
