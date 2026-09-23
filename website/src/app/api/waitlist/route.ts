@@ -99,38 +99,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const exists = await redis.sismember("waitlist:emails", normalizedEmail);
-    if (exists) {
-      const count = await redis.scard("waitlist:emails");
-      return NextResponse.json(
-        { success: true, duplicate: true, count },
-        { status: 200, headers }
-      );
-    }
-
-    await redis.sadd("waitlist:emails", normalizedEmail);
-
-    const metadata = {
-      email: normalizedEmail,
-      timestamp: new Date().toISOString(),
-      source: "website",
-      consent: true,
-      ip_hash: ipHash,
-    };
-    await redis.lpush("waitlist:log", JSON.stringify(metadata));
-
+    // Every POST counts toward the limit, and a new address and one already
+    // on the list get the same answer (2026-09-23 review). Before, a
+    // duplicate skipped the counter and said {duplicate: true}, so anyone
+    // could test unlimited addresses for membership.
     const pipeline = redis.pipeline();
     pipeline.incr(rateLimitKey);
     pipeline.expire(rateLimitKey, RATE_LIMIT_WINDOW);
     await pipeline.exec();
 
-    const count = await redis.scard("waitlist:emails");
-    console.log(`[waitlist] new signup, total: ${count}`);
+    const added = await redis.sadd("waitlist:emails", normalizedEmail);
+    if (added === 1) {
+      // The IP hash is for rate limiting only, as the privacy policy says,
+      // so it lives in the expiring rate-limit key and is not stored with
+      // the address.
+      const metadata = {
+        email: normalizedEmail,
+        timestamp: new Date().toISOString(),
+        source: "website",
+        consent: true,
+      };
+      await redis.lpush("waitlist:log", JSON.stringify(metadata));
+      console.log("[waitlist] new signup");
+    }
 
-    return NextResponse.json(
-      { success: true, count },
-      { status: 201, headers }
-    );
+    return NextResponse.json({ success: true }, { status: 200, headers });
   } catch (err) {
     console.error("[waitlist] error:", (err as Error).message);
     return NextResponse.json(

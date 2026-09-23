@@ -55,7 +55,11 @@ export async function GET(request: Request) {
 
     const entries = log.map((entry) => {
       try {
-        return typeof entry === "string" ? JSON.parse(entry) : entry;
+        const parsed = typeof entry === "string" ? JSON.parse(entry) : entry;
+        // Rows written before 2026-09-23 carry an ip_hash; it was for rate
+        // limiting only and is not exported.
+        if (parsed && typeof parsed === "object") delete (parsed as Record<string, unknown>).ip_hash;
+        return parsed;
       } catch {
         return { raw: entry };
       }
@@ -64,8 +68,13 @@ export async function GET(request: Request) {
     const format = searchParams.get("format") || "json";
 
     if (format === "csv") {
+      // A value a spreadsheet would read as a formula (=, +, -, @, tab, CR)
+      // is prefixed with an apostrophe, so an "email" like
+      // =HYPERLINK(...)@a.co cannot run when the export is opened
+      // (2026-09-23 review).
       const escapeCSV = (val: unknown): string => {
-        const str = String(val || "");
+        let str = String(val || "");
+        if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
         return str.includes(",") || str.includes('"') || str.includes("\n")
           ? `"${str.replace(/"/g, '""')}"` : str;
       };
