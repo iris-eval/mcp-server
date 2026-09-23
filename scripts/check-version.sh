@@ -100,6 +100,21 @@ check_version "claude-plugin-capture/.claude-plugin/plugin.json" ".version"
 # The Cursor plugin manifest (arc 9, N-20): the version the Cursor Marketplace shows.
 check_version ".cursor-plugin/plugin.json" ".version"
 
+# Pinned launchers (2026-09-23 red team, SUP-6): what the plugins and the gate
+# action actually install. Unpinned, each ran whatever npm called latest.
+check_launcher() {
+  local file="$1" want="$2"
+  if grep -qF -- "$want" "$file"; then
+    echo "  OK: $file (launcher pinned to $PKG_VERSION)"
+  else
+    echo "MISMATCH: $file does not pin the launcher to $PKG_VERSION (run npm run version:sync)"
+    ERRORS=$((ERRORS + 1))
+  fi
+}
+check_launcher "claude-plugin/.mcp.json" "@iris-eval/mcp-server@$PKG_VERSION\""
+check_launcher ".cursor-plugin/plugin.json" "@iris-eval/mcp-server@$PKG_VERSION\""
+check_launcher ".github/actions/gate/action.yml" "default: '$PKG_VERSION'"
+
 # @iris-eval/langchain's dependency range on this package. Not a `.version`
 # field and not synced (the adapter releases on its own cadence), but the
 # range must admit the version being released: `^0.4.0` excluded every

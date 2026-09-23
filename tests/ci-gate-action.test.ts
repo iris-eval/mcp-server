@@ -53,7 +53,10 @@ describe('the action file', () => {
     }
     expect(yml).toMatch(/traces:\n {4}description: .*\n {4}required: true/);
     expect(yml).toContain('default: detector_veto');
-    expect(yml).toContain('default: latest');
+    // Pinned to the release it ships in, rolled by version:sync (2026-09-23, SUP-6):
+    // a workflow on @vX.Y.Z runs server X.Y.Z, not whatever npm calls latest today.
+    const { version } = JSON.parse(read('package.json')) as { version: string };
+    expect(yml).toContain(`default: '${version}'`);
   });
 
   it('runs ingest with flags the CLI parses, through npx by default, and reads the two scripts beside it', () => {

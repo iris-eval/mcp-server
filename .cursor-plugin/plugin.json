@@ -23,7 +23,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@iris-eval/mcp-server"
+        "@iris-eval/mcp-server@0.16.0"
       ],
       "env": {
         "IRIS_LOG_LEVEL": "info"

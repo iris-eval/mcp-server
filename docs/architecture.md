@@ -645,7 +645,7 @@ The release pipeline (`.github/workflows/release.yml`) produces and publishes:
 
   ```bash
   cosign verify ghcr.io/iris-eval/mcp-server:vX.Y.Z \
-    --certificate-identity-regexp='https://github.com/iris-eval/mcp-server' \
+    --certificate-identity='https://github.com/iris-eval/mcp-server/.github/workflows/release.yml@refs/tags/vX.Y.Z' \
     --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
   ```
 
