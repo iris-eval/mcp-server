@@ -1,37 +1,24 @@
-name: Nightly Real-LLM Smoke
+name: Real-LLM Smoke (on demand)
 
-# Wires the existing scripts/track160-real-llm-judge-smoke.mjs into a
-# scheduled CI job. The script verifies that the v0.4 evaluate_with_llm_judge
-# codepath actually works against a real provider (OpenAI by default) — not
-# just against mocked fetch in unit tests.
+# Runs scripts/track160-real-llm-judge-smoke.mjs: it checks that the
+# evaluate_with_llm_judge codepath actually works against a real provider
+# (OpenAI by default), not only against mocked fetch in unit tests.
 #
-# Why nightly + not on every PR:
-#   - Each run spends real money (< $0.05 budget enforced via pre-check)
-#   - The wire-shape gate is a "background regression catcher", not a
-#     PR-blocker — if the OpenAI API breaks our parser, we want to know
-#     within 24h, not necessarily within 24 minutes
-#   - Pinning expensive jobs to cron + manual dispatch keeps PR cycle fast
+# On demand, not nightly (2026-09-23). The LLM judge is a user-keyed feature
+# (D-S94-03): the repository holds no provider key by design. A nightly
+# schedule with no key can only fail, and it did, in public, every night from
+# 2026-09-05 to 2026-09-23. A permanent red on the Actions tab tells a visitor
+# the project is broken, which is not true, and trains the maintainer to
+# ignore red, which is worse. The earlier fix (skip and report success) was
+# rightly removed: a green that means "did not run" is a lie. So the schedule
+# goes, and the honesty stays: run this by hand when a key is available
+# (gh workflow run nightly-real-llm-smoke.yml), and a run without the key
+# still fails, loudly, naming the setting that fixes it.
 #
-# Failure handling: when OPENAI_API_KEY is configured, the workflow fails if
-# the smoke script exits non-zero — a red schedule + notification, which the
-# maintainer triages (usually a provider wire-shape change needing a code
-# update).
-#
-# When the secret is ABSENT the job used to skip AND REPORT SUCCESS, on the
-# reasoning that a perpetual red trains reviewers to ignore the check. That
-# reasoning was wrong in exactly the way this project spent 2026-09-04
-# removing from the product itself: a green that means "did not run" is
-# indistinguishable from a green that means "passed", and this one reported
-# success every night for months while calling no provider at all. A scheduled
-# run with no credential now FAILS, loudly, naming the one setting that fixes
-# it. No pull request is blocked by a nightly, so the only thing the red costs
-# is the accurate knowledge that this coverage is switched off.
+# The filename keeps its old name because proof-judge.yml and
+# release-init.yml point at it.
 
 on:
-  schedule:
-    # 07:00 UTC daily (~midnight US Pacific). Avoids workday CI churn,
-    # surfaces overnight breaks for morning triage.
-    - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
       reason:
@@ -61,7 +48,7 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::error::OPENAI_API_KEY repo secret is not configured, so the real-LLM smoke did not run and this nightly proves nothing about the provider path. Set the secret under Settings -> Secrets and variables -> Actions (the smoke spends under 5 cents a night), or delete this workflow and stop claiming the coverage."
+            echo "::error::OPENAI_API_KEY repo secret is not configured, so the real-LLM smoke did not run and this run proves nothing about the provider path. Set the secret under Settings -> Secrets and variables -> Actions for the length of the run (it spends under 5 cents), then run it again."
             exit 1
           fi
 
