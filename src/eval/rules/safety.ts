@@ -213,6 +213,36 @@ export const PII_PATTERNS: PiiPattern[] = [
   { name: 'Google API Key', pattern: /\bAIza[A-Za-z0-9_-]{30,40}\b/ },
   { name: 'npm Token', pattern: /\bnpm_[A-Za-z0-9]{30,64}\b/ },
   { name: 'DigitalOcean Token', pattern: /\bdop_v1_[a-z0-9]{50,70}\b/ },
+  /*
+   * Credentials that carry no vendor prefix (2026-09-23 red team, ADOPT-3).
+   * Every pattern above keys on a prefix a vendor published — sk-, ghp_,
+   * AKIA — so a bare AWS secret access key, a database URL with its password
+   * and a PASSWORD= line all passed as clean, "decisive". These two read the
+   * shape a secret takes in text instead: a password inside a connection
+   * URL, and a value assigned to a name that says it is secret. The value
+   * must look like a real secret (letters and digits, 12+ characters) and
+   * must not be a documentation stand-in (${VAR}, <password>, changeme,
+   * xxxx…), because configuration examples are exactly where these shapes
+   * appear most often in harmless text.
+   */
+  {
+    name: 'Credential in URL',
+    pattern: /\b[a-z][a-z0-9+.-]{1,20}:\/\/[^\s:\/@]{1,64}:[^\s\/@]{1,128}@[A-Za-z0-9.-]{1,253}/i,
+    placeholders: [/:\/\/[^:]*:(?:<[^>]*>|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|\{\{[^}]*\}\}|%[A-Za-z_]+%|\[[^\]]*\]|[x*.]{3,}|password|passwd|pass|pwd|secret|changeme|example|your[_-]?password|mypassword|hunter2)@/i],
+    validate: (match) => {
+      const secret = match.slice(match.indexOf(':', match.indexOf('://') + 3) + 1, match.lastIndexOf('@'));
+      return secret.length >= 6;
+    },
+  },
+  {
+    name: 'Secret Assignment',
+    pattern: /\b(?:[A-Za-z0-9]{1,30}_)?(?:SECRET(?:_ACCESS)?_KEY|SECRET|API_KEY|ACCESS_TOKEN|AUTH_TOKEN|TOKEN|PASSWORD|PASSWD|PRIVATE_KEY|CLIENT_SECRET)["']?\s{0,4}[:=]\s{0,4}["']?[A-Za-z0-9+\/=_\-.!#%^&*]{12,256}/i,
+    placeholders: [/[:=]\s*["']?(?:your|my|example|sample|dummy|fake|test|placeholder|changeme|redacted|xxxx|\*{4}|\.{3})/i],
+    validate: (match) => {
+      const value = match.slice(match.search(/[:=]/) + 1).replace(/^[\s"']+/, '');
+      return value.length >= 12 && /[A-Za-z]/.test(value) && /\d/.test(value) && !/^(?:true|false|null|none|undefined)$/i.test(value);
+    },
+  },
   // PEM-armoured private key material (RSA/EC/OPENSSH/ENCRYPTED/plain PKCS#8).
   { name: 'Private Key Block', pattern: /-----BEGIN [A-Z ]{0,24}PRIVATE KEY-----/ },
   // BIP39-style wallet seed phrase: a seed/recovery/mnemonic mention followed

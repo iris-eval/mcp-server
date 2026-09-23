@@ -1,5 +1,5 @@
 {
-  "commit": "4d70846",
+  "commit": "b07cbd4",
   "corpusVersion": "6a01ef7f62f8",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
@@ -578,7 +578,7 @@
           "recall": 1
         },
         {
-          "caught": 10,
+          "caught": 15,
           "ci95": [
             0.3601,
             0.7839
@@ -611,7 +611,7 @@
           "recall": 0
         },
         {
-          "caught": 0,
+          "caught": 1,
           "ci95": [
             0,
             0.7935
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-22T07:58:52.323Z",
+  "generatedAt": "2026-09-23T18:18:35.930Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -639,8 +639,8 @@
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
     "n": 1082,
-    "p50Ms": 8.827,
-    "p95Ms": 16.846
+    "p50Ms": 9.329,
+    "p95Ms": 18.068
   },
   "method": {
     "ci": "wilson-95",
@@ -1194,50 +1194,50 @@
       "category": "safety",
       "ci95": {
         "f1": [
-          0.7077,
-          0.8932
+          0.8125,
+          0.9495
         ],
         "precision": [
-          0.7329,
-          0.944
+          0.765,
+          0.9516
         ],
         "recall": [
-          0.6133,
-          0.8576
+          0.765,
+          0.9516
         ]
       },
       "credible95": {
         "f1": [
-          0.7005,
-          0.8823
+          0.7973,
+          0.9395
         ],
         "precision": [
-          0.7317,
-          0.9455
+          0.7666,
+          0.9538
         ],
         "recall": [
-          0.6165,
-          0.8597
+          0.7722,
+          0.956
         ]
       },
-      "f1": 0.8095,
-      "fn": 11,
+      "f1": 0.8889,
+      "fn": 5,
       "fp": 5,
       "n": 93,
       "name": "no_pii",
       "negatives": 48,
       "positives": 45,
       "ppvAt": {
-        "0.01": 0.0683,
-        "0.05": 0.2763,
-        "0.2": 0.6445,
-        "0.5": 0.8788
+        "0.01": 0.0794,
+        "0.05": 0.3099,
+        "0.2": 0.6809,
+        "0.5": 0.8951
       },
-      "precision": 0.8718,
-      "recall": 0.7556,
+      "precision": 0.8889,
+      "recall": 0.8889,
       "skipped": 0,
       "tn": 43,
-      "tp": 34
+      "tp": 40
     },
     {
       "category": "safety",
@@ -1882,46 +1882,46 @@
     "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
     "rows": [
       {
-        "caught": 34,
+        "caught": 40,
         "ci95": [
-          0.8985,
+          0.9124,
           1
         ],
         "dropped": [],
-        "n": 34,
+        "n": 40,
         "recall": 1,
         "rule": "no_pii",
         "transform": "zero_width"
       },
       {
-        "caught": 27,
+        "caught": 33,
         "ci95": [
-          0.8754,
+          0.8957,
           1
         ],
         "dropped": [],
-        "n": 27,
+        "n": 33,
         "recall": 1,
         "rule": "no_pii",
         "transform": "homoglyph"
       },
       {
-        "caught": 34,
+        "caught": 40,
         "ci95": [
-          0.8985,
+          0.9124,
           1
         ],
         "dropped": [],
-        "n": 34,
+        "n": 40,
         "recall": 1,
         "rule": "no_pii",
         "transform": "fullwidth"
       },
       {
-        "caught": 7,
+        "caught": 8,
         "ci95": [
-          0.3538,
-          0.8483
+          0.3906,
+          0.8619
         ],
         "dropped": [
           "pii-006",
@@ -1929,70 +1929,70 @@
           "pii-032",
           "pii-045"
         ],
-        "n": 11,
-        "recall": 0.6364,
+        "n": 12,
+        "recall": 0.6667,
         "rule": "no_pii",
         "transform": "nbsp"
       },
       {
-        "caught": 31,
+        "caught": 35,
         "ci95": [
-          0.7704,
-          0.9695
+          0.7389,
+          0.9454
         ],
         "dropped": [
+          "pii-004",
           "pii-045",
+          "pii-061",
           "pii-068",
           "pii-083"
         ],
-        "n": 34,
-        "recall": 0.9118,
+        "n": 40,
+        "recall": 0.875,
         "rule": "no_pii",
         "transform": "tab"
       },
       {
-        "caught": 26,
+        "caught": 30,
         "ci95": [
-          0.6,
-          0.8756
+          0.5981,
+          0.8581
         ],
         "dropped": [
+          "pii-004",
           "pii-006",
           "pii-032",
           "pii-045",
           "pii-056",
           "pii-057",
+          "pii-061",
           "pii-068",
           "pii-074",
           "pii-083"
         ],
-        "n": 34,
-        "recall": 0.7647,
+        "n": 40,
+        "recall": 0.75,
         "rule": "no_pii",
         "transform": "linebreak"
       },
       {
-        "caught": 15,
+        "caught": 25,
         "ci95": [
-          0.3731,
-          0.7241
+          0.5898,
+          0.8717
         ],
         "dropped": [
           "pii-006",
           "pii-011",
           "pii-021",
-          "pii-023",
           "pii-032",
           "pii-045",
-          "pii-048",
           "pii-051",
-          "pii-068",
           "pii-072",
-          "pii-081",
           "pii-083"
         ],
-        "n": 27,
-        "recall": 0.5556,
+        "n": 33,
+        "recall": 0.7576,
         "rule": "no_pii",
         "transform": "case"
       },
@@ -2285,10 +2285,10 @@
     ],
     "rules": [
       {
-        "firedOriginally": 34,
+        "firedOriginally": 40,
         "positives": 45,
         "rule": "no_pii",
-        "withSpan": 34
+        "withSpan": 40
       },
       {
         "firedOriginally": 41,

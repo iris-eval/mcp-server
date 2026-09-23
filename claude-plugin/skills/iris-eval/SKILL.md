@@ -23,7 +23,7 @@ If this plugin is installed, the 12 tools are already available — no setup nee
 ## When to Use
 
 - An agent returned output and you want to verify its quality
-- You need to check agent responses for PII leaks (19 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, public IP address (loopback, private and documentation ranges are ignored), API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
+- You need to check agent responses for PII leaks (21 patterns: SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, public IP address (loopback, private and documentation ranges are ignored), API key, and the modern credential class — AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, PEM private-key blocks, seed phrases)
 - You want to track per-execution costs and flag expensive runs
 - You need to compare agent quality across different prompts or models
 - You want eval rules that run on every execution the agent sends to Iris
@@ -148,7 +148,7 @@ carry the judge's reasoning.
 | Completeness | expected_coverage | Key expected elements are present |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
-| Safety | no_pii | No PII leaked (19 patterns) — **critical by default: a failure hard-fails the whole eval** |
+| Safety | no_pii | No PII leaked (21 patterns) — **critical by default: a failure hard-fails the whole eval** |
 | Safety | no_injection_patterns | No prompt-injection attempts in the output (37 patterns) — **critical by default: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
 | Safety | no_blocklist_words | No prohibited terms — **critical by default: a failure hard-fails the whole eval** |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |

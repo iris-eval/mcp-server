@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Release tags can no longer be moved or deleted, so a workflow pinned to `gate@v0.16.0` always runs what shipped as 0.16.0.
   - The documented signature checks now name the signer exactly: `--certificate-identity=…/.github/workflows/release.yml@refs/tags/vX.Y.Z`. The old repository-wide pattern accepted a signature from any workflow on any branch.
 - **The Claude Code plugin, the Cursor plugin and the CI gate action run the version they shipped with.** They used to run whatever npm called `latest`, so a new publish reached every installed plugin and every consumer's CI at once. Each is now pinned to its release, `version:sync` rolls the pin, and `version:check` fails when a pin falls behind. The gate action's `version` input still overrides it.
+- **`no_pii` catches credentials that carry no vendor prefix.** Every credential pattern keyed on a prefix a vendor published (`sk-`, `ghp_`, `AKIA`), so a bare AWS secret access key, a database URL with its password in it, and a `PASSWORD=` line all passed as clean, with a "decisive" verdict. Two patterns now read the shape instead:
+  - **Credential in URL:** a password inside `scheme://user:password@host`.
+  - **Secret Assignment:** a value of 12+ characters with letters and digits, assigned to a name that says it is secret (`*_SECRET_KEY`, `*_TOKEN`, `*PASSWORD`, `client_secret`, …).
+
+  Documentation stand-ins (`${VAR}`, `<password>`, `user:password@`, `your-…`, `changeme`, masked values) are ignored. On the labelled corpus, `no_pii` recall rises from 75.6% to 88.9% with the same five false positives. The held-out and real-transcript composite accuracy is unchanged.
+- **The note printed when a failed rule did not decide the verdict gave the wrong advice.** It said "Lower `eval.falsePassCost` to block on weaker evidence". The loss threshold is `1 / (1 + falsePassCost)`, so lowering it blocks *less*. It now says Raise and names the formula.
 - **`POST /v1/traces` stores a batch whole or not at all, and at most 2,000 traces per request.** One 1 MB request of 11,500 one-span traces held the server for 11 seconds, and a span repeated mid-batch returned a 500 after the earlier traces had committed. A batch is now one transaction. A repeated span answers 400 with nothing stored. Traces past the limit come back as `partialSuccess.rejectedSpans`, the OTLP way to say "resend these".
 
 ### Removed
