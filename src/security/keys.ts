@@ -31,7 +31,7 @@
  * configured key itself is never hashed: CodeQL's password-hash rule cannot
  * tell "hash a credential for storage" (where sha256 is wrong) from "hash
  * for a constant-time compare" (where it is the idiom), and #135's record
- * (feedback_codeql_password_hash) is that no keyed variant clears it. The
+ * is that no keyed variant clears it. The
  * ring is built once at boot (`buildKeyRing`), which is also when a missing
  * or empty key file, a malformed hash or a duplicate id refuses startup
  * with a sentence.

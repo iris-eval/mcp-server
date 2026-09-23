@@ -48,6 +48,6 @@
     "notes": "Control row. Answer is grounded in engine.ts lines 137-157 and the categories field in types/eval.ts. All four axes pass.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

@@ -554,7 +554,7 @@ async function main() {
    * Coverage bookkeeping. A gate that only prints OK/FAIL cannot be audited:
    * "0 findings" reads identically whether a pattern walked 400 files or
    * matched nothing because its regex was structurally blind to the phrasing
-   * actually used (feedback_gate_coverage_vs_claim — that is exactly how
+   * actually used (a gate's coverage is not its claim — that is exactly how
    * "10 regex patterns" survived on a canonical live post). So the run now
    * reports, per pattern, how many sites it SAW, how many it cleared, how
    * many the allow-list excused and how many it skipped by prefix.

@@ -104,6 +104,6 @@
     "notes": "A count answerable from the first comment block of run-uat.mjs (\"one command, four suites, one report\") or a single ls of tests/uat/suites, but the agent read every file in the harness (~95 KB, ~24k tokens) with the whole context resent each turn. Correct answer, cost far over the $0.10 default threshold at $3/$15. A correct evaluator fails cost only.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

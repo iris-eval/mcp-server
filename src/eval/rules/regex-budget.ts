@@ -26,7 +26,7 @@
  * This probe remains a deploy-time UX courtesy (reject obviously dangerous
  * patterns with a clear message before they are persisted), NOT the safety
  * boundary. Probing depends on guessing an igniting payload, which is not
- * possible in general — S79's fuel search failed to ignite `^(a|ab)+$` at
+ * possible in general — a 2026-08 fuel search failed to ignite `^(a|ab)+$` at
  * all. The boundary is the same sandbox deadline applied at every
  * evaluation in custom.ts.
  */

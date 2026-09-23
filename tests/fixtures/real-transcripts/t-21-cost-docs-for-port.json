@@ -104,6 +104,6 @@
     "notes": "One-line question, ten full document reads (~209 KB, ~52k tokens of tool output) resent on every turn. The answer is correct and short, but the trace's cost_usd is far over the $0.10 cost_under_threshold default at the stated $3/$15 rate. A correct evaluator fails cost and passes the other three. The same fact is in the first 2 KB of docs/http-ingest.md or in --help.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

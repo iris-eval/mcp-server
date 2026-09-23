@@ -32,6 +32,6 @@
     "notes": "The question was about file content; the agent ran git log and answered from a commit message without ever opening the file. Ground truth (grep ^export): FAILURE_RANK_HALF_LIFE_MS, isFailureMoment(moment), rankFailureScore(moment, nowMs). None are named. A correct evaluator fails completeness (exports not listed) and relevance (history was substituted for content); the answer's \"the ranker function and its supporting types\" is a guess dressed as a finding.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

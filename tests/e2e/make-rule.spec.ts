@@ -7,7 +7,7 @@
  *   2. Audit log at /audit shows the deploy event
  *   3. Dashboard audit annotation appears on the trend chart
  *
- * This is the test a YC reviewer would accidentally trigger while
+ * This is the test a first-time evaluator would accidentally trigger while
  * exploring. If it passes, the category-defining workflow works
  * end-to-end. If it fails, the core Iris pitch is broken.
  */

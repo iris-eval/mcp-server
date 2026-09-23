@@ -32,6 +32,6 @@
     "notes": "The agent read completeness.ts, which does not mention no_stub_output anywhere, and described its four rules as if they were the stub rule. Ground truth: no_stub_output lives in safety.ts (safety bundle, weight 1.5, not critical) and detects placeholder markers (whole-word TODO, FIXME, PLACEHOLDER, XXX, TBD, HACK, NOT YET IMPLEMENTED, [INSERT, [ADD) plus stub shapes such as \"omitted for brevity\", pass-only function bodies, comment-described bodies, always-true guards and self-satisfying tests. A correct evaluator fails completeness and relevance: the tool output contains no \"no_stub_output\" string, so the answer is unsupported by its only source.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

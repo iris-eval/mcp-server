@@ -35,9 +35,8 @@
  *
  * Every default here is a config key, and every one is a RECOMMENDATION
  * that the AI council closed on with its failure mode stated, not a ruling.
- * The record is strategy/product/iris-arc2-measure-the-verdict-2026-09-05/
- * COUNCIL-REPORT.md; each surface that shows a default says it is a
- * recommendation until it is ruled.
+ * Each surface that shows a default says it is a recommendation until it is
+ * ruled.
  */
 import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictNode } from '../types/eval.js';
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';

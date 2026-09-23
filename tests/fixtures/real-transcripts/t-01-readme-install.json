@@ -40,6 +40,6 @@
     "notes": "Control row. Faithful summary of README.md lines 38-182; every claim is in the tool output. A correct evaluator passes all four axes. no_pii should report placeholders only (none present); no injection, no stub markers; cost well under $0.10.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

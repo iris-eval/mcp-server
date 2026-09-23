@@ -64,6 +64,6 @@
     "notes": "The final answer is correct, but the agent issued the identical ls command five times with identical results before answering: four wasted turns and five redundant context resends. A correct evaluator fails the cost axis on the loop (near-duplicate tool-call detection). Note that cost_usd itself stays under the $0.10 cost_under_threshold default, so Iris's deterministic cost rule alone will not catch this; a loop or step-ceiling rule (roadmap Track 2) is what should.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

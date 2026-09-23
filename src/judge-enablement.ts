@@ -1,5 +1,5 @@
 /*
- * The judge is a user-keyed feature (founder ruling, 2026-09-04): an end
+ * The judge is a user-keyed feature (decided 2026-09-04): an end
  * user enables it by supplying their own provider key, and every surface
  * that mentions it has to say so in the same words — the error a tool
  * returns without a key, the capabilities resource, the server

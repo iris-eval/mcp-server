@@ -9,8 +9,8 @@
  * Source-of-truth references:
  *   - iris/website/src/app/globals.css (color system + glow tokens)
  *   - iris/website/src/app/layout.tsx (font loading)
- *   - strategy/brand/brand-guide.md (canonical Iris teal scale)
- *   - strategy/proof/iris-design-system-v2-proposal-2026-04-23.md (full spec)
+ *   - the Iris brand guide (canonical Iris teal scale)
+ *   - the v2 design-system proposal, 2026-04-23 (full spec)
  *
  * v2 changes from v1:
  *   - Surface scale: 4 → 5 levels (added bg-card distinct from bg-surface)

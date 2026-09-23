@@ -15,7 +15,7 @@
  * No spy on the parser is needed: the two middlewares have different
  * status codes, and the order of the pipeline is what the status reveals.
  *
- * Measured before this file was written (S97): the guard answers a rejected
+ * Measured before this file was written (2026-09-07): the guard answers a rejected
  * Origin in ~12 ms with only the headers and one small chunk on the wire;
  * the parser answers 413 only after it has read the body (~28 ms with the
  * full 2 MB) — it does not refuse on the declared Content-Length alone. So
