@@ -180,6 +180,12 @@
       "pattern": "tool-count-in-words",
       "line": 59,
       "reason": "Confident AI's own MCP server tool count (75 tools), quoted from their docs on the comparison row (the page renders from this data file since arc 8 R-5) — not Iris's count, so the truthbase cannot supply it. Line-pinned so any other count in this file still flags."
+    },
+    {
+      "file": "docs/blog/005-heuristic-vs-semantic-eval.md",
+      "pattern": "pii-pattern-count",
+      "line": "*",
+      "reason": "Dated post (19 PII patterns when last revised) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Editing a canonical post republishes it to dev.to on merge (devto-crosspost.yml), so a count refresh is a publication, not a docs fix. Surfaced 2026-09-23 when two credential patterns took the count to 21."
     }
   ]
 }

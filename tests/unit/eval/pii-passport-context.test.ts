@@ -82,8 +82,9 @@ describe('no_pii — Passport is context-anchored', () => {
     expect(passportPattern().test(farAway)).toBe(false);
   });
 
-  it('keeps the public pattern count at 19', () => {
-    expect(PII_PATTERNS.length).toBe(19);
+  // 21 since 2026-09-23: Credential in URL and Secret Assignment were added on purpose (ADOPT-3).
+  it('keeps the public pattern count at 21', () => {
+    expect(PII_PATTERNS.length).toBe(21);
   });
 
   it('stays linear on a hostile payload built from its own anchor', () => {

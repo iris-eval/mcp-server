@@ -302,7 +302,7 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
         severity: 'note',
         addressee: 'operator',
         rule: r.ruleName,
-        text: `${r.ruleName} failed but the verdict passed: on its published accuracy this rule alone does not carry the risk past your loss threshold. Lower eval.falsePassCost to block on weaker evidence.`,
+        text: `${r.ruleName} failed but the verdict passed: on its published accuracy this rule alone does not carry the risk past your loss threshold. Raise eval.falsePassCost to block on weaker evidence (the loss threshold is 1 / (1 + falsePassCost)).`,
         configKey: 'eval.falsePassCost',
       });
     }

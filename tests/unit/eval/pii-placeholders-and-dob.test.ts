@@ -100,8 +100,9 @@ describe('no_pii — DOB catches ISO dates after a label', () => {
     });
   }
 
-  it('keeps the public pattern count at 19 (an alternative, not a new entry)', () => {
-    expect(PII_PATTERNS.length).toBe(19);
+  // 21 since 2026-09-23: Credential in URL and Secret Assignment were added on purpose (ADOPT-3).
+  it('keeps the public pattern count at 21 (an alternative, not a new entry)', () => {
+    expect(PII_PATTERNS.length).toBe(21);
   });
 
   it('passes the deploy-time backtracking probe like every other built-in pattern', () => {
