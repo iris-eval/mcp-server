@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`no_pii` no longer vetoes an email address the agent was given.** A support answer that repeats the `returns@` address from the policy text in its input used to fail exactly like a fabricated answer did, so the critical veto could not tell a right answer from a wrong one. An address that appears verbatim (case-insensitively) in `input` is not counted, and the pass message says so. Email only, deliberately: an SSN or a card number repeated back from a ticket still fails. **A gate on `detector_veto` stops tripping on those answers.**
+
 ## [0.17.0] - 2026-09-23
 
 **Hostile input, honest verdicts, a harder release path.** An adversarial review of 0.16.0 attacked Iris the way a determined user or a compromised dependency would. 0.17.0 closes what it found:
