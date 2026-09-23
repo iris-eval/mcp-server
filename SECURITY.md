@@ -27,13 +27,13 @@ Iris has one maintainer. Every change reaches `main` through a pull request that
 
 ## Supported Versions
 
-The current minor receives every fix. The previous minor receives security fixes for 90 days after the current minor's first release, so an upgrade has a window rather than a deadline. Older minors receive none — upgrade to the current `0.16.x` line.
+The current minor receives every fix. The previous minor receives security fixes for 90 days after the current minor's first release, so an upgrade has a window rather than a deadline. Older minors receive none — upgrade to the current `0.17.x` line.
 
 | Version          | Supported                                   |
 |------------------|---------------------------------------------|
-| 0.16.x           | Yes                                         |
-| 0.15.x           | Yes, security fixes until 2026-12-21        |
-| 0.14.x and lower | No                                          |
+| 0.17.x           | Yes                                         |
+| 0.16.x           | Yes, security fixes until 2026-12-22        |
+| 0.15.x and lower | No                                          |
 
 <!--
   This table is release-gated (scripts/check-security-minor.mjs, run by

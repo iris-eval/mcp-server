@@ -2,7 +2,7 @@
   "mcpServers": {
     "iris-eval": {
       "command": "npx",
-      "args": ["-y", "@iris-eval/mcp-server@0.16.0"]
+      "args": ["-y", "@iris-eval/mcp-server@0.17.0"]
     }
   }
 }

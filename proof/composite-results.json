@@ -5368,7 +5368,7 @@
       "split": "dev"
     }
   ],
-  "commit": "d073629",
+  "commit": "5b0c1b0",
   "compositeVersion": "1c3f6e129090",
   "corpusVersion": "6a01ef7f62f8",
   "counts": {
@@ -5426,7 +5426,7 @@
       }
     }
   },
-  "generatedAt": "2026-09-23T19:29:07.625Z",
+  "generatedAt": "2026-09-23T20:17:38.985Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -6747,5 +6747,5 @@
     "split": "dev",
     "variant": "per-output"
   },
-  "version": "0.16.0"
+  "version": "0.17.0"
 }
