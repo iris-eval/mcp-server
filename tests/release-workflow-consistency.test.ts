@@ -120,3 +120,50 @@ describe('the image (arc 8, R-6) — labels, HEALTHCHECK, and the CI run that ch
     expect(ci).toContain('org.opencontainers.image.source org.opencontainers.image.description org.opencontainers.image.licenses');
   });
 });
+
+/*
+ * 2026-09-23 red team (SUP-1, SUP-2, SUP-14). The job that held the npm
+ * publishing identity also ran every dependency's code; a tag at any commit,
+ * or a dispatch on any branch, could publish; and the documented signature
+ * check accepted a signature from any workflow on any branch of the repo.
+ */
+function job(name: string): string {
+  const start = release.indexOf(`\n  ${name}:\n`);
+  if (start < 0) throw new Error(`no job ${name} in release.yml`);
+  const next = release.slice(start + 1).search(/\n {2}[a-z][a-z0-9-]*:\n/);
+  return next < 0 ? release.slice(start) : release.slice(start, start + 1 + next);
+}
+
+describe('release.yml — who can publish, and from what', () => {
+  it('the build runs without the publishing identity', () => {
+    const build = job('build-npm');
+    expect(build).not.toContain('id-token');
+    expect(build).toContain('npm ci');
+    expect(build).toContain('npm pack');
+  });
+
+  it('the job with the publishing identity installs and builds nothing: it publishes the packed tarball with scripts off', () => {
+    // Steps only: the job's comments explain what it does not run, in those words.
+    const publish = job('publish-npm')
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    expect(publish).toContain('id-token: write');
+    expect(publish).toContain('needs: build-npm');
+    expect(publish).not.toMatch(/npm (ci|install|run)\b/);
+    expect(publish).not.toContain('actions/checkout');
+    expect(publish).toMatch(/npm publish "\.\/\$TARBALL" [^\n]*--ignore-scripts/);
+  });
+
+  it('releases only a v* tag whose commit is on main', () => {
+    const validate = job('validate');
+    expect(validate).toContain("if: ${{ startsWith(github.ref, 'refs/tags/v') }}");
+    expect(validate).toContain('git merge-base --is-ancestor "$GITHUB_SHA" origin/main');
+  });
+
+  it('every signature check names the release workflow as the signer, not just the repository', () => {
+    expect(release).not.toContain('--certificate-identity-regexp');
+    expect(release).toContain('.github/workflows/release.yml@refs/tags/__TAG__');
+    expect(release).toContain('.github/workflows/release.yml@${GITHUB_REF}');
+  });
+});

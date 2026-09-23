@@ -108,7 +108,7 @@ const FOREIGN_FLAGS = new Set([
   'ignore-scripts', // npm ci --ignore-scripts
   'provenance', // npm publish --provenance
   'certificate-oidc-issuer', // cosign verify-blob
-  'certificate-identity-regexp', // cosign verify-blob
+  'certificate-identity', // cosign verify / verify-blob, the exact signing workflow
   'iris-url', // pytest --iris-url (the Python client's plugin, packages/python)
   'iris-api-key', // pytest --iris-api-key (the same plugin)
 ]);

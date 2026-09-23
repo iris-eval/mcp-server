@@ -74,6 +74,20 @@ const FILES = [
 let updated = 0;
 let skipped = 0;
 
+// ============================================================
+// Pinned launchers. A plugin or action that runs `npx -y @iris-eval/mcp-server`
+// with no version installs whatever npm says is latest, on every user's machine
+// and in every consumer's CI, the moment it is published. Pinned to the
+// release version, a new release reaches them when they update the plugin or
+// move the action tag (2026-09-23 red team, SUP-6). Text edits, so each file's
+// formatting survives.
+// ============================================================
+const LAUNCHERS = [
+  { path: "claude-plugin/.mcp.json", pattern: /@iris-eval\/mcp-server(?:@[0-9A-Za-z.+-]+)?"/g, replace: `@iris-eval/mcp-server@${VERSION}"` },
+  { path: ".cursor-plugin/plugin.json", pattern: /@iris-eval\/mcp-server(?:@[0-9A-Za-z.+-]+)?"/g, replace: `@iris-eval/mcp-server@${VERSION}"` },
+  { path: ".github/actions/gate/action.yml", pattern: /(\r?\n  version:\r?\n[\s\S]*?\r?\n    default: )'[^']*'/, replace: `$1'${VERSION}'` },
+];
+
 console.log(`Syncing all versions to ${VERSION} (from package.json)\n`);
 
 for (const file of FILES) {
@@ -113,6 +127,18 @@ for (const file of FILES) {
   writeFileSync(file.path, JSON.stringify(content, null, 2) + "\n");
   console.log(`  SYNC: ${file.path} (${current} → ${VERSION})`);
   updated++;
+}
+
+for (const launcher of LAUNCHERS) {
+  const before = readFileSync(launcher.path, "utf8");
+  const after = before.replace(launcher.pattern, launcher.replace);
+  if (after !== before) {
+    writeFileSync(launcher.path, after);
+    console.log(`  SYNC: ${launcher.path} (pinned launcher → ${VERSION})`);
+    updated++;
+  } else {
+    console.log(`  OK:   ${launcher.path} (launcher already pinned to ${VERSION})`);
+  }
 }
 
 // ------------------------------------------------------------

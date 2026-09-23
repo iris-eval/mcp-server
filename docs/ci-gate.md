@@ -63,7 +63,7 @@ That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_v
 | `eval-type` | every bundle | `completeness` · `relevance` · `safety` · `cost` · `custom` · `all` |
 | `redact` | the server's default | `none` · `critical_spans` |
 | `iris-home` | a scratch directory | Where the database lives; a cached directory keeps history across runs and holds the dataset |
-| `version` | `latest` | The `@iris-eval/mcp-server` version `npx` runs |
+| `version` | the version this action was released with | The `@iris-eval/mcp-server` version `npx` runs. Pinned, so a workflow on `@v0.16.0` runs server 0.16.0 until you move the tag |
 | `command` | `npx -y @iris-eval/mcp-server@<version>` | Advanced: the command that runs `iris-eval` instead — `node dist/index.js` in a checkout of this repo |
 | `comment` | `true` | On a pull request, the comment |
 | `github-token` | `${{ github.token }}` | The token that posts it |
