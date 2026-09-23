@@ -1,5 +1,5 @@
 /*
- * The verdict corrections ruled on 2026-09-23 (D-S101-02), from the red
+ * The verdict corrections decided on 2026-09-23, from the red
  * team's measurements on 0.16.0:
  * - answers_the_ask failed 6 of 10 correct paraphrased answers and passed
  *   every refusal and every copy of the ask. It now ADVISES at the shipped

@@ -63,7 +63,7 @@ export function buildInstructions(i: InstructionsInput): string {
 
     `The LLM judge (evaluate_with_llm_judge) and the citation verifier (verify_citations) are ${judgeStateLine(i.judge)}. ${judgeHowTo}`,
 
-    'Resources: iris://capabilities (what this server can judge, each rule\'s needs, judge state, limits), iris://proof (precision and recall per rule, with intervals), iris://traces/{trace_id}, iris://evaluations/{id}, iris://dashboard/summary. Responses link what they created.',
+    'Resources: iris://capabilities (what this server can judge, each rule\'s needs, judge state, limits), iris://proof (precision and recall per rule, with intervals), iris://traces/{trace_id}, iris://evaluations/{id}, iris://dashboard/summary, iris://audit. Responses link what they created.',
 
     'Do not use Iris to validate arbitrary JSON Schema, to screen inputs before they reach an agent (the injection rule reads output), or for semantic judgment without a key.',
 

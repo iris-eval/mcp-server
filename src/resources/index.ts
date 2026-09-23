@@ -14,7 +14,9 @@ import { ruleProof } from '../capabilities.js';
 import { publishedProvenance, publishedRuleNames } from '../eval/accuracy.js';
 import { toEvaluationResponse } from '../eval/response.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { readAuditLog } from '../audit-log-reader.js';
 import {
+  AUDIT_RESOURCE_URI,
   CAPABILITIES_RESOURCE_URI,
   DASHBOARD_SUMMARY_RESOURCE_URI,
   EVALUATION_RESOURCE_TEMPLATE,
@@ -79,6 +81,27 @@ export function registerAllResources(
     DASHBOARD_SUMMARY_RESOURCE_URI,
     { title: 'Dashboard summary', description: 'Dashboard summary with key metrics and trends for the last hour', mimeType: 'application/json' },
     async (uri) => json(uri.href, await storage.getDashboardSummary(LOCAL_TENANT)),
+  );
+
+  /*
+   * The audit log, readable where the agent and its operator already are
+   * (2026-09-23): rule deploys, deletes, toggles and updates, and
+   * trace deletions, newest first. Before this only the dashboard could show
+   * it, so an agent that removed a rule or a trace left a record nobody on
+   * the MCP side could read.
+   */
+  server.registerResource(
+    'audit',
+    AUDIT_RESOURCE_URI,
+    {
+      title: 'Audit log',
+      description: 'The newest 100 audit entries, newest first: every rule deploy, delete, toggle and update, and every trace deletion, with its time and what it touched',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      const { entries, total } = readAuditLog({ limit: 100 });
+      return json(uri.href, { total, entries: entries.filter((e) => (e.tenantId ?? LOCAL_TENANT) === LOCAL_TENANT) });
+    },
   );
 
   server.registerResource(

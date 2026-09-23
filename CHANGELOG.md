@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Deleting a trace leaves a record, and the agent can read the record.** `delete_trace` used to remove a trace with no audit entry, so an agent could delete the evidence against its own run and nothing would show that it had. A deletion now appends a `trace.delete` entry (time, user, trace id) to the same audit log that already records every rule deploy, delete, toggle and update. That log is now an MCP resource, **`iris://audit`** (the newest 100 entries, newest first), as well as the dashboard's Audit page, which now shows and filters trace deletions. The agent keeps the power to delete; what it loses is the ability to delete silently.
+
 ### Changed
 
 - **`answers_the_ask` advises at the shipped thresholds, and names refusals and copies of the ask.** At the defaults it failed 6 of 10 correct paraphrased answers, because they reused few of the ask's words, and it passed every refusal (too short to measure) and every copy of the ask (all of its words). It now gates only once you set a `keyword_overlap` or `topic_consistency` threshold of your own. A bare refusal and the ask handed back each fire it directly, before the brevity skip. A decline that goes on to answer is judged on its content. **A gate that relied on this rule blocking at the defaults stops blocking: set a relevance threshold to keep it.**

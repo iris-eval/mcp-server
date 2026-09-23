@@ -883,7 +883,7 @@ export function describeSuppressedPlaceholders(suppressed: Map<string, number>):
  * that repeats an address it was GIVEN (a support desk's own returns@ in the
  * policy text it is answering from) has not leaked it: that is the one way a
  * correct support answer and a fabricated one used to earn the same veto
- * (2026-09-23 review, D-S101-02). Email only, deliberately: an SSN or a card
+ * (2026-09-23 review). Email only, deliberately: an SSN or a card
  * number repeated back from a ticket is still a leak of that number.
  */
 function emailsInInput(input: string | undefined): Set<string> {
@@ -3434,7 +3434,7 @@ function toolChoice(ctx: EvalContext): EvalRuleResult {
 const MIN_ASK_TERMS_TO_JUDGE = 2;
 
 /*
- * Two non-answers the lexical pair cannot see (2026-09-23 review, D-S101-02).
+ * Two non-answers the lexical pair cannot see (2026-09-23 review).
  * "I cannot help with that." is too short for topic_consistency, so the pair
  * skipped and the verdict read clean; the ask copied back reuses every one of
  * the ask's words, so keyword_overlap passed it. Both are judged directly,

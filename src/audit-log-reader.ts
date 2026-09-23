@@ -16,7 +16,7 @@ import { irisHome } from './utils/iris-home.js';
 import { z } from 'zod';
 import type { AuditLogEntry } from './types/custom-rule.js';
 
-const AUDIT_ACTIONS = ['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update'] as const;
+const AUDIT_ACTIONS = ['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update', 'trace.delete'] as const;
 
 const EntrySchema = z.object({
   ts: z.string(),
@@ -29,7 +29,8 @@ const EntrySchema = z.object({
   tenantId: z.string().optional(),
   action: z.enum(AUDIT_ACTIONS),
   user: z.string(),
-  ruleId: z.string(),
+  ruleId: z.string().optional(),
+  traceId: z.string().optional(),
   ruleName: z.string().optional(),
   details: z.record(z.string(), z.unknown()).optional(),
 });
@@ -101,7 +102,7 @@ export function readAuditLog(opts?: {
     if (filter.since && entry.ts < filter.since) return false;
     if (filter.search) {
       const needle = filter.search.toLowerCase();
-      const matchId = entry.ruleId.toLowerCase().includes(needle);
+      const matchId = (entry.ruleId ?? entry.traceId ?? '').toLowerCase().includes(needle);
       const matchName = entry.ruleName?.toLowerCase().includes(needle) ?? false;
       if (!matchId && !matchName) return false;
     }

@@ -680,7 +680,7 @@ export type PreferencesPatch = Partial<Preferences>;
 
 /* ── Audit log (B8.4) ── */
 
-export type AuditAction = 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.update';
+export type AuditAction = 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.update' | 'trace.delete';
 
 export interface AuditLogEntry {
   ts: string;
@@ -695,7 +695,10 @@ export interface AuditLogEntry {
   tenantId?: string;
   action: AuditAction;
   user: string;
-  ruleId: string;
+  /** The rule a rule.* entry is about; absent on trace.delete. */
+  ruleId?: string;
+  /** The trace a trace.delete entry is about. */
+  traceId?: string;
   ruleName?: string;
   details?: Record<string, unknown>;
 }

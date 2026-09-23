@@ -5,7 +5,7 @@ import { readAuditLog } from '../../audit-log-reader.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
 
 const QuerySchema = strictQuery({
-  action: z.enum(['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update']).optional(),
+  action: z.enum(['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update', 'trace.delete']).optional(),
   since: z.string().datetime({ offset: true }).optional(),
   search: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(100),

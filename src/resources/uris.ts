@@ -9,11 +9,13 @@ export const PROOF_RESOURCE_URI = 'iris://proof';
 export const DASHBOARD_SUMMARY_RESOURCE_URI = 'iris://dashboard/summary';
 export const TRACE_RESOURCE_TEMPLATE = 'iris://traces/{trace_id}';
 export const EVALUATION_RESOURCE_TEMPLATE = 'iris://evaluations/{id}';
+export const AUDIT_RESOURCE_URI = 'iris://audit';
 
 export const RESOURCE_URIS = [
   CAPABILITIES_RESOURCE_URI,
   PROOF_RESOURCE_URI,
   DASHBOARD_SUMMARY_RESOURCE_URI,
+  AUDIT_RESOURCE_URI,
   TRACE_RESOURCE_TEMPLATE,
   EVALUATION_RESOURCE_TEMPLATE,
 ] as const;
@@ -23,5 +25,5 @@ export const traceUri = (traceId: string): string => TRACE_RESOURCE_TEMPLATE.rep
 export const evaluationUri = (id: string): string => EVALUATION_RESOURCE_TEMPLATE.replace('{id}', id);
 
 /** Fixed URIs (resources/list) versus templates (resources/templates/list). */
-export const FIXED_RESOURCE_URIS = [CAPABILITIES_RESOURCE_URI, PROOF_RESOURCE_URI, DASHBOARD_SUMMARY_RESOURCE_URI] as const;
+export const FIXED_RESOURCE_URIS = [CAPABILITIES_RESOURCE_URI, PROOF_RESOURCE_URI, DASHBOARD_SUMMARY_RESOURCE_URI, AUDIT_RESOURCE_URI] as const;
 export const RESOURCE_TEMPLATES = [TRACE_RESOURCE_TEMPLATE, EVALUATION_RESOURCE_TEMPLATE] as const;

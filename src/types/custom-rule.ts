@@ -58,11 +58,14 @@ export interface AuditLogEntry {
    * 'local' so old audit logs remain queryable on upgrade.
    */
   tenantId?: string;
-  /** Action taken — currently rule.deploy / rule.delete / rule.toggle. */
-  action: 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.update';
+  /** Action taken: a rule deployed, deleted, toggled or updated, or a trace deleted (2026-09-23). */
+  action: 'rule.deploy' | 'rule.delete' | 'rule.toggle' | 'rule.update' | 'trace.delete';
   /** Who initiated. v0.4 is single-user local — always "local". v0.5+ adds users. */
   user: string;
-  ruleId: string;
+  /** The rule a rule.* entry is about; absent on trace.delete. */
+  ruleId?: string;
+  /** The trace a trace.delete entry is about. */
+  traceId?: string;
   ruleName?: string;
   /** Optional detail: source moment id, prior version, etc. */
   details?: Record<string, unknown>;

@@ -1178,7 +1178,7 @@
       "question": "Q10",
       "subject": "S2",
       "status": "has",
-      "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses.",
+      "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses. Every rule deploy, delete, toggle and update and every trace deletion is recorded in an audit log the agent can read, so a rule changed or evidence removed around a verdict can be found afterwards.",
       "evidence": [
         {
           "kind": "tool",
@@ -1195,6 +1195,10 @@
         {
           "kind": "tool",
           "name": "list_rules"
+        },
+        {
+          "kind": "resource",
+          "name": "iris://audit"
         }
       ],
       "needs": [

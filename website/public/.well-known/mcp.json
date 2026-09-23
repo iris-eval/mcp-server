@@ -78,6 +78,11 @@
       "description": "Dashboard summary with key metrics and trends for the last hour"
     },
     {
+      "uri": "iris://audit",
+      "name": "audit",
+      "description": "The newest 100 audit entries, newest first: every rule deploy, delete, toggle and update, and every trace deletion, with its time and what it touched"
+    },
+    {
       "uri": "iris://traces/{trace_id}",
       "name": "trace-detail",
       "description": "One stored trace with its spans and every evaluation linked to it",
