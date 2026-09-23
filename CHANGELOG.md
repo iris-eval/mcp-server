@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-23
+
+**Hostile input, honest verdicts, a harder release path.** An adversarial review of 0.16.0 attacked Iris the way a determined user or a compromised dependency would. 0.17.0 closes what it found:
+- Outputs that stalled the server for seconds to minutes.
+- A crafted number that crashed an evaluation.
+- One accent mark that walked past both critical detectors.
+- Credentials with no vendor prefix that passed as clean.
+- A run comparison that called a 42-point regression "not enough evidence".
+- A trace batch that half-committed.
+- A release pipeline in which about 860 build dependencies sat beside the npm publishing identity.
+
+Every fix carries a regression test. The published accuracy numbers moved only where a detector got better: `no_pii` recall rose from 75.6% to 88.9% with the same false positives.
+
+**Check before upgrading.**
+
+- **Node 22.13 or later.** Node 20 reached end of life in April and is no longer supported (see Removed).
+- **`no_pii` fires on two more shapes:** a password inside a `scheme://user:password@host` URL, and a secret-named key assigned a 12+ character letters-and-digits value. A CI gate on `detector_veto` can trip where it passed before, and those are real leaks.
+- **`compare_runs` answers `worse: true` on regressions it used to call undecided**, because the top line is now one-sided like the per-rule rows. A comparison against a run with no evaluations answers `comparable: false`.
+- **`POST /v1/traces` stores at most 2,000 traces per request.** The rest come back in `partialSuccess.rejectedSpans`. A span repeated within a batch answers 400 with nothing stored.
+- **A rule that throws becomes a skip naming the error**, so the verdict reads unknown instead of the whole evaluation failing.
+- **The Claude Code plugin, the Cursor plugin and the CI gate action run the version they shipped with.** Pass the gate action's `version` input to run another.
+
 ### Security
 
 - **No output can hold the server hostage any more.** An adversarial review timed every built-in rule on long repetitive inputs and found patterns that backtracked from every position of a run. 80,000 digits took 16 seconds to evaluate, 900 KB of `DAN ` took over three minutes, and 5,000 spaces at the end of an ask took more than 15 seconds. Each blocked the one event loop, and with it every other client. A static audit of all 335 patterns in `src/` located them. Each one is now linear, with its old and new forms fuzzed against each other on 20,000 random inputs to prove they match the same text, and a regression suite times the worst shapes at 200,000 characters. The published accuracy numbers did not move: `proof --check` reproduces all three reports byte for byte.
