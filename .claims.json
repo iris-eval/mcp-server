@@ -1132,6 +1132,10 @@
           {
             "kind": "tool",
             "name": "list_rules"
+          },
+          {
+            "kind": "resource",
+            "name": "iris://audit"
           }
         ],
         "id": "Q10xS2",
@@ -1142,7 +1146,7 @@
         "question": "Q10",
         "status": "has",
         "subject": "S2",
-        "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses."
+        "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses. Every rule deploy, delete, toggle and update and every trace deletion is recorded in an audit log the agent can read, so a rule changed or evidence removed around a verdict can be found afterwards."
       },
       {
         "evidence": [
@@ -4957,8 +4961,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-23T21:33:00.672Z",
-  "generatedFromCommit": "9b5c25d",
+  "generatedAt": "2026-09-23T21:56:05.263Z",
+  "generatedFromCommit": "5d6a703",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -8904,7 +8908,7 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3313,
+    "totalCombined": 3314,
     "vitestDashboard": {
       "failed": 0,
       "passed": 334,
@@ -8912,8 +8916,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2944,
-      "total": 2944
+      "passed": 2945,
+      "total": 2945
     }
   },
   "version": {

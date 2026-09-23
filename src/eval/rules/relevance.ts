@@ -226,7 +226,7 @@ export const topicConsistency: EvalRule = {
 export const MIN_ASK_TERMS_TO_JUDGE = 2;
 
 /*
- * Two non-answers the lexical pair cannot see (2026-09-23 review, D-S101-02).
+ * Two non-answers the lexical pair cannot see (2026-09-23 review).
  * "I cannot help with that." is too short for topic_consistency, so the pair
  * skipped and the verdict read clean; the ask copied back reuses every one of
  * the ask's words, so keyword_overlap passed it. Both are judged directly,
@@ -268,7 +268,7 @@ export const answersTheAsk: EvalRule = {
      * The threshold behind this rule is its two measurements' thresholds.
      * At the shipped defaults they are numbers WE chose, so the rule
      * advises; once a deployment sets either, the rule gates on the
-     * deployment's word (2026-09-23 review, D-S101-02: at the defaults it
+     * deployment's word (2026-09-23 review: at the defaults it
      * failed 6 of 10 correct paraphrased answers and passed every refusal).
      */
     const configured = [ko, tc].some((r) => (r.evidence ?? []).some((e) => e.type === 'count' && e.thresholdSource === 'config'));

@@ -560,6 +560,28 @@ describe('MCP Protocol Integration', () => {
     ).toBeUndefined();
   });
 
+  it('delete_trace leaves a trace.delete entry that iris://audit serves', async () => {
+    // An agent may delete evidence; it may not do so without a record the
+    // agent and its reviewer can both read.
+    const logged = await client.callTool({ name: 'log_trace', arguments: { agent_name: 'audit-delete-test' } });
+    const traceId: string = JSON.parse((logged.content as Array<{ text: string }>)[0].text).trace_id;
+    await client.callTool({ name: 'delete_trace', arguments: { trace_id: traceId } });
+
+    const read = await client.readResource({ uri: 'iris://audit' });
+    const body = JSON.parse((read.contents[0] as { text: string }).text) as {
+      total: number;
+      entries: Array<{ action: string; traceId?: string; user: string }>;
+    };
+    const entry = body.entries.find((e) => e.traceId === traceId);
+    expect(entry).toMatchObject({ action: 'trace.delete', user: 'local', traceId });
+
+    // A delete that removed nothing writes nothing.
+    const before = body.total;
+    await client.callTool({ name: 'delete_trace', arguments: { trace_id: traceId } });
+    const again = JSON.parse(((await client.readResource({ uri: 'iris://audit' })).contents[0] as { text: string }).text);
+    expect(again.total).toBe(before);
+  });
+
   it('should log a trace via MCP', async () => {
     const result = await client.callTool({
       name: 'log_trace',

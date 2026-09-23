@@ -23,6 +23,7 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [iris://capabilities](#iriscapabilities)
   - [iris://proof](#irisproof)
   - [iris://dashboard/summary](#irisdashboardsummary)
+  - [iris://audit](#irisaudit)
   - [iris://traces/{trace_id}](#iristracestrace_id)
   - [iris://evaluations/{id}](#irisevaluationsid)
 - [Dashboard API Routes](#dashboard-api-routes)
@@ -796,6 +797,10 @@ Returns dashboard summary with key metrics and trends.
 | `eval_pass_rate` | `number` | Fraction of evaluations that passed (0-1) |
 | `traces_per_hour` | `Array<{hour, count}>` | Time-series histogram of trace volume |
 | `top_agents` | `Array<{agent_name, count}>` | Agents ranked by trace count |
+
+### iris://audit
+
+The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. The same log the dashboard's Audit page shows, readable by the agent that made the change and by whoever reviews it.
 
 ---
 

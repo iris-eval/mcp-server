@@ -108,6 +108,7 @@ const ACTION_STYLE: Record<AuditAction, { bg: string; fg: string; label: string 
   'rule.delete': { bg: 'rgba(239, 68, 68, 0.12)', fg: 'var(--eval-fail)', label: 'delete' },
   'rule.toggle': { bg: 'rgba(234, 179, 8, 0.12)', fg: 'var(--eval-warn)', label: 'toggle' },
   'rule.update': { bg: 'rgba(59, 130, 246, 0.12)', fg: 'var(--eval-tool)', label: 'update' },
+  'trace.delete': { bg: 'rgba(239, 68, 68, 0.12)', fg: 'var(--eval-fail)', label: 'trace delete' },
 };
 
 export function RecentAuditRow() {
@@ -150,7 +151,7 @@ export function RecentAuditRow() {
                 {action.label}
               </span>
             </Tooltip>
-            <span style={styles.ruleName}>{entry.ruleName ?? entry.ruleId}</span>
+            <span style={styles.ruleName}>{entry.ruleName ?? entry.ruleId ?? entry.traceId}</span>
             <span style={styles.user}>{entry.user}</span>
             <Tooltip content={new Date(entry.ts).toLocaleString()}>
               <span style={styles.time} tabIndex={0}>{formatTimeAgo(entry.ts)}</span>

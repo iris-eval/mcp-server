@@ -157,6 +157,7 @@ const ACTION_LABEL: Record<AuditLogEntry['action'], string> = {
   'rule.delete': 'Rule deleted',
   'rule.toggle': 'Rule toggled',
   'rule.update': 'Rule updated',
+  'trace.delete': 'Trace deleted',
 };
 
 const ACTION_ICON: Record<AuditLogEntry['action'], typeof Sparkles> = {
@@ -164,6 +165,7 @@ const ACTION_ICON: Record<AuditLogEntry['action'], typeof Sparkles> = {
   'rule.delete': Trash2,
   'rule.toggle': ToggleRight,
   'rule.update': PencilLine,
+  'trace.delete': Trash2,
 };
 
 export function NotificationsPopover() {
@@ -265,7 +267,7 @@ export function NotificationsPopover() {
                 const IconComponent = ACTION_ICON[entry.action];
                 return (
                   <Link
-                    key={`${entry.ts}-${entry.ruleId}`}
+                    key={`${entry.ts}-${entry.ruleId ?? entry.traceId}`}
                     to="/audit"
                     onClick={() => setOpen(false)}
                     style={{

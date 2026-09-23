@@ -16,6 +16,7 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { guarded, respond } from './respond.js';
+import { appendAuditEntry } from '../custom-rule-store.js';
 
 const inputSchema = {
   trace_id: z
@@ -41,7 +42,7 @@ export function registerDeleteTraceTool(
         summary: 'Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text.',
         does:
           "Deletes the trace row for the caller's tenant. Spans cascade. Evaluations linked to it keep their verdict, scores, criticality and evidence offsets; their output text, expected text and rule messages are erased in the same transaction and erased_at is stamped, so no text from the trace survives in any evaluation. " +
-          "deleted is false when no trace has that id — already removed, or not this tenant's — and that is not an error. No audit entry is written: traces are user data, not policy.",
+          "deleted is false when no trace has that id — already removed, or not this tenant's — and that is not an error. A deletion appends a trace.delete audit entry (read it at iris://audit), so evidence cannot vanish without a record.",
         whenNot:
           'To expire old data in bulk (retention.days; the sweep runs at boot and every retention.sweepIntervalHours). To delete evaluations: they are not deleted per row; retention and --purge cover them. To pause anything: traces are immutable, there is nothing to pause.',
         returns: deleteTraceOutputSchema,
@@ -65,6 +66,9 @@ export function registerDeleteTraceTool(
     },
     guarded(async (args) => {
       const deleted = await storage.deleteTrace(LOCAL_TENANT, args.trace_id);
+      if (deleted) {
+        appendAuditEntry({ ts: new Date().toISOString(), tenantId: LOCAL_TENANT, action: 'trace.delete', user: 'local', traceId: args.trace_id });
+      }
       return respond(deleteTraceOutputSchema, { deleted, trace_id: args.trace_id });
     }),
   );

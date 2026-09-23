@@ -31,6 +31,7 @@ const ACTION_OPTIONS: Array<{ value: AuditAction | ''; label: string }> = [
   { value: 'rule.delete', label: 'Delete' },
   { value: 'rule.toggle', label: 'Toggle' },
   { value: 'rule.update', label: 'Update' },
+  { value: 'trace.delete', label: 'Trace delete' },
 ];
 
 const ACTION_COLOR: Record<AuditAction, string> = {
@@ -38,6 +39,7 @@ const ACTION_COLOR: Record<AuditAction, string> = {
   'rule.delete': 'var(--eval-fail)',
   'rule.toggle': 'var(--eval-warn)',
   'rule.update': 'var(--accent-tool)',
+  'trace.delete': 'var(--eval-fail)',
 };
 
 const ACTION_BG: Record<AuditAction, string> = {
@@ -45,6 +47,7 @@ const ACTION_BG: Record<AuditAction, string> = {
   'rule.delete': 'rgba(239, 68, 68, 0.15)',
   'rule.toggle': 'rgba(245, 158, 11, 0.15)',
   'rule.update': 'rgba(20, 184, 166, 0.15)',
+  'trace.delete': 'rgba(239, 68, 68, 0.15)',
 };
 
 const styles = {
@@ -207,14 +210,15 @@ function formatDetails(details?: Record<string, unknown>): string {
 
 function downloadCsv(entries: AuditLogEntry[]): void {
   const escape = (s: string): string => `"${s.replace(/"/g, '""')}"`;
-  const header = ['ts', 'action', 'user', 'ruleId', 'ruleName', 'details'].join(',');
+  const header = ['ts', 'action', 'user', 'ruleId', 'ruleName', 'traceId', 'details'].join(',');
   const lines = entries.map((e) =>
     [
       escape(e.ts),
       escape(e.action),
       escape(e.user),
-      escape(e.ruleId),
+      escape(e.ruleId ?? ''),
       escape(e.ruleName ?? ''),
+      escape(e.traceId ?? ''),
       escape(formatDetails(e.details)),
     ].join(','),
   );
@@ -361,7 +365,7 @@ export function AuditPage() {
             </thead>
             <tbody>
               {data.entries.map((entry, idx) => (
-                <tr key={`${entry.ts}-${entry.ruleId}-${idx}`}>
+                <tr key={`${entry.ts}-${entry.ruleId ?? entry.traceId}-${idx}`}>
                   <td style={styles.td}>
                     <Tooltip content={formatTimestamp(entry.ts)}>
                       <span tabIndex={0}>{formatTimeAgo(entry.ts)}</span>
@@ -375,13 +379,13 @@ export function AuditPage() {
                         color: ACTION_COLOR[entry.action],
                       }}
                     >
-                      {entry.action.replace('rule.', '')}
+                      {entry.action === 'trace.delete' ? 'trace delete' : entry.action.replace('rule.', '')}
                     </span>
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <strong style={{ fontFamily: 'var(--font-mono)' }}>
-                        {entry.ruleName ?? entry.ruleId}
+                        {entry.ruleName ?? entry.ruleId ?? entry.traceId}
                       </strong>
                       {entry.ruleName && (
                         <span style={{ fontSize: 'var(--text-caption-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>

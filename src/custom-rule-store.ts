@@ -318,6 +318,16 @@ function generateRuleId(): string {
   return `rule-${randomBytes(4).toString('hex')}`;
 }
 
+/**
+ * Append one entry to the audit log at its default path. Exported for the
+ * actions that are not rule changes but still need a record: delete_trace
+ * wrote none, so an agent could remove the evidence against it without a
+ * trace of the removal (2026-09-23 security review).
+ */
+export function appendAuditEntry(entry: AuditLogEntry, auditPath: string = defaultAuditPath()): void {
+  appendAudit(auditPath, entry);
+}
+
 function appendAudit(auditPath: string, entry: AuditLogEntry): void {
   try {
     mkdirSync(dirname(auditPath), { recursive: true });

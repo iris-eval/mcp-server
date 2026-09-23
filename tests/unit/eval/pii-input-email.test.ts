@@ -1,6 +1,6 @@
 /*
  * An email address the agent was GIVEN is not a leak when it repeats it
- * (D-S101-02, 2026-09-23). A support answer that quotes the returns@ address
+ * (2026-09-23). A support answer that quotes the returns@ address
  * from the policy text it was handed used to fail no_pii exactly like a
  * fabricated answer did, so the veto could not tell right from wrong.
  * Email only: other PII repeated from the input still fails.
