@@ -12,11 +12,17 @@
  * What it does, in order, per grapheme cluster:
  *   1. drops format characters that carry no meaning — zero-width spaces
  *      and joiners, the soft hyphen, the byte-order mark;
- *   2. NFKC-folds the cluster, which turns full-width and mathematical
+ *   2. strips the combining accents used on Latin script (U+0300–036F and
+ *      the extended diacritic blocks), from both a decomposed letter and a
+ *      precomposed one, so "ígnore" and "i\u0301gnore" read as "ignore" and
+ *      an accent dropped into an SSN or an injection no longer hides it
+ *      (2026-09-23 red team). Marks that carry meaning in other scripts —
+ *      Devanagari vowel signs, Arabic harakat — are left alone;
+ *   3. NFKC-folds the cluster, which turns full-width and mathematical
  *      alphanumerics into ASCII (４１１１ → 4111, 𝐩𝐚𝐬𝐬 → pass);
- *   3. maps the confusables NFKC does NOT fold — Cyrillic and Greek letters
+ *   4. maps the confusables NFKC does NOT fold — Cyrillic and Greek letters
  *      that are drawn like Latin ones (раssword with a Cyrillic а and р);
- *   4. collapses every run of whitespace to ONE character — a newline when
+ *   5. collapses every run of whitespace to ONE character — a newline when
  *      the run contains one, a space otherwise. Line structure is meaning:
  *      a forged "System:" line and a fenced block are line-shaped, and
  *      flattening newlines to spaces measurably cost the injection rule
@@ -34,6 +40,21 @@
  * transforms measurement correct, and normalising without a map would
  * quietly break it.
  */
+
+/**
+ * Combining accents used on Latin script: Combining Diacritical Marks and
+ * their extended, supplement, for-symbols and half-mark blocks. Stripped
+ * after a decomposition, so a precomposed "í" and "i" + U+0301 both fold
+ * to "i". Other scripts' combining marks are deliberately absent.
+ */
+const LATIN_ACCENTS = /[\u0300-\u036F\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]/g;
+
+/** `cluster` without Latin accents, or `cluster` itself when it carries none. */
+function stripLatinAccents(cluster: string): string {
+  const decomposed = cluster.normalize('NFKD');
+  const stripped = decomposed.replace(LATIN_ACCENTS, '');
+  return stripped === decomposed ? cluster : stripped;
+}
 
 /** Format characters that carry no textual meaning and are pure evasion when they sit inside a token. */
 const DROPPED = new Set([
@@ -289,7 +310,7 @@ export function normalise(raw: string, options: NormaliseOptions = {}): Normalis
       return;
     }
     flushRun(raw.slice(index, index + 2));
-    let folded = cluster.normalize('NFKC');
+    let folded = stripLatinAccents(cluster).normalize('NFKC');
     if (folded !== cluster) changed = true;
     if (CONFUSABLES.size > 0) {
       let mapped = '';

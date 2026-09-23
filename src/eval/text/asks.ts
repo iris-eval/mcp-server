@@ -41,6 +41,30 @@
 import { contentTerms } from '../rules/relevance.js';
 
 /**
+ * `body` without a trailing joiner: brackets and whitespace, then an optional
+ * "and" / "or" / "then", then brackets and whitespace again. The linear form of
+ * `body.replace(/[\s(]*(?:and|or|then)?[\s(]*$/i, '')`, which a backtracking
+ * engine ran in cubic time on a long run of spaces (2026-09-23 ReDoS audit:
+ * over 15 seconds on 5,000 characters). Same result for every input: the
+ * regex's leftmost match is the longest suffix of that shape, which is what
+ * this strips.
+ */
+function trimJoiner(body: string): string {
+  const isGap = (c: string) => c === '(' || /\s/.test(c);
+  let end = body.length;
+  while (end > 0 && isGap(body[end - 1])) end--;
+  const tail = body.slice(Math.max(0, end - 4), end).toLowerCase();
+  for (const word of ['then', 'and', 'or']) {
+    if (tail.endsWith(word)) {
+      end -= word.length;
+      while (end > 0 && isGap(body[end - 1])) end--;
+      break;
+    }
+  }
+  return body.slice(0, end);
+}
+
+/**
  * Longest input this rule will read.
  *
  * The guard it cannot ship without. `input` in this product routinely
@@ -288,7 +312,7 @@ export function splitAsk(text: string): AskPart[] {
       // The slice runs to the NEXT marker, so it carries that marker's
       // opening bracket and any joining word. Trimming them keeps a part's
       // text readable in the evidence and keeps its terms honest.
-      const trimmed = body.replace(/[\s(]*(?:and|or|then)?[\s(]*$/i, '').trim();
+      const trimmed = trimJoiner(body).trim();
       if (trimmed.length === 0) continue;
       parts.push({ text: trimmed, start: from + offset, end: from + offset + trimmed.length, ordinal: run.ordinal });
     }

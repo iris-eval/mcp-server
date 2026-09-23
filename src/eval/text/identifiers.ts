@@ -33,6 +33,8 @@
  * differently, the rule would manufacture findings out of the mismatch.
  */
 
+import { trimTrailingSlashes } from '../../utils/trim.js';
+
 /** Longest run of token characters kept. Beyond it a run is a blob, not a citation. */
 export const MAX_TOKEN_CHARS = 128;
 /** Deepest path split. Bounds the segment n-gram expansion at 36 per path. */
@@ -141,7 +143,7 @@ export function classify(raw: string): { cls: TokenClass; exact: string; segment
     if (hash >= 0) text = text.slice(0, hash);
     const query = text.indexOf('?');
     if (query >= 0) text = text.slice(0, query);
-    const lower = text.toLowerCase().replace(/\/+$/, '');
+    const lower = trimTrailingSlashes(text.toLowerCase());
     const afterScheme = lower.replace(/^[a-z][a-z0-9+.-]*:\/\//, '');
     // A bare host is world knowledge; a host with a path is a citation.
     const cls: TokenClass = afterScheme.includes('/') ? 'url' : 'other';
@@ -151,7 +153,7 @@ export function classify(raw: string): { cls: TokenClass; exact: string; segment
   text = text.replace(/\\/g, '/');
   if (text.startsWith('./')) text = text.slice(2);
   const absolute = text.startsWith('/');
-  const trimmed = text.replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(text);
   const lower = trimmed.toLowerCase();
 
   if (trimmed.includes('/')) {

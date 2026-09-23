@@ -262,6 +262,13 @@ export interface IStorageAdapter {
   /** Applied migrations against the ones this build knows; the health contract's `checks.migrations`. */
   migrations(): Promise<MigrationState>;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
+  /**
+   * Store several traces in ONE transaction: all of them or none. The OTLP
+   * door ingests a batch this way, so a bad span mid-batch cannot leave
+   * half a request stored, and ten thousand traces commit once instead of
+   * ten thousand times (2026-09-23 red team, NET-1/NET-2).
+   */
+  insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void>;
   getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null>;
   /** Merge `patch` into a stored trace's metadata (arc 9, N-12: the trace context a later call carried). False when no such trace. */
   updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean>;

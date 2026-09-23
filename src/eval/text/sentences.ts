@@ -53,6 +53,22 @@ const ABBREVIATION_BEFORE_NUMBER = new Set([
 
 const TERMINATORS = new Set(['.', '!', '?']);
 
+/**
+ * True when, from `from` on, only whitespace comes before the next newline,
+ * so the newline just before `from` starts a blank line. The linear form of
+ * `/^\s*\n/.test(text.slice(from))`, which copied the rest of the text at
+ * every newline and so ran in quadratic time on long outputs (2026-09-23
+ * ReDoS audit).
+ */
+function blankLineFollows(text: string, from: number): boolean {
+  for (let j = from; j < text.length; j++) {
+    const c = text[j];
+    if (c === '\n') return true;
+    if (!/\s/.test(c)) return false;
+  }
+  return false;
+}
+
 /** True when the character can open a new sentence. */
 function opensSentence(ch: string): boolean {
   if (ch === undefined) return false;
@@ -89,7 +105,7 @@ export function sentencesOf(text: string): string[] {
     const ch = text[i];
 
     // A blank line ends a sentence whatever came before it.
-    if (ch === '\n' && /^\s*\n/.test(text.slice(i + 1))) {
+    if (ch === '\n' && blankLineFollows(text, i + 1)) {
       const piece = text.slice(start, i).trim();
       if (piece.length > 0) out.push(piece);
       start = i + 1;

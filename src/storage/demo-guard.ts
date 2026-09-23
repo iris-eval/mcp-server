@@ -30,6 +30,7 @@ export const DEMO_INGEST_REFUSED_MESSAGE =
 
 const REFUSED_METHODS: ReadonlySet<keyof IStorageAdapter> = new Set<keyof IStorageAdapter>([
   'insertTrace',
+  'insertTraces',
   'insertSpan',
   'insertEvalResult',
 ]);

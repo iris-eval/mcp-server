@@ -486,7 +486,7 @@ export class EvalEngine {
               skipped: true,
               skipReason: 'this evaluation may not spend (context.allowPaid is not set)',
             }
-          : rule.evaluate(evalContext);
+          : evaluateGuarded(rule, evalContext);
       const ruleId = this.idByRule.get(rule);
       /*
        * The bundle this rule ran under. `categories` is only supplied for
@@ -734,5 +734,29 @@ export class EvalEngine {
       };
     }
     return breakdown;
+  }
+}
+
+/**
+ * One rule's result, or a SKIP naming the failure when the rule throws. A
+ * rule that throws used to throw the whole evaluation, so an output that
+ * tripped one rule (a 100,000-digit "number" handed to a runtime-built regex,
+ * 2026-09-23 red team) turned every other rule's answer into an error. A skip
+ * is the honest shape: a critical rule that could not run leaves the verdict
+ * unknown, never passed.
+ */
+function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
+  try {
+    return rule.evaluate(context);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return {
+      ruleName: rule.name,
+      passed: false,
+      score: 0,
+      message: `This rule failed while evaluating the output and gave no answer: ${reason.slice(0, 200)}`,
+      skipped: true,
+      skipReason: 'the rule threw on this input',
+    };
   }
 }

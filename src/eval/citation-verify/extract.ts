@@ -31,6 +31,23 @@ export interface ExtractedCitation {
   identifier: string;
 }
 
+import { trimTrailingChars } from '../../utils/trim.js';
+
+/** Punctuation that ends a sentence rather than a URL or DOI. */
+const TRAILING_PUNCT = `.,;:!?)"'>`;
+
+/**
+ * True when the text before `at` ends inside a URL: its last whitespace-free
+ * run contains http:// or https://. The linear form of
+ * `/https?:\/\/[^\s]*$/.test(text.slice(0, at))`, which retried the scan from
+ * every position and ran in quadratic time (2026-09-23 ReDoS audit).
+ */
+function endsInsideUrl(text: string, at: number): boolean {
+  let start = at;
+  while (start > 0 && !/\s/.test(text[start - 1])) start--;
+  return /https?:\/\//.test(text.slice(start, at));
+}
+
 const URL_PATTERN = /https?:\/\/[^\s)\]]+/g;
 // Basic DOI — 10. prefix + registrant + slash + suffix
 const DOI_PATTERN = /\b10\.\d{4,9}\/[^\s)\];,"'<>]+/g;
@@ -73,7 +90,7 @@ export function extractCitations(output: string): ExtractedCitation[] {
 
   for (const match of output.matchAll(URL_PATTERN)) {
     // Strip trailing punctuation that shouldn't be part of the URL.
-    let cleaned = match[0].replace(/[.,;:!?)"'>]+$/, '');
+    let cleaned = trimTrailingChars(match[0], TRAILING_PUNCT);
     results.push({
       raw: match[0],
       kind: 'url',
@@ -86,9 +103,9 @@ export function extractCitations(output: string): ExtractedCitation[] {
 
   for (const match of output.matchAll(DOI_PATTERN)) {
     // Skip DOIs that are inside a URL (already captured as a URL).
-    const inUrl = /https?:\/\/[^\s]*$/.test(output.slice(0, match.index ?? 0));
+    const inUrl = endsInsideUrl(output, match.index ?? 0);
     if (inUrl) continue;
-    const cleaned = match[0].replace(/[.,;:!?)"'>]+$/, '');
+    const cleaned = trimTrailingChars(match[0], TRAILING_PUNCT);
     results.push({
       raw: match[0],
       kind: 'doi',

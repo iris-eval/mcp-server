@@ -29,6 +29,20 @@ import { toSteps } from '../../eval/steps.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
 
+/**
+ * The most traces one OTLP request may store. A collector's default batch is
+ * a few thousand spans, which is far fewer traces than this. Past it, the
+ * extra traces come back as rejected spans in `partialSuccess`, the OTLP
+ * way to say "not these", rather than holding the server for the time it
+ * takes to store and evaluate an unbounded batch (2026-09-23 red team,
+ * NET-1: one 1 MB request of 11,500 one-span traces held the event loop
+ * for 11 seconds).
+ */
+export const MAX_OTLP_TRACES_PER_REQUEST = 2_000;
+
+/** Evaluate-on-ingest yields to the event loop this often, so one batch cannot starve other requests. */
+const YIELD_EVERY = 50;
+
 export interface OtlpRouteOptions {
   evalEngine?: EvalEngine;
   customRuleStore?: CustomRuleStore;
@@ -86,10 +100,29 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     const mapped = fromOtlp(parsed.data);
     // The W3C context on the request, if a proxy or a client set one (SEP-414 names the header; arc 9, N-12).
     const headerContext = traceContextFrom(req.headers as Record<string, unknown>);
-    const stored: Array<Record<string, unknown>> = [];
-    for (const { trace, otelTraceId, lacked } of mapped.traces) {
+    const accepted = mapped.traces.slice(0, MAX_OTLP_TRACES_PER_REQUEST);
+    const overflow = mapped.traces.slice(MAX_OTLP_TRACES_PER_REQUEST);
+    const overflowSpans = overflow.reduce((n, { trace }) => n + (trace.spans?.length ?? 0), 0);
+    for (const { trace } of accepted) {
       if (headerContext) trace.metadata = withTraceContext(trace.metadata, headerContext);
-      await storage.insertTrace(tenantId, trace);
+    }
+    try {
+      // One transaction: the batch is stored whole or not at all.
+      await storage.insertTraces(tenantId, accepted.map(({ trace }) => trace));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/UNIQUE constraint failed/i.test(message)) {
+        res.status(400).json({
+          error: 'Nothing was stored: a span or trace id in this request is already stored, or appears twice in the request. OTLP ids must be unique; the whole batch was rolled back.',
+        });
+        return;
+      }
+      throw err;
+    }
+    const stored: Array<Record<string, unknown>> = [];
+    let done = 0;
+    for (const { trace, otelTraceId, lacked } of accepted) {
+      if (++done % YIELD_EVERY === 0) await new Promise((resolve) => setImmediate(resolve));
       const entry: Record<string, unknown> = {
         trace_id: trace.trace_id,
         otel_trace_id: otelTraceId,
@@ -109,8 +142,13 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
       stored.push(entry);
     }
     const body: Record<string, unknown> = {};
-    if (mapped.rejectedSpans > 0) {
-      body.partialSuccess = { rejectedSpans: mapped.rejectedSpans, errorMessage: mapped.rejections.join(' | ') };
+    const rejectedSpans = mapped.rejectedSpans + overflowSpans;
+    if (rejectedSpans > 0) {
+      const reasons = [...mapped.rejections];
+      if (overflow.length > 0) {
+        reasons.push(`${overflow.length} trace(s) past the ${MAX_OTLP_TRACES_PER_REQUEST}-trace limit per request were not stored; send them in a later request`);
+      }
+      body.partialSuccess = { rejectedSpans, errorMessage: reasons.join(' | ') };
     }
     body['iris-eval'] = { stored, count: stored.length, evaluate_on_ingest: options.evaluateOnIngest };
     res.status(200).json(body);

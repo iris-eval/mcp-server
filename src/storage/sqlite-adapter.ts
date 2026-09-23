@@ -285,6 +285,10 @@ export class SqliteAdapter implements IStorageAdapter {
   }
 
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
+    return this.insertTraces(tenantId, [trace]);
+  }
+
+  async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
       INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id)
@@ -295,7 +299,7 @@ export class SqliteAdapter implements IStorageAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const insertAll = this.db.transaction((t: Trace) => {
+    const insertOne = (t: Trace) => {
       insertTraceStmt.run(
         tenantId,
         t.trace_id,
@@ -343,9 +347,12 @@ export class SqliteAdapter implements IStorageAdapter {
           );
         }
       }
-    });
+    };
 
-    insertAll(trace);
+    const insertAll = this.db.transaction((batch: Trace[]) => {
+      for (const t of batch) insertOne(t);
+    });
+    insertAll(traces);
   }
 
   async getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null> {
