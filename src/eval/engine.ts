@@ -330,7 +330,7 @@ export class EvalEngine {
     const rules: EvalRule[] = [
       ...getRulesForType(evalType),
       ...(this.additionalRules.get(evalType) ?? []),
-      ...(customRules ?? []).map((def) => createCustomRule(def)),
+      ...(customRules ?? []).map((def) => createCustomRule(def, def.severity)),
     ];
     return this.run(evalType, rules, undefined, context);
   }
@@ -376,7 +376,7 @@ export class EvalEngine {
       }
     }
     for (const def of customRules ?? []) {
-      rules.push(createCustomRule(def));
+      rules.push(createCustomRule(def, def.severity));
       categories.push('custom');
     }
     return this.run('all', rules, categories, context);

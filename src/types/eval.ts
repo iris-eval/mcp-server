@@ -643,4 +643,11 @@ export interface CustomRuleDefinition {
   type: CustomRuleType;
   config: Record<string, unknown>;
   weight?: number;
+  /**
+   * What a failure DOES, for a rule passed inline (2026-09-23, D-S101-02):
+   * high and critical gate like a deployed rule at that severity; low,
+   * medium or absent advise. Before this an inline rule could never fail a
+   * verdict, whatever it found.
+   */
+  severity?: 'low' | 'medium' | 'high' | 'critical';
 }

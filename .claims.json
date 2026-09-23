@@ -4957,8 +4957,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-23T21:00:45.604Z",
-  "generatedFromCommit": "b469eb6",
+  "generatedAt": "2026-09-23T21:33:00.672Z",
+  "generatedFromCommit": "9b5c25d",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5031,7 +5031,7 @@
     ]
   },
   "proof": {
-    "commit": "5b0c1b0",
+    "commit": "9b5c25d",
     "composite": {
       "compositeVersion": "1c3f6e129090",
       "corpusVersion": "6a01ef7f62f8",
@@ -5105,16 +5105,16 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.046,
-                "n": 79,
-                "observedRate": 0.6203,
+                "meanPredicted": 0.0454,
+                "n": 78,
+                "observedRate": 0.6282,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1283,
-                "n": 26,
-                "observedRate": 0.8462,
+                "meanPredicted": 0.1337,
+                "n": 27,
+                "observedRate": 0.8148,
                 "to": 0.2
               },
               {
@@ -5174,8 +5174,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.5694,
-            "ece": 0.6099,
+            "brier": 0.5672,
+            "ece": 0.6082,
             "n": 111
           },
           "falseBlock": {
@@ -7037,7 +7037,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-23T20:17:24.396Z",
+    "generatedAt": "2026-09-23T21:23:17.181Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7056,8 +7056,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1082,
-      "p50Ms": 9.549,
-      "p95Ms": 18.479
+      "p50Ms": 9.195,
+      "p95Ms": 17.509
     },
     "method": {
       "ci": "wilson-95",
@@ -8904,7 +8904,7 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3301,
+    "totalCombined": 3313,
     "vitestDashboard": {
       "failed": 0,
       "passed": 334,
@@ -8912,8 +8912,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 2932,
-      "total": 2932
+      "passed": 2944,
+      "total": 2944
     }
   },
   "version": {
