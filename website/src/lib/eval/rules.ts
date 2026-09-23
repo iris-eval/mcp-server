@@ -3433,10 +3433,47 @@ function toolChoice(ctx: EvalContext): EvalRuleResult {
  */
 const MIN_ASK_TERMS_TO_JUDGE = 2;
 
+/*
+ * Two non-answers the lexical pair cannot see (2026-09-23 review, D-S101-02).
+ * "I cannot help with that." is too short for topic_consistency, so the pair
+ * skipped and the verdict read clean; the ask copied back reuses every one of
+ * the ask's words, so keyword_overlap passed it. Both are judged directly,
+ * before the brevity skip, and only when there is an ask to compare with.
+ */
+const REFUSAL = /^\s*(?:(?:i['’]?m|i am)\s+(?:sorry|afraid|unable|not able)|i\s+(?:can(?:no|['’])t|won['’]?t|will not|do not|don['’]?t)\s+(?:help|assist|answer|do|provide|share)|sorry[,.!]?\s*(?:but\s+)?(?:i|no\b)|no[.!]?\s*$|unable to (?:help|assist|answer))/i;
+/** At most this many words for an output to read as a bare refusal; a longer one that declines and then helps is judged on its content. */
+const REFUSAL_MAX_WORDS = 25;
+
+function isRefusal(output: string): boolean {
+  return REFUSAL.test(output) && output.trim().split(/\s+/).length <= REFUSAL_MAX_WORDS;
+}
+
+/** The ask handed back: every content term of the output comes from the ask, and the output is no longer than the ask by more than a fifth. */
+function isEcho(output: string, ask: string): boolean {
+  const out = contentTerms(output);
+  if (out.length === 0) return false;
+  const askTerms = new Set(contentTerms(ask));
+  return out.every((t) => askTerms.has(t)) && output.trim().length <= ask.trim().length * 1.2;
+}
+
 function answersTheAsk(ctx: EvalContext): EvalRuleResult {
   const ko = keywordOverlap(ctx);
   const tc = topicConsistency(ctx);
   const askTerms = new Set(contentTerms(ctx.input ?? '')).size;
+  const ask = ctx.input ?? '';
+  if (ask.trim().length > 0 && askTerms >= MIN_ASK_TERMS_TO_JUDGE) {
+    const refusal = isRefusal(ctx.output) && !(ko.passed && !ko.skipped);
+    const echo = !refusal && isEcho(ctx.output, ask);
+    if (refusal || echo) {
+      return {
+        ruleName: 'answers_the_ask',
+        category: 'relevance',
+        passed: false,
+        score: 0,
+        message: refusal ? 'The output declines instead of answering the ask' : 'The output hands the ask back instead of answering it',
+      };
+    }
+  }
   const skipReason = ko.skipped ? ko.skipReason : tc.skipped ? tc.skipReason : askTerms < MIN_ASK_TERMS_TO_JUDGE ? `the ask has ${askTerms} content term${askTerms === 1 ? '' : 's'}; ${MIN_ASK_TERMS_TO_JUDGE} are needed to say an output answers something else` : undefined;
   if (skipReason !== undefined) {
     return { ruleName: 'answers_the_ask', category: 'relevance', passed: false, score: 0, skipped: true, skipReason, message: 'Not judged: a relevance measurement skipped' };

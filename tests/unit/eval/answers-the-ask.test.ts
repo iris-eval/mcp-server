@@ -23,7 +23,7 @@ describe('answers_the_ask — the pair as a detection', () => {
     expect(off.passed).toBe(false);
     expect(off.score).toBe(0);
     expect(off.message).toMatch(/answers something else/);
-    expect(off.evidence).toEqual([{ type: 'count', stat: 'relevance_measurements_failed', unit: 'measurements', value: 2, threshold: 2, thresholdSource: 'rule' }]);
+    expect(off.evidence).toEqual([{ type: 'count', stat: 'relevance_measurements_failed', unit: 'measurements', value: 2, threshold: 2, thresholdSource: 'default' }]);
     expect(run({ input: ask, output: onTopic }).passed).toBe(true);
   });
   it('one measurement alone never fires it: an answer that reuses the ask\'s words while wandering passes here (topic fails, overlap holds)', () => {

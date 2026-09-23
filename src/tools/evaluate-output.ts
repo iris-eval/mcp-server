@@ -36,6 +36,7 @@ const CustomRuleSchema = strictNested(
     ]).describe('Check type — decides which config keys the rule reads'),
     config: z.record(z.string(), z.unknown()).describe('Check configuration; keys depend on type (pattern, min_length, keywords, max_cost, …)'),
     weight: z.number().positive().optional().describe('Weight in the weighted score (default 1; must be > 0)'),
+    severity: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('high or critical: a failure fails the verdict; otherwise it advises'),
   },
   'a custom_rules entry',
 );
@@ -66,7 +67,7 @@ const inputSchema = {
   // defeating regex rules stalls the server linearly in N (measured 9.3s at
   // N=50). Ten is ample for per-call rules; persistent sets belong in
   // deploy_rule, where deploy-time validation probes each pattern.
-  custom_rules: z.array(CustomRuleSchema).max(MAX_INLINE_CUSTOM_RULES).optional().describe('Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight — an unknown key (e.g. a misspelled weight) is rejected'),
+  custom_rules: z.array(CustomRuleSchema).max(MAX_INLINE_CUSTOM_RULES).optional().describe('Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight, severity — an unknown key is rejected'),
   cost_usd: z.number().optional().describe('Cost in USD — consulted by the cost bundle (eval_type="cost" or "all") AND by any cost_threshold custom rule regardless of eval_type; omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped)'),
   token_usage: z.object({
     prompt_tokens: z.number().optional(),

@@ -28,7 +28,8 @@ export const isCritical = (r: EvalRuleResult): boolean => r.critical === true;
  * of how much it matters, made when the rule was deployed. High and critical
  * gate (they resolve to critical); medium and low advise, which is the
  * contract `deploy_rule` has always had. An inline rule passed in the call
- * carries no severity and advises, for the same reason.
+ * takes the same `severity` field (2026-09-23): high or critical gates, and
+ * without one it advises, for the same reason.
  */
 export function decides(r: EvalRuleResult, defaultsGate: boolean): boolean {
   if (isCritical(r)) return true;

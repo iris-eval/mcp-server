@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`answers_the_ask` advises at the shipped thresholds, and names refusals and copies of the ask.** At the defaults it failed 6 of 10 correct paraphrased answers, because they reused few of the ask's words, and it passed every refusal (too short to measure) and every copy of the ask (all of its words). It now gates only once you set a `keyword_overlap` or `topic_consistency` threshold of your own. A bare refusal and the ask handed back each fire it directly, before the brevity skip. A decline that goes on to answer is judged on its content. **A gate that relied on this rule blocking at the defaults stops blocking: set a relevance threshold to keep it.**
+- **An inline custom rule can fail a verdict.** A `custom_rules` entry takes the same `severity` a deployed rule has: `high` or `critical` gate, and absent, `low` or `medium` advise. Before this, an inline rule could never fail a verdict, whatever it found. The note for an advising custom rule now says to set a severity, instead of blaming "a threshold Iris ships".
 - **`no_pii` no longer vetoes an email address the agent was given.** A support answer that repeats the `returns@` address from the policy text in its input used to fail exactly like a fabricated answer did, so the critical veto could not tell a right answer from a wrong one. An address that appears verbatim (case-insensitively) in `input` is not counted, and the pass message says so. Email only, deliberately: an SSN or a card number repeated back from a ticket still fails. **A gate on `detector_veto` stops tripping on those answers.**
 
 ## [0.17.0] - 2026-09-23

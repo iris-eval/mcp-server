@@ -286,6 +286,18 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
     if (verdict.by.includes(r.ruleName)) continue;
+    if (r.kind === 'policy' && r.origin === 'custom' && !decides(r, cfg.defaultsGate)) {
+      // The deployment's own rule: nothing Iris ships was involved, so the
+      // threshold note below would blame the wrong party (2026-09-23 review).
+      out.push({
+        severity: 'warn',
+        addressee: 'operator',
+        rule: r.ruleName,
+        text: `${r.ruleName} is your custom rule and it advises: it carries severity low, medium or none. Give it severity high or critical (inline or in deploy_rule) to make a failure fail the verdict.`,
+        configKey: 'severity',
+      });
+      continue;
+    }
     if (r.kind === 'policy' && !decides(r, cfg.defaultsGate)) {
       out.push({
         severity: 'warn',
