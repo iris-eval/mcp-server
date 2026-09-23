@@ -16,6 +16,7 @@
 // avoids accidentally leaking a process-wide interval in tests.
 
 import { buildExportPayload } from './mapper.js';
+import { trimTrailingSlashes } from '../utils/trim.js';
 import { PUBLIC_ID } from '../identity.js';
 import type { Trace } from '../types/trace.js';
 
@@ -47,7 +48,7 @@ export class OtelExporter {
     // Normalize endpoint — strip trailing slash; append /v1/traces if
     // the caller gave a collector root. This matches the behavior of
     // the official OTLP/HTTP clients.
-    const base = config.endpoint.replace(/\/+$/, '');
+    const base = trimTrailingSlashes(config.endpoint);
     const path = config.pathPrefix ?? '/v1/traces';
     this.endpoint = base.endsWith(path) ? base : base + path;
     this.serviceName = config.serviceName;

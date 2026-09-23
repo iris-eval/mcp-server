@@ -68,9 +68,14 @@ describe('the free path never spends', () => {
   it('and does call it when the caller has said this evaluation may spend', async () => {
     const engine = new EvalEngine(0.7);
     engine.registerRule('custom', spendingRule(), 'rule-judge-2');
-    await expect(
-      engine.evaluate('custom', { output: 'an ordinary answer that is long enough to evaluate', allowPaid: true }),
-    ).rejects.toThrow('SPENT MONEY');
+    // The rule throws when reached. Since 2026-09-23 a throwing rule is caught
+    // and recorded as a skip that carries its error, so "it was called" reads
+    // off that result instead of off a rejected evaluation.
+    const r = await engine.evaluate('custom', { output: 'an ordinary answer that is long enough to evaluate', allowPaid: true });
+    const judge = r.rule_results.find((x) => x.ruleName.startsWith('llm_judge:'))!;
+    expect(judge.skipped).toBe(true);
+    expect(judge.skipReason).toBe('the rule threw on this input');
+    expect(judge.message).toContain('SPENT MONEY');
   });
 });
 

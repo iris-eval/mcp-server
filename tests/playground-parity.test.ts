@@ -76,9 +76,9 @@ const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
  * inputs the fold exists for.
  */
 const SERVER_TEXT_FILES: Array<[string, string[]]> = [
-  ['src/eval/text/normalise.ts', ['DROPPED', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'toRawSpan']],
+  ['src/eval/text/normalise.ts', ['LATIN_ACCENTS', 'stripLatinAccents', 'DROPPED', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'toRawSpan']],
   ['src/eval/text/checksums.ts', ['luhn', 'iban', 'ssnStructure']],
-  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
+  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is
@@ -87,7 +87,7 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * which is the sort of divergence a verdict comparison would show only
    * on the one input where it mattered.
    */
-  ['src/eval/text/asks.ts', ['MAX_ASK_CHARS', 'MAX_ASK_PARTS', 'MIN_MEASURABLE_TERMS', 'GENERIC_ASK_TERMS', 'COVER_MAX_REQUIRED', 'PREFIX_MATCH_CHARS', 'LIST_MARKERS', 'ASK_VERBS', 'MANNER_PREFIXES', 'isManner', 'PRODUCE_VERBS', 'MIN_PRODUCED_WORDS', 'isProduceAsk', 'askFencedSpans', 'withinAskSpan', 'enumerationRuns', 'ORDINAL_WORDS', 'ordinalWordRuns', 'splitAsk', 'measurableParts', 'answerIndex', 'askSubjectTerms', 'hitsPart', 'requiredHits', 'coversPart']],
+  ['src/eval/text/asks.ts', ['MAX_ASK_CHARS', 'MAX_ASK_PARTS', 'MIN_MEASURABLE_TERMS', 'GENERIC_ASK_TERMS', 'COVER_MAX_REQUIRED', 'PREFIX_MATCH_CHARS', 'LIST_MARKERS', 'ASK_VERBS', 'MANNER_PREFIXES', 'isManner', 'PRODUCE_VERBS', 'MIN_PRODUCED_WORDS', 'isProduceAsk', 'askFencedSpans', 'withinAskSpan', 'enumerationRuns', 'ORDINAL_WORDS', 'ordinalWordRuns', 'trimJoiner', 'splitAsk', 'measurableParts', 'answerIndex', 'askSubjectTerms', 'hitsPart', 'requiredHits', 'coversPart']],
 ];
 
 const CATEGORIES: EvalCategory[] = ['safety', 'relevance', 'completeness', 'cost'];
@@ -307,7 +307,7 @@ function source(file: string): string {
  * top-level `const NAME = …;` (first `;` that ends a line), `export` or not.
  */
 function block(src: string, name: string, file: string): string {
-  const fn = src.match(new RegExp(`^(?:export )?function ${name}\\([\\s\\S]*?^\\}`, 'm'));
+  const fn = src.match(new RegExp(`^(?:export )?function\\*? ${name}\\([\\s\\S]*?^\\}`, 'm'));
   if (fn) return fn[0].replace(/^export /, '');
   const start = src.search(new RegExp(`^(?:export )?const ${name}\\b`, 'm'));
   if (start < 0) throw new Error(`no function or const ${name} in ${file}`);
@@ -364,6 +364,7 @@ const SHARED_SAFETY_BLOCKS = [
   // no_hallucination_markers — every signal and what it reads
   'normalizeForComparison',
   'escapeRegExp',
+  'MAX_INTERPOLATED',
   'numberInContext',
   'APPROX_HEDGE',
   'isHedged',
@@ -387,6 +388,7 @@ const SHARED_SAFETY_BLOCKS = [
   'UBIQUITOUS_CLI_FLAGS',
   'detectFabricatedCliFlag',
   'COUNT_CHANGE_CONTEXT',
+  'matchAtNumberRuns',
   'detectNounCountMismatch',
   'STATUS_CHANGED_CONTEXT',
   'OBSERVED_STATUS',
