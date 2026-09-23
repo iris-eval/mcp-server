@@ -3,7 +3,7 @@
  *
  * Spins up iris-mcp with the dashboard against a temp SQLite DB, seeds
  * a small deterministic dataset, then runs Chromium against the live
- * dashboard. Covers the critical flows a YC reviewer would walk:
+ * dashboard. Covers the critical flows a first-time evaluator would walk:
  *
  *   - Fresh load + view navigation (smoke.spec.ts)
  *   - Drill-through from dashboard to moments (drill-through.spec.ts)
@@ -49,13 +49,13 @@ export default defineConfig({
      * whole run (both browsers, one process, one IP) lands inside one
      * 60-second limiter window: at the shipped 600/min the Firefox half of
      * a CI run was served `{"error":"Too many requests"}` for `/` itself
-     * (S97, D-2). The limiter's own proposition is held by
+     * (2026-09-07). The limiter's own proposition is held by
      * tests/unit/middleware/rate-limit.test.ts, not here.
      */
     /*
      * Outside CI a server already on the port is reused — and it serves the
      * bundle IT was started with. A dashboard left running from an earlier
-     * session made two local runs test an old build (S97, D-1) before the
+     * session made two local runs test an old build (2026-09-07) before the
      * cause was found. If a spec fails on code you just built, check the
      * port first: `netstat -ano | findstr :6921` (Windows) / `lsof -i :6921`.
      */

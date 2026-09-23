@@ -32,6 +32,6 @@
     "notes": "Three-part question, one part answered. Parts (2) and (3) were both answerable from the same grep and from docs/http-ingest.md: change it with --dashboard-port <port> or IRIS_DASHBOARD_PORT (and --dashboard-host to bind elsewhere); the ingest endpoint lives on the dashboard port, so it moves with it and was never on 3000 (3000 is the MCP HTTP transport). A correct evaluator fails completeness. No stub markers are present, so no_stub_output will not fire; the catch has to come from comparing the enumerated asks in input against the output.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

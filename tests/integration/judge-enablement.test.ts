@@ -1,5 +1,5 @@
 /*
- * The judge is a clear option with an easy workflow (founder ruling,
+ * The judge is a clear option with an easy workflow (decided
  * 2026-09-04). With the environment scrubbed: the tool returns
  * IRIS_JUDGE_NOT_ENABLED whose recovery names the variable and the
  * restart, the capabilities resource says enabled false with the steps,

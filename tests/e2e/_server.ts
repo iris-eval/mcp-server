@@ -8,7 +8,7 @@
  * A port the OS says is free, never a fixed number: a fixed port is
  * answered by whatever is already listening there, and a server left over
  * from an earlier run then passes or fails the test on its own behalf
- * (S97, D-2: a stale non-demo server on the fixed port hid the DEMO chip
+ * (2026-09-07: a stale non-demo server on the fixed port hid the DEMO chip
  * twice).
  */
 import { spawn, type ChildProcess } from 'node:child_process';

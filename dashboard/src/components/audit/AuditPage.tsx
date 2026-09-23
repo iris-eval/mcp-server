@@ -5,7 +5,7 @@
  * user, rule id + name, and details payload. Filterable by action +
  * substring search. CSV export of the current filtered set.
  *
- * State coverage (per feedback_enterprise_state_completeness.md):
+ * State coverage (every state designed, not only the populated one):
  *   - empty (no entries ever): PageEmptyState pointing at Make-This-A-Rule
  *   - empty after filter: clear-filter inline action
  *   - loading: skeleton

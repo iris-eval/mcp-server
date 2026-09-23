@@ -5,12 +5,12 @@
 # cascade status. Run hourly (or on-demand) to build a trend curve for
 # AI Council v1 review (4/26) and the YC submit-day metrics snapshot.
 #
-# Output: strategy/proof/launch-snapshots/YYYY-MM-DDTHH-MM-SSZ.json
+# Output: $OUT_DIR/YYYY-MM-DDTHH-MM-SSZ.json (default ./launch-snapshots)
 #
 # Usage: bash scripts/post-launch-snapshot.sh
 set -uo pipefail
 
-OUT_DIR=${OUT_DIR:-/c/dev/project_new_idea/strategy/proof/launch-snapshots}
+OUT_DIR=${OUT_DIR:-./launch-snapshots}
 mkdir -p "$OUT_DIR"
 NOW=$(date -u +%Y-%m-%dT%H-%M-%SZ)
 OUT="$OUT_DIR/$NOW.json"

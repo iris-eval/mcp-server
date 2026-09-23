@@ -40,6 +40,6 @@
     "notes": "Control row. Count and names match the exported arrays; the critical flags match the rule definitions in safety.ts. The self-consistency signal in no_hallucination_markers (stated total vs listed addends) should be satisfied: 4+2+5+2=13.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

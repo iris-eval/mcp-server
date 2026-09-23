@@ -9,7 +9,7 @@
  * Filter state is encoded in URL search params so every filtered view is
  * shareable (per Phase B1 enterprise-depth requirement: permalinks).
  *
- * State coverage (per `feedback_enterprise_state_completeness.md`):
+ * State coverage (every state designed, not only the populated one):
  *   - empty (no moments): hero CTA
  *   - empty after filter: clear-filter inline action
  *   - loading: skeleton cards

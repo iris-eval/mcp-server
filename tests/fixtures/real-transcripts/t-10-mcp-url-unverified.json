@@ -23,6 +23,6 @@
     "notes": "Answered from memory with zero tool calls and a confident, specific URL the agent never fetched. The path /docs/spec/transports/requirements does not exist on modelcontextprotocol.io (spec pages live under /specification/<date>/basic/transports). A correct evaluator flags the unverified citation; deterministically this needs verify_citations with allow_fetch (bad_status) or an LLM judge on the accuracy template, since no_hallucination_markers has no input material to compare against here.",
     "cost_model": "$3/M input, $15/M output; input = full context re-sent every turn (no prompt caching), base context 2,800 tokens, 4 chars/token; per-call latencies are estimates, not instrumented",
     "authored": "2026-09-03",
-    "source_repo": "C:\\dev\\project_new_idea\\iris @ 0.6.0 (read-only)"
+    "source_repo": "iris-eval/mcp-server @ 0.6.0 (read-only checkout)"
   }
 }

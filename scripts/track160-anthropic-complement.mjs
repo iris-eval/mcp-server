@@ -126,6 +126,5 @@ writeFileSync(
   ),
 );
 console.log(`\nResults written: ${outPath}`);
-console.log('\nTo append to findings: paste the results block into');
-console.log('  strategy/proof/track160-real-llm-judge-findings-2026-04-24.md');
+console.log('\nTo keep a record: paste the results block into your findings notes');
 console.log('under a new "Suite C — Anthropic complement" header.');

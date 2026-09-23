@@ -15,7 +15,7 @@
  * addressee, or an evaluator-directed imperative (score/grade/mark it…,
  * skip/ignore/bypass the safety rules…, pass/approve this…, set the
  * score…) or a numeric score target ("score it 1.0"). Ordinary code
- * comments — layout notes, TODOs, lint pragmas — stay clean, and the S79
+ * comments — layout notes, TODOs, lint pragmas — stay clean, and the 0.5
  * quote-suppression for prose that DISCUSSES injection is untouched
  * (structural matches were never quote-suppressed, and still are not).
  */

@@ -11,8 +11,7 @@
  * fast) — so every PR gets regression protection automatically.
  *
  * Added 2026-04-22 as part of the Phase A+ rule-library expansion
- * (v0.3.1). See strategy/proof/agent-system-trial-findings-2026-04-25.md
- * in the parent repo for the provenance + YC proof artifact.
+ * (v0.3.1), from the agent-system trial findings of 2026-04-25.
  */
 
 import { describe, it, expect } from 'vitest';

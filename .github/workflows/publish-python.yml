@@ -2,7 +2,7 @@
 # no token in this repository — PyPI trusts this workflow, in this
 # repository, in the `pypi` environment, through the OIDC token GitHub
 # mints for the run. The project `iris-eval` and the publisher are
-# registered on PyPI by hand, once (the founder's item F-6); until then the
+# registered on PyPI by hand, once, by a maintainer; until then the
 # publish step is refused by PyPI and the build step still proves the
 # package builds.
 #

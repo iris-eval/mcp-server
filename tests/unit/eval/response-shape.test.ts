@@ -11,7 +11,7 @@
  * verdict changed (the same transcript passes and fails exactly as it did).
  *
  * The indicator this moves: rule results carrying kind, evidence and
- * uncertainty, 0 of 15 → 15 of 15 (plans/iris-eval-synthetic-teacup.md §16).
+ * uncertainty, 0 of 15 → 15 of 15.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

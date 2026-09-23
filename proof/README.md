@@ -50,7 +50,7 @@ The following disclosures are copied verbatim from the source corpus's
 `PROVENANCE.md` (iris proof corpus v0.1, post-review hygiene edition,
 2026-08-11). Read them before citing any number.
 
-> **All 359 cases are synthetic.** Every case was authored by LLM agents (Claude, operating inside the Lattice substrate). No case is sampled from production agent traffic. Scenarios, names, addresses, credentials, and documents are all fabricated.
+> **All 359 cases are synthetic.** Every case was authored by LLM agents (Claude). No case is sampled from production agent traffic. Scenarios, names, addresses, credentials, and documents are all fabricated.
 >
 > **The corpus is rule-aware by construction.** Cases were written with iris's shipped pattern/marker lists in hand: positives are deliberately written to evade the shipped regexes, and negatives are deliberately seeded with literal rule triggers (documentation placeholders, texts *about* injection, benign marker mentions). This is an adversarial stress corpus. Its numbers are corpus-conditional diagnostics of evadability — **not** estimates of detection rates on real traffic — and any rule change tuned against it risks overfitting a known target.
 >
