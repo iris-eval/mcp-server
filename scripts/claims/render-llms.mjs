@@ -23,7 +23,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -394,6 +394,36 @@ export async function manifestTools(rootDir = root) {
   return manifest.tools;
 }
 
+/**
+ * The long form of every tool — what it does, when another call is the
+ * better one, and the errors it returns — from src/tools/guide.ts, the
+ * source the server serves as `toolGuide` in iris://capabilities. The
+ * descriptions in tools/list are capped short because every session of the
+ * agent being evaluated pays for them; llms-full.txt is the full reference,
+ * so it carries the long form under each one-line summary. Imported from
+ * the TypeScript source, which is why llms:render runs under tsx.
+ */
+export async function toolGuides(rootDir = root) {
+  const { toolGuide } = await import(pathToFileURL(resolve(rootDir, 'src', 'tools', 'guide.ts')).href);
+  return toolGuide();
+}
+
+/** One numbered entry per tool: the summary tools/list sends, then the long form. */
+export function toolReference(tools, guides) {
+  return tools
+    .map((t, i) => {
+      const g = guides[t.name];
+      if (!g) throw new Error(`render-llms: src/tools/guide.ts has no entry for ${t.name}`);
+      return [
+        `${i + 1}. \`${t.name}\` — ${t.description}`,
+        `   - What it does: ${g.does}`,
+        `   - When another call is better: ${g.whenNot}`,
+        `   - Errors: ${g.errors}`,
+      ].join('\n');
+    })
+    .join('\n');
+}
+
 /** Slots read from the site and the built server rather than from .claims.json. */
 export async function sourceSlots(rootDir = root, claims) {
   const site = String(claims.brand.websiteUrl).replace(/\/+$/, '');
@@ -411,7 +441,7 @@ export async function sourceSlots(rootDir = root, claims) {
     nodeEngineFloor: floor[1].replace(/\.0$/, ''),
     compareLinksList: compare.map((c) => `- [Iris vs ${c.name}](${site}/compare/${c.slug})`).join('\n'),
     compareNamesProse: compare.map((c) => c.name).join(', '),
-    mcpToolsList: tools.map((t, i) => `${i + 1}. \`${t.name}\` — ${t.description}`).join('\n'),
+    mcpToolsList: toolReference(tools, await toolGuides(rootDir)),
   };
 }
 

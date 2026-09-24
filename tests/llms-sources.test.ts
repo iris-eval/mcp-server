@@ -10,14 +10,15 @@
  * website/src/lib/compare/index.ts (the registry the compare index, the
  * sitemap and the pages read) and the tool list from the discovery manifest
  * (rendered from the built server's tools/list, held to it by
- * tests/mcp-json-contract.test.ts). This file pins the outputs to those
+ * tests/mcp-json-contract.test.ts), each summary followed by the tool's long
+ * form from src/tools/guide.ts. This file pins the outputs to those
  * sources and pins one install form on every rendered surface: `npx -y` and
  * the package at the current release.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { compareEntries, manifestTools } from '../scripts/claims/render-llms.mjs';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { compareEntries, manifestTools, toolGuides } from '../scripts/claims/render-llms.mjs';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8').replace(/\r\n/g, '\n');
@@ -62,12 +63,26 @@ describe('the site footer links the compare registry', () => {
 });
 
 describe('the tool list in llms-full.txt is the server\'s', () => {
+  // The render imports the tool guide from the server source; the first import
+  // loads the server's module graph, so it is paid once here, not per test.
+  beforeAll(() => toolGuides(root), 60_000);
   it('lists every tool the manifest lists, with the summary the server sends, and no other', async () => {
     const tools = (await manifestTools(root)) as Array<{ name: string; description: string }>;
     expect(tools).toEqual(manifest.tools);
     const listed = [...llmsFull.matchAll(/^\d+\. `([a-z_]+)` — (.+)$/gm)].map((m) => ({ name: m[1], description: m[2] }));
     expect(listed).toEqual(tools);
     expect(llmsFull).toContain(`## MCP tools (${tools.length})`);
+  });
+
+  it('carries the long form of every tool from the guide the server serves in iris://capabilities', async () => {
+    const guides = (await toolGuides(root)) as Record<string, { does: string; whenNot: string; errors: string }>;
+    for (const t of manifest.tools) {
+      const g = guides[t.name];
+      expect(g, t.name).toBeDefined();
+      expect(llmsFull, t.name).toContain(`   - What it does: ${g.does}`);
+      expect(llmsFull, t.name).toContain(`   - When another call is better: ${g.whenNot}`);
+      expect(llmsFull, t.name).toContain(`   - Errors: ${g.errors}`);
+    }
   });
 });
 

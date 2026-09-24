@@ -70,7 +70,7 @@ Every snippet here pins the current release, so a config copied today keeps runn
 
 `evaluate_with_llm_judge` ships {{llmJudgeTemplateCount}} templates ({{llmJudgeTemplateNames}}); it and `verify_citations` call the provider on your own key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay model calls. The other tools make no model call.
 
-Each tool's full description (what it does, what it returns, its siblings) and input schema is what the server sends on `tools/list`; `iris://capabilities` lists the rule roster, the judge state and the limits.
+Each summary is the description the server sends on `tools/list`, with the input schema; the long form under it is the `toolGuide` the server serves in `iris://capabilities` and `GET /api/v1/capabilities`, which also carries what every output field means, the rule roster, the judge state and the limits.
 
 ## Built-in eval rules ({{ruleCount}}, across {{ruleCategoryCount}} categories)
 

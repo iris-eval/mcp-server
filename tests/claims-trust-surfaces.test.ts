@@ -17,13 +17,13 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { parseDisclosure } from '../scripts/claims/generators/security-policy.mjs';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { computeMaintenance, generate as generateMaintenance, percentile, sampleLive, wantsLive } from '../scripts/claims/generators/issues.mjs';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
-import { proofSummary, render, renderAll, slotsFrom, TARGETS, BLOCKS } from '../scripts/claims/render-llms.mjs';
+import { proofSummary, render, renderAll, slotsFrom, toolGuides, TARGETS, BLOCKS } from '../scripts/claims/render-llms.mjs';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8');
@@ -206,6 +206,9 @@ describe('maintenance — measured issue-close latency', () => {
 });
 
 describe('llms.txt / llms-full.txt — rendered from templates + the truthbase', () => {
+  // The render imports the tool guide from the server source; the first import
+  // loads the server's module graph, so it is paid once here, not per test.
+  beforeAll(() => toolGuides(root), 60_000);
   it('the committed files equal the render (what `npm run llms:check` enforces in CI)', async () => {
     const rendered = (await renderAll(root)) as Array<{ output: string; text: string }>;
     // The rendered targets in their order, then the blocks inside hand-written files.
