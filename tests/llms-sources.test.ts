@@ -63,9 +63,12 @@ describe('the site footer links the compare registry', () => {
 });
 
 describe('the tool list in llms-full.txt is the server\'s', () => {
-  // The render imports the tool guide from the server source; the first import
-  // loads the server's module graph, so it is paid once here, not per test.
-  beforeAll(() => toolGuides(root), 60_000);
+  // The render imports the tool guide from the server source, which loads the
+  // server's module graph; build the guide once here and let each test read it.
+  let guides: Record<string, { does: string; whenNot: string; errors: string }>;
+  beforeAll(async () => {
+    guides = (await toolGuides(root)) as typeof guides;
+  }, 60_000);
   it('lists every tool the manifest lists, with the summary the server sends, and no other', async () => {
     const tools = (await manifestTools(root)) as Array<{ name: string; description: string }>;
     expect(tools).toEqual(manifest.tools);
@@ -74,8 +77,7 @@ describe('the tool list in llms-full.txt is the server\'s', () => {
     expect(llmsFull).toContain(`## MCP tools (${tools.length})`);
   });
 
-  it('carries the long form of every tool from the guide the server serves in iris://capabilities', async () => {
-    const guides = (await toolGuides(root)) as Record<string, { does: string; whenNot: string; errors: string }>;
+  it('carries the long form of every tool from the guide the server serves in iris://capabilities', () => {
     for (const t of manifest.tools) {
       const g = guides[t.name];
       expect(g, t.name).toBeDefined();
