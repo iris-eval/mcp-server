@@ -153,12 +153,17 @@ export function proofSummary(claims) {
       'and will carry the numbers when they land.'
     );
   }
-  const measured = proof.rules.length;
+  // Two kinds of number, never summed: a family labelled by a reader measures
+  // detection; one labelled by the rule's own definition only shows the code
+  // implements its formula (proof/lib/corpus.ts, `labelBasis`).
+  const detection = proof.rules.filter((r) => (r.labelBasis ?? 'reading') === 'reading').length;
+  const formula = proof.rules.filter((r) => r.labelBasis === 'definition').length;
   const date = String(proof.generatedAt).slice(0, 10);
   return (
     `Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 ` +
-    `with 95% confidence intervals for ${measured} built-in rules, corpus ${proof.corpusVersion}, ` +
-    `generated ${date} from the source these numbers were measured on; reproduce with \`npm run proof\`.`
+    `with 95% confidence intervals for built-in rules — ${detection} measured for detection against labels a reader gave the failure, ` +
+    `and ${formula} checked against their own documented formula (a score there shows the code implements the formula, not that it detects the failure) — ` +
+    `corpus ${proof.corpusVersion}, generated ${date} from the source these numbers were measured on; reproduce with \`npm run proof\`.`
   );
 }
 

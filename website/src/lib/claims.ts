@@ -151,6 +151,13 @@ export interface ProofInterval {
 export interface ProofRule {
   name: string;
   category: string;
+  /**
+   * What the family's labels are: `reading` — a reader's judgement of the
+   * failure, made without running the rule, so agreement measures detection;
+   * `definition` — the rule's own documented definition applied
+   * independently, so agreement shows the code implements its formula.
+   */
+  labelBasis?: "reading" | "definition";
   n: number;
   positives: number;
   negatives: number;

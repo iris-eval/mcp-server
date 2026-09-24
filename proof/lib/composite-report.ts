@@ -42,9 +42,11 @@ import { newcombeDifference } from '../../src/eval/stats.js';
 import { compositeContext, loadComposite, splitOf, validateComposite, type CompositeCase, type LoadedComposite, type Split } from './composite.js';
 import { riskVerdict, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from '../../src/eval/risk.js';
 import { legacyWouldShip } from './legacy-composer.js';
+import { verdictConfidence, type CalibrationTable, type Confidence } from '../../src/eval/confidence.js';
 
 export const COMPOSITE_RESULTS_JSON = 'proof/composite-results.json';
 export const COMPOSITE_MD = 'proof/COMPOSITE.md';
+export const PUBLISHED_CALIBRATION_TS = 'src/eval/published-calibration.ts';
 
 const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
@@ -104,6 +106,12 @@ export interface SweepRow {
 
 export type Difference = { delta: number; lo: number; hi: number } | null;
 
+/** How often a confidence label was right, per split, under one labelling rule. */
+export interface LabelAccuracy {
+  decisive: { test: Rate; dev: Rate; realTranscripts: Rate };
+  marginal: { test: Rate; dev: Rate; realTranscripts: Rate };
+}
+
 export interface CompositeResults {
   schemaVersion: 1;
   compositeVersion: string;
@@ -136,6 +144,14 @@ export interface CompositeResults {
   };
   perClass: Array<{ class: FailureClass; present: number; caught: number; recall: number | null; ci95: [number, number] | null }>;
   sweep: { split: 'dev'; variant: PriorMode; rows: SweepRow[]; argmaxUtility: number; shippedTau: number; note: string };
+  /**
+   * The confidence label, measured. `table` is what src/eval/published-calibration.ts
+   * is generated from; `intervalOnly` is the rule through 0.18.0 (decisive
+   * whenever the credible interval excludes τ), `shipped` the rule in
+   * src/eval/confidence.ts; `changed` counts the default-variant verdicts whose
+   * label differs between the two.
+   */
+  confidence: { rule: string; table: CalibrationTable; intervalOnly: LabelAccuracy; shipped: LabelAccuracy; changed: { toMarginal: number; toDecisive: number; of: number } };
   cases: CaseRow[];
 }
 
@@ -181,6 +197,38 @@ function cellOf(v: RiskVerdict): RiskCell {
   return { state: v.state, basis: v.basis, by: v.by, pBad: v.risk?.pBad ?? null, lo: v.risk?.lo ?? null, hi: v.risk?.hi ?? null, confidence: v.confidence };
 }
 
+/** The dev-split calibration of the verdicts the risk node decided, in the ten bins the reliability table uses. */
+function calibrationTable(rows: CaseRow[], compositeVersion: string): CalibrationTable {
+  const bins = Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: 0, bad: 0, sum: 0 }));
+  for (const r of rows) {
+    if (r.split !== 'dev' || r.shouldShip === null || r.risk.confidence === null || r.risk.pBad === null) continue;
+    const b = bins[Math.min(9, Math.floor(Math.min(1, Math.max(0, r.risk.pBad)) * 10))];
+    b.n += 1;
+    b.bad += r.shouldShip ? 0 : 1;
+    b.sum += r.risk.pBad;
+  }
+  return {
+    compositeVersion,
+    split: 'dev',
+    prior: DEFAULT_PRIOR,
+    priorMode: DEFAULT_PRIOR_MODE,
+    bins: bins.map((b) => ({ from: b.from, to: b.to, n: b.n, bad: b.bad, meanPredicted: b.n === 0 ? null : round4(b.sum / b.n) })),
+  };
+}
+
+function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null): LabelAccuracy {
+  const of = (want: Confidence, keep: (r: CaseRow) => boolean): Rate => {
+    const hit = rows.filter((r) => keep(r) && r.shouldShip !== null && label(r) === want);
+    return rate(hit.filter((r) => (r.risk.state === 'pass') === r.shouldShip).length, hit.length);
+  };
+  const per = (want: Confidence): LabelAccuracy['decisive'] => ({
+    test: of(want, (r) => r.split === 'test'),
+    dev: of(want, (r) => r.split === 'dev'),
+    realTranscripts: of(want, (r) => r.provenance === 'real-transcript'),
+  });
+  return { decisive: per('decisive'), marginal: per('marginal') };
+}
+
 export async function measureComposite(root: string, engine?: EvalEngine): Promise<{ loaded: LoadedComposite; rows: CaseRow[]; results: Omit<CompositeResults, 'generatedAt' | 'commit' | 'version'> }> {
   const loaded = await loadComposite(root);
   const issues = validateComposite(loaded);
@@ -215,6 +263,37 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       classesCaught: [...caught].filter((cls) => c.expected.classes.includes(cls)).sort(),
     });
   }
+
+  /*
+   * The calibration the confidence label reads, measured on the dev split
+   * over the verdicts the risk node decided (a gate or a veto carries no
+   * confidence label, and its cases would say nothing about the estimate).
+   * Every row is then re-labelled from this table, so the committed output
+   * never depends on the table it regenerates; the test split stays held out
+   * to measure the labels.
+   */
+  const table = calibrationTable(rows, loaded.compositeVersion);
+  const intervalOnlyLabels = new Map<string, Confidence | null>(
+    rows.map((r) => [r.id, r.risk.confidence === null || r.risk.lo === null || r.risk.hi === null ? null : r.risk.lo <= DEFAULT_TAU && DEFAULT_TAU <= r.risk.hi ? 'marginal' : 'decisive']),
+  );
+  for (const r of rows) {
+    for (const [cell, mode] of [[r.risk, 'per-output'], [r.riskPerClass, 'per-class']] as const) {
+      if (cell.confidence === null || cell.pBad === null || cell.lo === null || cell.hi === null) continue;
+      cell.confidence = verdictConfidence({ pBad: cell.pBad, lo: cell.lo, hi: cell.hi }, DEFAULT_TAU, { prior: DEFAULT_PRIOR, priorMode: mode, localLabels: false }, table).confidence;
+    }
+  }
+  const labelled = rows.filter((r) => r.risk.confidence !== null && r.shouldShip !== null);
+  const confidence: CompositeResults['confidence'] = {
+    rule: "decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev-split observed bad rate of risk-decided verdicts to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval) with that interval wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)",
+    table,
+    intervalOnly: labelAccuracy(rows, (r) => intervalOnlyLabels.get(r.id) ?? null),
+    shipped: labelAccuracy(rows, (r) => r.risk.confidence),
+    changed: {
+      toMarginal: labelled.filter((r) => intervalOnlyLabels.get(r.id) === 'decisive' && r.risk.confidence === 'marginal').length,
+      toDecisive: labelled.filter((r) => intervalOnlyLabels.get(r.id) === 'marginal' && r.risk.confidence === 'decisive').length,
+      of: labelled.length,
+    },
+  };
 
   const legacy = slices(rows, legacyShip, legacyProb);
   const risk = slices(rows, riskShipOf((r) => r.risk), riskProbOf((r) => r.risk));
@@ -304,6 +383,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       reads: 'accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart',
     },
     perClass,
+    confidence,
     sweep: {
       split: 'dev',
       variant: DEFAULT_PRIOR_MODE,
@@ -368,6 +448,32 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
     }
     L.push('');
   }
+  L.push('## The confidence label (per-output prior)');
+  L.push('');
+  L.push(`A verdict the risk estimate decides carries \`confidence\`: \`decisive\` or \`marginal\`. Through 0.18.0 it was decisive whenever the credible interval on p_bad excluded τ. That interval carries the uncertainty in each detector's published error rates and nothing else, and the calibration above shows the estimate itself can be off by more than that: the rule now is that ${r.confidence.rule}.`);
+  L.push('');
+  L.push(`The calibration the label reads (dev split, risk-decided verdicts, generated into \`${PUBLISHED_CALIBRATION_TS}\`):`);
+  L.push('');
+  L.push('| Bin | n | Mean predicted P(bad) | Observed bad rate (95% CI) | Estimate consistent? | Backs a pass at τ | Backs a fail at τ |');
+  L.push('|---|--:|--:|---|---|---|---|');
+  for (const b of r.confidence.table.bins) {
+    if (b.n === 0) continue;
+    const w = wilson(b.bad, b.n)!;
+    const consistent = b.meanPredicted !== null && b.meanPredicted >= w.lo && b.meanPredicted <= w.hi;
+    L.push(`| ${b.from.toFixed(1)}–${b.to.toFixed(1)} | ${b.n} | ${b.meanPredicted === null ? '—' : b.meanPredicted.toFixed(3)} | ${(b.bad / b.n).toFixed(3)} [${w.lo.toFixed(3)}, ${w.hi.toFixed(3)}] | ${consistent ? 'yes' : 'no'} | ${consistent && w.hi < r.method.tau ? 'yes' : 'no'} | ${consistent && w.lo > r.method.tau ? 'yes' : 'no'} |`);
+  }
+  L.push('');
+  L.push(`How often each label was right about shipping, under the rule through 0.18.0 and the rule now. ${r.confidence.changed.toMarginal} of ${r.confidence.changed.of} labelled verdicts move from decisive to marginal and ${r.confidence.changed.toDecisive} the other way. The table was measured on the dev split, so read the test and real-transcript rows:`);
+  L.push('');
+  L.push('| Split | Rule | Decisive: right (95% CI) | Marginal: right (95% CI) |');
+  L.push('|---|---|---|---|');
+  const cell = (x: Rate): string => (x.n === 0 ? 'none labelled' : `${x.k} of ${x.n}, ${pct(x.rate)} ${ci(x.ci95)}`);
+  for (const [name, split] of [['test', 'test'], ['real transcripts (held out, staged)', 'realTranscripts'], ['dev', 'dev']] as const) {
+    for (const [label, acc] of [['interval only (through 0.18.0)', r.confidence.intervalOnly], ['shipped', r.confidence.shipped]] as const) {
+      L.push(`| ${name} | ${label} | ${cell(acc.decisive[split])} | ${cell(acc.marginal[split])} |`);
+    }
+  }
+  L.push('');
   L.push(`## Threshold sweep (dev split only, ${r.sweep.variant} prior)`);
   L.push('');
   L.push(`${r.sweep.note}. Utility-optimal τ on dev: **${r.sweep.argmaxUtility.toFixed(2)}**; shipped τ (loss-derived): **${r.sweep.shippedTau.toFixed(2)}**.`);
@@ -400,4 +506,29 @@ export function normaliseCompositeForCheck(json: string, md: string): { json: st
     json: JSON.stringify(parsed),
     md: md.replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('Generated ')).join('\n'),
   };
+}
+
+/** The generated module src/eval/confidence.ts reads: the dev-split calibration, and the setting it was measured at. */
+export function renderPublishedCalibration(r: CompositeResults): string {
+  const t = r.confidence.table;
+  const L: string[] = [];
+  L.push('/*');
+  L.push(' * GENERATED by `npm run proof -- --composite` from the composite corpus — do not');
+  L.push(' * edit by hand. `npm run proof -- --check --composite` fails CI when this file');
+  L.push(' * differs from what the runner produces. Read by src/eval/confidence.ts: a');
+  L.push(' * verdict is labelled decisive only in a region of p_bad where this table');
+  L.push(' * measured the estimate to hold. proof/COMPOSITE.md renders it beside the result.');
+  L.push(' */');
+  L.push('');
+  L.push('export const PUBLISHED_CALIBRATION = {');
+  L.push(`  compositeVersion: '${t.compositeVersion}',`);
+  L.push(`  split: '${t.split}',`);
+  L.push(`  prior: ${t.prior},`);
+  L.push(`  priorMode: '${t.priorMode}',`);
+  L.push('  bins: [');
+  for (const b of t.bins) L.push(`    { from: ${b.from}, to: ${b.to}, n: ${b.n}, bad: ${b.bad}, meanPredicted: ${b.meanPredicted === null ? 'null' : b.meanPredicted} },`);
+  L.push('  ],');
+  L.push('} as const;');
+  L.push('');
+  return L.join('\n');
 }

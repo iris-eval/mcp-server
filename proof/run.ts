@@ -35,7 +35,7 @@ import { execSync } from 'node:child_process';
 
 import { rulesByType } from '../src/eval/rules/index.js';
 import type { EvalContext, EvalRule, EvalType } from '../src/types/eval.js';
-import { loadCorpus, validateCorpusFile, PII_ENTITIES, type CorpusFile } from './lib/corpus.js';
+import { loadCorpus, validateCorpusFile, PII_ENTITIES, type CorpusFile, type LabelBasis } from './lib/corpus.js';
 import { materialiseCase } from './lib/materialise.js';
 import { summarise, F1_CI_METHOD, type Observation, type RuleSummary } from './lib/metrics.js';
 import { CREDIBLE_METHOD } from './lib/intervals.js';
@@ -49,7 +49,7 @@ import { EvalEngine } from '../src/eval/engine.js';
 import { defaultConfig } from '../src/config/defaults.js';
 
 export { contextFor };
-import { measureComposite, renderCompositeMarkdown, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from './lib/composite-report.js';
+import { measureComposite, renderCompositeMarkdown, renderPublishedCalibration, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, PUBLISHED_CALIBRATION_TS, type CompositeResults } from './lib/composite-report.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -78,6 +78,7 @@ export interface RuleRow extends RuleSummary {
   falseNegatives: string[];
   definition: string;
   labelling: string;
+  labelBasis: LabelBasis;
 }
 
 export interface EntityRow {
@@ -105,6 +106,8 @@ export interface ProofResults {
   rules: Array<{
     name: string;
     category: EvalType;
+    /** What the family's labels are (proof/lib/corpus.ts): a reader's judgement, or the rule's own definition applied independently. */
+    labelBasis: LabelBasis;
     n: number;
     positives: number;
     negatives: number;
@@ -285,6 +288,7 @@ export async function measure(root: string): Promise<{ rows: RuleRow[]; corpusVe
       // explains the skips a reader will see beside the number.
       definition: file.definition,
       labelling: file.labelling,
+      labelBasis: file.labelBasis,
       ...summarise(obs, rule.name),
       falsePositives: obs.filter((o) => !o.actual && o.predicted).map((o) => o.id),
       falseNegatives: obs.filter((o) => o.actual && !o.predicted).map((o) => o.id),
@@ -338,6 +342,7 @@ export function toResults(
     rules: rows.map((r) => ({
       name: r.name,
       category: r.category,
+      labelBasis: r.labelBasis,
       n: r.n,
       positives: r.positives,
       negatives: r.negatives,
@@ -430,11 +435,17 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
   L.push('');
   L.push('The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.');
   L.push('');
-  L.push('| Rule | Bundle | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |');
-  L.push('|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|');
+  const byBasis = (b: LabelBasis): RuleRow[] => rows.filter((r) => r.labelBasis === b);
+  const perfect = (rs: RuleRow[]): number => rs.filter((r) => r.f1 === 1).length;
+  const read = byBasis('reading');
+  const defined = byBasis('definition');
+  L.push(`**What the ${rows.length} measured rules show is two different things.** ${read.length} are measured against labels a reader gave the failure itself, without running the rule: those numbers measure detection (${perfect(read)} of ${read.length} score F1 1.00). ${defined.length} are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (${perfect(defined)} of ${defined.length} score F1 1.00). The "Labels" column says which; each family's \`labelling\` statement says how.`);
+  L.push('');
+  L.push('| Rule | Bundle | Labels | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |');
+  L.push('|---|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|');
   for (const r of rows) {
     L.push(
-      `| \`${r.name}\` | ${r.category} | ${r.n} | ${r.positives} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${pct(r.precision)} ${ci(r.ci95.precision)} | ${pct(r.recall)} ${ci(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} ${ci(r.ci95.f1)} | ${ci(r.credible95.f1)} | ${pct(ppvFromCounts(r, 0.05))} / ${pct(ppvFromCounts(r, 0.5))} |`,
+      `| \`${r.name}\` | ${r.category} | ${r.labelBasis === 'reading' ? 'reader' : 'own definition'} | ${r.n} | ${r.positives} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${pct(r.precision)} ${ci(r.ci95.precision)} | ${pct(r.recall)} ${ci(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} ${ci(r.ci95.f1)} | ${ci(r.credible95.f1)} | ${pct(ppvFromCounts(r, 0.05))} / ${pct(ppvFromCounts(r, 0.5))} |`,
     );
   }
   if (missing.length > 0) {
@@ -561,7 +572,8 @@ export function normaliseForCheck(json: string, md: string): { json: string; md:
 
 /**
  * `--composite`: the verdict on the composite corpus. Writes
- * proof/composite-results.json and proof/COMPOSITE.md, or with `--check`
+ * proof/composite-results.json, proof/COMPOSITE.md and the calibration the
+ * confidence label reads (src/eval/published-calibration.ts), or with `--check`
  * regenerates them to a temp path and fails on any difference.
  */
 async function composite(check: boolean): Promise<void> {
@@ -572,6 +584,7 @@ async function composite(check: boolean): Promise<void> {
   const results: CompositeResults = { ...partial, generatedAt, commit, version };
   const json = stableJson(results);
   const md = renderCompositeMarkdown(results);
+  const calibrationTs = renderPublishedCalibration(results);
   for (const [name, split] of [['test', 'test'], ['real', 'realTranscripts'], ['dev', 'dev']] as const) {
     process.stdout.write(`  ${name.padEnd(5)} legacy acc=${pct(results.legacy[split].accuracy.rate).padStart(6)} ${ci(results.legacy[split].accuracy.ci95).padEnd(14)} risk acc=${pct(results.risk[split].accuracy.rate).padStart(6)} ${ci(results.risk[split].accuracy.ci95).padEnd(14)} n=${results.legacy[split].accuracy.n}
 `);
@@ -591,20 +604,30 @@ async function composite(check: boolean): Promise<void> {
 `);
       process.exit(1);
     }
+    let committedTs = '';
+    try {
+      committedTs = (await readFile(resolve(repoRoot, PUBLISHED_CALIBRATION_TS), 'utf-8')).replace(/\r\n/g, '\n');
+    } catch {
+      process.stderr.write(`proof --check --composite — ${PUBLISHED_CALIBRATION_TS} is missing; run npm run proof -- --composite and commit it.
+`);
+      process.exit(1);
+    }
     const fresh = normaliseCompositeForCheck(json, md);
     const committed = normaliseCompositeForCheck(committedJson, committedMd);
-    if (fresh.json === committed.json && fresh.md === committed.md) {
-      process.stdout.write(`proof --check --composite — OK: ${COMPOSITE_RESULTS_JSON} and ${COMPOSITE_MD} match this code on composite ${results.compositeVersion}
+    const tsSame = committedTs === calibrationTs;
+    if (fresh.json === committed.json && fresh.md === committed.md && tsSame) {
+      process.stdout.write(`proof --check --composite — OK: ${COMPOSITE_RESULTS_JSON}, ${COMPOSITE_MD} and ${PUBLISHED_CALIBRATION_TS} match this code on composite ${results.compositeVersion}
 `);
       return;
     }
-    process.stderr.write(`proof --check --composite — FAIL: ${[fresh.json !== committed.json && COMPOSITE_RESULTS_JSON, fresh.md !== committed.md && COMPOSITE_MD].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --composite and commit the result.
+    process.stderr.write(`proof --check --composite — FAIL: ${[fresh.json !== committed.json && COMPOSITE_RESULTS_JSON, fresh.md !== committed.md && COMPOSITE_MD, !tsSame && PUBLISHED_CALIBRATION_TS].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --composite and commit the result.
 `);
     process.exit(1);
   }
   await writeFile(resolve(repoRoot, COMPOSITE_RESULTS_JSON), json);
   await writeFile(resolve(repoRoot, COMPOSITE_MD), md);
-  process.stdout.write(`proof — wrote ${COMPOSITE_RESULTS_JSON} and ${COMPOSITE_MD} (composite ${results.compositeVersion}, ${rows.length} cases)
+  await writeFile(resolve(repoRoot, PUBLISHED_CALIBRATION_TS), calibrationTs);
+  process.stdout.write(`proof — wrote ${COMPOSITE_RESULTS_JSON}, ${COMPOSITE_MD} and ${PUBLISHED_CALIBRATION_TS} (composite ${results.compositeVersion}, ${rows.length} cases)
 `);
 }
 

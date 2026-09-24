@@ -34,6 +34,7 @@ import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
 import { FAILURE_CLASS_IDS } from './failure-classes.js';
 import { beta, fnv1a, mulberry32, sensitivity, specificity } from './stats.js';
 import { decides } from './gate.js';
+import { verdictConfidence, type CalibrationTable } from './confidence.js';
 
 /** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
 /*
@@ -261,9 +262,18 @@ const isEffectivelyCritical = (r: EvalRuleResult): boolean => r.critical === tru
  * Compose by kind, as the engine does: gates (a failing policy that is effectively
  * critical here), then vetoes (a failing effectively-critical detection),
  * then the risk against τ. `unknown` when a critical rule was asked and could
- * not answer (defeated or config_invalid) — the fail-closed seam.
+ * not answer (defeated or config_invalid) — the fail-closed seam. `table` is
+ * the calibration the confidence label reads (./confidence.ts); the composite
+ * harness passes the one it has just measured, so its own output never
+ * depends on the table it is about to regenerate.
  */
-export function riskVerdict(result: EvalResult, tau: number = DEFAULT_TAU, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): RiskVerdict {
+export function riskVerdict(
+  result: EvalResult,
+  tau: number = DEFAULT_TAU,
+  prior: number = DEFAULT_PRIOR,
+  mode: PriorMode = DEFAULT_PRIOR_MODE,
+  table?: CalibrationTable,
+): RiskVerdict {
   const rows = result.rule_results;
   /*
    * The product's rule (compose.ts, step 1, through gate.ts): a policy gates
@@ -285,7 +295,7 @@ export function riskVerdict(result: EvalResult, tau: number = DEFAULT_TAU, prior
     const judged = rows.some((r) => !r.skipped);
     return { state: judged ? 'pass' : 'unknown', basis: judged ? 'clean' : 'no_rules', by: [], risk: null, confidence: null };
   }
-  const confidence = risk.lo <= tau && tau <= risk.hi ? 'marginal' : 'decisive';
+  const confidence = verdictConfidence(risk, tau, { prior, priorMode: mode, localLabels: detectorsOf(result).some((d) => d.local !== undefined) }, table).confidence;
   if (risk.pBad > tau) {
     const by = Object.entries(risk.perClass)
       .filter(([, q]) => q !== null && q > 0.5)

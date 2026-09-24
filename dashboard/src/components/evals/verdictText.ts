@@ -26,9 +26,10 @@ export const STATE_TEXT: Record<Verdict['state'], { label: string; tone: 'pass' 
 };
 
 export const CONFIDENCE_TEXT: Record<NonNullable<Verdict['confidence']>, string> = {
-  decisive: 'Decisive: the credible interval on the risk estimate lies wholly on one side of your loss threshold.',
+  decisive:
+    'Decisive: the credible interval on the risk estimate lies wholly on one side of your loss threshold, and on the composite corpus verdicts at this risk level were measured to land on that side.',
   marginal:
-    'Marginal: the credible interval on the risk estimate straddles your loss threshold, so this verdict could go either way on the evidence available.',
+    'Marginal: either the credible interval on the risk estimate straddles your loss threshold, or the composite corpus did not measure the estimate holding at this risk level. The interpretation below says which.',
 };
 
 /** The short name of each question, for a row; the server sends the full text on capabilities. */

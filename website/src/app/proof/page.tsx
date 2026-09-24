@@ -30,8 +30,21 @@ const toSnake = (s: string): string => s.replace(/[A-Z]/g, (c) => "_" + c.toLowe
 
 const measured = PROOF !== null && PROOF.rules.length > 0;
 
+/*
+ * A perfect score means two different things here, and the headline never
+ * adds them together. A rule measured against labels a reader gave the
+ * failure is a detection number; a rule checked against its own documented
+ * definition, applied independently, shows the code matches its formula and
+ * nothing about whether the formula catches the failure. The class is read
+ * from each family's `labelBasis` in the proof results, never typed here.
+ */
+const byBasis = (rules: ProofRule[], basis: "reading" | "definition"): ProofRule[] =>
+  rules.filter((r) => (r.labelBasis ?? "reading") === basis);
+const DETECTION = measured ? byBasis(PROOF!.rules, "reading") : [];
+const FORMULA = measured ? byBasis(PROOF!.rules, "definition") : [];
+
 const DESCRIPTION = measured
-  ? `Per-rule precision, recall and F1 with 95% confidence intervals for the ${PROOF!.rules.length} measured built-in Iris eval rules, the method, the corpus provenance, and the one command that reproduces the numbers.`
+  ? `Per-rule precision, recall and F1 with 95% confidence intervals for the built-in Iris eval rules: ${DETECTION.length} measured for detection against labelled cases, ${FORMULA.length} checked against their own documented formula. The method, the corpus provenance, and the one command that reproduces the numbers.`
   : `How often the built-in Iris evaluators are wrong: the method, the corpus provenance and the reproduction command, with per-rule precision, recall and F1 and 95% confidence intervals published here as they are measured.`;
 
 export const metadata: Metadata = {
@@ -169,6 +182,10 @@ function RuleTable({ category, rules }: { category: string; rules: ProofRule[] }
       <h3 className="mb-3 font-display text-lg font-bold capitalize text-text-primary">{category}</h3>
       <div className="overflow-x-auto rounded-xl border border-border-default bg-bg-card">
         <table className="w-full min-w-[760px] border-collapse text-left text-[14px]">
+          <caption className="sr-only">
+            {category} rules: precision, recall and F1 with 95% intervals. A rule marked &ldquo;checked against its own formula&rdquo; is
+            labelled by its documented definition, so its score shows the code implements the definition, not that it detects the failure.
+          </caption>
           <thead>
             <tr className="border-b border-border-default text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">
               <th scope="col" className="w-[21%] px-3 py-3 font-bold">Rule</th>
@@ -184,6 +201,9 @@ function RuleTable({ category, rules }: { category: string; rules: ProofRule[] }
               <tr key={r.name} className="border-b border-border-subtle last:border-b-0">
                 <th scope="row" className="px-3 py-3 align-middle font-mono text-[13px] font-medium text-text-primary">
                   {r.name}
+                  <div className="mt-0.5 font-sans text-[11px] font-normal text-text-muted">
+                    {r.labelBasis === "definition" ? "checked against its own formula" : "measured against reader labels"}
+                  </div>
                 </th>
                 <td className="px-3 py-3 align-middle font-mono text-[13px] tabular-nums text-text-secondary">
                   <div className="whitespace-nowrap">
@@ -248,10 +268,10 @@ function Results(): React.ReactElement {
     <>
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { k: "Rules measured", v: `${proof.rules.length} / ${RULE_COUNT_BUILT_IN}` },
+          { k: "Measured for detection", v: `${DETECTION.length} rules` },
+          { k: "Checked against own formula", v: `${FORMULA.length} rules` },
           { k: "Labelled cases", v: corpusSize.toLocaleString("en-US") },
           { k: "Corpus", v: proof.corpusVersion },
-          { k: "Generated", v: String(proof.generatedAt).slice(0, 10) },
         ].map((t) => (
           <div key={t.k} className="rounded-xl border border-border-default bg-bg-card p-4">
             <dt className="text-[11px] font-bold uppercase tracking-[0.15em] text-text-muted">{t.k}</dt>
@@ -260,7 +280,18 @@ function Results(): React.ReactElement {
         ))}
       </dl>
 
-      <p className="mt-6 text-[13px] text-text-muted">
+      <p className="mt-6 text-[14px] leading-relaxed text-text-secondary">
+        <strong className="text-text-primary">Two kinds of number, never added together.</strong>{" "}
+        {DETECTION.length} rules are measured against labels a reader gave the failure itself, without running
+        the rule: their precision and recall say how well the rule detects it ({DETECTION.filter((r) => r.f1 === 1).length} of{" "}
+        {DETECTION.length} score F1 1.00). {FORMULA.length} rules are checked against their own documented
+        definition, applied independently by script or by counting: a score there shows the code implements its
+        formula, not that the formula catches what a reader would call the failure ({FORMULA.filter((r) => r.f1 === 1).length} of{" "}
+        {FORMULA.length} score F1 1.00). Each row says which.
+        {proof.rules.length < RULE_COUNT_BUILT_IN ? ` ${RULE_COUNT_BUILT_IN - proof.rules.length} of ${RULE_COUNT_BUILT_IN} built-in rules are not measured yet (listed below).` : ""}
+      </p>
+
+      <p className="mt-4 text-[13px] text-text-muted">
         Bar = 95% confidence interval · tick = point estimate · scale 0 to 1. n
         splits into labelled violations (+) and labelled clean outputs (−); tp,
         fp, fn, tn are the confusion counts the three figures are computed from.

@@ -4942,13 +4942,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "cef54adebf6c"
+        "compositeVersion": "256ae189bd16"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "068e20299dd3",
+        "corpusVersion": "31cb028e438a",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -4961,8 +4961,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-24T20:05:00.936Z",
-  "generatedFromCommit": "4d88ded",
+  "generatedAt": "2026-09-24T20:21:25.672Z",
+  "generatedFromCommit": "d6a878b",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5035,10 +5035,216 @@
     ]
   },
   "proof": {
-    "commit": "26408cf",
+    "commit": "d6a878b",
     "composite": {
-      "compositeVersion": "cef54adebf6c",
-      "corpusVersion": "068e20299dd3",
+      "compositeVersion": "256ae189bd16",
+      "confidence": {
+        "changed": {
+          "of": 101,
+          "toDecisive": 0,
+          "toMarginal": 54
+        },
+        "intervalOnly": {
+          "decisive": {
+            "dev": {
+              "ci95": [
+                0.5974,
+                0.844
+              ],
+              "k": 34,
+              "n": 46,
+              "rate": 0.7391
+            },
+            "realTranscripts": {
+              "ci95": [
+                0.2914,
+                0.7679
+              ],
+              "k": 7,
+              "n": 13,
+              "rate": 0.5385
+            },
+            "test": {
+              "ci95": [
+                0.413,
+                0.8269
+              ],
+              "k": 11,
+              "n": 17,
+              "rate": 0.6471
+            }
+          },
+          "marginal": {
+            "dev": {
+              "ci95": [
+                0.6269,
+                0.9049
+              ],
+              "k": 24,
+              "n": 30,
+              "rate": 0.8
+            },
+            "realTranscripts": {
+              "ci95": [
+                0.4365,
+                0.9699
+              ],
+              "k": 5,
+              "n": 6,
+              "rate": 0.8333
+            },
+            "test": {
+              "ci95": [
+                0.5291,
+                0.9776
+              ],
+              "k": 7,
+              "n": 8,
+              "rate": 0.875
+            }
+          }
+        },
+        "rule": "decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev-split observed bad rate of risk-decided verdicts to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval) with that interval wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)",
+        "shipped": {
+          "decisive": {
+            "dev": {
+              "ci95": [
+                0.6457,
+                1
+              ],
+              "k": 7,
+              "n": 7,
+              "rate": 1
+            },
+            "realTranscripts": {
+              "ci95": [
+                0.2065,
+                1
+              ],
+              "k": 1,
+              "n": 1,
+              "rate": 1
+            },
+            "test": {
+              "ci95": [
+                0.3424,
+                1
+              ],
+              "k": 2,
+              "n": 2,
+              "rate": 1
+            }
+          },
+          "marginal": {
+            "dev": {
+              "ci95": [
+                0.6249,
+                0.8281
+              ],
+              "k": 51,
+              "n": 69,
+              "rate": 0.7391
+            },
+            "realTranscripts": {
+              "ci95": [
+                0.3862,
+                0.7969
+              ],
+              "k": 11,
+              "n": 18,
+              "rate": 0.6111
+            },
+            "test": {
+              "ci95": [
+                0.4913,
+                0.844
+              ],
+              "k": 16,
+              "n": 23,
+              "rate": 0.6957
+            }
+          }
+        },
+        "table": {
+          "bins": [
+            {
+              "bad": 0,
+              "from": 0,
+              "meanPredicted": null,
+              "n": 0,
+              "to": 0.1
+            },
+            {
+              "bad": 12,
+              "from": 0.1,
+              "meanPredicted": 0.1339,
+              "n": 39,
+              "to": 0.2
+            },
+            {
+              "bad": 0,
+              "from": 0.2,
+              "meanPredicted": null,
+              "n": 0,
+              "to": 0.3
+            },
+            {
+              "bad": 2,
+              "from": 0.3,
+              "meanPredicted": 0.3605,
+              "n": 2,
+              "to": 0.4
+            },
+            {
+              "bad": 0,
+              "from": 0.4,
+              "meanPredicted": 0.4322,
+              "n": 1,
+              "to": 0.5
+            },
+            {
+              "bad": 1,
+              "from": 0.5,
+              "meanPredicted": 0.5213,
+              "n": 1,
+              "to": 0.6
+            },
+            {
+              "bad": 8,
+              "from": 0.6,
+              "meanPredicted": 0.6827,
+              "n": 10,
+              "to": 0.7
+            },
+            {
+              "bad": 13,
+              "from": 0.7,
+              "meanPredicted": 0.7522,
+              "n": 15,
+              "to": 0.8
+            },
+            {
+              "bad": 1,
+              "from": 0.8,
+              "meanPredicted": 0.8094,
+              "n": 1,
+              "to": 0.9
+            },
+            {
+              "bad": 7,
+              "from": 0.9,
+              "meanPredicted": 0.9255,
+              "n": 7,
+              "to": 1
+            }
+          ],
+          "compositeVersion": "256ae189bd16",
+          "prior": 0.5,
+          "priorMode": "per-output",
+          "split": "dev"
+        }
+      },
+      "corpusVersion": "31cb028e438a",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -6416,7 +6622,7 @@
       },
       "version": "0.18.0"
     },
-    "corpusVersion": "068e20299dd3",
+    "corpusVersion": "31cb028e438a",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7041,7 +7247,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-24T20:00:35.172Z",
+    "generatedAt": "2026-09-24T20:20:06.589Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7060,8 +7266,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1021,
-      "p50Ms": 8.918,
-      "p95Ms": 16.959
+      "p50Ms": 8.766,
+      "p95Ms": 17.085
     },
     "method": {
       "ci": "wilson-95",
@@ -7105,6 +7311,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 24,
         "name": "min_output_length",
         "negatives": 11,
@@ -7154,6 +7361,7 @@
         "f1": 0.9091,
         "fn": 2,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 24,
         "name": "non_empty_output",
         "negatives": 12,
@@ -7203,6 +7411,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 24,
         "name": "sentence_count",
         "negatives": 10,
@@ -7252,6 +7461,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 24,
         "name": "expected_coverage",
         "negatives": 13,
@@ -7301,6 +7511,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 33,
         "name": "valid_tool_arguments",
         "negatives": 18,
@@ -7350,6 +7561,7 @@
         "f1": 0.7857,
         "fn": 2,
         "fp": 4,
+        "labelBasis": "reading",
         "n": 30,
         "name": "ask_coverage",
         "negatives": 17,
@@ -7399,6 +7611,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 47,
         "name": "tool_sequence",
         "negatives": 22,
@@ -7448,6 +7661,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 24,
         "name": "keyword_overlap",
         "negatives": 13,
@@ -7497,6 +7711,7 @@
         "f1": 0.9565,
         "fn": 1,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 24,
         "name": "topic_consistency",
         "negatives": 12,
@@ -7546,6 +7761,7 @@
         "f1": 0.9474,
         "fn": 2,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 46,
         "name": "tool_choice",
         "negatives": 26,
@@ -7595,6 +7811,7 @@
         "f1": 0.9302,
         "fn": 0,
         "fp": 3,
+        "labelBasis": "reading",
         "n": 45,
         "name": "answers_the_ask",
         "negatives": 25,
@@ -7644,6 +7861,7 @@
         "f1": 0.8889,
         "fn": 5,
         "fp": 5,
+        "labelBasis": "reading",
         "n": 93,
         "name": "no_pii",
         "negatives": 48,
@@ -7693,6 +7911,7 @@
         "f1": 0.9333,
         "fn": 1,
         "fp": 1,
+        "labelBasis": "reading",
         "n": 26,
         "name": "no_blocklist_words",
         "negatives": 11,
@@ -7742,6 +7961,7 @@
         "f1": 0.988,
         "fn": 1,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 90,
         "name": "no_injection_patterns",
         "negatives": 48,
@@ -7791,6 +8011,7 @@
         "f1": 0.7792,
         "fn": 12,
         "fp": 5,
+        "labelBasis": "reading",
         "n": 89,
         "name": "no_stub_output",
         "negatives": 47,
@@ -7840,6 +8061,7 @@
         "f1": 0.85,
         "fn": 12,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 90,
         "name": "no_hallucination_markers",
         "negatives": 44,
@@ -7889,6 +8111,7 @@
         "f1": 0.7778,
         "fn": 8,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 43,
         "name": "no_silent_tool_failure",
         "negatives": 21,
@@ -7938,6 +8161,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 30,
         "name": "grounded_in_reads",
         "negatives": 16,
@@ -7987,6 +8211,7 @@
         "f1": 0.7826,
         "fn": 5,
         "fp": 0,
+        "labelBasis": "reading",
         "n": 31,
         "name": "no_injection_compliance",
         "negatives": 17,
@@ -8036,6 +8261,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 24,
         "name": "cost_under_threshold",
         "negatives": 14,
@@ -8085,6 +8311,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 24,
         "name": "verbosity_ratio",
         "negatives": 12,
@@ -8134,6 +8361,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 37,
         "name": "no_tool_loop",
         "negatives": 19,
@@ -8183,6 +8411,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 28,
         "name": "max_steps",
         "negatives": 16,
@@ -8232,6 +8461,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 27,
         "name": "cost_anomaly",
         "negatives": 14,
@@ -8281,6 +8511,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
+        "labelBasis": "definition",
         "n": 44,
         "name": "step_budget",
         "negatives": 22,
@@ -8909,7 +9140,7 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3462,
+    "totalCombined": 3474,
     "vitestDashboard": {
       "failed": 0,
       "passed": 334,
@@ -8917,8 +9148,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3093,
-      "total": 3093
+      "passed": 3105,
+      "total": 3105
     }
   },
   "version": {

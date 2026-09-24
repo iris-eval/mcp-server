@@ -36,6 +36,16 @@ describe('proof corpus', () => {
     expect(families).toEqual(rules.map((r) => r.name).sort());
   });
 
+  it('states what every family\'s labels are, and refuses a family that does not', async () => {
+    const { files } = await loadCorpus(repoRoot);
+    const registry = new Map(registryRules().map((r) => [r.name, r.evalType]));
+    for (const f of files) expect(['reading', 'definition'], `${f.family}: labelBasis`).toContain(f.labelBasis);
+    const unstated: Partial<(typeof files)[0]> = { ...files[0] };
+    delete unstated.labelBasis;
+    const issues = validateCorpusFile(unstated as (typeof files)[0], 'x.json', registry);
+    expect(issues.some((i) => i.includes('labelBasis'))).toBe(true);
+  });
+
   it('holds no credential-shaped string in any case (placeholders only)', async () => {
     const { files } = await loadCorpus(repoRoot);
     const shaped = /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b|\bxox[abprs]-[A-Za-z0-9-]{10,}|\bgh[oprsu]_[A-Za-z0-9]{36,}|\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}|\bAIza[A-Za-z0-9_-]{30,}|\bnpm_[A-Za-z0-9]{30,}|\bdop_v1_[a-z0-9]{50,}|\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|-----BEGIN [A-Z ]{0,24}PRIVATE KEY-----/;
