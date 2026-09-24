@@ -7,6 +7,7 @@
   "definition": "expected_coverage — at least 50% of the expected text's terms (words longer than two characters, case-insensitive, unique) must appear in the output; skipped when no expected text is given. docs/api-reference.md §Completeness Rules. Positive = fewer than half the expected terms present (the rule should FAIL).",
   "source": "LLM-authored on 2026-09-04. Held out on 2026-09-23: the 8 case(s) copied from, varied from or modelled on the 24 real transcripts in tests/fixtures/real-transcripts (coverage-001, coverage-002, coverage-003, coverage-004, coverage-005, coverage-006, coverage-007, coverage-008) were removed, so no number this family publishes is estimated on a transcript, and the transcript line in proof/TRANSCRIPTS.md and proof/COMPOSITE.md is measured on cases none of these rates were estimated from. 3 replacement case(s), authored the same day and marked in their notes, bring the family back to the 24-case floor the runner enforces.",
   "labelling": "LLM-authored and LLM-labelled against the documented definition on 2026-09-04: the label is the documented formula applied independently by script (unique words > 2 chars, case-insensitive), and each note states the covered/total count.",
+  "labelBasis": "definition",
   "authored": "2026-09-04",
   "counts": {
     "n": 24,

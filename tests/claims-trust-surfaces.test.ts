@@ -254,7 +254,7 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
     expect(proofSummary({ ...claims, proof: { rules: [] } })).toMatch(/being measured/);
     const after = proofSummary({
       ...claims,
-      proof: { rules: [{}, {}], corpusVersion: 'c1', generatedAt: '2026-09-05T12:00:00Z', commit: 'abc1234', version: '9.9.9' },
+      proof: { rules: [{ labelBasis: 'reading' }, { labelBasis: 'definition' }], corpusVersion: 'c1', generatedAt: '2026-09-05T12:00:00Z', commit: 'abc1234', version: '9.9.9' },
     });
     /*
      * The summary pins the numbers to the CORPUS and to nothing else.
@@ -268,7 +268,11 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
      * version. It said "for 20 built-in rules … for v0.10.0" on the live
      * site while the published v0.10.0 had fifteen.
      */
-    expect(after).toMatch(/for 2 built-in rules, corpus c1, generated 2026-05?-?0?5|for 2 built-in rules, corpus c1, generated 2026-09-05/);
+    expect(after).toMatch(/corpus c1, generated 2026-09-05/);
+    // Detection numbers and formula self-checks are counted apart, never summed into one headline.
+    expect(after).toMatch(/1 measured for detection/);
+    expect(after).toMatch(/1 checked against their own documented formula/);
+    expect(after).not.toMatch(/for 2 built-in rules/);
     expect(after).not.toMatch(/abc1234/);
     // The version must not reappear beside the numbers, however it is spelled.
     expect(after, 'the proof line must not attribute its numbers to a release version').not.toMatch(/9\.9\.9/);

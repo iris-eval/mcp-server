@@ -7,6 +7,7 @@
   "definition": "verbosity_ratio — the completion-to-prompt token ratio must not exceed the maximum: pass when completion_tokens / prompt_tokens ≤ max_token_ratio, default 5 (config key max_token_ratio); skipped when token usage is not provided. docs/api-reference.md §Cost Rules. Positive = ratio strictly over the maximum (the rule should FAIL).",
   "source": "LLM-authored on 2026-09-04. Held out on 2026-09-23: the 7 case(s) copied from, varied from or modelled on the 24 real transcripts in tests/fixtures/real-transcripts (tokens-001, tokens-002, tokens-003, tokens-004, tokens-005, tokens-006, tokens-007) were removed, so no number this family publishes is estimated on a transcript, and the transcript line in proof/TRANSCRIPTS.md and proof/COMPOSITE.md is measured on cases none of these rates were estimated from. 6 replacement case(s), authored the same day and marked in their notes, bring the family back to the 24-case floor the runner enforces.",
   "labelling": "LLM-authored and LLM-labelled against the documented definition on 2026-09-04; each note states the ratio and the maximum that decided the label.",
+  "labelBasis": "definition",
   "authored": "2026-09-04",
   "counts": {
     "n": 24,

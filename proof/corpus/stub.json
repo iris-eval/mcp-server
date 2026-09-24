@@ -7,6 +7,7 @@
   "definition": "no_stub_output — the output is placeholder or stub content in place of real work: TODO/FIXME/TBD-style markers, content omitted for brevity, empty or pass-only bodies, comment-described behaviour, always-true guards, self-satisfying tests, hardcoded fake returns. Diffs, prose about markers and complete work are negative. Positive = the rule should FAIL the output.",
   "source": "iris proof corpus v0.1, post-review hygiene edition (2026-08-11); converted by proof/tools/convert-v0.mjs — do not hand-edit",
   "labelling": "Gold by dual annotation (two independent contexts of the same model) with adjudication of disagreements; see proof/README.md for what that does and does not establish. Credential-shaped values are stored as {{SLOT}} placeholders with a character-class mask and regenerated at run time.",
+  "labelBasis": "reading",
   "counts": {
     "n": 89,
     "positive": 42,

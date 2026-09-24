@@ -249,7 +249,6 @@ export function compose(
   const decided = path.find((n) => n.decided);
   const riskNode = path.find((n) => n.node === 'risk');
   const risk = riskNode?.risk ?? null;
-  const t = tau(cfg.falsePassCost);
   // Decisive only where the composite corpus measured the estimate to hold (./confidence.ts).
   const confidence: Verdict['confidence'] = risk === null ? undefined : confidenceCall(result, risk, cfg).confidence;
 

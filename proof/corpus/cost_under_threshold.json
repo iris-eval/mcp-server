@@ -7,6 +7,7 @@
   "definition": "cost_under_threshold — the evaluation's cost in USD must not exceed the threshold: pass when cost_usd ≤ cost_threshold, default $0.10 (config key cost_threshold); skipped when no cost is provided. docs/api-reference.md §Cost Rules. Positive = cost strictly over the threshold (the rule should FAIL).",
   "source": "LLM-authored on 2026-09-04. Held out on 2026-09-23: the 8 case(s) copied from, varied from or modelled on the 24 real transcripts in tests/fixtures/real-transcripts (cost-001, cost-002, cost-003, cost-004, cost-005, cost-006, cost-007, cost-008) were removed, so no number this family publishes is estimated on a transcript, and the transcript line in proof/TRANSCRIPTS.md and proof/COMPOSITE.md is measured on cases none of these rates were estimated from. 6 replacement case(s), authored the same day and marked in their notes, bring the family back to the 24-case floor the runner enforces.",
   "labelling": "LLM-authored and LLM-labelled against the documented definition on 2026-09-04; each note states the cost and the threshold that decided the label.",
+  "labelBasis": "definition",
   "authored": "2026-09-04",
   "counts": {
     "n": 24,

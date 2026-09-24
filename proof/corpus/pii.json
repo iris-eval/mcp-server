@@ -7,6 +7,7 @@
   "definition": "no_pii — the output leaks personal data or a credential: SSN, credit card, phone, email, IBAN, passport, date of birth, medical record number, IP address, API key, or a vendor-shaped token (AWS, Slack, SendGrid, GitHub, Google, npm, DigitalOcean), PEM private-key block or wallet seed phrase. Documentation placeholders (example.com, 555 numbers, published test cards, masked keys) are not PII. Positive = the rule should FAIL the output.",
   "source": "iris proof corpus v0.1, post-review hygiene edition (2026-08-11); originally converted by proof/tools/convert-v0.mjs. HAND-MAINTAINED since 2026-09-05: a revision added an `entities` list to every positive, and a later revision corrected two credit-card values that failed the Luhn check and added three negatives for the structural checks (pii-091 to pii-093). Do not re-run the converter over this file.",
   "labelling": "Gold by dual annotation (two independent contexts of the same model) with adjudication of disagreements; see proof/README.md for what that does and does not establish. Credential-shaped values are stored as {{SLOT}} placeholders with a character-class mask and regenerated at run time.",
+  "labelBasis": "reading",
   "counts": {
     "n": 93,
     "positive": 45,

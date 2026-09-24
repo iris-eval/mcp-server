@@ -20,6 +20,8 @@ import { hasUnfilledSlots, materialiseCase, type CorpusCaseRaw } from './materia
 export const CORPUS_DIR = 'proof/corpus';
 
 export type Label = 'positive' | 'negative';
+export type LabelBasis = 'reading' | 'definition';
+export const LABEL_BASES: readonly LabelBasis[] = ['reading', 'definition'];
 
 export interface CorpusFile {
   schemaVersion: 1;
@@ -37,6 +39,18 @@ export interface CorpusFile {
   source: string;
   /** How the labels were assigned and by whom. */
   labelling: string;
+  /**
+   * What a label is, which decides what a perfect score proves.
+   *   `reading`    — a reader's judgement of the failure itself, made without
+   *                  running the rule: agreement measures detection.
+   *   `definition` — the rule's documented definition applied independently
+   *                  (by script or by counting): agreement shows the code
+   *                  implements its definition, not that the definition
+   *                  catches what a reader would call the failure.
+   * The `labelling` statement above says which, in words; this is the same
+   * fact as data, so every surface that counts measured rules can split them.
+   */
+  labelBasis: LabelBasis;
   /** Optional: the date the family was authored/labelled (stage-3 families). */
   authored?: string;
   /** Optional: the config the runner must pass so the documented definition holds. */
@@ -99,6 +113,7 @@ export function validateCorpusFile(file: CorpusFile, fileName: string, registry:
   if (!file.definition) issues.push(`${where}: definition missing (state the documented definition the labels were judged against)`);
   if (!file.source) issues.push(`${where}: source missing`);
   if (!file.labelling) issues.push(`${where}: labelling statement missing`);
+  if (!LABEL_BASES.includes(file.labelBasis)) issues.push(`${where}: labelBasis must be "reading" (a reader's judgement of the failure) or "definition" (the rule's documented definition applied independently)`);
   if (!Array.isArray(file.cases)) {
     issues.push(`${where}: cases is not an array`);
     return issues;

@@ -7,6 +7,7 @@
   "definition": "cost_anomaly — the trace cost against this agent's own recent history. The baseline is the agent's most recent prior costed traces, newest first, at most 200; the statistic is the Iglewicz–Hoaglin modified z, 0.6745 · (cost − median) / MAD, and the rule FAILS when z is strictly greater than 3.5. When the MAD is zero (every recent trace cost the same) the fallback decides: FAIL when the cost is strictly more than 10% over the largest prior value. Fewer than twenty prior costed traces, or no history at all, is insufficient_history — the rule SKIPS and says so. Cheaper than usual is never anomalous. A measurement: it reports and never decides the verdict; cost_under_threshold stays the explicit dollar policy. Positive = the cost is anomalous against the agent's own baseline (the rule should FAIL).",
   "source": "Authored 2026-09-20. Baselines are synthetic arrays chosen so every label follows from arithmetic stated in the case note: a jittered baseline with median 0.010 and MAD 0.001 (A), a flat one (B), a heavy-tailed one (C), a dearer agent (D, median 0.050, MAD 0.0025), and a 205-entry one that exercises the 200-cost window (W).",
   "labelling": "Labelled 2026-09-20 against the documented definition by computing the statistic in each note; a conformance family — it measures that the formula is implemented right, not the badness of an output.",
+  "labelBasis": "definition",
   "authored": "2026-09-20",
   "counts": {
     "n": 27,
