@@ -268,9 +268,10 @@ export function LivePlayground({ ruleCounts }: { ruleCounts: RuleCounts }): Reac
                 Rules from Iris {result.vendoredFromVersion}, with the server&apos;s
                 full safety pattern libraries (this site builds from main, so it
                 can include rule changes not yet released). The playground takes
-                no tool calls, so the trajectory rules skip, and it averages the
-                rule scores instead of applying the server&apos;s weights and
-                critical veto.
+                no tool calls, so the trajectory rules skip. Its verdict fails on
+                any failing rule and its score is a plain average; the server
+                weights the rules, applies a critical veto, and lets advisory
+                rules inform without deciding.
               </p>
             </>
           )}

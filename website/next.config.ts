@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+const STATIC_CSP = [
+  "default-src 'none'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   trailingSlash: false,
   reactCompiler: true,
@@ -12,23 +20,20 @@ const nextConfig: NextConfig = {
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
         {
-          key: "Content-Security-Policy",
-          value: [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: https:",
-            "font-src 'self'",
-            "connect-src 'self' https://iris-eval.com",
-            "frame-ancestors 'none'",
-          ].join("; "),
-        },
-        {
           key: "Permissions-Policy",
           value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
         },
       ],
     },
+    // Pages get a per-request nonce policy from src/proxy.ts. Everything the
+    // proxy skips — the API, built assets, and files served from public/ —
+    // gets this fixed policy, which runs no script at all: none of those
+    // responses is a page that needs one, and an SVG or HTML file opened
+    // directly cannot run any.
+    ...["/api/:path*", "/_next/:path*", "/:path*\\.:ext([a-zA-Z0-9]+)"].map((source) => ({
+      source,
+      headers: [{ key: "Content-Security-Policy", value: STATIC_CSP }],
+    })),
   ],
   redirects: async () => [
     {

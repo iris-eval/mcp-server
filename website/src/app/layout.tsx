@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Space_Grotesk, Manrope, JetBrains_Mono } from "next/font/google";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { FEED_TITLE, FEED_URL } from "@/lib/feed";
@@ -54,11 +55,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>): React.ReactElement {
+}>): Promise<React.ReactElement> {
+  // Render per request, never prerender: src/proxy.ts puts a fresh script
+  // nonce in each request's Content-Security-Policy, and Next can only stamp
+  // it on the scripts of a page it renders for that request. A prerendered
+  // page would carry scripts without the nonce, which the policy blocks.
+  await connection();
   return (
     <html lang="en" suppressHydrationWarning>
       <body

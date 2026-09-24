@@ -53,6 +53,14 @@ describe('the compare list in the llms files is the compare registry', () => {
   });
 });
 
+describe('the site footer links the compare registry', () => {
+  it('renders its compare links from COMPARISONS, with no hand-typed compare page', () => {
+    const footer = read('website/src/components/footer.tsx');
+    expect(footer).toContain('COMPARISONS.map');
+    expect(footer).not.toMatch(/["'`]\/compare\/[a-z0-9-]+["'`]/);
+  });
+});
+
 describe('the tool list in llms-full.txt is the server\'s', () => {
   it('lists every tool the manifest lists, with the summary the server sends, and no other', async () => {
     const tools = (await manifestTools(root)) as Array<{ name: string; description: string }>;

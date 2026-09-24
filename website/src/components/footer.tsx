@@ -1,4 +1,5 @@
 import { IrisLogo } from "./iris-logo";
+import { COMPARISONS } from "@/lib/compare";
 
 export function Footer(): React.ReactElement {
   return (
@@ -99,16 +100,8 @@ export function Footer(): React.ReactElement {
                 Compare
               </h4>
               <ul className="mt-4 space-y-3 text-[13px]">
-                {[
-                  { label: "Iris vs Langfuse", href: "/compare/langfuse" },
-                  { label: "Iris vs LangSmith", href: "/compare/langsmith" },
-                  { label: "Iris vs Helicone", href: "/compare/helicone" },
-                  { label: "Iris vs Braintrust", href: "/compare/braintrust" },
-                  { label: "Iris vs Arize", href: "/compare/arize" },
-                  { label: "Iris vs DeepEval", href: "/compare/deepeval" },
-                  { label: "Iris vs Confident AI", href: "/compare/confident-ai" },
-                  { label: "Iris vs Patronus AI", href: "/compare/patronus-ai" },
-                ].map((l) => (
+                {/* Every compare page, from the registry the pages are built from. */}
+                {COMPARISONS.map((c) => ({ label: `Iris vs ${c.name}`, href: `/compare/${c.slug}` })).map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="text-text-secondary transition-colors hover:text-text-primary">{l.label}</a>
                   </li>
