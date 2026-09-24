@@ -91,3 +91,14 @@ export function ssnStructure(candidate: string): boolean {
   if (serial === '0000') return false;
   return true;
 }
+
+/**
+ * ssnStructure on the nine digits of a looser match — "SSN 123 45 6789",
+ * "123–45–6789", "SSN: 123456789". Every non-digit is dropped (the match
+ * carries its keyword, which has none), and anything but exactly nine
+ * digits is not an SSN.
+ */
+export function ssnDigits(candidate: string): boolean {
+  const digits = candidate.replace(/\D/g, '');
+  return digits.length === 9 && ssnStructure(`${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`);
+}

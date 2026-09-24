@@ -125,7 +125,7 @@ Categories: completeness, relevance, safety, cost.
 
 Rules: answersTheAsk, askCoverage, costAnomaly, costUnderThreshold, expectedCoverage, groundedInReads, keywordOverlap, maxSteps, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionCompliance, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, sentenceCount, stepBudget, toolChoice, toolSequence, topicConsistency, validToolArguments, verbosityRatio.
 
-Safety depth: 21 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 37 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
+Safety depth: 21 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 38 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Evaluator accuracy
 
