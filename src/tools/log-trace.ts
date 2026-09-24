@@ -7,6 +7,7 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 import { bestEffortExport } from '../otel/lazy.js';
 import { strictInput, strictNested } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
 import { traceUri } from '../resources/uris.js';
 import type { EvalEngine } from '../eval/engine.js';
@@ -167,15 +168,15 @@ export const logTraceInputShape = {
   framework: z.string().optional().describe('Agent framework identifier (e.g., langchain, autogen, custom)'),
   input: z.string().optional().describe('Agent input text — the user prompt or upstream input that produced this output'),
   output: z.string().optional().describe('Agent output text — what the agent produced (pass to evaluate_output for scoring)'),
-  tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made during execution, in order, each { tool_name, input?, output?, latency_ms?, error? } — what the trajectory rules judge; evaluate_output reuses them when given this trace_id'),
+  tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made, in order, each { tool_name, input?, output?, latency_ms?, error? }; the trajectory rules judge them'),
   latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
   token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
   cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
   metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
-  tools: toolsCatalogueSchema.optional().describe('What the agent COULD have called — your MCP tools/list result, pasted verbatim: [{ name, description?, inputSchema, annotations? }]. Stored on the trace and reused by evaluate_output when given this trace_id. Without it a tool call can be seen but not CHECKED, and the rules that judge argument validity skip rather than pass'),
-  run: z.string().optional().describe('Name the batch this execution belongs to — a CI job id, a nightly sweep, an afternoon of manual pokes. Two runs of the same agent can then be compared with compare_runs. Never inferred: a guessed grouping produces a comparison nobody can act on'),
-  case_key: z.string().optional().describe('What makes this the same QUESTION as a trace in another run — a fixture name, a test id. Supplying it PAIRS the two, and a paired comparison sees a regression an unpaired one cannot. Omit it and a key is derived from the input, so pairing still works'),
-  session_id: z.string().min(1).max(200).optional().describe('The conversation this turn belongs to — the same id on every turn groups them: the trace drawer shows the other turns, get_traces filters by session, compare_traces can group by it. Read from the SEP-414 baggage session_id when omitted'),
+  tools: toolsCatalogueSchema.optional().describe('Your MCP tools/list result, verbatim; lets the rules check call arguments later'),
+  run: z.string().optional().describe('The batch this execution belongs to (a CI job id, a sweep); compare_runs compares two runs'),
+  case_key: z.string().optional().describe('What makes this the same question across runs (a fixture or test id); pairs traces. Derived from input when omitted'),
+  session_id: z.string().min(1).max(200).optional().describe('The conversation this turn belongs to; groups its turns. Read from SEP-414 baggage when omitted'),
   spans: z.array(SpanSchema).optional().describe('Detailed execution spans (hierarchical span tree with timings, attributes, events); a span without start_time takes the trace timestamp'),
   timestamp: z.string().optional().describe('Trace timestamp (ISO 8601); defaults to now() when omitted'),
   /*
@@ -184,8 +185,8 @@ export const logTraceInputShape = {
    * taught agents to log and forget: a trace with no verdict looks like a
    * dead server. Declared HERE so both doors inherit it.
    */
-  evaluate: z.boolean().default(false).describe('Score the stored trace in this same call, under exactly the rules evaluate_output runs (every bundle unless eval_type names one). Requires output. The response then carries the full evaluation — verdict, basis, every rule result, coverage — and links it'),
-  eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('With evaluate: true, the bundle to run — completeness | relevance | safety | cost | custom | all. Omitted: every bundle runs and the evaluation carries a note saying the default ran'),
+  evaluate: z.boolean().default(false).describe('Also score the stored trace in this call, exactly as evaluate_output would; requires output'),
+  eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('With evaluate: true, the bundle to run (default: every bundle, noted in the response)'),
 };
 
 export const logTraceOutputSchema = z.looseObject({
@@ -206,19 +207,14 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       title: 'Log Trace',
       description: describeTool({
         summary:
-          'Store one agent execution — input, output, tool calls, spans, cost, latency, token usage — and get the trace_id every later call keys on.',
+          'Store one agent execution (input, output, tool calls, spans, cost, tokens) and get the trace_id later calls key on.',
         does:
-          'Writes one trace row to local SQLite and mints a fresh trace_id; nothing is deduplicated, so resubmitting the same payload stores a second trace. ' +
-          'Only agent_name is required. Store what you have: tool_calls so the trajectory rules can later judge what the agent did, cost_usd and token_usage so the cost rules can, input and output so everything else can. ' +
-          'Pass evaluate: true (with output) to score the stored trace in this same call under exactly the rules evaluate_output runs; the response then carries the full evaluation and links it. ' +
-          'When IRIS_OTEL_ENDPOINT is set the trace is also exported to that collector, best-effort and asynchronous; the local write never waits on it. ' +
-          'Traces are immutable: there is no update path. In stdio mode nothing authenticates the caller; over HTTP a Bearer token is required only when an API key is configured.',
+          'Writes one immutable trace to local storage; nothing is deduplicated. Only agent_name is required; store tool_calls, tools, cost and input/output so the rules can judge them. evaluate: true (with output) also scores it in this call, exactly as evaluate_output would.',
         whenNot:
-          'For a transient log line (use your logger). To score a trace you already stored: evaluate_output with its trace_id, which reuses the stored tool_calls and tools. To change a stored trace: delete_trace and log again.',
+          'To score a stored trace (evaluate_output with its trace_id). To change one (delete_trace, then log again).',
         returns: logTraceOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR when the database cannot be written. IRIS_INVALID_ARGUMENT when evaluate is true without output, or on a server with no eval engine — nothing is stored in either case. An unknown argument or a malformed span or tool_calls entry is refused before the handler runs, naming the valid keys. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_STORAGE_ERROR; IRIS_INVALID_ARGUMENT when evaluate is true without output. Unknown or malformed arguments are refused, naming the valid keys. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           evaluate_output: 'score the stored output',
           get_traces: 'query what was logged',
@@ -231,7 +227,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       // trace_id is rejected there with a 400 whose message says the server
       // mints it, exactly as this tool mints its own in the handler below.
       inputSchema: strictInput(logTraceInputShape),
-      outputSchema: logTraceOutputSchema,
+      outputSchema: advertisedOutput(logTraceOutputSchema, NESTED_SHAPES_NOTE),
       annotations: {
         readOnlyHint: false,     // Writes a row to storage
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete

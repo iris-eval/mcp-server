@@ -2,7 +2,9 @@
  * The published response schema, rendered from the one that validates (arc 9, N-22).
  *
  * `evaluateOutputResponseSchema` is what `evaluate_output` actually returns
- * and what the tool advertises as its `outputSchema`. Until now a consumer
+ * and parses every answer through; tools/list advertises only its top level
+ * (src/tools/advertise.ts), so this file is where its full shape is published.
+ * Until now a consumer
  * who wanted to generate types, validate a stored response, or write a
  * client in another language had to read the zod source. This renders that
  * same schema as JSON Schema 2020-12 and publishes it at

@@ -1,20 +1,22 @@
+import type { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
-import { registerLogTraceTool } from './log-trace.js';
+import { registerLogTraceTool, logTraceOutputSchema } from './log-trace.js';
 import { registerEvaluateOutputTool } from './evaluate-output.js';
-import { registerGetTracesTool } from './get-traces.js';
-import { registerCompareRunsTool } from './compare-runs.js';
-import { registerEvaluateRunsTool } from './evaluate-runs.js';
-import { registerCompareTracesTool } from './compare-traces.js';
-import { registerListRulesTool } from './list-rules.js';
-import { registerDeployRuleTool } from './deploy-rule.js';
-import { registerDeleteRuleTool } from './delete-rule.js';
-import { registerDeleteTraceTool } from './delete-trace.js';
-import { registerEvaluateWithLLMJudgeTool } from './evaluate-with-llm-judge.js';
-import { registerVerifyCitationsTool } from './verify-citations.js';
+import { registerGetTracesTool, getTracesOutputSchema } from './get-traces.js';
+import { registerCompareRunsTool, compareRunsOutputSchema } from './compare-runs.js';
+import { registerEvaluateRunsTool, evaluateRunsOutputSchema } from './evaluate-runs.js';
+import { registerCompareTracesTool, compareTracesOutputSchema } from './compare-traces.js';
+import { registerListRulesTool, listRulesOutputSchema } from './list-rules.js';
+import { registerDeployRuleTool, deployRuleOutputSchema } from './deploy-rule.js';
+import { registerDeleteRuleTool, deleteRuleOutputSchema } from './delete-rule.js';
+import { registerDeleteTraceTool, deleteTraceOutputSchema } from './delete-trace.js';
+import { registerEvaluateWithLLMJudgeTool, judgeOutputSchema } from './evaluate-with-llm-judge.js';
+import { registerVerifyCitationsTool, verifyCitationsOutputSchema } from './verify-citations.js';
 import { dormantRulesFrom } from '../eval/dormant.js';
+import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 
 /**
@@ -38,6 +40,26 @@ export const TOOL_NAMES = [
   'evaluate_runs',
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
+
+/**
+ * The full output schema of every tool — the one each response is parsed
+ * through. tools/list advertises only its top level (src/tools/advertise.ts);
+ * the meaning of each field is served from here in iris://capabilities.
+ */
+export const OUTPUT_SCHEMAS: Record<ToolName, z.ZodObject<z.ZodRawShape>> = {
+  log_trace: logTraceOutputSchema,
+  evaluate_output: evaluateOutputResponseSchema,
+  get_traces: getTracesOutputSchema,
+  list_rules: listRulesOutputSchema,
+  deploy_rule: deployRuleOutputSchema,
+  delete_rule: deleteRuleOutputSchema,
+  delete_trace: deleteTraceOutputSchema,
+  evaluate_with_llm_judge: judgeOutputSchema,
+  verify_citations: verifyCitationsOutputSchema,
+  compare_runs: compareRunsOutputSchema,
+  compare_traces: compareTracesOutputSchema,
+  evaluate_runs: evaluateRunsOutputSchema,
+};
 
 export function registerAllTools(
   server: McpServer,

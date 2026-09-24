@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 import { clusterBootstrap, wilson } from '../eval/stats.js';
 
@@ -58,18 +59,15 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
     {
       title: 'Compare Traces',
       description: describeTool({
-        summary: 'How reliably does the agent answer the same question? Groups stored evaluations by case and reports per-case pass rates, flakiness, and an interval that respects repeats.',
+        summary:
+          'How reliably does the agent answer the same question? Per-case pass rates, flaky cases, and an interval that respects repeats.',
         does:
-          'Groups every evaluation by case_key (supplied on log_trace, or derived from the input) and reports how often each case passed, with a 95% Wilson interval per case. ' +
-          'A case answered both ways is FLAKY, least reliable first: that is where determinism is worth buying, and a single run cannot show it. ' +
-          'The overall rate uses a cluster bootstrap over CASES, not pooled attempts — ten repeats of one question are one question, and pooling claims an n the data never earned. The pooled figure is shown beside it. ' +
-          'Deterministic, local, no model call.',
+          'Groups evaluations by case_key (or session) and reports each case\'s pass rate with a Wilson interval, the flaky cases least reliable first, and an overall rate bootstrapped over cases rather than pooled attempts. Deterministic, local, no model call.',
         whenNot:
-          'To compare two runs against each other (compare_runs). To score an output (evaluate_output). To read the traces themselves (get_traces).',
+          'To compare two runs (compare_runs). To score an output (evaluate_output).',
         returns: compareTracesOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR when the database cannot be read. No matching evaluations is NOT an error: cases is 0 and the summary says nothing matched. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_STORAGE_ERROR. No matching evaluations is cases 0, not an error. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           compare_runs: 'compare two runs against each other',
           log_trace: 'record an execution with a case_key',
@@ -87,7 +85,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
           .optional()
           .describe('read the rate for ONE question: only evaluations that judged it count, and an attempt passes when every rule answering it passed — not the composed verdict'),
       }),
-      outputSchema: compareTracesOutputSchema,
+      outputSchema: advertisedOutput(compareTracesOutputSchema),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

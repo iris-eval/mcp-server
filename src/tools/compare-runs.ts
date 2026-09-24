@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT, type TenantId } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 import { compareRuns, RULE_ALPHA } from '../eval/compare.js';
 import { irisError } from './errors.js';
@@ -103,26 +104,18 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
     {
       title: 'Compare Runs',
       description: describeTool({
-        summary: 'Did this change make the agent worse? Compares two runs of stored evaluations with an interval — or says the data cannot tell, or that the runs are equivalent within a margin.',
+        summary:
+          'Did this change make the agent worse? Compares two runs: worse, better, equivalent, or too little evidence to tell.',
         does:
-          'Reads every evaluation in each run (most recent per trace) and compares pass rates. ' +
-          'When the runs share case keys it PAIRS them and runs McNemar exact on the cases that disagreed (named, with the rules that flipped), which sees a change an unpaired test cannot; else a Newcombe interval on two proportions. ' +
-          'Says "not enough evidence" — with the smallest change that many cases could have seen — rather than guessing. ' +
-          `Tests each rule one-sided and corrects the p-values together (Benjamini–Hochberg): a rule is marked worse only at q ≤ ${RULE_ALPHA}. ` +
-          'States equivalence within equivalence_margin (default: the smallest detectable difference) when the 90% interval lies inside ±δ. ' +
-          'Refuses runs that measure different things (ruleset, config, engine minor, agent), naming which; force compares anyway. ' +
-          'Deterministic, local, no model call.',
+          'Pairs cases by case_key (McNemar exact), else uses a Newcombe interval; flags a rule worse only after a multiple-testing correction. Refuses runs that measure different things unless force is true. Local, no model call.',
         whenNot:
-          'To score one output (evaluate_output). To find the traces (get_traces). To gate a deploy: this tool reports; whether a difference blocks is your policy.',
+          'To score one output (evaluate_output). As a gate: it reports; blocking is your policy.',
         returns: compareRunsOutputSchema,
         errors:
-          'IRIS_INVALID_ARGUMENT when a run id is empty, no baseline is pinned for an omitted before, equivalence_margin is outside (0, 1], or dataset names none. IRIS_STORAGE_ERROR when the database cannot be read. ' +
-          'An unknown or empty run is not an error: n is 0 and the summary says which. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_INVALID_ARGUMENT (empty run id, no baseline, bad margin or dataset); IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
-          log_trace: 'record an execution into a run',
-          get_traces: 'find the traces in a run',
-          evaluate_output: 'score one output',
+          log_trace: 'record into a run',
+          get_traces: 'find a run\'s traces',
         },
       }),
       inputSchema: strictInput(
@@ -132,7 +125,7 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
           force: z
             .boolean()
             .optional()
-            .describe('compare even when the runs are not strictly comparable (different ruleset, configuration, engine minor or agent). The response still names what changed — a pass rate that moved because the RULES changed is not a regression in your agent'),
+            .describe('Compare even when the runs are not strictly comparable; the response still names what changed'),
           equivalence_margin: z
             .number()
             .gt(0)
@@ -143,10 +136,10 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
             .string()
             .min(1)
             .optional()
-            .describe('Restrict both runs to the case keys in this dataset (its id or label — POST /api/v1/datasets promotes the case keys of a run into one). Pairing and every count then cover only those cases; the response says how many rows each run matched'),
+            .describe('Restrict both runs to the case keys of this dataset (its id or label); every count then covers only those cases'),
         },
       ),
-      outputSchema: compareRunsOutputSchema,
+      outputSchema: advertisedOutput(compareRunsOutputSchema),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

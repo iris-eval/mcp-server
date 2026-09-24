@@ -20,6 +20,7 @@ import { createIrisServer } from '../../src/server.js';
 import { createCustomRuleStore } from '../../src/custom-rule-store.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
+import { toolGuide } from '../../src/tools/guide.js';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -280,8 +281,9 @@ describe('tool contracts (MCP surface)', () => {
     it('the description documents the "all" bundle and the categories field', async () => {
       const { tools } = await client.listTools();
       const tool = tools.find((t) => t.name === 'evaluate_output')!;
-      expect(tool.description).toContain('or all (the default): every bundle plus deployed and inline custom rules');
-      expect(tool.description).toContain('`categories`');
+      expect(tool.description).toContain('or all (the default)');
+      expect(toolGuide().evaluate_output.does).toContain('or all (the default): every bundle plus deployed and inline custom rules');
+      expect(tool.description).toMatch(/Returns\. JSON: [^\n]*\bcategories\b/);
       const evalType = (tool.inputSchema as { properties: Record<string, { enum?: string[] }> }).properties.eval_type;
       expect(evalType.enum).toContain('all');
     });
@@ -384,8 +386,8 @@ describe('tool contracts (MCP surface)', () => {
       const tool = tools.find((t) => t.name === 'deploy_rule')!;
       expect(tool.description).not.toContain('OR eval_type="custom"');
       expect(tool.description).toContain('eval_type says WHEN it fires (that bundle, and eval_type="all")');
-      expect(tool.description).toContain('snake_case');
-      expect(tool.description).toContain('`replaced`');
+      expect(toolGuide().deploy_rule.does).toContain('snake_case');
+      expect(tool.description).toMatch(/Returns\. JSON: [^\n]*\breplaced\b/);
     });
 
     it('matches the engine: a completeness rule does not fire on eval_type="custom" but does on "all"', async () => {

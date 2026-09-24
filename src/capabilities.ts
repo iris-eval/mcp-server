@@ -6,9 +6,11 @@
  * same facts: the version, the rule roster with what each rule needs and
  * its published accuracy, the custom-rule count, the judge state with the
  * steps that enable it, the citation verifier's fetch posture, the
- * dashboard's address, the limits a caller will hit, and the tools,
- * resources and prompts that are registered. Provider name only, never a
- * key — this object is served on a dashboard others may see.
+ * dashboard's address, the limits a caller will hit, the tools,
+ * resources and prompts that are registered, and the long form of every
+ * tool (`toolGuide`) that the capped tool descriptions point to. Provider
+ * name only, never a key — this object is served on a dashboard others
+ * may see.
  */
 import type { IrisConfig } from './types/config.js';
 import type { EvalEngine } from './eval/engine.js';
@@ -20,6 +22,7 @@ import { REGEX_MATCH_BUDGET_MS } from './eval/rules/regex-sandbox.js';
 import { JUDGE_ENABLE_STEPS, judgeState, type JudgeProvider } from './judge-enablement.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { TOOL_NAMES } from './tools/index.js';
+import { toolGuide, type ServedToolGuide } from './tools/guide.js';
 import { RESOURCE_URIS } from './resources/uris.js';
 import { EVALUATE_MY_AGENT_PROMPT } from './instructions.js';
 import { webhookSettings, type WebhookSettings } from './notify/config.js';
@@ -63,6 +66,8 @@ export interface Capabilities {
   /** The outbound webhook (arc 9, N-16): the events and the receiver's host, never the URL's token or the secret; null when none. */
   notify: { webhook: WebhookSettings | null };
   tools: readonly string[];
+  /** Per tool: behaviour, when not to use it, errors, parameters and output fields — the detail tools/list does not carry. */
+  toolGuide: Record<string, ServedToolGuide>;
   resources: readonly string[];
   prompts: readonly string[];
 }
@@ -124,6 +129,7 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
     retention: { days: config.retention.days, sweepIntervalHours: config.retention.sweepIntervalHours },
     notify: { webhook: webhookSettings(config.notify?.webhook) },
     tools: TOOL_NAMES,
+    toolGuide: toolGuide(),
     resources: RESOURCE_URIS,
     prompts: [EVALUATE_MY_AGENT_PROMPT],
   };
