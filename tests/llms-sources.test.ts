@@ -99,7 +99,7 @@ describe('one install form on every rendered surface', () => {
         expect(m[2], `${file}: ${m[0]}`).toBe(pinned);
       }
       for (const a of [...argsArrays, ...toml]) {
-        expect(a, `${file}: ${a}`).toMatch(new RegExp(`^"-y", "${pinned.replace(/[.@/]/g, '\\$&')}"`));
+        expect(a.startsWith(`"-y", "${pinned}"`), `${file}: ${a}`).toBe(true);
       }
     }
   });
