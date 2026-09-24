@@ -23,7 +23,7 @@ import { parseDisclosure } from '../scripts/claims/generators/security-policy.mj
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { computeMaintenance, generate as generateMaintenance, percentile, sampleLive, wantsLive } from '../scripts/claims/generators/issues.mjs';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
-import { proofSummary, render, renderAll, slotsFrom, toolGuides, TARGETS, BLOCKS } from '../scripts/claims/render-llms.mjs';
+import { proofSummary, render, renderAll, slotsFrom, TARGETS, BLOCKS } from '../scripts/claims/render-llms.mjs';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8');
@@ -206,18 +206,21 @@ describe('maintenance — measured issue-close latency', () => {
 });
 
 describe('llms.txt / llms-full.txt — rendered from templates + the truthbase', () => {
-  // The render imports the tool guide from the server source; the first import
-  // loads the server's module graph, so it is paid once here, not per test.
-  beforeAll(() => toolGuides(root), 60_000);
+  // The render imports the tool guide from the server source, which loads the
+  // server's module graph; render once here and let each test read the result.
+  let renderedOnce: Array<{ template: string; output: string; text: string }>;
+  beforeAll(async () => {
+    renderedOnce = (await renderAll(root)) as typeof renderedOnce;
+  }, 60_000);
   it('the committed files equal the render (what `npm run llms:check` enforces in CI)', async () => {
-    const rendered = (await renderAll(root)) as Array<{ output: string; text: string }>;
+    const rendered = renderedOnce;
     // The rendered targets in their order, then the blocks inside hand-written files.
     expect(rendered.map(r => r.output)).toEqual([...TARGETS.map((t: { output: string }) => t.output), ...BLOCKS.map((b: { file: string }) => b.file)]);
     for (const r of rendered) expect(read(r.output)).toBe(r.text);
   });
 
   it('both llms files state the shipped version and release date (v0.5.0 was live on v0.6.0 day)', async () => {
-    const rendered = (await renderAll(root)) as Array<{ output: string; text: string }>;
+    const rendered = renderedOnce;
     const llms = rendered.filter(r => r.output.startsWith('website/public/'));
     expect(llms).toHaveLength(2);
     for (const r of llms) {
@@ -226,7 +229,7 @@ describe('llms.txt / llms-full.txt — rendered from templates + the truthbase',
   });
 
   it('the two skill files are one rendered source and differ only where the targets differ', async () => {
-    const rendered = (await renderAll(root)) as Array<{ template: string; output: string; text: string }>;
+    const rendered = renderedOnce;
     const skills = rendered.filter(r => r.template === 'skills/iris-eval/SKILL.template.md');
     expect(skills.map(r => r.output).sort()).toEqual(['claude-plugin/skills/iris-eval/SKILL.md', 'skills/iris-eval/SKILL.md']);
     for (const r of skills) expect(read(r.output)).toBe(r.text);
