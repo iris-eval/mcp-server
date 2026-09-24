@@ -146,6 +146,10 @@ export const evaluateOutputResponseSchema = z.looseObject({
     critical_skipped: z.array(z.string()).optional().describe('critical rules that could not judge; treat as unknown'),
     categories: z.record(z.string(), evalCategoryResultSchema).optional().describe('per-bundle verdicts for eval_type all'),
     note: z.string().optional().describe('present when eval_type was omitted'),
+    rules_changed: z
+      .looseObject({ count: z.number().int().positive(), last_change_at: z.string(), since: z.string(), audit: z.literal('iris://audit') })
+      .optional()
+      .describe('present when deployed custom rules changed since the server started: count, last change, iris://audit; never alters the verdict'),
   });
 
 export type EvaluateOutputResponse = z.infer<typeof evaluateOutputResponseSchema>;

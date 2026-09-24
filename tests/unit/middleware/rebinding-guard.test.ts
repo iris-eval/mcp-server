@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import express from 'express';
 import { request as httpRequest } from 'node:http';
+import { connect } from 'node:net';
 import {
   createRebindingGuard,
   isLoopbackHost,
@@ -46,6 +47,34 @@ async function probe(
       );
       req.once('error', reject);
       req.end();
+    });
+  } finally {
+    server.close();
+  }
+}
+
+/*
+ * node:http always adds a Host header, so the missing-Host case is written
+ * to the socket by hand. HTTP/1.0 is used because Node's parser answers an
+ * HTTP/1.1 request without Host with its own 400 before any middleware
+ * runs; HTTP/1.0 reaches the guard, which is the path being tested.
+ */
+async function rawProbe(guard: { host: string }, rawRequest: string): Promise<number> {
+  const app = express();
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  const port = (server.address() as { port: number }).port;
+  app.use(createRebindingGuard({ port, host: guard.host }));
+  app.get('/api/v1/traces', (_req, res) => res.json({ ok: true }));
+
+  try {
+    return await new Promise<number>((resolve, reject) => {
+      const socket = connect(port, '127.0.0.1', () => socket.write(rawRequest));
+      let data = '';
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk) => (data += chunk));
+      socket.once('end', () => resolve(Number(/^HTTP\/1\.\d (\d{3})/.exec(data)?.[1] ?? 0)));
+      socket.once('error', reject);
     });
   } finally {
     server.close();
@@ -121,6 +150,20 @@ describe('DNS-rebinding guard', () => {
     expect(await probe({ host: '127.0.0.1' }, { host: 'attacker-controlled.example.com' })).toBe(
       403,
     );
+  });
+
+  it('rejects a request with NO Host header when bound to loopback', async () => {
+    expect(await rawProbe({ host: '127.0.0.1' }, 'GET /api/v1/traces HTTP/1.0\r\n\r\n')).toBe(403);
+  });
+
+  it('rejects an EMPTY Host header when bound to loopback', async () => {
+    expect(
+      await rawProbe({ host: '127.0.0.1' }, 'GET /api/v1/traces HTTP/1.0\r\nHost: \r\n\r\n'),
+    ).toBe(403);
+  });
+
+  it('still allows a missing Host when bound beyond loopback', async () => {
+    expect(await rawProbe({ host: '0.0.0.0' }, 'GET /api/v1/traces HTTP/1.0\r\n\r\n')).toBe(200);
   });
 
   it('does NOT enforce Host when bound beyond loopback (proxy deployments)', async () => {

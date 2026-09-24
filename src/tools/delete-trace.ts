@@ -34,6 +34,8 @@ export const deleteTraceOutputSchema = z.looseObject({
 export function registerDeleteTraceTool(
   server: McpServer,
   storage: IStorageAdapter,
+  /** The rule store's audit log, so a deletion lands where iris://audit and the Audit page read. */
+  auditPath?: string,
 ): void {
   server.registerTool(
     'delete_trace',
@@ -67,7 +69,10 @@ export function registerDeleteTraceTool(
     guarded(async (args) => {
       const deleted = await storage.deleteTrace(LOCAL_TENANT, args.trace_id);
       if (deleted) {
-        appendAuditEntry({ ts: new Date().toISOString(), tenantId: LOCAL_TENANT, action: 'trace.delete', user: 'local', traceId: args.trace_id });
+        appendAuditEntry(
+          { ts: new Date().toISOString(), tenantId: LOCAL_TENANT, action: 'trace.delete', user: 'local', traceId: args.trace_id },
+          auditPath,
+        );
       }
       return respond(deleteTraceOutputSchema, { deleted, trace_id: args.trace_id });
     }),

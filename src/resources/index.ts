@@ -39,6 +39,8 @@ export function registerAllResources(
   server: McpServer,
   storage: IStorageAdapter,
   capabilities: () => Capabilities,
+  /** The audit log the rule store writes; iris://audit reads the same file the dashboard's Audit page does. */
+  auditPath?: string,
 ): void {
   server.registerResource(
     'capabilities',
@@ -99,7 +101,7 @@ export function registerAllResources(
       mimeType: 'application/json',
     },
     async (uri) => {
-      const { entries, total } = readAuditLog({ limit: 100 });
+      const { entries, total } = readAuditLog({ limit: 100, filePath: auditPath });
       return json(uri.href, { total, entries: entries.filter((e) => (e.tenantId ?? LOCAL_TENANT) === LOCAL_TENANT) });
     },
   );

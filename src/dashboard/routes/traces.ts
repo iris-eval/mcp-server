@@ -102,6 +102,7 @@ export function registerTraceRoutes(
       const { response } = await evaluateStoredTrace(options.evalEngine, storage, tenantId, trace as Trace & { output: string }, {
         evalType: body.eval_type,
         dormant: options?.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
+        rulesChanged: options?.customRuleStore?.changesSinceStart(tenantId),
       });
       res.status(201).json({ trace_id: traceId, status: 'stored', evaluation: response });
     } catch (err) {

@@ -12,6 +12,7 @@ import { evaluationLinks, guarded, respond } from './respond.js';
 import { traceUri } from '../resources/uris.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { DormantRule } from '../eval/dormant.js';
+import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 import { evaluateStoredTrace } from '../eval/ingest.js';
 import { sessionFromBaggage, traceContextOfCall, withTraceContext } from '../otel/trace-context.js';
 import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
@@ -198,6 +199,8 @@ export const logTraceOutputSchema = z.looseObject({
 export interface LogTraceOptions {
   /** The quarantined gating rules on this server, for coverage.dormant when evaluate is true. */
   dormant?: () => DormantRule[];
+  /** Deployed-rule changes since the server started, for evaluation.rules_changed. */
+  rulesChanged?: () => RuleChangesSinceStart | null;
 }
 
 export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter, evalEngine?: EvalEngine, options?: LogTraceOptions): void {
@@ -314,6 +317,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       const { result, response } = await evaluateStoredTrace(evalEngine, storage, LOCAL_TENANT, trace as typeof trace & { output: string }, {
         evalType: args.eval_type,
         dormant: options?.dormant?.(),
+        rulesChanged: options?.rulesChanged?.(),
       });
       return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored', evaluation: response }, [
         ...evaluationLinks(result.id, traceId).filter((l) => l.uri !== traceLink.uri),

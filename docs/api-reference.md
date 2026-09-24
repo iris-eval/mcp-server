@@ -238,6 +238,8 @@ Every rule result carries `role` — what the composer did with it here: `gate` 
 
 The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
 
+**Rules that changed while the server ran are named.** When a custom rule was deployed, deleted, enabled or disabled since the server started, the response carries `rules_changed`: `{ count, last_change_at, since, audit: "iris://audit" }` — how many changes, when the last one was, when counting began, and where each change is recorded with who made it. An agent that can deploy or disable rules can shape the rules it is then judged by; this is how a reader of the verdict sees that it might have. It never changes `passed`, `score` or `verdict`, and it is absent when the rules are the ones the server started with (in demo mode, the rules the demo seeds are its starting set). It belongs to the verdict as produced: `log_trace` with `evaluate: true`, `evaluate_runs` and `POST /api/v1/traces` carry it too, and a stored evaluation read back later (`iris://evaluations/{id}`) does not. Changes made by another process against the same rules file are not counted, because this server does not run them until it restarts.
+
 #### Example Request
 
 ```json
@@ -626,6 +628,8 @@ Deterministic, local, no model call, nothing spent.
 }
 ```
 
+When a deployed custom rule changed since the server started, the response also carries `rules_changed`, the same object [`evaluate_output`](#evaluate_output) returns: the re-score ran under the rules as they are now, and this says they moved.
+
 ---
 
 ### evaluate_with_llm_judge
@@ -800,7 +804,7 @@ Returns dashboard summary with key metrics and trends.
 
 ### iris://audit
 
-The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. The same log the dashboard's Audit page shows, readable by the agent that made the change and by whoever reviews it.
+The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. The same file the dashboard's Audit page shows (in demo mode, the demo's own audit log, never the real one), readable by the agent that made the change and by whoever reviews it. A verdict produced after a rule change points here through its `rules_changed` field.
 
 ---
 
@@ -912,7 +916,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 
 `tool_calls` on the body are forwarded into the evaluation, so the trajectory rules judge the same trajectory the request just stored.
 
-`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `verdict`, `interpretations`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, `categories` when `eval_type` is `all` (a bundle nothing judged is `passed: null` / `score: null` there), and `note` when `eval_type` was omitted.
+`evaluation` is present only when `evaluate: true`. It carries the same fields the `evaluate_output` tool returns: `score`, `passed`, `rule_results` (each with `category` when `eval_type` is `all`), `verdict`, `interpretations`, `rules_evaluated`, `rules_skipped`, `insufficient_data`, plus `critical_failures` / `critical_skipped` when a critical rule failed or skipped, `categories` when `eval_type` is `all` (a bundle nothing judged is `passed: null` / `score: null` there), and `note` when `eval_type` was omitted, and `rules_changed` when a deployed rule changed since the server started.
 
 #### Error Responses
 
@@ -920,7 +924,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 |--------|---------|
 | `400` | Invalid body: `{ "error": "Invalid trace payload", "details": [ ...zod issues... ] }` |
 | `401` / `403` | Missing / wrong `Authorization: Bearer <key>` when the server was started with an API key; `403` is also the DNS-rebinding guard rejecting a hostile `Origin`/`Host` |
-| `413` | Body over the request size limit (default `1mb`) |
+| `413` | Body over the request size limit (`security.requestSizeLimit`, default `1mb`). The MCP stdio transport enforces the same limit: an oversized request is answered with JSON-RPC error `-32600` naming its size, and the session stays open |
 | `429` | Shared API rate limit exceeded — back off and retry |
 | `501` | `evaluate: true` on a server with no eval engine wired. The trace is **not** stored — retry without `evaluate` |
 
@@ -1273,7 +1277,7 @@ The same object as `iris://capabilities`, for the HTTP path. No key is ever incl
 
 ### GET /api/v1/health
 
-The one health contract (0.15.0). Unauthenticated by design — no key, no session, no rate limit — because it carries no trace content. `GET /health` on the MCP transport's port is built by the same function (`src/health.ts`) and answers the same shape, so a container `HEALTHCHECK`, a load balancer and a person read one thing.
+The one health contract (0.15.0). Unauthenticated by design — no key, no session, no rate limit — because it carries no trace content and no count of traces. `GET /health` on the MCP transport's port is built by the same function (`src/health.ts`) and answers the same shape, so a container `HEALTHCHECK`, a load balancer and a person read one thing.
 
 #### Response (200 -- every check ok)
 
@@ -1288,7 +1292,6 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
     "rules_store": "ok",
     "migrations": { "status": "ok", "applied": 11, "known": 11 }
   },
-  "trace_count": 142,
   "storage": "connected",
   "judge": { "enabled": false, "provider": null },
   "mode": "real"
@@ -1296,7 +1299,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
 ```
 
 - `driver` — the SQLite driver behind the store: `better-sqlite3` (the native addon, the default) or `node` (Node's built-in `node:sqlite`, chosen with `IRIS_SQLITE_DRIVER=node` or fallen back to when the native module cannot load); `null` on a transport started without storage.
-- `checks.storage` — the database answered a count (`trace_count` is that all-time count); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
+- `checks.storage` — the database answered a count. The count itself is not reported: this endpoint answers without a key, so it says whether the store works, not how much it holds (the number is `total` on the authenticated `GET /api/v1/traces`); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
 - `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
 - `version` is read from `package.json` at runtime; `judge` is the provider name when a key is present, never the key; `mode` is `demo` when serving the disposable demo database.
 

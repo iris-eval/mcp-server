@@ -278,3 +278,29 @@ describe('clearDemoData', () => {
     expect(removed).toEqual([]);
   });
 });
+
+describe('demo verdicts do not report the seeded rules as a change', () => {
+  it('the seeder deploys its rules, keeps the audit rows, and leaves no rules_changed behind', async () => {
+    const { createCustomRuleStore } = await import('../../../src/custom-rule-store.js');
+    const { toEvaluationResponse } = await import('../../../src/eval/response.js');
+    const { EvalEngine } = await import('../../../src/eval/engine.js');
+    const { defaultConfig } = await import('../../../src/config/defaults.js');
+    const store = createCustomRuleStore({ pathFor: () => demoCustomRulesPath(), auditPath: demoAuditLogPath() });
+    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+
+    await seedDemoData({ engine, customRuleStore: store, count: 20 });
+
+    expect(store.list(LOCAL_TENANT).length).toBeGreaterThan(0);
+    expect(readFileSync(demoAuditLogPath(), 'utf-8')).toContain('rule.deploy');
+    expect(store.changesSinceStart(LOCAL_TENANT)).toBeNull();
+
+    // What the demo serves: a verdict under the seeded rules carries no warning.
+    const result = await engine.evaluateAll({ output: 'The invoice went out on Tuesday.', input: 'Did the invoice go out?' });
+    expect(toEvaluationResponse(result, { rulesChanged: store.changesSinceStart(LOCAL_TENANT) })).not.toHaveProperty('rules_changed');
+
+    // A change made while exploring the demo is still counted.
+    const [first] = store.list(LOCAL_TENANT);
+    store.setEnabled(LOCAL_TENANT, first.id, !first.enabled);
+    expect(store.changesSinceStart(LOCAL_TENANT)?.count).toBe(1);
+  });
+});

@@ -23,6 +23,7 @@
 import { z } from 'zod';
 import { WEBHOOK_EVENTS, WEBHOOK_FORMATS } from '../notify/event-names.js';
 import type { IrisConfig } from '../types/config.js';
+import { parseSizeLimit } from '../utils/size-limit.js';
 
 const port = z.number().int().min(1).max(65535);
 const nonNegativeInt = z.number().int().min(0);
@@ -119,7 +120,9 @@ export const configFileSchema = z.strictObject({
           mcpKeyBy: z.enum(['ip', 'apiKey']).optional(),
         })
         .optional(),
-      requestSizeLimit: name.optional(),
+      requestSizeLimit: name
+        .refine((v) => parseSizeLimit(v) !== null, 'a size: a number of bytes, or a number with kb, mb or gb, e.g. "1mb"')
+        .optional(),
     })
     .optional(),
 });

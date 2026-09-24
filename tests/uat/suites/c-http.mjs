@@ -138,16 +138,16 @@ export async function runSuiteC(t) {
       return 'rejected, names "output"';
     });
 
-    await t.check('C6', 'GET /api/v1/summary totals agree with /traces and /health', async () => {
+    await t.check('C6', 'GET /api/v1/summary totals agree with /traces; /health discloses no count', async () => {
       const expected = state.traceIds.length;
       const summary = await getJson(port, '/api/v1/summary?hours=1');
       const traces = await getJson(port, '/api/v1/traces?limit=200');
       const health = await getJson(port, '/api/v1/health');
       assertEq(summary.total_traces, expected, 'summary.total_traces');
       assertEq(traces.total, expected, 'traces.total');
-      assertEq(health.trace_count, expected, 'health.trace_count');
+      assert(!('trace_count' in health), 'unauthenticated /health disclosed a trace count');
       assert(Array.isArray(summary.top_agents) && summary.top_agents[0]?.agent_name === SEED_AGENT, 'summary.top_agents did not surface the seeded agent');
-      return `all three report ${expected}`;
+      return `summary and traces report ${expected}; health reports none`;
     });
 
     await t.check('C7', 'GET /api/v1/eval-stats reports the evaluations that were actually created', async () => {

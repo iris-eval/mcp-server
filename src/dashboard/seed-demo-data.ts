@@ -683,6 +683,9 @@ export async function seedDemoData(options?: SeedDemoDataOptions): Promise<SeedD
           engine.registerRule(deployed.evalType, createCustomRule(deployed.definition, deployed.severity), deployed.id);
         }
       }
+      // The demo's rules are its starting set: a verdict under them must
+      // not report that the rules changed. The audit rows stay.
+      customRuleStore.baselineChanges();
     }
 
     // -----------------------------------------------------------------------

@@ -52,7 +52,7 @@ describe('buildHealth', () => {
       expect(body.checks.storage).toBe('ok');
       expect(KNOWN_MIGRATION_IDS.length).toBeGreaterThanOrEqual(11);
       expect(body.checks.migrations).toEqual({ status: 'ok', applied: KNOWN_MIGRATION_IDS.length, known: KNOWN_MIGRATION_IDS.length });
-      expect(body.trace_count).toBe(0);
+      expect(body).not.toHaveProperty('trace_count');
       expect(body.storage).toBe('connected');
       expect(body.mode).toBe('demo');
     } finally {

@@ -106,7 +106,7 @@ iris = IrisClient()                       # IRIS_URL, or the running dashboard's
 iris.evaluate_output("…", input="…", agent_name="support-bot")["verdict"]   # {"state": "pass", "basis": "clean", "by": []}
 ```
 
-A thin client over the HTTP API (0.16.0): `log_trace()`, `evaluate_output()`, `get_traces()`, `get_trace()`, `health()`, `capabilities()`, sync and async, typed answers, the server's own sentence on a refusal — and a pytest plugin: an `iris` fixture and `assert_iris(output, expect="pass")` that asserts on the verdict's state. [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
+A thin client over the HTTP API of server 0.16.0 and later, versioned on its own — `iris_eval.__version__` and the PyPI page carry its number, which is not the server's: `log_trace()`, `evaluate_output()`, `get_traces()`, `get_trace()`, `health()`, `capabilities()`, sync and async, typed answers, the server's own sentence on a refusal — and a pytest plugin: an `iris` fixture and `assert_iris(output, expect="pass")` that asserts on the verdict's state. [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
 
 ### A CI gate, no server needed
 
@@ -454,7 +454,7 @@ When using HTTP transport, Iris includes:
 - Helmet security headers
 - Zod input validation on all routes
 - ReDoS-safe regex for custom eval rules
-- 1MB request body limits
+- One 1MB request size limit on every transport (`security.requestSizeLimit`): HTTP answers `413`, stdio answers a JSON-RPC error and keeps the session open
 
 ```bash
 # Production deployment
@@ -481,7 +481,7 @@ IRIS_API_KEY="$(openssl rand -hex 32)" docker compose up
 IRIS_ALLOW_UNAUTHENTICATED=1 iris-eval --transport http --dashboard
 ```
 
-Open by design, on a keyed server: `GET /health` on the transport and `GET /api/v1/health` on the dashboard answer without a key and outside every rate limit, in one shape: status, version, uptime, the SQLite driver, `checks` for storage, the deployed-rules file and the migrations (applied against known), and whether a judge key is present — never the key, never a trace. `status` is `ok` only when every check is; otherwise it is `degraded` with HTTP 503, which the Docker image's own `HEALTHCHECK` reads. Everything else needs `Authorization: Bearer <key>` or a browser session. Retention runs on every server: traces and evaluations older than `retention.days` (default `30`) are deleted at startup and every `retention.sweepIntervalHours`; `--self-test` prints this install's policy, and `iris://capabilities` / `GET /api/v1/capabilities` carry it as `retention`.
+Open by design, on a keyed server: `GET /health` on the transport and `GET /api/v1/health` on the dashboard answer without a key and outside every rate limit, in one shape: status, version, uptime, the SQLite driver, `checks` for storage, the deployed-rules file and the migrations (applied against known), and whether a judge key is present — never the key, never a trace, never a count of them. `status` is `ok` only when every check is; otherwise it is `degraded` with HTTP 503, which the Docker image's own `HEALTHCHECK` reads. Everything else needs `Authorization: Bearer <key>` or a browser session. Retention runs on every server: traces and evaluations older than `retention.days` (default `30`) are deleted at startup and every `retention.sweepIntervalHours`; `--self-test` prints this install's policy, and `iris://capabilities` / `GET /api/v1/capabilities` carry it as `retention`.
 
 A webhook fires on a moment (0.16.0): `notify.webhook` in `config.json` (or `IRIS_WEBHOOK_URL` and `IRIS_WEBHOOK_SECRET`) names a receiver, and Iris posts one signed message when a verdict fails, a critical detection vetoes, a cost is an outlier, a rule's fail rate shifts, or a case is answered both ways for the first time — ids, the verdict, the rules and the numbers, never the agent's text. Signed the Standard Webhooks way and the GitHub way at once, retried with backoff, cooled down per agent and rule, never in the way of the evaluation; Slack and Discord bodies built in. [docs/webhooks.md](https://github.com/iris-eval/mcp-server/blob/main/docs/webhooks.md).
 
