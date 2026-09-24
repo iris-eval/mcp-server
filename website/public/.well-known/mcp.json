@@ -103,14 +103,15 @@
   ],
   "install": {
     "claude_code": {
-      "command": "claude mcp add iris-eval -- npx @iris-eval/mcp-server --dashboard"
+      "command": "claude mcp add iris-eval -- npx -y @iris-eval/mcp-server@0.17.0 --dashboard"
     },
     "claude_desktop": {
       "mcpServers": {
         "iris-eval": {
           "command": "npx",
           "args": [
-            "@iris-eval/mcp-server",
+            "-y",
+            "@iris-eval/mcp-server@0.17.0",
             "--dashboard"
           ]
         }
@@ -121,14 +122,15 @@
         "iris-eval": {
           "command": "npx",
           "args": [
-            "@iris-eval/mcp-server",
+            "-y",
+            "@iris-eval/mcp-server@0.17.0",
             "--dashboard"
           ]
         }
       }
     },
     "docker": {
-      "command": "docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data -e IRIS_API_KEY=<your key> ghcr.io/iris-eval/mcp-server"
+      "command": "docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data -e IRIS_API_KEY=<your key> ghcr.io/iris-eval/mcp-server:v0.17.0"
     }
   },
   "links": {

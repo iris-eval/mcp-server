@@ -14,12 +14,14 @@
  *
  * Rate limit: 30 requests / minute / IP. Hashed with RATE_LIMIT_SALT
  * (the same env var the waitlist route requires) so the IP itself is
- * never persisted to KV.
+ * never persisted to KV. When KV is unconfigured or fails, the same limit
+ * is enforced per server instance (lib/rate-limit.ts) instead of not at all.
  */
 import { Redis } from '@upstash/redis';
 import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
 import { evaluateOutput, VENDORED_FROM_VERSION, type EvalCategory } from '../../../../lib/eval/rules';
+import { checkRateLimit, InstanceWindow } from '../../../../lib/rate-limit';
 
 const ALLOWED_ORIGINS = [
   'https://iris-eval.com',
@@ -52,11 +54,13 @@ function corsHeaders(origin: string | null) {
   };
 }
 
+/** The IP as a short hash: salted when a salt is configured, so the value written to KV cannot be reversed by lookup. */
 function hashIP(ip: string): string {
-  const salt = process.env.RATE_LIMIT_SALT;
-  if (!salt) throw new Error('RATE_LIMIT_SALT env var required for /api/playground/eval');
-  return createHash('sha256').update(ip + salt).digest('hex').slice(0, 16);
+  return createHash('sha256').update(ip + (process.env.RATE_LIMIT_SALT ?? '')).digest('hex').slice(0, 16);
 }
+
+// Counts requests the shared store could not count; one per server instance.
+const instanceWindow = new InstanceWindow(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SEC * 1000);
 
 const VALID_CATEGORIES: ReadonlyArray<EvalCategory | 'all'> = [
   'safety',
@@ -151,8 +155,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers });
   }
 
-  // Rate limit only when KV is configured. In dev without KV the route
-  // still works (no rate limit) so local exploration isn't blocked.
+  // The shared limit needs KV and the salt; without them (local dev, or a
+  // misconfigured deploy) the per-instance window applies instead.
   let redis: Redis | null = null;
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN && process.env.RATE_LIMIT_SALT) {
     redis = new Redis({
@@ -174,36 +178,27 @@ export async function POST(request: Request) {
   }
   const data = validation.data;
 
-  let ipHash: string | null = null;
-  if (redis) {
-    try {
-      const clientIP =
-        (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
-        request.headers.get('x-real-ip') ||
-        'unknown';
-      ipHash = hashIP(clientIP);
-      const rateLimitKey = `playground:eval:rl:${ipHash}`;
-      const currentCount = await redis.get<number>(rateLimitKey);
-      if (currentCount && currentCount >= RATE_LIMIT_MAX) {
-        // Anonymized rate-limit log (ip hash, never the raw IP). Surfaces
-        // sustained abuse patterns in Vercel logs without exfiltrating PII.
-        console.warn(
-          `[playground] rate-limit hit ip_hash=${ipHash} count=${currentCount}`,
-        );
-        return NextResponse.json(
-          { error: 'Too many requests. Try again in a minute.' },
-          { status: 429, headers },
-        );
-      }
-      const pipeline = redis.pipeline();
-      pipeline.incr(rateLimitKey);
-      pipeline.expire(rateLimitKey, RATE_LIMIT_WINDOW_SEC);
-      await pipeline.exec();
-    } catch (err) {
-      // Rate limit failure is logged but does not block — defense-in-depth
-      // says we'd rather serve a degraded experience than 500-out the demo.
-      console.warn('[playground] rate limit error:', (err as Error).message);
-    }
+  const clientIP =
+    (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
+  const ipHash = hashIP(clientIP);
+  const decision = await checkRateLimit({
+    store: redis,
+    key: `playground:eval:rl:${ipHash}`,
+    max: RATE_LIMIT_MAX,
+    windowSec: RATE_LIMIT_WINDOW_SEC,
+    fallback: instanceWindow,
+    onStoreError: (err) => console.warn('[playground] rate limit store error, per-instance limit applied:', (err as Error).message),
+  });
+  if (decision.limited) {
+    // Anonymized rate-limit log (ip hash, never the raw IP). Surfaces
+    // sustained abuse patterns in Vercel logs without exfiltrating PII.
+    console.warn(`[playground] rate-limit hit ip_hash=${ipHash} count=${decision.count} source=${decision.source}`);
+    return NextResponse.json(
+      { error: 'Too many requests. Try again in a minute.' },
+      { status: 429, headers: { ...headers, 'Retry-After': String(RATE_LIMIT_WINDOW_SEC) } },
+    );
   }
 
   const startMs = Date.now();
@@ -242,7 +237,7 @@ export async function POST(request: Request) {
           ? 'lg'
           : 'xl';
   console.log(
-    `[playground] eval ip_hash=${ipHash ?? 'unrl'} category=${data.category} len=${lengthBucket} passed=${summary.passed} duration_ms=${durationMs}`,
+    `[playground] eval ip_hash=${ipHash} category=${data.category} len=${lengthBucket} passed=${summary.passed} duration_ms=${durationMs}`,
   );
 
   return NextResponse.json(

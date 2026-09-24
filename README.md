@@ -53,7 +53,7 @@ Then add Iris to your MCP config. It runs in any MCP client, and every client it
   "mcpServers": {
     "iris-eval": {
       "command": "npx",
-      "args": ["@iris-eval/mcp-server", "--dashboard"]
+      "args": ["-y", "@iris-eval/mcp-server", "--dashboard"]
     }
   }
 }
@@ -188,7 +188,7 @@ Add the JSON config above, then restart Claude Desktop.
 #### Claude Code
 
 ```bash
-claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
+claude mcp add --transport stdio iris-eval -- npx -y @iris-eval/mcp-server
 ```
 
 Then restart the session (`/clear` or relaunch) for tools to load.
@@ -208,7 +208,7 @@ Add to `.vscode/mcp.json` in your workspace (note: VS Code uses `servers`, not `
   "servers": {
     "iris-eval": {
       "command": "npx",
-      "args": ["@iris-eval/mcp-server"]
+      "args": ["-y", "@iris-eval/mcp-server"]
     }
   }
 }
@@ -228,7 +228,7 @@ Add to Zed `settings.json`:
     "iris-eval": {
       "command": {
         "path": "npx",
-        "args": ["@iris-eval/mcp-server"]
+        "args": ["-y", "@iris-eval/mcp-server"]
       }
     }
   }
@@ -242,7 +242,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.iris-eval]
 command = "npx"
-args = ["@iris-eval/mcp-server"]
+args = ["-y", "@iris-eval/mcp-server"]
 ```
 
 #### Gemini CLI
@@ -568,10 +568,10 @@ Claude Code's `/doctor` may suggest wrapping npx with `cmd /c`. This is not need
 
 ```bash
 # Correct
-claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
+claude mcp add --transport stdio iris-eval -- npx -y @iris-eval/mcp-server
 
 # Wrong (causes /c to be parsed as a path)
-claude mcp add --transport stdio iris-eval -- cmd /c "npx @iris-eval/mcp-server"
+claude mcp add --transport stdio iris-eval -- cmd /c "npx -y @iris-eval/mcp-server"
 ```
 
 </details>

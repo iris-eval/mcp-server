@@ -1,6 +1,6 @@
 # Iris — stop shipping agents on vibes
 
-> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx @iris-eval/mcp-server`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
+> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx -y @iris-eval/mcp-server@0.17.0`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
 
 Current release: v0.17.0 (2026-09-23) — Hostile input, honest verdicts, a harder release path.
 
@@ -14,7 +14,7 @@ Of 60 capability cells (10 evaluation questions by 6 subjects), 30 are answered 
 
 - [GitHub repository](https://github.com/iris-eval/mcp-server): source, README with per-client setup for every major MCP client, full tool schemas
 - Claude Code plugin: `/plugin marketplace add iris-eval/mcp-server` then `/plugin install iris-eval@iris-eval` — MCP server + agent-eval skill in two commands
-- [npm package](https://www.npmjs.com/package/@iris-eval/mcp-server): `@iris-eval/mcp-server` — install via `npx @iris-eval/mcp-server`
+- [npm package](https://www.npmjs.com/package/@iris-eval/mcp-server): `@iris-eval/mcp-server` — install via `npx -y @iris-eval/mcp-server@0.17.0`
 - [Playground](https://iris-eval.com/playground): try agent eval in the browser, no install
 - [Proof](https://iris-eval.com/proof): how accurate the built-in evaluators are — method, per-rule results with confidence intervals, and the command to reproduce them
 - [Capabilities](https://iris-eval.com/capabilities): what Iris can judge and what it cannot yet — ten questions by six subjects, each answered cell naming its evidence
@@ -43,6 +43,12 @@ Of 60 capability cells (10 evaluation questions by 6 subjects), 30 are answered 
 - [Iris vs DeepEval](https://iris-eval.com/compare/deepeval)
 - [Iris vs Confident AI](https://iris-eval.com/compare/confident-ai)
 - [Iris vs Patronus AI](https://iris-eval.com/compare/patronus-ai)
+- [Iris vs Promptfoo](https://iris-eval.com/compare/promptfoo)
+- [Iris vs Galileo](https://iris-eval.com/compare/galileo)
+- [Iris vs Opik](https://iris-eval.com/compare/opik)
+- [Iris vs Weave](https://iris-eval.com/compare/weave)
+- [Iris vs Judgment Labs](https://iris-eval.com/compare/judgment)
+- [Iris vs Latitude](https://iris-eval.com/compare/latitude)
 
 ## Optional
 
