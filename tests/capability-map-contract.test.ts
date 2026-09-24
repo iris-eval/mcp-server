@@ -156,7 +156,7 @@ describe('capability map — needs are real', () => {
 
   /*
    * `tool_outputs` is not a context KEY — it is a property of the tool calls
-   * (arc 1's stamp adds it when some call carries an output), so withholding
+   * (the stamp adds it when some call carries an output), so withholding
    * it means supplying the calls with their outputs stripped rather than
    * deleting a field. Without this branch the contract could only check
    * needs that happen to map one-to-one onto a context field, which would

@@ -79,7 +79,7 @@ let skipped = 0;
 // with no version installs whatever npm says is latest, on every user's machine
 // and in every consumer's CI, the moment it is published. Pinned to the
 // release version, a new release reaches them when they update the plugin or
-// move the action tag (2026-09-23 red team, SUP-6). Text edits, so each file's
+// move the action tag (2026-09-23 security review). Text edits, so each file's
 // formatting survives.
 // ============================================================
 const LAUNCHERS = [

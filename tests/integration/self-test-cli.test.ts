@@ -118,7 +118,7 @@ describe('iris-eval --self-test (CLI)', () => {
 
   it('with no driver chosen and the native addon unloadable, the self-test falls back to Node’s built-in SQLite where this Node has it, and names the driver', async () => {
     /*
-     * The bold sentence of arc 8 R-0, end to end through the real CLI:
+     * The driver fallback (0.15.0), end to end through the real CLI:
      * --no-addons breaks the addon; IRIS_SQLITE_DRIVER is cleared (the CI
      * matrix sets it) so the choice is Iris's default — native, falling
      * back. On Node 22.13+ the store opens on node:sqlite, the storage line

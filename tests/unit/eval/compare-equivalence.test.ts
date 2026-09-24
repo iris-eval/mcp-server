@@ -160,7 +160,7 @@ describe('the tool\'s shape carries the new fields on both doors', () => {
 });
 
 /*
- * 2026-09-23 review (ADOPT-4, ADOPT-10). The top line tested two-sided while
+ * 2026-09-23 review. The top line tested two-sided while
  * every per-rule row tested one-sided, so 12/12 -> 7/12 on paired cases
  * (five regressed, none recovered: two-sided exact p = 0.0625) answered
  * worse: false and "not enough evidence" while its own per-rule row read

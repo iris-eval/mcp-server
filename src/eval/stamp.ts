@@ -2,7 +2,7 @@
  * The stamp — what a rule result says about itself beyond pass, score and
  * message.
  *
- * Arc zero (2026-09-05) found four lenses independently reporting the same
+ * An audit on 2026-09-05 found four lenses independently reporting the same
  * absence: a result carried no field for what kind of claim it made, what
  * it had looked at, or how wrong it tends to be, while the per-rule
  * intervals sat in proof/results.json and never reached a reader. This

@@ -92,10 +92,9 @@ export interface IrisConfig {
      */
     nonCriticalRules?: string[];
     /*
-     * The verdict's six defaults (0.10.0). Each is a RECOMMENDATION the AI
-     * council closed on with its failure mode stated, not a final ruling;
-     * every surface that shows one says so until it is ruled. The record is
-     * in the arc-2 council report.
+     * The verdict's six defaults (0.10.0). Each is a RECOMMENDATION with its
+     * failure mode stated, not a settled answer; every surface that shows
+     * one says so.
      */
     /**
      * How the verdict is composed: by kind — gates, vetoes, unknown, then the

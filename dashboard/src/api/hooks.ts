@@ -109,8 +109,8 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
    * take the request id and the pending response would be discarded as
    * stale — on a server where a window of 200 moments takes longer than the
    * cadence, that discarded every response in turn and the widget stayed
-   * on its loading (or empty) state for ever. Found by the demo (arc 9,
-   * N-1): the Drift and Health prior windows never rendered. A manual
+   * on its loading (or empty) state for ever. Found by the demo
+   * (0.16.0): the Drift and Health prior windows never rendered. A manual
    * refetch or a parameter change still supersedes, on purpose.
    */
   const inFlightRef = useRef(false);

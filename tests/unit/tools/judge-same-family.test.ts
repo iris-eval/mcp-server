@@ -1,6 +1,6 @@
 /*
- * A judge sharing a model family with the agent it judges says so (arc 7,
- * D-6b; the bold sentence for 0.14.0). Through the real tool over an
+ * A judge sharing a model family with the agent it judges says so
+ * (0.14.0). Through the real tool over an
  * in-memory transport; the provider client is mocked so nothing is spent
  * and this runs on every machine. The agent's model is read from the
  * linked trace (metadata.model) or from agent_model; a judge from another

@@ -2,7 +2,7 @@
  * TourProvider — global state for the welcome tour.
  *
  * The tour opens on request only (the command palette's "Take the tour";
- * arc 7, D-5). It used to auto-open on a fresh browser against a fresh
+ * since 0.14.0). It used to auto-open on a fresh browser against a fresh
  * server, alongside a welcome banner and the first-run modal; all three
  * competed for the first screen, and the Failures empty state now carries
  * what they said. The dismissal record (localStorage + the server-side

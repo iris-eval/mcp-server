@@ -1,6 +1,6 @@
 /*
- * The WAL switch on a cold file retries on SQLITE_BUSY (arc 9, found by
- * N-10's first CI run).
+ * The WAL switch on a cold file retries on SQLITE_BUSY (0.16.0, found by
+ * a CI run).
  *
  * `PRAGMA journal_mode = WAL` upgrades the connection's SHARED lock to
  * EXCLUSIVE, and SQLite does not run the busy handler on that upgrade —

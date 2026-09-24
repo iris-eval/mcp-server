@@ -50,8 +50,8 @@ export interface MigrationState {
 }
 
 /**
- * What the database has applied against what this build knows (arc 8,
- * R-6): the health contract reports it so an operator can see a schema is
+ * What the database has applied against what this build knows: the
+ * health contract reports it so an operator can see a schema is
  * behind before a query fails on a missing column. Reads only.
  */
 export function migrationState(db: Driver): MigrationState {

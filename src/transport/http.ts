@@ -79,8 +79,8 @@ export async function createHttpTransport(
 
   /*
    * Health endpoint (no auth, no rate limit) — the same contract the
-   * dashboard serves at /api/v1/health, built by src/health.ts (arc 8,
-   * R-6). Until 0.15.0 this port answered `{ status, server, timestamp }`
+   * dashboard serves at /api/v1/health, built by src/health.ts.
+   * Until 0.15.0 this port answered `{ status, server, timestamp }`
    * while the API reference called the two "the same contract".
    */
   app.get('/health', async (_req, res) => {

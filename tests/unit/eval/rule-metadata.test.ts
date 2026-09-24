@@ -1,7 +1,7 @@
 /*
  * Every built-in rule declares what it is.
  *
- * Arc zero (2026-09-05) found that a rule result carried no field for what
+ * An audit on 2026-09-05 found that a rule result carried no field for what
  * KIND of claim it made — a measurement of output length, a detection of a
  * PII pattern, an inference that an output is a stub, and a policy the
  * deployment configured all produced `{ passed, score }` and were averaged

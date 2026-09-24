@@ -9,7 +9,7 @@ import { logTraceInputShape } from '../src/tools/log-trace.js';
  *
  * `docs/api-reference.md` is the page a reader opens to find out what Iris
  * can do, and nothing checked that it kept up. Three tools and four routes
- * shipped in arc 5 before anyone noticed it had not moved — and a reference
+ * shipped in 0.12.0 before anyone noticed it had not moved — and a reference
  * missing a tool is worse than a reference with none, because the omission
  * reads as "that does not exist" rather than as "look elsewhere".
  *

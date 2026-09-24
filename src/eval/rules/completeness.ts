@@ -132,7 +132,7 @@ export const expectedCoverage: EvalRule = {
 /*
  * Did the agent call its tools correctly?
  *
- * Arc zero found this reachable as a wrong PASS: an agent that calls a tool
+ * The 2026-09-05 audit found this reachable as a wrong PASS: an agent that calls a tool
  * which does not exist, or passes arguments its schema rejects, and then
  * writes a plausible paragraph, satisfied every bundle Iris had. The
  * deterministic half of the question needs exactly one thing Iris never

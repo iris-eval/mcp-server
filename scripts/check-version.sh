@@ -100,7 +100,7 @@ check_version "claude-plugin-capture/.claude-plugin/plugin.json" ".version"
 # The Cursor plugin manifest: the version the Cursor Marketplace shows.
 check_version ".cursor-plugin/plugin.json" ".version"
 
-# Pinned launchers (2026-09-23 red team, SUP-6): what the plugins and the gate
+# Pinned launchers (2026-09-23 security review): what the plugins and the gate
 # action actually install. Unpinned, each ran whatever npm called latest.
 check_launcher() {
   local file="$1" want="$2"

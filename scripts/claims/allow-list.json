@@ -149,25 +149,25 @@
       "file": "docs/blog/005-heuristic-vs-semantic-eval.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when 0.11.0 added valid_tool_arguments."
     },
     {
       "file": "docs/blog/007-how-to-evaluate-agent-output-without-llm.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when 0.11.0 added valid_tool_arguments."
     },
     {
       "file": "docs/blog/015-eval-driven-development.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when 0.11.0 added valid_tool_arguments."
     },
     {
       "file": "docs/blog/devto/eval-driven-development.md",
       "pattern": "builtin-rule-count",
       "line": "*",
-      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when arc 4 added valid_tool_arguments."
+      "reason": "Dated post (15 rules when written) that keeps its period voice like the other blog entries; the current count is on /proof and in .claims.json. Surfaced when 0.11.0 added valid_tool_arguments."
     },
     {
       "file": "website/src/components/roadmap.tsx",
@@ -179,7 +179,7 @@
       "file": "website/src/lib/compare/confident-ai.json",
       "pattern": "tool-count-in-words",
       "line": 59,
-      "reason": "Confident AI's own MCP server tool count (75 tools), quoted from their docs on the comparison row (the page renders from this data file since arc 8 R-5) — not Iris's count, so the truthbase cannot supply it. Line-pinned so any other count in this file still flags."
+      "reason": "Confident AI's own MCP server tool count (75 tools), quoted from their docs on the comparison row (the page renders from this data file since 0.15.0) — not Iris's count, so the truthbase cannot supply it. Line-pinned so any other count in this file still flags."
     },
     {
       "file": "docs/blog/005-heuristic-vs-semantic-eval.md",

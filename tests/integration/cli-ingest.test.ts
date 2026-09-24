@@ -134,8 +134,8 @@ describe('iris-eval ingest', () => {
 });
 
 /*
- * --dataset restricts the gate to the case keys the reader chose (arc 8,
- * R-8): every trace is stored and evaluated; only a trace whose case key is
+ * --dataset restricts the gate to the case keys the reader chose:
+ * every trace is stored and evaluated; only a trace whose case key is
  * in the dataset can trip --fail-on, each receipt says whether it was in
  * the gate, and the summary counts them.
  */

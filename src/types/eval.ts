@@ -95,7 +95,7 @@ export interface EvalRule {
  * counterpart of `expected`. Read by tool_sequence (the calls, in a mode)
  * and step_budget (the count, with a tolerance). Supplied per call on
  * evaluate_output as `expected_trajectory`; a dataset case's expected
- * trajectory reaching the ingest path is arc-10 work.
+ * trajectory reaching the ingest path is later work.
  */
 export interface ExpectedToolCall {
   tool_name: string;

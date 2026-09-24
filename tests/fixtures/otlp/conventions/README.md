@@ -1,6 +1,6 @@
 # OTLP fixtures, one per convention
 
-The attribute vocabularies a buyer will point at `POST /v1/traces` (arc 9, N-11). Each payload is OTLP/JSON,
+The attribute vocabularies a user will point at `POST /v1/traces`. Each payload is OTLP/JSON,
 **authored on 2026-09-21 to the vendor's own documentation or source** — the URL beside each file is where every
 key came from; nothing here was captured from a running SDK (the two captured fixtures live one directory up). The
 test `tests/unit/otel/conventions.test.ts` holds the door to reading each one: the agent, the input, the output, the
@@ -21,4 +21,4 @@ a parent carries the same usage as its children, so counting every span would do
 | `semantic-kernel.otlp.json` | Semantic Kernel — https://learn.microsoft.com/en-us/semantic-kernel/concepts/enterprise-readiness/observability/telemetry-with-console?pivots=programming-language-python | `gen_ai.response.prompt_tokens` / `completion_tokens`; content only in the `gen_ai.content.prompt` / `completion` events; no tool span |
 | `vercel-ai-sdk.otlp.json` | Vercel AI SDK, legacy `ai.*` spans — https://ai-sdk.dev/docs/ai-sdk-core/telemetry | `ai.prompt` / `ai.response.text` / `ai.usage.*` / `ai.model.id`; the parent and its `doGenerate` child carry the same usage: counted once; `ai.toolCall.*` as the tool step |
 
-The recipes page (`docs/otel-recipes.md`, arc 9 N-19) names the fixture that proves each recipe.
+The recipes page (`docs/otel-recipes.md`) names the fixture that proves each recipe.

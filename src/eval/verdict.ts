@@ -2,7 +2,7 @@
  * The verdict, the coverage and the provenance — computed once, derived on
  * read, never fabricated.
  *
- * Arc zero (2026-09-05) found the same fact encoded three ways
+ * An audit on 2026-09-05 found the same fact encoded three ways
  * (`insufficient_data`, `critical_skipped`, `rule_results[].budgetExceeded`),
  * the verdict's basis nowhere (a reader could not tell a veto from a low
  * score without knowing the rule library), coverage counted in rules rather

@@ -4,7 +4,7 @@
  *
  * A fresh headless Claude Code session, with no prior instruction about Iris,
  * is asked to evaluate three real agent outputs with Iris and say which must
- * not ship. The protocol comes from the arc-zero brief and the six
+ * not ship. The protocol comes from the 2026-09-05 audit and the six
  * amendments its verifier forced:
  *
  *   - a never-used directory per phase holding ONLY outputs/ (the three

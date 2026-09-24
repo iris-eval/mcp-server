@@ -12,7 +12,7 @@
  *     PassRateGauge, Donut, Badge, LoadingSpinner, etc.)
  *   - CI `build-storybook` smoke to catch broken stories
  *   - Pixel regression (Chromatic / lost-pixel) deferred — vendor choice
- *     is a separate founder decision with recurring-cost implications
+ *     is a separate, open decision with recurring-cost implications
  */
 import type { StorybookConfig } from '@storybook/react-vite';
 

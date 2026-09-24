@@ -200,7 +200,7 @@ export class EvalEngine {
    * every surface. The weighted `score` survives untouched as a quality
    * gradient over the rules that ran, and is never re-meant: a reader who
    * was using it as a gradient keeps it, and a reader who was using it as a
-   * safety signal was reading a number that arc zero measured as inert.
+   * safety signal was reading a number the 2026-09-05 audit measured as inert.
    */
   /**
    * The composer's word on a row another tool judged (#375).

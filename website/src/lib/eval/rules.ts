@@ -3,7 +3,7 @@
  *
  * Source: iris/src/eval/rules/{safety,relevance,completeness,cost}.ts and
  * the shipped thresholds in iris/src/config/defaults.ts.
- * Synced: 2026-09-21 against main + arc 9 N-13 (four rules: answers_the_ask composes the two relevance measurements; tool_sequence, step_budget and tool_choice are skips here — no expectation, no catalogue); before that 2026-09-21 against arc 8 R-12 (normalise gains dropInsertedBreaks for the pattern rules; ACKNOWLEDGEMENT_FORMS); previously 2026-09-03 against main after #416 — the five things real agent
+ * Synced: 2026-09-21 against main at 0.16.0 (four rules: answers_the_ask composes the two relevance measurements; tool_sequence, step_budget and tool_choice are skips here — no expectation, no catalogue); before that 2026-09-21 against 0.15.0 (normalise gains dropInsertedBreaks for the pattern rules; ACKNOWLEDGEMENT_FORMS); previously 2026-09-03 against main after #416 — the five things real agent
  * transcripts taught the evaluators: reserved IP addresses are not PII,
  * evaluator-directed imperatives hidden in comments, deferral stubs, the
  * continuity measure for topic_consistency, status-code contrasts. Those
@@ -153,7 +153,7 @@ export interface EvalContext {
  * this pass, to this pass's output, and owns it alone.
  *
  * Every rule that matches on `text` reports evidence through `map`, so a
- * span still indexes the RAW output the caller sent — the arc-1 contract
+ * span still indexes the RAW output the caller sent — the evidence contract
  * ("spans are offsets into the raw text") is what makes redaction and the
  * transforms measurement correct, and normalising without a map would
  * quietly break it.
@@ -588,7 +588,7 @@ function ssnStructure(candidate: string): boolean {
  *
  * Both had their own, and both were wrong in the same way. `sentence_count`
  * split on `/[.!?]+/`, so "The latency is 3.5 seconds." counted as two
- * sentences and "Dr. Chen approved it." as two more; the arc-zero review
+ * sentences and "Dr. Chen approved it." as two more; the 2026-09-05 audit
  * measured the damage at 43% of that rule's family. `topic_consistency`
  * split on a full stop followed by whitespace, which fixes the decimal only
  * when the decimal has no space after it and never fixes the abbreviation.

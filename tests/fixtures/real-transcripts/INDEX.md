@@ -1,4 +1,4 @@
-# Real-world agentic transcript set — arc-one UAT
+# Real-world agentic transcript set — acceptance run, 2026-09-03
 
 Twenty-four transcripts produced by an agent that genuinely performed each task against the read-only iris repo (0.6.0) on 2026-09-03. Every `tool_calls[]` entry was actually executed; `output` is the real result truncated to 600 chars, with `error` set where the tool really failed. Intended failures were exhibited for real in the final answer and are labelled only in `metadata`.
 

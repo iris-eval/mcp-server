@@ -1,7 +1,7 @@
 /*
  * The judge's threshold decides, not the judge.
  *
- * Arc zero found this as a tier-A gap: `passed` was the model's own boolean
+ * The 2026-09-05 audit found this as a tier-A gap: `passed` was the model's own boolean
  * whenever it supplied one, and the template's documented threshold was a
  * fallback the product rarely reached. A judge could return `score: 0.2`
  * with `passed: true` and be believed — a scoring rubric whose score did

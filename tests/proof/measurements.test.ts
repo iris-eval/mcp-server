@@ -1,5 +1,5 @@
 /*
- * Arc 2's per-rule measurements beyond precision and recall (M3, M4, M7, M9):
+ * The per-rule measurements beyond precision and recall (0.10.0):
  * the credible intervals do not collapse, the transforms land inside the
  * evidence span and are measured per rule, the PII positives name what they
  * contain and the per-entity table reads them, the eight custom types have
@@ -148,7 +148,7 @@ describe('custom rule type conformance', () => {
   });
 });
 
-describe('the committed results carry the arc-2 blocks', () => {
+describe('the committed results carry the per-rule measurement blocks', () => {
   it('results.json holds transforms, entities and custom, and measure() reproduces them', async () => {
     const results = JSON.parse(await readFile(resolve(repoRoot, RESULTS_JSON), 'utf-8')) as ProofResults;
     expect(results.transforms.rows.length).toBe(TRANSFORM_RULES.length * TRANSFORMS.length);

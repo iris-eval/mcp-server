@@ -1,5 +1,5 @@
 /*
- * One tokenizer for every rule that compares vocabularies (arc 9, N-13 moved
+ * One tokenizer for every rule that compares vocabularies (0.16.0 moved
  * it out of the relevance bundle so the tool-choice rule could read it
  * without a module cycle). The relevance rules, ask_coverage and tool_choice
  * all agree on what a "term" is:

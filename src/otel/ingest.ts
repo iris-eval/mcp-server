@@ -4,7 +4,7 @@
  * Iris has exported OTLP/HTTP JSON since 0.4; this is the other direction:
  * a collector, an SDK or an agent framework posts the spans it already
  * emits to `POST /v1/traces`, and each OTLP trace id becomes one Iris
- * trace with its spans — so the trajectory rules (arc 4's `toSteps`
+ * trace with its spans — so the trajectory rules (`toSteps`
  * reads `gen_ai.tool.*` off tool spans) run on what the instrumentation
  * already carries, with nothing re-instrumented.
  *

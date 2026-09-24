@@ -1,7 +1,7 @@
 /*
  * Evidence is locatable, never an excerpt, and points at the right bytes.
  *
- * Arc zero (2026-09-05) found that every rule's evidence was its message —
+ * An audit on 2026-09-05 found that every rule's evidence was its message —
  * offsets computed inside the rules never left them, so a leak detector
  * could not redact the span it found and nothing could programmatically
  * locate what fired. Now a detection reports offsets into the raw output,

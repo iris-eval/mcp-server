@@ -35,7 +35,7 @@
  * this pass, to this pass's output, and owns it alone.
  *
  * Every rule that matches on `text` reports evidence through `map`, so a
- * span still indexes the RAW output the caller sent — the arc-1 contract
+ * span still indexes the RAW output the caller sent — the evidence contract
  * ("spans are offsets into the raw text") is what makes redaction and the
  * transforms measurement correct, and normalising without a map would
  * quietly break it.

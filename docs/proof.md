@@ -237,7 +237,7 @@ It reports three numbers, and they are **not the same number**:
 | **bundle verdicts agreeing** | the legacy per-bundle arithmetic, and the weakest of the three: a bundle is a weighted mean, so one failing non-critical rule in a bundle of six does not move it |
 
 **The gap set is measured, not typed.** A bundle verdict that disagrees with
-the answer key is a *gap*, and until arc 4 the gaps lived in a hand-written
+the answer key is a *gap*, and until 0.11.0 the gaps lived in a hand-written
 table in `tests/real-transcripts.test.ts`. A table like that can only rot in
 one direction: a gap that CLOSES stays recorded as open, because nothing
 re-derives it and closing it is invisible. The runner now measures the gaps,

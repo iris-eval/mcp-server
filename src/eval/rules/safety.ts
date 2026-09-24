@@ -214,7 +214,7 @@ export const PII_PATTERNS: PiiPattern[] = [
   { name: 'npm Token', pattern: /\bnpm_[A-Za-z0-9]{30,64}\b/ },
   { name: 'DigitalOcean Token', pattern: /\bdop_v1_[a-z0-9]{50,70}\b/ },
   /*
-   * Credentials that carry no vendor prefix (2026-09-23 red team, ADOPT-3).
+   * Credentials that carry no vendor prefix (2026-09-23 security review).
    * Every pattern above keys on a prefix a vendor published — sk-, ghp_,
    * AKIA — so a bare AWS secret access key, a database URL with its password
    * and a PASSWORD= line all passed as clean, "decisive". These two read the
@@ -374,7 +374,7 @@ export const noPii: EvalRule = {
      * full-width digit or a Cyrillic lookalike inside a card number defeated
      * every pattern here: the transforms table measured 0% recall under
      * full-width forms and 22% under homoglyphs. The offset map is what
-     * keeps arc 1's evidence contract — a span still indexes the output the
+     * keeps the evidence contract — a span still indexes the output the
      * caller sent, and it covers the obfuscating characters as part of the
      * finding, which is what a redaction pass needs.
      */
@@ -2145,7 +2145,7 @@ function firstClaim(output: string): string {
  * The trajectory rule that made this bundle able to see a fabrication it
  * previously could not.
  *
- * Three transcripts in the arc-one acceptance set answer confidently AFTER
+ * Three transcripts in the real-transcript acceptance set answer confidently AFTER
  * their only tool call failed: a grep that exited 1 and returned nothing,
  * then an invented IRIS_TELEMETRY opt-out; an ls on a directory that does
  * not exist, then three files listed from it; a `node -e` that threw a
@@ -2412,7 +2412,7 @@ export const groundedInReads: EvalRule = {
  * Iris has detected an injection in an agent's own OUTPUT since 0.3.1, and
  * has never once looked at the place injections actually arrive: a tool
  * result. An agent that fetches a poisoned page, does what the page says,
- * and writes a clean summary passed every bundle — arc zero ranked that
+ * and writes a clean summary passed every bundle — the 2026-09-05 audit ranked that
  * tier A and it is the oldest wrong-pass in the act layer.
  *
  * TWO TIERS, AND THE DIFFERENCE BETWEEN THEM IS THE WHOLE POINT.

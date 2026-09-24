@@ -121,7 +121,7 @@ describe('the other listings', () => {
     expect(manifest.name).toBe('iris-eval');
     expect(manifest.version).toBe(pkg.version);
     expect(existsSync(join(root, manifest.logo))).toBe(true);
-    // Pinned to this release (2026-09-23, SUP-6), rolled by version:sync and walked by check-version.
+    // Pinned to this release (since 2026-09-23), rolled by version:sync and walked by check-version.
     expect(manifest.mcpServers['iris-eval']).toMatchObject({ command: 'npx', args: ['-y', `@iris-eval/mcp-server@${pkg.version}`] });
     expect(read('scripts/check-version.sh')).toContain('check_version ".cursor-plugin/plugin.json" ".version"');
     expect(read('scripts/sync-versions.mjs')).toContain('path: ".cursor-plugin/plugin.json"');

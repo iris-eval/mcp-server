@@ -34,8 +34,8 @@ import { dormantRulesFrom } from '../../eval/dormant.js';
  * a few thousand spans, which is far fewer traces than this. Past it, the
  * extra traces come back as rejected spans in `partialSuccess`, the OTLP
  * way to say "not these", rather than holding the server for the time it
- * takes to store and evaluate an unbounded batch (2026-09-23 red team,
- * NET-1: one 1 MB request of 11,500 one-span traces held the event loop
+ * takes to store and evaluate an unbounded batch (2026-09-23 security review:
+ * one 1 MB request of 11,500 one-span traces held the event loop
  * for 11 seconds).
  */
 export const MAX_OTLP_TRACES_PER_REQUEST = 2_000;
@@ -98,7 +98,7 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     }
     const tenantId = requireTenant(req);
     const mapped = fromOtlp(parsed.data);
-    // The W3C context on the request, if a proxy or a client set one (SEP-414 names the header; arc 9, N-12).
+    // The W3C context on the request, if a proxy or a client set one (SEP-414 names the header).
     const headerContext = traceContextFrom(req.headers as Record<string, unknown>);
     const accepted = mapped.traces.slice(0, MAX_OTLP_TRACES_PER_REQUEST);
     const overflow = mapped.traces.slice(MAX_OTLP_TRACES_PER_REQUEST);

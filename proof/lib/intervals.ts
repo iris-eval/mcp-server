@@ -13,8 +13,9 @@
  *
  * Newcombe's hybrid score interval (method 10 in Newcombe 1998) for the
  * difference of two independent proportions, built from each proportion's
- * Wilson limits — the interval arc 5 will print for "did my change make it
- * worse?", and the one arc 2 prints for accuracy(new) − accuracy(old).
+ * Wilson limits — the interval compare_runs prints for "did my change make
+ * it worse?", and the one the composite report prints for
+ * accuracy(new) − accuracy(old).
  *
  * Brier score and expected calibration error over ten equal-width
  * reliability bins, for a probability against a binary outcome.

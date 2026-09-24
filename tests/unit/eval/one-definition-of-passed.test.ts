@@ -1,7 +1,7 @@
 /*
  * One definition of `passed`.
  *
- * Arc zero found three encodings of the same idea and two of them
+ * The 2026-09-05 audit found three encodings of the same idea and two of them
  * disagreed. From 0.10.0 there is one: `passed` IS `verdict.state === 'pass'`,
  * and every surface that reports a verdict reports the same one — the tool,
  * the HTTP ingest route, and a row read back out of storage days later.
@@ -56,7 +56,7 @@ describe('passed is verdict.state === pass, everywhere', () => {
   it('the score is a gradient and is never the verdict', async () => {
     // A verdict that fails on a leak says nothing about the score being low,
     // and a passing verdict says nothing about it being high. Reading `score`
-    // as a safety signal is exactly what arc zero measured as inert.
+    // as a safety signal is exactly what the 2026-09-05 audit measured as inert.
     const leak = await engine().evaluateAll({ output: CASES[1].output, input: CASES[1].input });
     expect(leak.passed).toBe(false);
     expect(leak.score).toBeGreaterThan(0);

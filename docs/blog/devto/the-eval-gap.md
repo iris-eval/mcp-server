@@ -52,7 +52,7 @@ This means:
 
 1. **Eval on real inputs, not synthetic benchmarks.** Your test suite of 50 hand-crafted examples is not production. Production is the thousand weird, edge-case, multi-language, context-heavy inputs your users actually send.
 
-2. **Eval on every execution, not a sample.** The eval gap hides in the long tail. The 5% of inputs that fail are the ones that generate support tickets, churn users, and surface in due diligence.
+2. **Eval on every execution, not a sample.** The eval gap hides in the long tail. The 5% of inputs that fail are the ones that generate support tickets, churn users, and surface in customer audits.
 
 3. **Eval the outputs, not the infrastructure.** Your APM showing HTTP 200 means the request completed. It does not mean the answer was correct, safe, or cost-efficient — a distinction we explore in depth in [Agent Errors vs Application Errors](https://iris-eval.com/blog/agent-errors-vs-application-errors).
 

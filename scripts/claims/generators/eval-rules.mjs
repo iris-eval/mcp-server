@@ -13,7 +13,7 @@ const RULE_FILES = [
   'src/eval/rules/relevance.ts',
   'src/eval/rules/safety.ts',
   'src/eval/rules/cost.ts',
-  // Arc 9 (N-13): the expected-trajectory rules and tool_choice live in their own modules and are registered into the bundles above.
+  // The expected-trajectory rules and tool_choice live in their own modules and are registered into the bundles above.
   'src/eval/rules/expected-trajectory.ts',
   'src/eval/rules/tool-choice.ts',
 ];

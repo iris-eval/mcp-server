@@ -20,7 +20,7 @@
  * the legacy per-bundle arithmetic and the weakest of the three — a bundle
  * is a weighted mean, so one failing non-critical rule in a bundle of six
  * does not move it. The SHIP verdict is what a gate keys on. The CLASSES
- * caught is the arc-4 headline: of the failure classes a person said were
+ * caught is the headline: of the failure classes a person said were
  * present, how many did some rule actually detect. The class number needs no
  * relabelling to stay meaningful as rules are added, which is why it is the
  * one the record leads with.

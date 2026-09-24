@@ -222,7 +222,7 @@ export class SqliteAdapter implements IStorageAdapter {
    * instant therefore still lost one of them on this statement, whatever
    * `busy_timeout` said: the 0.14.0 fix (the timeout set before the
    * switch, see the constructor) covers a plain wait, never this upgrade.
-   * Found by arc 9's N-10 CI run, on the Node 22 built-in driver. The
+   * Found by a CI run on the Node 22 built-in driver (0.16.0). The
    * wait is done here instead: retry on BUSY with a short backoff inside
    * the same budget. Once either process is through, the file is WAL and
    * the pragma is a read. An error that is not BUSY is thrown as it came.

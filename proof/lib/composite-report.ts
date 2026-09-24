@@ -6,15 +6,15 @@
  *
  *   legacy            — today's arithmetic: `passed` (score ≥ threshold and
  *                       no critical failure), as the tool returns it
- *   risk (per-output) — arc 3's composer, in the harness only
+ *   risk (per-output) — the risk composer, in the harness only
  *                       (src/eval/risk.ts, the module the product uses): gates, then vetoes, then p_bad
  *                       against τ = 1 / (1 + c), with the prior read as
  *                       "this output is bad" and spread over the classes
  *                       the detectors examine
  *   risk (per-class)  — the same composer with the prior read as plan §4.3
- *                       wrote it, per class — measured because it is what
- *                       the plan specified, and reported because it blocks
- *                       nearly everything (the finding arc 3 deliberates on)
+ *                       wrote it, per class — measured because it is the
+ *                       literal reading, and reported because it blocks
+ *                       nearly everything (why the default reads per output)
  *
  * Against `shouldShip` (true by construction or by a human label) each gets
  * an accuracy with a Wilson interval, the false-block rate on clean cases,
@@ -330,7 +330,7 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push('## Three composers on the same rule results');
   L.push('');
-  L.push(`**legacy** — ${r.method.legacy}. **risk** — arc 3's composer run here in the harness only: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}).`);
+  L.push(`**legacy** — ${r.method.legacy}. **risk** — the risk composer run here in the harness only: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}).`);
   L.push('');
   L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |');
   L.push('|---|---|---|---|---|--:|--:|');
@@ -343,7 +343,7 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push(`**Difference from legacy (Newcombe 95%).** per-output prior: test ${pts(r.difference.risk.test)}; real transcripts ${pts(r.difference.risk.realTranscripts)}. per-class prior: test ${pts(r.difference.riskPerClass.test)}; real transcripts ${pts(r.difference.riskPerClass.realTranscripts)}. ${r.difference.reads}.`);
   L.push('');
-  L.push('**What the per-class row shows.** Read per class, a 0.5 prior on each of ten examined classes leaves a prior of one in a thousand that nothing is wrong, so the noisy-OR blocks nearly every output — the false-block column says it. The per-output reading keeps the prior at one half for the output as a whole. Which reading ships, and at what default, is arc 3\'s deliberation; both numbers are here so it is made on evidence.');
+  L.push('**What the per-class row shows.** Read per class, a 0.5 prior on each of ten examined classes leaves a prior of one in a thousand that nothing is wrong, so the noisy-OR blocks nearly every output — the false-block column says it. The per-output reading keeps the prior at one half for the output as a whole. The shipped default reads the prior per output; both numbers are here so the choice is made on evidence.');
   L.push('');
   L.push('## Recall by failure class');
   L.push('');

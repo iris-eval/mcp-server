@@ -4,7 +4,7 @@ import { sentencesOf } from '../text/sentences.js';
 /*
  * Relevance rules — one tokenizer, two DISTINCT signals.
  *
- * Redesigned after the arc-one acceptance pass ran twenty-four transcripts
+ * Redesigned after an acceptance pass ran twenty-four transcripts
  * produced by an agent genuinely working against this repository
  * (tests/fixtures/real-transcripts/). Three grounded, correct technical
  * answers — what `--purge` does, what `eval_type: "all"` returns, a

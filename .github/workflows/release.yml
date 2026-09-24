@@ -40,8 +40,8 @@ jobs:
   validate:
     # A release is a v* tag, nothing else. workflow_dispatch exists to re-run
     # a tag's release; dispatched on a branch it would publish that branch's
-    # code under whatever version package.json claims (2026-09-23 red team,
-    # SUP-1). Every other job needs this one, so refusing here refuses all.
+    # code under whatever version package.json claims (found in the
+    # 2026-09-23 security review). Every other job needs this one, so refusing here refuses all.
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +51,7 @@ jobs:
       # Only reviewed code ships. A tag pushed at a commit that never reached
       # main (an unmerged branch, a local experiment) would otherwise publish
       # to npm, GHCR and the MCP Registry with valid provenance for code no PR
-      # ever showed (2026-09-23 red team, SUP-1).
+      # ever showed (found in the 2026-09-23 security review).
       - name: Verify the tagged commit is on main
         run: |
           git fetch --no-tags origin main
@@ -110,8 +110,8 @@ jobs:
   # plugins, better-sqlite3's and esbuild's install scripts): about 860
   # packages. It used to run in the same job that held `id-token: write`,
   # where any one of them could mint the OIDC token and publish its own
-  # tarball as @iris-eval/mcp-server, with provenance (2026-09-23 red team,
-  # SUP-2). The build now runs without the identity and hands a packed
+  # tarball as @iris-eval/mcp-server, with provenance (found in the
+  # 2026-09-23 security review). The build now runs without the identity and hands a packed
   # tarball to publish-npm, which runs nothing but npm itself.
   build-npm:
     needs: validate
@@ -147,7 +147,7 @@ jobs:
 
       # SBOM (audit item #8): SPDX JSON covers every direct + transitive
       # dependency in the shipped tarball. Attached to the GitHub release
-      # so acquirers + enterprise procurement can verify supply chain.
+      # so users and enterprise procurement can verify the supply chain.
       - name: Generate npm package SBOM
         id: sbom
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26  # v0.24.2

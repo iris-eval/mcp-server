@@ -1,5 +1,5 @@
 /*
- * compareRuns — the acceptance rows for arc 5's central question.
+ * compareRuns — the acceptance rows for "did my change make it worse?".
  *
  * C1 (the interval), C2 (a boundary refuses to pretend), C3 (the test and
  * the pair count are named), C6 (not enough evidence is an answer) and C7

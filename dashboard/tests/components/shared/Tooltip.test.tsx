@@ -118,7 +118,7 @@ describe('Tooltip', () => {
     });
     // The listener itself is registered by an effect AFTER the commit that
     // set aria-describedby, so one Escape can still fall in that gap on a
-    // loaded machine (it did, twice, on the arc-9 truthbase captures). Fire
+    // loaded machine (it did, twice, on full-suite runs under load). Fire
     // it until it is heard.
     await waitFor(() => {
       fireEvent.keyDown(window, { key: 'Escape' });

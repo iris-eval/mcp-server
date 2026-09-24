@@ -2,7 +2,7 @@
  * Discovery manifests must name only environment variables the server reads,
  * and must all name the ones that enable the paid tools.
  *
- * Found 2026-09-04 in the arc-zero inventory: server.json (the Official MCP
+ * Found 2026-09-04 in an audit of public surfaces: server.json (the Official MCP
  * Registry manifest) listed three variables and none of the four that switch
  * on the LLM judge and the citation verifier — the two tools a registry
  * reader most needs to know how to enable — while smithery.yaml described

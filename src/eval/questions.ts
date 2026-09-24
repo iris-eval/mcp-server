@@ -18,7 +18,7 @@ export interface EvaluationQuestion {
   id: CapabilityQuestionId;
   /** The question in a reader's words. */
   text: string;
-  /** What answers it: a rule (stamped on results), a tool (arc 5's run comparison) or a surface (dashboard, /proof). */
+  /** What answers it: a rule (stamped on results), a tool (compare_runs) or a surface (dashboard, /proof). */
   answeredBy: 'rule' | 'tool' | 'surface';
 }
 

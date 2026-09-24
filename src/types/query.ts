@@ -266,7 +266,7 @@ export interface IStorageAdapter {
    * Store several traces in ONE transaction: all of them or none. The OTLP
    * door ingests a batch this way, so a bad span mid-batch cannot leave
    * half a request stored, and ten thousand traces commit once instead of
-   * ten thousand times (2026-09-23 red team, NET-1/NET-2).
+   * ten thousand times (2026-09-23 security review).
    */
   insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void>;
   getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null>;

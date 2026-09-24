@@ -11,7 +11,7 @@
  * this repo, build and test in CI, and have never been published, yet a CI
  * comment called one "a PUBLISHED npm package" and both READMEs opened with
  * install commands that cannot resolve. Whether to publish or retire them is
- * the founder's call; until then no surface may present them as installable
+ * an open decision; until then no surface may present them as installable
  * (tests/unpublished-packages-not-cited.test.ts walks every public surface).
  * Flip a flag to true in the same PR as the first publish, or delete the
  * package if it is retired.

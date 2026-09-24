@@ -1,6 +1,5 @@
 /*
- * Cost anomaly against the agent's OWN history (arc 7, D-7a; gap G22; the
- * approved algorithm §4.8, aligned in H-5).
+ * Cost anomaly against the agent's OWN history (0.14.0).
  *
  * A fixed dollar figure is a policy pretending to be a measurement: $0.10
  * is a spike for a haiku-class summariser and a rounding error for a

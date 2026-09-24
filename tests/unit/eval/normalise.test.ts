@@ -4,7 +4,7 @@
  * Three properties matter and each is tested here rather than through a
  * rule: ASCII text is untouched (so no existing verdict can move), every
  * evasion the transforms table measures is folded, and a span in normalised
- * coordinates maps back onto the RAW text — which is what keeps arc 1's
+ * coordinates maps back onto the RAW text — which is what keeps the
  * evidence contract true after the fold.
  */
 import { describe, expect, it } from 'vitest';

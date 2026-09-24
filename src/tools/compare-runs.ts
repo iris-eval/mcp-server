@@ -21,7 +21,7 @@ import { irisError } from './errors.js';
  * allowed to say it cannot tell, and it says so with a number attached.
  * `worse` and `better` are separate booleans rather than one direction
  * field precisely so that "neither" is representable and is the default.
- * Since arc 7 (D-6b) there is a third answer, `equivalent_within`, which is
+ * Since 0.14.0 there is a third answer, `equivalent_within`, which is
  * not the absence of a difference but a positive finding with a margin.
  */
 
@@ -185,8 +185,8 @@ export async function compareStoredRuns(
     storage.getRunResults(tenantId, args.after),
   ]);
   /*
-   * A dataset restricts both sides to the case keys the reader chose (arc 8,
-   * R-8). No statistic changes: the same pairing, the same tests, over a
+   * A dataset restricts both sides to the case keys the reader chose.
+   * No statistic changes: the same pairing, the same tests, over a
    * chosen set of cases. Rows with no case key cannot be in a dataset and
    * are dropped with the rest.
    */
