@@ -47,4 +47,4 @@ When a new claim type starts appearing on surfaces (e.g., `\d+ supported clients
 
 Allow-list entries are deliberate, time-boxed exemptions. Reviewing the allow-list quarterly is the right cadence — entries that have outlived their reason get removed; sites still hardcoded get migrated.
 
-The substrate's principle: **drift is a class, not a bug.** Patching a single surface forward is IC work; eliminating the hardcode is the structural fix that compounds.
+The principle: **drift is a class, not a bug.** Patching a single surface forward is IC work; eliminating the hardcode is the structural fix that compounds.

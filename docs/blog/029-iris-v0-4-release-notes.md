@@ -102,7 +102,7 @@ The release ships all five together because you need all five. One without the o
 
 Cloud Tier. Managed Iris. Multi-tenant with real workspaces. PostgreSQL adapter. Team dashboards. Alerting. The items moved from v0.4 into v0.5 are the ones that only make sense alongside the hosted offering.
 
-For now, v0.4 is where the substrate pays off. The next six months of product are about running it at real customer volume.
+For now, v0.4 is where the foundation pays off. The next six months of product are about running it at real customer volume.
 
 ```
 npm install -g @iris-eval/mcp-server@0.4.0

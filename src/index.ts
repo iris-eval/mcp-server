@@ -176,7 +176,7 @@ Options:
   --version                Print the version and exit
   -h, --help               Show this help message
 
-Ingest (the third door — a CI gate, and the substrate under host hooks; no server needed):
+Ingest (the third door — a CI gate, and the path host hooks use; no server needed):
   ${COMMAND} ingest        Read one JSON trace, or NDJSON (one per line), from stdin or --file,
                            store each in the configured database, and print one JSON line per
                            trace: {trace_id, status} or, with --evaluate, {trace_id, evaluation_id,

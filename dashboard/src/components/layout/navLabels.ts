@@ -22,5 +22,5 @@ export const NAV_LABEL_SETS = {
   proposed: { failures: 'Failures', runs: 'Runs', rules: 'Rules', audit: 'Audit', moments: 'Moments' },
 } as const satisfies Record<string, NavLabelSet>;
 
-/** Founder-gated: switch to `NAV_LABEL_SETS.proposed` when the names are approved. One edit. */
+/** Switch to `NAV_LABEL_SETS.proposed` when the names are approved. One edit. */
 export const NAV_LABELS: NavLabelSet = NAV_LABEL_SETS.current;

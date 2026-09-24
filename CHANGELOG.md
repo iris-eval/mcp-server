@@ -918,7 +918,7 @@ Eval rule library expansion + new `no_stub_output` rule + topic_consistency fix.
 
 ## [0.3.0] - 2026-04-21
 
-Dashboard Phase-1 visual core + pricing page. First minor since Mother Audit. No breaking changes.
+Dashboard Phase-1 visual core + pricing page. First minor since the full-system audit. No breaking changes.
 
 ### Added
 - Dashboard: dark/light theme toggle in the header. Persists via `localStorage`; falls back to `prefers-color-scheme`. Closes #10.
@@ -937,7 +937,7 @@ Dashboard Phase-1 visual core + pricing page. First minor since Mother Audit. No
 
 ## [0.2.4] - 2026-04-17
 
-Mother Audit Wave 2 follow-through. CLI hardening cluster + repo hygiene + content + tooling.
+Audit follow-through, second wave. CLI hardening cluster + repo hygiene + content + tooling.
 
 ### Added
 - CLI: Zod-validated arguments. `--transport` accepts only `stdio` or `http`. `--port` and `--dashboard-port` must be integers 1–65535. Invalid args fail with a specific error and exit code 2 (was: silent garbage acceptance).
@@ -956,7 +956,7 @@ Mother Audit Wave 2 follow-through. CLI hardening cluster + repo hygiene + conte
 
 ## [0.2.3] - 2026-04-16
 
-Mother Audit Wave 1 patch checkpoint. Five small surface-correctness fixes surfaced by an end-to-end audit (product + external surface + diligence lens). No product behavior changes.
+Audit follow-through, first wave. Five small surface-correctness fixes surfaced by an end-to-end audit of the product and its external surfaces. No product behavior changes.
 
 ### Fixed
 - Homepage stat counters now render their values on first paint instead of "0" until scrolled into view (`stats.tsx` flips MCP-tools / eval-rules / latency to `static: true`; AnimatedCounter unchanged for in-component playground reveals)
