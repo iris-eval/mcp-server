@@ -1,0 +1,39 @@
+{
+  "name": "iris-eval",
+  "version": "0.18.0",
+  "description": "Runs Iris, the MCP server that scores every agent output for quality, safety and cost. The server is @iris-eval/mcp-server; this package makes `npx iris-eval` start it.",
+  "type": "module",
+  "bin": {
+    "iris-eval": "bin/iris-eval.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@iris-eval/mcp-server": ">=0.18.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "keywords": [
+    "iris",
+    "mcp",
+    "agent-eval",
+    "llm-eval",
+    "mcp-server"
+  ],
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://github.com/iris-eval"
+  },
+  "license": "MIT",
+  "homepage": "https://iris-eval.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iris-eval/mcp-server.git",
+    "directory": "packages/iris-eval"
+  }
+}

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`npx iris-eval` starts Iris.** The command our package installs is `iris-eval`, but `npx iris-eval` looks up the npm package of that name, which nobody had published — anyone could have claimed it. The `iris-eval` package (`packages/iris-eval`) now holds the name: it installs `@iris-eval/mcp-server` at its latest release and starts it with the same arguments, so `npx iris-eval --self-test` and `npx iris-eval --dashboard` run the real server.
+
+### Fixed
+
+- **No blog post tells readers to run `iris-mcp`.** Three posts from the 0.4 era still showed the original command name. `iris-mcp` stays installed so existing configs keep running, but on npm it is another project's package, so a reader who copied `npx iris-mcp` would have run that instead. The posts now show `npx -y @iris-eval/mcp-server`, and the check that keeps the legacy name off every live page now covers the blog.
+
 ## [0.18.0] - 2026-09-24
 
 **Honest numbers, a lighter footprint, nothing done silently.** 0.18.0 finishes the work of the 0.17.0 security review:

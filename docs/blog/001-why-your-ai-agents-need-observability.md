@@ -129,7 +129,7 @@ Three lines to get running:
 
 ```bash
 npm install -g @iris-eval/mcp-server
-iris-mcp --transport http --dashboard
+npx -y @iris-eval/mcp-server --transport http --dashboard
 # Open http://localhost:6920
 ```
 

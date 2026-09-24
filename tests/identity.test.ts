@@ -68,6 +68,9 @@ describe('one identifier', () => {
     const live = [
       'README.md', 'server.json', 'docker-compose.yml', 'src/index.ts', 'skills/iris-eval/SKILL.template.md',
       ...readdirSync(join(root, 'docs')).filter((f) => f.endsWith('.md')).map((f) => `docs/${f}`),
+      // Blog posts are live pages too: a reader who copies `npx iris-mcp` from one
+      // runs an unrelated npm package that owns that name.
+      ...walk(join(root, 'docs', 'blog')).filter((f) => f.endsWith('.md')).map(rel),
       ...walk(join(root, 'website', 'src')).map(rel),
       ...walk(join(root, 'claude-plugin')).map(rel),
       ...walk(join(root, 'claude-plugin-capture')).map(rel),
