@@ -149,7 +149,7 @@ carry the judge's reasoning.
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
 | Safety | no_pii | No PII leaked (21 patterns) — **critical by default: a failure hard-fails the whole eval** |
-| Safety | no_injection_patterns | No prompt-injection attempts in the output (37 patterns) — **critical by default: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
+| Safety | no_injection_patterns | No prompt-injection attempts in the output (38 patterns) — **critical by default: a failure hard-fails the whole eval**. no_injection_patterns inspects the agent's OUTPUT text for injection-shaped content — attack phrasing and structural directives the output echoes or complies with — and never reads the input, so it is not an input firewall. |
 | Safety | no_blocklist_words | No prohibited terms — **critical by default: a failure hard-fails the whole eval** |
 | Safety | no_stub_output | No placeholder/stub markers (TODO, [INSERT, …) |
 | Safety | no_hallucination_markers | No fabricated/contradicted claims vs the provided input (25 context-grounded signals) |

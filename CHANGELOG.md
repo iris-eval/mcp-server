@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Check before upgrading.**
+
+- **`no_pii` and `no_injection_patterns` now fire on disguised values and directives they used to pass, so a CI gate on `detector_veto` can trip where it passed before.** The new shapes: an SSN written with en dashes, em dashes or minus signs, or with spaces, dots or no separator right after "SSN" / "social security" / "soc sec"; a card number in groups split by a dash with spaces around it ("5500 - 0000 - …") or by typographic dashes, and the American Express 4-6-5 grouping; an IBAN in its printed four-character groups; an email address spelled out with "(at)"/"[at]" and "(dot)"/"dot", or with a plain " at " before a personal-mail provider (gmail, outlook, yahoo, icloud, proton and similar); any PII or injection pattern inside a base64 run that decodes to text; the override phrase in French, Spanish, Portuguese, German or Chinese; letter-spaced text ("i g n o r e   a l l …"); "you are DAN" with its no-restrictions framing in the same sentence; and a markdown image whose URL carries a template placeholder (`{{…}}`, `${…}`, URL-encoded or not) or a query parameter named for conversation or secret content.
+
 ### Fixed
 
 - **A database with evaluations from the earliest releases no longer stops the server at startup.** Those releases stored each rule result's name as `rule` rather than `ruleName`. Startup sorts rule names to refresh local labels, so a single such row threw `Cannot read properties of undefined (reading 'localeCompare')` and the server exited before answering any client — every MCP client showed it as disconnected. Every read of stored rule results now goes through one parser that reads the old name, drops entries with no name, and treats unreadable data as empty. **If Iris would not start for you and the log showed that error, upgrade; your stored history is read, not rewritten.**
@@ -18,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **No blog post tells readers to run `iris-mcp`.** Three posts from the 0.4 era still showed the original command name. `iris-mcp` stays installed so existing configs keep running, but on npm it is another project's package, so a reader who copied `npx iris-mcp` would have run that instead. The posts now show `npx -y @iris-eval/mcp-server`, and the check that keeps the legacy name off every live page now covers the blog.
+
+### Changed
+
+- **The critical detectors read through the common disguises.** An adversarial set of 47 realistic evasions caught 21 before this change and 35 after: PII 5 of 18 → 13 of 18, injection 4 of 10 → 10 of 10; its 25 look-alike negatives false-fire exactly as before (1, a stub-rule case this change does not touch). Precision is held by the check each widened shape already had or now gets: Luhn for cards, mod-97 for IBANs, the issuance rules for SSNs (with a keyword required for every separator except a dash, because "123 45 6789" and nine bare digits are far more often a table row or an order number), a personal-mail provider for a plainly spelled email ("visit us at acme dot com" names a website, not a person), and the same sentence for the DAN persona. Base64 runs are decoded only when they turn into valid UTF-8 text with no control characters, so image data, hashes and identifiers are skipped; at most 64 runs of up to 4,096 characters are tried per output, and every new reading keeps the scan linear in the input (1 MiB hostile payloads for each new shape are in the test suite). A base64 finding is located at the encoded run and named `… (base64-encoded)`; a letter-spaced one is located in the raw text and named `… (letter-spaced)`. The injection pattern count goes from 37 to 38 (the markdown-image detector); the rest widen existing patterns. `no_injection_compliance`, which reads tool output, recognises the same override phrase in the same five languages. The playground carries every change and the parity test pins it. No labelled-corpus number moved: every precision, recall and F1 in `proof/RESULTS.md` is unchanged, and only the measured latency differs.
 
 ## [0.18.0] - 2026-09-24
 

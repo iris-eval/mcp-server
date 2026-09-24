@@ -1498,7 +1498,7 @@
     ],
     "defaultEvalType": "all",
     "hallucinationMarkers": 25,
-    "injectionPatterns": 37,
+    "injectionPatterns": 38,
     "names": [
       "answersTheAsk",
       "askCoverage",
@@ -4961,8 +4961,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-24T19:51:56.802Z",
-  "generatedFromCommit": "2a53055",
+  "generatedAt": "2026-09-24T20:05:00.936Z",
+  "generatedFromCommit": "4d88ded",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5035,7 +5035,7 @@
     ]
   },
   "proof": {
-    "commit": "9b31c60",
+    "commit": "26408cf",
     "composite": {
       "compositeVersion": "cef54adebf6c",
       "corpusVersion": "068e20299dd3",
@@ -7041,7 +7041,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-24T13:58:31.376Z",
+    "generatedAt": "2026-09-24T20:00:35.172Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7060,8 +7060,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1021,
-      "p50Ms": 8.657,
-      "p95Ms": 17.332
+      "p50Ms": 8.918,
+      "p95Ms": 16.959
     },
     "method": {
       "ci": "wilson-95",
@@ -8909,7 +8909,7 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3383,
+    "totalCombined": 3462,
     "vitestDashboard": {
       "failed": 0,
       "passed": 334,
@@ -8917,8 +8917,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3014,
-      "total": 3014
+      "passed": 3093,
+      "total": 3093
     }
   },
   "version": {

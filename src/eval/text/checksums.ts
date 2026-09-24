@@ -33,9 +33,10 @@ export function luhn(candidate: string): boolean {
   for (let i = candidate.length - 1; i >= 0; i--) {
     const code = candidate.charCodeAt(i);
     if (code < 48 || code > 57) {
-      // Separators a card number legitimately carries; anything else means
-      // this was never a card number.
-      if (candidate[i] === '-' || candidate[i] === ' ') continue;
+      // Separators a card number legitimately carries — a space or a dash,
+      // including the typographic dashes (U+2010–2015) and the minus sign an
+      // editor substitutes; anything else means this was never a card number.
+      if (candidate[i] === ' ' || candidate[i] === '-' || (code >= 0x2010 && code <= 0x2015) || code === 0x2212) continue;
       return false;
     }
     let d = code - 48;
@@ -89,4 +90,15 @@ export function ssnStructure(candidate: string): boolean {
   if (group === '00') return false;
   if (serial === '0000') return false;
   return true;
+}
+
+/**
+ * ssnStructure on the nine digits of a looser match — "SSN 123 45 6789",
+ * "123–45–6789", "SSN: 123456789". Every non-digit is dropped (the match
+ * carries its keyword, which has none), and anything but exactly nine
+ * digits is not an SSN.
+ */
+export function ssnDigits(candidate: string): boolean {
+  const digits = candidate.replace(/\D/g, '');
+  return digits.length === 9 && ssnStructure(`${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`);
 }
