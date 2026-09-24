@@ -920,7 +920,7 @@ The [`log_trace`](#log_trace) tool contract — both capture paths validate agai
 |--------|---------|
 | `400` | Invalid body: `{ "error": "Invalid trace payload", "details": [ ...zod issues... ] }` |
 | `401` / `403` | Missing / wrong `Authorization: Bearer <key>` when the server was started with an API key; `403` is also the DNS-rebinding guard rejecting a hostile `Origin`/`Host` |
-| `413` | Body over the request size limit (default `1mb`) |
+| `413` | Body over the request size limit (`security.requestSizeLimit`, default `1mb`). The MCP stdio transport enforces the same limit: an oversized request is answered with JSON-RPC error `-32600` naming its size, and the session stays open |
 | `429` | Shared API rate limit exceeded — back off and retry |
 | `501` | `evaluate: true` on a server with no eval engine wired. The trace is **not** stored — retry without `evaluate` |
 

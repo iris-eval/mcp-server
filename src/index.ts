@@ -27,6 +27,7 @@ import { validateBindPolicy } from './utils/bind-policy.js';
 import { buildKeyRing } from './security/keys.js';
 import { registerPlugins } from './eval/plugins.js';
 import { irisHome } from './utils/iris-home.js';
+import { requestSizeLimitBytes } from './utils/size-limit.js';
 import {
   seedDemoData,
   clearDemoData,
@@ -453,7 +454,11 @@ async function main(): Promise<void> {
     const portStr = typeof addr === 'object' && addr ? addr.port : config.transport.port;
     logger.info(`HTTP transport listening on ${config.transport.host}:${portStr}`);
   } else {
-    const transport = createStdioTransport();
+    const transport = createStdioTransport({
+      maxMessageBytes: requestSizeLimitBytes(config.security.requestSizeLimit),
+      onRefused: (bytes, limit) =>
+        logger.warn(`Refused a ${bytes}-byte stdio message: over the ${limit}-byte limit (security.requestSizeLimit)`),
+    });
     await mcpServer.connect(transport);
     logger.info('Stdio transport connected');
     if (!config.dashboard.enabled) {

@@ -38,6 +38,7 @@ import { buildKeyRing, hasAnyApiKey } from '../security/keys.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
+import { requestSizeLimitBytes } from '../utils/size-limit.js';
 
 export interface DashboardServer {
   app: express.Application;
@@ -130,10 +131,11 @@ export function createDashboardServer(
     }),
   );
 
-  // Body parser with size limit
-  app.use(express.json({ limit: config.security.requestSizeLimit }));
+  // Body parser with size limit — the same byte count stdio enforces (src/utils/size-limit.ts).
+  const sizeLimit = requestSizeLimitBytes(config.security.requestSizeLimit);
+  app.use(express.json({ limit: sizeLimit }));
   // OTLP/HTTP protobuf bodies — raw bytes, same size limit; the route decodes them.
-  app.use(express.raw({ type: 'application/x-protobuf', limit: config.security.requestSizeLimit }));
+  app.use(express.raw({ type: 'application/x-protobuf', limit: sizeLimit }));
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));

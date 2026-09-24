@@ -454,7 +454,7 @@ When using HTTP transport, Iris includes:
 - Helmet security headers
 - Zod input validation on all routes
 - ReDoS-safe regex for custom eval rules
-- 1MB request body limits
+- One 1MB request size limit on every transport (`security.requestSizeLimit`): HTTP answers `413`, stdio answers a JSON-RPC error and keeps the session open
 
 ```bash
 # Production deployment

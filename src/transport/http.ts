@@ -12,6 +12,7 @@ import { createRebindingGuard } from '../middleware/rebinding-guard.js';
 import { assertAuthenticatedBind } from '../utils/bind-policy.js';
 import { buildKeyRing, hasAnyApiKey } from '../security/keys.js';
 import { buildHealth, type HealthDeps } from '../health.js';
+import { requestSizeLimitBytes } from '../utils/size-limit.js';
 
 export interface HttpTransportResult {
   transport: StreamableHTTPServerTransport;
@@ -74,8 +75,8 @@ export async function createHttpTransport(
     }),
   );
 
-  // Body parser with size limit
-  app.use(express.json({ limit: config.security.requestSizeLimit }));
+  // Body parser with size limit — the same byte count stdio enforces (src/utils/size-limit.ts).
+  app.use(express.json({ limit: requestSizeLimitBytes(config.security.requestSizeLimit) }));
 
   /*
    * Health endpoint (no auth, no rate limit) — the same contract the
