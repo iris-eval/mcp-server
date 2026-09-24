@@ -78,11 +78,13 @@ export function registerAllTools(
   registerGetTracesTool(server, storage);
   registerCompareRunsTool(server, storage);
   registerCompareTracesTool(server, storage);
-  registerEvaluateRunsTool(server, storage, evalEngine);
+  registerEvaluateRunsTool(server, storage, evalEngine, {
+    rulesChanged: () => customRuleStore.changesSinceStart(LOCAL_TENANT),
+  });
   registerListRulesTool(server, customRuleStore, evalEngine);
   registerDeployRuleTool(server, customRuleStore, evalEngine);
   registerDeleteRuleTool(server, customRuleStore, evalEngine);
-  registerDeleteTraceTool(server, storage);
+  registerDeleteTraceTool(server, storage, customRuleStore.auditPath);
   registerEvaluateWithLLMJudgeTool(server, storage, evalEngine);
   registerVerifyCitationsTool(server, storage, evalEngine);
 }

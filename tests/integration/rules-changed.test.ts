@@ -9,7 +9,7 @@
  * without it.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -23,6 +23,7 @@ import { EvalEngine } from '../../src/eval/engine.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
 import { createLogger } from '../../src/utils/logger.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
+import { irisHome } from '../../src/utils/iris-home.js';
 
 type Result = { content?: Array<{ type: string; text?: string }>; isError?: boolean };
 const body = (r: unknown) => JSON.parse((r as Result).content!.find((c) => c.type === 'text')!.text!) as Record<string, unknown>;
@@ -149,5 +150,51 @@ describe('rules_changed on a verdict', () => {
     expect(evaluated).toHaveProperty('rules_changed');
     const read = await client.readResource({ uri: `iris://evaluations/${evaluated.id as string}` });
     expect(JSON.parse((read.contents[0] as { text: string }).text)).not.toHaveProperty('rules_changed');
+  });
+
+  it('reaches evaluate_runs: a re-score under changed rules says so', async () => {
+    for (let i = 0; i < 2; i++) {
+      await client.callTool({ name: 'log_trace', arguments: { agent_name: 'a', input: INPUT, output: OUTPUT, run: 'nightly' } });
+    }
+    const unchanged = body(await client.callTool({ name: 'evaluate_runs', arguments: { run: 'nightly', into: 'nightly-a' } }));
+    expect(unchanged).not.toHaveProperty('rules_changed');
+
+    await client.callTool({
+      name: 'deploy_rule',
+      arguments: { name: 'r', eval_type: 'completeness', definition: { type: 'min_length', config: { min_length: 1 } } },
+    });
+    const changed = body(await client.callTool({ name: 'evaluate_runs', arguments: { run: 'nightly', into: 'nightly-b' } }));
+    expect(changed.rules_changed).toMatchObject({ count: 1, audit: 'iris://audit' });
+    expect(changed.evaluated).toBe(2);
+  });
+});
+
+describe('delete_trace writes to the rule store audit log', () => {
+  it('lands in the file iris://audit reads, not the default log', async () => {
+    const storage = new SqliteAdapter(':memory:');
+    await storage.initialize();
+    const dir = mkdtempSync(join(tmpdir(), 'iris-delete-audit-'));
+    const auditPath = join(dir, 'demo-audit.log');
+    const store = createCustomRuleStore({ pathFor: () => join(dir, 'rules.json'), auditPath });
+    const server = createIrisServer(defaultConfig, storage, store);
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.mcpServer.connect(serverTransport);
+    const client = new Client({ name: 'delete-audit', version: '0.1.0' });
+    await client.connect(clientTransport);
+    const defaultLog = join(irisHome(), 'audit.log');
+    try {
+      const logged = body(await client.callTool({ name: 'log_trace', arguments: { agent_name: 'a', output: OUTPUT } }));
+      const traceId = logged.trace_id as string;
+      expect(body(await client.callTool({ name: 'delete_trace', arguments: { trace_id: traceId } })).deleted).toBe(true);
+
+      expect(readFileSync(auditPath, 'utf-8')).toContain(traceId);
+      if (existsSync(defaultLog)) expect(readFileSync(defaultLog, 'utf-8')).not.toContain(traceId);
+      const audit = await client.readResource({ uri: 'iris://audit' });
+      expect((audit.contents[0] as { text: string }).text).toContain(traceId);
+    } finally {
+      await client.close();
+      await storage.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

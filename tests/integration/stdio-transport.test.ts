@@ -60,10 +60,16 @@ describe('Stdio Transport Integration', () => {
 
   it('refuses a 2 MB output over stdio as HTTP does, and keeps serving', async () => {
     const serverPath = resolve(import.meta.dirname, '../../src/index.ts');
+    /*
+     * Its own home, not the suite's: on Windows the server started through
+     * npx can outlive client.close() for a moment and keep its database
+     * open, and a shared home then fails the suite's cleanup with EPERM.
+     */
+    const home = mkdtempSync(join(tmpdir(), 'iris-stdio-size-'));
     const transport = new StdioClientTransport({
       command: 'npx',
       args: ['tsx', serverPath],
-      env: { ...getDefaultEnvironment(), IRIS_HOME: irisHome },
+      env: { ...getDefaultEnvironment(), IRIS_HOME: home },
     });
     const client = new Client({ name: 'stdio-size-test', version: '0.1.0' });
     try {
@@ -77,6 +83,13 @@ describe('Stdio Transport Integration', () => {
       expect(ok.isError).toBeFalsy();
     } finally {
       await client.close();
+      // A scratch directory under the OS temp dir: if the exiting server
+      // still holds it, leaving it behind is harmless.
+      try {
+        rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      } catch {
+        /* still held by the exiting child */
+      }
     }
   }, 30000);
 });

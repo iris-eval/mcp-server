@@ -10,6 +10,7 @@ import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 import { irisError } from './errors.js';
 import { insertLinkedEvalResult } from './trace-link.js';
+import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 
 /*
  * Score a run again under today's rules.
@@ -41,9 +42,23 @@ export const evaluateRunsOutputSchema = z.looseObject({
   failed: z.array(z.looseObject({ trace_id: z.string(), reason: z.string() })).describe('traces that could not be scored, each with why'),
   passed: z.number().describe('how many of the new verdicts passed'),
   summary: z.string().describe('what happened, and what to do with it'),
+  rules_changed: z
+    .looseObject({ count: z.number().int().positive(), last_change_at: z.string(), since: z.string(), audit: z.literal('iris://audit') })
+    .optional()
+    .describe('present when deployed rules changed since the server started, as on evaluate_output; each change is in iris://audit'),
 });
 
-export function registerEvaluateRunsTool(server: McpServer, storage: IStorageAdapter, evalEngine: EvalEngine): void {
+export interface EvaluateRunsOptions {
+  /** Deployed-rule changes since the server started, for rules_changed. */
+  rulesChanged?: () => RuleChangesSinceStart | null;
+}
+
+export function registerEvaluateRunsTool(
+  server: McpServer,
+  storage: IStorageAdapter,
+  evalEngine: EvalEngine,
+  options?: EvaluateRunsOptions,
+): void {
   server.registerTool(
     'evaluate_runs',
     {
@@ -166,6 +181,9 @@ export function registerEvaluateRunsTool(server: McpServer, storage: IStorageAda
         .filter(Boolean)
         .join(' ');
 
+      // The re-score ran under the rules as they are now; if they moved
+      // while the server ran, the answer says so, as a verdict does.
+      const rulesChanged = options?.rulesChanged?.();
       return respond(evaluateRunsOutputSchema, {
         source_run: args.run,
         run: target,
@@ -176,6 +194,7 @@ export function registerEvaluateRunsTool(server: McpServer, storage: IStorageAda
         failed,
         passed,
         summary,
+        ...(rulesChanged ? { rules_changed: rulesChanged } : {}),
       });
     }),
   );

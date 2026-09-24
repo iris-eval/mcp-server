@@ -238,7 +238,7 @@ Every rule result carries `role` — what the composer did with it here: `gate` 
 
 The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
 
-**Rules that changed while the server ran are named.** When a custom rule was deployed, deleted, enabled or disabled since the server started, the response carries `rules_changed`: `{ count, last_change_at, since, audit: "iris://audit" }` — how many changes, when the last one was, when counting began, and where each change is recorded with who made it. An agent that can deploy or disable rules can shape the rules it is then judged by; this is how a reader of the verdict sees that it might have. It never changes `passed`, `score` or `verdict`, and it is absent when the rules are the ones the server started with. It belongs to the verdict as produced: `log_trace` with `evaluate: true` and `POST /api/v1/traces` carry it too, and a stored evaluation read back later (`iris://evaluations/{id}`) does not. Changes made by another process against the same rules file are not counted, because this server does not run them until it restarts.
+**Rules that changed while the server ran are named.** When a custom rule was deployed, deleted, enabled or disabled since the server started, the response carries `rules_changed`: `{ count, last_change_at, since, audit: "iris://audit" }` — how many changes, when the last one was, when counting began, and where each change is recorded with who made it. An agent that can deploy or disable rules can shape the rules it is then judged by; this is how a reader of the verdict sees that it might have. It never changes `passed`, `score` or `verdict`, and it is absent when the rules are the ones the server started with (in demo mode, the rules the demo seeds are its starting set). It belongs to the verdict as produced: `log_trace` with `evaluate: true`, `evaluate_runs` and `POST /api/v1/traces` carry it too, and a stored evaluation read back later (`iris://evaluations/{id}`) does not. Changes made by another process against the same rules file are not counted, because this server does not run them until it restarts.
 
 #### Example Request
 
@@ -628,6 +628,8 @@ Deterministic, local, no model call, nothing spent.
 }
 ```
 
+When a deployed custom rule changed since the server started, the response also carries `rules_changed`, the same object [`evaluate_output`](#evaluate_output) returns: the re-score ran under the rules as they are now, and this says they moved.
+
 ---
 
 ### evaluate_with_llm_judge
@@ -802,7 +804,7 @@ Returns dashboard summary with key metrics and trends.
 
 ### iris://audit
 
-The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. The same log the dashboard's Audit page shows, readable by the agent that made the change and by whoever reviews it. A verdict produced after a rule change points here through its `rules_changed` field.
+The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. The same file the dashboard's Audit page shows (in demo mode, the demo's own audit log, never the real one), readable by the agent that made the change and by whoever reviews it. A verdict produced after a rule change points here through its `rules_changed` field.
 
 ---
 

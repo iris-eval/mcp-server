@@ -306,6 +306,12 @@ export interface CustomRuleStore {
    * the verdict surfaces so a verdict says the rules under it moved.
    */
   changesSinceStart(tenantId: TenantId): RuleChangesSinceStart | null;
+  /**
+   * Start counting again from now. For setup that deploys through the
+   * store before the server serves, such as the demo seeder: those
+   * deploys are the starting rule set, not changes to it.
+   */
+  baselineChanges(): void;
 }
 
 /** What changed in the deployed rule set since the server started. */
@@ -443,7 +449,7 @@ export function createCustomRuleStore(opts?: {
    * purpose: "since the server started" is the window a reader can check
    * against iris://audit, and it never alters a verdict.
    */
-  const startedAt = new Date().toISOString();
+  let startedAt = new Date().toISOString();
   const changes = new Map<TenantId, { count: number; last: string }>();
   function recordChange(tenantId: TenantId, at: string): void {
     const prior = changes.get(tenantId);
@@ -496,6 +502,10 @@ export function createCustomRuleStore(opts?: {
     changesSinceStart(tenantId: TenantId): RuleChangesSinceStart | null {
       const c = changes.get(tenantId);
       return c ? { count: c.count, last_change_at: c.last, since: startedAt, audit: 'iris://audit' } : null;
+    },
+    baselineChanges(): void {
+      changes.clear();
+      startedAt = new Date().toISOString();
     },
     list(tenantId: TenantId): DeployedCustomRule[] {
       return [...load(tenantId)];
