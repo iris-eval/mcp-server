@@ -1,8 +1,8 @@
 ---
 title: "Hardening LLM-as-judge against prompt injection"
 description: "An LLM judge reads the output it is scoring, and that output can be written by an attacker. How Iris wraps every untrusted field in a per-call nonce, tells the judge what is data, and restates the contract after the candidate — and what that defense does not cover."
-date: 2027-12-31
-published: false
+date: 2026-09-24
+published: true
 author: Ian Parent
 tags: [agent-eval, llm-as-judge, security, prompt-injection, mcp]
 relatedPosts: [iris-v0-4-release-notes, output-quality-score, eval-driven-development]
