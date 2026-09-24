@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A database with evaluations from the earliest releases no longer stops the server at startup.** Those releases stored each rule result's name as `rule` rather than `ruleName`. Startup sorts rule names to refresh local labels, so a single such row threw `Cannot read properties of undefined (reading 'localeCompare')` and the server exited before answering any client — every MCP client showed it as disconnected. Every read of stored rule results now goes through one parser that reads the old name, drops entries with no name, and treats unreadable data as empty. **If Iris would not start for you and the log showed that error, upgrade; your stored history is read, not rewritten.**
+
 ### Added
 
 - **`npx iris-eval` starts Iris.** The command our package installs is `iris-eval`, but `npx iris-eval` looks up the npm package of that name, which nobody had published — anyone could have claimed it. The `iris-eval` package (`packages/iris-eval`) now holds the name: it installs `@iris-eval/mcp-server` at its latest release and starts it with the same arguments, so `npx iris-eval --self-test` and `npx iris-eval --dashboard` run the real server.

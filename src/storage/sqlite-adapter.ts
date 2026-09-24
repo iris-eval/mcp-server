@@ -56,6 +56,33 @@ import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
+
+/**
+ * Stored rule results, read back in one shape. The earliest releases wrote
+ * each result's name as `rule`, not `ruleName`; every reader sorts or groups
+ * by `ruleName`, so a single such row stopped the server at startup (the
+ * local-label refresh sorts rule names). A result with neither name is
+ * dropped, and a value that is not a JSON list reads as no results.
+ */
+export function parseRuleResults<T = EvalRuleResult>(raw: unknown): T[] {
+  if (raw === null || raw === undefined || raw === '') return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(String(raw));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const out: T[] = [];
+  for (const item of parsed) {
+    if (item === null || typeof item !== 'object') continue;
+    const r = item as Record<string, unknown>;
+    const ruleName = typeof r.ruleName === 'string' ? r.ruleName : typeof r.rule === 'string' ? r.rule : undefined;
+    if (ruleName === undefined) continue;
+    out.push({ ...r, ruleName } as T);
+  }
+  return out;
+}
 const ALLOWED_SORT_ORDERS = new Set(['asc', 'desc']);
 
 /**
@@ -870,7 +897,7 @@ export class SqliteAdapter implements IStorageAdapter {
         continue;
       }
       seen.add(traceId);
-      const ruleResults = row.rule_results ? (JSON.parse(row.rule_results as string) as Array<{ ruleName: string; passed: boolean; skipped?: boolean }>) : [];
+      const ruleResults = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean }>(row.rule_results);
       out.push({
         evalId: String(row.id),
         traceId: (row.trace_id as string | null) ?? null,
@@ -929,7 +956,7 @@ export class SqliteAdapter implements IStorageAdapter {
       let passed = row.passed === 1 || row.passed === true;
       if (filter.question !== undefined) {
         // The question's own answer, from the rules that answered it on this evaluation.
-        const results = row.rule_results ? (JSON.parse(String(row.rule_results)) as Array<{ question?: string; passed: boolean; skipped?: boolean }>) : [];
+        const results = parseRuleResults<{ question?: string; passed: boolean; skipped?: boolean }>(row.rule_results);
         const answering = results.filter((r) => r.question === filter.question && !r.skipped);
         if (answering.length === 0) continue;
         passed = answering.every((r) => r.passed);
@@ -1147,7 +1174,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const violations = { pii: 0, injection: 0, hallucination: 0 };
     for (const row of safetyRows) {
-      const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(row.rule_results);
+      const rules = parseRuleResults<{ ruleName: string; passed: boolean }>(row.rule_results);
       for (const r of rules) {
         if (r.passed) continue;
         if (r.ruleName === 'no_pii') violations.pii++;
@@ -1271,7 +1298,7 @@ export class SqliteAdapter implements IStorageAdapter {
     for (const row of rows) {
       if (seen.has(row.trace_id)) continue;
       seen.add(row.trace_id);
-      const results = row.rule_results === null ? [] : (JSON.parse(row.rule_results) as Array<{ ruleName: string; passed: boolean; skipped?: boolean }>);
+      const results = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean }>(row.rule_results);
       out.push({
         traceId: row.trace_id,
         timestamp: row.timestamp,
@@ -1347,7 +1374,7 @@ export class SqliteAdapter implements IStorageAdapter {
       traceId: row.trace_id,
       createdAt: row.created_at,
       agent: row.agent_name,
-      results: row.rule_results === null ? [] : (JSON.parse(row.rule_results) as Array<{ ruleName: string; passed: boolean; skipped?: boolean; evidence?: unknown[]; message?: string }>),
+      results: parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean; evidence?: unknown[]; message?: string }>(row.rule_results),
     }));
   }
 
@@ -1448,7 +1475,7 @@ export class SqliteAdapter implements IStorageAdapter {
     const ruleMap = new Map<string, { totalRun: number; failCount: number }>();
 
     for (const row of rows) {
-      const rules: Array<{ ruleName: string; passed: boolean; skipped?: boolean }> = JSON.parse(row.rule_results);
+      const rules = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean }>(row.rule_results);
       for (const r of rules) {
         if (r.skipped) continue;
         const entry = ruleMap.get(r.ruleName) ?? { totalRun: 0, failCount: 0 };
@@ -1503,7 +1530,7 @@ export class SqliteAdapter implements IStorageAdapter {
     }>;
 
     return rows.map((r) => {
-      const rules: Array<{ ruleName: string; passed: boolean }> = JSON.parse(r.rule_results);
+      const rules = parseRuleResults<{ ruleName: string; passed: boolean }>(r.rule_results);
       const failingRule = rules.find((rule) => !rule.passed);
 
       return {
@@ -1618,7 +1645,7 @@ export class SqliteAdapter implements IStorageAdapter {
       for (const row of select.all(tenantId, traceId) as Array<{ id: string; rule_results: string }>) {
         let rules: EvalRuleResult[] = [];
         try {
-          rules = JSON.parse(row.rule_results) as EvalRuleResult[];
+          rules = parseRuleResults<EvalRuleResult>(row.rule_results);
         } catch {
           rules = [];
         }
@@ -1744,7 +1771,7 @@ export class SqliteAdapter implements IStorageAdapter {
       ...(row.erased_at ? { erased_at: row.erased_at as string } : {}),
       score: row.score as number,
       passed: (row.passed as number) === 1,
-      rule_results: JSON.parse(row.rule_results as string),
+      rule_results: parseRuleResults(row.rule_results),
       created_at: row.created_at as string,
       rules_evaluated: row.rules_evaluated as number | undefined,
       rules_skipped: row.rules_skipped as number | undefined,
