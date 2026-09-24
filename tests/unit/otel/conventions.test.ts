@@ -1,5 +1,5 @@
 /*
- * The conventions a buyer will test against the OTLP door (arc 9, N-11).
+ * The conventions a buyer will test against the OTLP door.
  *
  * One fixture per framework under tests/fixtures/otlp/conventions/, each
  * authored to the vendor's own documentation (the README beside them names

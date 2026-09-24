@@ -1,5 +1,5 @@
 /*
- * The composite corpus and the verdict measurement (arc 2, M1–M3, M11).
+ * The composite corpus and the verdict measurement.
  *
  * The corpus validates (≥100 cases, every transcript promoted once, every
  * class a shipped detector maps to present, shouldShip consistent with the

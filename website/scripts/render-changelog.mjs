@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * Render CHANGELOG.md into src/lib/changelog.generated.json — the release
- * narrative the site's /releases page renders from (arc 8, R-5).
+ * narrative the site's /releases page renders from.
  *
  * One source, no second copy to drift: the release page on GitHub is built
  * from the same file by scripts/changelog-section.mjs, the nav banner's

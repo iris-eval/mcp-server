@@ -1,5 +1,5 @@
 /*
- * Runs (arc 7, D-5): every run the store knows, newest first, with its
+ * Runs: every run the store knows, newest first, with its
  * counts and its pass rate; and the compare action — pick a baseline and a
  * candidate, and the compare_runs tool answers through POST /api/v1/compare.
  */
@@ -65,7 +65,7 @@ export function RunsPage() {
   const runs = data?.runs ?? [];
   const baseline = runs.find((r) => r.baseline) ?? null;
 
-  // The compare form starts from the pinned baseline (arc 9, N-14); a reader's own choice is never overwritten.
+  // The compare form starts from the pinned baseline; a reader's own choice is never overwritten.
   useEffect(() => {
     if (baseline && before === '') setBefore(baseline.runId);
   }, [baseline, before]);

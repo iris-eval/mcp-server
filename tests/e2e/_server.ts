@@ -1,5 +1,5 @@
 /*
- * A second Iris server for one test (arc 7, D-9): its own free port, its
+ * A second Iris server for one test: its own free port, its
  * own IRIS_HOME under the OS temp dir, the flags the state under test
  * needs, killed when the test ends. One definition — the demo state
  * (header.spec.ts), the empty database, the first run and the api-key

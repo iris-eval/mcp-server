@@ -91,7 +91,7 @@ interface Detector {
   fired: boolean;
   counts: { tp: number; fp: number; fn: number; tn: number };
   /**
-   * The deployment's own labels on this rule's fires (arc 7, D-8), read
+   * The deployment's own labels on this rule's fires, read
    * off the row's stamped uncertainty — so a stored evaluation re-composes
    * on read from the same counts that decided it, and the risk layer needs
    * no second source. Present only at LOCAL_LABEL_MIN labels, on a FIRE.
@@ -103,7 +103,7 @@ interface Detector {
 const localPpv = (l: { right: number; wrong: number }): number => (l.right + 0.5) / (l.right + l.wrong + 1);
 
 /*
- * ONE SAMPLER (arc 7, D-6b; arc 6's deferred item). The risk layer carried
+ * ONE SAMPLER. The risk layer carried
  * its own Beta draw — the same Marsaglia–Tsang gamma as stats.ts, but with
  * the shape < 1 boost drawing its uniform in a different order — so the
  * verdict's credible interval and the published PPV interval were computed
@@ -167,7 +167,7 @@ function pBadFrom(
         ...fired.map((d) => {
           // A fire with enough of the deployment's own labels carries the
           // deployment's precision — the one place the estimate learns
-          // from the traffic it runs on (arc 7, D-8).
+          // from the traffic it runs on.
           const own = localPpvOf(d);
           if (own !== null) return own;
           const s = sensOf(d);

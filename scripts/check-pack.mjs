@@ -22,7 +22,7 @@ export const REQUIRED_ARTIFACTS = [
   'dist/index.js',
   'dist/dashboard/server.js',
   'dist/dashboard/index.html',
-  // The two subpaths the exports map promises (arc 8, R-1): a pack whose
+  // The two subpaths the exports map promises: a pack whose
   // `./engine` or `./client` resolves to nothing is a package that lies.
   'dist/engine.js',
   'dist/client.js',

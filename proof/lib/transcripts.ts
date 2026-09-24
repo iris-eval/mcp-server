@@ -1,5 +1,5 @@
 /*
- * The 24 real transcripts, measured rather than typed (arc 4, A4-13).
+ * The 24 real transcripts, measured rather than typed.
  *
  * These are the only out-of-sample evidence Iris has: agent runs against
  * this repository, captured before any of the rules that judge them existed,

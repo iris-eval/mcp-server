@@ -1,7 +1,7 @@
 import type { Driver } from '../driver.js';
 
 /*
- * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
+ * Labels on the user's own traffic.
  *
  * A label says whether a rule's FIRE on one evaluation was right or wrong,
  * in the reader's judgement. Labels on fires measure precision only — a

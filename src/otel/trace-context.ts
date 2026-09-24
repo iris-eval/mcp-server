@@ -1,7 +1,7 @@
 /*
  * W3C trace context, as MCP carries it (SEP-414, Final): `traceparent`,
  * `tracestate` and `baggage` ride in a request's `_meta`, and on HTTP in
- * the headers of the same names. Iris READS them (arc 9, N-12): a trace
+ * the headers of the same names. Iris READS them: a trace
  * logged with a context is stored with it, and when Iris exports to
  * `IRIS_OTEL_ENDPOINT` the exported spans join the caller's trace — the
  * evaluation shows up inside the agent's own trace in Langfuse, Phoenix,
@@ -78,7 +78,7 @@ export function storedTraceContext(metadata: Record<string, unknown> | undefined
 }
 
 /**
- * The session named in the baggage (arc 9, N-15): W3C baggage is
+ * The session named in the baggage: W3C baggage is
  * `key=value;prop,key=value`, percent-encoded; `session_id` is the member
  * Iris reads (the name SEP-414's examples use). Undefined when there is no
  * baggage or no such member.

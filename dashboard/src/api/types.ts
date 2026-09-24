@@ -39,7 +39,7 @@ export interface Trace {
   metadata?: Record<string, unknown>;
   timestamp: string;
   created_at?: string;
-  /** The conversation this turn belongs to (arc 9, N-15); the trace page shows the session strip when set. */
+  /** The conversation this turn belongs to; the trace page shows the session strip when set. */
   session_id?: string;
 }
 
@@ -171,7 +171,7 @@ export interface Provenance {
   [key: string]: unknown;
 }
 
-/* ── Labels on your own traffic (arc 7, D-8) ── */
+/* ── Labels on your own traffic ── */
 
 export type VerdictLabelValue = 'right' | 'wrong';
 
@@ -745,7 +745,7 @@ export interface DriftWindowSummary {
 }
 
 /* ---------------------------------------------------------------------------
- * The shell's two reads (arc 7, D-2)
+ * The shell's two reads
  * ------------------------------------------------------------------------- */
 
 /**
@@ -787,7 +787,7 @@ export interface CapabilitiesSummary {
 }
 
 /* ---------------------------------------------------------------------------
- * Runs, cases and the comparison (arc 7, D-5)
+ * Runs, cases and the comparison
  * ------------------------------------------------------------------------- */
 
 /** GET /api/v1/runs → runs[] (mirrors RunSummaryRow in src/storage/sqlite-adapter.ts). */
@@ -803,7 +803,7 @@ export interface RunSummaryRow {
   rulesetHashes: string[];
   startedAt: string | null;
   lastActivityAt: string | null;
-  /** Pinned as the baseline every later run is compared against (arc 9, N-14); at most one per tenant. */
+  /** Pinned as the baseline every later run is compared against; at most one per tenant. */
   baseline: boolean;
 }
 
@@ -916,7 +916,7 @@ export interface CompareRunsResult {
   rules_tested: number;
   regressions: CompareRuleDelta[];
   improvements: CompareRuleDelta[];
-  /** The paired cases that disagreed, regressions first (arc 9, N-14); absent from an older server. */
+  /** The paired cases that disagreed, regressions first; absent from an older server. */
   discordant?: CompareDiscordantCase[];
   discordant_total?: number;
   summary: string;

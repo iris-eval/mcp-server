@@ -13,7 +13,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// The seeder runs the real engine over a fortnight of traces (arc 9, N-1): a full
+// The seeder runs the real engine over a fortnight of traces: a full
 // seed took 6.3 s on the Linux runner, past vitest's 5 s default.
 vi.setConfig({ testTimeout: 60_000 });
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';

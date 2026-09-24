@@ -1,5 +1,5 @@
 /*
- * The cohort selector (arc 7, D-6): draw the Drift view over everything at
+ * The cohort selector: draw the Drift view over everything at
  * once, or split it by run — the grouping compare_runs tests, so the picture
  * and the test agree on what "before" means. Written to the URL like the
  * period, so a link carries it.

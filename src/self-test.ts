@@ -331,7 +331,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     await storage.initialize();
     // One engine for all three evals, exactly as createIrisServer builds it.
     evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
-    // Which driver holds the file (arc 8, R-0): the native addon, or the built-in it fell back to.
+    // Which driver holds the file: the native addon, or the built-in it fell back to.
     return `${config.storage.path} (driver ${storage.driver})`;
   });
 

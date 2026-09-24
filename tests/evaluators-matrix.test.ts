@@ -1,5 +1,5 @@
 /*
- * The evaluator-of-evaluators matrix is derived, not typed (arc 2, M5).
+ * The evaluator-of-evaluators matrix is derived, not typed.
  *
  * Twenty-six evaluators by thirteen questions; every status in the
  * vocabulary; every `measured` cell's evidence points at a committed proof

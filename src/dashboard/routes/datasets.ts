@@ -1,5 +1,5 @@
 /*
- * Datasets over HTTP (arc 8, R-8).
+ * Datasets over HTTP.
  *
  *   POST /api/v1/datasets          promote case keys into a named dataset —
  *                                  a run's keys (`from_run`), an explicit

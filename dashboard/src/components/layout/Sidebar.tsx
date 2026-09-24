@@ -80,7 +80,7 @@ export function Sidebar() {
   const { openShortcuts } = useCommandPalette();
 
   /*
-   * Phone width (arc 7, D-9): below the tablet breakpoint the sidebar is
+   * Phone width: below the tablet breakpoint the sidebar is
    * the icon rail whatever the preference says. The width is an inline
    * style (the collapse transition needs it), so the stylesheet rule that
    * used to "compress" it at this width never applied — a 256px sidebar

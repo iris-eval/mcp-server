@@ -90,7 +90,7 @@ describe('the keyed measurement workflows fail loudly without a key', () => {
   });
 });
 
-describe('the image (arc 8, R-6) — labels, HEALTHCHECK, and the CI run that checks them', () => {
+describe('the image — labels, HEALTHCHECK, and the CI run that checks them', () => {
   const dockerfile = workflow('Dockerfile');
   const ci = workflow('.github/workflows/ci.yml');
 

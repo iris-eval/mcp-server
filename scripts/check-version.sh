@@ -97,7 +97,7 @@ check_version "claude-plugin/.claude-plugin/plugin.json" ".version"
 # The capture plugin's manifest: its version is what its Stop hook installs.
 check_version "claude-plugin-capture/.claude-plugin/plugin.json" ".version"
 
-# The Cursor plugin manifest (arc 9, N-20): the version the Cursor Marketplace shows.
+# The Cursor plugin manifest: the version the Cursor Marketplace shows.
 check_version ".cursor-plugin/plugin.json" ".version"
 
 # Pinned launchers (2026-09-23 red team, SUP-6): what the plugins and the gate

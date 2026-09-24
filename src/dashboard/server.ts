@@ -72,7 +72,7 @@ export function createDashboardServer(
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
 
-  // Every configured key, read once (arc 8, R-6): the Bearer middleware and
+  // Every configured key, read once: the Bearer middleware and
   // the browser session layer match against the same ring.
   const keys = buildKeyRing(config.security);
 
@@ -81,7 +81,7 @@ export function createDashboardServer(
   // Security headers
   app.use(helmet({
     /*
-     * `same-origin`, not helmet's default `no-referrer` (arc 7, D-9).
+     * `same-origin`, not helmet's default `no-referrer`.
      *
      * Under `no-referrer` a browser sends `Origin: null` on every POST
      * navigation — the Fetch standard nulls the Origin header when the
@@ -132,14 +132,14 @@ export function createDashboardServer(
 
   // Body parser with size limit
   app.use(express.json({ limit: config.security.requestSizeLimit }));
-  // OTLP/HTTP protobuf bodies (arc 9, N-10) — raw bytes, same size limit; the route decodes them.
+  // OTLP/HTTP protobuf bodies — raw bytes, same size limit; the route decodes them.
   app.use(express.raw({ type: 'application/x-protobuf', limit: config.security.requestSizeLimit }));
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));
 
   /*
-   * Health first (arc 8, R-6): the one contract src/health.ts builds, on
+   * Health first: the one contract src/health.ts builds, on
    * this port, AHEAD of the auth-gate limiter, the session layer and the
    * API limiter. It carries no trace content, it answers unauthenticated
    * by design, and a container HEALTHCHECK or a load balancer must never
@@ -184,7 +184,7 @@ export function createDashboardServer(
   );
   registerMomentRoutes(router, storage);
   registerFailureRoutes(router, storage);
-  // Labels on the user's own traffic, the issues list and re-scoring (arc 7, D-8); re-scoring needs the engine and says so without one.
+  // Labels on the user's own traffic, the issues list and re-scoring; re-scoring needs the engine and says so without one.
   registerLabelRoutes(router, storage, { evalEngine: options?.evalEngine });
   if (options?.customRuleStore && options?.evalEngine) {
     registerRuleRoutes(router, storage, {
@@ -200,7 +200,7 @@ export function createDashboardServer(
   registerAuditRoutes(router, options?.customRuleStore);
   app.use('/api/v1', router);
   /*
-   * OTLP/HTTP in (arc 8, R-2): the path every OTLP exporter already posts
+   * OTLP/HTTP in: the path every OTLP exporter already posts
    * to, on this port, behind the same key, guard and limiter as the API.
    * A separate router so the REST API's shape and the OTLP contract never
    * share a prefix.

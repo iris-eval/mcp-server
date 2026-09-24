@@ -390,7 +390,7 @@ async function main(): Promise<void> {
 
   // F-006: fail fast on HTTP+dashboard port collision. See validatePortConfig.
   validatePortConfig(config);
-  // Every configured key, read now (arc 8, R-6): an unreadable key file, a
+  // Every configured key, read now: an unreadable key file, a
   // malformed hash or a duplicate id is one sentence here, before any port
   // is bound, rather than a 403 later.
   const keyRing = buildKeyRing(config.security);
@@ -426,15 +426,15 @@ async function main(): Promise<void> {
       `Loaded ${enabled.length} deployed custom rule(s) from ${customRuleStore.pathFor(LOCAL_TENANT)}`,
     );
   }
-  // Plugin rules (arc 8, R-3): hash-checked, then registered like a deployed
+  // Plugin rules: hash-checked, then registered like a deployed
   // custom rule. A file that cannot be verified refuses startup here, before
   // any port is bound — the sentence names the path and the problem.
   await registerPlugins(evalEngine, config, { log: (line) => logger.info(line) });
 
-  // The deployment's own labels, read once at boot (arc 7, D-8); every label write refreshes them.
+  // The deployment's own labels, read once at boot; every label write refreshes them.
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
 
-  // The webhook (arc 9, N-16): installed on the store, so every door that
+  // The webhook: installed on the store, so every door that
   // writes an evaluation reaches it; never in demo mode (runDemo below).
   const webhook = installWebhookNotifier(storage, config, logger);
 
@@ -593,7 +593,7 @@ async function runDemo(): Promise<void> {
 
   /*
    * The store and the engine come first so the seeder judges its week of
-   * traces with the SAME rules this server will serve with (arc 9, N-1):
+   * traces with the SAME rules this server will serve with:
    * the demo's custom rules are deployed through this store and registered
    * on this engine before anything is evaluated.
    */
@@ -602,7 +602,7 @@ async function runDemo(): Promise<void> {
     auditPath: demoAuditLogPath(),
   });
   const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
-  // One structured log line per evaluation, whichever door asked (arc 8, R-6).
+  // One structured log line per evaluation, whichever door asked.
   evalEngine.setObserver((event) => logger.event?.('evaluation', { ...event }));
 
   const seedSummary = await seedDemoData({ engine: evalEngine, customRuleStore });

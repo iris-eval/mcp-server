@@ -1,6 +1,6 @@
 /*
  * Transforms — does a critical detector survive the evasions a leak or an
- * injection arrives in? (arc 2, M4)
+ * injection arrives in?
  *
  * For every positive case of the three critical families the rule is run on
  * the original; where it fired and reported a span into the raw output, the

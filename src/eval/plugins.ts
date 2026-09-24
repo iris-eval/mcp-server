@@ -1,6 +1,5 @@
 /*
- * Plugin rules — a rule you wrote, loaded from a file you hash-pinned
- * (arc 8, R-3).
+ * Plugin rules — a rule you wrote, loaded from a file you hash-pinned.
  *
  * The built-in roster is twenty-five rules in this package; custom rules are
  * eight shapes deployed as JSON. Neither lets a deployment write its own

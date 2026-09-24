@@ -42,7 +42,7 @@ export const TT = {
   sigCostSpike: 'Trace cost is far above this agent’s own baseline — more than 3.5 robust standard deviations (MADs) over the median of its recent traces. Investigate prompt size and model tier.',
   sigRegressionAlarm: 'This agent’s own stream shifted: a rule’s fail rate crossed its CUSUM line at this evaluation, about ten points over the baseline set on the agent’s earlier evaluations. Reports, never gates.',
 
-  // Labels on your own traffic (arc 7, D-8). Labels are written on fires, so they measure precision only.
+  // Labels on your own traffic. Labels are written on fires, so they measure precision only.
   labelRight: 'This rule was right to fire here. Your labels on a rule’s fires build its local precision — how often its fires are right on YOUR traffic — and at twenty labels that number replaces the published one on every verdict this deployment makes.',
   labelWrong: 'This rule was wrong to fire here — a false positive on your traffic. Counted into the rule’s local precision; at twenty labels the rule’s fires carry your number instead of the published one.',
   localPrecision: 'Right ÷ (right + wrong) over your labels on this rule’s fires, with a 95% Wilson interval. It measures precision only: nothing here says what a quiet rule missed, so the surface never says “local accuracy”.',

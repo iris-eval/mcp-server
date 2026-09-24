@@ -1,5 +1,5 @@
 /*
- * POST /api/v1/compare (arc 7, D-5): the compare_runs tool's handler over
+ * POST /api/v1/compare: the compare_runs tool's handler over
  * HTTP. The proposition is one implementation, one shape — the route's
  * answer deep-equals what the tool's handler computes for the same runs —
  * plus the two refusals a caller can hit.

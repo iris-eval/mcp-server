@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
       destination: "/#waitlist",
       permanent: true,
     },
-    // The capability map IS the roadmap (arc 9, N-22): every question Iris
+    // The capability map IS the roadmap: every question Iris
     // can be asked against every subject, with what it has, what it has
     // with a stated limit, and what it lacks — rendered from the truthbase
     // at every release and drift-locked, so it cannot describe the product

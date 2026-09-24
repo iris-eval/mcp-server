@@ -1,5 +1,5 @@
 /*
- * The four-way article draft holds to its sources and stays a draft (arc 9, N-21).
+ * The four-way article draft holds to its sources and stays a draft.
  *
  * docs/blog/030-iris-vs-langfuse-vs-phoenix-vs-promptfoo.md is written to be
  * published when the founder says (the acceptance matrix's F-9), not before.

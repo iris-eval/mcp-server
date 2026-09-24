@@ -19,7 +19,7 @@ export interface EvalDetailCardProps {
   questionText?: ReadonlyMap<string, string> | null;
   /**
    * Labels on this evaluation's fires by rule name, and the handler that
-   * writes one (arc 7, D-8). Without the handler no control is drawn.
+   * writes one. Without the handler no control is drawn.
    */
   labels?: ReadonlyMap<string, VerdictLabelValue> | null;
   onLabel?: (evalId: string, rule: string, label: VerdictLabelValue) => void;

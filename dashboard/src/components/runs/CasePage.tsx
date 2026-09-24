@@ -1,5 +1,5 @@
 /*
- * One case across runs (arc 7, D-5): every attempt, deliberately not
+ * One case across runs: every attempt, deliberately not
  * collapsed — here the repetition is the measurement. Says whether the
  * case is flaky (passed some attempts and failed others).
  */

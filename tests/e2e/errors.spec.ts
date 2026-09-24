@@ -1,5 +1,5 @@
 /*
- * The failure states a reader can hit (arc 7, D-1), driven through the real
+ * The failure states a reader can hit, driven through the real
  * dashboard in a real browser.
  *
  *   - an address the router does not know → the not-found page, inside the

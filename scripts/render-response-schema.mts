@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /*
  * Writes website/public/response-schema-v1.json from the zod schema the
- * server validates with (arc 9, N-22).
+ * server validates with.
  *
  *   npm run schema:render     # write it
  *   npm run schema:check      # fail when the committed file has drifted

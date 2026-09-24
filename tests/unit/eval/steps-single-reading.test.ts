@@ -1,5 +1,5 @@
 /*
- * The step layer (arc 4, A4-1).
+ * The step layer.
  *
  * Two things are asserted here and they matter for different reasons.
  *

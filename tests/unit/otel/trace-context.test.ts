@@ -1,5 +1,5 @@
 /*
- * Trace context (SEP-414) — read on both doors, stored, joined on export (arc 9, N-12).
+ * Trace context (SEP-414) — read on both doors, stored, joined on export.
  */
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { createServer, type Server } from 'node:http';

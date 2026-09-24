@@ -1,5 +1,5 @@
 /*
- * The typed client against a real dashboard (arc 8, R-1).
+ * The typed client against a real dashboard.
  *
  * `createClient` posts the same body the `log_trace` tool accepts and
  * returns the same evaluation `evaluate_output` returns; a refusal

@@ -51,7 +51,7 @@ const FILES = [
   },
   {
     path: ".cursor-plugin/plugin.json",
-    description: "Cursor plugin manifest (arc 9, N-20)",
+    description: "Cursor plugin manifest",
   },
   {
     // .claude-plugin/marketplace.json points plugin installs at

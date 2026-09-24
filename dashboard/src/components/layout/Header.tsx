@@ -35,7 +35,7 @@ const styles = {
     flexShrink: 0,
   } as const,
   /*
-   * Phone width (arc 9, N-2): the title row wraps its chips onto a second
+   * Phone width: the title row wraps its chips onto a second
    * line and the header grows to fit, instead of the chips and the right
    * cluster running over each other inside a fixed height. Every chip stays
    * visible — they carry live state a phone reader still needs.

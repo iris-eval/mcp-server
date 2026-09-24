@@ -41,7 +41,7 @@ export function strictBody<T extends z.ZodRawShape>(
 }
 
 /*
- * Strict query schema for the dashboard's READ routes (arc 9, N-4; #376).
+ * Strict query schema for the dashboard's READ routes (#376).
  *
  * A bare z.object() on a query string strips an unknown parameter, so
  * `?agent_nme=docs-qa` returned every agent's rows exactly as if the

@@ -1,5 +1,5 @@
 /*
- * Migration 012 — datasets (arc 8, R-8).
+ * Migration 012 — datasets.
  *
  * The schema it adds, applied once on a cold file beside 001–011 and
  * idempotent on re-open; the storage methods the routes and the CLI

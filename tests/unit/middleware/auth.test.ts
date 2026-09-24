@@ -94,7 +94,7 @@ describe('auth middleware', () => {
 });
 
 /*
- * The key ring behind the middleware (arc 8, R-6): several keys, each with
+ * The key ring behind the middleware: several keys, each with
  * an id the request carries afterwards; an expired key is a wrong key; the
  * ring can be handed in (the server builds it once for both layers).
  */

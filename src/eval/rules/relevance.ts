@@ -52,7 +52,7 @@ import { sentencesOf } from '../text/sentences.js';
 
 import { FENCED_CODE, contentTerms, stemTerm } from '../terms.js';
 import { toolChoice } from './tool-choice.js';
-// The tokenizer lives in src/eval/terms.ts (arc 9, N-13); re-exported so nothing that imported it from here moves.
+// The tokenizer lives in src/eval/terms.ts; re-exported so nothing that imported it from here moves.
 export { contentTerms, stemTerm };
 
 export const keywordOverlap: EvalRule = {
@@ -202,7 +202,7 @@ export const topicConsistency: EvalRule = {
 };
 
 /*
- * answers_the_ask (arc 9, N-13) — the composer question, answered with a
+ * answers_the_ask — the composer question, answered with a
  * measurement. A truncated or off-topic answer used to read `clean`: the
  * two relevance rules are measurements, which inform the score, and only
  * policies and detections gate. Measured on the 141-case composite corpus

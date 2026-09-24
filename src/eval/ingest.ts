@@ -30,7 +30,7 @@ export interface EvaluateStoredTraceOptions {
   dormant?: DormantRule[];
   /**
    * When the evaluation should be dated — ISO-8601. No door exposes this:
-   * the demo seeder (arc 9, N-1) evaluates a week of backdated traces
+   * the demo seeder evaluates a week of backdated traces
    * through this same function and the trend, drift and health views read
    * the evaluation's date, so an undated demo would show a week of traffic
    * judged in one second. Omitted, the store dates the row now.

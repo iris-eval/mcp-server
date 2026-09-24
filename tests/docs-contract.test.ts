@@ -66,11 +66,11 @@ const PROSE_SURFACES: string[] = [
   'src/prompts.ts',
   'src/judge-enablement.ts',
   'src/capabilities.ts',
-  // The Python client's README (arc 9, N-18): a recipe a reader copies, held to the same routes and variables.
+  // The Python client's README: a recipe a reader copies, held to the same routes and variables.
   'packages/python/README.md',
-  // The gate action (arc 9, N-17): a workflow file a reader copies, held to the same flags and variables.
+  // The gate action: a workflow file a reader copies, held to the same flags and variables.
   '.github/actions/gate/action.yml',
-  // The Python client's README (arc 9, N-18): a recipe a reader copies, held to the same routes and variables.
+  // The Python client's README: a recipe a reader copies, held to the same routes and variables.
   'packages/python/README.md',
 ];
 

@@ -333,7 +333,7 @@ export function useAuditLog(params?: Record<string, string>) {
   return useApiData<AuditQueryResult>(fetcher, CADENCE.SLOW);
 }
 
-/* Labels on your own traffic (arc 7, D-8). */
+/* Labels on your own traffic. */
 
 export function useLabelStats() {
   const fetcher = useCallback(() => api.getLabelStats(), []);

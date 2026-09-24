@@ -1,5 +1,5 @@
 /*
- * Drift by run (arc 7, D-6), driven through the real dashboard on the seeded
+ * Drift by run, driven through the real dashboard on the seeded
  * pair: split the Drift view by run and each cohort shows its n and the
  * interval on its window.
  */

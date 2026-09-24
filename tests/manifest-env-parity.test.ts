@@ -78,7 +78,7 @@ describe('discovery manifests name only environment variables the server reads',
     expect(dash?.description).toMatch(/IRIS_PORT/);
   });
 
-  it('smithery.yaml is gone (arc 9, N-20): its stdio form was not Smithery\'s publish path and it drifted from server.json', () => {
+  it('smithery.yaml is gone: its stdio form was not Smithery\'s publish path and it drifted from server.json', () => {
     expect(existsSync(join(root, 'smithery.yaml'))).toBe(false);
   });
 });

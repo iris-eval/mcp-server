@@ -3,7 +3,7 @@
  * SECURITY.md's supported-versions table must agree with the policy and the
  * version being released.
  *
- * The policy (arc 8, R-6): the current minor receives every fix; the
+ * The policy: the current minor receives every fix; the
  * previous minor receives security fixes for 90 days after the current
  * minor's first release; older minors receive none. Before 0.15.0 the
  * policy was "only the latest minor", and on v0.5.0's ship day the table

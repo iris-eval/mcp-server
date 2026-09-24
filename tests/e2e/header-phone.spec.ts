@@ -1,5 +1,5 @@
 /*
- * The top bar holds at phone width (arc 9, N-2).
+ * The top bar holds at phone width.
  *
  * At 400 × 820 the palette trigger used to run under the status chips on
  * every page — "Search / jump to…" over `judge off` and `DEMO`. Now the

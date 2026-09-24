@@ -72,7 +72,7 @@ export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: str
     if (entry.failed.length > 0) combinationsSeen.add(entry.failed.join('+'));
   }
   // The cost baseline is the agent's most recent prior costs, newest first
-  // (arc 7, D-7a): the log arrives newest first from storage, but a caller
+  //: the log arrives newest first from storage, but a caller
   // that built it by hand may not, so it is ordered here rather than assumed.
   const recentCosts = prior
     .filter((e): e is AgentFailureLogEntry & { costUsd: number } => typeof e.costUsd === 'number')
@@ -256,7 +256,7 @@ function classifySignificance({
   }
 
   /*
-   * 2. Cost spike — against the agent's OWN baseline (arc 7, D-7a).
+   * 2. Cost spike — against the agent's OWN baseline.
    *
    * A fixed dollar figure flagged a haiku-class summariser and a research
    * agent against the same line. The question is whether this trace is

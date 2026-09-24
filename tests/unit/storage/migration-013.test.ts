@@ -1,5 +1,5 @@
 /*
- * Migration 013 — the pinned baseline (arc 9, N-14).
+ * Migration 013 — the pinned baseline.
  *
  * The column it adds, applied once on a cold file beside 001–012 and on a
  * database written before it; the partial unique index that makes "at most

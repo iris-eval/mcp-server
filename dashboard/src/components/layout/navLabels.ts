@@ -1,5 +1,5 @@
 /*
- * The navigation's names, in one place (arc 7, D-5).
+ * The navigation's names, in one place.
  *
  * Four entries for three concepts: what failed (Failures — the landing
  * page), the data (Runs, with traces and evaluations as its raw views),

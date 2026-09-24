@@ -1,5 +1,5 @@
 /*
- * The evaluation card's actions (arc 7, D-8): the labels reach the rows,
+ * The evaluation card's actions: the labels reach the rows,
  * the re-score button hands back the evaluation id, the notes read out,
  * and a re-scored row names what it superseded. Without the handlers the
  * card draws none of it.

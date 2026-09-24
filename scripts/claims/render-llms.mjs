@@ -310,7 +310,7 @@ export function render(template, slots, templateName = 'template') {
 }
 
 /**
- * A block inside a hand-written file (arc 9, N-20): the text between
+ * A block inside a hand-written file: the text between
  * `<!-- iris:<name>:start -->` and `<!-- iris:<name>:end -->` is replaced by
  * the render; the rest of the file is the author's. `--check` reads the
  * file, re-renders the block and compares, so a stale block fails CI the

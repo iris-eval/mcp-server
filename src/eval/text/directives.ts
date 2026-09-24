@@ -161,7 +161,7 @@ export interface DirectiveHit {
  */
 export function foldForDirectives(raw: string): { flat: string; normalised: ReturnType<typeof normalise> } {
   const capped = raw.length > INJECTION_SCAN_CHARS ? raw.slice(0, INJECTION_SCAN_CHARS) : raw;
-  // The injection-compliance rule matches directives — a pattern an evader splits with a tab or a break — so inserted breaks are dropped here (arc 8, R-12).
+  // The injection-compliance rule matches directives — a pattern an evader splits with a tab or a break — so inserted breaks are dropped here.
   const normalised = normalise(capped, { dropInsertedBreaks: true });
   // Length-preserving on purpose: a newline becomes one space, so offsets
   // into `flat` are offsets into `normalised.text` and the map still works.

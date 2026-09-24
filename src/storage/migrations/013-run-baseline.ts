@@ -1,7 +1,7 @@
 import type { Driver } from '../driver.js';
 
 /*
- * A pinned baseline (arc 9, N-14).
+ * A pinned baseline.
  *
  * A comparison needs a `before`. Until now every caller chose it by hand on
  * every call — the dashboard's compare form, the compare_runs tool, a CI

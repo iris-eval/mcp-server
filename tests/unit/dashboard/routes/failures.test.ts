@@ -82,7 +82,7 @@ function makeStubStorage(data: StubData): {
       seenTenants.push(tenantId);
       return data.evalsByTrace[traceId] ?? [];
     },
-    // The page's evaluations in one read (arc 9, N-1) — the same fixture, keyed by trace.
+    // The page's evaluations in one read — the same fixture, keyed by trace.
     getEvalsByTraceIds: async (tenantId: string, traceIds: readonly string[]) => {
       seenTenants.push(tenantId);
       return new Map(traceIds.filter((id) => (data.evalsByTrace[id] ?? []).length > 0).map((id) => [id, data.evalsByTrace[id]]));

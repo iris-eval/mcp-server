@@ -1,5 +1,5 @@
 /*
- * ask_coverage (arc 4, A4-8).
+ * ask_coverage.
  *
  * The family measures the rule on asks it JUDGES. This file holds the paths
  * it declines — the proof runner scores a skip as *not failed*, so a
@@ -128,7 +128,7 @@ describe('ask_coverage — the three ways an ask declares its parts', () => {
 });
 
 /*
- * Covering by tool call (arc 8, R-10, Q5). A part the answer never mentions
+ * Covering by tool call. A part the answer never mentions
  * may have been DONE: the trajectory shows a call whose name, arguments or
  * result carry the part's terms. Same input and output twice — once with
  * the trajectory, once without — so the trajectory is the only difference.

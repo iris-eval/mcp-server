@@ -1,5 +1,5 @@
 /*
- * Trace context reaches the store through both doors (arc 9, N-12).
+ * Trace context reaches the store through both doors.
  *
  * log_trace reads `_meta.traceparent` off the MCP request (SEP-414);
  * POST /api/v1/traces reads the `traceparent` header. Both store it under

@@ -1,5 +1,5 @@
 /*
- * The composer (arc 3, A3-3; acceptance rows V6, V7, V8, V9, V10).
+ * The composer.
  *
  * Four layers decide in order — a configured policy gates, an
  * effectively-critical detector vetoes, a critical rule that could not

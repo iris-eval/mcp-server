@@ -1,5 +1,5 @@
 /*
- * The three things a comparison can say (arc 7, D-6b, plan §4.14): worse,
+ * The three things a comparison can say: worse,
  * not distinguishable, and — new — equivalent within a margin. Plus the
  * per-rule rows that now carry a test: one-sided p, corrected q, and worse
  * only when q survives. And the tool's own shape, through the handler

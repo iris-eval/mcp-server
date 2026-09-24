@@ -1,5 +1,5 @@
 /*
- * The webhook's wire (arc 9, N-16): two signatures a receiver can verify,
+ * The webhook's wire: two signatures a receiver can verify,
  * the Standard Webhooks body, the retries and their backoff, the final
  * answers that are not retried, the cooldown per (event, agent, subject),
  * the queue cap, the formats, and a real receiver on a socket.

@@ -1,5 +1,5 @@
 /*
- * The config file's schema — strict at every level (arc 8, R-6).
+ * The config file's schema — strict at every level.
  *
  * Until 0.15.0 `loadConfig` deep-merged whatever `config.json` held. A key
  * that Iris never read — a typo (`critcalRules`), a key from another tool,

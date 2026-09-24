@@ -1,5 +1,5 @@
 /*
- * The webhook (arc 9, N-16): one signed POST per moment, retried, cooled
+ * The webhook: one signed POST per moment, retried, cooled
  * down, and never in the way of an evaluation.
  *
  * Every incumbent a buyer will compare Iris with delivers its alerts to a

@@ -1,5 +1,5 @@
 /*
- * Migration 011 — verdict labels (arc 7, D-8), added without disturbing a
+ * Migration 011 — verdict labels, added without disturbing a
  * database written by an earlier release, and the five storage methods the
  * labels surface reads: one label per (evaluation, rule) with a re-label
  * replacing, tallies per rule, fire rates over a window, and fires grouped

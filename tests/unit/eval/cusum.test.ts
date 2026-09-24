@@ -1,5 +1,5 @@
 /*
- * The Bernoulli CUSUM (arc 7, D-7b; plan §4.15).
+ * The Bernoulli CUSUM.
  *
  * h is derived, never typed: the line for a baseline p₀ is the one at which
  * the in-control average run length is about 500, found by a seeded

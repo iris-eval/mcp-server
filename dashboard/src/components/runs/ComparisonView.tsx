@@ -1,5 +1,5 @@
 /*
- * One comparison, rendered (arc 7, D-5; the statistics D-6b): the verdict
+ * One comparison, rendered: the verdict
  * word with its sentence, the two runs side by side with their Wilson
  * intervals, the difference with its interval, the method, the smallest
  * change the runs could have seen, the equivalence finding with its margin,

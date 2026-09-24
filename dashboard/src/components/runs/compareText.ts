@@ -1,5 +1,5 @@
 /*
- * The vocabulary a comparison is read in (arc 7, D-5): what each method
+ * The vocabulary a comparison is read in: what each method
  * means, what "worse" and "not distinguishable" mean, and how the numbers
  * print. Pure; the view renders it and the tests hold the table.
  */

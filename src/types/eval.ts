@@ -91,7 +91,7 @@ export interface EvalRule {
 }
 
 /**
- * What the caller expected the agent to DO (arc 9, N-13) — the trajectory
+ * What the caller expected the agent to DO — the trajectory
  * counterpart of `expected`. Read by tool_sequence (the calls, in a mode)
  * and step_budget (the count, with a tolerance). Supplied per call on
  * evaluate_output as `expected_trajectory`; a dataset case's expected
@@ -125,7 +125,7 @@ export interface ExpectedTrajectory {
 export interface EvalContext {
   output: string;
   expected?: string;
-  /** The trajectory the caller expected (arc 9, N-13). */
+  /** The trajectory the caller expected. */
   expectedTrajectory?: ExpectedTrajectory;
   input?: string;
   /**
@@ -386,7 +386,7 @@ export interface Provenance {
     falsePassCost: number;
     onCriticalSkipped: 'unknown' | 'fail' | 'pass';
     /**
-     * The prior the risk estimate used and where it came from (arc 7, D-8):
+     * The prior the risk estimate used and where it came from:
      * `config` when the deployment set eval.prior, `estimated` when the
      * deployment's own labels implied one, `default` otherwise. Flat, not
      * nested, so a stored row re-composes on read by spreading this object
@@ -396,7 +396,7 @@ export interface Provenance {
     prior?: number;
     priorSource?: 'default' | 'config' | 'estimated';
   };
-  /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row (arc 7, D-8). The earlier row is kept: the change is the finding. */
+  /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row. The earlier row is kept: the change is the finding. */
   supersedes?: string;
   /**
    * Which toolset the calls were checked against, when one was supplied.

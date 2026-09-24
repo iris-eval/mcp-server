@@ -1,5 +1,5 @@
 /*
- * Keyboard only (arc 7, D-9): no pointer anywhere in this file. The
+ * Keyboard only: no pointer anywhere in this file. The
  * sidebar is reached by Tab and followed by Enter, the palette opens on
  * Ctrl+K and runs a command on Enter, and a label is written from the
  * keyboard on the trace page.

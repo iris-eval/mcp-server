@@ -1166,7 +1166,7 @@ One run with its counts and provenance, plus the evaluations in it — **collaps
 
 ### PATCH /api/v1/runs/:id
 
-Pin a run as the baseline every later run is compared against, or unpin it (arc 9, N-14). Body `{ "baseline": true | false }`, strict. One baseline per tenant: pinning another run unpins the old one. Answers `{ "run_id", "baseline" }`; 404 when nothing mentions the run. `GET /api/v1/runs` and `GET /api/v1/runs/:id` carry `baseline` on every run, and `POST /api/v1/compare` and `compare_runs` take an omitted `before` as the pinned baseline (400 with the pin recipe when none is pinned).
+Pin a run as the baseline every later run is compared against, or unpin it. Body `{ "baseline": true | false }`, strict. One baseline per tenant: pinning another run unpins the old one. Answers `{ "run_id", "baseline" }`; 404 when nothing mentions the run. `GET /api/v1/runs` and `GET /api/v1/runs/:id` carry `baseline` on every run, and `POST /api/v1/compare` and `compare_runs` take an omitted `before` as the pinned baseline (400 with the pin recipe when none is pinned).
 
 ### GET /api/v1/cases/:key
 

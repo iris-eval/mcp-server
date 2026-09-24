@@ -11,7 +11,7 @@
  * Two reasons this matters now rather than later. First, precision: the
  * card pattern fires on an order id, a hash prefix or a timestamp run, and
  * every such fire is a false positive a deployment has to explain away.
- * Second, the normalisation pass (arc 3, A3-2a) folds full-width and
+ * Second, the normalisation pass folds full-width and
  * circled digits into ASCII, so text that never looked like a card number
  * can become one — `①②③④…` is a sixteen-digit run after NFKC. The fold is
  * what makes evasion detectable and the checksum is what stops the fold

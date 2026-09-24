@@ -1,5 +1,5 @@
 /*
- * The hardened validator (arc 4, A4-4).
+ * The hardened validator.
  *
  * A tools catalogue is code someone else wrote, arriving over a wire that
  * accepts traces: ajv generates JavaScript from a schema, compiles it with

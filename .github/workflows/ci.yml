@@ -81,7 +81,7 @@ jobs:
         node-version: [22, 24]
         driver: [native]
         os: [ubuntu-latest]
-        # The storage driver seam (arc 8, R-0): the whole suite once more on
+        # The storage driver seam: the whole suite once more on
         # Node's built-in SQLite, on both supported lines.
         include:
           - node-version: 22
@@ -308,7 +308,7 @@ jobs:
           echo "--- dashboard health ---"
           curl -fsS "http://127.0.0.1:6920/api/v1/health"
           echo ""
-          echo "--- one health contract on both ports (arc 8, R-6) ---"
+          echo "--- one health contract on both ports ---"
           # The MCP port's /health and the dashboard's /api/v1/health are
           # built by one function; both must carry the checks block and
           # name the driver. A probe that reads only the status code must
@@ -320,7 +320,7 @@ jobs:
             echo "$body" | grep -q '"driver":"better-sqlite3"' || { echo "::error::$url does not name the driver: $body"; docker rm -f iris-ci; exit 1; }
           done
           echo "both ports report checks, migrations ok, and the driver"
-          echo "--- the image's own HEALTHCHECK must reach healthy (arc 8, R-6) ---"
+          echo "--- the image's own HEALTHCHECK must reach healthy ---"
           # start-period 20 s, interval 30 s: allow one interval past the
           # start period before calling it a failure.
           state=""
@@ -336,7 +336,7 @@ jobs:
             exit 1
           fi
           echo "HEALTHCHECK: $state"
-          echo "--- OCI labels (arc 8, R-6): the package page and docker inspect read these ---"
+          echo "--- OCI labels: the package page and docker inspect read these ---"
           for label in org.opencontainers.image.source org.opencontainers.image.description org.opencontainers.image.licenses; do
             value=$(docker inspect --format "{{index .Config.Labels \"$label\"}}" iris-eval/mcp-server:ci)
             [ -n "$value" ] || { echo "::error::the image carries no $label label"; docker rm -f iris-ci; exit 1; }
@@ -411,7 +411,7 @@ jobs:
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
 
-  # The gate action, dogfooded (arc 9, N-17): the composite action under
+  # The gate action, dogfooded: the composite action under
   # .github/actions/gate runs this checkout's own build against the
   # walk-through fixtures — the leak is caught, the clean file passes, the
   # receipt reaches the job summary, and on a pull request one comment is
@@ -496,7 +496,7 @@ jobs:
           fi
           echo "gate action: leak caught (exit 1, 1 of 2 tripped), clean passed (exit 0), comment: $LEAK_COMMENT then $AGAIN_COMMENT"
 
-  # The Python client (arc 9, N-18): packages/python against a server this
+  # The Python client: packages/python against a server this
   # checkout builds — the contract test on every door with a key, the
   # pytest plugin's own tests, and the wheel installed into a fresh
   # environment — on every Python the package claims.

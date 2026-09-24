@@ -1,5 +1,5 @@
 /*
- * POST /v1/traces — OTLP/HTTP JSON in (arc 8, R-2).
+ * POST /v1/traces — OTLP/HTTP JSON in.
  *
  * The path is the one every OTLP exporter already posts to, so pointing a
  * collector's `otlphttp` exporter — or an SDK's `OTEL_EXPORTER_OTLP_ENDPOINT`
@@ -53,7 +53,7 @@ export interface OtlpRouteOptions {
 export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, options: OtlpRouteOptions): void {
   router.post('/traces', async (req, res) => {
     /*
-     * Two encodings, one path (arc 9, N-10). JSON is parsed by the app's
+     * Two encodings, one path. JSON is parsed by the app's
      * body parser; protobuf arrives as raw bytes and is decoded into the
      * same OTLP/JSON object here, so the schema, the mapping and every
      * test below this line are the JSON path. The Python exporter sends

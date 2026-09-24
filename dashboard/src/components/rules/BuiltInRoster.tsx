@@ -1,5 +1,5 @@
 /*
- * The built-in roster with its proof (arc 7, D-5): every rule Iris ships,
+ * The built-in roster with its proof: every rule Iris ships,
  * what kind of claim it makes, how it works, which question it answers,
  * whether it is critical and by whose say-so, and its published precision
  * on the labelled corpus — or the honest "no family" when it has none.

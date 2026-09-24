@@ -204,7 +204,7 @@ const PATTERNS = [
    */
   {
     /*
-     * The evaluation's own latency, once it is measured (arc 9, N-22). The
+     * The evaluation's own latency, once it is measured. The
      * pattern next to this one refuses a latency number with no measurement
      * behind it at all; this one refuses a number that disagrees with the
      * measurement in the truthbase. Keyed on `p50`/`p95` so a timeout in a

@@ -1,5 +1,5 @@
 /*
- * One run (arc 7, D-5): its counts and provenance, and the evaluations in
+ * One run: its counts and provenance, and the evaluations in
  * it — collapsed to one per trace, exactly as a comparison counts them.
  */
 import type { CSSProperties } from 'react';

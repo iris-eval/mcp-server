@@ -323,8 +323,8 @@ export function acknowledgesFailure(output: string): string | null {
 /**
  * Acknowledgements that are a SHAPE rather than a phrase. "Neither a.yml nor
  * b.yml exists" acknowledges two failures in one clause and carried none of
- * the phrases above — the published false positive silent-044 (arc 4), fixed
- * here with a corpus case first (arc 8, R-12). The form is narrow on purpose:
+ * the phrases above — the published false positive silent-044, fixed
+ * here with a corpus case first. The form is narrow on purpose:
  * `neither … nor …` followed within the clause by a verb of existence,
  * presence or success; "neither option is ideal" matches nothing.
  */
@@ -334,7 +334,7 @@ export const ACKNOWLEDGEMENT_FORMS: readonly RegExp[] = [
 ];
 
 /* ------------------------------------------------------------------ *
- * Repetition, at three shapes (arc 4, A4-11)
+ * Repetition, at three shapes
  * ------------------------------------------------------------------ */
 
 /**

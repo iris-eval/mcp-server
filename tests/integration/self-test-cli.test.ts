@@ -100,7 +100,7 @@ describe('iris-eval --self-test (CLI)', () => {
      * --no-addons makes better-sqlite3's native binding unloadable —
      * the same symptom as the most common genuinely broken install of
      * this package (ABI-mismatched prebuild after a Node upgrade). With
-     * IRIS_SQLITE_DRIVER=native there is no fallback (arc 8, R-0), so the
+     * IRIS_SQLITE_DRIVER=native there is no fallback, so the
      * storage step must report the cross naming the way out, cleanup must
      * still run, and the exit code must be exactly 1 (argument errors
      * exit 2, so 1 pins the diagnostic's own failure path).

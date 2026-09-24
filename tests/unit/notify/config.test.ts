@@ -1,5 +1,5 @@
 /*
- * The webhook's configuration (arc 9, N-16): the defaults, what the strict
+ * The webhook's configuration: the defaults, what the strict
  * file refuses by name, what startup refuses that the schema cannot see
  * (the environment's URL, an unsigned iris hook), the secret file, and the
  * capabilities object that names the events and the host and never the key.

@@ -5,7 +5,7 @@
  * single rule_results row that says what KIND of claim it is (a judgment,
  * gating, unmeasured) so a stored judgement read back through the composer
  * has a layer to fall into (0.10.0). That block lived inline in the tool;
- * the demo (arc 9, N-1) needs the same rows for three canned judgements —
+ * the demo needs the same rows for three canned judgements —
  * the judge cannot run without a key — and a second copy of the shape is
  * exactly the drift this file exists to stop. The tool and the demo both
  * call this; a test on the shape now covers both.
@@ -77,7 +77,7 @@ export function judgeEvalResult(input: JudgeEvalRowInput): EvalResult {
     rules_skipped: 0,
     insufficient_data: false,
     // What the evaluation itself cost — the description promised it was
-    // kept and the write path stored none of it (arc zero, G15).
+    // kept and the write path stored none of it.
     eval_cost_usd: input.costUsd ?? undefined,
     eval_tokens: input.inputTokens + input.outputTokens,
     ...(input.createdAt !== undefined ? { created_at: input.createdAt } : {}),

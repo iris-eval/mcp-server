@@ -1,5 +1,5 @@
 /*
- * The receipt (arc 9, N-17): what `iris-eval ingest` printed, as one
+ * The receipt: what `iris-eval ingest` printed, as one
  * Markdown block — for the job summary and for the pull-request comment.
  *
  * `ingest` prints one JSON line per trace on stdout and one summary

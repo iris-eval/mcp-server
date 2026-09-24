@@ -1,5 +1,5 @@
 /*
- * The local-precision panel (arc 7, D-8): your labels per rule, the local
+ * The local-precision panel: your labels per rule, the local
  * precision with its interval, whether it is in force, the published number
  * beside it, the estimated prior and what to label next — every number from
  * /labels/stats, nothing typed here.

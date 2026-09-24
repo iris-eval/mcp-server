@@ -1,5 +1,5 @@
 /*
- * Every rule type the tool deploys, the REST route deploys (arc 9, N-8).
+ * Every rule type the tool deploys, the REST route deploys.
  *
  * The 0.15.0 stranger's gate phase found `POST /api/v1/rules/custom`
  * refusing an `action_policy` that `deploy_rule` accepted: the route's own

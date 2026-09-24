@@ -60,7 +60,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
       // one query per trace: a window of 200 moments took 2.4 s on a warm
       // local file and longer under the dashboard's own concurrent reads —
       // longer than the poll cadence, which is how the Drift and Health
-      // prior windows came to never render (arc 9, N-1).
+      // prior windows came to never render.
       const evalsByTrace = await storage.getEvalsByTraceIds(
         tenantId,
         traceResult.traces.map((t) => t.trace_id),

@@ -139,7 +139,7 @@ export function missRate(sens: number, spec: number, prevalence: number): number
 export const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
 /* ------------------------------------------------------------------ *
- * Wilson, owned here (arc 5)
+ * Wilson, owned here
  * ------------------------------------------------------------------ */
 
 /**
@@ -184,7 +184,7 @@ export function wilson(k: number, n: number, z: number = Z_95): WilsonInterval |
   return { lo: Math.max(0, centre - half), hi: Math.min(1, centre + half) };
 }
 /* ------------------------------------------------------------------ *
- * Comparing two runs (arc 5)
+ * Comparing two runs
  * ------------------------------------------------------------------ */
 
 /**

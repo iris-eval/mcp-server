@@ -5,7 +5,7 @@
  * KIND of claim it made — a measurement of output length, a detection of a
  * PII pattern, an inference that an output is a stub, and a policy the
  * deployment configured all produced `{ passed, score }` and were averaged
- * together. The metadata below is the first layer of the fix (arc 1): every
+ * together. The metadata below is the first layer of the fix: every
  * built-in declares its kind, mechanism, needs, question, failure classes
  * and definition version, the roster surfaces carry them, and the truthbase
  * records them so the public capability map can render from the registry.

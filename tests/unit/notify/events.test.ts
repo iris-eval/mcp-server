@@ -1,5 +1,5 @@
 /*
- * What a stored evaluation says (arc 9, N-16): the five moments read from
+ * What a stored evaluation says: the five moments read from
  * the store after the row is written — a failed verdict, a veto, the cost
  * anomaly rule, the CUSUM alarm at the evaluation that crossed the line,
  * and the first attempt that disagreed with every earlier one.

@@ -48,7 +48,7 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
       // optimization once we have volume data.
       /*
        * One failure log per distinct agent on this page, as the moments
-       * route reads it (arc 7, D-7a): a cost spike is judged against the
+       * route reads it: a cost spike is judged against the
        * agent's own recent costs, and the novelty classes against its own
        * failures, so this page ranks what the moments page ranks.
        */
@@ -57,7 +57,7 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
         logs.set(agent, await storage.getAgentFailureLog(tenantId, agent));
       }
 
-      // The page's evaluations in one read (arc 9, N-1), as the moments route does.
+      // The page's evaluations in one read, as the moments route does.
       const evalsByTrace = await storage.getEvalsByTraceIds(
         tenantId,
         traceResult.traces.map((t) => t.trace_id),

@@ -47,7 +47,7 @@ function makeTrace(i: number): Trace {
 function makeEval(trace: Trace, index: number): EvalResult {
   if (index === COST_CASE_INDEX) {
     /*
-     * The plan's own case (arc 7, D-4): a $1.33 trace at defaults.
+     * The plan's own case: a $1.33 trace at defaults.
      * cost_under_threshold fails against the shipped $0.10 and does not
      * decide (the number is Iris's, not the deployment's); the verdict
      * passes and interpretations[] says why. The verdict, coverage and
@@ -171,7 +171,7 @@ export default async function globalSetup(): Promise<void> {
         // distinguishable at n = 10 — and case-0 is flaky across runs.
         trace.run_id = i < 10 ? 'baseline' : 'candidate';
         trace.case_key = `case-${i % 10}`;
-        // Three turns of one conversation (arc 9, N-15): the session strip on traces 3–5.
+        // Three turns of one conversation: the session strip on traces 3–5.
         if (i >= 3 && i <= 5) trace.session_id = 'e2e-session-1';
         await adapter.insertTrace(LOCAL_TENANT, trace);
         const evalResult = makeEval(trace, i);

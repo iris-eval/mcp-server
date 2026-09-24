@@ -325,7 +325,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.docker-tags.outputs.tags }}
-          # OCI labels the Dockerfile cannot know (arc 8, R-6): the static
+          # OCI labels the Dockerfile cannot know: the static
           # ones — title, description, source, url, licenses — are LABEL
           # lines in the Dockerfile so every build carries them; these
           # three are the release's own facts.

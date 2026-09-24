@@ -1,5 +1,5 @@
 /*
- * A model's family (arc 7, D-6b, plan §4.14's judge clause).
+ * A model's family.
  *
  * A judge that shares a family with the agent it judges is not an
  * independent reader: the two were trained on the same data with the same

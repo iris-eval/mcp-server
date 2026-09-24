@@ -42,7 +42,7 @@ import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, V
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { decides, isCritical } from './gate.js';
 
-// The gating predicate lives in gate.ts (arc 9, N-13) so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
+// The gating predicate lives in gate.ts so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
 export { decides };
 
 export interface ComposeConfig {

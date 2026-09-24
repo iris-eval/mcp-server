@@ -1,5 +1,5 @@
 /*
- * The header's one status, derived from what the server said (arc 7, D-2).
+ * The header's one status, derived from what the server said.
  *
  * Five inputs, one word. Precedence, most serious first: the session is gone
  * (nothing else can be read until sign-in), the server is not answering,

@@ -377,7 +377,7 @@ function normalise(raw: string, options: NormaliseOptions = {}): Normalised {
    * both sides, or a digit against the punctuation a number carries). That is
    * not whitespace; it is a tab or a line break inserted inside a word, an
    * SSN or a key so the pattern will not match — the two evasions the
-   * transforms table measured at 38–53% recall (arc 8, R-12) — and it is
+   * transforms table measured at 38–53% recall — and it is
    * dropped like a zero-width space, the offset map still indexing the raw
    * text. A run that contains a real space, or sits between words, is
    * whitespace and folds as before.
@@ -503,7 +503,7 @@ function toRawSpan(n: Normalised, start: number, end: number): [number, number] 
  * Two reasons this matters now rather than later. First, precision: the
  * card pattern fires on an order id, a hash prefix or a timestamp run, and
  * every such fire is a false positive a deployment has to explain away.
- * Second, the normalisation pass (arc 3, A3-2a) folds full-width and
+ * Second, the normalisation pass folds full-width and
  * circled digits into ASCII, so text that never looked like a card number
  * can become one — `①②③④…` is a sixteen-digit run after NFKC. The fold is
  * what makes evasion detectable and the checksum is what stops the fold
@@ -2603,8 +2603,8 @@ export function acknowledgesFailure(output: string): string | null {
 /**
  * Acknowledgements that are a SHAPE rather than a phrase. "Neither a.yml nor
  * b.yml exists" acknowledges two failures in one clause and carried none of
- * the phrases above — the published false positive silent-044 (arc 4), fixed
- * here with a corpus case first (arc 8, R-12). The form is narrow on purpose:
+ * the phrases above — the published false positive silent-044, fixed
+ * here with a corpus case first. The form is narrow on purpose:
  * `neither … nor …` followed within the clause by a verb of existence,
  * presence or success; "neither option is ideal" matches nothing.
  */
@@ -3399,7 +3399,7 @@ function costAnomaly(): EvalRuleResult {
 }
 
 /*
- * The expected-trajectory rules and tool_choice (arc 9, N-13) — vendored as
+ * The expected-trajectory rules and tool_choice — vendored as
  * skips, for the same reason as max_steps: the playground collects no
  * expected trajectory and no tools catalogue, so on the server they skip
  * before reading a call, and a skip on both sides is parity.
@@ -3426,7 +3426,7 @@ function toolChoice(ctx: EvalContext): EvalRuleResult {
 }
 
 /*
- * answers_the_ask (arc 9, N-13) — the two relevance measurements as one
+ * answers_the_ask — the two relevance measurements as one
  * detection: fires only when BOTH fail at their thresholds; skips whenever
  * either skips, and on an ask with fewer than two content terms. The same
  * composition as src/eval/rules/relevance.ts, over the vendored measurements.

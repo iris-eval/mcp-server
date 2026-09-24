@@ -1,5 +1,5 @@
 /*
- * Labels on the user's own traffic (arc 7, D-8) — the arithmetic.
+ * Labels on the user's own traffic — the arithmetic.
  *
  * Local precision is right / (right + wrong) with a Wilson interval and is
  * in force at LOCAL_LABEL_MIN; the prior estimate is f · p̂ / sens with the

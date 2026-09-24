@@ -1,5 +1,5 @@
 /*
- * `passed` means one thing across the four eval tools (arc 9, N-3; #375 item 2).
+ * `passed` means one thing across the four eval tools (#375).
  *
  * evaluate_with_llm_judge and verify_citations store one judgment row each
  * and used to report their own pass/fail beside it. Now both rows go

@@ -50,7 +50,7 @@ for (const file of pageFiles(appDir)) {
   routes.push([route, date]);
 }
 // The compare pages are one dynamic route rendered from src/lib/compare/*.json
-// (arc 8, R-5): each gets a row dated by the newer of its data file and the page.
+//: each gets a row dated by the newer of its data file and the page.
 const gitDate = (file) => {
   const date = execFileSync("git", ["log", "-1", "--format=%as", "--", file], { cwd: website, encoding: "utf8" }).trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`No git date for ${file} — untracked file or shallow clone?`);

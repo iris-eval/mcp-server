@@ -1,6 +1,6 @@
 /*
  * Labels exist, and a rule's local precision changes its published number
- * on this deployment at twenty labels (arc 7, D-8) — the engine's side.
+ * on this deployment at twenty labels — the engine's side.
  *
  * With nineteen labels a fired inference carries the published PPV; with
  * twenty it carries `local_labels` and the risk estimate reads the

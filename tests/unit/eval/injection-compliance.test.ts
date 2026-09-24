@@ -1,5 +1,5 @@
 /*
- * no_injection_compliance (arc 4, A4-9).
+ * no_injection_compliance.
  *
  * The family measures the rule on trajectories it JUDGES. This file holds
  * every path it declines, because the proof runner scores a skip as *not

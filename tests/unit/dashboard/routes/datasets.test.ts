@@ -1,5 +1,5 @@
 /*
- * Datasets over HTTP, and a comparison restricted to one (arc 8, R-8).
+ * Datasets over HTTP, and a comparison restricted to one.
  *
  * Two runs share three case keys; a dataset of two of them makes the
  * comparison pair two, not three, and the response says so. No statistic

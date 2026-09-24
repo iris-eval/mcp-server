@@ -1,5 +1,5 @@
 /*
- * OTLP in — an ExportTraceServiceRequest becomes Iris traces (arc 8, R-2).
+ * OTLP in — an ExportTraceServiceRequest becomes Iris traces.
  *
  * Iris has exported OTLP/HTTP JSON since 0.4; this is the other direction:
  * a collector, an SDK or an agent framework posts the spans it already
@@ -158,7 +158,7 @@ function statusOf(code: string | number | undefined): SpanStatus {
 }
 
 /*
- * The conventions a buyer will test against this door (arc 9, N-11), in
+ * The conventions a buyer will test against this door, in
  * the order they are read: Iris's own keys, the OTel GenAI conventions
  * (current, then the names deprecated in v1.37 that LangSmith's export and
  * Semantic Kernel still emit), OpenInference (`input.value`,
@@ -227,7 +227,7 @@ function firstNumber(attrs: Record<string, unknown>, keys: readonly string[]): n
 }
 
 /**
- * Token usage over the LEAF carriers only (arc 9, N-11). Microsoft's Agent
+ * Token usage over the LEAF carriers only. Microsoft's Agent
  * Framework puts the run's totals on `invoke_agent` beside `chat` children
  * that carry their own; summing every span counted each call twice. A
  * carrier whose descendant also carries is a total, not a call, and is
@@ -453,7 +453,7 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       ...(tokenUsage ? { token_usage: tokenUsage } : {}),
       ...(cost !== undefined ? { cost_usd: cost } : {}),
       ...(tools ? { tools } : {}),
-      // gen_ai.conversation.id is the session (arc 9, N-15): the column the drawer and the filters read.
+      // gen_ai.conversation.id is the session: the column the drawer and the filters read.
       ...(conversationId !== undefined ? { session_id: conversationId } : {}),
       metadata: {
         // What the judge's same-family check reads — beside the OTel block, never inside it.

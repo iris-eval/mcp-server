@@ -1,6 +1,5 @@
 /*
- * The release narrative is rendered from the changelog, never written twice
- * (arc 8, R-5).
+ * The release narrative is rendered from the changelog, never written twice.
  *
  * website/src/lib/changelog.generated.json is what the site's /releases page
  * renders; website/scripts/render-changelog.mjs writes it from CHANGELOG.md.

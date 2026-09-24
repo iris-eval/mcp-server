@@ -1,5 +1,5 @@
 /*
- * Seed the dataset the dogfood gate reads (arc 9, N-17): `release-gate`
+ * Seed the dataset the dogfood gate reads: `release-gate`
  * with the two case keys the walk-through gates (`deploy-config`,
  * `release-notes`), written straight into the database under IRIS_HOME
  * through the built adapter — the same rows `POST /api/v1/datasets`

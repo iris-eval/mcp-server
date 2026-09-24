@@ -1,5 +1,5 @@
 /*
- * One health contract on both ports, outside every rate limit (arc 8, R-6).
+ * One health contract on both ports, outside every rate limit.
  *
  * Until 0.15.0 the MCP transport's /health answered `{ status, server,
  * timestamp }` while the dashboard's /api/v1/health answered the fuller

@@ -1,6 +1,5 @@
 /*
- * The compare pages are data, and every vendor cell has a source and a date
- * (arc 8, R-5).
+ * The compare pages are data, and every vendor cell has a source and a date.
  *
  * website/src/lib/compare/<vendor>.json is the vendor's side of a fixed set of
  * features — the same set on every page (lib/compare/iris.ts) — with, for

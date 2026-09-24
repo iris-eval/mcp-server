@@ -1,5 +1,5 @@
 /*
- * Runs, cases and the comparison (arc 7, D-5), driven through the real
+ * Runs, cases and the comparison, driven through the real
  * dashboard on the seeded pair: baseline (traces 0–9, fails case-0 and
  * case-7) and candidate (traces 10–19, fails case-4), ten shared cases.
  */

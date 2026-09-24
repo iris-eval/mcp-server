@@ -1,5 +1,5 @@
 /*
- * Views — five named questions over an allowlist (arc 8, R-9).
+ * Views — five named questions over an allowlist.
  *
  *   GET /api/v1/views                 the five names and what each answers
  *   GET /api/v1/views/:name           one view, parameterised

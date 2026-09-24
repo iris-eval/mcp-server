@@ -1,5 +1,5 @@
 /*
- * The vocabulary a verdict is read in (arc 7, D-4): what each basis means,
+ * The vocabulary a verdict is read in: what each basis means,
  * what the composer's facts are, and the short name of each question.
  * Pure; the panel renders it and the tests hold the table.
  */

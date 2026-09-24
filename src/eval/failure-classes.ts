@@ -6,7 +6,7 @@
  * it. Arc zero found the taxonomy Iris carried was the implementation's
  * (bundles: completeness / relevance / safety / cost), not the problem
  * space's; the real transcripts were labelled with the classes below. The
- * composer (arc 3) groups evidence by class, so two rules that detect the
+ * composer groups evidence by class, so two rules that detect the
  * same failure are not counted as two failures.
  *
  * `NEEDS` lists every input a rule can declare it reads. A rule skips, and

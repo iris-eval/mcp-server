@@ -27,7 +27,7 @@ const CORPUS = join(HERE, 'corpus');
 const MANIFEST = join(HERE, 'blind-sample.json');
 const SEED = 20260904;
 const TARGET = 140;
-/** Twenty per judgment family: seven families × twenty = the 140-case sample (arc 2). */
+/** Twenty per judgment family: seven families × twenty = the 140-case sample. */
 const PER_FAMILY = 20;
 
 /** Deterministic PRNG so the same seed always draws the same sample. */

@@ -1,5 +1,5 @@
 /*
- * One health contract for both ports (arc 8, R-6).
+ * One health contract for both ports.
  *
  * Until 0.15.0 the dashboard's `/api/v1/health` reported status, version,
  * uptime, a trace count and a storage word, while the MCP transport's

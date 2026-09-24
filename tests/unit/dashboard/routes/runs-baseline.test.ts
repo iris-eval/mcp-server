@@ -1,5 +1,5 @@
 /*
- * A pinned baseline (arc 9, N-14): PATCH /api/v1/runs/:id pins one run per
+ * A pinned baseline: PATCH /api/v1/runs/:id pins one run per
  * tenant; the listing carries the flag; a comparison with `before` omitted
  * runs against it, and says how to pin one when none is; the comparison
  * answer lists its discordant cases.

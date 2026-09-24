@@ -433,7 +433,7 @@ export const askCoverage: EvalRule = {
 
     const index = answerIndex(context.output);
     /*
-     * Covering by tool call (arc 8, R-10, Q5): a part the answer never
+     * Covering by tool call: a part the answer never
      * mentions may still have been DONE — the trajectory shows a call whose
      * name, arguments or result carry the part's terms. The same lexical
      * test as the answer's, over the steps' text, so the trajectory can only

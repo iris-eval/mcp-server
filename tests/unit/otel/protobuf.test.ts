@@ -1,5 +1,5 @@
 /*
- * The protobuf door decodes what the Python exporter sends (arc 9, N-10).
+ * The protobuf door decodes what the Python exporter sends.
  *
  * The fixtures are REAL: `tests/fixtures/otlp/python-genai.pb` and
  * `python-plain.pb` are the request bodies opentelemetry-exporter-otlp-proto-http

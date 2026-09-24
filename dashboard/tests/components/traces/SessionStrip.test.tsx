@@ -1,5 +1,5 @@
 /*
- * The session strip (arc 9, N-15): rendered only for a trace in a session;
+ * The session strip: rendered only for a trace in a session;
  * says which turn this is, links the previous and the next, lists them all.
  */
 import React from 'react';

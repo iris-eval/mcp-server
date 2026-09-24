@@ -133,7 +133,7 @@ export const api = {
     return fetchJson<RunDetailResponse>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`);
   },
 
-  /** Pin a run as the baseline every later run is compared against, or unpin it (arc 9, N-14). */
+  /** Pin a run as the baseline every later run is compared against, or unpin it. */
   setRunBaseline(runId: string, baseline: boolean): Promise<{ run_id: string; baseline: boolean }> {
     return patchJson<{ run_id: string; baseline: boolean }>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`, { baseline });
   },
@@ -227,7 +227,7 @@ export const api = {
     return fetchJson<AuditQueryResult>(`${API_BASE_URL}/audit`, params);
   },
 
-  /* Labels on your own traffic (arc 7, D-8). */
+  /* Labels on your own traffic. */
 
   /** Label one rule's fire on one evaluation right or wrong; a second label on the same fire replaces the first. */
   labelRule(evalId: string, rule: string, label: VerdictLabelValue, note?: string): Promise<LabelResponse> {

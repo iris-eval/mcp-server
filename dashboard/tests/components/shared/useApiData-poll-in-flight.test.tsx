@@ -8,7 +8,7 @@
  * happened to the new one, and the widget never left its loading (or
  * empty) state. On a server with two weeks of traffic the Drift and Health
  * prior windows (200 moments each, 3.5–5.9 s under the dashboard's own
- * concurrent reads) never rendered; the demo made it visible (arc 9, N-1).
+ * concurrent reads) never rendered; the demo made it visible.
  *
  * Now a tick that finds a request in flight is skipped; a manual refetch
  * still supersedes, on purpose.

@@ -1,5 +1,5 @@
 /*
- * The demo, as a moving picture (arc 9, N-20): start the server in demo
+ * The demo, as a moving picture: start the server in demo
  * mode in a scratch home, open the dashboard where it lands — Failures —
  * in a recorded browser, look at a failure, and turn the recording into
  * the GIF the README carries and the MP4 the site keeps.

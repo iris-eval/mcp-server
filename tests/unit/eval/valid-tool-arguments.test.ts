@@ -1,5 +1,5 @@
 /*
- * valid_tool_arguments (arc 4, A4-5).
+ * valid_tool_arguments.
  *
  * The proof family measures the rule against its definition on trajectories
  * it JUDGES. This file holds the paths the family must not contain, and the

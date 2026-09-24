@@ -1,5 +1,5 @@
 /*
- * Migration 014 — the trace's session (arc 9, N-15).
+ * Migration 014 — the trace's session.
  *
  * The column and the index it adds, applied once on a cold file and on a
  * database written before it; the session stored and read back through the

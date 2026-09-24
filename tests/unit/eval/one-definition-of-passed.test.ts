@@ -1,5 +1,5 @@
 /*
- * One definition of `passed` (arc 3, acceptance row G7).
+ * One definition of `passed`.
  *
  * Arc zero found three encodings of the same idea and two of them
  * disagreed. From 0.10.0 there is one: `passed` IS `verdict.state === 'pass'`,

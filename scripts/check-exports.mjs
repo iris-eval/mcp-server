@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * check-exports — the packed tarball resolves the subpaths it promises (arc 8, R-1).
+ * check-exports — the packed tarball resolves the subpaths it promises.
  *
  * `package.json` promises `.`, `./engine`, `./client` and a `./dist/*`
  * passthrough. An exports map is checked by nobody until a consumer

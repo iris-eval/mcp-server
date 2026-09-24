@@ -1,5 +1,5 @@
 /*
- * The shared normalisation pass (arc 3, A3-2; acceptance row V2).
+ * The shared normalisation pass.
  *
  * Three properties matter and each is tested here rather than through a
  * rule: ASCII text is untouched (so no existing verdict can move), every
@@ -58,7 +58,7 @@ describe('normalise — folds every evasion the transforms table measures', () =
     expect(normalise('ѕесrеt').text).toBe('secret');
   });
 
-  it('with dropInsertedBreaks, drops a lone tab or line break inserted inside a number or a word — the two evasions the transforms table measured (arc 8, R-12)', () => {
+  it('with dropInsertedBreaks, drops a lone tab or line break inserted inside a number or a word — the two evasions the transforms table measured', () => {
     const normalise = (raw: string) => normaliseText(raw, { dropInsertedBreaks: true });
     expect(normalise('536-22\t-8145').text).toBe('536-22-8145');
     expect(normalise('536-2\n2-8145').text).toBe('536-22-8145');

@@ -1,5 +1,5 @@
 /*
- * Every listing inherits the truth (arc 9, N-20): the registry manifest
+ * Every listing inherits the truth: the registry manifest
  * validates against the vendored 2025-12-11 schema with the three display
  * fields present and pointing at files the site serves; the README carries
  * the demo GIF (under three megabytes, its source beside it), the install

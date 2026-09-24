@@ -47,7 +47,7 @@ export type IrisErrorCode = (typeof ERROR_CODE_CATALOGUE)[number];
  * holds prose to this list and the error list).
  */
 export const WARNING_CODE_CATALOGUE = [
-  /** The LLM judge shares a model family with the agent it judged (arc 7, D-6b). */
+  /** The LLM judge shares a model family with the agent it judged. */
   'IRIS_JUDGE_SAME_FAMILY',
 ] as const;
 export type IrisWarningCode = (typeof WARNING_CODE_CATALOGUE)[number];

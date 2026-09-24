@@ -1,5 +1,5 @@
 /*
- * OTLP in — the mapper (arc 8, R-2).
+ * OTLP in — the mapper.
  *
  * A GenAI-conventions fixture (a chat root span and a tool child) maps to
  * one trace with the input, the output, the tokens, the cost and — through
@@ -95,7 +95,7 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
       source: 'otel',
     });
     expect(trace.metadata).toEqual({
-      // The model lands beside the OTel block: what the judge's same-family check reads (arc 9, N-11).
+      // The model lands beside the OTel block: what the judge's same-family check reads.
       model: 'gpt-4o',
       otel: { trace_id: '5b8efff798038103d269b633813fc60c', scope: 'openllmetry', resource: { 'service.name': 'support-bot', 'iris.run': 'nightly-7', 'deployment.environment': 'staging' } },
     });
@@ -200,7 +200,7 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
 });
 
 /*
- * Every convention a buyer will test against the door (arc 9, N-11). One
+ * Every convention a buyer will test against the door. One
  * compact fixture per family; the keys are the ones the vendor's own docs
  * and instrumentors emit (the arc-9 research brief, python-otel.md, §3).
  */

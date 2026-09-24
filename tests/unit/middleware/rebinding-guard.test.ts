@@ -60,7 +60,7 @@ describe('DNS-rebinding guard', () => {
   it('refuses the literal "null" Origin — what a browser sends on a POST navigation under Referrer-Policy: no-referrer', async () => {
     /*
      * The reason the dashboard's referrer policy is `same-origin` and not
-     * helmet's default (arc 7, D-9): under `no-referrer` the sign-in form's
+     * helmet's default: under `no-referrer` the sign-in form's
      * POST /session arrived here as `Origin: null` and was refused, so the
      * `--api-key` dashboard could never be entered through its own form.
      * The guard is right to refuse `null` — it is also what a sandboxed

@@ -1,5 +1,5 @@
 /*
- * Labels on your own traffic (arc 7, D-8, held by D-9), driven through the
+ * Labels on your own traffic, driven through the
  * real dashboard on a trace this spec stores for itself: the fired rule
  * asks whether it was right to fire, the label is written and the card
  * says where the rule's local precision stands, the /rules panel shows the

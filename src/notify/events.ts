@@ -1,5 +1,5 @@
 /*
- * What a stored evaluation says that is worth a message (arc 9, N-16).
+ * What a stored evaluation says that is worth a message.
  *
  * One evaluation can be several moments — a vetoed verdict is also a failed
  * one, a cost outlier can also cross a CUSUM line — so this reads them all
@@ -32,7 +32,7 @@ export interface WebhookMoment {
   agent_name: string | null;
   run_id: string | null;
   case_key: string | null;
-  /** The conversation the trace belongs to (arc 9, N-15), when it carries one. */
+  /** The conversation the trace belongs to, when it carries one. */
   session_id: string | null;
   /** When the evaluation was stored (ISO-8601). */
   evaluated_at: string;

@@ -1,5 +1,5 @@
 /*
- * The session strip (arc 9, N-15): a trace is one turn of a conversation;
+ * The session strip: a trace is one turn of a conversation;
  * this shows the others. Rendered only when the trace carries a session id,
  * it reads the session's turns in time order through the same list route a
  * reader would call (`GET /api/v1/traces?session=…`), says which turn this

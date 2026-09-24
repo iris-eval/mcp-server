@@ -151,7 +151,7 @@ const GAP_REASONS: Record<string, Partial<Record<Bundle, string>>> = {
       'the deferral now fails no_stub_output, which lives in the SAFETY bundle (weight 1.5, deliberately non-critical); the completeness bundle itself still passes on length and sentence count',
   },
   /*
-   * DILUTION, recorded rather than absorbed (arc 4, A4-11).
+   * DILUTION, recorded rather than absorbed.
    *
    * `cost_under_threshold` still FAILS on both rows and says so in the rule
    * results. What changed is that adding `max_steps` — a fourth rule that

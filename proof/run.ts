@@ -560,7 +560,7 @@ export function normaliseForCheck(json: string, md: string): { json: string; md:
 }
 
 /**
- * `--composite`: the verdict on the composite corpus (arc 2). Writes
+ * `--composite`: the verdict on the composite corpus. Writes
  * proof/composite-results.json and proof/COMPOSITE.md, or with `--check`
  * regenerates them to a temp path and fails on any difference.
  */

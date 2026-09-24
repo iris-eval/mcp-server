@@ -1,5 +1,5 @@
 /*
- * Plugin rules (arc 8, R-3): a hash-pinned ES module becomes a rule that
+ * Plugin rules: a hash-pinned ES module becomes a rule that
  * fires like a built-in; a wrong hash, a missing file, a module without
  * the contract, or a name that clashes, refuses at load naming the path;
  * a plugin that throws or answers the wrong shape skips the evaluation

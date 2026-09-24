@@ -152,18 +152,18 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
 }
 
 export interface CompareStoredRunsArgs {
-  /** Omitted: the run pinned as the baseline (arc 9, N-14). */
+  /** Omitted: the run pinned as the baseline. */
   before?: string;
   after: string;
   force?: boolean;
   equivalence_margin?: number;
-  /** A dataset id or label: only rows whose case key is in it are compared (arc 8, R-8). */
+  /** A dataset id or label: only rows whose case key is in it are compared. */
   dataset?: string;
 }
 
 /**
  * The handler behind `compare_runs`, shared with `POST /api/v1/compare`
- * (arc 7, D-5): reads each run's evaluations (most recent per trace), runs
+ *: reads each run's evaluations (most recent per trace), runs
  * the comparison, and shapes it exactly as the tool's output schema says.
  * One implementation, one shape, two doors.
  */

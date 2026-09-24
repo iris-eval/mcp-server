@@ -1,5 +1,5 @@
 /*
- * The judge's threshold decides, not the judge (arc 3, A3-4).
+ * The judge's threshold decides, not the judge.
  *
  * Arc zero found this as a tier-A gap: `passed` was the model's own boolean
  * whenever it supplied one, and the template's documented threshold was a

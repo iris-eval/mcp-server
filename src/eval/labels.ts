@@ -1,5 +1,5 @@
 /*
- * Labels on the user's own traffic (arc 7, D-8; plan §4.13) — the arithmetic.
+ * Labels on the user's own traffic — the arithmetic.
  *
  * A published precision is agreement with one labeller on one corpus. A
  * deployment's own labels on its own fires are the number a reader can

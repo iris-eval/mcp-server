@@ -1,5 +1,5 @@
 /*
- * Drift by run (arc 7, D-6): one panel per cohort with what the server
+ * Drift by run: one panel per cohort with what the server
  * says about it — n and the Wilson interval on each window, the tested
  * difference with its interval, or "not compared" with the smallest change
  * the windows could have seen — and that cohort's own trend line. Nothing

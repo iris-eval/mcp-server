@@ -1,5 +1,5 @@
 /*
- * The verdict panel (arc 7, D-4): one evaluation's verdict with its basis,
+ * The verdict panel: one evaluation's verdict with its basis,
  * the rules it was decided by, the risk estimate when one exists, coverage
  * by question with counts, and the composer's own sentences.
  *

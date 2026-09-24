@@ -15,7 +15,7 @@ import { strictBody } from '../validation.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
-// One list for every surface that deploys a rule (arc 9, N-8): the route's
+// One list for every surface that deploys a rule: the route's
 // own copy used to stop at eight and refused the action_policy the tool accepted.
 const RuleTypeSchema = z.enum(RULE_TYPE_VALUES);
 

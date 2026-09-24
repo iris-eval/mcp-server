@@ -1,5 +1,5 @@
 /*
- * The key ring (arc 8, R-6): every configured key, one constant-time
+ * The key ring: every configured key, one constant-time
  * compare, rotation without a gap, and a startup sentence for a bad file,
  * hash or id.
  */

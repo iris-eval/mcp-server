@@ -8,7 +8,7 @@ export interface AuthedRequest extends Request {
 }
 
 /**
- * Bearer authentication over the key ring (arc 8, R-6).
+ * Bearer authentication over the key ring.
  *
  * With no key configured anywhere this is a pass-through — the loopback
  * bind is the exposure control, and a bind beyond loopback with no key is

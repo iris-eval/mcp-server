@@ -119,7 +119,7 @@ export class EvalEngine {
   private compose: ComposeConfig;
 
   /**
-   * The deployment's own labels (arc 7, D-8), installed by
+   * The deployment's own labels, installed by
    * refreshLocalLabels at boot and after every label write. Null on an
    * engine nothing has labelled — the proof runner, a test, an embedder —
    * which then evaluates exactly as before.
@@ -203,7 +203,7 @@ export class EvalEngine {
    * safety signal was reading a number that arc zero measured as inert.
    */
   /**
-   * The composer's word on a row another tool judged (arc 9, N-3; #375).
+   * The composer's word on a row another tool judged (#375).
    * evaluate_with_llm_judge and verify_citations store one judgment row
    * each and used to report their own pass/fail beside it, so `passed`
    * meant the threshold on those two and the composer everywhere else.

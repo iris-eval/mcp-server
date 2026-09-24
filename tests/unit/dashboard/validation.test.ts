@@ -255,7 +255,7 @@ describe('failuresQuerySchema', () => {
 });
 
 /*
- * The read routes' query schemas are strict (arc 9, N-4; #376): a
+ * The read routes' query schemas are strict (#376): a
  * misspelled filter is refused naming the key and the valid names, never
  * stripped into "no filter". One table, every closed query shape.
  */

@@ -1,5 +1,5 @@
 /*
- * How long an evaluation takes is measured, not typed (arc 9, N-22).
+ * How long an evaluation takes is measured, not typed.
  *
  * Every incumbent's page answers the latency question with a number and
  * Iris had none — the hardcoded-claim scanner refused one, correctly,

@@ -1,5 +1,5 @@
 /*
- * Checksums and the sentence splitter (arc 3, A3-2b; acceptance row V5).
+ * Checksums and the sentence splitter.
  *
  * The checksums exist so a shape match becomes a structure match — and,
  * specifically, so the normalisation pass cannot manufacture a card number

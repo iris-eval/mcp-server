@@ -18,7 +18,7 @@ export interface HttpTransportResult {
   httpServer: Server;
 }
 
-/** What `/health` on this port reports on (arc 8, R-6); the version comes from `config.server`. */
+/** What `/health` on this port reports on; the version comes from `config.server`. */
 export type HttpTransportHealthDeps = Omit<HealthDeps, 'version'>;
 
 export async function createHttpTransport(
@@ -40,7 +40,7 @@ export async function createHttpTransport(
     hasApiKey: hasAnyApiKey(config.security),
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
-  // Every configured key, read once (arc 8, R-6).
+  // Every configured key, read once.
   const keys = buildKeyRing(config.security);
 
   const app = express();

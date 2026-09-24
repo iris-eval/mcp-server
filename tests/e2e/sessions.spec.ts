@@ -1,5 +1,5 @@
 /*
- * Sessions (arc 9, N-15): three seeded traces share one session; the trace
+ * Sessions: three seeded traces share one session; the trace
  * page shows the strip with the turn's place in it, and the next-turn link
  * lands on the next trace.
  *

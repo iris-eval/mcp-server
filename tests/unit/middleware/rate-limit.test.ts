@@ -114,7 +114,7 @@ describe('rate limit middleware', () => {
 });
 
 /*
- * What the MCP budget is counted against (arc 8, R-6): the client address
+ * What the MCP budget is counted against: the client address
  * by default (the pre-0.15.0 behaviour), or the API key that authenticated
  * the request — so two agents behind one address each get their own
  * minute, and a request no key authenticated falls back to its address.

@@ -1,5 +1,5 @@
 /*
- * The Iris side of every comparison, in one place (arc 8, R-5).
+ * The Iris side of every comparison, in one place.
  *
  * Each compare page is `website/src/lib/compare/<vendor>.json` — the vendor's
  * side of the fixed features in FEATURE_IDS, every cell with the vendor's own page as its

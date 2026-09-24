@@ -1,4 +1,4 @@
-# Publish the Python client to PyPI (arc 9, N-18) by trusted publishing:
+# Publish the Python client to PyPI by trusted publishing:
 # no token in this repository — PyPI trusts this workflow, in this
 # repository, in the `pypi` environment, through the OIDC token GitHub
 # mints for the run. The project `iris-eval` and the publisher are

@@ -1,5 +1,5 @@
 /*
- * The label control on a rule-result row (arc 7, D-8): only on a FAILED
+ * The label control on a rule-result row: only on a FAILED
  * row, only when the page supplies a handler; the current label is
  * pressed; a click hands the rule and the value back.
  */

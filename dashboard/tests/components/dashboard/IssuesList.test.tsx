@@ -1,5 +1,5 @@
 /*
- * Recurring issues (arc 7, D-8): fires grouped by what the rule found, with
+ * Recurring issues: fires grouped by what the rule found, with
  * a count, the agents, the labels so far, and a way in — one trace that
  * carries the fire. Nothing when there are none.
  */

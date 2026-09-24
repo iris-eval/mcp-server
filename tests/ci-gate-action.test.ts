@@ -1,5 +1,5 @@
 /*
- * The gate action (arc 9, N-17): the composite action's shape, held as
+ * The gate action: the composite action's shape, held as
  * text; the receipt built from what `ingest` prints; the comment's
  * decisions and its create-or-update against a local GitHub; the dogfood
  * job that runs it on every pull request; the fixtures it runs on.
