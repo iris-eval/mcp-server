@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/nav";
-import { RULE_COUNT_BUILT_IN } from "@/lib/claims";
+import { DATA_RESIDENCY, RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { Footer } from "@/components/footer";
 
@@ -56,9 +56,9 @@ const tiers: Tier[] = [
       "LLM-as-judge + citation verification (your API key, no proxy)",
       "Dashboard + playground",
       "stdio + HTTP transports",
-      "Community support (GitHub Issues + Discord)",
+      "Community support (GitHub Issues + Discussions)",
     ],
-    footer: "Runs entirely on your machine. Your traces never leave it.",
+    footer: DATA_RESIDENCY,
   },
   {
     name: "Team",

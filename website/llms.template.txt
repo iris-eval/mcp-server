@@ -1,6 +1,6 @@
 # Iris — {{taglineLower}}
 
-> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx -y {{pinnedPackage}}`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
+> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP client lists its tools on connect — one command (`npx -y {{pinnedPackage}}`), no SDK; your agent calls them, a host hook forwards each turn, or `iris-eval ingest` loads a trace file. MIT-licensed core, self-hosted, signed releases.
 
 Current release: v{{version}} ({{releaseDate}}) — {{releaseHeadline}}.
 

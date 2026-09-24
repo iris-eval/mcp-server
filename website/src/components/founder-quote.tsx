@@ -15,9 +15,9 @@ export function FounderQuote(): React.ReactElement {
             an answer, or burned through your budget on a single query.
           </p>
           <p className="mt-6 text-xl leading-relaxed text-text-secondary italic md:text-2xl">
-            So I built Iris — an MCP server that any agent discovers and uses
-            automatically. No SDK. No code changes. Just add it to your config
-            and start seeing everything.
+            So I built Iris — an MCP server every agent finds on connect. No SDK.
+            Add it to your config, and every run your agent, a hook or the CLI
+            hands it gets scored.
           </p>
           <footer className="mt-10 flex flex-col items-center gap-1">
             <div className="text-[15px] font-bold text-text-primary">

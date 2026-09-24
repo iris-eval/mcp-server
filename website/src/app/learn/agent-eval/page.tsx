@@ -420,7 +420,7 @@ export default function AgentEvalGuide(): React.ReactElement {
 
               <p>
                 Heuristic evaluation uses deterministic, pattern-based rules to score agent outputs.
-                These rules are fast (sub-millisecond), free (no API calls), and perfectly consistent —
+                These rules are fast (milliseconds per output), free (no API calls), and perfectly consistent —
                 the same input always produces the same score.
               </p>
 

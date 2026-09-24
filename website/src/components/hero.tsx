@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { DashboardMockup } from "./dashboard-mockup";
 import { RotatingWords } from "./rotating-words";
-import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, TEST_COUNT_VITEST_ROOT } from "../lib/claims";
+import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, TEST_COUNT_TOTAL } from "../lib/claims";
 
 const COMPAT = ["Claude Desktop", "Cursor", "Claude Code", "Windsurf", "LangChain", "CrewAI", "MCP SDK", "AutoGen"];
 
@@ -70,8 +70,8 @@ export function Hero(): React.ReactElement {
           </div>
 
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-text-secondary md:text-[20px]">
-            Stop shipping agents on vibes. Install once. Every agent
-            auto-discovers it. Zero SDK. Decision Moments classify what matters,
+            Stop shipping agents on vibes. Install once. Every MCP client
+            lists its tools on connect. Zero SDK. Decision Moments classify what matters,
             so safety violations and cost spikes surface before happy-path passes.
           </p>
 
@@ -107,7 +107,7 @@ export function Hero(): React.ReactElement {
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono">
-              <span className="text-text-secondary font-semibold">{TEST_COUNT_VITEST_ROOT} tests</span>
+              <span className="text-text-secondary font-semibold">{TEST_COUNT_TOTAL?.toLocaleString("en-US")} tests</span>
               <span> · all green</span>
             </span>
           </div>

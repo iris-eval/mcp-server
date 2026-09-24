@@ -48,8 +48,8 @@ export function ProductTabs(): React.ReactElement {
             <span className="text-gradient">One quality standard.</span>
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
-            Iris registers as an MCP server. Your agent discovers it and invokes
-            its tools automatically. No SDK. No code changes.
+            Iris registers as an MCP server. Your client lists its tools on
+            connect, and your agent calls them. No SDK.
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export function ProductTabs(): React.ReactElement {
             <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
               <div className="lg:py-4">
                 <h3 className="font-display text-2xl font-bold text-text-primary md:text-3xl">
-                  Every execution. Every tool call. Every token.
+                  Every run you send it. Every tool call. Every token.
                 </h3>
                 <p className="mt-4 text-[16px] leading-relaxed text-text-secondary">
                   <code className="rounded-md border border-border-default bg-bg-surface px-2 py-0.5 font-mono text-[13px] text-text-accent">log_trace</code>{" "}
