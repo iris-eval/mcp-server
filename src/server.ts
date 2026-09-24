@@ -73,7 +73,7 @@ export function createIrisServer(
     buildCapabilities({ config, evalEngine, customRuleStore: ruleStore, mode: options?.mode });
 
   registerAllTools(mcpServer, storage, evalEngine, ruleStore);
-  registerAllResources(mcpServer, storage, capabilities);
+  registerAllResources(mcpServer, storage, capabilities, ruleStore.auditPath);
   registerPrompts(mcpServer, config.server.version);
 
   return { mcpServer, evalEngine, customRuleStore: ruleStore, instructions, capabilities };

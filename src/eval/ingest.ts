@@ -14,6 +14,7 @@
 import type { EvalEngine } from './engine.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from './engine.js';
 import type { DormantRule } from './dormant.js';
+import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 import { toEvaluationResponse } from './response.js';
 import { historyBefore } from './decision-moment.js';
 import type { IStorageAdapter } from '../types/query.js';
@@ -28,6 +29,8 @@ export interface EvaluateStoredTraceOptions {
   evalType?: IngestEvalType;
   /** The quarantined gating rules on this server, for coverage.dormant. */
   dormant?: DormantRule[];
+  /** Deployed-rule changes since the server started, for rules_changed. */
+  rulesChanged?: RuleChangesSinceStart | null;
   /**
    * When the evaluation should be dated — ISO-8601. No door exposes this:
    * the demo seeder evaluates a week of backdated traces
@@ -101,6 +104,7 @@ export async function evaluateStoredTrace(
     response: toEvaluationResponse(result, {
       traceId: trace.trace_id,
       dormant: options.dormant,
+      rulesChanged: options.rulesChanged,
       ...(omitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}),
     }),
   };

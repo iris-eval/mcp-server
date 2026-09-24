@@ -986,6 +986,34 @@
     "note": {
       "description": "present when eval_type was omitted",
       "type": "string"
+    },
+    "rules_changed": {
+      "description": "rule changes since start",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "last_change_at": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "audit": {
+          "type": "string",
+          "const": "iris://audit"
+        }
+      },
+      "required": [
+        "count",
+        "last_change_at",
+        "since",
+        "audit"
+      ],
+      "additionalProperties": {}
     }
   },
   "required": [

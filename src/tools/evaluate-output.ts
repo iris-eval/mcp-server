@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { toEvaluationResponse } from '../eval/response.js';
 import type { DormantRule } from '../eval/dormant.js';
+import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
@@ -84,6 +85,8 @@ const inputSchema = {
 export interface EvaluateOutputOptions {
   /** The quarantined gating rules on this server, for coverage.dormant. */
   dormant?: () => DormantRule[];
+  /** Deployed-rule changes since the server started, for rules_changed. */
+  rulesChanged?: () => RuleChangesSinceStart | null;
 }
 
 export function registerEvaluateOutputTool(
@@ -202,7 +205,7 @@ export function registerEvaluateOutputTool(
       // reader at once.
       return respond(
         evaluateOutputResponseSchema,
-        toEvaluationResponse(result, { traceId: args.trace_id, dormant: options?.dormant?.(), ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
+        toEvaluationResponse(result, { traceId: args.trace_id, dormant: options?.dormant?.(), rulesChanged: options?.rulesChanged?.(), ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
         evaluationLinks(result.id, args.trace_id),
       );
     }),

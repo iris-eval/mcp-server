@@ -134,6 +134,7 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
       if (options.evaluateOnIngest && options.evalEngine && trace.output !== undefined) {
         const { response } = await evaluateStoredTrace(options.evalEngine, storage, tenantId, trace as Trace & { output: string }, {
           dormant: options.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
+          rulesChanged: options.customRuleStore?.changesSinceStart(tenantId),
         });
         entry.evaluation = response;
       } else if (options.evaluateOnIngest && trace.output === undefined) {

@@ -313,3 +313,38 @@ describe('lenient load — one bad rule must not destroy the file', () => {
     expect(readFileSync(rulesPath, 'utf-8')).toBe('{ this is not json');
   });
 });
+
+describe('changesSinceStart', () => {
+  const input = {
+    name: 'long-enough',
+    evalType: 'completeness',
+    definition: { name: 'long-enough', type: 'min_length', config: { min_length: 5 } },
+  } as Parameters<ReturnType<typeof createCustomRuleStore>['deploy']>[1];
+
+  it('is null until a rule changes, then counts deploys, toggles and deletes', () => {
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(store.changesSinceStart(LOCAL_TENANT)).toBeNull();
+    const rule = store.deploy(LOCAL_TENANT, input);
+    store.setEnabled(LOCAL_TENANT, rule.id, false);
+    store.delete(LOCAL_TENANT, rule.id);
+    const changes = store.changesSinceStart(LOCAL_TENANT)!;
+    expect(changes.count).toBe(3);
+    expect(changes.audit).toBe('iris://audit');
+    expect(Date.parse(changes.last_change_at)).toBeGreaterThanOrEqual(Date.parse(changes.since));
+  });
+
+  it('does not count what changed nothing: a toggle to the current state, a delete of an unknown id', () => {
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    const rule = store.deploy(LOCAL_TENANT, input);
+    store.setEnabled(LOCAL_TENANT, rule.id, true);
+    store.delete(LOCAL_TENANT, 'rule-missing');
+    expect(store.changesSinceStart(LOCAL_TENANT)!.count).toBe(1);
+  });
+
+  it('rules on disk when the server started are not changes', () => {
+    createCustomRuleStore({ pathFor: () => rulesPath, auditPath }).deploy(LOCAL_TENANT, input);
+    const restarted = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(restarted.list(LOCAL_TENANT)).toHaveLength(1);
+    expect(restarted.changesSinceStart(LOCAL_TENANT)).toBeNull();
+  });
+});

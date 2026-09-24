@@ -300,6 +300,24 @@ export interface CustomRuleStore {
   /** Path on disk for diagnostics. Different per tenant. */
   pathFor(tenantId: TenantId): string;
   auditPath: string;
+  /**
+   * Deploys, deletes and toggles made through this store since it was
+   * created (the server's start), or null when there were none. Read by
+   * the verdict surfaces so a verdict says the rules under it moved.
+   */
+  changesSinceStart(tenantId: TenantId): RuleChangesSinceStart | null;
+}
+
+/** What changed in the deployed rule set since the server started. */
+export interface RuleChangesSinceStart {
+  /** Deploys, deletes and enable/disable toggles, each counted once. */
+  count: number;
+  /** ISO time of the most recent change. */
+  last_change_at: string;
+  /** ISO time the server started counting. */
+  since: string;
+  /** Where each change is recorded, with who made it. */
+  audit: 'iris://audit';
 }
 
 export interface DeployRuleInput {
@@ -417,6 +435,21 @@ export function createCustomRuleStore(opts?: {
   // tenant; subsequent calls hit the cache.
   const tenantState = new Map<TenantId, LoadedRules>();
 
+  /*
+   * Rule changes since this store was created. An agent that can deploy
+   * or disable a rule can otherwise shape the rules it is then judged by
+   * and receive a verdict that reads clean; the audit log records each
+   * change, and this count lets every verdict point at it. In memory on
+   * purpose: "since the server started" is the window a reader can check
+   * against iris://audit, and it never alters a verdict.
+   */
+  const startedAt = new Date().toISOString();
+  const changes = new Map<TenantId, { count: number; last: string }>();
+  function recordChange(tenantId: TenantId, at: string): void {
+    const prior = changes.get(tenantId);
+    changes.set(tenantId, { count: (prior?.count ?? 0) + 1, last: at });
+  }
+
   function state(tenantId: TenantId): LoadedRules {
     let loaded = tenantState.get(tenantId);
     if (loaded === undefined) {
@@ -460,6 +493,10 @@ export function createCustomRuleStore(opts?: {
   return {
     auditPath,
     pathFor,
+    changesSinceStart(tenantId: TenantId): RuleChangesSinceStart | null {
+      const c = changes.get(tenantId);
+      return c ? { count: c.count, last_change_at: c.last, since: startedAt, audit: 'iris://audit' } : null;
+    },
     list(tenantId: TenantId): DeployedCustomRule[] {
       return [...load(tenantId)];
     },
@@ -493,6 +530,7 @@ export function createCustomRuleStore(opts?: {
       const rules = load(tenantId);
       rules.push(validated);
       persist(tenantId);
+      recordChange(tenantId, now);
       appendAudit(auditPath, {
         ts: now,
         tenantId,
@@ -515,8 +553,10 @@ export function createCustomRuleStore(opts?: {
       const removed = rules[idx];
       rules.splice(idx, 1);
       persist(tenantId);
+      const at = new Date().toISOString();
+      recordChange(tenantId, at);
       appendAudit(auditPath, {
-        ts: new Date().toISOString(),
+        ts: at,
         tenantId,
         action: 'rule.delete',
         user,
@@ -538,6 +578,7 @@ export function createCustomRuleStore(opts?: {
       rule.enabled = enabled;
       rule.updatedAt = new Date().toISOString();
       persist(tenantId);
+      recordChange(tenantId, rule.updatedAt);
       appendAudit(auditPath, {
         ts: rule.updatedAt,
         tenantId,

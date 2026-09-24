@@ -11,6 +11,7 @@
  */
 import type { EvalResult } from '../types/eval.js';
 import type { DormantRule } from './dormant.js';
+import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 
 export interface EvaluationResponseOptions {
   /** The trace the evaluation was linked to, echoed so a caller can join the two without a second read. */
@@ -19,6 +20,12 @@ export interface EvaluationResponseOptions {
   note?: string;
   /** Quarantined gating rules on this server, carried as coverage.dormant (a gate reads the verdict, never list_rules). */
   dormant?: DormantRule[];
+  /**
+   * Deployed-rule changes since the server started, when there were any.
+   * Set only where a verdict is being produced now (the tools and the
+   * ingest routes), never on a stored evaluation read back later.
+   */
+  rulesChanged?: RuleChangesSinceStart | null;
 }
 
 /** The response body for an evaluation — what the tool returns as text and, later, as structured content. */
@@ -74,5 +81,14 @@ export function toEvaluationResponse(result: EvalResult, options: EvaluationResp
     // Per-bundle breakdown — eval_type="all" only.
     ...(result.categories ? { categories: result.categories } : {}),
     ...(options.note ? { note: options.note } : {}),
+    /*
+     * A verdict produced under rules that changed while this server ran
+     * says so. Deploying, deleting or disabling a rule is an ordinary
+     * action for an agent, and without this the verdict that follows
+     * reads exactly like one under the rules the operator set. It never
+     * changes passed, score or the verdict; it names the count and the
+     * audit resource that records each change and who made it.
+     */
+    ...(options.rulesChanged ? { rules_changed: options.rulesChanged } : {}),
   };
 }

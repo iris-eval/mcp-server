@@ -69,9 +69,11 @@ export function registerAllTools(
 ): void {
   registerLogTraceTool(server, storage, evalEngine, {
     dormant: () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT)),
+    rulesChanged: () => customRuleStore.changesSinceStart(LOCAL_TENANT),
   });
   registerEvaluateOutputTool(server, storage, evalEngine, {
     dormant: () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT)),
+    rulesChanged: () => customRuleStore.changesSinceStart(LOCAL_TENANT),
   });
   registerGetTracesTool(server, storage);
   registerCompareRunsTool(server, storage);
