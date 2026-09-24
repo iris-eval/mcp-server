@@ -1,10 +1,8 @@
 /*
- * GET /health — trace_count must be the all-time count.
- *
- * It used to read the dashboard summary's ONE-HOUR window, so on the demo
- * database /api/v1/health said `trace_count: 0` while /api/v1/traces said
- * 253 (#373 item 1). A liveness field that contradicts the data it fronts
- * sends a capture client's sanity check the wrong way.
+ * GET /health — answers without a key, so it proves the store can count
+ * traces and never says how many there are. It used to carry
+ * `trace_count`, which told any unauthenticated caller how much data the
+ * server held; the number is `total` on the authenticated GET /api/v1/traces.
  */
 import { describe, it, expect } from 'vitest';
 import express from 'express';
@@ -27,11 +25,8 @@ async function getHealth(storage?: IStorageAdapter): Promise<{ status: number; b
 }
 
 describe('GET /health', () => {
-  it('reports the all-time trace count, not the last hour', async () => {
+  it('checks that the store counts, without disclosing the count', async () => {
     const storage = {
-      // What the old code read: nothing in the last hour.
-      getDashboardSummary: async () => ({ total_traces: 0 }),
-      // What the endpoint must report: the unfiltered COUNT(*).
       queryTraces: async (_tenant: unknown, opts: { limit?: number }) => {
         expect(opts.limit).toBe(1);
         return { traces: [{}], total: 253, limit: 1, offset: 0 };
@@ -42,7 +37,8 @@ describe('GET /health', () => {
 
     const { status, body } = await getHealth(storage);
     expect(status).toBe(200);
-    expect(body.trace_count).toBe(253);
+    expect(body).not.toHaveProperty('trace_count');
+    expect(JSON.stringify(body)).not.toContain('253');
     expect(body.storage).toBe('connected');
     expect(body.version).toBe('9.9.9');
     // The one contract: the route serves what src/health.ts builds.

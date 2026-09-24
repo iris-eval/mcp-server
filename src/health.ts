@@ -10,7 +10,7 @@
  * human read one shape.
  *
  * What the checks mean:
- *   storage      the database answers a COUNT (the all-time trace count)
+ *   storage      the database answers a COUNT of traces
  *   rules_store  the deployed custom-rules file reads and parses
  *   migrations   every migration this build knows is applied; the numbers
  *                are how many, so an operator can see a schema is behind
@@ -20,8 +20,13 @@
  *
  * `status` is `ok` only when every check that could run is `ok`; anything
  * else is `degraded` with HTTP 503, so a probe that only reads the status
- * code gets the right answer. The older fields (`trace_count`, `storage`,
- * `judge`, `mode`) stay: the dashboard header and the UAT read them.
+ * code gets the right answer. The older fields (`storage`, `judge`, `mode`)
+ * stay: the dashboard header and the UAT read them.
+ *
+ * The endpoint answers without a key, so it reports whether the store can
+ * be counted, never the count. Until this change it carried `trace_count`,
+ * which told any unauthenticated caller how much data the server held. The
+ * count is on the authenticated surface: `total` on GET /api/v1/traces.
  */
 import type { IStorageAdapter } from './types/query.js';
 import type { CustomRuleStore } from './custom-rule-store.js';
@@ -43,8 +48,6 @@ export interface HealthReport {
     rules_store: CheckState;
     migrations: { status: CheckState; applied: number; known: number };
   };
-  /** All-time trace count; present when storage answered. */
-  trace_count?: number;
   /** The word the pre-0.15.0 contract used; kept for readers of it. */
   storage?: 'connected' | 'disconnected';
   judge: { enabled: boolean; provider: string | null };
@@ -90,13 +93,11 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
      * LOCAL_TENANT rather than a resolved tenantId; deliberate, documented
      * here so it stays the only exception.
      *
-     * trace_count is ALL-TIME (#373 item 1): queryTraces' `total` is the
-     * unfiltered COUNT(*) for the tenant; limit 1 keeps the row fetch
-     * negligible.
+     * The count proves the store answers; the number itself is not
+     * reported (see the header). limit 1 keeps the row fetch negligible.
      */
     try {
-      const { total } = await deps.storage.queryTraces(LOCAL_TENANT, { limit: 1, offset: 0 });
-      body.trace_count = total;
+      await deps.storage.queryTraces(LOCAL_TENANT, { limit: 1, offset: 0 });
       body.storage = 'connected';
       body.checks.storage = 'ok';
     } catch {

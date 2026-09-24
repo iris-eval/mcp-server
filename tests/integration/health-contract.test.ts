@@ -80,7 +80,8 @@ describe('one health contract', () => {
         rules_store: 'absent',
         migrations: { status: 'ok', applied: KNOWN_MIGRATION_IDS.length, known: KNOWN_MIGRATION_IDS.length },
       });
-      expect(body.trace_count).toBe(0);
+      // Unauthenticated: whether the store answers, never how much it holds.
+      expect(body).not.toHaveProperty('trace_count');
       expect(body.storage).toBe('connected');
       expect(body.mode).toBe('real');
       // Never the key, never a trace.

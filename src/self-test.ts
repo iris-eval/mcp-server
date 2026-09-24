@@ -435,12 +435,13 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
       status?: string;
       version?: string;
       storage?: string;
-      trace_count?: number;
+      trace_count?: unknown;
     };
     ensure(body.status === 'ok', `expected status "ok", got "${body.status}"`);
     ensure(body.version === PKG_VERSION, `expected version ${PKG_VERSION}, got ${body.version}`);
     ensure(body.storage === 'connected', `expected storage "connected", got "${body.storage}"`);
-    ensure(body.trace_count === 1, `expected trace_count 1, got ${body.trace_count}`);
+    // Unauthenticated, so it must not say how much data the server holds.
+    ensure(!('trace_count' in body), 'health disclosed a trace count to an unauthenticated caller');
     return `status ok, v${body.version}, storage connected`;
   });
 

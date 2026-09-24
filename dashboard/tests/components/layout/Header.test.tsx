@@ -63,7 +63,6 @@ const ok: HealthResponse = {
   status: 'ok',
   version: '0.13.0',
   uptime_seconds: 42,
-  trace_count: 3,
   storage: 'connected',
   judge: { enabled: false, provider: null },
   mode: 'real',

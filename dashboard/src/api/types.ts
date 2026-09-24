@@ -765,7 +765,6 @@ export interface HealthResponse {
     rules_store: 'ok' | 'fail' | 'absent';
     migrations: { status: 'ok' | 'fail' | 'absent'; applied: number; known: number };
   };
-  trace_count?: number;
   storage?: 'connected' | 'disconnected';
   judge: { enabled: boolean; provider?: string | null };
   mode?: 'real' | 'demo';

@@ -47,7 +47,7 @@ The dashboard has its own health endpoint at `/api/v1/health`, which is always a
 
 ```bash
 curl http://localhost:6920/api/v1/health
-# {"status":"ok","version":"0.5.1","uptime_seconds":269,"trace_count":38,"storage":"connected"}
+# {"status":"ok","version":"0.5.1","uptime_seconds":269,"storage":"connected"}
 ```
 
 ---

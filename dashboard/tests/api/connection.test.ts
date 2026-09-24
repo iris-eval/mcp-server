@@ -96,7 +96,7 @@ describe('the client reports every answer', () => {
 
   it('getHealth on a 200 returns the body', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
-      jsonResponse({ status: 'ok', version: '0.13.0', uptime_seconds: 5, trace_count: 3, storage: 'connected', judge: { enabled: true, provider: 'anthropic' }, mode: 'demo' }),
+      jsonResponse({ status: 'ok', version: '0.13.0', uptime_seconds: 5, storage: 'connected', judge: { enabled: true, provider: 'anthropic' }, mode: 'demo' }),
     );
     const health = await api.getHealth();
     expect(health).toMatchObject({ status: 'ok', mode: 'demo', judge: { enabled: true, provider: 'anthropic' } });
