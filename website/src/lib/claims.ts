@@ -232,6 +232,8 @@ export interface ProofTranscripts {
     shipAgrees: number;
     classesPresent: number;
     classesCaught: number;
+    /** Transcripts scripted to fail; absent in truthbases written before it was measured. */
+    stagedToFail?: number;
   };
   gaps: Array<{ id: string; bundles: string[] }>;
 }

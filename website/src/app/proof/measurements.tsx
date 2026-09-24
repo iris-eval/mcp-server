@@ -40,10 +40,21 @@ export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactEleme
   const t = proof.transcripts;
   return (
     <section>
-      <h2 className={h2}>Out of sample: 24 real agent runs</h2>
+      <h2 className={h2}>Held out: 24 real agent runs, staged</h2>
       <p>
-        Every other number on this page is measured on a corpus written alongside the rule it measures. These are not: they are agent runs against this repository, captured before any of the rules that judge them existed, with an answer key written at capture time. It is the only out-of-sample evidence here, and it is small — twenty-four traces — which is a limit rather than a caveat.
+        Every other number on this page is measured on a corpus written alongside the rule it measures. These are agent runs against this repository with an answer key written at capture time, and no labelled case behind any per-rule number above is copied from, varied from or modelled on one of them, so the verdict that scores them was not composed from rates estimated on them. Read what that does and does not buy before quoting a number from this table:
       </p>
+      <ul className="mt-3 list-disc space-y-1 pl-6">
+        <li>
+          <strong className="text-text-primary">Staged, not sampled.</strong> Each run was scripted with an intended failure{t && t.totals.stagedToFail !== undefined ? <>: {t.totals.stagedToFail} of {t.totals.transcripts} are bad by design</> : null}. That base rate is chosen, not observed, so these are not the error rates of any real deployment.
+        </li>
+        <li>
+          <strong className="text-text-primary">Held out, not blind.</strong> Several rules were written or revised after an acceptance pass on these runs, so the rules have seen them even though the accuracy numbers have not.
+        </li>
+        <li>
+          <strong className="text-text-primary">Small and narrow.</strong> Twenty-four traces from one agent on one repository, reported without an interval. There is no sample of unstaged production traffic yet.
+        </li>
+      </ul>
       {t ? (
         <>
           <div className="mt-4 overflow-x-auto rounded-xl border border-border-default bg-bg-card">
@@ -81,7 +92,7 @@ export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactEleme
           </p>
         </>
       ) : (
-        <Pending what="The out-of-sample measurement" command="npm run proof -- --transcripts" file="proof/transcript-results.json" />
+        <Pending what="The held-out transcript measurement" command="npm run proof -- --transcripts" file="proof/transcript-results.json" />
       )}
     </section>
   );
@@ -170,7 +181,7 @@ export function VerdictMeasured({ proof }: { proof: ProofClaims }): React.ReactE
                 {(
                   [
                     ["test", "test"],
-                    ["real transcripts", "realTranscripts"],
+                    ["real transcripts (held out, staged)", "realTranscripts"],
                   ] as const
                 ).flatMap(([label, split]) =>
                   (
@@ -205,7 +216,7 @@ export function VerdictMeasured({ proof }: { proof: ProofClaims }): React.ReactE
             <span className="font-mono text-[13px] text-text-primary">
               {c.difference.risk.test ? `${(c.difference.risk.test.delta * 100).toFixed(1)} points [${(c.difference.risk.test.lo * 100).toFixed(1)}, ${(c.difference.risk.test.hi * 100).toFixed(1)}]` : "—"}
             </span>{" "}
-            (Newcombe 95%). An interval that straddles zero says the corpus cannot yet tell the two apart. Read per class, the plan&rsquo;s prior blocks nearly every clean case; read per output it holds the legacy false-block rate — both readings are in the file, and which one ships is a decision the numbers inform. Cases: {c.counts.cases} ({c.counts.realTranscripts} real transcripts, {c.counts.composed} composed; {c.counts.dev} dev / {c.counts.test} test by a hash of the id). Composite <span className="font-mono">{c.compositeVersion}</span> ·{" "}
+            (Newcombe 95%). An interval that straddles zero says the corpus cannot yet tell the two apart. Read per class, the plan&rsquo;s prior blocks nearly every clean case; read per output it holds the legacy false-block rate — both readings are in the file, and which one ships is a decision the numbers inform. Cases: {c.counts.cases} ({c.counts.realTranscripts} real transcripts — staged runs held out of every per-rule rate, not production traffic, as the next section says — and {c.counts.composed} composed; {c.counts.dev} dev / {c.counts.test} test by a hash of the id). Composite <span className="font-mono">{c.compositeVersion}</span> ·{" "}
             <FileLink path="proof/COMPOSITE.md" /> · <FileLink path="proof/composite-results.json" /> ·{" "}
             <code className={code}>npm run proof -- --composite</code>.
           </p>

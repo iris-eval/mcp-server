@@ -29,10 +29,11 @@ const JUDGE_PATH = resolve(root, 'proof/judge-results.json');
 // composer and the risk composer. Carried without its per-case list (the
 // file holds it); absent until the first run lands.
 const COMPOSITE_PATH = resolve(root, 'proof/composite-results.json');
-// `npm run proof -- --transcripts` writes proof/transcript-results.json: the
-// only OUT-OF-SAMPLE line Iris has, since every other number is measured on
-// a corpus authored alongside the rule it measures. Carried as totals plus
-// the per-row gap set — the per-rule detail stays in the file.
+// `npm run proof -- --transcripts` writes proof/transcript-results.json: 24
+// staged agent runs held out of every per-rule number (no labelled family
+// case is derived from one), though several rules were revised after seeing
+// them, and not a sample of production traffic. Carried as totals plus the
+// per-row gap set — the per-rule detail stays in the file.
 const TRANSCRIPTS_PATH = resolve(root, 'proof/transcript-results.json');
 
 export async function generate() {

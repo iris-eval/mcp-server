@@ -1106,7 +1106,7 @@
       "question": "Q9",
       "subject": "S5",
       "status": "partial",
-      "summary": "Top failures over a window are served to the dashboard; the out-of-sample check is a small set of real transcripts from one agent, reported without an interval.",
+      "summary": "Top failures over a window are served to the dashboard; the held-out check is 24 staged transcripts from one agent on one repository, reported without an interval; there is no sample of unstaged production traffic.",
       "evidence": [
         {
           "kind": "route",

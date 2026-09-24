@@ -198,7 +198,7 @@ committed numbers are the code's. Read there:
 
 | Block | What it says |
 |---|---|
-| accuracy vs `shouldShip` | per split and composer, with a Wilson interval; the test split is the headline, the real transcripts are the out-of-sample line |
+| accuracy vs `shouldShip` | per split and composer, with a Wilson interval; the test split is the headline, the real transcripts are the held-out line (staged; see below) |
 | false blocks on clean · missed blocks | the two ways a verdict is wrong, separately, because a gate cares about them differently |
 | difference from legacy | accuracy(risk) − accuracy(legacy) with a Newcombe hybrid-score interval; an interval that straddles zero says the corpus cannot tell them apart |
 | calibration | Brier score and expected calibration error over ten bins, for the legacy score read as P(bad) = 1 − score and for the risk's p_bad |
@@ -217,16 +217,34 @@ not made by preference.
 
 The composed cases are built from the same synthetic, same-model-labelled
 families as the per-rule numbers, so the accuracy here is conditional on that
-corpus. The real-transcript line is the only out-of-sample one.
+corpus. The real-transcript line is held out of every per-rule rate the
+composer reads; what that does and does not mean is in the next section.
 
 ## The 24 real transcripts
 
 `npm run proof -- --transcripts` writes `proof/transcript-results.json` and
 `proof/TRANSCRIPTS.md`, and `--check --transcripts` diffs both against what
-the code produces. These are agent runs against this repository, captured
-before any of the rules that judge them existed, with an answer key written
-at capture time — the only measurement here that is not conditional on a
-corpus authored alongside the rule it measures.
+the code produces. These are agent runs against this repository with an
+answer key written at capture time. Three facts decide how far they can be
+read:
+
+- **Held out of the accuracy numbers.** No labelled family case is copied
+  from, varied from or modelled on a transcript; `tests/proof/transcripts-held-out.test.ts`
+  fails if one appears. Earlier releases carried 85 such cases, so the
+  per-rule rates the risk composer reads were partly estimated on the
+  transcripts it was then scored on. They were removed, the families that
+  fell under the 24-case floor were refilled with newly authored cases, and
+  every per-rule number that moved is in the changelog.
+- **Staged, not sampled.** Each run was scripted with an intended failure;
+  `totals.stagedToFail` counts the ones bad by design (18 of 24, a 75% base
+  rate). That rate is chosen, so these are not the error rates of any real
+  deployment.
+- **Not blind.** Several rules were written or revised after an acceptance
+  pass on these runs. The accuracy numbers have not seen them; the rules
+  have.
+
+There is no sample of unstaged production traffic yet. Until there is, read
+this line as a held-out check, never as a field error rate.
 
 It reports three numbers, and they are **not the same number**:
 

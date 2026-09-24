@@ -186,10 +186,10 @@ describe('the views', () => {
 
 describe('regression_alarms over a stream that crossed its line', () => {
   it('flattens every alarm with the agent, the rule, the run, the trace and the sentence', async () => {
-    // 200 evaluations failing no_pii one time in five, then 200 failing every time: the stream alarms on no_pii.
+    // 400 evaluations failing no_pii one time in five, then 200 failing every time: the stream alarms on no_pii.
     const log: AgentFailureLogEntry[] = [];
-    for (let i = 0; i < 400; i += 1) {
-      const failed = i >= 200 || i % 5 === 0 ? ['no_pii'] : [];
+    for (let i = 0; i < 600; i += 1) {
+      const failed = i >= 400 || i % 5 === 0 ? ['no_pii'] : [];
       log.push({ traceId: `t${i}`, timestamp: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(), failed, judged: ['no_pii', 'min_output_length'], costUsd: null, runId: null });
     }
     const storage = {
@@ -211,7 +211,7 @@ describe('regression_alarms over a stream that crossed its line', () => {
       expect(body.note).toBe('1 agent walked');
       const alarm = body.rows[0];
       expect(alarm).toMatchObject({ agent: 'support-bot', rule: 'no_pii', run: null });
-      expect(Number(String(alarm.traceId).slice(1))).toBeGreaterThanOrEqual(200);
+      expect(Number(String(alarm.traceId).slice(1))).toBeGreaterThanOrEqual(400);
       expect(alarm.baselineN).toBeGreaterThan(0);
       expect(alarm.monitoredFails).toBeGreaterThan(0);
       expect(String(alarm.sentence)).toContain('support-bot');

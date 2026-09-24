@@ -67,15 +67,15 @@ const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = 
         '2026-09-07T12:00:00Z',
       ),
     ).significance.kind,
-  // The agent's own stream shifted: 200 evaluations at a 20% fail
+  // The agent's own stream shifted: 400 evaluations at a 20% fail
   // rate settle the baseline, then every evaluation fails; the producer is
   // the first trace at which the CUSUM crossed its line.
   'regression-alarm': () => {
     const rng = mulberry32(fnv1a('no-phantom:regression'));
-    const log: AgentFailureLogEntry[] = Array.from({ length: 400 }, (_, i) => ({
+    const log: AgentFailureLogEntry[] = Array.from({ length: 600 }, (_, i) => ({
       traceId: `s${String(i).padStart(4, '0')}`,
       timestamp: new Date(Date.UTC(2026, 8, 1, 0, 0, i)).toISOString(),
-      failed: i >= 200 || rng() < 0.2 ? ['keyword_overlap'] : [],
+      failed: i >= 400 || rng() < 0.2 ? ['keyword_overlap'] : [],
       judged: ['keyword_overlap', 'min_output_length'],
       costUsd: null,
       runId: null,

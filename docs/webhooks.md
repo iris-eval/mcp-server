@@ -46,6 +46,16 @@ The webhook is the server's. `iris-eval ingest` runs in its own process and post
 
 One evaluation can be several events — a vetoed verdict is also a failed one — and each is its own delivery, so subscribe to what you want to act on. `detector_veto` and `regression_alarm` are the two worth a pager; `verdict_fail` on a busy agent is a feed, and the cooldown is what keeps it readable.
 
+### How often `regression_alarm` fires when nothing has changed
+
+Each rule an agent runs is watched as its own stream, so an agent with 25 rules has 25 chances to raise a false alarm on every evaluation. The watcher budgets false alarms **per agent**: when nothing has changed, an agent raises about one `regression_alarm` per 500 of its evaluations, however many rules it runs. Three things make that hold:
+
+- **The budget is shared.** Each stream's alarm line is raised so that its own false-alarm rate is divided by the number of streams watched for the agent (one per rule, two per rule when traces carry a `run`); their sum stays at one per 500 (a Bonferroni bound). The line is found by simulation, not typed, and each alarm reports the number of streams it was set for.
+- **The baseline has to be precise before watching starts.** A rule's stream is watched only once its baseline fail rate has at least ten expected fails behind it and a standard error of at most 2.5 percentage points — a quarter of the 10-point shift the watcher looks for. At a 20% fail rate that is about 260 evaluations; at 50%, about 400. A rule that never gets there is never watched.
+- **The line allows for the baseline being off.** A baseline that came out a little low makes a steady stream look like drift. The line is set so that the false-alarm rate, averaged over what the true rate could be given that baseline, is on budget.
+
+Measured on 40 simulated agents, each running 25 steady rules with fail rates from 2% to 30% over 5,000 evaluations: 1.5 false alarms per 1,000 evaluations per agent (it was 14.4 before the budget was per agent), and the median evaluation of an agent's first false alarm moved from 104 to 473. The cost is detection speed: for a rule failing 20% of the time on an agent with 25 rules, a rise to 30% is flagged after a median of about 210 evaluations. `tests/unit/eval/cusum.test.ts` re-runs the steady-agent case on fixed seeds and fails if the per-agent rate goes over budget.
+
 ## The delivery
 
 ```http

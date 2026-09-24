@@ -1142,7 +1142,7 @@ Every answer is `{ "view", "answers", "period", "since", "params", "rows", "coun
 | `cost_by_agent` | `{ agent, traces, costedTraces, totalCostUsd, avgCostUsd, maxCostUsd }` (`avg`/`max` null when no trace carried a cost) | most expensive first |
 | `flaky_cases` | `{ caseKey, attempts, passed, rate, runs }` — cases answered both ways with at least `min_attempts` | least reliable first |
 | `unjudged_questions` | `{ question, unjudged, judged, notApplicable, reasons: [{ why, count }] }` per question; `note` says how many evaluations were scanned (the most recent 2000 of the period) | most unjudged first |
-| `regression_alarms` | `{ agent, rule, run, traceId, p0, baselineN, monitoredN, monitoredFails, sentence }` — where an agent's CUSUM stream crossed its line; `note` says how many agents were walked (at most 200 when none is named) | by agent, rule, run |
+| `regression_alarms` | `{ agent, rule, run, traceId, p0, baselineN, monitoredN, monitoredFails, sentence }` — where an agent's CUSUM stream crossed its line (about one false alarm per 500 of the agent's evaluations across all its rules; the method is in docs/webhooks.md); `note` says how many agents were walked (at most 200 when none is named) | by agent, rule, run |
 
 ---
 
