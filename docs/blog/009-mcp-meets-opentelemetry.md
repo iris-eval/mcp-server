@@ -80,8 +80,8 @@ Now here is the same span as the exporter actually sends it — the OTLP/HTTP JS
     {
       "resource": {
         "attributes": [
-          { "key": "service.name", "value": { "stringValue": "iris-mcp" } },
-          { "key": "telemetry.sdk.name", "value": { "stringValue": "iris-mcp" } },
+          { "key": "service.name", "value": { "stringValue": "iris-eval" } },
+          { "key": "telemetry.sdk.name", "value": { "stringValue": "iris-eval" } },
           { "key": "telemetry.sdk.language", "value": { "stringValue": "nodejs" } },
           { "key": "telemetry.sdk.version", "value": { "stringValue": "0.5.1" } }
         ]

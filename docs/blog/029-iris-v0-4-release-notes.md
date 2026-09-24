@@ -106,7 +106,7 @@ For now, v0.4 is where the foundation pays off. The next six months of product a
 
 ```
 npm install -g @iris-eval/mcp-server@0.4.0
-iris-mcp --dashboard
+npx -y @iris-eval/mcp-server --dashboard
 ```
 
 Ship notes are cut. The dashboard is deployed. See you on the changelog.
