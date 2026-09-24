@@ -107,4 +107,21 @@ describe('POST /api/v1/compare', () => {
     expect(status).toBe(200);
     expect((json as { after: { n: number } }).after.n).toBe(0);
   });
+
+  it('a run that does not exist is never reported comparable, on either side, even under force', async () => {
+    for (const args of [
+      { before: 'a', after: 'never-ran' },
+      { before: 'never-ran', after: 'a' },
+      { before: 'a', after: 'never-ran', force: true },
+    ]) {
+      const out = await compareStoredRuns(storage, LOCAL_TENANT, args);
+      expect(out.comparable).toBe(false);
+      expect(out.incomparable_because.join(' ')).toContain('"never-ran" has no evaluations');
+      expect(out.worse).toBe(false);
+      expect(out.better).toBe(false);
+      expect(out.summary).toContain('never-ran');
+    }
+    const { json } = await post({ before: 'a', after: 'never-ran' });
+    expect((json as { comparable: boolean }).comparable).toBe(false);
+  });
 });
