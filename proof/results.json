@@ -1,5 +1,5 @@
 {
-  "commit": "52a0def",
+  "commit": "9b31c60",
   "corpusVersion": "068e20299dd3",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-09-24T05:26:34.916Z",
+  "generatedAt": "2026-09-24T13:58:31.376Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -639,8 +639,8 @@
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
     "n": 1021,
-    "p50Ms": 8.761,
-    "p95Ms": 17.164
+    "p50Ms": 8.657,
+    "p95Ms": 17.332
   },
   "method": {
     "ci": "wilson-95",
@@ -2340,5 +2340,5 @@
       }
     ]
   },
-  "version": "0.17.0"
+  "version": "0.18.0"
 }
