@@ -265,9 +265,12 @@ export function LivePlayground({ ruleCounts }: { ruleCounts: RuleCounts }): Reac
                 ))}
               </div>
               <p className="text-center text-[11px] text-text-muted">
-                Vendored from Iris {result.vendoredFromVersion}. The playground
-                runs a reduced safety pattern set — the installed server checks
-                more patterns, so it catches strictly more than you see here.
+                Rules from Iris {result.vendoredFromVersion}, with the server&apos;s
+                full safety pattern libraries (this site builds from main, so it
+                can include rule changes not yet released). The playground takes
+                no tool calls, so the trajectory rules skip, and it averages the
+                rule scores instead of applying the server&apos;s weights and
+                critical veto.
               </p>
             </>
           )}
