@@ -33,9 +33,10 @@ export function luhn(candidate: string): boolean {
   for (let i = candidate.length - 1; i >= 0; i--) {
     const code = candidate.charCodeAt(i);
     if (code < 48 || code > 57) {
-      // Separators a card number legitimately carries; anything else means
-      // this was never a card number.
-      if (candidate[i] === '-' || candidate[i] === ' ') continue;
+      // Separators a card number legitimately carries — a space or a dash,
+      // including the typographic dashes (U+2010–2015) and the minus sign an
+      // editor substitutes; anything else means this was never a card number.
+      if (candidate[i] === ' ' || candidate[i] === '-' || (code >= 0x2010 && code <= 0x2015) || code === 0x2212) continue;
       return false;
     }
     let d = code - 48;
