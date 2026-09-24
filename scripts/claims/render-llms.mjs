@@ -330,7 +330,10 @@ export function spliceBlock(text, name, body, fileName) {
   const i = text.indexOf(start);
   const j = text.indexOf(end);
   if (i < 0 || j < 0 || j < i) throw new Error(`render-llms: ${fileName} has no ${start} … ${end} block`);
-  return `${text.slice(0, i + start.length)}\n${body}\n${text.slice(j)}`;
+  // The block takes the file's own line endings, so a checkout that converts
+  // to CRLF renders and checks the same as one that keeps LF.
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  return `${text.slice(0, i + start.length)}${eol}${body.replace(/\r?\n/g, eol)}${eol}${text.slice(j)}`;
 }
 
 /** The works-with table the README carries, from clients.json through the truthbase: one row per client, its status and the date it was read. */
