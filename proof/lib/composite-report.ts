@@ -22,7 +22,9 @@
  * score read as P(bad) = 1 − score, the risk as p_bad. Each risk variant's
  * accuracy difference from legacy carries the Newcombe interval. Per class:
  * recall (class present → some mapped detector fired). The 24 real
- * transcripts are reported as their own out-of-sample line. The threshold
+ * transcripts are reported as their own held-out line: no per-rule rate the
+ * composer reads was estimated on them, but they are staged (most are bad
+ * by design) and several rules were revised after seeing them. The threshold
  * sweep runs on the dev split only, for the default variant; every headline
  * number is the test split; the shipped τ stays the loss-derived 0.5 and the
  * sweep's argmax is published as a check on the loss model, never adopted.
@@ -326,7 +328,7 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push(`Generated ${r.generatedAt} for v${r.version} (local generating commit \`${r.commit}\` — branch commits are squashed on merge, so cite the version).`);
   L.push(`Composite version \`${r.compositeVersion}\` (sha256 over proof/composite/*.json, the real transcripts and the family corpus \`${r.corpusVersion}\`). Reproduce with \`npm run proof -- --composite\`; CI runs \`npm run proof -- --check --composite\`.`);
   L.push('');
-  L.push(`${r.counts.cases} cases: ${r.counts.realTranscripts} real transcripts (the out-of-sample line) and ${r.counts.composed} composed; ${r.counts.mustNotShip} must not ship, ${r.counts.clean} may, ${r.counts.unlabelled} unlabelled. Split: ${r.counts.dev} dev / ${r.counts.test} test, ${r.method.split}. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.`);
+  L.push(`${r.counts.cases} cases: ${r.counts.realTranscripts} real transcripts (the held-out line: staged, not production traffic) and ${r.counts.composed} composed; ${r.counts.mustNotShip} must not ship, ${r.counts.clean} may, ${r.counts.unlabelled} unlabelled. Split: ${r.counts.dev} dev / ${r.counts.test} test, ${r.method.split}. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.`);
   L.push('');
   L.push('## Three composers on the same rule results');
   L.push('');
@@ -334,7 +336,7 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |');
   L.push('|---|---|---|---|---|--:|--:|');
-  for (const [name, split] of [['test', 'test'], ['real transcripts (out-of-sample)', 'realTranscripts'], ['dev', 'dev']] as const) {
+  for (const [name, split] of [['test', 'test'], ['real transcripts (held out, staged)', 'realTranscripts'], ['dev', 'dev']] as const) {
     for (const [label, comp] of [['legacy', 'legacy'], ['risk, per-output prior', 'risk'], ['risk, per-class prior', 'riskPerClass']] as const) {
       const s = r[comp][split];
       L.push(`| ${name} | ${label} | ${pct(s.accuracy.rate)} ${ci(s.accuracy.ci95)} (n=${s.accuracy.n}) | ${pct(s.falseBlock.rate)} ${ci(s.falseBlock.ci95)} (n=${s.falseBlock.n}) | ${pct(s.missedBlock.rate)} ${ci(s.missedBlock.ci95)} (n=${s.missedBlock.n}) | ${s.calibration ? s.calibration.brier.toFixed(3) : '—'} | ${s.calibration ? s.calibration.ece.toFixed(3) : '—'} |`);
@@ -382,7 +384,9 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
     L.push(`| \`${c.id}\` | ${c.split} | ${c.shouldShip === null ? '?' : c.shouldShip ? 'yes' : 'no'} | ${c.classes.length ? c.classes.join(', ') : 'clean'} | ${c.legacy.passed ? 'pass' : 'fail'} (${c.legacy.score.toFixed(2)}${c.legacy.criticalFailures.length ? `; veto ${c.legacy.criticalFailures.join(', ')}` : ''}) | ${c.risk.state} (${c.risk.basis}${c.risk.pBad === null ? '' : `, ${c.risk.pBad.toFixed(2)} [${(c.risk.lo ?? 0).toFixed(2)}, ${(c.risk.hi ?? 0).toFixed(2)}]`}) | ${c.classesCaught.length ? c.classesCaught.join(', ') : c.classes.length ? 'none' : '—'} |`);
   }
   L.push('');
-  L.push('Read proof/README.md and docs/proof.md before quoting a number: the composed cases are built from the same synthetic, same-model-labelled families the per-rule numbers come from, so the accuracy here is corpus-conditional; the real-transcript line is the only out-of-sample one.');
+  const staged = r.cases.filter((c) => c.provenance === 'real-transcript');
+  const stagedBad = staged.filter((c) => c.shouldShip === false).length;
+  L.push(`Read proof/README.md and docs/proof.md before quoting a number: the composed cases are built from the same synthetic, same-model-labelled families the per-rule numbers come from, so the accuracy here is corpus-conditional. The real-transcript line is held out of every per-rule rate the composer reads, but it is not a sample of production traffic: the ${staged.length} runs were scripted with an intended failure (${stagedBad} of ${staged.length} bad by design, a ${staged.length ? Math.round((stagedBad / staged.length) * 100) : 0}% base rate), and several rules were revised after an acceptance pass on them. Read it as a held-out check, not a field error rate.`);
   L.push('');
   return L.join('\n');
 }

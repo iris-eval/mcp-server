@@ -148,13 +148,18 @@ family that wrote the cases; no human has checked these labels. Specifically:
   question's vocabulary connects, and an on-topic answer in fresh words does
   not.
 
-Every family holds at least six cases derived from **real agent transcripts**:
-the input/output pairs (and, for the cost family, the token and dollar
-figures) of an agent that genuinely performed 24 tasks against this repository
-on 2026-09-03, including its real failures (a fabricated file name, an answer
-to only one of three parts, a promise instead of work, ten document reads for
-one fact). They are marked `real transcript t-NN` in `notes`. The transcripts
-themselves are not published; the pairs are reproduced verbatim in the cases.
+**No family case is derived from a real agent transcript.** Until 2026-09-23
+thirteen families carried 85 cases copied from, varied from or modelled on
+the 24 transcripts in `tests/fixtures/real-transcripts` (an agent that
+genuinely performed 24 scripted tasks against this repository on
+2026-09-03). That made the transcript line partly in-sample: the per-rule
+rates the risk composer reads were estimated on the runs it was then scored
+on. Those cases were removed — each family header lists the ids — and the
+seven families that fell under the runner's 24-case floor were refilled
+with newly authored cases, marked in their notes. `tests/proof/transcripts-held-out.test.ts`
+fails if a case whose input, output or notes points at a transcript comes
+back. The transcripts are measured on their own by `--transcripts` and in the
+composite; `docs/proof.md` says what that line is and is not.
 
 ## How to read the intervals
 

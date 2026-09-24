@@ -186,7 +186,7 @@ function composerCells(composite) {
     q8: cell('measured', 'npm run proof -- --check --composite regenerates the file byte for byte in CI', undefined),
     q9: cell('measurable', 'a critical rule defeated by the output (the regex budget) reads as unknown from 0.10.0; measured by a composite case that stalls a critical pattern', undefined),
     q10: cell('measured', `${COMPOSITE} → legacy.test.calibration.ece`, 'the calibration error of the legacy score read as a probability is the false-confidence measurement'),
-    q11: cell('measured', `${COMPOSITE} → legacy.realTranscripts, risk.realTranscripts`, 'the 24 real transcripts are the out-of-sample line'),
+    q11: cell('measured', `${COMPOSITE} → legacy.realTranscripts, risk.realTranscripts`, 'the 24 real transcripts are the held-out line (staged runs, not production traffic)'),
     q12: cell('measurable', 'a verdict field for corroboration between rule fires and judge dimensions (needs a key)', undefined),
     q13: cell('measurable', 'multi-run evaluation of one input; metamorphic pairs over the trace store', undefined),
   };

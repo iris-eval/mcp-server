@@ -187,7 +187,7 @@
         },
         "transcripts": {
           "type": "object",
-          "description": "The 24 real agent transcripts, measured by npm run proof -- --transcripts: the only out-of-sample line Iris has, since every other number is measured on a corpus authored alongside the rule it measures. Carries the totals — failure classes present that some rule caught, ship verdicts agreeing, transcripts whose four bundle verdicts all agree — plus the MEASURED gap set. tests/real-transcripts.test.ts reads the same file, so a gap that closes cannot stay recorded as open. Absent until that mode has run."
+          "description": "The 24 real agent transcripts, measured by npm run proof -- --transcripts: held out of every per-rule accuracy number (no labelled family case is derived from one), but staged — each run was scripted with an intended failure, and totals.stagedToFail counts the ones bad by design — and several rules were revised after seeing them, so a held-out check rather than a sample of production traffic. Carries the totals — failure classes present that some rule caught, ship verdicts agreeing, transcripts whose four bundle verdicts all agree — plus the MEASURED gap set. tests/real-transcripts.test.ts reads the same file, so a gap that closes cannot stay recorded as open. Absent until that mode has run."
         },
         "latency": {
           "type": "object",

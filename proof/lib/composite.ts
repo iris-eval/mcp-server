@@ -19,7 +19,10 @@
  *   - `real-transcript`: one of the 24 transcripts an agent produced doing
  *     real tasks against this repository (tests/fixtures/real-transcripts),
  *     with the author's intended failure as the class label. These are the
- *     out-of-sample line: nothing in the rules was tuned on them as a set.
+ *     held-out line: no labelled family case is derived from one, so no
+ *     per-rule rate the composer reads was estimated on them. They are
+ *     staged, not production traffic, and some rules were revised after
+ *     seeing them.
  *   - `composed`: a clean base (a control transcript, or a family case) with
  *     zero or more family positives injected into a named field; the
  *     lookalike negatives inject family NEGATIVES (a placeholder SSN, a

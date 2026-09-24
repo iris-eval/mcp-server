@@ -1,9 +1,9 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-09-24T04:03:45.002Z for v0.17.0 (local generating commit `7c4fdbc` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-24T04:04:28.866Z for v0.17.0 (local generating commit `fceb0c5` — branch commits are squashed on merge, so cite the version).
 Composite version `cef54adebf6c` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `068e20299dd3`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
-145 cases: 24 real transcripts (the out-of-sample line) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
+145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
 
 ## Three composers on the same rule results
 
@@ -14,9 +14,9 @@ Composite version `cef54adebf6c` (sha256 over proof/composite/*.json, the real t
 | test | legacy | 35.3% [21.5, 52.1] (n=34) | 10.0% [1.8, 40.4] (n=10) | 87.5% [69.0, 95.7] (n=24) | 0.587 | 0.634 |
 | test | risk, per-output prior | 76.5% [60.0, 87.6] (n=34) | 10.0% [1.8, 40.4] (n=10) | 29.2% [14.9, 49.2] (n=24) | 0.255 | 0.314 |
 | test | risk, per-class prior | 70.6% [53.8, 83.2] (n=34) | 100.0% [72.3, 100.0] (n=10) | 0.0% [0.0, 13.8] (n=24) | 0.206 | 0.195 |
-| real transcripts (out-of-sample) | legacy | 45.8% [27.9, 64.9] (n=24) | 0.0% [0.0, 39.0] (n=6) | 72.2% [49.1, 87.5] (n=18) | 0.669 | 0.708 |
-| real transcripts (out-of-sample) | risk, per-output prior | 70.8% [50.8, 85.1] (n=24) | 0.0% [0.0, 39.0] (n=6) | 38.9% [20.3, 61.4] (n=18) | 0.245 | 0.323 |
-| real transcripts (out-of-sample) | risk, per-class prior | 75.0% [55.1, 88.0] (n=24) | 100.0% [61.0, 100.0] (n=6) | 0.0% [0.0, 17.6] (n=18) | 0.169 | 0.172 |
+| real transcripts (held out, staged) | legacy | 45.8% [27.9, 64.9] (n=24) | 0.0% [0.0, 39.0] (n=6) | 72.2% [49.1, 87.5] (n=18) | 0.669 | 0.708 |
+| real transcripts (held out, staged) | risk, per-output prior | 70.8% [50.8, 85.1] (n=24) | 0.0% [0.0, 39.0] (n=6) | 38.9% [20.3, 61.4] (n=18) | 0.245 | 0.323 |
+| real transcripts (held out, staged) | risk, per-class prior | 75.0% [55.1, 88.0] (n=24) | 100.0% [61.0, 100.0] (n=6) | 0.0% [0.0, 17.6] (n=18) | 0.169 | 0.172 |
 | dev | legacy | 52.3% [43.0, 61.3] (n=111) | 5.7% [1.6, 18.6] (n=35) | 67.1% [55.9, 76.6] (n=76) | 0.567 | 0.608 |
 | dev | risk, per-output prior | 81.1% [72.8, 87.3] (n=111) | 20.0% [10.0, 35.9] (n=35) | 18.4% [11.3, 28.6] (n=76) | 0.189 | 0.192 |
 | dev | risk, per-class prior | 68.5% [59.3, 76.4] (n=111) | 100.0% [90.1, 100.0] (n=35) | 0.0% [0.0, 4.8] (n=76) | 0.224 | 0.250 |
@@ -255,4 +255,4 @@ utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the 
 | `wrongtool-151` | dev | no | wrong_tool | pass (0.87) | fail (risk_over_loss, 0.78 [0.44, 1.00]) | wrong_tool |
 | `wrongtool-152` | dev | yes | clean | pass (0.90) | pass (clean, 0.11 [0.09, 0.14]) | — |
 
-Read proof/README.md and docs/proof.md before quoting a number: the composed cases are built from the same synthetic, same-model-labelled families the per-rule numbers come from, so the accuracy here is corpus-conditional; the real-transcript line is the only out-of-sample one.
+Read proof/README.md and docs/proof.md before quoting a number: the composed cases are built from the same synthetic, same-model-labelled families the per-rule numbers come from, so the accuracy here is corpus-conditional. The real-transcript line is held out of every per-rule rate the composer reads, but it is not a sample of production traffic: the 24 runs were scripted with an intended failure (18 of 24 bad by design, a 75% base rate), and several rules were revised after an acceptance pass on them. Read it as a held-out check, not a field error rate.

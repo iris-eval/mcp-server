@@ -609,7 +609,7 @@ async function composite(check: boolean): Promise<void> {
 }
 
 /**
- * The out-of-sample line, regenerated rather than typed.
+ * The held-out real-transcript line, regenerated rather than typed.
  *
  * Same shape as `--composite`: measure, render, and on `--check` diff both
  * artefacts against what is committed, with the generation stamps stripped
