@@ -21,6 +21,7 @@ import type { CustomRuleDefinition, EvalType } from '../types/eval.js';
 import { LOCAL_TENANT, type TenantId } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
@@ -112,7 +113,7 @@ const CustomRuleDefinitionSchema = strictNested(
       .min(1)
       .max(80)
       .optional()
-      .describe('Optional and IGNORED if given — the server overwrites it with the top-level `name` so the rule reports under one name everywhere'),
+      .describe('Ignored: the server overwrites it with the top-level `name`'),
     type: z.enum(RULE_TYPE_VALUES).describe('Check type — decides which config keys are required'),
     config: z
       .record(z.string(), z.unknown())
@@ -134,7 +135,7 @@ const inputSchema = {
     .optional()
     .describe('What this rule checks for and why it matters'),
   eval_type: EvalTypeSchema.optional().describe(
-    'Eval category this rule belongs to; the rule fires on evaluate_output calls whose eval_type equals it (and on eval_type="all"). Canonical snake_case spelling — pass exactly one of eval_type / evalType',
+    'The bundle this rule fires in (and on eval_type="all"); pass one of eval_type / evalType',
   ),
   evalType: EvalTypeSchema.optional().describe(
     'camelCase alias of eval_type, accepted for compatibility — prefer eval_type (snake_case is canonical across the tools)',
@@ -143,11 +144,11 @@ const inputSchema = {
     .enum(['low', 'medium', 'high', 'critical'])
     .default('medium')
     .describe('What a FAILURE of this rule means. low/medium: informational — contributes to the weighted score only (plus dashboard sort + audit alerts). high/critical: hard-fail — a failing evaluation of this rule forces the overall passed=false regardless of the weighted score'),
-  definition: CustomRuleDefinitionSchema.describe('Check definition (regex, length, keyword, cost, or schema). Accepts exactly type, config, weight and an optional name — an unknown key is rejected'),
+  definition: CustomRuleDefinitionSchema.describe('The check: type, config and optional weight; an unknown key is rejected'),
   source_moment_id: z
     .string()
     .optional()
-    .describe('Optional Decision Moment ID the rule was derived from (preserves workflow-inversion provenance). Canonical snake_case — pass exactly one of source_moment_id / sourceMomentId'),
+    .describe('Optional id of the Decision Moment this rule came from; pass one of source_moment_id / sourceMomentId'),
   sourceMomentId: z
     .string()
     .optional()
@@ -155,7 +156,7 @@ const inputSchema = {
   replace: z
     .boolean()
     .default(false)
-    .describe('When a rule with this name is already deployed: false (default) rejects the call; true deletes the existing same-named rule(s) and deploys this one in their place (fresh id; audit rows preserved)'),
+    .describe('true replaces a deployed rule of the same name (fresh id, audit kept); false (default) refuses'),
 };
 
 /*
@@ -190,30 +191,23 @@ export function registerDeployRuleTool(
     {
       title: 'Deploy Custom Rule',
       description: describeTool({
-        summary: 'Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited.',
+        summary:
+          'Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited.',
         does:
-          'Writes the rule to ~/.iris/custom-rules.json, appends a rule.deploy audit entry and registers it with the running engine, so it fires on the very next call and survives restarts. ' +
-          'eval_type says WHEN it fires (that bundle, and eval_type="all"); severity says what a failure DOES: low and medium only lower the weighted score, high and critical force passed to false and list the rule in critical_failures. ' +
-          'definition.type picks the check (regex_match, regex_no_match, min_length, max_length, contains_keywords, excludes_keywords, json_schema, cost_threshold, action_policy) and definition.config carries its keys (pattern; min_length; max_length; keywords; max_cost; schema; allow/deny). ' +
-          'action_policy judges the TRAJECTORY: allow and deny rules name a tool by glob and its arguments by JSON Pointer, deny wins, and `allow` being present means a tool it does not name is DENIED. ' +
-          'It ADVISES until you deploy it at severity high or critical — a deny list you deploy at the default severity does not block, and its own message says so on every result. ' +
-          'Any bundle and type combine. Names are unique: a taken name is refused unless replace is true, which retires the earlier rule(s) first and reports them. Argument names are snake_case; the camelCase aliases evalType and sourceMomentId are accepted — pass one spelling of each.',
+          'Stores the rule and loads it into the running engine. eval_type says WHEN it fires (that bundle, and eval_type="all"); severity says what a failure does: low and medium lower the score, high and critical fail the verdict. definition.type picks the check, definition.config its keys. A taken name is refused unless replace is true.',
         whenNot:
-          'To try a rule first: POST /api/v1/rules/custom/preview on the dashboard replays a definition against stored traces without deploying. For a one-off check on one call: the custom_rules argument of evaluate_output. To pause a rule: delete_rule with enabled: false.',
+          'For a one-off check (custom_rules on evaluate_output). To pause a rule (delete_rule with enabled: false).',
         returns: deployRuleOutputSchema,
         errors:
-          'IRIS_DUPLICATE_RULE when the name is deployed and replace is false (the message names the existing id). ' +
-          'IRIS_INVALID_RULE_CONFIG when the definition is rejected — a regex that fails the ReDoS check or exceeds 1000 characters, a missing config key — naming the field; nothing is deployed. ' +
-          'IRIS_STORAGE_ERROR when the store cannot be written. An unknown key in definition, a name over 80 characters, a non-positive weight or both spellings of an alias are refused before the handler runs. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_DUPLICATE_RULE; IRIS_INVALID_RULE_CONFIG, naming the field; IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
-          list_rules: 'see what is deployed and the built-in roster',
-          delete_rule: 'remove, disable or re-enable',
-          evaluate_output: 'where the rule fires',
+          list_rules: 'see what is deployed',
+          delete_rule: 'remove or disable',
+          evaluate_output: 'where it fires',
         },
       }),
       inputSchema: inputSchemaWithAliases,
-      outputSchema: deployRuleOutputSchema,
+      outputSchema: advertisedOutput(deployRuleOutputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,

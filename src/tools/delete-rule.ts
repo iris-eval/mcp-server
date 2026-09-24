@@ -26,6 +26,7 @@ import { createCustomRule } from '../eval/rules/custom.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 
 const inputSchema = {
@@ -36,7 +37,7 @@ const inputSchema = {
   enabled: z
     .boolean()
     .optional()
-    .describe('When present the rule is NOT deleted: false DISABLES it (kept in the store, stops firing immediately, history and provenance preserved); true RE-ENABLES a disabled rule. Omit to delete'),
+    .describe('When present the rule is kept: false disables it (stops firing), true re-enables it. Omit to delete'),
 };
 
 export const deleteRuleOutputSchema = z.looseObject({
@@ -60,15 +61,12 @@ export function registerDeleteRuleTool(
         summary:
           'Remove a deployed custom rule — or, with enabled, disable or re-enable it without removing it — effective on the next evaluate_output call.',
         does:
-          'Without enabled: deletes the rule from ~/.iris/custom-rules.json, appends a rule.delete audit entry and unregisters it from the running engine; deleted is false when no rule has that id (already gone, or not this tenant\'s), and no audit row is written twice. ' +
-          'With enabled: the rule stays with its history and provenance; false stops it firing at once and keeps it off across restarts, true brings it back under the same id; a rule.toggle audit entry is written unless the flag was already in that state. ' +
-          'Past evaluations that referenced the rule are untouched either way.',
+          'Without enabled: deletes the rule and writes an audit entry; deleted is false when no rule has that id. With enabled: false stops it firing and keeps it stored, true re-enables it. Past evaluations are untouched.',
         whenNot:
-          'On built-in rules: they are not in the store and cannot be deleted or disabled. To delete a trace (delete_trace). To replace a rule: deploy_rule with the same name and replace: true.',
+          'On built-in rules (they are not in the store). To replace a rule (deploy_rule with replace: true).',
         returns: deleteRuleOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR when the store cannot be written. A malformed rule_id (not rule-<hex>) or an unknown argument is refused before the handler runs. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_STORAGE_ERROR. A malformed rule_id is refused. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           deploy_rule: 'add or replace a rule',
           list_rules: 'find the id',
@@ -76,7 +74,7 @@ export function registerDeleteRuleTool(
         },
       }),
       inputSchema: strictInput(inputSchema),
-      outputSchema: deleteRuleOutputSchema,
+      outputSchema: advertisedOutput(deleteRuleOutputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,

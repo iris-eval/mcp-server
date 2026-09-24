@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 
 /*
@@ -70,9 +71,9 @@ const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards)'),
   framework: z.string().optional().describe('Filter by agent framework — exact match (e.g., langchain, autogen)'),
   session: z.string().optional().describe('Filter by session id — the turns of one conversation, as logged with session_id'),
-  since: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) lower bound — return traces with timestamp >= this; anything that is not an ISO timestamp is rejected, never treated as "no bound"'),
+  since: isoTimestamp.optional().describe('Inclusive lower bound, an ISO 8601 timestamp or date; anything else is rejected'),
   until: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) upper bound — return traces with timestamp <= this; must not be earlier than `since`'),
-  min_score: z.number().min(0).max(1).optional().describe('Minimum eval score filter (0..1; values outside are rejected) — applied to LATEST eval per trace, not all evals; must be <= max_score when both are set'),
+  min_score: z.number().min(0).max(1).optional().describe('Minimum score (0..1) of each trace\'s latest evaluation; at most max_score'),
   max_score: z.number().min(0).max(1).optional().describe('Maximum eval score filter (0..1; values outside are rejected) — applied to LATEST eval per trace'),
   // Mirrors traceQuerySchema in dashboard/validation.ts — both capture paths
   // (MCP tool, HTTP query) enforce the same 1..1000 bound. Unclamped, limit:-1
@@ -101,17 +102,15 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
     {
       title: 'Get Traces',
       description: describeTool({
-        summary: 'Query stored traces with filters, pagination and sorting; optionally include the dashboard summary in the same response.',
+        summary:
+          'Query stored traces with filters, pagination and sorting; optionally with the dashboard summary.',
         does:
-          'Read-only, local storage only. Filters are exact-match (agent_name, framework), inclusive time bounds (since, until — an ISO 8601 timestamp or date) and a score range applied to the LATEST evaluation of each trace (min_score, max_score, 0..1). ' +
-          'limit is 1..1000 (default 50), offset counts from 0, sort_by is timestamp, latency_ms or cost_usd, sort_order asc or desc (default: newest first). include_summary adds the one-hour dashboard aggregates. ' +
-          'A crossed range (min above max, since after until) is refused naming both values rather than returning an empty page that reads as "no such traces".',
+          'Read-only, local. Exact-match agent_name and framework, inclusive since and until, and min_score and max_score on each trace\'s latest evaluation. limit is 1..1000 (default 50), newest first by default. A crossed range is refused, never returned as an empty page.',
         whenNot:
-          'To score a trace (evaluate_output). To create one (log_trace). As a live stream: this is a query, and Iris has no event stream — poll with backoff.',
+          'To score a trace (evaluate_output) or create one (log_trace). As a live stream: poll with backoff.',
         returns: getTracesOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR when the database cannot be read. An out-of-range or crossed bound is refused before the handler runs, naming the values. An empty result is total 0, not an error. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_STORAGE_ERROR. Out-of-range bounds are refused, naming the values; no match is total 0, not an error. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           log_trace: 'record an execution',
           evaluate_output: 'score one output',
@@ -119,7 +118,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         },
       }),
       inputSchema: inputSchemaWithRanges,
-      outputSchema: getTracesOutputSchema,
+      outputSchema: advertisedOutput(getTracesOutputSchema),
       annotations: {
         readOnlyHint: true,      // Pure query: never writes, never deletes
         destructiveHint: false,  // Inverse of readOnly — trivially false

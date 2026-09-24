@@ -15,6 +15,7 @@ import { strictInput } from './strict-input.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { agentModelOf, sameFamily, sameFamilyWarning } from '../eval/llm-judge/family.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { irisError } from './errors.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
 import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
@@ -24,7 +25,7 @@ const inputSchema = {
   template: z
     .enum(['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed'])
     .describe(
-      'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`), task_completed (did the task actually complete — pass the trajectory as `source_material` when you have it).',
+      'The question the judge answers; correctness needs expected, faithfulness and task_completed read source_material',
     ),
   model: z
     .string()
@@ -40,7 +41,7 @@ const inputSchema = {
     .string()
     .min(1)
     .optional()
-    .describe('The model that produced the output, for the same-family check, when no linked trace records it (a trace carries it as metadata.model or a span\'s gen_ai.request.model). A judge from the agent\'s own family is warned about, never refused'),
+    .describe('The model that produced the output, for the same-family warning, when no linked trace records it'),
   max_cost_usd: z.number().positive().optional().describe(`Cost cap in USD for this call; defaults to ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}. The worst case (two attempts, full max_output_tokens) is computed before the call and refused if it exceeds the cap`),
   max_output_tokens: z.number().int().positive().max(4096).optional().describe('Judge output token cap; default 512'),
   temperature: z.number().min(0).max(2).optional().describe('Sampling temperature; default 0 (deterministic)'),
@@ -124,28 +125,21 @@ export function registerEvaluateWithLLMJudgeTool(
       title: 'Evaluate With LLM Judge',
       description: describeTool({
         summary:
-          'Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, sub-scores and the spend.',
+          'Score an output with an LLM judge on your own key: a 0..1 score, a rationale and the spend.',
         does:
-          `Calls Anthropic or OpenAI directly with the key in this process's environment (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}); Iris never proxies. ` +
-          'template picks the question: accuracy, helpfulness, safety, correctness (needs expected) or faithfulness (needs source_material); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
-          `The worst-case spend — both attempts, full max_output_tokens — is computed BEFORE the call and refused if it exceeds max_cost_usd (default ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}). ` +
-          'temperature defaults to 0; a rate-limited call is retried once. One evaluation row is stored with the provider response id, tokens, cost and latency, linked to trace_id when given. ' +
-          "The judge's own accuracy is measurable on a key you supply and is not yet published (see iris://proof).",
+          `Calls Anthropic or OpenAI with ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}; Iris never proxies. correctness needs expected, faithfulness needs source_material. The worst-case cost is checked against max_cost_usd first.`,
         whenNot:
-          'For length, keyword, PII, injection or cost checks: evaluate_output is free and deterministic. Without a key: the call returns IRIS_JUDGE_NOT_ENABLED with the enable steps — do not search for them. On very large outputs without raising max_cost_usd: the pre-check refuses.',
+          'For length, keyword, PII or cost checks (evaluate_output, free).',
         returns: judgeOutputSchema,
         errors:
-          'IRIS_JUDGE_NOT_ENABLED (no key for the provider reached this process; recovery carries the steps). IRIS_JUDGE_UNKNOWN_MODEL (valid lists the models). IRIS_UNKNOWN_TRACE, checked before any spend. ' +
-          'IRIS_BUDGET_EXCEEDED (nothing spent; the message carries both numbers). IRIS_PROVIDER_ERROR with kind auth, rate_limit, bad_request, server_error, timeout or malformed_response, and retryable set. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_JUDGE_NOT_ENABLED (recovery has the steps); IRIS_JUDGE_UNKNOWN_MODEL; IRIS_UNKNOWN_TRACE; IRIS_BUDGET_EXCEEDED; IRIS_PROVIDER_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           evaluate_output: 'the free deterministic path',
-          verify_citations: 'citation grounding, the narrower judge',
-          log_trace: 'record the execution first',
+          verify_citations: 'citation grounding',
         },
       }),
       inputSchema: strictInput(inputSchema),
-      outputSchema: judgeOutputSchema,
+      outputSchema: advertisedOutput(judgeOutputSchema),
       annotations: {
         readOnlyHint: false,      // Writes eval_result; also spends money (external API cost)
         destructiveHint: false,   // Creates data; doesn't overwrite or delete

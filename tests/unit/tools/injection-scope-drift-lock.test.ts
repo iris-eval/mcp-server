@@ -8,6 +8,7 @@ import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { registerEvaluateOutputTool } from '../../../src/tools/evaluate-output.js';
 import { INJECTION_SCOPE_SENTENCE, noInjectionPatterns } from '../../../src/eval/rules/safety.js';
+import { toolGuide } from '../../../src/tools/guide.js';
 
 /*
  * Drift lock: the injection rule's scope is told in ONE sentence, and every
@@ -16,8 +17,9 @@ import { INJECTION_SCOPE_SENTENCE, noInjectionPatterns } from '../../../src/eval
  * The rule reads `context.output` and nothing else. Its own description said
  * so ("output-side compliance") while the evaluate_output description sold
  * unscoped "prompt injection" — which a builder could reasonably take for an
- * input firewall. The sentence lives once, in safety.ts; the tool description
- * imports it; the docs and skill files carry it verbatim. If any copy is
+ * input firewall. The sentence lives once, in safety.ts; the tool's long form
+ * (toolGuide in iris://capabilities) imports it, the capped description
+ * says the rules read the output; the docs and skill files carry it verbatim. If any copy is
  * reworded on its own, this test names the file.
  */
 
@@ -73,11 +75,13 @@ describe('injection scope — one sentence, every surface', () => {
     expect(noInjectionPatterns.description.startsWith(INJECTION_SCOPE_SENTENCE)).toBe(true);
   });
 
-  it('the evaluate_output tool description carries the sentence verbatim', async () => {
+  it('the evaluate_output long form carries the sentence verbatim, and the description does not sell an input check', async () => {
+    expect(toolGuide().evaluate_output.whenNot).toContain(INJECTION_SCOPE_SENTENCE);
     const { tools } = await client.listTools();
     const tool = tools.find((t) => t.name === 'evaluate_output');
     expect(tool).toBeDefined();
-    expect(tool!.description).toContain(INJECTION_SCOPE_SENTENCE);
+    expect(tool!.description).toContain('As an input firewall: the rules read the output.');
+    expect(tool!.description).not.toMatch(/prompt injection/i);
   });
 
   it.each(DOC_SURFACES)('%s carries the sentence verbatim', (file) => {

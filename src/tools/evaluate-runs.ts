@@ -6,6 +6,7 @@ import { costHistoryFor } from '../eval/ingest.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 import { irisError } from './errors.js';
 import { insertLinkedEvalResult } from './trace-link.js';
@@ -30,7 +31,7 @@ import { insertLinkedEvalResult } from './trace-link.js';
  * you can do without thinking about it.
  */
 
-const outputSchema = z.looseObject({
+export const evaluateRunsOutputSchema = z.looseObject({
   source_run: z.string().describe('the run whose traces were re-scored'),
   run: z.string().describe('the new run holding the new verdicts; the source run is left untouched'),
   ruleset_hash: z.string().describe('the ruleset every new verdict was produced under'),
@@ -49,23 +50,18 @@ export function registerEvaluateRunsTool(server: McpServer, storage: IStorageAda
       title: 'Evaluate Runs',
       description: describeTool({
         summary:
-          'Re-score every trace in a run under the current rules, into a new run — so a rules change can be compared against the old verdicts instead of overwriting them.',
+          'Re-score every trace in a run under the current rules into a new run, so a rules change is compared, not overwritten.',
         does:
-          'Reads each trace in the source run and re-runs the deterministic rules on the stored execution, writing the verdicts into a NEW run stamped as a re-evaluation of the source. The source run is never modified. ' +
-          'A trace whose latest verdict already came from the current ruleset is skipped and counted, so calling this twice does no work the second time. ' +
-          'Pass the two run ids to compare_runs afterwards and the difference is attributable to the rules, because the executions are identical. ' +
-          'Deterministic, local, no model call, nothing spent.',
+          'Writes the verdicts into a NEW run; the source run is never modified. Traces already scored under the current ruleset are skipped, so a repeat call does no work. Local, no model call.',
         whenNot:
-          'To score a new execution (log_trace then evaluate_output). To compare two runs (compare_runs). To re-score a single trace (evaluate_output with its trace_id).',
-        returns: outputSchema,
+          'To score a new execution (log_trace, then evaluate_output).',
+        returns: evaluateRunsOutputSchema,
         errors:
-          'IRIS_INVALID_ARGUMENT when the run id is empty or the target run already holds verdicts. IRIS_UNKNOWN_TRACE when the source run has no traces. IRIS_STORAGE_ERROR when the database cannot be read. ' +
-          'A trace that cannot be scored does NOT fail the call: it is listed in failed with its reason and the rest still run. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_INVALID_ARGUMENT (empty run id, or the target run holds verdicts); IRIS_UNKNOWN_TRACE (source run empty); IRIS_STORAGE_ERROR. Unscorable traces are listed in failed. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
-          compare_runs: 'compare the source run against the new one',
-          evaluate_output: 're-score a single trace',
-          get_traces: 'read the traces in a run',
+          compare_runs: 'compare the two runs after',
+          evaluate_output: 're-score one trace',
+          get_traces: 'read a run',
         },
       }),
       inputSchema: strictInput({
@@ -74,10 +70,10 @@ export function registerEvaluateRunsTool(server: McpServer, storage: IStorageAda
           .string()
           .min(1)
           .optional()
-          .describe('the run id for the new verdicts. Defaults to `<run>+reeval-<ruleset hash>`, which is stable: re-running the same rules over the same run lands in the same place rather than creating a new run each time'),
+          .describe('Run id for the new verdicts; defaults to <run>+reeval-<ruleset hash>, stable across repeats'),
         label: z.string().optional().describe('a name for the new run, shown in listings'),
       }),
-      outputSchema,
+      outputSchema: advertisedOutput(evaluateRunsOutputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false, // Writes new verdicts into a new run; the source run is untouched.
@@ -170,7 +166,7 @@ export function registerEvaluateRunsTool(server: McpServer, storage: IStorageAda
         .filter(Boolean)
         .join(' ');
 
-      return respond(outputSchema, {
+      return respond(evaluateRunsOutputSchema, {
         source_run: args.run,
         run: target,
         ruleset_hash: rulesetHash,

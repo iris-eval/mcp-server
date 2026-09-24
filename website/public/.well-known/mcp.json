@@ -14,31 +14,31 @@
   "tools": [
     {
       "name": "log_trace",
-      "description": "Store one agent execution — input, output, tool calls, spans, cost, latency, token usage — and get the trace_id every later call keys on."
+      "description": "Store one agent execution (input, output, tool calls, spans, cost, tokens) and get the trace_id later calls key on."
     },
     {
       "name": "evaluate_output",
-      "description": "Score an agent output against the deterministic rule bundles: the ship verdict and its basis, every rule result with evidence and uncertainty, and what was not judged."
+      "description": "Score an agent output with the deterministic rules: a ship verdict with its basis, per-rule evidence, and what was not judged."
     },
     {
       "name": "get_traces",
-      "description": "Query stored traces with filters, pagination and sorting; optionally include the dashboard summary in the same response."
+      "description": "Query stored traces with filters, pagination and sorting; optionally with the dashboard summary."
     },
     {
       "name": "compare_runs",
-      "description": "Did this change make the agent worse? Compares two runs of stored evaluations with an interval — or says the data cannot tell, or that the runs are equivalent within a margin."
+      "description": "Did this change make the agent worse? Compares two runs: worse, better, equivalent, or too little evidence to tell."
     },
     {
       "name": "compare_traces",
-      "description": "How reliably does the agent answer the same question? Groups stored evaluations by case and reports per-case pass rates, flakiness, and an interval that respects repeats."
+      "description": "How reliably does the agent answer the same question? Per-case pass rates, flaky cases, and an interval that respects repeats."
     },
     {
       "name": "evaluate_runs",
-      "description": "Re-score every trace in a run under the current rules, into a new run — so a rules change can be compared against the old verdicts instead of overwriting them."
+      "description": "Re-score every trace in a run under the current rules into a new run, so a rules change is compared, not overwritten."
     },
     {
       "name": "list_rules",
-      "description": "The rule inventory: the built-in roster with what each rule needs, the criticality this server applies and its published accuracy, plus every deployed custom rule."
+      "description": "The rule inventory: every built-in rule with what it needs, its effective criticality and published accuracy, plus every deployed custom rule."
     },
     {
       "name": "deploy_rule",
@@ -54,11 +54,11 @@
     },
     {
       "name": "evaluate_with_llm_judge",
-      "description": "Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, sub-scores and the spend."
+      "description": "Score an output with an LLM judge on your own key: a 0..1 score, a rationale and the spend."
     },
     {
       "name": "verify_citations",
-      "description": "Extract the citations in an output, fetch the sources (opt-in, SSRF-guarded) and ask an LLM judge on your key whether each source supports its claim."
+      "description": "Is each citation in an output supported by its source? Extracts, fetches (opt-in, SSRF-guarded) and judges on your key."
     }
   ],
   "resources": [

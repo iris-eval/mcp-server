@@ -5,7 +5,7 @@
  * https://iris-eval.com/response-schema-v1.json for anyone generating types
  * or validating a stored response. It is rendered from
  * `evaluateOutputResponseSchema` — the same object the `evaluate_output`
- * tool advertises as its `outputSchema` and parses its answer through — so
+ * tool parses its answer through, and whose top level it advertises — so
  * the only way it can describe a response Iris does not return is if the
  * committed file drifts from the render. This fails when it has.
  *

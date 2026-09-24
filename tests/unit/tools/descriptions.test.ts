@@ -1,6 +1,6 @@
 /*
  * Every tool description comes from one template: five fixed headings in
- * order, a Returns heading generated from the output schema, a word cap,
+ * order, a Returns heading generated from the output schema, a size cap,
  * siblings that are registered tools, and none of the phrases the truth
  * patch removed (era stamps, status numbers, a hosted tier, "calibrated"
  * while the judge measurement is pending).
@@ -13,7 +13,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { createIrisServer } from '../../../src/server.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
-import { DESCRIPTION_HEADINGS, DESCRIPTION_WORD_CAP, describeTool, wordCount } from '../../../src/tools/describe.js';
+import { DESCRIPTION_BYTE_CAP, DESCRIPTION_HEADINGS, describeTool, descriptionBytes } from '../../../src/tools/describe.js';
 import { z } from 'zod';
 
 const root = resolve(__dirname, '..', '..', '..');
@@ -58,8 +58,10 @@ describe('tool descriptions', () => {
     }
   });
 
-  it('none exceeds the word cap', () => {
-    for (const t of tools) expect(wordCount(t.description ?? ''), t.name).toBeLessThanOrEqual(DESCRIPTION_WORD_CAP);
+  it('none exceeds the size cap', () => {
+    // tools/list is paid for in context on every session of the agent being
+    // evaluated; the long form of each tool is served in iris://capabilities.
+    for (const t of tools) expect(descriptionBytes(t.description ?? ''), t.name).toBeLessThanOrEqual(DESCRIPTION_BYTE_CAP);
   });
 
   it('none carries an era stamp, a status number, a hosted tier, or an unmeasured "calibrated"', () => {
@@ -90,13 +92,42 @@ describe('tool descriptions', () => {
       const props = Object.keys((t.outputSchema as { properties?: Record<string, unknown> })?.properties ?? {});
       expect(props.length, t.name).toBeGreaterThan(0);
       const returns = (t.description ?? '').slice((t.description ?? '').indexOf('Returns.'), (t.description ?? '').indexOf('Errors.'));
-      for (const p of props) expect(returns, `${t.name}: ${p}`).toContain(`\`${p}\``);
+      const named = new Set(returns.replace(/^Returns\. JSON: /, '').replace(/\.\s*$/, '').split(', '));
+      for (const p of props) expect(named.has(p), `${t.name}: ${p}`).toBe(true);
+    }
+  });
+
+  it('tools/list stays inside its context budget', async () => {
+    // The whole list is sent to every session of the agent being evaluated.
+    // It was 104,567 bytes before the long form moved to iris://capabilities;
+    // a new tool or a regrown description has to fit here or say why not.
+    const bytes = Buffer.byteLength(JSON.stringify(await client.listTools()), 'utf8');
+    expect(bytes).toBeLessThanOrEqual(48_000);
+  });
+
+  it('iris://capabilities carries the long form of every tool: behaviour, errors, parameters, output fields', async () => {
+    const { tools: listed } = await client.listTools();
+    const read = await client.readResource({ uri: 'iris://capabilities' });
+    const caps = JSON.parse((read.contents[0] as { text: string }).text) as {
+      toolGuide: Record<string, { does: string; whenNot: string; errors: string; parameters?: Record<string, string>; returns: Record<string, string> }>;
+    };
+    for (const t of listed) {
+      const g = caps.toolGuide[t.name];
+      expect(g, t.name).toBeDefined();
+      for (const part of [g.does, g.whenNot, g.errors]) expect(part.length, t.name).toBeGreaterThan(20);
+      // Every advertised output field has its meaning in the guide.
+      const fields = Object.keys((t.outputSchema as { properties: Record<string, unknown> }).properties);
+      expect(Object.keys(g.returns).sort(), t.name).toEqual(fields.sort());
+      for (const f of fields) expect(g.returns[f].length, `${t.name}.${f}`).toBeGreaterThan(0);
+      // A long-form parameter names a parameter the tool takes.
+      const params = Object.keys((t.inputSchema as { properties?: Record<string, unknown> }).properties ?? {});
+      for (const p of Object.keys(g.parameters ?? {})) expect(params, `${t.name}: ${p}`).toContain(p.split('.')[0]);
     }
   });
 
   it('describeTool refuses an undescribed output field and an overlong description', () => {
     const base = { summary: 's', does: 'd', whenNot: 'w', errors: 'e', siblings: { log_trace: 'x', get_traces: 'y' } };
     expect(() => describeTool({ ...base, returns: z.looseObject({ a: z.string() }) })).toThrow(/no description/);
-    expect(() => describeTool({ ...base, does: 'word '.repeat(DESCRIPTION_WORD_CAP), returns: z.looseObject({ a: z.string().describe('a') }) })).toThrow(/the cap is/);
+    expect(() => describeTool({ ...base, does: 'x'.repeat(DESCRIPTION_BYTE_CAP), returns: z.looseObject({ a: z.string().describe('a') }) })).toThrow(/the cap is/);
   });
 });

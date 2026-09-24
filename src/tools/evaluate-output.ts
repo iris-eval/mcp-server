@@ -8,12 +8,12 @@ import type { EvalType, CustomRuleDefinition, ExpectedTrajectory } from '../type
 import type { EvalEngine } from '../eval/engine.js';
 import { costHistoryFor } from '../eval/ingest.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
-import { INJECTION_SCOPE_SENTENCE } from '../eval/rules/safety.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
 import { toolCallSchema, toolDescriptorSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
 import { storedTraceContext, traceContextOfCall } from '../otel/trace-context.js';
 
@@ -48,7 +48,7 @@ const inputSchema = {
   // note in the response saying the default ran every bundle. The effective
   // default is DEFAULT_EVAL_TYPE (every bundle): an omitted argument must
   // never silently narrow the verdict to a bundle with no safety rules.
-  eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('Rule bundle to apply: completeness | relevance | safety | cost | custom | all — picks which built-in rules fire. "all" runs every bundle in one call and adds a per-category breakdown. Defaults to "all" when omitted — every bundle runs, safety included, and the response carries a note saying the default ran'),
+  eval_type: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom', 'all']).optional().describe('Rule bundle: completeness | relevance | safety | cost | custom | all (the default, noted in the response)'),
   expected_trajectory: strictNested(
     {
       tool_calls: z.array(strictNested({ tool_name: z.string(), input: z.unknown().optional() }, 'an expected_trajectory.tool_calls entry')).max(500).optional(),
@@ -58,17 +58,17 @@ const inputSchema = {
       tolerance: z.number().min(1).optional(),
     },
     'expected_trajectory',
-  ).optional().describe('What the agent was expected to DO: tool_calls [{ tool_name, input? }] with a mode (strict | unordered | subset | superset | ordered_subset, default ordered_subset) and args (exact | subset, default subset) for tool_sequence; step_budget and tolerance (default 1.5) for step_budget'),
+  ).optional().describe('What the agent was expected to DO: tool_calls with mode and args (tool_sequence); step_budget and tolerance (step_budget)'),
   expected: z.string().optional().describe('Expected output for comparison — consulted only by the completeness bundle\'s expected_coverage rule; NOT used by relevance (the relevance rules compare the output against `input`)'),
-  input: z.string().optional().describe('Original input for context (the ask + any source material the agent was given) — REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it); also grounds the safety bundle\'s hallucination signals'),
+  input: z.string().optional().describe('The ask and any source material given — REQUIRED when eval_type="relevance"; also grounds the hallucination signals'),
   trace_id: z.string().optional().describe('Link evaluation to a trace — surfaces this eval in the dashboard\'s trace drill-through and lets the tool reuse the trace\'s stored tool_calls. Must be the id of a stored trace (from log_trace / get_traces); an unknown id is rejected before anything is evaluated'),
   // .max(10): inline rules skip the deploy-time probe, and the engine runs
   // rules synchronously — without a cap, one request carrying N sandbox-
   // defeating regex rules stalls the server linearly in N (measured 9.3s at
   // N=50). Ten is ample for per-call rules; persistent sets belong in
   // deploy_rule, where deploy-time validation probes each pattern.
-  custom_rules: z.array(CustomRuleSchema).max(MAX_INLINE_CUSTOM_RULES).optional().describe('Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight, severity — an unknown key is rejected'),
-  cost_usd: z.number().optional().describe('Cost in USD — consulted by the cost bundle (eval_type="cost" or "all") AND by any cost_threshold custom rule regardless of eval_type; omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped)'),
+  custom_rules: z.array(CustomRuleSchema).max(MAX_INLINE_CUSTOM_RULES).optional().describe('Up to 10 one-off rules; they fire whatever eval_type is (eval_type="custom" runs only these)'),
+  cost_usd: z.number().optional().describe('Cost in USD, for the cost bundle and any cost_threshold rule; omitted, they skip rather than pass'),
   token_usage: z.object({
     prompt_tokens: z.number().optional(),
     completion_tokens: z.number().optional(),
@@ -77,8 +77,8 @@ const inputSchema = {
   // Same schema log_trace validates tool_calls with, imported rather than
   // restated: the trajectory rules read `error`, and a second declaration
   // is how that field goes missing on one path and not the other.
-  tools: z.array(toolDescriptorSchema).max(200).optional().describe('What the agent COULD have called — your MCP tools/list result, pasted verbatim. Needed to judge whether a call carried valid arguments; without it the rules that check that SKIP rather than pass. Loaded from the trace when trace_id names one that carries it'),
-  tool_calls: z.array(toolCallSchema).optional().describe('What the agent DID — the tool calls it made, in order, each { tool_name, input?, output?, latency_ms?, error? } exactly as log_trace records them. Read by the trajectory rules — the rules that judge what the agent DID rather than what it wrote. Omit it and those rules SKIP rather than pass — an evaluation with no trajectory data reports "not judged", never "clean". When trace_id names a stored trace and this argument is omitted, the tool_calls stored on that trace are loaded and used, so a caller who already logged them need not resend them'),
+  tools: z.array(toolDescriptorSchema).max(200).optional().describe('Your MCP tools/list result, verbatim; lets the rules check call arguments. Loaded from trace_id when stored'),
+  tool_calls: z.array(toolCallSchema).optional().describe('The tool calls the agent made, in order, as log_trace records them; omitted, the trajectory rules skip. Loaded from trace_id when stored'),
 };
 
 export interface EvaluateOutputOptions {
@@ -98,30 +98,21 @@ export function registerEvaluateOutputTool(
       title: 'Evaluate Output',
       description: describeTool({
         summary:
-          'Score an agent output against the deterministic rule bundles: the ship verdict and its basis, every rule result with evidence and uncertainty, and what was not judged.',
+          'Score an agent output with the deterministic rules: a ship verdict with its basis, per-rule evidence, and what was not judged.',
         does:
-          'In-process, no network, no key. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown. ' +
-          'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" and grounds the hallucination signals; ' +
-          'tool_calls (or a trace_id) feed the trajectory rules, and tools lets them check argument validity; cost_usd and token_usage feed the cost rules; expected feeds expected_coverage. ' +
-          'A rule without its input SKIPS, is named, and never counts as a pass. custom_rules always fire. One row is stored, linked to trace_id.',
+          'Local, no key. eval_type picks a bundle or all (the default). A rule missing its input SKIPS, never passes: input is REQUIRED when eval_type="relevance"; tool_calls and tools (or a trace_id), cost_usd and expected feed the rest.',
         whenNot:
-          'To validate a document (the json_schema custom rule does that). ' +
-          `To screen inputs before they reach an agent: ${INJECTION_SCOPE_SENTENCE} ` +
-          'For semantic judgment, evaluate_with_llm_judge and verify_citations need a key you supply.',
+          'For semantic judgment (evaluate_with_llm_judge). As an input firewall: the rules read the output.',
         returns: evaluateOutputResponseSchema,
         errors:
-          'IRIS_UNKNOWN_TRACE when trace_id names no stored trace — checked first, nothing scored or written. IRIS_STORAGE_ERROR when the row cannot be written. ' +
-          'Unknown arguments or keys are refused before the handler runs, naming the valid ones; a regex rule over its budget or with a broken config reports skipped, not an error. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_UNKNOWN_TRACE (nothing written); IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           log_trace: 'record the execution first',
-          evaluate_with_llm_judge: 'semantic scoring on your key',
-          verify_citations: 'citation grounding on your key',
-          list_rules: 'the roster, needs and published accuracy',
+          list_rules: 'what each rule needs',
         },
       }),
       inputSchema: strictInput(inputSchema),
-      outputSchema: evaluateOutputResponseSchema,
+      outputSchema: advertisedOutput(evaluateOutputResponseSchema, NESTED_SHAPES_NOTE),
       annotations: {
         readOnlyHint: false,     // Writes an eval_result row
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete

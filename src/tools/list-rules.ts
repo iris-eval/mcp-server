@@ -18,6 +18,7 @@ import { ruleProof } from '../capabilities.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 import { PROOF_RESOURCE_URI } from '../resources/uris.js';
 
@@ -52,18 +53,14 @@ export function registerListRulesTool(
       title: 'List Rules',
       description: describeTool({
         summary:
-          'The rule inventory: the built-in roster with what each rule needs, the criticality this server applies and its published accuracy, plus every deployed custom rule.',
+          'The rule inventory: every built-in rule with what it needs, its effective criticality and published accuracy, plus every deployed custom rule.',
         does:
-          'Read-only, no network. built_in is the shipped roster and is never narrowed by the filters. For each rule: kind (measurement, detection, inference, judgment, policy, verification), mechanism, needs (the inputs it reads — absent means the rule skips, never passes), question, classes, version, weight, ' +
-          'the EFFECTIVE critical flag with criticalSource (default, or config when eval.criticalRules / eval.nonCriticalRules changed it on this server — read it before trusting a passed: true), ' +
-          'and proof: precision and recall with 95% intervals and the positive predictive value at four prevalences, the numbers published at https://iris-eval.com/proof. ' +
-          'rules is the custom-rule store, filterable by eval_type and enabled_only; total and enabled_count count custom rules. quarantined lists store entries this version could not validate. plugins lists the rules loaded from eval.plugins.',
+          'Read-only, no network. built_in is never narrowed by the filters; a rule whose needs are absent skips, never passes. Read critical and criticalSource before trusting passed: true. rules is the custom-rule store, filterable by eval_type and enabled_only.',
         whenNot:
-          'To count traces (get_traces). To add, remove or pause a rule (deploy_rule, delete_rule). Built-in rules are not in the store and cannot be deployed, deleted or disabled.',
+          'To add, remove or pause a rule (deploy_rule, delete_rule); built-in rules cannot be.',
         returns: listRulesOutputSchema,
         errors:
-          'IRIS_INTERNAL_ERROR if the store file cannot be read. A missing store file is an empty list, not an error. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_INTERNAL_ERROR if the store cannot be read; a missing store is an empty list. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           deploy_rule: 'add a custom rule',
           delete_rule: 'remove, disable or re-enable one',
@@ -71,7 +68,7 @@ export function registerListRulesTool(
         },
       }),
       inputSchema: strictInput(inputSchema),
-      outputSchema: listRulesOutputSchema,
+      outputSchema: advertisedOutput(listRulesOutputSchema),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

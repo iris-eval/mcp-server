@@ -15,6 +15,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
+import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
 import { appendAuditEntry } from '../custom-rule-store.js';
 
@@ -39,16 +40,15 @@ export function registerDeleteTraceTool(
     {
       title: 'Delete Trace',
       description: describeTool({
-        summary: 'Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text.',
+        summary:
+          'Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text.',
         does:
-          "Deletes the trace row for the caller's tenant. Spans cascade. Evaluations linked to it keep their verdict, scores, criticality and evidence offsets; their output text, expected text and rule messages are erased in the same transaction and erased_at is stamped, so no text from the trace survives in any evaluation. " +
-          "deleted is false when no trace has that id — already removed, or not this tenant's — and that is not an error. A deletion appends a trace.delete audit entry (read it at iris://audit), so evidence cannot vanish without a record.",
+          'Linked evaluations keep their verdicts and scores; their text is erased and erased_at is stamped. deleted is false when no trace has that id. Every deletion is audited at iris://audit.',
         whenNot:
-          'To expire old data in bulk (retention.days; the sweep runs at boot and every retention.sweepIntervalHours). To delete evaluations: they are not deleted per row; retention and --purge cover them. To pause anything: traces are immutable, there is nothing to pause.',
+          'To expire data in bulk (retention.days). To change a trace: traces are immutable.',
         returns: deleteTraceOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR when the delete cannot run. A malformed trace_id (not 32 lowercase hex) is refused before the handler runs. ' +
-          ERROR_ENVELOPE_SENTENCE,
+          'IRIS_STORAGE_ERROR. A malformed trace_id is refused. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           log_trace: 'store a trace',
           get_traces: 'find the trace to delete',
@@ -56,7 +56,7 @@ export function registerDeleteTraceTool(
         },
       }),
       inputSchema: strictInput(inputSchema),
-      outputSchema: deleteTraceOutputSchema,
+      outputSchema: advertisedOutput(deleteTraceOutputSchema),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
