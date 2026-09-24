@@ -117,7 +117,10 @@ describe('no_injection_patterns reads disguised directives', () => {
 });
 
 describe('hostile input: the new readings stay linear', () => {
-  const MIB = 1 << 20;
+  // The size tests/unit/eval/hostile-input-regression.test.ts uses: a super-linear
+  // reading takes minutes here, a linear one well under the ceiling even with
+  // coverage instrumentation on a slow runner.
+  const SIZE = 200_000;
   const shapes: Array<[string, string]> = [
     ['letter-spaced runs', 'a b c d e f '],
     ['near-miss letter-spaced runs', 'a b c d x '],
@@ -132,8 +135,8 @@ describe('hostile input: the new readings stay linear', () => {
     ['IBAN-shaped groups', 'GB82 WEST 1234 '],
   ];
   for (const [name, shape] of shapes) {
-    it(`${name} at 1 MiB, through both rules and the engine`, async () => {
-      const text = shape.repeat(Math.ceil(MIB / shape.length)).slice(0, MIB);
+    it(`${name} × ${SIZE.toLocaleString('en-US')} characters, through both rules and the engine`, async () => {
+      const text = shape.repeat(Math.ceil(SIZE / shape.length)).slice(0, SIZE);
       const started = performance.now();
       noPii.evaluate({ output: text });
       noInjectionPatterns.evaluate({ output: text });
