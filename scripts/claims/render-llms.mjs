@@ -278,6 +278,14 @@ export function slotsFrom(claims) {
     // (renderJudgeEnableBlock): the title in bold, then the numbered steps.
     judgeEnableBlock: [`**${claims.llmJudgeTemplates.enable.title}**`, ...claims.llmJudgeTemplates.enable.steps.map((s, i) => `${i + 1}. ${s}`)].join('\n'),
     npmPackage: claims.brand.npmPackage,
+    /*
+     * The install target every rendered snippet names: the package pinned to
+     * the current release, so a config copied from a rendered file keeps
+     * running the version it was copied for (the plugin manifests pin the
+     * same way). The render rolls it at every release.
+     */
+    pinnedPackage: `${claims.brand.npmPackage}@${claims.version.mcpServer}`,
+    pinnedImage: `${claims.brand.publicRepoUrl.replace(/^https:\/\/github\.com\//, 'ghcr.io/')}:v${claims.version.mcpServer}`,
     repoUrl: claims.brand.publicRepoUrl,
     websiteUrl: claims.brand.websiteUrl,
     securityEmail: claims.brand.securityEmail,
@@ -347,9 +355,69 @@ export function clientsTable(claims) {
 /** Blocks inside hand-written files, rendered after the targets so the targets' order is theirs. */
 export const BLOCKS = [{ file: 'README.md', name: 'clients-table', body: (claims) => clientsTable(claims) }];
 
+/**
+ * The compare pages, in the order the site lists them, from the one registry
+ * the site renders them from (website/src/lib/compare/index.ts → COMPARISONS).
+ *
+ * llms.txt carried eight hand-typed compare links after the site had fourteen
+ * pages, because the list was prose in the template. The registry is
+ * TypeScript importing one JSON file per vendor, so this reads the two things
+ * that define the list — the imports and the order of the COMPARISONS array —
+ * and each file's slug and name. A registry shape this cannot read throws.
+ */
+export async function compareEntries(rootDir = root) {
+  const dir = resolve(rootDir, 'website', 'src', 'lib', 'compare');
+  const index = await readFile(resolve(dir, 'index.ts'), 'utf-8');
+  const files = new Map([...index.matchAll(/^import (\w+) from "\.\/([a-z0-9-]+)\.json";?\r?$/gm)].map((m) => [m[1], m[2]]));
+  const list = index.match(/export const COMPARISONS[^=]*=\s*\[([\s\S]*?)\]/);
+  if (!list || files.size === 0) throw new Error('render-llms: could not read COMPARISONS from website/src/lib/compare/index.ts');
+  const ids = list[1].split(',').map((s) => s.trim()).filter(Boolean);
+  const out = [];
+  for (const id of ids) {
+    const file = files.get(id);
+    if (!file) throw new Error(`render-llms: COMPARISONS entry ${id} is not a JSON import in website/src/lib/compare/index.ts`);
+    const data = JSON.parse(await readFile(resolve(dir, `${file}.json`), 'utf-8'));
+    out.push({ slug: data.slug, name: data.name });
+  }
+  return out;
+}
+
+/**
+ * The tools as the built server describes them, read from the discovery
+ * manifest that scripts/claims/render-mcp-json.ts renders from tools/list
+ * (and `npm run mcp-json:check` holds to the server). llms-full.txt described
+ * list_rules as it worked releases earlier and listed nine of twelve tools,
+ * because its tool list was prose. Render the manifest first.
+ */
+export async function manifestTools(rootDir = root) {
+  const manifest = JSON.parse(await readFile(resolve(rootDir, 'website', 'public', '.well-known', 'mcp.json'), 'utf-8'));
+  return manifest.tools;
+}
+
+/** Slots read from the site and the built server rather than from .claims.json. */
+export async function sourceSlots(rootDir = root, claims) {
+  const site = String(claims.brand.websiteUrl).replace(/\/+$/, '');
+  const compare = await compareEntries(rootDir);
+  const tools = await manifestTools(rootDir);
+  if (tools.length !== claims.mcpTools.count) {
+    throw new Error(`render-llms: the manifest lists ${tools.length} tools and .claims.json counts ${claims.mcpTools.count}; run npm run mcp-json:render and npm run claims:generate`);
+  }
+  // The runtime floor from package.json `engines`, which npm enforces; the
+  // file said "Node.js 20+" for a release after Node 20 was dropped.
+  const pkg = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf-8'));
+  const floor = /^>=\s*(\d+(?:\.\d+){0,2})$/.exec(String(pkg.engines?.node ?? '').trim());
+  if (!floor) throw new Error(`render-llms: package.json engines.node is not a ">=x.y.z" floor: ${pkg.engines?.node}`);
+  return {
+    nodeEngineFloor: floor[1].replace(/\.0$/, ''),
+    compareLinksList: compare.map((c) => `- [Iris vs ${c.name}](${site}/compare/${c.slug})`).join('\n'),
+    compareNamesProse: compare.map((c) => c.name).join(', '),
+    mcpToolsList: tools.map((t, i) => `${i + 1}. \`${t.name}\` — ${t.description}`).join('\n'),
+  };
+}
+
 export async function renderAll(rootDir = root) {
   const claims = JSON.parse(await readFile(resolve(rootDir, '.claims.json'), 'utf-8'));
-  const base = slotsFrom(claims);
+  const base = { ...slotsFrom(claims), ...(await sourceSlots(rootDir, claims)) };
   const results = [];
   for (const t of TARGETS) {
     const template = await readFile(resolve(rootDir, t.template), 'utf-8');

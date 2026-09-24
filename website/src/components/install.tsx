@@ -42,7 +42,7 @@ export function Install(): React.ReactElement {
                   {"  "}<span className="text-eval-pass">&quot;mcpServers&quot;</span><span className="text-text-muted">: {"{"}</span>{"\n"}
                   {"    "}<span className="text-eval-pass">&quot;iris-eval&quot;</span><span className="text-text-muted">: {"{"}</span>{"\n"}
                   {"      "}<span className="text-eval-pass">&quot;command&quot;</span><span className="text-text-muted">: </span><span className="text-text-accent">&quot;npx&quot;</span><span className="text-text-muted">,</span>{"\n"}
-                  {"      "}<span className="text-eval-pass">&quot;args&quot;</span><span className="text-text-muted">: [</span><span className="text-text-accent">&quot;@iris-eval/mcp-server&quot;</span><span className="text-text-muted">]</span>{"\n"}
+                  {"      "}<span className="text-eval-pass">&quot;args&quot;</span><span className="text-text-muted">: [</span><span className="text-text-accent">&quot;-y&quot;</span><span className="text-text-muted">, </span><span className="text-text-accent">&quot;@iris-eval/mcp-server&quot;</span><span className="text-text-muted">]</span>{"\n"}
                   {"    "}<span className="text-text-muted">{"}"}</span>{"\n"}
                   {"  "}<span className="text-text-muted">{"}"}</span>{"\n"}
                   <span className="text-text-muted">{"}"}</span>

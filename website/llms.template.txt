@@ -1,6 +1,6 @@
 # Iris — {{taglineLower}}
 
-> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx {{npmPackage}}`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
+> Iris is an open-source MCP server that scores AI agent output quality, catches safety failures (PII leaks, prompt injection, hallucination markers), and enforces cost budgets. Any MCP-compatible agent or client discovers and uses it automatically — one command (`npx -y {{pinnedPackage}}`), no SDK, no code changes. MIT-licensed core, self-hosted, signed releases.
 
 Current release: v{{version}} ({{releaseDate}}) — {{releaseHeadline}}.
 
@@ -14,7 +14,7 @@ Iris registers {{mcpToolCount}} MCP tools (trace logging, heuristic eval, LLM-as
 
 - [GitHub repository]({{repoUrl}}): source, README with per-client setup for every major MCP client, full tool schemas
 - Claude Code plugin: `/plugin marketplace add iris-eval/mcp-server` then `/plugin install iris-eval@iris-eval` — MCP server + agent-eval skill in two commands
-- [npm package](https://www.npmjs.com/package/{{npmPackage}}): `{{npmPackage}}` — install via `npx {{npmPackage}}`
+- [npm package](https://www.npmjs.com/package/{{npmPackage}}): `{{npmPackage}}` — install via `npx -y {{pinnedPackage}}`
 - [Playground]({{websiteUrl}}/playground): try agent eval in the browser, no install
 - [Proof]({{websiteUrl}}/proof): how accurate the built-in evaluators are — method, per-rule results with confidence intervals, and the command to reproduce them
 - [Capabilities]({{websiteUrl}}/capabilities): what Iris can judge and what it cannot yet — ten questions by six subjects, each answered cell naming its evidence
@@ -35,14 +35,7 @@ Iris registers {{mcpToolCount}} MCP tools (trace logging, heuristic eval, LLM-as
 
 ## Compare
 
-- [Iris vs Langfuse]({{websiteUrl}}/compare/langfuse)
-- [Iris vs LangSmith]({{websiteUrl}}/compare/langsmith)
-- [Iris vs Helicone]({{websiteUrl}}/compare/helicone)
-- [Iris vs Braintrust]({{websiteUrl}}/compare/braintrust)
-- [Iris vs Arize]({{websiteUrl}}/compare/arize)
-- [Iris vs DeepEval]({{websiteUrl}}/compare/deepeval)
-- [Iris vs Confident AI]({{websiteUrl}}/compare/confident-ai)
-- [Iris vs Patronus AI]({{websiteUrl}}/compare/patronus-ai)
+{{compareLinksList}}
 
 ## Optional
 

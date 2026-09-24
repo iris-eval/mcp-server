@@ -115,8 +115,17 @@ export async function renderManifest(): Promise<Manifest> {
     }));
     const prompts = (await client.listPrompts()).prompts.map((p) => ({ name: p.name, description: p.description ?? '' }));
 
-    const npxBlock = { command: 'npx', args: [brand.npmPackage, '--dashboard'] };
-    const image = brand.publicRepoUrl.replace(/^https:\/\/github\.com\//, 'ghcr.io/');
+    /*
+     * Every install block names the release this manifest describes: the
+     * package pinned to it, with -y so npx does not wait on an install
+     * prompt that a client-spawned process has no terminal to answer. A
+     * config copied from here keeps running the version it was copied for;
+     * the render rolls the pin at every release, as it does the plugin
+     * manifests'.
+     */
+    const pinned = `${brand.npmPackage}@${pkg.version}`;
+    const npxBlock = { command: 'npx', args: ['-y', pinned, '--dashboard'] };
+    const image = `${brand.publicRepoUrl.replace(/^https:\/\/github\.com\//, 'ghcr.io/')}:v${pkg.version}`;
     return {
       name: PRODUCT_NAME,
       id: PUBLIC_ID,
@@ -131,7 +140,7 @@ export async function renderManifest(): Promise<Manifest> {
       resources: [...fixed, ...templates],
       prompts,
       install: {
-        claude_code: { command: `claude mcp add ${PUBLIC_ID} -- npx ${brand.npmPackage} --dashboard` },
+        claude_code: { command: `claude mcp add ${PUBLIC_ID} -- npx -y ${pinned} --dashboard` },
         claude_desktop: { mcpServers: { [PUBLIC_ID]: npxBlock } },
         cursor: { mcpServers: { [PUBLIC_ID]: npxBlock } },
         docker: {

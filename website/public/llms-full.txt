@@ -11,14 +11,14 @@ Iris is an open-source MCP (Model Context Protocol) server for agent evaluation.
 - Package: `@iris-eval/mcp-server` (npm)
 - Repository: https://github.com/iris-eval/mcp-server (MIT-licensed core)
 - Website: https://iris-eval.com
-- Docker: `ghcr.io/iris-eval/mcp-server`
+- Docker: `ghcr.io/iris-eval/mcp-server` (tags `:v<version>` and `:latest`)
 - MCP Registry: `io.github.iris-eval/mcp-server`
 - Security contact: security@iris-eval.com
-- Requires Node.js 20+
+- Requires Node.js 22.13 or later
 
 ## Quickstart (any MCP client)
 
-First: `npx @iris-eval/mcp-server --self-test` (offline; exit 0 = healthy). Then the config block below; the key is `iris-eval` on every surface.
+First: `npx -y @iris-eval/mcp-server@0.17.0 --self-test` (offline; exit 0 = healthy). Then the config block below; the key is `iris-eval` on every surface.
 
 Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemini CLI):
 
@@ -26,7 +26,7 @@ Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemi
       "mcpServers": {
         "iris-eval": {
           "command": "npx",
-          "args": ["@iris-eval/mcp-server"]
+          "args": ["-y", "@iris-eval/mcp-server@0.17.0"]
         }
       }
     }
@@ -38,39 +38,50 @@ Claude Code (plugin — includes an agent-eval skill that guides eval workflows)
 
 Claude Code (plain MCP server, no plugin):
 
-    claude mcp add --transport stdio iris-eval -- npx @iris-eval/mcp-server
+    claude mcp add --transport stdio iris-eval -- npx -y @iris-eval/mcp-server@0.17.0
 
 VS Code (`.vscode/mcp.json`, uses `servers` key):
 
-    { "servers": { "iris-eval": { "command": "npx", "args": ["@iris-eval/mcp-server"] } } }
+    { "servers": { "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server@0.17.0"] } } }
 
 Zed (`settings.json`, uses `context_servers`):
 
-    { "context_servers": { "iris-eval": { "command": { "path": "npx", "args": ["@iris-eval/mcp-server"] } } } }
+    { "context_servers": { "iris-eval": { "command": { "path": "npx", "args": ["-y", "@iris-eval/mcp-server@0.17.0"] } } } }
 
 OpenAI Codex CLI (`~/.codex/config.toml`):
 
     [mcp_servers.iris-eval]
     command = "npx"
-    args = ["@iris-eval/mcp-server"]
+    args = ["-y", "@iris-eval/mcp-server@0.17.0"]
 
 Docker:
 
-    docker run -p 3000:3000 -v iris-data:/data ghcr.io/iris-eval/mcp-server
+    docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server:v0.17.0
 
-Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx @iris-eval/mcp-server`.
+Port 3000 is the MCP HTTP transport; 6920 is the dashboard, which also serves the `POST /api/v1/traces` ingest endpoint. The image listens on every interface inside the container, so it refuses to start without `IRIS_API_KEY`.
+
+Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx -y @iris-eval/mcp-server@0.17.0`.
+
+Every snippet here pins the current release, so a config copied today keeps running the version it was copied for; change the version after `@` to upgrade. `-y` answers npx's install prompt, which a client that starts the server has no terminal to answer.
 
 ## MCP tools (12)
 
-1. `log_trace` — Log an agent execution with spans, tool calls, token usage, and cost in USD. Emits optional OTLP/HTTP export to any OpenTelemetry collector when `IRIS_OTEL_ENDPOINT` is set.
-2. `evaluate_output` — Score output against a rule bundle chosen by `eval_type` (completeness | relevance | safety | cost | custom | all). Defaults to `all` when omitted — every bundle runs, safety included, with a per-category `categories` breakdown and a note in the response saying the default ran; pass a single bundle name to run only that one. Heuristic, deterministic, free. Inline `custom_rules` are additive and fire alongside whichever bundle you chose. A failing critical rule (`no_pii`, `no_injection_patterns`, `no_blocklist_words`) forces `passed: false` regardless of the weighted `score` and names itself in `critical_failures`. Worked example: `evaluate_output({output: "<agent text>", eval_type: "safety"})` on output containing an SSN returns `{score: 0.765, passed: false, critical_failures: ["no_pii"]}` — the score stays a quality gradient, `passed` is the verdict.
-3. `get_traces` — Query stored traces with filtering, pagination, and time-range support. Ranges that could never match (crossed score bounds, `since` after `until`, a non-timestamp date) are rejected with the values named rather than answered with an empty page.
-4. `list_rules` — Enumerate deployed custom eval rules (read-only), including disabled ones with `enabled: false`.
-5. `deploy_rule` — Register a custom eval rule that fires on every matching `evaluate_output`. A second deploy under an existing name is refused unless `replace: true`.
-6. `delete_rule` — Remove a deployed custom rule (destructive; NOT idempotent — a repeat delete returns `deleted: false` and emits no audit row), or with `enabled: false` / `true` pause and resume it without deleting. Either way the change is live on the next evaluation, no restart.
-7. `delete_trace` — Remove a single stored trace by ID (destructive, tenant-scoped; NOT idempotent — a repeat delete returns `deleted: false`).
-8. `evaluate_with_llm_judge` — Semantic eval via LLM (Anthropic or OpenAI). 6 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed. Cost-capped. Bring your own API key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay LLM calls.
-9. `verify_citations` — Extract citations (numbered, author-year, URLs, DOIs), fetch sources behind an SSRF-guarded, domain-allowlisted resolver, and use an LLM judge to check whether each source supports the cited claim. Opt-in outbound HTTP; same BYOK requirement. Fails closed — an error, not a passing verdict — when citations resolved but the judge never ran.
+1. `log_trace` — Store one agent execution — input, output, tool calls, spans, cost, latency, token usage — and get the trace_id every later call keys on.
+2. `evaluate_output` — Score an agent output against the deterministic rule bundles: the ship verdict and its basis, every rule result with evidence and uncertainty, and what was not judged.
+3. `get_traces` — Query stored traces with filters, pagination and sorting; optionally include the dashboard summary in the same response.
+4. `compare_runs` — Did this change make the agent worse? Compares two runs of stored evaluations with an interval — or says the data cannot tell, or that the runs are equivalent within a margin.
+5. `compare_traces` — How reliably does the agent answer the same question? Groups stored evaluations by case and reports per-case pass rates, flakiness, and an interval that respects repeats.
+6. `evaluate_runs` — Re-score every trace in a run under the current rules, into a new run — so a rules change can be compared against the old verdicts instead of overwriting them.
+7. `list_rules` — The rule inventory: the built-in roster with what each rule needs, the criticality this server applies and its published accuracy, plus every deployed custom rule.
+8. `deploy_rule` — Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited.
+9. `delete_rule` — Remove a deployed custom rule — or, with enabled, disable or re-enable it without removing it — effective on the next evaluate_output call.
+10. `delete_trace` — Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text.
+11. `evaluate_with_llm_judge` — Score an output with an LLM judge on your own provider key: a 0..1 score, a rationale, sub-scores and the spend.
+12. `verify_citations` — Extract the citations in an output, fetch the sources (opt-in, SSRF-guarded) and ask an LLM judge on your key whether each source supports its claim.
+
+`evaluate_with_llm_judge` ships 6 templates (accuracy, helpfulness, safety, correctness, faithfulness, task_completed); it and `verify_citations` call the provider on your own key (`IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY`) — Iris does not proxy or relay model calls. The other tools make no model call.
+
+Each tool's full description (what it does, what it returns, its siblings) and input schema is what the server sends on `tools/list`; `iris://capabilities` lists the rule roster, the judge state and the limits.
 
 ## Built-in eval rules (25, across 4 categories)
 
@@ -100,7 +111,7 @@ Evaluator accuracy is published at https://iris-eval.com/proof: precision, recal
 - Playground (no-install demo): https://iris-eval.com/playground
 - Proof (evaluator accuracy, method, reproduction): https://iris-eval.com/proof
 - Learn hub (agent eval vocabulary): https://iris-eval.com/learn
-- Comparisons: https://iris-eval.com/compare — Langfuse, LangSmith, Helicone, Braintrust, Arize, DeepEval, Confident AI, Patronus AI
+- Comparisons: https://iris-eval.com/compare — Langfuse, LangSmith, Helicone, Braintrust, Arize, DeepEval, Confident AI, Patronus AI, Promptfoo, Galileo, Opik, Weave, Judgment Labs, Latitude
 - Blog: https://iris-eval.com/blog
 - Security: https://iris-eval.com/security
 - Pricing: https://iris-eval.com/pricing
