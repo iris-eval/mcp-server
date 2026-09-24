@@ -5,7 +5,7 @@
  * are the numbers on https://iris-eval.com/proof, for the release named below.
  */
 
-export const PUBLISHED_ACCURACY_CORPUS_VERSION = '6a01ef7f62f8';
+export const PUBLISHED_ACCURACY_CORPUS_VERSION = '72dc9debe697';
 export const PUBLISHED_ACCURACY_RELEASE = '0.17.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
