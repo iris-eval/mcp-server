@@ -38,14 +38,16 @@ const sources = (slug: string): Set<string> => {
 };
 
 describe('the four-way article draft', () => {
-  it('exists with front matter, names the four in its title, and is the next number in the blog', () => {
+  it('exists with front matter, names the four in its title, and holds a blog number no other post shares', () => {
     expect(frontmatter, ARTICLE).toBeDefined();
     expect(frontmatter).toMatch(/^title: "Iris vs Langfuse vs Phoenix vs Promptfoo/m);
     const numbers = readdirSync(join(root, 'docs', 'blog'))
       .map((f) => /^(\d{3})-/.exec(f)?.[1])
-      .filter((n): n is string => Boolean(n))
-      .map(Number);
-    expect(Math.max(...numbers)).toBe(30);
+      .filter((n): n is string => Boolean(n));
+    // Every post number is used once; later posts take later numbers, so this
+    // article keeps 030 however many posts follow it.
+    expect(new Set(numbers).size).toBe(numbers.length);
+    expect(numbers.filter((n) => n === '030')).toHaveLength(1);
   });
 
   it('is held unpublished by both gates: `published: false` for the site and a future date for the crossposter, which now honours `published: false` as well', () => {
