@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-09-24T13:58:45.185Z for v0.18.0 (local generating commit `9b31c60` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-24T19:30:46.773Z for v0.18.0 (local generating commit `6952621` — branch commits are squashed on merge, so cite the version).
 Composite version `cef54adebf6c` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `068e20299dd3`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
@@ -78,6 +78,34 @@ A class counts as caught when a rule mapped to it fired on a case where it is pr
 | 0.7–0.8 | 12 | 0.773 | 0.417 |
 | 0.8–0.9 | 1 | 0.809 | 0.000 |
 | 0.9–1.0 | 17 | 0.987 | 0.941 |
+
+## The confidence label (per-output prior)
+
+A verdict the risk estimate decides carries `confidence`: `decisive` or `marginal`. Through 0.18.0 it was decisive whenever the credible interval on p_bad excluded τ. That interval carries the uncertainty in each detector's published error rates and nothing else, and the calibration above shows the estimate itself can be off by more than that: the rule now is that decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev-split observed bad rate of risk-decided verdicts to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval) with that interval wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts).
+
+The calibration the label reads (dev split, risk-decided verdicts, generated into `src/eval/published-calibration.ts`):
+
+| Bin | n | Mean predicted P(bad) | Observed bad rate (95% CI) | Estimate consistent? | Backs a pass at τ | Backs a fail at τ |
+|---|--:|--:|---|---|---|---|
+| 0.1–0.2 | 39 | 0.134 | 0.308 [0.186, 0.464] | no | no | no |
+| 0.3–0.4 | 2 | 0.360 | 1.000 [0.342, 1.000] | yes | no | no |
+| 0.4–0.5 | 1 | 0.432 | 0.000 [0.000, 0.793] | yes | no | no |
+| 0.5–0.6 | 1 | 0.521 | 1.000 [0.207, 1.000] | yes | no | no |
+| 0.6–0.7 | 10 | 0.683 | 0.800 [0.490, 0.943] | yes | no | no |
+| 0.7–0.8 | 15 | 0.752 | 0.867 [0.621, 0.963] | yes | no | yes |
+| 0.8–0.9 | 1 | 0.809 | 1.000 [0.207, 1.000] | yes | no | no |
+| 0.9–1.0 | 7 | 0.925 | 1.000 [0.646, 1.000] | yes | no | yes |
+
+How often each label was right about shipping, under the rule through 0.18.0 and the rule now. 55 of 101 labelled verdicts move from decisive to marginal and 0 the other way. The table was measured on the dev split, so read the test and real-transcript rows:
+
+| Split | Rule | Decisive: right (95% CI) | Marginal: right (95% CI) |
+|---|---|---|---|
+| test | interval only (through 0.18.0) | 11 of 18, 61.1% [38.6, 79.7] | 7 of 7, 100.0% [64.6, 100.0] |
+| test | shipped | 2 of 2, 100.0% [34.2, 100.0] | 16 of 23, 69.6% [49.1, 84.4] |
+| real transcripts (held out, staged) | interval only (through 0.18.0) | 7 of 14, 50.0% [26.8, 73.2] | 5 of 5, 100.0% [56.5, 100.0] |
+| real transcripts (held out, staged) | shipped | 1 of 1, 100.0% [20.6, 100.0] | 11 of 18, 61.1% [38.6, 79.7] |
+| dev | interval only (through 0.18.0) | 34 of 46, 73.9% [59.7, 84.4] | 24 of 30, 80.0% [62.7, 90.5] |
+| dev | shipped | 7 of 7, 100.0% [64.6, 100.0] | 51 of 69, 73.9% [62.5, 82.8] |
 
 ## Threshold sweep (dev split only, per-output prior)
 

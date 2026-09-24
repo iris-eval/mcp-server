@@ -38,7 +38,8 @@
  * shows a default says it is a recommendation.
  */
 import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictNode } from '../types/eval.js';
-import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { verdictConfidence, type ConfidenceCall } from './confidence.js';
 import { decides, isCritical } from './gate.js';
 
 // The gating predicate lives in gate.ts so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
@@ -198,6 +199,41 @@ export function verdictPath(
   return path;
 }
 
+/** The confidence label and why, for a verdict that came through the risk node. */
+export function confidenceCall(
+  result: Pick<EvalResult, 'rule_results'>,
+  risk: { pBad: number; lo: number; hi: number },
+  cfg: Pick<ComposeConfig, 'prior' | 'priorMode' | 'falsePassCost'>,
+): ConfidenceCall {
+  const localLabels = detectorsOf(result as EvalResult).some((d) => d.local !== undefined);
+  return verdictConfidence(risk, tau(cfg.falsePassCost), { prior: cfg.prior, priorMode: cfg.priorMode, localLabels });
+}
+
+const pct = (x: number): string => `${Math.round(x * 100)}%`;
+
+/** The sentence a marginal verdict carries, naming which test it did not pass. */
+function marginalText(call: ConfidenceCall): string {
+  const close = 'Treat it as a close call rather than a clear one.';
+  switch (call.reason) {
+    case 'interval_straddles':
+      return `The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. ${close}`;
+    case 'setting_unmeasured':
+      return `This risk estimate was computed at a prior, or with local labels, that the composite corpus did not measure, so how far it can be trusted is not known. ${close}`;
+    case 'region_unmeasured':
+      return `No verdict on the composite corpus landed at this risk level, so how far the estimate can be trusted here is not measured. ${close}`;
+    case 'region_miscalibrated': {
+      const r = call.region!;
+      return `At this risk level the estimate is measured to be off: on the composite corpus, outputs scored ${r.from.toFixed(1)}–${r.to.toFixed(1)} were bad ${pct(r.bad / r.n)} of the time (${r.bad} of ${r.n}; 95% interval ${pct(r.observed[0])}–${pct(r.observed[1])}) against the ${pct(r.meanPredicted!)} the estimate states. ${close}`;
+    }
+    case 'region_not_backed': {
+      const r = call.region!;
+      return `On the composite corpus, outputs scored ${r.from.toFixed(1)}–${r.to.toFixed(1)} were bad ${pct(r.bad / r.n)} of the time (${r.bad} of ${r.n}; 95% interval ${pct(r.observed[0])}–${pct(r.observed[1])}), an interval that reaches your threshold. ${close}`;
+    }
+    default:
+      return close;
+  }
+}
+
 /**
  * The verdict for one evaluation. The weighted mean is never consulted: it
  * survives as a quality gradient on the score field and is never re-meant.
@@ -214,7 +250,8 @@ export function compose(
   const riskNode = path.find((n) => n.node === 'risk');
   const risk = riskNode?.risk ?? null;
   const t = tau(cfg.falsePassCost);
-  const confidence: Verdict['confidence'] = risk === null ? undefined : risk.lo <= t && t <= risk.hi ? 'marginal' : 'decisive';
+  // Decisive only where the composite corpus measured the estimate to hold (./confidence.ts).
+  const confidence: Verdict['confidence'] = risk === null ? undefined : confidenceCall(result, risk, cfg).confidence;
 
   switch (decided?.node) {
     case 'nothing_judged':
@@ -342,11 +379,11 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       configKey: 'eval.onCriticalSkipped',
     });
   }
-  if (verdict.confidence === 'marginal') {
+  if (verdict.confidence === 'marginal' && verdict.risk !== null) {
     out.push({
       severity: 'note',
       addressee: 'operator',
-      text: 'The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. Treat it as a close call rather than a clear one.',
+      text: marginalText(confidenceCall(result, verdict.risk, cfg)),
     });
   }
   return out;

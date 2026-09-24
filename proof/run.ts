@@ -49,7 +49,7 @@ import { EvalEngine } from '../src/eval/engine.js';
 import { defaultConfig } from '../src/config/defaults.js';
 
 export { contextFor };
-import { measureComposite, renderCompositeMarkdown, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from './lib/composite-report.js';
+import { measureComposite, renderCompositeMarkdown, renderPublishedCalibration, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, PUBLISHED_CALIBRATION_TS, type CompositeResults } from './lib/composite-report.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -561,7 +561,8 @@ export function normaliseForCheck(json: string, md: string): { json: string; md:
 
 /**
  * `--composite`: the verdict on the composite corpus. Writes
- * proof/composite-results.json and proof/COMPOSITE.md, or with `--check`
+ * proof/composite-results.json, proof/COMPOSITE.md and the calibration the
+ * confidence label reads (src/eval/published-calibration.ts), or with `--check`
  * regenerates them to a temp path and fails on any difference.
  */
 async function composite(check: boolean): Promise<void> {
@@ -572,6 +573,7 @@ async function composite(check: boolean): Promise<void> {
   const results: CompositeResults = { ...partial, generatedAt, commit, version };
   const json = stableJson(results);
   const md = renderCompositeMarkdown(results);
+  const calibrationTs = renderPublishedCalibration(results);
   for (const [name, split] of [['test', 'test'], ['real', 'realTranscripts'], ['dev', 'dev']] as const) {
     process.stdout.write(`  ${name.padEnd(5)} legacy acc=${pct(results.legacy[split].accuracy.rate).padStart(6)} ${ci(results.legacy[split].accuracy.ci95).padEnd(14)} risk acc=${pct(results.risk[split].accuracy.rate).padStart(6)} ${ci(results.risk[split].accuracy.ci95).padEnd(14)} n=${results.legacy[split].accuracy.n}
 `);
@@ -591,20 +593,30 @@ async function composite(check: boolean): Promise<void> {
 `);
       process.exit(1);
     }
+    let committedTs = '';
+    try {
+      committedTs = (await readFile(resolve(repoRoot, PUBLISHED_CALIBRATION_TS), 'utf-8')).replace(/\r\n/g, '\n');
+    } catch {
+      process.stderr.write(`proof --check --composite — ${PUBLISHED_CALIBRATION_TS} is missing; run npm run proof -- --composite and commit it.
+`);
+      process.exit(1);
+    }
     const fresh = normaliseCompositeForCheck(json, md);
     const committed = normaliseCompositeForCheck(committedJson, committedMd);
-    if (fresh.json === committed.json && fresh.md === committed.md) {
-      process.stdout.write(`proof --check --composite — OK: ${COMPOSITE_RESULTS_JSON} and ${COMPOSITE_MD} match this code on composite ${results.compositeVersion}
+    const tsSame = committedTs === calibrationTs;
+    if (fresh.json === committed.json && fresh.md === committed.md && tsSame) {
+      process.stdout.write(`proof --check --composite — OK: ${COMPOSITE_RESULTS_JSON}, ${COMPOSITE_MD} and ${PUBLISHED_CALIBRATION_TS} match this code on composite ${results.compositeVersion}
 `);
       return;
     }
-    process.stderr.write(`proof --check --composite — FAIL: ${[fresh.json !== committed.json && COMPOSITE_RESULTS_JSON, fresh.md !== committed.md && COMPOSITE_MD].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --composite and commit the result.
+    process.stderr.write(`proof --check --composite — FAIL: ${[fresh.json !== committed.json && COMPOSITE_RESULTS_JSON, fresh.md !== committed.md && COMPOSITE_MD, !tsSame && PUBLISHED_CALIBRATION_TS].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --composite and commit the result.
 `);
     process.exit(1);
   }
   await writeFile(resolve(repoRoot, COMPOSITE_RESULTS_JSON), json);
   await writeFile(resolve(repoRoot, COMPOSITE_MD), md);
-  process.stdout.write(`proof — wrote ${COMPOSITE_RESULTS_JSON} and ${COMPOSITE_MD} (composite ${results.compositeVersion}, ${rows.length} cases)
+  await writeFile(resolve(repoRoot, PUBLISHED_CALIBRATION_TS), calibrationTs);
+  process.stdout.write(`proof — wrote ${COMPOSITE_RESULTS_JSON}, ${COMPOSITE_MD} and ${PUBLISHED_CALIBRATION_TS} (composite ${results.compositeVersion}, ${rows.length} cases)
 `);
 }
 
