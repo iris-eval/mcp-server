@@ -4961,8 +4961,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-24T05:52:49.340Z",
-  "generatedFromCommit": "85ab748",
+  "generatedAt": "2026-09-24T13:59:00.129Z",
+  "generatedFromCommit": "9b31c60",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5035,7 +5035,7 @@
     ]
   },
   "proof": {
-    "commit": "52a0def",
+    "commit": "9b31c60",
     "composite": {
       "compositeVersion": "cef54adebf6c",
       "corpusVersion": "068e20299dd3",
@@ -6414,7 +6414,7 @@
         "split": "dev",
         "variant": "per-output"
       },
-      "version": "0.17.0"
+      "version": "0.18.0"
     },
     "corpusVersion": "068e20299dd3",
     "custom": {
@@ -7041,7 +7041,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-24T05:26:34.916Z",
+    "generatedAt": "2026-09-24T13:58:31.376Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7060,8 +7060,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1021,
-      "p50Ms": 8.761,
-      "p95Ms": 17.164
+      "p50Ms": 8.657,
+      "p95Ms": 17.332
     },
     "method": {
       "ci": "wilson-95",
@@ -8397,7 +8397,7 @@
         "transcripts": 24
       },
       "transcriptsVersion": "cc79a661de5f",
-      "version": "0.17.0"
+      "version": "0.18.0"
     },
     "transforms": {
       "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
@@ -8861,12 +8861,12 @@
         }
       ]
     },
-    "version": "0.17.0"
+    "version": "0.18.0"
   },
   "release": {
-    "currentReleaseDate": "2026-09-23",
-    "currentReleaseHeadline": "Hostile input, honest verdicts, a harder release path",
-    "currentReleaseVersion": "0.17.0",
+    "currentReleaseDate": "2026-09-24",
+    "currentReleaseHeadline": "Honest numbers, a lighter footprint, nothing done silently",
+    "currentReleaseVersion": "0.18.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -8925,7 +8925,7 @@
     "dashboardPackage": "0.1.0",
     "initPackage": "0.1.0",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.17.0",
+    "mcpServer": "0.18.0",
     "published": {
       "initPackage": false,
       "langchainPackage": false,
