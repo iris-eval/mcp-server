@@ -1,5 +1,5 @@
 /*
- * The three things a comparison can say (arc 7, D-6b, plan §4.14): worse,
+ * The three things a comparison can say: worse,
  * not distinguishable, and — new — equivalent within a margin. Plus the
  * per-rule rows that now carry a test: one-sided p, corrected q, and worse
  * only when q survives. And the tool's own shape, through the handler
@@ -160,7 +160,7 @@ describe('the tool\'s shape carries the new fields on both doors', () => {
 });
 
 /*
- * 2026-09-23 review (ADOPT-4, ADOPT-10). The top line tested two-sided while
+ * 2026-09-23 review. The top line tested two-sided while
  * every per-rule row tested one-sided, so 12/12 -> 7/12 on paired cases
  * (five regressed, none recovered: two-sided exact p = 0.0625) answered
  * worse: false and "not enough evidence" while its own per-rule row read

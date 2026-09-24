@@ -53,7 +53,7 @@ function detectShortcut(): string {
 export function CommandPaletteTrigger() {
   const { open } = useCommandPalette();
   /*
-   * Below 768 px the trigger is its icon (arc 9, N-2): with the label and
+   * Below 768 px the trigger is its icon: with the label and
    * the shortcut hint it ran under the status chips on every page at phone
    * width. The accessible name and the keyboard shortcut are unchanged.
    */

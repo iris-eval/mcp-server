@@ -95,7 +95,7 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
           : null;
 
       /*
-       * Each window carries its own Wilson interval (arc 7, D-6), so a
+       * Each window carries its own Wilson interval, so a
        * cohort panel can show "n and the interval" without recomputing
        * anything on the client — the same wilson() the proof harness uses.
        * Null for an empty window: "0 of 0" is unknown, not zero.

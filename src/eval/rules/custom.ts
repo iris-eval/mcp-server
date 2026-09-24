@@ -338,7 +338,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
            * The name promised something the code did not do: until 0.11.0
            * this parsed the output and passed ANY valid JSON, so a
            * deployment relying on the rule to gate a structured output got
-           * passed:true on a wrong shape. Arc zero ranked that tier A — the
+           * passed:true on a wrong shape. The 2026-09-05 audit ranked that tier A — the
            * name stated a capability the code did not have.
            *
            * `config.schema` ABSENT keeps exactly the old behaviour, so every

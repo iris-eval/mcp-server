@@ -1,5 +1,5 @@
 /*
- * `@iris-eval/mcp-server/engine` — the evaluation engine, importable (arc 8, R-1).
+ * `@iris-eval/mcp-server/engine` — the evaluation engine, importable.
  *
  * Everything an embedder needs to score an output in its own process,
  * with no server, no storage and no model: the engine, the shipped rules,

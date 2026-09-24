@@ -1,5 +1,5 @@
 /*
- * A non-loopback bind without an API key is refused at boot (A6-7) — through
+ * A non-loopback bind without an API key is refused at boot — through
  * the REAL CLI entry point, the way `docker run` reaches it (the image sets
  * IRIS_HOST=0.0.0.0 and IRIS_DASHBOARD_HOST=0.0.0.0).
  *

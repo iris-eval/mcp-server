@@ -1,5 +1,5 @@
 /*
- * The regression-alarm moment kind (arc 7, D-7b): a `regression-alarm`
+ * The regression-alarm moment kind: a `regression-alarm`
  * moment exists and the moments filter accepts it — the bold sentence.
  *
  * A moment carries the alarm its agent's stream raised at that trace; the

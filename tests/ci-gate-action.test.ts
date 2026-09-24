@@ -1,5 +1,5 @@
 /*
- * The gate action (arc 9, N-17): the composite action's shape, held as
+ * The gate action: the composite action's shape, held as
  * text; the receipt built from what `ingest` prints; the comment's
  * decisions and its create-or-update against a local GitHub; the dogfood
  * job that runs it on every pull request; the fixtures it runs on.
@@ -53,7 +53,7 @@ describe('the action file', () => {
     }
     expect(yml).toMatch(/traces:\n {4}description: .*\n {4}required: true/);
     expect(yml).toContain('default: detector_veto');
-    // Pinned to the release it ships in, rolled by version:sync (2026-09-23, SUP-6):
+    // Pinned to the release it ships in, rolled by version:sync (since 2026-09-23):
     // a workflow on @vX.Y.Z runs server X.Y.Z, not whatever npm calls latest today.
     const { version } = JSON.parse(read('package.json')) as { version: string };
     expect(yml).toContain(`default: '${version}'`);

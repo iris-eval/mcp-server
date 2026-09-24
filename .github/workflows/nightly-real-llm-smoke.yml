@@ -62,7 +62,7 @@ jobs:
         run: npm ci
       - if: steps.keycheck.outputs.present == 'true'
         # The server alone: this smoke never serves the UI, and the one
-        # `npm run build` (dashboard, then server since A6-9) would need the
+        # `npm run build` (dashboard, then server since 0.13.0) would need the
         # dashboard's dependencies installed for nothing.
         run: npm run build:server
       # Run the real-LLM smoke. Script reads OPENAI_API_KEY from env.

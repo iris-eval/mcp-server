@@ -30,7 +30,7 @@ export interface EvaluateStoredTraceOptions {
   dormant?: DormantRule[];
   /**
    * When the evaluation should be dated — ISO-8601. No door exposes this:
-   * the demo seeder (arc 9, N-1) evaluates a week of backdated traces
+   * the demo seeder evaluates a week of backdated traces
    * through this same function and the trend, drift and health views read
    * the evaluation's date, so an undated demo would show a week of traffic
    * judged in one second. Omitted, the store dates the row now.
@@ -45,7 +45,7 @@ export interface StoredTraceEvaluation {
 }
 
 /**
- * The agent's own cost baseline for a stored trace (H-5, §4.8): the
+ * The agent's own cost baseline for a stored trace: the
  * failure log already carries each prior trace's cost, so `cost_anomaly`
  * reads the same history the moment classifier does. The trace itself is
  * excluded by id and by timestamp; undefined when the trace has no cost,
@@ -70,7 +70,7 @@ export async function evaluateStoredTrace(
   options: EvaluateStoredTraceOptions = {},
 ): Promise<StoredTraceEvaluation> {
   /*
-   * The agent's own cost baseline (H-5, §4.8): the failure log already
+   * The agent's own cost baseline: the failure log already
    * carries each prior trace's cost, so the rule reads the same history the
    * moment classifier does. The trace just stored is excluded by id.
    */

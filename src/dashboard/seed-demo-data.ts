@@ -619,7 +619,7 @@ function degrade(output: string): string {
  * demo database is a separate file from the real store — this function
  * never opens iris.db (or whatever IRIS_DB_PATH points at).
  *
- * Every evaluation is the ENGINE's (arc 9, N-1): each trace is stored and
+ * Every evaluation is the ENGINE's: each trace is stored and
  * then scored through evaluateStoredTrace — the same function log_trace,
  * POST /api/v1/traces and the ingest verb call — so the verdict, its basis,
  * the evidence spans, the interpretations and the provenance on a demo row

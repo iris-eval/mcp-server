@@ -1,5 +1,5 @@
 /*
- * The typed error model (arc 7, D-1).
+ * The typed error model.
  *
  * Every API failure used to surface as `new Error('API error: 503 Service
  * Unavailable')` — one string for a stopped server, a missing row, a wrong

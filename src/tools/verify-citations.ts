@@ -165,7 +165,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
       // Persist so dashboard can surface. eval_type='custom' — same
       // rationale as evaluate_with_llm_judge (spans all 4 heuristic
       // categories). rule_results[0] carries per-citation summary. The
-      // composer's verdict is stored with it (arc 9, N-3).
+      // composer's verdict is stored with it.
       const row = engine.verdictOf({
         id: evalId,
         trace_id: args.trace_id,

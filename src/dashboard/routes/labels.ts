@@ -1,5 +1,5 @@
 /*
- * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
+ * Labels on the user's own traffic.
  *
  *   POST /labels                         — label one rule's FIRE on one evaluation right or wrong
  *   GET  /labels?eval_id=                — the labels on one evaluation

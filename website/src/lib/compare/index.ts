@@ -1,5 +1,5 @@
 /*
- * The compare pages, from data (arc 8, R-5).
+ * The compare pages, from data.
  *
  * One JSON file per vendor under website/src/lib/compare/: the vendor's side
  * of the features in iris.ts FEATURE_IDS, every cell with the vendor's own

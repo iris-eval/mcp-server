@@ -1,9 +1,9 @@
 /*
- * OTLP in — the mapper (arc 8, R-2).
+ * OTLP in — the mapper.
  *
  * A GenAI-conventions fixture (a chat root span and a tool child) maps to
  * one trace with the input, the output, the tokens, the cost and — through
- * arc 4's toSteps, unchanged — an EXACT Step[] read off the tool span. A
+ * toSteps, unchanged — an EXACT Step[] read off the tool span. A
  * fixture with no GenAI attributes at all is still a trace, with what it
  * carried and a list of what it lacked. Ids, kinds, statuses and times are
  * decoded the way the OTLP JSON encoding writes them.
@@ -95,7 +95,7 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
       source: 'otel',
     });
     expect(trace.metadata).toEqual({
-      // The model lands beside the OTel block: what the judge's same-family check reads (arc 9, N-11).
+      // The model lands beside the OTel block: what the judge's same-family check reads.
       model: 'gpt-4o',
       otel: { trace_id: '5b8efff798038103d269b633813fc60c', scope: 'openllmetry', resource: { 'service.name': 'support-bot', 'iris.run': 'nightly-7', 'deployment.environment': 'staging' } },
     });
@@ -105,7 +105,7 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
     expect(trace.spans?.[0]).not.toHaveProperty('parent_span_id');
     expect(trace.spans?.[1]).toMatchObject({ span_id: 'span-2', parent_span_id: 'span-1', kind: 'TOOL', status_code: 'OK', attributes: { 'otel.span_id': 'a1b2c3d4e5f60718', 'gen_ai.tool.name': 'refund' } });
 
-    // The exact Step[] arc 4's mapper reads off the tool span — unchanged code, GenAI keys it already knew.
+    // The exact Step[] the mapper reads off the tool span — unchanged code, GenAI keys it already knew.
     expect(toSteps({ spans: trace.spans })).toEqual([
       {
         index: 0,
@@ -200,9 +200,9 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
 });
 
 /*
- * Every convention a buyer will test against the door (arc 9, N-11). One
+ * Every convention a user will test against the door. One
  * compact fixture per family; the keys are the ones the vendor's own docs
- * and instrumentors emit (the arc-9 research brief, python-otel.md, §3).
+ * and instrumentors emit.
  */
 describe('fromOtlp — the conventions beside GenAI', () => {
   const TID = '5b8efff798038103d269b633813fc60c';

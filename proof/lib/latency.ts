@@ -1,5 +1,5 @@
 /*
- * How long an evaluation takes (arc 9, N-22).
+ * How long an evaluation takes.
  *
  * Every compare page says Iris evaluates "in-process, no model call", and
  * every incumbent's page answers the latency question with a number. Iris

@@ -18,7 +18,7 @@ export interface HttpTransportResult {
   httpServer: Server;
 }
 
-/** What `/health` on this port reports on (arc 8, R-6); the version comes from `config.server`. */
+/** What `/health` on this port reports on; the version comes from `config.server`. */
 export type HttpTransportHealthDeps = Omit<HealthDeps, 'version'>;
 
 export async function createHttpTransport(
@@ -28,7 +28,7 @@ export async function createHttpTransport(
   health: HttpTransportHealthDeps = {},
 ): Promise<HttpTransportResult> {
   /*
-   * Refuse, don't warn (A6-7): a bind beyond loopback with no API key is
+   * Refuse, don't warn: a bind beyond loopback with no API key is
    * refused here — before the app is built, before any port is taken —
    * unless the operator set security.allowUnauthenticated on purpose. The
    * CLI pre-flight (validateBindPolicy) says the same sentence earlier;
@@ -40,7 +40,7 @@ export async function createHttpTransport(
     hasApiKey: hasAnyApiKey(config.security),
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
-  // Every configured key, read once (arc 8, R-6).
+  // Every configured key, read once.
   const keys = buildKeyRing(config.security);
 
   const app = express();
@@ -56,7 +56,7 @@ export async function createHttpTransport(
   }));
 
   /*
-   * DNS-rebinding guard BEFORE the body parser (A6-7). The SDK transport
+   * DNS-rebinding guard BEFORE the body parser. The SDK transport
    * validates Origin and Host too (below), but it runs inside the /mcp
    * handler — after express.json() has read and parsed up to the request
    * size limit from a page the server is about to refuse. The rejection is
@@ -79,8 +79,8 @@ export async function createHttpTransport(
 
   /*
    * Health endpoint (no auth, no rate limit) — the same contract the
-   * dashboard serves at /api/v1/health, built by src/health.ts (arc 8,
-   * R-6). Until 0.15.0 this port answered `{ status, server, timestamp }`
+   * dashboard serves at /api/v1/health, built by src/health.ts.
+   * Until 0.15.0 this port answered `{ status, server, timestamp }`
    * while the API reference called the two "the same contract".
    */
   app.get('/health', async (_req, res) => {

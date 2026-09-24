@@ -72,7 +72,7 @@ export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: str
     if (entry.failed.length > 0) combinationsSeen.add(entry.failed.join('+'));
   }
   // The cost baseline is the agent's most recent prior costs, newest first
-  // (arc 7, D-7a): the log arrives newest first from storage, but a caller
+  //: the log arrives newest first from storage, but a caller
   // that built it by hand may not, so it is ordered here rather than assumed.
   const recentCosts = prior
     .filter((e): e is AgentFailureLogEntry & { costUsd: number } => typeof e.costUsd === 'number')
@@ -84,7 +84,7 @@ export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: str
     rulesEverFailed: [...rulesEverFailed].sort(),
     combinationsSeen: [...combinationsSeen].sort(),
     recentCosts,
-    // The stream watcher (D-7b) reads the log up to and INCLUDING the trace
+    // The stream watcher reads the log up to and INCLUDING the trace
     // under test: an alarm is raised at the evaluation that crossed the line.
     regressionAlarms: regressionAlarmsAt(log, traceId, timestamp),
   };
@@ -141,7 +141,7 @@ export function deriveMomentDetail(
       score: e.score,
       passed: e.passed,
       // Whole, not remapped: the stamp on every rule result is what the
-      // dashboard exists to show (D-0).
+      // dashboard exists to show.
       ruleResults: e.rule_results,
       ...(e.verdict ? { verdict: e.verdict } : {}),
       ...(e.coverage ? { coverage: e.coverage } : {}),
@@ -256,7 +256,7 @@ function classifySignificance({
   }
 
   /*
-   * 2. Cost spike — against the agent's OWN baseline (arc 7, D-7a).
+   * 2. Cost spike — against the agent's OWN baseline.
    *
    * A fixed dollar figure flagged a haiku-class summariser and a research
    * agent against the same line. The question is whether this trace is
@@ -278,7 +278,7 @@ function classifySignificance({
   }
 
   /*
-   * 2b. Regression alarm — the agent's own stream shifted (D-7b, §4.15).
+   * 2b. Regression alarm — the agent's own stream shifted (0.14.0).
    *
    * Not a property of this trace alone: the CUSUM over the agent's
    * evaluations of one rule crossed its line at this evaluation, so the
@@ -374,7 +374,7 @@ function classifySignificance({
     };
   }
 
-  // 5. Nothing was judged: its own kind, never a pass (D-0).
+  // 5. Nothing was judged: its own kind, never a pass.
   if (verdict === 'unevaluated') {
     return {
       kind: 'unevaluated',

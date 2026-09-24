@@ -1,5 +1,5 @@
 /*
- * Sessions on the MCP door (arc 9, N-15): log_trace takes session_id, or
+ * Sessions on the MCP door: log_trace takes session_id, or
  * reads it from the SEP-414 baggage; get_traces filters by session;
  * compare_traces groups by session.
  */

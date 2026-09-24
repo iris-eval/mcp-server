@@ -13,7 +13,7 @@ export interface TraceFilter {
   min_score?: number;
   max_score?: number;
   has_errors?: boolean;
-  /** The turns of one conversation (arc 9, N-15). */
+  /** The turns of one conversation. */
   session_id?: string;
 }
 
@@ -108,9 +108,9 @@ export interface AgentFailureLogEntry {
   timestamp: string;
   /** Sorted, skips excluded — skips are not failures anywhere in this codebase. */
   failed: string[];
-  /** The trace's cost, for the agent's own cost baseline (arc 7, D-7a); null when the trace recorded none. */
+  /** The trace's cost, for the agent's own cost baseline; null when the trace recorded none. */
   costUsd: number | null;
-  /** Rules that RAN on this evaluation (skips excluded), sorted — the stream watcher's observations (arc 7, D-7b). Absent on a hand-built log, which is then not a stream. */
+  /** Rules that RAN on this evaluation (skips excluded), sorted — the stream watcher's observations. Absent on a hand-built log, which is then not a stream. */
   judged?: string[];
   /** The run the evaluation belongs to, for the run-stratified stream; null when none. */
   runId?: string | null;
@@ -123,14 +123,14 @@ export interface AgentFailureHistory {
   rulesEverFailed: string[];
   /** Every combination of simultaneously-failing rules seen before, each a sorted, joined key. */
   combinationsSeen: string[];
-  /** The agent's most recent prior costs, newest first, at most COST_ANOMALY_WINDOW; traces without a cost are skipped. The baseline a cost spike is judged against (arc 7, D-7a). */
+  /** The agent's most recent prior costs, newest first, at most COST_ANOMALY_WINDOW; traces without a cost are skipped. The baseline a cost spike is judged against. */
   recentCosts: number[];
-  /** The regression alarms the agent's stream raised AT the trace under test (arc 7, D-7b): one per (rule) or (run, rule) whose CUSUM crossed its line on this evaluation. */
+  /** The regression alarms the agent's stream raised AT the trace under test: one per (rule) or (run, rule) whose CUSUM crossed its line on this evaluation. */
   regressionAlarms: RegressionAlarm[];
 }
 
 /*
- * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
+ * Labels on the user's own traffic.
  *
  * A label is one reader's judgement that a rule's FIRE on one evaluation
  * was right or wrong. Labels on fires measure precision only — nothing here
@@ -255,7 +255,7 @@ export interface DashboardSummary {
  * not per-tenant — they don't take a TenantId.
  */
 export interface IStorageAdapter {
-  /** The driver word the health contract reports (arc 8, R-6). */
+  /** The driver word the health contract reports. */
   readonly driver: string;
   initialize(): Promise<void>;
   close(): Promise<void>;
@@ -266,11 +266,11 @@ export interface IStorageAdapter {
    * Store several traces in ONE transaction: all of them or none. The OTLP
    * door ingests a batch this way, so a bad span mid-batch cannot leave
    * half a request stored, and ten thousand traces commit once instead of
-   * ten thousand times (2026-09-23 red team, NET-1/NET-2).
+   * ten thousand times (2026-09-23 security review).
    */
   insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void>;
   getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null>;
-  /** Merge `patch` into a stored trace's metadata (arc 9, N-12: the trace context a later call carried). False when no such trace. */
+  /** Merge `patch` into a stored trace's metadata. False when no such trace. */
   updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean>;
   queryTraces(tenantId: TenantId, options: TraceQueryOptions): Promise<TraceQueryResult>;
   insertSpan(tenantId: TenantId, span: Span): Promise<void>;
@@ -278,7 +278,7 @@ export interface IStorageAdapter {
   insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void>;
   /**
    * Called after an evaluation row is durable, whichever door wrote it
-   * (arc 9, N-16) — the webhook's seam. Returns the unsubscribe. A listener
+   * — the webhook's seam. Returns the unsubscribe. A listener
    * that throws never fails the write.
    */
   onEvalResultInserted(listener: (tenantId: TenantId, result: EvalResult) => void): () => void;
@@ -286,7 +286,7 @@ export interface IStorageAdapter {
   /**
    * The evaluations of many traces in one read, newest first per trace; a
    * trace with none is absent from the map. What a page of moments needs —
-   * one query for the page, not one per trace (arc 9, N-1).
+   * one query for the page, not one per trace.
    */
   getEvalsByTraceIds(tenantId: TenantId, traceIds: readonly string[]): Promise<Map<string, EvalResult[]>>;
   /** One stored evaluation by id, in the same derived-on-read shape as every other reader; null when absent. */
@@ -307,20 +307,20 @@ export interface IStorageAdapter {
   getRunResults(tenantId: TenantId, runId: string): Promise<RunResultRow[]>;
   /** Every attempt at every case, optionally narrowed — repeats kept, because they are the measurement. */
   /**
-   * Every attempt at every case. With `question` (arc 8, R-10), only the
+   * Every attempt at every case. With `question`, only the
    * evaluations that JUDGED that question, and `passed` becomes the
    * question's own answer — every rule answering it passed — rather than
    * the composed verdict, so a case's rate can be read for one question.
    */
   getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string; question?: QuestionId; session?: string; groupBy?: 'case_key' | 'session' }): Promise<CaseResultRow[]>;
-  /** Datasets (arc 8, R-8): a named set of case keys a comparison and a gate can be restricted to. */
+  /** Datasets: a named set of case keys a comparison and a gate can be restricted to. */
   createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail>;
   /** By id, else by label; null when neither matches. */
   getDataset(tenantId: TenantId, idOrLabel: string): Promise<DatasetDetail | null>;
   listDatasets(tenantId: TenantId): Promise<DatasetSummary[]>;
   /** The distinct case keys the traces of one run carry — what `POST /api/v1/datasets` promotes. */
   caseKeysInRun(tenantId: TenantId, runId: string): Promise<string[]>;
-  /** Cost per agent since `since` (null = all time), most expensive first (arc 8, R-9: the cost_by_agent view). */
+  /** Cost per agent since `since` (null = all time), most expensive first. */
   costByAgent(tenantId: TenantId, since: string | null, limit: number): Promise<AgentCostRow[]>;
   queryEvalResults(
     tenantId: TenantId,
@@ -375,7 +375,7 @@ export interface IStorageAdapter {
   getAgentFailureLog(tenantId: TenantId, agentName: string, limit?: number): Promise<AgentFailureLogEntry[]>;
   getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]>;
   getEvalStatsFailures(tenantId: TenantId, period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]>;
-  /** Write one label on a rule's fire (arc 7, D-8). Labelling the same fire again REPLACES the earlier label — a reader changed their mind, and two opinions on one fire would count twice. */
+  /** Write one label on a rule's fire. Labelling the same fire again REPLACES the earlier label — a reader changed their mind, and two opinions on one fire would count twice. */
   insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel>;
   /** Every label on one evaluation. */
   getLabelsForEval(tenantId: TenantId, evalId: string): Promise<VerdictLabel[]>;

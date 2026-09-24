@@ -1,5 +1,5 @@
 /*
- * The FAQ on every compare page, derived (arc 9, N-21).
+ * The FAQ on every compare page, derived.
  *
  * Two questions are hand-written in the vendor's JSON with a sourced vendor
  * half. The other three are the questions a buyer types — what it costs to

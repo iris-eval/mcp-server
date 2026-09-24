@@ -66,7 +66,7 @@ export function registerTraceRoutes(
         latency_ms: body.latency_ms,
         token_usage: body.token_usage,
         cost_usd: body.cost_usd,
-        // W3C trace context from the request headers (SEP-414 names them; arc 9, N-12).
+        // W3C trace context from the request headers (SEP-414 names them).
         metadata: withTraceContext(body.metadata as Record<string, unknown> | undefined, traceContextFrom(req.headers as Record<string, unknown>)),
         timestamp,
         tools: body.tools,

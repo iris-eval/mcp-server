@@ -12,14 +12,14 @@ import { faqFor } from "@/lib/compare/faq";
 
 /*
  * One page for every comparison, rendered from website/src/lib/compare/
- * <vendor>.json (arc 8, R-5). The Iris side of every row comes from
+ * <vendor>.json. The Iris side of every row comes from
  * lib/compare/iris.ts with its counts read from the truthbase; the vendor
  * side comes from the JSON, and every vendor cell links the vendor's own
  * page and shows the date it was read. Winner marks are Iris's editorial
  * call and the page says so; the sources are what a reader can check.
  * tests/compare-contract.test.ts locks the files to the schema, the
  * sources and the dates. The FAQ is five questions: two written in the
- * JSON, three derived from the table by lib/compare/faq.ts (arc 9, N-21).
+ * JSON, three derived from the table by lib/compare/faq.ts.
  */
 
 export const dynamicParams = false;

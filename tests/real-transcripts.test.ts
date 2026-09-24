@@ -20,7 +20,7 @@
  *
  * Four layers of assertion, in order of strength:
  *
- *   1. FINDINGS — the rule-level facts the arc-one acceptance pass
+ *   1. FINDINGS — the rule-level facts the acceptance pass
  *      established: rules that MUST fail and rules that MUST NOT fail on a
  *      named transcript. These are the regressions this file exists to stop.
  *   2. TRAJECTORY — the two trajectory rules fire on exactly the four rows
@@ -75,7 +75,7 @@ interface Transcript {
 
 const FIXTURES = resolve(__dirname, 'fixtures', 'real-transcripts');
 
-/** t-NN → what the arc-one findings say MUST and MUST NOT fire. */
+/** t-NN → what the acceptance pass found MUST and MUST NOT fire. */
 const FINDINGS: Record<string, { mustFail?: string[]; mustPass?: string[]; why: string }> = {
   't-03': { mustPass: ['topic_consistency'], why: 'grounded --purge answer; the old word-ratio measure read its source vocabulary as drift (6.7%)' },
   't-05': { mustPass: ['topic_consistency'], why: 'grounded engine answer; 3.6% under the old measure' },
@@ -113,7 +113,7 @@ const FINDINGS: Record<string, { mustFail?: string[]; mustPass?: string[]; why: 
  * for that bundle is only "no veto".
  */
 /*
- * PROSE ONLY, from arc 4 on. These sentences say WHY a bundle verdict
+ * PROSE ONLY, from 0.11.0 on. These sentences say WHY a bundle verdict
  * disagrees with the answer key; they no longer decide WHICH ones do.
  *
  * The gap SET is measured by `npm run proof -- --transcripts` and read from
@@ -151,7 +151,7 @@ const GAP_REASONS: Record<string, Partial<Record<Bundle, string>>> = {
       'the deferral now fails no_stub_output, which lives in the SAFETY bundle (weight 1.5, deliberately non-critical); the completeness bundle itself still passes on length and sentence count',
   },
   /*
-   * DILUTION, recorded rather than absorbed (arc 4, A4-11).
+   * DILUTION, recorded rather than absorbed.
    *
    * `cost_under_threshold` still FAILS on both rows and says so in the rule
    * results. What changed is that adding `max_steps` — a fourth rule that
@@ -161,7 +161,7 @@ const GAP_REASONS: Record<string, Partial<Record<Bundle, string>>> = {
    * composite corpus) and the ship verdict on both rows is what it was.
    *
    * This is the dilution property of a weighted mean, and it is the same
-   * defect the arc-4 record carries as finding 1 — a bundle can read `pass`
+   * defect the 0.11.0 transcript record carries as its first finding — a bundle can read `pass`
    * while the evaluation reads `fail`. Writing it here keeps it VISIBLE as a
    * gap. Editing `expected_verdict` in the fixtures would have made it
    * disappear, which is the one thing a record must not do.
@@ -303,7 +303,7 @@ describe('real agent transcripts — the trajectory rules fire on exactly the na
       rows.map(({ id, result }) => [id, { safety: result.categories?.safety?.score, cost: result.categories?.cost?.score }]),
     );
     /*
-     * All three were 0.925 until arc 4 put grounded_in_reads in the
+     * All three were 0.925 until 0.11.0 put grounded_in_reads in the
      * safety bundle, and the three now differ because the new rule has a
      * different opinion of each. It PASSES t-13 and t-15, whose
      * fabrications are an invented environment variable and a count —

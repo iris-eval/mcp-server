@@ -1,5 +1,5 @@
 /*
- * Whether this tab is in the foreground (arc 7, D-2).
+ * Whether this tab is in the foreground.
  *
  * `usePolling` already skips its tick while the document is hidden; this
  * hook lets the header say so ("paused") instead of showing "live" over a

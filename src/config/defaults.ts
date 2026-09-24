@@ -72,7 +72,7 @@ export const defaultConfig: IrisConfig = {
     criticalRules: [],
     nonCriticalRules: [],
     /*
-     * The verdict's six defaults (0.10.0), each a config key so a ruling is
+     * The verdict's six defaults (0.10.0), each a config key so changing one is
      * a one-line change. Measured before shipped: on the held-out split of
      * the composite corpus the risk composer is right about shipping 57.7%
      * of the time against the legacy 38.5%, at an IDENTICAL false-block

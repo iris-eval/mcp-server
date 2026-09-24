@@ -1,5 +1,5 @@
 /*
- * The compare-quote verifier reads a page the way a reader would (arc 9, N-21).
+ * The compare-quote verifier reads a page the way a reader would.
  *
  * scripts/verify-compare-quotes.mjs decides `quoteVerified` for every compare
  * cell: is the cell's sentence on a plain download of its page today. The

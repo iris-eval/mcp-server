@@ -1,7 +1,7 @@
 /*
  * Intervals beyond Wilson — the ones the proof needed and lacked.
  *
- * Dirichlet credible intervals (plan §4.5). The F1 bootstrap resamples
+ * Dirichlet credible intervals. The F1 bootstrap resamples
  * observations, so a family with zero errors gives every resample zero
  * errors and an interval of [1, 1] — a point that says the rule is
  * perfect, which thirty cases cannot say. The posterior over the confusion
@@ -13,8 +13,9 @@
  *
  * Newcombe's hybrid score interval (method 10 in Newcombe 1998) for the
  * difference of two independent proportions, built from each proportion's
- * Wilson limits — the interval arc 5 will print for "did my change make it
- * worse?", and the one arc 2 prints for accuracy(new) − accuracy(old).
+ * Wilson limits — the interval compare_runs prints for "did my change make
+ * it worse?", and the one the composite report prints for
+ * accuracy(new) − accuracy(old).
  *
  * Brier score and expected calibration error over ten equal-width
  * reliability bins, for a probability against a binary outcome.

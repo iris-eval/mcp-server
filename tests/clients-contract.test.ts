@@ -1,5 +1,5 @@
 /*
- * The client rows are drift-locked to the installer and to the prose (arc 8, R-4).
+ * The client rows are drift-locked to the installer and to the prose.
  *
  * clients.json names every MCP client Iris says it runs in, one row each,
  * with a status word — verified (a test in this repository drives the
@@ -90,7 +90,7 @@ describe('the prose surfaces render their client lists from the rows', () => {
     expect(readme).toContain(`Verified on every CI run: ${verifiedNames.join(', ')}`);
     expect(readme).toContain(`nobody on the Iris side has watched it connect: ${claimedNames.join(', ')}.`);
     expect(readme).toContain('https://iris-eval.com/clients');
-    // The works-with table (arc 9, N-20): rendered from clients.json through the truthbase, between markers llms:render rewrites.
+    // The works-with table: rendered from clients.json through the truthbase, between markers llms:render rewrites.
     const block = readme.match(/<!-- iris:clients-table:start -->\n([\s\S]*?)\n<!-- iris:clients-table:end -->/);
     expect(block, 'the README carries the clients-table block').not.toBeNull();
     const tableRows = block![1]

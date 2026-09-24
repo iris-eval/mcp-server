@@ -20,7 +20,7 @@ import type { Coverage, EvalRuleResult, Interpretation, Provenance, Verdict } fr
 export type MomentVerdict = 'pass' | 'fail' | 'partial' | 'unevaluated';
 
 /**
- * The one list every kind enumeration derives from (D-0). Three hand-typed
+ * The one list every kind enumeration derives from. Three hand-typed
  * copies of this union lived in the moments route, the preferences route
  * and the preference store; a kind added to the type alone would be
  * refused by every filter. The type is derived from the array.
@@ -28,14 +28,14 @@ export type MomentVerdict = 'pass' | 'fail' | 'partial' | 'unevaluated';
 export const MOMENT_SIGNIFICANCE_KINDS = [
   'safety-violation', // any safety rule failed — highest priority
   'cost-spike', // trace cost deviates from the agent's own baseline
-  'regression-alarm', // the agent's own stream shifted: a rule's fail rate crossed its CUSUM line at this evaluation (D-7b)
+  'regression-alarm', // the agent's own stream shifted: a rule's fail rate crossed its CUSUM line at this evaluation
   'first-failure', // this rule failure first observed for this agent
   'novel-pattern', // failure-rule combination not seen before for this agent
   'rule-collision', // multiple eval_types failed simultaneously
   'normal-pass', // happy path; not a moment worth dedicated attention
   'normal-fail', // a fail that doesn't elevate to one of the above
   /*
-   * Nothing was judged (D-0): no evaluation recorded, every rule skipped, or
+   * Nothing was judged: no evaluation recorded, every rule skipped, or
    * the verdict was unknown. Until 0.14.0 this was labelled `normal-pass`
    * with the reason "no rules fired" — a trace nobody had judged read as a
    * pass on every list. It is its own kind, and it is not a pass.
@@ -108,7 +108,7 @@ export interface DecisionMomentDetail extends DecisionMoment {
     score: number;
     passed: boolean;
     /**
-     * The rule results WHOLE (D-0). Until 0.14.0 this was a six-field remap
+     * The rule results WHOLE. Until 0.14.0 this was a six-field remap
      * — name, passed, score, message, skipped, skipReason — and the stamp
      * the engine puts on every rule since 0.9.0 (kind, role, evidence,
      * uncertainty, criticality with its source, the question, the classes)

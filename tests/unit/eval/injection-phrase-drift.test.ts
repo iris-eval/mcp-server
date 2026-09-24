@@ -1,5 +1,5 @@
 /*
- * The two injection lists cannot come apart (arc 4, A4-9).
+ * The two injection lists cannot come apart.
  *
  * `no_injection_patterns` reads the agent's OUTPUT with regular expressions.
  * `no_injection_compliance` reads TOOL OUTPUT with literal phrases, because

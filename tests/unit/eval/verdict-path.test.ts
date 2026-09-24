@@ -1,5 +1,5 @@
 /*
- * The verdict and the path it took are one decision (arc 9, N-22).
+ * The verdict and the path it took are one decision.
  *
  * `verdictPath` is the composer's only writer: it asks the five questions in
  * order — a configured gate, a detector's veto, a critical check that could

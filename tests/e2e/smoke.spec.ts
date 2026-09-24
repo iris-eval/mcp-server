@@ -127,7 +127,7 @@ test.describe('navigation', () => {
     await expect(page).toHaveURL(/period=7d/);
   });
 
-  test('sidebar nav reaches all routes: four entries for three concepts (D-5)', async ({ page }) => {
+  test('sidebar nav reaches all routes: four entries for three concepts', async ({ page }) => {
     await page.goto('/');
     const sidebar = page.getByRole('complementary', { name: /Main navigation/i });
     await sidebar.getByRole('link', { name: NAV_LABELS.runs, exact: true }).click();

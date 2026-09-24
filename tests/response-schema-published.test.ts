@@ -1,5 +1,5 @@
 /*
- * The published response schema is the schema the server validates with (arc 9, N-22).
+ * The published response schema is the schema the server validates with.
  *
  * website/public/response-schema-v1.json is served at
  * https://iris-eval.com/response-schema-v1.json for anyone generating types

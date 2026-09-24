@@ -1,5 +1,5 @@
 /*
- * The SQLite driver seam (arc 8, R-0; plan §4.19).
+ * The SQLite driver seam.
  *
  * Iris stores everything in one SQLite file, and until 0.15.0 the only way
  * to open it was `better-sqlite3` — a native addon that must be compiled

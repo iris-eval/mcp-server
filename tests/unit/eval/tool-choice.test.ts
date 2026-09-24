@@ -1,5 +1,5 @@
 /*
- * tool_choice (arc 9, N-13): the formula on one catalogue, the skips, the
+ * tool_choice: the formula on one catalogue, the skips, the
  * trajectory-level judgement, and the configuration.
  */
 import { describe, expect, it } from 'vitest';

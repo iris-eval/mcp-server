@@ -5,7 +5,7 @@ export const id = '007-eval-provenance';
 /*
  * What an evaluation cannot reconstruct about itself after the fact: the
  * Iris version, the ruleset and configuration hashes and the threshold that
- * produced it (arc zero: "why did this pass on that day" was unanswerable
+ * produced it (the 2026-09-05 audit: "why did this pass on that day" was unanswerable
  * from Iris alone), the judge's spend (the tool description said it was
  * kept; the write path stored none of it), and the erasure stamp the
  * right-to-erasure fix sets when a trace is deleted. `writer_version` on the

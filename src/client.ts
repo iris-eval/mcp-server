@@ -1,5 +1,5 @@
 /*
- * `@iris-eval/mcp-server/client` — a typed client for the HTTP route (arc 8, R-1).
+ * `@iris-eval/mcp-server/client` — a typed client for the HTTP route.
  *
  * The twenty lines every pipeline that talks to a running Iris rewrites:
  * `POST /api/v1/traces` with `evaluate: true`, the Bearer header, and the

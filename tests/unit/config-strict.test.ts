@@ -1,5 +1,5 @@
 /*
- * config.json is strict (arc 8, R-6).
+ * config.json is strict.
  *
  * Until 0.15.0 loadConfig deep-merged whatever the file held, so a typo —
  * `eval.critcalRules` — merged in silently and did nothing while the file

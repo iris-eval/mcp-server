@@ -21,8 +21,8 @@
  *      A rule the server SKIPS (no input, no cost data, output too brief)
  *      must be SKIPPED by the playground too: skip parity is asserted, not
  *      waived (it used to count a server skip as a pass, which enshrined the
- *      playground's "skipped rule shows as a pass with score 1" defect —
- *      arc zero, G10). The fixed cases include inputs missing each context
+ *      playground's "skipped rule shows as a pass with score 1" defect,
+ *      found in the 2026-09-05 audit). The fixed cases include inputs missing each context
  *      so every skip path is exercised.
  *   2. SOURCE PINS — every pattern, constant and helper the two files share
  *      is compared as source text, comments and whitespace aside, so a
@@ -66,7 +66,7 @@ const FIXTURES = resolve(ROOT, 'tests', 'fixtures', 'real-transcripts');
 const VENDORED_FILE = 'website/src/lib/eval/rules.ts';
 const SERVER_SAFETY_FILE = 'src/eval/rules/safety.ts';
 const SERVER_RELEVANCE_FILE = 'src/eval/rules/relevance.ts';
-// The tokenizer moved to its own module in arc 9 (N-13) so tool_choice could read it without a cycle.
+// The tokenizer moved to its own module in 0.16.0 so tool_choice could read it without a cycle.
 const SERVER_TERMS_FILE = 'src/eval/terms.ts';
 const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
 /*

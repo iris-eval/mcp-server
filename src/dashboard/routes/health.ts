@@ -11,8 +11,8 @@ export interface HealthOptions {
 }
 
 /*
- * GET /health — the one health contract, on the dashboard port (arc 8,
- * R-6). The answer is built by src/health.ts; the MCP transport's /health
+ * GET /health — the one health contract, on the dashboard port
+ * (0.15.0). The answer is built by src/health.ts; the MCP transport's /health
  * calls the same function, so the two ports cannot drift. Mounted by
  * server.ts AHEAD of the rate limiters and the session layer: it carries
  * no trace content and a probe must never be told to slow down.

@@ -1,5 +1,5 @@
 /*
- * Every compare cell's quote, checked against its page (arc 9, N-21).
+ * Every compare cell's quote, checked against its page.
  *
  * Each vendor file under website/src/lib/compare/ carries, per row, the
  * URL the cell was read from and the sentence read there. This script

@@ -1,5 +1,5 @@
 /*
- * The route boundary (D-1): a page that throws keeps the shell and shows a
+ * The route boundary: a page that throws keeps the shell and shows a
  * sentence; a sibling outside the boundary is untouched; "Try again"
  * re-renders the page; navigating away clears it.
  */

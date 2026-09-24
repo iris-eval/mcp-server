@@ -1,5 +1,5 @@
 /*
- * The comparison view (D-5) renders the tool's answer: the verdict word, the
+ * The comparison view renders the tool's answer: the verdict word, the
  * method, the two runs with their intervals, the difference, the per-rule
  * movement, and the reasons when the runs are not comparable.
  */
@@ -75,7 +75,7 @@ function view(result: CompareRunsResult) {
   );
 }
 
-describe('ComparisonView (D-5)', () => {
+describe('ComparisonView', () => {
   it('a worse candidate: the word, the method, the difference, the p, the smallest detectable, the runs, the rules', () => {
     const { container } = view(worse);
     expect(container.querySelector('[data-comparison-verdict]')?.textContent).toBe('WORSE');
@@ -118,7 +118,7 @@ describe('ComparisonView (D-5)', () => {
     expect(container.querySelector('[data-comparison-verdict]')?.textContent).toBe('WORSE');
   });
 
-  it('D-6b: every rule row carries its one-sided p and its corrected q, and only a surviving rule is marked worse', () => {
+  it('every rule row carries its one-sided p and its corrected q, and only a surviving rule is marked worse', () => {
     const { container } = view(worse);
     const stub = container.querySelector('[data-rule-row="no_stub_output"]');
     expect(stub?.getAttribute('data-rule-worse')).toBe('true');
@@ -133,7 +133,7 @@ describe('ComparisonView (D-5)', () => {
     expect(container.querySelector('[data-rules-tested]')?.textContent).toBe('2 tested · corrected together');
   });
 
-  it('D-6b: the equivalence finding is its own chip — not equivalent here, equivalent when the 90% interval sits inside the margin', () => {
+  it('the equivalence finding is its own chip — not equivalent here, equivalent when the 90% interval sits inside the margin', () => {
     const { container: a } = view(worse);
     expect(a.querySelector('[data-equivalent-within]')?.getAttribute('data-equivalent-within')).toBe('false');
     expect(a.querySelector('[data-equivalent-within]')?.textContent).toBe('not equivalent within ±12.0 pts');
@@ -158,7 +158,7 @@ describe('ComparisonView (D-5)', () => {
   });
 });
 
-describe('the discordant cases (N-14)', () => {
+describe('the discordant cases', () => {
   it('renders each flipped case, regressions first, with the rules that flipped and a link to the moment', () => {
     const result: CompareRunsResult = {
       ...worse,

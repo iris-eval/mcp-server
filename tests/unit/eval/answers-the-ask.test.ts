@@ -1,5 +1,5 @@
 /*
- * answers_the_ask (arc 9, N-13): the composer question, answered with a
+ * answers_the_ask: the composer question, answered with a
  * measurement. The pair of relevance measurements acts as a detection when
  * both fail; one alone never fires it; every skip of either is a skip here;
  * and it is a policy that gates where the measurements only scored.

@@ -1,7 +1,7 @@
 import type { Driver } from '../driver.js';
 
 /*
- * Sessions (arc 9, N-15).
+ * Sessions.
  *
  * A trace is one turn; a conversation is many. Until now the id that ties
  * them together rode in metadata, where nothing could filter on it and the

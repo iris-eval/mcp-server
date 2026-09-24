@@ -161,7 +161,7 @@ export function registerEvaluateWithLLMJudgeTool(
         agentModel ??= agentModelOf(trace);
       }
       /*
-       * A judge from the agent's own family (arc 7, D-6b): the score still
+       * A judge from the agent's own family: the score still
        * stands, but a reader is told it is a same-family opinion. Warned,
        * never refused — the caller may have no other key.
        */
@@ -188,7 +188,7 @@ export function registerEvaluateWithLLMJudgeTool(
       // is the honest bucket. rule_results[0] captures per-dimension
       // breakdown + provider metadata for audit.
       const evalId = generateEvalId();
-      // The composer's verdict on the judgment, stored with it (arc 9, N-3).
+      // The composer's verdict on the judgment, stored with it.
       const row = engine.verdictOf(
         judgeEvalResult({
           id: evalId,

@@ -1,5 +1,5 @@
 /*
- * The header's chips (arc 7, D-2). Each one is a fact the server stated on
+ * The header's chips. Each one is a fact the server stated on
  * its last answer, never a constant:
  *
  *   - StatusPill — from the health poll and the connection store (shellStatus);

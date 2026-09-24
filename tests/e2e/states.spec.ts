@@ -1,5 +1,5 @@
 /*
- * The states a reader can land in (arc 7, D-9), each on a server started
+ * The states a reader can land in, each on a server started
  * for the purpose:
  *
  *   - an EMPTY database: every page says so in its own words and invents

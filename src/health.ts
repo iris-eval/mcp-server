@@ -1,5 +1,5 @@
 /*
- * One health contract for both ports (arc 8, R-6).
+ * One health contract for both ports.
  *
  * Until 0.15.0 the dashboard's `/api/v1/health` reported status, version,
  * uptime, a trace count and a storage word, while the MCP transport's
@@ -15,7 +15,7 @@
  *   migrations   every migration this build knows is applied; the numbers
  *                are how many, so an operator can see a schema is behind
  *                before a query fails on a missing column
- *   driver       which SQLite driver opened the file (arc 8, R-0 adds the
+ *   driver       which SQLite driver opened the file (0.15.0 added the
  *                Node built-in as a fallback; the word is the seam)
  *
  * `status` is `ok` only when every check that could run is `ok`; anything

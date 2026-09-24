@@ -3,8 +3,8 @@
  *
  * Every published number so far is per rule: a family of cases and the
  * rule's own evaluate. The top-level `passed` — the composition of rules
- * into one verdict — had no corpus at all (arc zero, evaluator-of-evaluators
- * question 1 for the composer). This is that corpus.
+ * into one verdict — had no corpus at all (the 2026-09-05 audit,
+ * evaluator-of-evaluators question 1 for the composer). This is that corpus.
  *
  * A composite case is a whole evaluation input (output, input, tool calls,
  * cost, tokens) with what is TRUE BY CONSTRUCTION about it — which failure

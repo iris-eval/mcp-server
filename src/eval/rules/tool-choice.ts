@@ -1,5 +1,5 @@
 /*
- * tool_choice (arc 9, N-13): the wrong tool for the ask, judged from the
+ * tool_choice: the wrong tool for the ask, judged from the
  * catalogue valid_tool_arguments already takes.
  *
  * The formula, stated so a reader can check a fire by hand:

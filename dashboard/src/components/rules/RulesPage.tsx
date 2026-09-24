@@ -163,9 +163,9 @@ export function RulesPage() {
         }
       />
 
-      {/* The built-in roster with its proof (D-5) sits above the rules you deployed. */}
+      {/* The built-in roster with its proof sits above the rules you deployed. */}
       <BuiltInRoster />
-      {/* Your labels and what they made of each rule's number (D-8). */}
+      {/* Your labels and what they made of each rule's number. */}
       <LocalPrecisionPanel />
       {error && <QueryError error={error} what="the deployed rules" onRetry={refetch} />}
 

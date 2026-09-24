@@ -7,7 +7,7 @@ import { OG_IMAGE_URL } from "@/lib/og";
 import changelog from "@/lib/changelog.generated.json";
 
 /*
- * The release narrative, rendered from CHANGELOG.md (arc 8, R-5). The
+ * The release narrative, rendered from CHANGELOG.md. The
  * current release is shown whole — its lead, its paragraphs, every entry
  * under every heading — and every earlier release is one line with its
  * lead, linking to the GitHub release built from the same section by

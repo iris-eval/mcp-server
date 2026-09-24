@@ -63,7 +63,7 @@ export interface Capabilities {
   };
   /** What the sweep deletes and how often; 0 days disables it. A data-loss surprise unless said here. */
   retention: { days: number; sweepIntervalHours: number };
-  /** The outbound webhook (arc 9, N-16): the events and the receiver's host, never the URL's token or the secret; null when none. */
+  /** The outbound webhook: the events and the receiver's host, never the URL's token or the secret; null when none. */
   notify: { webhook: WebhookSettings | null };
   tools: readonly string[];
   /** Per tool: behaviour, when not to use it, errors, parameters and output fields — the detail tools/list does not carry. */

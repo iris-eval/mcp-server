@@ -21,7 +21,7 @@ import type { AgentFailureLogEntry } from '../../../src/types/query.js';
  * produce fails here, and so does a kind that quietly stops being reachable.
  */
 
-// The one list the routes and the preference store derive their enums from (D-0).
+// The one list the routes and the preference store derive their enums from.
 const KINDS_THE_FILTER_ACCEPTS: readonly MomentSignificanceKind[] = MOMENT_SIGNIFICANCE_KINDS;
 
 const trace = (over: Partial<Trace> = {}): Trace => ({
@@ -54,9 +54,9 @@ const quietHistory = (failedBefore: string[][] = [[], [], [], [], []]) =>
 /** One producer per kind. Adding a filter value means adding a producer here. */
 const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = {
   'safety-violation': () => deriveMoment(trace(), [evalOf(['no_pii'], false)]).significance.kind,
-  // Nothing judged (D-0): no evaluation at all.
+  // Nothing judged: no evaluation at all.
   unevaluated: () => deriveMoment(trace(), []).significance.kind,
-  // Against the agent's own baseline (D-7a): thirty cheap prior traces, then a $5 one.
+  // Against the agent's own baseline: thirty cheap prior traces, then a $5 one.
   'cost-spike': () =>
     deriveMoment(
       trace({ cost_usd: 5 }),
@@ -67,7 +67,7 @@ const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = 
         '2026-09-07T12:00:00Z',
       ),
     ).significance.kind,
-  // The agent's own stream shifted (D-7b): 200 evaluations at a 20% fail
+  // The agent's own stream shifted: 200 evaluations at a 20% fail
   // rate settle the baseline, then every evaluation fails; the producer is
   // the first trace at which the CUSUM crossed its line.
   'regression-alarm': () => {
@@ -95,7 +95,7 @@ const PRODUCERS: Record<MomentSignificanceKind, () => MomentSignificanceKind> = 
     deriveMoment(trace(), [evalOf(['keyword_overlap'], false, 'relevance'), evalOf(['min_output_length'], false, 'completeness')])
       .significance.kind,
   'normal-fail': () => deriveMoment(trace(), [evalOf(['keyword_overlap'], false)]).significance.kind,
-  // A pass needs a rule that ran and passed: an evaluation with no rules is nothing judged (D-0).
+  // A pass needs a rule that ran and passed: an evaluation with no rules is nothing judged.
   'normal-pass': () =>
     deriveMoment(trace(), [{ ...evalOf([], true), rule_results: [{ ruleName: 'no_pii', passed: true, score: 1, message: 'clean' }] }]).significance.kind,
 };

@@ -1,5 +1,5 @@
 /*
- * Refuse, don't warn (A6-7).
+ * Refuse, don't warn.
  *
  * Until 0.13.0 the HTTP transport and the dashboard both WARNED when bound
  * beyond loopback with no API key, then served: every trace, verdict and
@@ -96,7 +96,7 @@ describe('validateBindPolicy — the CLI pre-flight over the whole config', () =
       dashboard: { ...defaultConfig.dashboard, enabled: true, host: '0.0.0.0' },
     };
     expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKey: 'k' } })).not.toThrow();
-    // Any configured key clears it (arc 8, R-6): a key file, or further keys by hash.
+    // Any configured key clears it: a key file, or further keys by hash.
     expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKeyFile: '/run/secrets/iris-key' } })).not.toThrow();
     expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKeys: [{ id: 'ci', keyHash: 'a'.repeat(64) }] } })).not.toThrow();
     expect(() => validateBindPolicy({ ...open, security: { ...open.security, apiKeys: [] } })).toThrow(/IRIS_API_KEY_FILE/);

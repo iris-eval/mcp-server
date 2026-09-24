@@ -23,7 +23,7 @@ import type { EvalResult } from '../../src/types/eval.js';
 import { E2E_BASE_URL, E2E_DB_DIR, E2E_DB_PATH } from './_constants.js';
 
 const AGENTS = ['research-synthesizer', 'content-drafter', 'data-extractor', 'code-reviewer'];
-/** The seeded $1.33 trace (D-4): tests/e2e/verdict.spec.ts opens /traces/e2e-trace-0019. */
+/** The seeded $1.33 trace: tests/e2e/verdict.spec.ts opens /traces/e2e-trace-0019. */
 export const COST_CASE_INDEX = 19;
 
 function makeTrace(i: number): Trace {
@@ -47,7 +47,7 @@ function makeTrace(i: number): Trace {
 function makeEval(trace: Trace, index: number): EvalResult {
   if (index === COST_CASE_INDEX) {
     /*
-     * The plan's own case (arc 7, D-4): a $1.33 trace at defaults.
+     * The plan's own case: a $1.33 trace at defaults.
      * cost_under_threshold fails against the shipped $0.10 and does not
      * decide (the number is Iris's, not the deployment's); the verdict
      * passes and interpretations[] says why. The verdict, coverage and
@@ -152,7 +152,7 @@ export default async function globalSetup(): Promise<void> {
       raw.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(LOCAL_TENANT);
       raw.prepare('DELETE FROM spans WHERE tenant_id = ?').run(LOCAL_TENANT);
       raw.prepare('DELETE FROM traces WHERE tenant_id = ?').run(LOCAL_TENANT);
-      // Labels name evaluations by id (D-8); a label from an earlier run
+      // Labels name evaluations by id; a label from an earlier run
       // would otherwise count against this run's seeded rows.
       raw.prepare('DELETE FROM verdict_labels WHERE tenant_id = ?').run(LOCAL_TENANT);
 
@@ -164,14 +164,14 @@ export default async function globalSetup(): Promise<void> {
       for (let i = 0; i < 20; i++) {
         const trace = makeTrace(i);
         if (i === COST_CASE_INDEX) trace.cost_usd = 1.33;
-        // Two runs over the same ten cases (D-5): traces 0–9 are the
+        // Two runs over the same ten cases: traces 0–9 are the
         // baseline, 10–19 the candidate; case-k is trace k and trace k+10.
         // The baseline fails case-0 and case-7 (i % 7 === 0), the candidate
         // fails case-4 (i = 14), so the pair is comparable, paired, and not
         // distinguishable at n = 10 — and case-0 is flaky across runs.
         trace.run_id = i < 10 ? 'baseline' : 'candidate';
         trace.case_key = `case-${i % 10}`;
-        // Three turns of one conversation (arc 9, N-15): the session strip on traces 3–5.
+        // Three turns of one conversation: the session strip on traces 3–5.
         if (i >= 3 && i <= 5) trace.session_id = 'e2e-session-1';
         await adapter.insertTrace(LOCAL_TENANT, trace);
         const evalResult = makeEval(trace, i);

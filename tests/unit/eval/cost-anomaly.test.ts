@@ -1,6 +1,6 @@
 /*
  * Cost spikes are judged against the agent's own history, not a fixed
- * dollar figure (arc 7, D-7a; gap G22). The robust z — distance from the
+ * dollar figure. The robust z — distance from the
  * median in MADs — on a seeded history; the floor below which nothing is
  * said; the zero-MAD fallback; and the guard that the old literal is gone
  * from src/.

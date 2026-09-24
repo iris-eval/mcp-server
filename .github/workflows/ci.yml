@@ -51,7 +51,7 @@ jobs:
       # add a triage row, or bump the dep — are edits inside the PR itself.
       - run: npm run lint
       - run: npm run typecheck
-      # npm ci (H-1 of the 2026-09-20 audit; closes the code-scan "pinned
+      # npm ci (from the 2026-09-20 audit; closes the code-scan "pinned
       # dependencies" finding on this file). The dashboard lockfile carries
       # the Linux rolldown binding and the three @emnapi entries a Windows
       # `npm install` used to prune; if a future Windows install prunes them
@@ -61,7 +61,7 @@ jobs:
       - run: cd dashboard && npm ci --no-audit --no-fund && npm run typecheck && npm run lint && npm test
       # Storybook smoke (audit item #11): build catalog to catch broken
       # stories before they ship. No pixel regression yet — Chromatic/
-      # lost-pixel vendor choice is a separate founder decision.
+      # lost-pixel vendor choice is a separate, open decision.
       - run: cd dashboard && npm run build-storybook
 
   test:
@@ -81,7 +81,7 @@ jobs:
         node-version: [22, 24]
         driver: [native]
         os: [ubuntu-latest]
-        # The storage driver seam (arc 8, R-0): the whole suite once more on
+        # The storage driver seam: the whole suite once more on
         # Node's built-in SQLite, on both supported lines.
         include:
           - node-version: 22
@@ -173,7 +173,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: cd dashboard && npm ci --no-audit --no-fund
-      # One build: the dashboard, then the server (A6-9). A local `npm pack`
+      # One build: the dashboard, then the server. A local `npm pack`
       # after `npm run build` used to ship a server with no UI because
       # dist/dashboard came from a separate step only CI ran.
       - run: npm run build
@@ -186,7 +186,7 @@ jobs:
           jq -e '.[0].files[] | select(.path == "dist/dashboard/index.html")' pack.json > /dev/null \
             || { echo "::error::dist/dashboard/index.html is not in the pack list"; exit 1; }
           echo "pack carries dist/dashboard/index.html"
-      - name: The packed tarball resolves ./engine, ./client and ./dist/* (R-1)
+      - name: The packed tarball resolves ./engine, ./client and ./dist/*
         # What a consumer does: pack, install the tarball into a never-used
         # directory, import each subpath, evaluate one stub through the engine.
         run: node scripts/check-exports.mjs
@@ -272,7 +272,7 @@ jobs:
         # reachable, since loopback inside a container is not.
         run: |
           set -euo pipefail
-          echo "--- bare run must REFUSE: the image binds 0.0.0.0 and carries no key (A6-7) ---"
+          echo "--- bare run must REFUSE: the image binds 0.0.0.0 and carries no key ---"
           # The image's own ENV puts both servers on 0.0.0.0; with no
           # IRIS_API_KEY the process must stop at boot with one sentence
           # naming the variable, not serve. `|| true` captures the exit
@@ -308,7 +308,7 @@ jobs:
           echo "--- dashboard health ---"
           curl -fsS "http://127.0.0.1:6920/api/v1/health"
           echo ""
-          echo "--- one health contract on both ports (arc 8, R-6) ---"
+          echo "--- one health contract on both ports ---"
           # The MCP port's /health and the dashboard's /api/v1/health are
           # built by one function; both must carry the checks block and
           # name the driver. A probe that reads only the status code must
@@ -320,7 +320,7 @@ jobs:
             echo "$body" | grep -q '"driver":"better-sqlite3"' || { echo "::error::$url does not name the driver: $body"; docker rm -f iris-ci; exit 1; }
           done
           echo "both ports report checks, migrations ok, and the driver"
-          echo "--- the image's own HEALTHCHECK must reach healthy (arc 8, R-6) ---"
+          echo "--- the image's own HEALTHCHECK must reach healthy ---"
           # start-period 20 s, interval 30 s: allow one interval past the
           # start period before calling it a failure.
           state=""
@@ -336,7 +336,7 @@ jobs:
             exit 1
           fi
           echo "HEALTHCHECK: $state"
-          echo "--- OCI labels (arc 8, R-6): the package page and docker inspect read these ---"
+          echo "--- OCI labels: the package page and docker inspect read these ---"
           for label in org.opencontainers.image.source org.opencontainers.image.description org.opencontainers.image.licenses; do
             value=$(docker inspect --format "{{index .Config.Labels \"$label\"}}" iris-eval/mcp-server:ci)
             [ -n "$value" ] || { echo "::error::the image carries no $label label"; docker rm -f iris-ci; exit 1; }
@@ -411,7 +411,7 @@ jobs:
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
 
-  # The gate action, dogfooded (arc 9, N-17): the composite action under
+  # The gate action, dogfooded: the composite action under
   # .github/actions/gate runs this checkout's own build against the
   # walk-through fixtures — the leak is caught, the clean file passes, the
   # receipt reaches the job summary, and on a pull request one comment is
@@ -496,7 +496,7 @@ jobs:
           fi
           echo "gate action: leak caught (exit 1, 1 of 2 tripped), clean passed (exit 0), comment: $LEAK_COMMENT then $AGAIN_COMMENT"
 
-  # The Python client (arc 9, N-18): packages/python against a server this
+  # The Python client: packages/python against a server this
   # checkout builds — the contract test on every door with a key, the
   # pytest plugin's own tests, and the wheel installed into a fresh
   # environment — on every Python the package claims.

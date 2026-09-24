@@ -1,5 +1,5 @@
 /*
- * The session map at its cap (A6-7).
+ * The session map at its cap.
  *
  * Until 0.13.0 the sign-in that found the map full evicted the OLDEST
  * session whether or not it was still valid — a burst of sign-ins, or one

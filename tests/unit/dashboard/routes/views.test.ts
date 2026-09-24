@@ -1,5 +1,5 @@
 /*
- * The five views (arc 8, R-9): each a parameterised read over a seeded
+ * The five views: each a parameterised read over a seeded
  * store with a documented row shape; an unknown name is 404; a parameter
  * outside its range, or one the view does not take, is 400.
  *

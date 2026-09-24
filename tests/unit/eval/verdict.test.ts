@@ -84,7 +84,7 @@ describe('deriveCoverage — by question, not by rule', () => {
     expect(byId.get('relevant')!.why).toMatch(/input/);
     expect(byId.get('tool_use_correct')!.status).toBe('unjudged');
     expect(byId.get('within_budget')!.status).toBe('unjudged');
-    // 'not_applicable' until arc 4: no rule answered task_completed, so the
+    // 'not_applicable' until 0.11.0: no rule answered task_completed, so the
     // question could not be asked at all. ask_coverage answers it now, and an
     // output-only call is a rule whose input was absent — which is UNJUDGED,
     // the state that says a question exists and was not reached.

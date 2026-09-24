@@ -1,5 +1,5 @@
 /*
- * The SQLite driver seam (arc 8, R-0).
+ * The SQLite driver seam.
  *
  * The bold sentence: when the native SQLite module cannot load, Iris falls
  * back to Node's built-in SQLite on Node 22.13+. This file proves the

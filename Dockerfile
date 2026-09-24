@@ -17,7 +17,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Dashboard dependencies BEFORE the build: since 0.13.0 `npm run build` is
-# one command that builds the dashboard, then the server (A6-9) — the
+# one command that builds the dashboard, then the server — the
 # artifact no longer depends on a second build step that CI remembers.
 # .claims.json feeds the dashboard's build-time defines (vite.config.ts reads
 # ../.claims.json for __IRIS_RULE_COUNT__) — must be in the build context.
@@ -37,7 +37,7 @@ RUN npm run build
 
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS production
 
-# OCI image labels (arc 8, R-6). The GHCR package page and `docker inspect`
+# OCI image labels. The GHCR package page and `docker inspect`
 # read these; until 0.15.0 the image carried none, so the package page had
 # no description and no link back to the source. The static ones live here
 # so a local build carries them too; version, revision and created are
@@ -97,7 +97,7 @@ EXPOSE 3000 6920
 
 VOLUME ["/data"]
 
-# The container's own liveness (arc 8, R-6): the MCP transport's /health is
+# The container's own liveness: the MCP transport's /health is
 # unauthenticated, rate-limit exempt, and the same contract the dashboard
 # serves at /api/v1/health (src/health.ts) — 200 when storage, the rules
 # store and the migrations all check out, 503 otherwise. Node's own fetch,

@@ -1,5 +1,5 @@
 /*
- * The read routes refuse a misspelled filter (arc 9, N-4; #376).
+ * The read routes refuse a misspelled filter (#376).
  *
  * A bare z.object() on a query string stripped an unknown parameter, so
  * `GET /api/v1/moments?agent_nme=docs-qa` returned every agent's rows as

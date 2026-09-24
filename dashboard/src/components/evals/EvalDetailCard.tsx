@@ -19,7 +19,7 @@ export interface EvalDetailCardProps {
   questionText?: ReadonlyMap<string, string> | null;
   /**
    * Labels on this evaluation's fires by rule name, and the handler that
-   * writes one (arc 7, D-8). Without the handler no control is drawn.
+   * writes one. Without the handler no control is drawn.
    */
   labels?: ReadonlyMap<string, VerdictLabelValue> | null;
   onLabel?: (evalId: string, rule: string, label: VerdictLabelValue) => void;
@@ -57,7 +57,7 @@ export function EvalDetailCard({
   reevaluateNote = null,
 }: EvalDetailCardProps) {
   const texts = { output: evalResult.output_text, input };
-  // The ladder (D-4): one control on the panel opens method, computation and uncertainty on every row.
+  // The ladder: one control on the panel opens method, computation and uncertainty on every row.
   const [expanded, setExpanded] = useState(false);
   const supersedes = typeof evalResult.provenance?.supersedes === 'string' ? evalResult.provenance.supersedes : null;
   return (
@@ -80,7 +80,7 @@ export function EvalDetailCard({
 
       {/* Rule results */}
       <div className="eval-card__rules">
-        {/* One renderer for a rule result (D-3): every stamped field, in RuleResultRow. */}
+        {/* One renderer for a rule result: every stamped field, in RuleResultRow. */}
         {evalResult.rule_results.map((rule) => (
           <RuleResultRow
             key={rule.ruleName}

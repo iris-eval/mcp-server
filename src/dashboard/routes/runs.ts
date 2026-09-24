@@ -9,7 +9,7 @@ import { IrisError } from '../../tools/errors.js';
 /** The body of POST /compare: the compare_runs tool's input, and nothing the tool would not take. */
 const compareBodySchema = z
   .object({
-    /** Omitted: the run pinned as the baseline (arc 9, N-14). */
+    /** Omitted: the run pinned as the baseline. */
     before: z.string().min(1).optional(),
     after: z.string().min(1),
     force: z.boolean().optional(),
@@ -71,7 +71,7 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
   });
 
   /**
-   * PATCH /runs/:id (arc 9, N-14)
+   * PATCH /runs/:id
    * Pin a run as the baseline every later run is compared against, or
    * unpin it. One baseline per tenant: pinning another unpins the old one.
    * The one write on this router, and a flag rather than a run: a run is
@@ -104,7 +104,7 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
    * route and the one above.
    */
   /*
-   * POST /compare (arc 7, D-5) — the compare_runs tool's handler over HTTP,
+   * POST /compare — the compare_runs tool's handler over HTTP,
    * for the dashboard's compare action and for a script that would rather
    * not speak MCP. One implementation, one shape: the body is the tool's
    * input, the answer is the tool's output.
@@ -119,12 +119,12 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
         res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
         return;
       }
-      // An unknown dataset is the caller's argument, not a server fault (arc 8, R-8).
+      // An unknown dataset is the caller's argument, not a server fault.
       if (err instanceof IrisError && err.envelope.field === 'dataset') {
         res.status(404).json({ error: err.envelope.message });
         return;
       }
-      // `before` omitted with no baseline pinned (arc 9, N-14): the same, as a 400 that says how to pin one.
+      // `before` omitted with no baseline pinned: the same, as a 400 that says how to pin one.
       if (err instanceof IrisError && err.envelope.field === 'before') {
         res.status(400).json({ error: err.envelope.message, recovery: err.envelope.recovery });
         return;

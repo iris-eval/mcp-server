@@ -1,5 +1,5 @@
 /*
- * The vocabulary one rule result is read in (arc 7, D-3): what a kind is,
+ * The vocabulary one rule result is read in: what a kind is,
  * what the composer did with it (role), what its error bar means, and how
  * each piece of evidence is said. Pure functions and constants; the row
  * renders them and the tests hold the table.

@@ -1,5 +1,5 @@
 /*
- * The comment (arc 9, N-17): on a pull request, the receipt as one comment
+ * The comment: on a pull request, the receipt as one comment
  * on the pull request, updated in place on every run — found by a marker
  * that names the traces file, so two gates in one workflow keep two
  * comments. Everywhere else it says why it did nothing and does nothing:

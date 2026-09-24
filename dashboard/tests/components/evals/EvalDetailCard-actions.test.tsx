@@ -1,5 +1,5 @@
 /*
- * The evaluation card's actions (arc 7, D-8): the labels reach the rows,
+ * The evaluation card's actions: the labels reach the rows,
  * the re-score button hands back the evaluation id, the notes read out,
  * and a re-scored row names what it superseded. Without the handlers the
  * card draws none of it.
@@ -28,7 +28,7 @@ function evalResult(extra: Partial<EvalResult> = {}): EvalResult {
   };
 }
 
-describe('EvalDetailCard — labels and re-scoring (D-8)', () => {
+describe('EvalDetailCard — labels and re-scoring', () => {
   it('draws no control and no actions without handlers', () => {
     const { container } = render(<EvalDetailCard evalResult={evalResult()} />);
     expect(container.querySelector('[data-label-control]')).toBeNull();

@@ -1,5 +1,5 @@
 /*
- * Conformance families for the eight custom rule types (arc 2, M9).
+ * Conformance families for the eight custom rule types.
  *
  * A custom rule is the author's own constraint: its "accuracy" is whether
  * the type does what its documented definition says under the config the

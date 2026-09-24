@@ -1,5 +1,5 @@
 /*
- * `docker compose up` requires IRIS_API_KEY (A6-7).
+ * `docker compose up` requires IRIS_API_KEY.
  *
  * The compose file binds both servers to 0.0.0.0 inside the container (it
  * must — loopback is unreachable through a published port) and, until

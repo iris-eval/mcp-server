@@ -32,7 +32,7 @@ export const IRIS_NODE_MODULES = join(IRIS_REPO, 'node_modules');
 export const REPORT_PATH = join(UAT_DIR, 'UAT-REPORT.md');
 
 /**
- * The founder's REAL iris home. The harness must never touch any of
+ * The developer's REAL iris home. The harness must never touch any of
  * this. Hashed before + after the run; any change fails the harness.
  */
 export const REAL_IRIS_HOME = join(homedir(), '.iris');

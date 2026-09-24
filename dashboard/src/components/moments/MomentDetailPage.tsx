@@ -220,13 +220,13 @@ const styles = {
 export function MomentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading, error, refetch } = useMomentDetail(id ?? '');
-  // The rule roster and the published table, read once each (D-3): the row's definition and interval.
+  // The rule roster and the published table, read once each: the row's definition and interval.
   const rules = useBuiltInRules();
   const capabilities = useCapabilities();
   const [showRaw, setShowRaw] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
-  // The ladder (D-4), per evaluation: which panels have "How was this computed?" open.
+  // The ladder, per evaluation: which panels have "How was this computed?" open.
   const [expandedEvals, setExpandedEvals] = useState<ReadonlySet<string>>(() => new Set());
   const toggleEval = (evalId: string) =>
     setExpandedEvals((prev) => {
@@ -377,7 +377,7 @@ export function MomentDetailPage() {
                     {t.latency_ms !== undefined && (
                       <span>{formatLatency(t.latency_ms)}</span>
                     )}
-                    {/* A call that errored says so here, not only on the trace page (D-3). */}
+                    {/* A call that errored says so here, not only on the trace page. */}
                     {t.error && (
                       <span style={{ flexBasis: '100%', color: 'var(--eval-fail)' }} data-tool-error="true">
                         {t.error}
@@ -419,7 +419,7 @@ export function MomentDetailPage() {
                     expanded={expandedEvals.has(e.id)}
                     onToggleExpanded={() => toggleEval(e.id)}
                   />
-                  {/* One renderer for a rule result (D-3): every stamped field, in RuleResultRow. */}
+                  {/* One renderer for a rule result: every stamped field, in RuleResultRow. */}
                   {[...failed, ...passed, ...skipped].map((r) => (
                     <RuleResultRow
                       key={r.ruleName}

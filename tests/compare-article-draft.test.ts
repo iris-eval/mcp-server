@@ -1,11 +1,11 @@
 /*
- * The four-way article draft holds to its sources and stays a draft (arc 9, N-21).
+ * The four-way article draft holds to its sources and stays a draft.
  *
  * docs/blog/030-iris-vs-langfuse-vs-phoenix-vs-promptfoo.md is written to be
- * published when the founder says (the acceptance matrix's F-9), not before.
+ * published when the maintainers choose to, not before.
  * Two gates keep it unpublished: `published: false`, which the site honours,
  * and a future `date:`, which the Dev.to crossposter honours — and since
- * arc 9 the crossposter honours `published: false` too, held here. The
+ * 0.16.0 the crossposter honours `published: false` too, held here. The
  * article's every vendor statement carries a URL, every vendor URL is one
  * the vendor's compare file lists as a source (so a claim on the article
  * cannot outrun the sourced table), and it grades with words a reader can

@@ -1,7 +1,7 @@
 import type { WebhookEventName, WebhookFormat } from '../notify/event-names.js';
 
 /**
- * An outbound webhook on a moment (arc 9, N-16). `url` is the only required
+ * An outbound webhook on a moment. `url` is the only required
  * key; `events` omitted means every event; the `iris` format (the default)
  * signs every delivery and so needs `secret` or `secretFile`.
  */
@@ -75,7 +75,7 @@ export interface IrisConfig {
      * Internal, set by loadConfig: the threshold keys the config FILE
      * supplied, so a rule can say whether its threshold is the deployment's
      * policy or our shipped guess without comparing values. Never written by
-     * a user; a strict config validator (arc 8) treats it as reserved.
+     * a user; a strict config validator treats it as reserved.
      */
     configuredThresholdKeys?: string[];
     /**
@@ -92,10 +92,9 @@ export interface IrisConfig {
      */
     nonCriticalRules?: string[];
     /*
-     * The verdict's six defaults (0.10.0). Each is a RECOMMENDATION the AI
-     * council closed on with its failure mode stated, not a final ruling;
-     * every surface that shows one says so until it is ruled. The record is
-     * in the arc-2 council report.
+     * The verdict's six defaults (0.10.0). Each is a RECOMMENDATION with its
+     * failure mode stated, not a settled answer; every surface that shows
+     * one says so.
      */
     /**
      * How the verdict is composed: by kind — gates, vetoes, unknown, then the
@@ -133,7 +132,7 @@ export interface IrisConfig {
     /** Check tool-call arguments against the catalogue's schemas. See defaults.ts. */
     validateToolArguments?: boolean;
     /**
-     * Rules you wrote as code (arc 8, R-3): ES modules whose default export
+     * Rules you wrote as code: ES modules whose default export
      * is `{ name, kind, mechanism, version, needs, evaluate(ctx) }`, each
      * pinned by the sha256 of its file. A plugin runs in-process, so a file
      * whose hash does not match, or that lacks the contract, refuses
@@ -160,7 +159,7 @@ export interface IrisConfig {
     priorConfigured?: boolean;
   };
   /**
-   * Traces arriving by OTLP/HTTP at `POST /v1/traces` (arc 8, R-2). They
+   * Traces arriving by OTLP/HTTP at `POST /v1/traces`. They
    * are stored with what they carry; `evaluateOnIngest` scores each one
    * that carries an output, off by default because an OTLP feed is a
    * firehose the operator did not necessarily mean to grade.
@@ -171,7 +170,7 @@ export interface IrisConfig {
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
   };
-  /** Outbound notifications (arc 9, N-16). `webhook: null` (the default) sends nothing. */
+  /** Outbound notifications. `webhook: null` (the default) sends nothing. */
   notify: {
     webhook: WebhookConfig | null;
   };

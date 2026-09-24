@@ -1,5 +1,5 @@
 /*
- * The webhook's configuration, read three ways (arc 9, N-16): what the
+ * The webhook's configuration, read three ways: what the
  * capabilities object prints, what startup refuses, and the signing key.
  * Pure — no delivery code — so the config loader and the capabilities
  * builder can import it without pulling the sender in.

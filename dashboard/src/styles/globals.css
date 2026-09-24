@@ -184,7 +184,7 @@ html {
  */
 @media (max-width: 767px) {
   /* The sidebar collapses to its icon rail at this width in the
-   * component (layout/Sidebar.tsx, D-9): its width is an inline style,
+   * component (layout/Sidebar.tsx): its width is an inline style,
    * so a rule here could never narrow it — the 160px rule that sat here
    * from v0.4 was inert the whole time. */
   /* Allow horizontal overflow gracefully rather than clipping content. */

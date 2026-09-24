@@ -132,7 +132,7 @@ export const expectedCoverage: EvalRule = {
 /*
  * Did the agent call its tools correctly?
  *
- * Arc zero found this reachable as a wrong PASS: an agent that calls a tool
+ * The 2026-09-05 audit found this reachable as a wrong PASS: an agent that calls a tool
  * which does not exist, or passes arguments its schema rejects, and then
  * writes a plausible paragraph, satisfied every bundle Iris had. The
  * deterministic half of the question needs exactly one thing Iris never
@@ -433,7 +433,7 @@ export const askCoverage: EvalRule = {
 
     const index = answerIndex(context.output);
     /*
-     * Covering by tool call (arc 8, R-10, Q5): a part the answer never
+     * Covering by tool call: a part the answer never
      * mentions may still have been DONE — the trajectory shows a call whose
      * name, arguments or result carry the part's terms. The same lexical
      * test as the answer's, over the steps' text, so the trajectory can only

@@ -1,5 +1,5 @@
 /*
- * The vocabulary a comparison is read in (arc 7, D-5): what each method
+ * The vocabulary a comparison is read in: what each method
  * means, what "worse" and "not distinguishable" mean, and how the numbers
  * print. Pure; the view renders it and the tests hold the table.
  */
@@ -58,7 +58,7 @@ export function fmtQ(q: number | null): string {
   return `q = ${q.toFixed(3)}`;
 }
 
-/** The per-rule statistics, in one sentence a reader can act on (D-6b). */
+/** The per-rule statistics, in one sentence a reader can act on. */
 export const PER_RULE_TEXT =
   'Each rule is tested one-sided for a fall in its pass rate — McNemar exact on its own discordant pairs when the runs pair, else the z from its Newcombe difference — and the p-values are corrected together (Benjamini–Hochberg) so twenty rules do not manufacture a regression. Read q: a rule is marked worse only at q ≤ 0.05.';
 

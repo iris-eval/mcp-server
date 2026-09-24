@@ -244,7 +244,7 @@ Dimensions MUST include: source_grounding (0-1), invented_specifics (0-1 where 1
 
 /*
  * J7 — did the task actually complete, as opposed to reading as if it had
- * (arc 8, R-10; capability question Q5). The one question no deterministic
+ *. The one question no deterministic
  * rule can answer from the output alone: a confident "Done — I've updated
  * the three files" with nothing updated reads exactly like the real thing.
  * The judge reads the ask, the output and — when the caller passes it as

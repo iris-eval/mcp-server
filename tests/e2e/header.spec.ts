@@ -1,5 +1,5 @@
 /*
- * The header states (arc 7, D-2), driven through the real dashboard.
+ * The header states, driven through the real dashboard.
  *
  *   - on a live server the pill says "live" and the judge chip states the
  *     judge from the server's own health answer;

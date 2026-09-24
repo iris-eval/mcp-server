@@ -105,7 +105,7 @@ export function maxCycleLength(callCount: number): number {
  *
  * Period 2 keeps exactly the threshold the alternating-pair detector used,
  * so no case that fired before stops firing and none starts. Period 3 was
- * arc 4's recall (A,B,C,A,B,C); every longer period is 0.16.0's (#427).
+ * 0.11.0's recall (A,B,C,A,B,C); every longer period is 0.16.0's (#427).
  *
  * Period 1 is deliberately absent. The repeat COUNT above owns it and counts
  * non-consecutive repeats too, which is strictly more; a second detector of
@@ -334,7 +334,7 @@ export const DEFAULT_MAX_STEPS = 50;
  * chooses because it knows what its own agents do — a research agent that
  * reads forty pages is working, and a support agent that makes forty calls
  * to answer one question is not. So the rule ADVISES at the shipped default
- * and GATES the moment the deployment sets `max_steps`, which is arc 3's
+ * and GATES the moment the deployment sets `max_steps`, which is 0.10.0's
  * "a default is not your policy" costing nothing and landing exactly right:
  * `thresholdSource` on the count evidence is what compose.decides() reads.
  *
@@ -386,7 +386,7 @@ export const maxSteps: EvalRule = {
 };
 
 /*
- * Cost against the agent's OWN history (H-5; the approved §4.8; gap G22).
+ * Cost against the agent's OWN history (0.14.0).
  *
  * `cost_under_threshold` is a POLICY: a dollar line the deployment chose.
  * This is a MEASUREMENT: the trace's distance from what this agent usually
@@ -405,7 +405,7 @@ export const maxSteps: EvalRule = {
  *
  * When the trajectory carries per-call costs, the dearest call is named;
  * when it carries none, the trace cost is shared across the calls by their
- * output size and the share is labelled estimated, as §4.8 asks.
+ * output size and the share is labelled estimated.
  */
 export const costAnomaly: EvalRule = {
   name: 'cost_anomaly',
@@ -464,7 +464,7 @@ export const costAnomaly: EvalRule = {
 };
 
 /**
- * Per-call attribution (§4.8): the dearest call by its own `cost_usd` when
+ * Per-call attribution: the dearest call by its own `cost_usd` when
  * the trajectory prices its calls; otherwise the trace cost shared across
  * the calls in proportion to their output size, labelled estimated.
  */

@@ -119,7 +119,7 @@ export class EvalEngine {
   private compose: ComposeConfig;
 
   /**
-   * The deployment's own labels (arc 7, D-8), installed by
+   * The deployment's own labels, installed by
    * refreshLocalLabels at boot and after every label write. Null on an
    * engine nothing has labelled — the proof runner, a test, an embedder —
    * which then evaluates exactly as before.
@@ -129,8 +129,8 @@ export class EvalEngine {
   private observer: ((event: EvaluationEvent) => void) | null = null;
 
   /**
-   * One structured event per evaluation, whichever door asked for it (arc
-   * 8, R-6): the server wires it to the logger's `event('evaluation', …)`.
+   * One structured event per evaluation, whichever door asked for it
+   * (0.15.0): the server wires it to the logger's `event('evaluation', …)`.
    * The engine has no logger of its own on purpose — the tools, the ingest
    * path and the CLI all reach it, so the seam is here, once. An observer
    * that throws never fails the evaluation.
@@ -200,10 +200,10 @@ export class EvalEngine {
    * every surface. The weighted `score` survives untouched as a quality
    * gradient over the rules that ran, and is never re-meant: a reader who
    * was using it as a gradient keeps it, and a reader who was using it as a
-   * safety signal was reading a number that arc zero measured as inert.
+   * safety signal was reading a number the 2026-09-05 audit measured as inert.
    */
   /**
-   * The composer's word on a row another tool judged (arc 9, N-3; #375).
+   * The composer's word on a row another tool judged (#375).
    * evaluate_with_llm_judge and verify_citations store one judgment row
    * each and used to report their own pass/fail beside it, so `passed`
    * meant the threshold on those two and the composer everywhere else.

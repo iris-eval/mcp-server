@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Real-LLM smoke test of the v0.4 evaluate_with_llm_judge codepath.
-// Uses founder-supplied OPENAI_API_KEY; cost ceiling enforced via the
+// Uses a maintainer-supplied OPENAI_API_KEY; cost ceiling enforced via the
 // pessimistic pre-check (default $0.25/eval, well above any single call).
 // Total expected spend across 5 templates × 1 sample: < $0.05.
 

@@ -82,7 +82,7 @@ describe('the drift comparison', () => {
     return (await res.json()) as DriftBody;
   };
 
-  it('each window carries its Wilson interval, and an empty window carries null (D-6)', async () => {
+  it('each window carries its Wilson interval, and an empty window carries null', async () => {
     for (let i = 0; i < 12; i += 1) await seed(`c${i}`, 1, i < 6);
     for (let i = 0; i < 12; i += 1) await seed(`p${i}`, 9, true);
     const res = await fetch(`http://127.0.0.1:${port}/api/v1/eval-stats/drift?period=7d`);

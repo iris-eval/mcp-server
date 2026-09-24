@@ -170,7 +170,7 @@ describe('session auth — with --api-key', () => {
      * `Referrer-Policy: no-referrer` a browser sends `Origin: null` on a
      * POST navigation, the DNS-rebinding guard refuses it, and the
      * `--api-key` dashboard could only ever be entered through a `?key=`
-     * link — a hole the curl-shaped test never saw (arc 7, D-9). The
+     * link — a hole the curl-shaped test never saw. The
      * policy is now `same-origin`; this holds both halves of that.
      */
     const { base } = await bootServer(KEY);
@@ -231,7 +231,7 @@ describe('session auth — without --api-key', () => {
 });
 
 /*
- * The key ring on the dashboard (arc 8, R-6): the browser sign-in and the
+ * The key ring on the dashboard: the browser sign-in and the
  * Bearer path both match every configured key, so a rotation — add the new
  * key, move the clients, remove the old — never locks a browser out.
  */

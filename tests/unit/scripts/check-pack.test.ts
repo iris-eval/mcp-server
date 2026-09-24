@@ -1,5 +1,5 @@
 /*
- * The prepack guard names what a pack would ship without (A6-9).
+ * The prepack guard names what a pack would ship without.
  *
  * What this checks, precisely: with an empty dist the guard names every
  * required artifact; with the dashboard bundle absent it names exactly

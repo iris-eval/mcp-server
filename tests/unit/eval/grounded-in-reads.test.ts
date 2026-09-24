@@ -1,5 +1,5 @@
 /*
- * grounded_in_reads (arc 4, A4-7).
+ * grounded_in_reads.
  *
  * The proof family measures the rule on trajectories it JUDGES. This file
  * holds the paths a family must not contain — `proof/run.ts` scores a

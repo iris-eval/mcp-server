@@ -35,7 +35,7 @@
  * this pass, to this pass's output, and owns it alone.
  *
  * Every rule that matches on `text` reports evidence through `map`, so a
- * span still indexes the RAW output the caller sent — the arc-1 contract
+ * span still indexes the RAW output the caller sent — the evidence contract
  * ("spans are offsets into the raw text") is what makes redaction and the
  * transforms measurement correct, and normalising without a map would
  * quietly break it.
@@ -259,7 +259,7 @@ export function normalise(raw: string, options: NormaliseOptions = {}): Normalis
    * both sides, or a digit against the punctuation a number carries). That is
    * not whitespace; it is a tab or a line break inserted inside a word, an
    * SSN or a key so the pattern will not match — the two evasions the
-   * transforms table measured at 38–53% recall (arc 8, R-12) — and it is
+   * transforms table measured at 38–53% recall — and it is
    * dropped like a zero-width space, the offset map still indexing the raw
    * text. A run that contains a real space, or sits between words, is
    * whitespace and folds as before.

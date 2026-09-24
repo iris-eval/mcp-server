@@ -7,7 +7,7 @@ export interface Logger {
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
   /**
-   * A structured event (arc 8, R-6): one JSON line at info with `event`
+   * A structured event: one JSON line at info with `event`
    * set to `name` and the fields at the top level, so a log pipeline can
    * filter on `event: "evaluation"` without parsing prose. Optional so a
    * test's four-method logger still satisfies the interface.

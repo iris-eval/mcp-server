@@ -28,7 +28,7 @@ import {
  * interval that excludes zero, and when it does not, the response says how
  * many cases it would have taken.
  *
- * THE SECOND TEMPTATION (arc 7, D-6b). A per-rule table ranked by raw delta
+ * THE SECOND TEMPTATION. A per-rule table ranked by raw delta
  * is a number with no test behind it, and twenty rules each tested at 5%
  * read "worse" somewhere in most comparisons of runs that did not change.
  * So each rule carries its own one-sided test, the p-values are corrected
@@ -87,7 +87,7 @@ export interface Equivalence {
 
 /**
  * A shared case whose verdict flipped between the runs — one of the b + c
- * McNemar counts, named (arc 9, N-14): the two evaluations, which way it
+ * McNemar counts, named: the two evaluations, which way it
  * went, and the rules whose own pass/fail differ between them. The ids are
  * what a reader needs to open the moment.
  */
@@ -212,7 +212,7 @@ function pairByCaseKey(beforeRows: RunResultRow[], afterRows: RunResultRow[]): P
 }
 
 /**
- * Per-rule movement with a test behind every row (plan §4.14).
+ * Per-rule movement with a test behind every row.
  *
  * Each rule that fired in either run is tested ONE-SIDED in the regression
  * direction — the question is "worse", not "different". When the runs

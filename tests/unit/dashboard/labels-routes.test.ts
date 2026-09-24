@@ -1,5 +1,5 @@
 /*
- * The labels routes (arc 7, D-8) over a real store and a real engine:
+ * The labels routes over a real store and a real engine:
  *
  *   POST /labels refuses a rule that did not fire and writes one label per
  *   (evaluation, rule); GET /labels lists them; GET /labels/stats carries

@@ -1,5 +1,5 @@
 /*
- * The compare_runs answer's top-level keys, locked (arc 9, N-14) — a key
+ * The compare_runs answer's top-level keys, locked — a key
  * that appears or disappears here is a contract change and must be named.
  */
 import { describe, expect, it } from 'vitest';

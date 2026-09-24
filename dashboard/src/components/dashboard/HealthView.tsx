@@ -1,11 +1,10 @@
 /*
  * HealthView — aggregate Dashboard view (?view=health).
  *
- * Restored composition (founder feedback: prior pass stripped out the
- * gauge + verdict donut + KPI strip — the visuals that actually worked).
+ * Restored composition (an earlier pass stripped out the gauge + verdict
+ * donut + KPI strip — the visuals that actually worked).
  *
- * The page now reads as a sectioned story BUT keeps the dense BI layout
- * the founder wanted:
+ * The page now reads as a sectioned story BUT keeps the dense BI layout:
  *
  *   §1 HEADLINE          4 scannable KPI tiles (pass rate, evals, cost,
  *                        agents) — at-a-glance summary with deltas.

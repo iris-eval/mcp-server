@@ -1,6 +1,6 @@
 /*
  * The free evaluation path cannot spend money, and a paid-for judgement
- * cannot read back as clean (arc 3, A3-4).
+ * cannot read back as clean.
  *
  * Two properties, both learned the hard way:
  *

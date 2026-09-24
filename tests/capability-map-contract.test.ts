@@ -113,7 +113,7 @@ describe('capability map — evidence', () => {
     }
   });
 
-  it('a gap or n/a cell names no registered tool, rule, route or resource — what ships answers a cell, so the cell cites it (A6-8)', () => {
+  it('a gap or n/a cell names no registered tool, rule, route or resource — what ships answers a cell, so the cell cites it', () => {
     /*
      * The S4 column said "no grouping over repeated runs" in nine cells for a
      * release after compare_traces shipped exactly that, and Q10xS5 said
@@ -156,7 +156,7 @@ describe('capability map — needs are real', () => {
 
   /*
    * `tool_outputs` is not a context KEY — it is a property of the tool calls
-   * (arc 1's stamp adds it when some call carries an output), so withholding
+   * (the stamp adds it when some call carries an output), so withholding
    * it means supplying the calls with their outputs stripped rather than
    * deleting a field. Without this branch the contract could only check
    * needs that happen to map one-to-one onto a context field, which would

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * verify-release — F1–F6 from outside, the local form of the release
- * workflow's `verify-release` job (A6-9).
+ * workflow's `verify-release` job.
  *
  * The job in .github/workflows/release.yml is the gate; this script is the
  * instrument the release record quotes, so the record stops replicating

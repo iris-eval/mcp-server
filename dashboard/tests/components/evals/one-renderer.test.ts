@@ -1,5 +1,5 @@
 /*
- * There is one rule-result renderer (D-3). Both pages that show rule results
+ * There is one rule-result renderer. Both pages that show rule results
  * import it, and neither carries a renderer of its own: the old ones were
  * `EvalDetailCard`'s inline map (mark, name, message, badge) and
  * `MomentDetailPage`'s `styles.ruleRow` block. This reads the two sources
@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 // vitest runs with the dashboard package as its working directory.
 const src = (rel: string) => readFileSync(resolve(process.cwd(), 'src/components', rel), 'utf8');
 
-describe('one rule-result renderer (D-3)', () => {
+describe('one rule-result renderer', () => {
   const card = src('evals/EvalDetailCard.tsx');
   const moment = src('moments/MomentDetailPage.tsx');
 

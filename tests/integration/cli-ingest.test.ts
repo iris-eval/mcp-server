@@ -134,8 +134,8 @@ describe('iris-eval ingest', () => {
 });
 
 /*
- * --dataset restricts the gate to the case keys the reader chose (arc 8,
- * R-8): every trace is stored and evaluated; only a trace whose case key is
+ * --dataset restricts the gate to the case keys the reader chose:
+ * every trace is stored and evaluated; only a trace whose case key is
  * in the dataset can trip --fail-on, each receipt says whether it was in
  * the gate, and the summary counts them.
  */
@@ -200,7 +200,7 @@ describe('iris-eval ingest --dataset', () => {
 });
 
 /*
- * Plugin rules through the CLI (arc 8, R-3): config.json in the temp home
+ * Plugin rules through the CLI: config.json in the temp home
  * names a hash-pinned module; the same loader the server boots with runs
  * it on `ingest --evaluate`, and a wrong hash is a usage error before any
  * trace is read.

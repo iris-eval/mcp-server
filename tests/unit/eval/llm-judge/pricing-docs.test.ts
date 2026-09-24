@@ -1,5 +1,5 @@
 /*
- * The guide's price table is held to the code (hygiene row H-1, 2026-09-20).
+ * The guide's price table is held to the code (since the 2026-09-20 audit).
  *
  * Two tables of one fact drift: the cost estimator carried its own copy with
  * older ids from 0.3.1, and the guide listed claude-opus-4-7 at three times

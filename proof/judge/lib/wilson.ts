@@ -1,5 +1,5 @@
 /*
- * Wilson moved to src/eval/stats.ts in arc 5, and this file re-exports it.
+ * Wilson moved to src/eval/stats.ts in 0.12.0, and this file re-exports it.
  *
  * The direction is what matters. `compare_runs` returns an interval to a
  * user now, so the SHIPPED server needs Wilson — and `src/` cannot import

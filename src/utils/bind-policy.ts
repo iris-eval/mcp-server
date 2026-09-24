@@ -1,5 +1,5 @@
 /*
- * bindPolicy — refuse, don't warn (A6-7).
+ * bindPolicy — refuse, don't warn.
  *
  * Iris binds loopback by default, and a loopback server needs no key: the
  * machine boundary is the exposure control. A bind beyond loopback is a

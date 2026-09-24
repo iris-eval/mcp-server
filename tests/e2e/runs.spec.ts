@@ -1,5 +1,5 @@
 /*
- * Runs, cases and the comparison (arc 7, D-5), driven through the real
+ * Runs, cases and the comparison, driven through the real
  * dashboard on the seeded pair: baseline (traces 0–9, fails case-0 and
  * case-7) and candidate (traces 10–19, fails case-4), ten shared cases.
  */
@@ -22,7 +22,7 @@ test.describe('runs and cases', () => {
     await expect(cmp.locator('[data-compare-run="after"]')).toContainText('9 of 10 passed');
     await expect(cmp.locator('[data-comparison-verdict]')).toHaveText('NOT DISTINGUISHABLE');
     await expect(cmp.locator('[data-smallest-detectable]')).toBeVisible();
-    // D-6b: the per-rule table carries p and the corrected q (two rules: the
+    // The per-rule table carries p and the corrected q (two rules: the
     // seeded min_output_length failures and the $1.33 trace's cost rule), and the
     // equivalence chip is a separate statement from "not distinguishable".
     await expect(cmp.locator('[data-rules-tested]')).toHaveText('2 tested · corrected together');
@@ -31,7 +31,7 @@ test.describe('runs and cases', () => {
     await expect(cmp.locator('[data-rule-q]')).toHaveCount(2);
     await expect(cmp.locator('[data-equivalent-within]')).toHaveAttribute('data-equivalent-within', /true|false/);
 
-    // N-14: the discordant cases are listed — case-4 regressed, case-0 and case-7 recovered — regressions first.
+    // The discordant cases are listed — case-4 regressed, case-0 and case-7 recovered — regressions first.
     await expect(cmp.locator('[data-discordant-row]')).toHaveCount(3);
     await expect(cmp.locator('[data-discordant-row]').first()).toHaveAttribute('data-discordant-direction', 'regressed');
     await expect(cmp.locator('[data-discordant-row="case-4"]')).toContainText('min_output_length');

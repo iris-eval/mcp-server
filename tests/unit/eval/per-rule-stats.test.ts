@@ -1,5 +1,5 @@
 /*
- * The per-rule statistics (D-6b, plan §4.14): the normal CDF, the one-sided
+ * The per-rule statistics (0.14.0): the normal CDF, the one-sided
  * tests, Benjamini–Hochberg, and the seeded simulation that proves the
  * correction bites — twenty null rules, a thousand comparisons.
  */
@@ -66,7 +66,7 @@ describe('Benjamini–Hochberg', () => {
 });
 
 /*
- * The guard that proves the correction bites (plan §4.14): twenty rules that
+ * The guard that proves the correction bites: twenty rules that
  * did not change, paired runs of n cases, a thousand comparisons. Without
  * correction some rule reads "worse" in a large share of comparisons; with
  * Benjamini–Hochberg the share of comparisons with any false "worse" is held

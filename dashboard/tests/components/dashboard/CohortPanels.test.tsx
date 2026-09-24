@@ -1,5 +1,5 @@
 /*
- * Drift by run (D-6) on a two-cohort fixture: one panel per run with n and
+ * Drift by run on a two-cohort fixture: one panel per run with n and
  * the interval on each window, the tested difference or "not compared",
  * and the selector writing the cohort to the URL.
  */
@@ -45,7 +45,7 @@ const drift = (run: string, over: Partial<DriftComparison> = {}): DriftCompariso
 
 const query = <T,>(data: T | null) => ({ data, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
 
-describe('CohortPanels (D-6)', () => {
+describe('CohortPanels', () => {
   beforeEach(() => {
     useEvalTrendMock.mockReturnValue(query(trend));
     useDriftMock.mockImplementation((params: { run: string }) =>
@@ -104,7 +104,7 @@ describe('CohortPanels (D-6)', () => {
   });
 });
 
-describe('CohortSelector (D-6)', () => {
+describe('CohortSelector', () => {
   function Probe() {
     const [sp] = useSearchParams();
     return <span data-testid="cohort">{resolveCohort(sp) ?? 'all'}</span>;

@@ -1,5 +1,5 @@
 /*
- * The OTel recipes page (arc 9, N-19): every recipe names a fixture that
+ * The OTel recipes page: every recipe names a fixture that
  * exists, every convention fixture is named by a recipe, the nine
  * frameworks the arc committed to are each a recipe with a source, and
  * the page is where a reader and an agent are told to look (llms.txt, the

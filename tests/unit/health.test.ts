@@ -1,5 +1,5 @@
 /*
- * buildHealth — the one health contract (arc 8, R-6).
+ * buildHealth — the one health contract.
  *
  * Both ports call this function, so its shape is asserted once, here: the
  * driver word, the checks block (storage, the deployed-rules file, the

@@ -3,7 +3,7 @@
  *
  * Both had their own, and both were wrong in the same way. `sentence_count`
  * split on `/[.!?]+/`, so "The latency is 3.5 seconds." counted as two
- * sentences and "Dr. Chen approved it." as two more; the arc-zero review
+ * sentences and "Dr. Chen approved it." as two more; the 2026-09-05 audit
  * measured the damage at 43% of that rule's family. `topic_consistency`
  * split on a full stop followed by whitespace, which fixes the decimal only
  * when the decimal has no space after it and never fixes the abbreviation.

@@ -136,7 +136,7 @@ export function ChangeBanner({ currentMoments, priorMoments, periodLabel, drift 
    * loaded and holds nothing. The two used to render the same empty state,
    * so for the seconds the prior window took to hydrate the banner claimed
    * "No prior period to compare against yet" — a sentence a first visitor
-   * (the demo's, arc 9) read as a fact about their data.
+   * (the demo's) read as a fact about their data.
    */
   if (currentMoments === undefined || priorMoments === undefined) {
     return (

@@ -1,7 +1,7 @@
 /*
  * The published accuracy, read at runtime — the arithmetic and its provenance.
  *
- * Arc zero (2026-09-05) found the per-rule precision/recall intervals in
+ * An audit on 2026-09-05 found the per-rule precision/recall intervals in
  * proof/results.json never reached a result, a roster entry or a resource;
  * and that the published precision is the value at corpus prevalence (about
  * one half) while no surface said what a fire is worth at field prevalence
@@ -86,7 +86,7 @@ describe('accuracy — the published numbers and their intervals', () => {
     const counts = publishedAccuracyFor('no_pii')!;
     /*
      * Half a pseudo-count per cell, the same Jeffreys prior the draws use.
-     * The point estimate used the RAW rates until arc 4, which is how three
+     * The point estimate used the RAW rates until 0.11.0, which is how three
      * rules came to report a positive predictive value of exactly 1 while
      * the interval around it was capped below 1 and the risk layer, computing
      * the same quantity from the same counts, quietly disagreed.

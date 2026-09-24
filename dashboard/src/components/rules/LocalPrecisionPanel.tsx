@@ -1,5 +1,5 @@
 /*
- * Your labels, and what they have made of each rule's number (arc 7, D-8).
+ * Your labels, and what they have made of each rule's number.
  *
  * Read once from /labels/stats. Per rule: how many of its fires you have
  * labelled right or wrong, the local precision with its Wilson interval,

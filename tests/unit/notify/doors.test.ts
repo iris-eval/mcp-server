@@ -1,5 +1,5 @@
 /*
- * The webhook reaches every door (arc 9, N-16): installed on the store,
+ * The webhook reaches every door: installed on the store,
  * it fires for an evaluation written by `evaluate_output`, by `log_trace`
  * with `evaluate`, and by `POST /api/v1/traces` with `evaluate` — without
  * any of them knowing — and never delays the caller's answer. A receiver

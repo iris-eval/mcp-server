@@ -44,7 +44,7 @@ export interface IngestOptions {
   /** Overrides storage.redact for this ingest. */
   redact?: 'none' | 'critical_spans';
   source: 'cli' | 'hook';
-  /** A dataset id or label: `--fail-on` then trips only on traces whose case key is in it (arc 8, R-8). */
+  /** A dataset id or label: `--fail-on` then trips only on traces whose case key is in it. */
   dataset?: string;
   stdin: Readable;
   stdout: Writable;
@@ -91,7 +91,7 @@ export function trips(failOn: FailOn, verdict: { state: string; basis: string })
  * flipped after it and every later line was buffered together, so an
  * NDJSON file of three or more traces died on the second with a JSON
  * syntax error — two traces happened to work because the lone second line
- * parsed as the "document". Found by the dataset gate's test (arc 8, R-8),
+ * parsed as the "document". Found by the dataset gate's test,
  * which was the first to pipe three.
  */
 async function* readTraces(source: Readable): AsyncGenerator<unknown> {
@@ -132,7 +132,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
     for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
       engine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
     }
-    // Plugin rules (arc 8, R-3): the same loader the server boots with; a
+    // Plugin rules: the same loader the server boots with; a
     // file Iris cannot verify is a usage error before any trace is read.
     try {
       await registerPlugins(engine, config);
@@ -142,7 +142,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       return 2;
     }
     const dormant = () => dormantRulesFrom(customRuleStore.quarantined(LOCAL_TENANT));
-    // The gate's cases (arc 8, R-8): read once; an unknown dataset is a usage error before any trace is read.
+    // The gate's cases: read once; an unknown dataset is a usage error before any trace is read.
     let gate: { label: string; keys: Set<string> } | null = null;
     if (o.dataset !== undefined) {
       const found = await storage.getDataset(LOCAL_TENANT, o.dataset);
@@ -221,7 +221,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       if (o.failOn && gated && trips(o.failOn, verdict)) {
         tripped++;
         line.tripped = o.failOn;
-        // The span of what tripped (arc 8, R-11): offsets and the label, never the text —
+        // The span of what tripped: offsets and the label, never the text —
         // the org reader's job log can say WHERE the leaked credential sits without carrying it.
         const spans = spansOf(result.rule_results, verdict.by ?? []);
         if (spans.length > 0) line.spans = spans;

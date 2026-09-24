@@ -56,7 +56,7 @@ export interface CriticalityOverrides {
   defaultsGate?: boolean;
   prior?: number;
   priorMode?: 'per-output' | 'per-class';
-  /** Recorded by loadConfig: the deployment set eval.prior. The shipped number and a deployment's own are different facts (arc 7, D-8). */
+  /** Recorded by loadConfig: the deployment set eval.prior. The shipped number and a deployment's own are different facts. */
   priorConfigured?: boolean;
 }
 

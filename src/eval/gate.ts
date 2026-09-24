@@ -1,5 +1,5 @@
 /*
- * The one gating predicate (arc 9, N-13). It used to live inside compose.ts,
+ * The one gating predicate. It used to live inside compose.ts,
  * and the harness composer in risk.ts — the one the composite corpus
  * measures — carried its own, narrower reading: a policy gated only when it
  * was critical. So no_stub_output blocked an unfilled template in the

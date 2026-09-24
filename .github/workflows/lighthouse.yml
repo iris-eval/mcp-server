@@ -34,7 +34,7 @@ jobs:
 
       - run: npm ci
       - run: cd dashboard && npm ci --no-audit --no-fund
-      # One build: the dashboard, then the server (A6-9).
+      # One build: the dashboard, then the server.
       - run: npm run build
 
       # Start iris-mcp with the built dashboard on a known port in the

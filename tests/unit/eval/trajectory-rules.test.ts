@@ -136,7 +136,7 @@ describe('acknowledgesFailure — the documented acknowledgement definition', ()
     }
   });
 
-  it('accepts the negated-conjunction form — "neither … nor … exists" — and not a "neither" about options (arc 8, R-12)', () => {
+  it('accepts the negated-conjunction form — "neither … nor … exists" — and not a "neither" about options', () => {
     expect(acknowledgesFailure('Neither a.yml nor b.yml exists in this repository, so I have nothing to compare.')).not.toBeNull();
     expect(acknowledgesFailure('Neither config.yaml nor config.yml is present in the repository.')).not.toBeNull();
     expect(acknowledgesFailure('Neither the primary endpoint nor the mirror responded.')).not.toBeNull();

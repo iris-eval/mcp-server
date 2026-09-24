@@ -204,7 +204,7 @@ const PATTERNS = [
    */
   {
     /*
-     * The evaluation's own latency, once it is measured (arc 9, N-22). The
+     * The evaluation's own latency, once it is measured. The
      * pattern next to this one refuses a latency number with no measurement
      * behind it at all; this one refuses a number that disagrees with the
      * measurement in the truthbase. Keyed on `p50`/`p95` so a timeout in a
@@ -226,7 +226,7 @@ const PATTERNS = [
     re: /\bCloud\s+tier\b/gi,
     // The agent-facing and documentation surfaces. The website's legal pages
     // (terms, privacy) describe a waitlist in their own register and are a
-    // founder-owned surface, not a product claim this scanner adjudicates.
+    // separately owned surface, not a product claim this scanner adjudicates.
     onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/'],
     skipPrefixes: ['docs/blog/', 'docs/launch/'],
     skipComments: true,

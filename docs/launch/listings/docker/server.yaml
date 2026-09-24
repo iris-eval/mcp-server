@@ -1,4 +1,4 @@
-# Docker MCP Catalog entry for Iris (arc 9, N-20) — paste-ready for a pull
+# Docker MCP Catalog entry for Iris — paste-ready for a pull
 # request to docker/mcp-registry as servers/iris-eval/server.yaml. The image
 # is the one this repository publishes (ghcr.io/iris-eval/mcp-server); the
 # secrets are the variables server.json lists. Fill source.commit from the

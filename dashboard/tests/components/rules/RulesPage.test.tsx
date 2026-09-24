@@ -18,10 +18,10 @@ const idleQuery = () => ({ data: null, loading: false, error: null, refetch: vi.
 
 vi.mock('../../../src/api/hooks', () => ({
   useCustomRules: (...args: unknown[]) => useCustomRulesMock(...args),
-  // D-5: the roster above the custom rules reads these once; idle here.
+  // The roster above the custom rules reads these once; idle here.
   useBuiltInRules: () => idleQuery(),
   useCapabilities: () => idleQuery(),
-  // D-8: the local-precision panel reads this once; idle here.
+  // The local-precision panel reads this once; idle here.
   useLabelStats: () => idleQuery(),
 }));
 

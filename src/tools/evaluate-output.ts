@@ -134,7 +134,7 @@ export function registerEvaluateOutputTool(
         ? await getTraceOrThrow(storage, LOCAL_TENANT, args.trace_id)
         : undefined;
       /*
-       * SEP-414 (arc 9, N-12): a W3C context on THIS call is written onto
+       * SEP-414: a W3C context on THIS call is written onto
        * the linked trace when it carries none yet, so the trace joins the
        * caller's on its next export. A trace that already has one keeps
        * it — the first context is the one the export was built on. With
@@ -170,7 +170,7 @@ export function registerEvaluateOutputTool(
         expectedTrajectory: args.expected_trajectory as ExpectedTrajectory | undefined,
         input: args.input,
         costUsd: args.cost_usd,
-        // The agent's own cost baseline when a trace is linked (H-5): the
+        // The agent's own cost baseline when a trace is linked: the
         // cost under test is the caller's, the history is the trace's agent's.
         costHistory:
           trace !== undefined && args.cost_usd !== undefined

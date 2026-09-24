@@ -208,7 +208,7 @@ describe('maintenance — measured issue-close latency', () => {
 describe('llms.txt / llms-full.txt — rendered from templates + the truthbase', () => {
   it('the committed files equal the render (what `npm run llms:check` enforces in CI)', async () => {
     const rendered = (await renderAll(root)) as Array<{ output: string; text: string }>;
-    // The rendered targets in their order, then the blocks inside hand-written files (arc 9, N-20: the README's clients table).
+    // The rendered targets in their order, then the blocks inside hand-written files.
     expect(rendered.map(r => r.output)).toEqual([...TARGETS.map((t: { output: string }) => t.output), ...BLOCKS.map((b: { file: string }) => b.file)]);
     for (const r of rendered) expect(read(r.output)).toBe(r.text);
   });

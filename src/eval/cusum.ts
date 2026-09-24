@@ -1,6 +1,5 @@
 /*
- * Sequential change detection on the user's own stream (arc 7, D-7b; plan
- * §4.15).
+ * Sequential change detection on the user's own stream (0.14.0).
  *
  * Drift, as the dashboard shows it, compares two windows. A CUSUM watches a
  * STREAM: per (agent, rule), each evaluation is a Bernoulli draw — the rule

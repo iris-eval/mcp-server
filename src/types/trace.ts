@@ -173,7 +173,7 @@ export interface Trace {
    * the caller's always wins.
    */
   case_key?: string;
-  /** The conversation this turn belongs to (arc 9, N-15): explicit, or `gen_ai.conversation.id`, or the SEP-414 baggage `session_id`. */
+  /** The conversation this turn belongs to: explicit, or `gen_ai.conversation.id`, or the SEP-414 baggage `session_id`. */
   session_id?: string;
   /**
    * Which door the trace came through. Stored so a host hook and a

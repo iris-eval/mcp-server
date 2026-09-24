@@ -51,7 +51,7 @@ export const JSON_RPC_RATE_LIMITED = -32029;
 export function createMcpRateLimiter(config: Pick<IrisConfig, 'security'>) {
   const limit = config.security.rateLimit.mcp;
   /*
-   * What the budget is counted against (arc 8, R-6). `ip` is the default
+   * What the budget is counted against. `ip` is the default
    * and the pre-0.15.0 behaviour. `apiKey` counts per authenticated key —
    * the Bearer middleware runs ahead of this limiter and stamps the id of
    * the key that matched — so several agents behind one NAT each get their

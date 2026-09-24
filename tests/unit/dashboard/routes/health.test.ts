@@ -45,7 +45,7 @@ describe('GET /health', () => {
     expect(body.trace_count).toBe(253);
     expect(body.storage).toBe('connected');
     expect(body.version).toBe('9.9.9');
-    // The one contract (arc 8, R-6): the route serves what src/health.ts builds.
+    // The one contract: the route serves what src/health.ts builds.
     expect(body.driver).toBe('better-sqlite3');
     expect(body.checks).toEqual({ storage: 'ok', rules_store: 'absent', migrations: { status: 'ok', applied: 11, known: 11 } });
   });

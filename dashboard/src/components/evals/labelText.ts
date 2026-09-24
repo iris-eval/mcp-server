@@ -1,5 +1,5 @@
 /*
- * The sentences the label controls say (arc 7, D-8), in one place so the
+ * The sentences the label controls say, in one place so the
  * trace page and the tests read the same words.
  */
 import type { LabelResponse, LabelStatsRow, ReevaluateResponse } from '../../api/types';

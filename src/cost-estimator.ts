@@ -30,7 +30,7 @@ export interface ModelPricing {
  * Derived from the judge's pricing table (src/eval/llm-judge/pricing.ts),
  * which is the ONE table. This module carried its own copy from v0.3.1
  * with different model ids and older prices; two tables of one fact drift,
- * and the arc-0 gap list named this pair. Same shape as before, one source.
+ * and the 2026-09-05 audit named this pair. Same shape as before, one source.
  */
 export const PRICING: Record<Provider, Record<string, ModelPricing>> = MODEL_PRICING.reduce(
   (acc, p) => {

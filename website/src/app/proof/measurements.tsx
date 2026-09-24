@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EVALUATORS, PUBLIC_REPO_URL, type ProofClaims, type ProofComposite, type ProofRule } from "@/lib/claims";
 
 /*
- * The arc-2 blocks of the proof page. Each renders two-state from the same
+ * The per-rule measurement blocks of the proof page. Each renders two-state from the same
  * truthbase field: measured (the block is present in `.claims.json → proof`)
  * or pending (it is not), and in both states names the file a release roll
  * regenerates and the command that reproduces it. No number here is typed;
@@ -88,7 +88,7 @@ export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactEleme
 }
 
 /*
- * The calibration answer (masterplan §4.16). Every figure below is computed
+ * The calibration answer. Every figure below is computed
  * here from the proof files: the class prior from the method's prior and
  * the number of classes, the PPV of one fire from a rule's own confusion
  * counts, the direction from the reliability bins. Nothing is typed.

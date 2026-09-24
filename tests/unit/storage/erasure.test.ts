@@ -3,8 +3,8 @@
  *
  * eval_results.trace_id is ON DELETE SET NULL, so a deleted trace used to
  * leave its evaluations behind with output_text verbatim — including the
- * SSN no_pii had flagged — orphaned and readable by every query (arc zero,
- * G15). Now delete_trace and the retention sweep blank the text, the
+ * SSN no_pii had flagged — orphaned and readable by every query (found in
+ * the 2026-09-05 audit). Now delete_trace and the retention sweep blank the text, the
  * expected text and the rule messages, stamp erased_at,
  * and keep the scores and the evidence offsets.
  */

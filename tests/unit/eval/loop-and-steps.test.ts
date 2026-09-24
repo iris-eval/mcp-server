@@ -1,5 +1,5 @@
 /*
- * no_tool_loop generalised, and max_steps (arc 4, A4-11).
+ * no_tool_loop generalised, and max_steps.
  *
  * The families measure both rules on trajectories they JUDGE. This file
  * holds the paths they decline, the helpers' own properties, and the two

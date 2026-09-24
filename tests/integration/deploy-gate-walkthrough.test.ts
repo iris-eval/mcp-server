@@ -1,5 +1,5 @@
 /*
- * The org reader's deploy-gate walk-through, graded on outcomes (arc 8, R-11).
+ * The org reader's deploy-gate walk-through, graded on outcomes.
  *
  * docs/ci-gate.md walks four steps the person who gates deploys takes. The
  * stranger harness runs them against the published package on every

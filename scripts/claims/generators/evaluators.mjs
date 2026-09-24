@@ -131,7 +131,7 @@ function judgeCells(template, judge) {
   const measured = judge?.status === 'measured';
   const perTemplate = measured && judge.templates ? judge.templates[template] ?? null : null;
   const has = (k) => Boolean(perTemplate && perTemplate[k] !== undefined && perTemplate[k] !== null);
-  const pending = (harness) => cell('measurable', harness, 'needs a judge key that the founder or a user supplies; proof/judge-results.json is pending');
+  const pending = (harness) => cell('measurable', harness, 'needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending');
   return {
     q1: has('precision') || has('accuracy') ? cell('measured', `${JUDGE} → templates[${template}]`) : pending('npm run proof:judge — 165 cases across the five templates under a cost cap'),
     q2: has('misses') ? cell('measured', `${JUDGE} → templates[${template}].misses`) : pending('the same run names the misses by id'),

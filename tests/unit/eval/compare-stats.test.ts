@@ -1,5 +1,5 @@
 /*
- * The statistics behind compare_runs (arc 5).
+ * The statistics behind compare_runs.
  *
  * These numbers get shown to a person deciding whether to ship, so the
  * tests check them against values computed independently rather than

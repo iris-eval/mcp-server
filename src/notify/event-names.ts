@@ -1,5 +1,5 @@
 /*
- * The events a webhook can subscribe to (arc 9, N-16) — one closed list,
+ * The events a webhook can subscribe to — one closed list,
  * imported by the config schema (what a file may name), the detector (what
  * an evaluation yields), the capabilities object (what this server sends)
  * and the docs test. Snake_case like `Verdict.basis`, whose value

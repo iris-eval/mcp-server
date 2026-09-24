@@ -106,7 +106,7 @@ export interface RunSummaryRow {
   rulesetHashes: string[];
   startedAt: string | null;
   lastActivityAt: string | null;
-  /** Pinned as the baseline every later run is compared against (arc 9, N-14); at most one per tenant. */
+  /** Pinned as the baseline every later run is compared against; at most one per tenant. */
   baseline: boolean;
 }
 
@@ -161,7 +161,7 @@ export interface CaseResultRow {
   evalId: string;
   traceId: string | null;
   caseKey: string | null;
-  /** The conversation the trace belongs to (arc 9, N-15); null when it carried none. */
+  /** The conversation the trace belongs to; null when it carried none. */
   sessionId: string | null;
   runId: string | null;
   passed: boolean;
@@ -172,7 +172,7 @@ export interface CaseResultRow {
 export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
 export class SqliteAdapter implements IStorageAdapter {
-  /** After-insert listeners for evaluations (arc 9, N-16); see IStorageAdapter.onEvalResultInserted. */
+  /** After-insert listeners for evaluations; see IStorageAdapter.onEvalResultInserted. */
   private readonly evalListeners = new Set<(tenantId: TenantId, result: EvalResult) => void>();
 
   onEvalResultInserted(listener: (tenantId: TenantId, result: EvalResult) => void): () => void {
@@ -182,7 +182,7 @@ export class SqliteAdapter implements IStorageAdapter {
     };
   }
 
-  /** Which driver holds the file (arc 8, R-0): `better-sqlite3`, or `node` when the built-in was chosen or fallen back to. */
+  /** Which driver holds the file: `better-sqlite3`, or `node` when the built-in was chosen or fallen back to. */
   get driver(): DriverName {
     return this.db.name;
   }
@@ -208,7 +208,7 @@ export class SqliteAdapter implements IStorageAdapter {
     this.db = openDriver(dbPath, { timeout: BUSY_TIMEOUT_MS, ...(options?.driver ? { driver: options.driver } : {}) });
   }
 
-  /** Applied against known (arc 8, R-6) — the health contract's `checks.migrations`. */
+  /** Applied against known — the health contract's `checks.migrations`. */
   async migrations(): Promise<MigrationState> {
     return migrationState(this.db);
   }
@@ -222,7 +222,7 @@ export class SqliteAdapter implements IStorageAdapter {
    * instant therefore still lost one of them on this statement, whatever
    * `busy_timeout` said: the 0.14.0 fix (the timeout set before the
    * switch, see the constructor) covers a plain wait, never this upgrade.
-   * Found by arc 9's N-10 CI run, on the Node 22 built-in driver. The
+   * Found by a CI run on the Node 22 built-in driver (0.16.0). The
    * wait is done here instead: retry on BUSY with a short backoff inside
    * the same budget. Once either process is through, the file is WAL and
    * the pragma is a read. An error that is not BUSY is thrown as it came.
@@ -644,7 +644,7 @@ export class SqliteAdapter implements IStorageAdapter {
    * too, so a re-evaluation that produced nothing is visible rather than
    * silently absent.
    */
-  /* ---- Datasets (arc 8, R-8) ------------------------------------------ */
+  /* ---- Datasets ------------------------------------------ */
 
   async createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail> {
     assertTenant(tenantId);
@@ -900,7 +900,7 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string; question?: QuestionId; session?: string; groupBy?: 'case_key' | 'session' } = {}): Promise<CaseResultRow[]> {
     assertTenant(tenantId);
-    // Grouped by session (arc 9, N-15), a turn without a case key still counts; grouped by case, a turn without one never did.
+    // Grouped by session, a turn without a case key still counts; grouped by case, a turn without one never did.
     const where: string[] = ['e.tenant_id = ?', filter.groupBy === 'session' ? 't.session_id IS NOT NULL' : 't.case_key IS NOT NULL'];
     const params: unknown[] = [tenantId];
     if (filter.session !== undefined) {
@@ -1285,7 +1285,7 @@ export class SqliteAdapter implements IStorageAdapter {
   }
 
   /*
-   * Labels on the user's own traffic (arc 7, D-8; plan §4.13).
+   * Labels on the user's own traffic.
    *
    * One opinion per (evaluation, rule): labelling a fire that already
    * carries a label REPLACES it. A reader who changes their mind has one

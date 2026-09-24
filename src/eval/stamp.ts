@@ -2,7 +2,7 @@
  * The stamp — what a rule result says about itself beyond pass, score and
  * message.
  *
- * Arc zero (2026-09-05) found four lenses independently reporting the same
+ * An audit on 2026-09-05 found four lenses independently reporting the same
  * absence: a result carried no field for what kind of claim it made, what
  * it had looked at, or how wrong it tends to be, while the per-rule
  * intervals sat in proof/results.json and never reached a reader. This
@@ -30,7 +30,7 @@ export interface PriorInForce {
 
 export interface StampOptions {
   prior?: PriorInForce;
-  /** This rule's local precision from the deployment's own labels (arc 7, D-8), when any labels exist. */
+  /** This rule's local precision from the deployment's own labels, when any labels exist. */
   local?: LocalPrecision;
 }
 
@@ -90,7 +90,7 @@ export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: Stam
     case 'inference': {
       const fired = raw.passed === false;
       /*
-       * The deployment's own number (arc 7, D-8): at LOCAL_LABEL_MIN labels
+       * The deployment's own number: at LOCAL_LABEL_MIN labels
        * on this rule's fires, a FIRE carries the local precision instead of
        * the published positive predictive value. A quiet rule keeps the
        * published miss rate — labels on fires say nothing about what a

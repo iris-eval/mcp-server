@@ -1,11 +1,11 @@
 /*
- * The evaluator-of-evaluators matrix is derived, not typed (arc 2, M5).
+ * The evaluator-of-evaluators matrix is derived, not typed.
  *
  * Twenty-six evaluators by thirteen questions; every status in the
  * vocabulary; every `measured` cell's evidence points at a committed proof
  * file and, where it names a key, the key exists; the count every surface
  * quotes equals what the generator computes from the files on disk; and the
- * arc-2 bar — at least fifteen evaluators with three or more questions
+ * published bar — at least fifteen evaluators with three or more questions
  * measured — holds from the files, not from prose.
  */
 import { readFile } from 'node:fs/promises';
@@ -38,14 +38,14 @@ describe('evaluator-of-evaluators matrix', () => {
   it('has one evaluator per registered rule, custom type and judge template plus the verifier and the composer, thirteen questions each, every status in the vocabulary', async () => {
     const m = (await generate()) as Matrix;
     const claims = JSON.parse(await readFile(resolve(root, '.claims.json'), 'utf-8')) as { evalRules: { builtInCount: number; customRuleTypeCount: number }; llmJudgeTemplates: { count: number } };
-    // Arc zero's matrix said 26 by grouping the custom types; the generator counts each registered thing once.
+    // The 2026-09-05 audit's matrix said 26 by grouping the custom types; the generator counts each registered thing once.
     expect(m.counts.evaluators).toBe(claims.evalRules.builtInCount + claims.evalRules.customRuleTypeCount + claims.llmJudgeTemplates.count + 2);
     expect(m.counts.questions).toBe(13);
     expect(m.questions.map((q) => q.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     expect(new Set(m.evaluators.map((e) => e.group))).toEqual(new Set(GROUPS.map((g) => g.id)));
     /*
      * Derived from the truthbase, not typed. These three were literals until
-     * arc 4 added a rule and turned a correct change into a red test with
+     * 0.11.0 added a rule and turned a correct change into a red test with
      * nothing wrong behind it — the drift rule this repository already
      * applies everywhere else: a number that appears on two surfaces is a
      * constant or a check, never a copy.
@@ -90,7 +90,7 @@ describe('evaluator-of-evaluators matrix', () => {
     }
   });
 
-  it('the arc-2 bar holds from the files: at least fifteen evaluators with three or more questions measured, and the committed truthbase agrees', async () => {
+  it('the published bar holds from the files: at least fifteen evaluators with three or more questions measured, and the committed truthbase agrees', async () => {
     const m = (await generate()) as Matrix;
     expect(m.counts.measuredThreeOrMore).toBeGreaterThanOrEqual(15);
     for (const e of m.evaluators) expect(e.measured).toBe(Object.values(e.cells).filter((c) => c.status === 'measured').length);

@@ -68,7 +68,7 @@ The following disclosures are copied verbatim from the source corpus's
 > - With balanced marginals (~50/50), chance agreement is ~0.5, so kappa here is essentially rescaled raw agreement.
 > - Treat the gold labels as "consistent with the stated failure definitions under adversarial spot-checking" (an independent 40-case spot-check in `methodology-review.md` found zero label errors), not as independently validated ground truth.
 >
-> **TODO: founder** — human blind-labeling of a stratified ~40-case sample (10 per family, weighted toward boundary/adjudicated cases), reporting human-vs-gold agreement alongside the model-internal kappa. This is the cheapest upgrade that converts the labels from internal-consistency evidence into human-validated evidence. Until it is done, no publication should describe the labels as "gold" without pointing here.
+> **TODO** — human blind-labeling of a stratified ~40-case sample (10 per family, weighted toward boundary/adjudicated cases), reporting human-vs-gold agreement alongside the model-internal kappa. This is the cheapest upgrade that converts the labels from internal-consistency evidence into human-validated evidence. Until it is done, no publication should describe the labels as "gold" without pointing here.
 
 Two further points from the same source that govern how the numbers may be read:
 

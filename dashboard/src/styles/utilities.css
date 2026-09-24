@@ -416,7 +416,7 @@
 }
 
 /*
- * Phone width (arc 7, D-9). Four columns at 390px left the body column —
+ * Phone width. Four columns at 390px left the body column —
  * the card's own link — with no width at all: the failure list rendered
  * and nothing in it could be opened (the 390 px spec found the link
  * "hidden"). Below the tablet breakpoint the meta column drops under the

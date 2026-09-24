@@ -1,5 +1,5 @@
 /*
- * A case's rate for ONE question (arc 8, R-10, Q5xS4).
+ * A case's rate for ONE question.
  *
  * The composed verdict of an evaluation can pass while the task-completed
  * question failed, or fail on a safety veto while the task was done.

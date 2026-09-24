@@ -136,7 +136,7 @@ describe('--demo', () => {
     const forged = await get(port, '/api/v1/summary', 'evil.example.com');
     expect(forged.status).toBe(403);
 
-    // The server knows it is the demo (arc 7, D-2): health and capabilities
+    // The server knows it is the demo: health and capabilities
     // both say so, which is what the dashboard's DEMO chip reads. Until this
     // assertion existed the CLI never passed the mode through, and a --demo
     // server reported itself as real on both surfaces.

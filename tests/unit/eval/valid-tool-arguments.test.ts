@@ -1,12 +1,12 @@
 /*
- * valid_tool_arguments (arc 4, A4-5).
+ * valid_tool_arguments.
  *
  * The proof family measures the rule against its definition on trajectories
  * it JUDGES. This file holds the paths the family must not contain, and the
  * reason is a defect in the harness that is older than this rule:
  * `proof/run.ts` scores a SKIPPED case as *not failed*. A skipping negative
  * is therefore a free true negative, which inflates specificity, which
- * inflates the published positive predictive value — and since arc 3 that
+ * inflates the published positive predictive value — and since 0.10.0 that
  * number is arithmetic inside the verdict. So skip behaviour is proved here,
  * where a skip is asserted as a skip.
  */

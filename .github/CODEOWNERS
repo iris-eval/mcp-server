@@ -1,10 +1,10 @@
 # Iris Code Owners
-# All changes require review from the founder.
+# All changes require review from a code owner.
 
-# Default: founder reviews everything
+# Default: the maintainer reviews everything
 * @irparent
 
-# Website and playground — founder only, no exceptions
+# Website and playground — maintainer review, no exceptions
 website/ @irparent
 
 # Core product code

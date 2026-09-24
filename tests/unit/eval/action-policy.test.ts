@@ -1,5 +1,5 @@
 /*
- * action_policy (arc 4, A4-10).
+ * action_policy.
  *
  * The conformance family measures the rule against calls it JUDGES. This
  * file holds what a family cannot hold: the paths it declines, the config

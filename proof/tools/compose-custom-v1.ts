@@ -1,6 +1,6 @@
 /*
- * Writes the eight conformance families under proof/corpus/custom/ (arc 2,
- * M9). Every case is authored here, by hand, against the type's documented
+ * Writes the eight conformance families under proof/corpus/custom/
+ * (0.10.0). Every case is authored here, by hand, against the type's documented
  * definition under the family's config; the script only assembles ids,
  * labels and counts so the files cannot drift from each other. Re-run with
  *   npx tsx proof/tools/compose-custom-v1.ts

@@ -1,5 +1,5 @@
 /*
- * The support-policy guard states the policy (arc 8, R-6).
+ * The support-policy guard states the policy.
  *
  * The policy: the current minor receives every fix; the previous minor
  * receives security fixes for 90 days after the current minor's first

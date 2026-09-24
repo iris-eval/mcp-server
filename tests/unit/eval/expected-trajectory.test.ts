@@ -1,5 +1,5 @@
 /*
- * tool_sequence and step_budget (arc 9, N-13): the paths the corpus families
+ * tool_sequence and step_budget: the paths the corpus families
  * cannot hold — every mode's definition on one small trajectory, the argument
  * matching, the skip reasons, and the evidence shape.
  */

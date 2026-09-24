@@ -1,5 +1,5 @@
 /*
- * The expected-trajectory rules (arc 9, N-13): what the caller expected the
+ * The expected-trajectory rules: what the caller expected the
  * agent to DO, compared with what it did.
  *
  *   tool_sequence  the expected calls against the actual ones, in a mode —

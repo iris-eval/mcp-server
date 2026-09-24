@@ -236,7 +236,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       },
     },
     guarded(async (args, extra) => {
-      // W3C trace context in the request's _meta (SEP-414): stored with the trace, joined on export (arc 9, N-12).
+      // W3C trace context in the request's _meta (SEP-414): stored with the trace, joined on export.
       const traceContext = traceContextOfCall(extra);
       // Refuse before storing anything: a half-done write — stored, not
       // evaluated, error returned — is the shape a caller cannot recover

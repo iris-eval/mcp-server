@@ -87,7 +87,7 @@ describe('a critical rule killed by the sandbox budget', () => {
     /*
      * Until 0.10.0 this returned passed=true with no critical_failures, on
      * output the critical rule was DEFEATED by rather than cleared — the
-     * seam arc zero found and no configuration could close. The composer
+     * seam the 2026-09-05 audit found and no configuration could close. The composer
      * now returns a third state: the rule was asked and could not answer,
      * so the verdict is unknown, and unknown does not read as passed.
      *

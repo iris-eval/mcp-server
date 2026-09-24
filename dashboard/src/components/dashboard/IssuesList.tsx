@@ -1,5 +1,5 @@
 /*
- * Recurring issues (arc 7, D-8): fires grouped by rule and by what the
+ * Recurring issues: fires grouped by rule and by what the
  * rule found, over the recent window — ten fires of one pattern read as
  * one issue with a count. Read from /issues; the server groups.
  */

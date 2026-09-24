@@ -80,7 +80,7 @@ export const TARGETS = [
     template: 'docs/launch/directory-listing-template.template.md',
     output: 'docs/launch/directory-listing-template.md',
   },
-  // One paste-ready file per directory (A6-8): the send is the listing
+  // One paste-ready file per directory: the send is the listing
   // owner's act; the copy is the truthbase's on the day it is pasted.
   ...['glama', 'mcp-so', 'pulsemcp', 'smithery', 'cursor-directory', 'awesome-mcp-servers', 'docker'].map((d) => ({
     template: `docs/launch/listings/${d}.template.md`,
@@ -310,7 +310,7 @@ export function render(template, slots, templateName = 'template') {
 }
 
 /**
- * A block inside a hand-written file (arc 9, N-20): the text between
+ * A block inside a hand-written file: the text between
  * `<!-- iris:<name>:start -->` and `<!-- iris:<name>:end -->` is replaced by
  * the render; the rest of the file is the author's. `--check` reads the
  * file, re-renders the block and compares, so a stale block fails CI the

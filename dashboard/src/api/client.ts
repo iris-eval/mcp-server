@@ -47,7 +47,7 @@ import type {
  * `Retry-After` (seconds) — we prefer RateLimit-Reset when present.
  */
 /*
- * The typed error model lives in ./errors (D-1); RateLimitError is
+ * The typed error model lives in ./errors; RateLimitError is
  * re-exported so the code that has imported it from here since 0.5 keeps
  * working. Every throw below is an ApiError with a kind.
  */
@@ -101,7 +101,7 @@ export const api = {
   },
 
   /**
-   * The health poll (D-2). Unauthenticated by design; the server answers 503
+   * The health poll. Unauthenticated by design; the server answers 503
    * with a body when its storage is down, and that body is the answer the
    * header renders ("degraded"), not an error.
    */
@@ -119,12 +119,12 @@ export const api = {
     throw await toApiError(res, path);
   },
 
-  /** Read once by the shell: the judge's enable steps and the retention window (D-2). */
+  /** Read once by the shell: the judge's enable steps and the retention window. */
   getCapabilities(): Promise<CapabilitiesSummary> {
     return fetchJson<CapabilitiesSummary>(`${API_BASE_URL}/capabilities`);
   },
 
-  /* ---- runs, cases, the comparison (D-5) ---- */
+  /* ---- runs, cases, the comparison ---- */
   getRuns(limit = 50): Promise<RunsResponse> {
     return fetchJson<RunsResponse>(`${API_BASE_URL}/runs`, { limit: String(limit) });
   },
@@ -133,7 +133,7 @@ export const api = {
     return fetchJson<RunDetailResponse>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`);
   },
 
-  /** Pin a run as the baseline every later run is compared against, or unpin it (arc 9, N-14). */
+  /** Pin a run as the baseline every later run is compared against, or unpin it. */
   setRunBaseline(runId: string, baseline: boolean): Promise<{ run_id: string; baseline: boolean }> {
     return patchJson<{ run_id: string; baseline: boolean }>(`${API_BASE_URL}/runs/${encodeURIComponent(runId)}`, { baseline });
   },
@@ -227,7 +227,7 @@ export const api = {
     return fetchJson<AuditQueryResult>(`${API_BASE_URL}/audit`, params);
   },
 
-  /* Labels on your own traffic (arc 7, D-8). */
+  /* Labels on your own traffic. */
 
   /** Label one rule's fire on one evaluation right or wrong; a second label on the same fire replaces the first. */
   labelRule(evalId: string, rule: string, label: VerdictLabelValue, note?: string): Promise<LabelResponse> {

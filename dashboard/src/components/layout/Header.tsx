@@ -35,7 +35,7 @@ const styles = {
     flexShrink: 0,
   } as const,
   /*
-   * Phone width (arc 9, N-2): the title row wraps its chips onto a second
+   * Phone width: the title row wraps its chips onto a second
    * line and the header grows to fit, instead of the chips and the right
    * cluster running over each other inside a fixed height. Every chip stays
    * visible — they carry live state a phone reader still needs.
@@ -93,7 +93,7 @@ export function Header() {
   const meta = resolveRouteMeta(location.pathname);
 
   /*
-   * The header reads the server, not a constant (D-2). One health poll and
+   * The header reads the server, not a constant. One health poll and
    * the client's own record of its last answer decide the pill; the judge
    * chip and the DEMO chip come from the same answers; capabilities is read
    * once for the judge's enable steps and the retention window.

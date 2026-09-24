@@ -1,5 +1,5 @@
 /*
- * One row, every stamped field (D-3). The proposition per test is the field:
+ * One row, every stamped field. The proposition per test is the field:
  * it renders, with its own hook (a data- attribute) and its own words.
  */
 import React from 'react';
@@ -55,7 +55,7 @@ function row(result: EvalRuleResult, extra: Partial<React.ComponentProps<typeof 
   return render(<RuleResultRow result={result} {...extra} />);
 }
 
-describe('RuleResultRow (D-3): every stamped field has a place', () => {
+describe('RuleResultRow: every stamped field has a place', () => {
   it('a failed row: state, kind, role, criticality with source, message, score', () => {
     const { container } = row(fired);
     const root = container.querySelector('[data-rule-state]')!;

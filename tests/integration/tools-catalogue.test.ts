@@ -1,5 +1,5 @@
 /*
- * The tools catalogue (arc 4, A4-3).
+ * The tools catalogue.
  *
  * The load-bearing test here is the first one, and it is a drift-lock rather
  * than an example: IRIS'S OWN tools/list RESULT MUST PARSE AS A CATALOGUE.

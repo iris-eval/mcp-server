@@ -117,9 +117,9 @@ type ThemeOption = 'dark' | 'light';
 type DensityOption = 'compact' | 'comfortable';
 
 export interface AccountMenuProps {
-  /** The running server's version from the health poll (D-2); the UI's own build shows beside it when they differ. */
+  /** The running server's version from the health poll; the UI's own build shows beside it when they differ. */
   serverVersion?: string | null;
-  /** The retention window from capabilities (D-2) — shown here, once. */
+  /** The retention window from capabilities — shown here, once. */
   retention?: { days: number; sweepIntervalHours: number } | null;
 }
 

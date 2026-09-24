@@ -1,6 +1,5 @@
 /*
- * The compare pages are data, and every vendor cell has a source and a date
- * (arc 8, R-5).
+ * The compare pages are data, and every vendor cell has a source and a date.
  *
  * website/src/lib/compare/<vendor>.json is the vendor's side of a fixed set of
  * features — the same set on every page (lib/compare/iris.ts) — with, for
@@ -12,7 +11,7 @@
  * editorial adjectives; the Iris side carries no typed number (its counts
  * come from the truthbase); the eight hand-written pages are gone and the
  * one dynamic page renders the index; the compare index page and the sitemap
- * read the same list; and every OG image a file names exists. Arc 9, N-21
+ * read the same list; and every OG image a file names exists. 0.16.0
  * added the cost_to_run row (read from a pricing page or saying the page does
  * not answer), the five-question FAQ (two written, three derived from the
  * rows by lib/compare/faq.ts) rendered on the page, and the playground link.

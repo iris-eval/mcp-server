@@ -1,6 +1,6 @@
 /*
  * A judge from the agent's own model family is not an independent reader
- * (arc 7, D-6b). The family is read from the id's leading token, provider
+ *. The family is read from the id's leading token, provider
  * prefixes stripped; unknown ids are never "same"; a trace records the
  * agent's model under metadata.model or a span's gen_ai attributes.
  */

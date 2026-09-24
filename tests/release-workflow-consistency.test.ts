@@ -2,7 +2,7 @@
  * The release workflow agrees with itself, and the judge workflow fails when
  * it cannot run.
  *
- * Arc zero (2026-09-05, G17) found the evaluator-of-evaluators runtime weaker
+ * An audit on 2026-09-05 found the evaluator-of-evaluators runtime weaker
  * than its docs: the release notes told readers to `cosign verify-blob` the
  * SBOM bundles while no job ever ran that command; the bundles carried a
  * suffix OpenSSF Scorecard's Signed-Releases check does not recognise, so
@@ -90,7 +90,7 @@ describe('the keyed measurement workflows fail loudly without a key', () => {
   });
 });
 
-describe('the image (arc 8, R-6) — labels, HEALTHCHECK, and the CI run that checks them', () => {
+describe('the image — labels, HEALTHCHECK, and the CI run that checks them', () => {
   const dockerfile = workflow('Dockerfile');
   const ci = workflow('.github/workflows/ci.yml');
 
@@ -122,7 +122,7 @@ describe('the image (arc 8, R-6) — labels, HEALTHCHECK, and the CI run that ch
 });
 
 /*
- * 2026-09-23 red team (SUP-1, SUP-2, SUP-14). The job that held the npm
+ * 2026-09-23 security review. The job that held the npm
  * publishing identity also ran every dependency's code; a tag at any commit,
  * or a dispatch on any branch, could publish; and the documented signature
  * check accepted a signature from any workflow on any branch of the repo.

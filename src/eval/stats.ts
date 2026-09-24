@@ -95,8 +95,8 @@ export interface Confusion {
  * Half a pseudo-count per cell — the Jeffreys prior the interval draws
  * already use.
  *
- * Arc 3 put these half-counts into the RISK arithmetic and stopped there,
- * and arc 4's response-shape test caught what that left behind: the
+ * 0.10.0 put these half-counts into the RISK arithmetic and stopped there,
+ * and 0.11.0's response-shape test caught what that left behind: the
  * published positive predictive value a reader sees on a rule result was
  * still computed from the raw rates, so a family with no observed false
  * positives reported a point estimate of exactly 1 while the interval it sat
@@ -139,7 +139,7 @@ export function missRate(sens: number, spec: number, prevalence: number): number
 export const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
 /* ------------------------------------------------------------------ *
- * Wilson, owned here (arc 5)
+ * Wilson, owned here
  * ------------------------------------------------------------------ */
 
 /**
@@ -154,7 +154,7 @@ export const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
  *
  * IT LIVES HERE, not in proof/, and the direction is the point: `src/`
  * ships inside the package and `proof/` does not, so the shipped server
- * cannot depend on the harness. Before arc 5 only the harness needed an
+ * cannot depend on the harness. Before 0.12.0 only the harness needed an
  * interval; now `compare_runs` returns one to a user, and a second copy
  * would be two definitions of the same number waiting to disagree.
  * proof/judge/lib/wilson.ts re-exports this, so every existing importer
@@ -184,7 +184,7 @@ export function wilson(k: number, n: number, z: number = Z_95): WilsonInterval |
   return { lo: Math.max(0, centre - half), hi: Math.min(1, centre + half) };
 }
 /* ------------------------------------------------------------------ *
- * Comparing two runs (arc 5)
+ * Comparing two runs
  * ------------------------------------------------------------------ */
 
 /**

@@ -1,5 +1,5 @@
 /*
- * The risk estimate — arc 3's composer, run here in the harness only.
+ * The risk estimate — the composer (0.10.0), run here in the harness only.
  *
  * "Bad = any failure class present." The score-layer rules are detectors of
  * DIFFERENT classes, and two detectors of the same class are correlated, so
@@ -19,13 +19,13 @@
  * badness of an output); policies are gates, not evidence; judgments would
  * enter only with a local measured run, which no harness case has.
  *
- * Arc 2 measured this beside today's arithmetic on a labelled corpus before
- * arc 3 made it the composer: on the held-out split it is right about
+ * This was measured beside the old arithmetic on a labelled corpus before
+ * 0.10.0 made it the composer: on the held-out split it is right about
  * shipping 57.7% of the time against 38.5%, at an IDENTICAL false-block
  * rate, and misses 55.6% of the bad outputs against 83.3%. The difference
  * in accuracy is +19.2 points with a 95% interval of [-7.5, 42.4], so the
  * case for it is that it misses less without blocking more — not that it is
- * proven more accurate at that sample size. Plan §4.3, §4.4;
+ * proven more accurate at that sample size.
  * proof/COMPOSITE.md carries the numbers and regenerates them.
  */
 import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js';
@@ -38,7 +38,7 @@ import { decides } from './gate.js';
 /** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
 /*
  * The same two functions the published number uses (src/eval/stats.ts).
- * They were a private copy here until arc 4 found the two had drifted: the
+ * They were a private copy here until 0.11.0 found the two had drifted: the
  * risk carried the half-counts and the published PPV did not, so a rule
  * could show a reader 1.00 while the verdict computed 0.97 from the same
  * counts. One quantity, one definition.
@@ -50,8 +50,8 @@ export const RISK_DRAWS = 2000;
 export const DEFAULT_PRIOR = 0.5;
 
 /**
- * What the prior means (arc 2 finding, for arc 3's deliberation):
- *   'per-class'  — plan §4.3 as written: π is the prior that EACH examined
+ * What the prior means (measured before the composer shipped in 0.10.0):
+ *   'per-class'  — the literal reading: π is the prior that EACH examined
  *                  class is present. With K classes examined the prior that
  *                  nothing is wrong is (1 − π)^K — at π = 0.5 and K = 10 it
  *                  is 0.001, so the noisy-OR blocks nearly everything.
@@ -91,7 +91,7 @@ interface Detector {
   fired: boolean;
   counts: { tp: number; fp: number; fn: number; tn: number };
   /**
-   * The deployment's own labels on this rule's fires (arc 7, D-8), read
+   * The deployment's own labels on this rule's fires, read
    * off the row's stamped uncertainty — so a stored evaluation re-composes
    * on read from the same counts that decided it, and the risk layer needs
    * no second source. Present only at LOCAL_LABEL_MIN labels, on a FIRE.
@@ -103,7 +103,7 @@ interface Detector {
 const localPpv = (l: { right: number; wrong: number }): number => (l.right + 0.5) / (l.right + l.wrong + 1);
 
 /*
- * ONE SAMPLER (arc 7, D-6b; arc 6's deferred item). The risk layer carried
+ * ONE SAMPLER. The risk layer carried
  * its own Beta draw — the same Marsaglia–Tsang gamma as stats.ts, but with
  * the shape < 1 boost drawing its uniform in a different order — so the
  * verdict's credible interval and the published PPV interval were computed
@@ -167,7 +167,7 @@ function pBadFrom(
         ...fired.map((d) => {
           // A fire with enough of the deployment's own labels carries the
           // deployment's precision — the one place the estimate learns
-          // from the traffic it runs on (arc 7, D-8).
+          // from the traffic it runs on.
           const own = localPpvOf(d);
           if (own !== null) return own;
           const s = sensOf(d);
@@ -209,7 +209,7 @@ export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, 
    * says what thirty cases can actually support: no_silent_tool_failure's
    * single-fire contribution moves from 1.000 to about 0.69, still well
    * over the shipped threshold, and now with an interval that means
-   * something. Found by arc 2 while writing up the composer, not by
+   * something. Found while writing up the composer, not by
    * reading it.
    */
   const point = pBadFrom(detectors, prior, mode, sensOf, specOf);
@@ -258,7 +258,7 @@ export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, 
 const isEffectivelyCritical = (r: EvalRuleResult): boolean => r.critical === true;
 
 /**
- * Compose by kind, as arc 3 will: gates (a failing policy that is effectively
+ * Compose by kind, as the engine does: gates (a failing policy that is effectively
  * critical here), then vetoes (a failing effectively-critical detection),
  * then the risk against τ. `unknown` when a critical rule was asked and could
  * not answer (defeated or config_invalid) — the fail-closed seam.

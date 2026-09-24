@@ -1,5 +1,5 @@
 /*
- * Sessions on the HTTP door (arc 9, N-15): session_id on the body, or the
+ * Sessions on the HTTP door: session_id on the body, or the
  * SEP-414 baggage member; the list filters by session and refuses a
  * misspelled filter; the field reads back.
  */

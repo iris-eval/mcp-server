@@ -1,7 +1,7 @@
 import type { Driver } from '../driver.js';
 
 /*
- * Datasets (arc 8, R-8; plan §8).
+ * Datasets.
  *
  * A dataset is a named set of case keys — the questions a reader has
  * decided matter — so a comparison and a gate can be restricted to them.

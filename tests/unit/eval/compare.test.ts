@@ -1,5 +1,5 @@
 /*
- * compareRuns — the acceptance rows for arc 5's central question.
+ * compareRuns — the acceptance rows for "did my change make it worse?".
  *
  * C1 (the interval), C2 (a boundary refuses to pretend), C3 (the test and
  * the pair count are named), C6 (not enough evidence is an answer) and C7
@@ -190,7 +190,7 @@ describe('the run summary carries what a reader needs to judge it', () => {
   });
 });
 
-describe('N-14 — the discordant cases are named', () => {
+describe('the discordant cases are named', () => {
   const paired = (spec: Array<[string, boolean, string[]]>) => spec.map(([caseKey, passed, failedRules]) => row({ caseKey, passed, failedRules }));
 
   it('lists each paired case whose verdict flipped, regressions first, with the rules that flipped and both evaluations', () => {

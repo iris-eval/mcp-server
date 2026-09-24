@@ -1,5 +1,5 @@
 /*
- * The one place the shell learns whether Iris is answering (arc 7, D-2).
+ * The one place the shell learns whether Iris is answering.
  *
  * Every response the client sees reports here. An answer of any status means
  * the server is reachable, a fetch that throws means it is not, and a 401 or

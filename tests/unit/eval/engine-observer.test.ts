@@ -1,5 +1,5 @@
 /*
- * One structured event per evaluation (arc 8, R-6).
+ * One structured event per evaluation.
  *
  * The engine has no logger; it has one observer seam that every door —
  * the tools, HTTP ingest, the CLI, re-evaluation — reaches through

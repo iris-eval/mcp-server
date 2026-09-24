@@ -1,5 +1,5 @@
 /*
- * The header's status is a function of five inputs (D-2). This is its table.
+ * The header's status is a function of five inputs. This is its table.
  */
 import { describe, it, expect } from 'vitest';
 import { shellStatus, STATUS_COPY, SHELL_STATUSES, type ShellStatusInput } from '../../../src/components/layout/shellStatus';
@@ -11,7 +11,7 @@ const degraded: HealthResponse = { ...ok, status: 'degraded', storage: 'disconne
 
 const base: ShellStatusInput = { connection: 'connected', visible: true, rateLimitedUntil: null, health: ok, error: null };
 
-describe('shellStatus (D-2): one word from five inputs', () => {
+describe('shellStatus: one word from five inputs', () => {
   it('a healthy answer in the foreground is live', () => {
     expect(shellStatus(base)).toBe('live');
   });

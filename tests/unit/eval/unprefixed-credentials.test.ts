@@ -1,6 +1,6 @@
 /*
  * Credentials with no vendor prefix, and the advice the verdict prints about
- * its loss threshold (2026-09-23 red team, ADOPT-3 and VAL-4).
+ * its loss threshold (2026-09-23 security review).
  *
  * Every credential pattern keyed on a published prefix (sk-, ghp_, AKIA), so
  * a bare AWS secret access key, a database URL carrying its password and a

@@ -1,5 +1,5 @@
 /*
- * Phone width (arc 7, D-9): below the tablet breakpoint the sidebar is the
+ * Phone width: below the tablet breakpoint the sidebar is the
  * icon rail whatever the preference says, and the toggle still records the
  * preference — which applies again on a wider viewport.
  */
@@ -39,7 +39,7 @@ function sidebar() {
   );
 }
 
-describe('Sidebar at phone width (D-9)', () => {
+describe('Sidebar at phone width', () => {
   beforeEach(() => {
     patchMock.mockClear();
     narrowMock.mockReset();

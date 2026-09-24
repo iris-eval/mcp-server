@@ -1,5 +1,5 @@
 /*
- * The demo is the engine's own output (arc 9, N-1).
+ * The demo is the engine's own output.
  *
  * `--demo` used to seed hand-shaped evaluations: a failing card read
  * "FAIL · Fail:" with nothing after the colon, a FAIL card said "2/2 pass",

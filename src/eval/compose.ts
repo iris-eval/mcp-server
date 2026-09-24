@@ -2,8 +2,8 @@
  * The verdict, composed by kind.
  *
  * Until 0.10.0 `passed` was a weighted mean of every rule's score against
- * one threshold, with a veto for the critical rules. Arc zero measured what
- * that costs: no single non-critical rule, and no pair of them, could move
+ * one threshold, with a veto for the critical rules. The 2026-09-05 audit measured
+ * what that cost: no single non-critical rule, and no pair of them, could move
  * the verdict at the shipped weights, so a trace that cost $1.33, a silent
  * tool failure and a stub answer all passed. The score term was inert and
  * the rules that were not vetoes did not decide anything.
@@ -20,7 +20,7 @@
  *   3. UNKNOWN   — a critical rule that was ASKED and could not answer:
  *                  defeated by the output, or configured invalidly. Not the
  *                  same as never asked, which is coverage. This is the
- *                  fail-open seam arc zero found, and closing it is why the
+ *                  fail-open seam the audit found, and closing it is why the
  *                  verdict has three states.
  *   4. RISK      — everything else that carries a published error rate,
  *                  combined into one probability that the output is bad
@@ -34,15 +34,14 @@
  * the detectors that find things.
  *
  * Every default here is a config key, and every one is a RECOMMENDATION
- * that the AI council closed on with its failure mode stated, not a ruling.
- * Each surface that shows a default says it is a recommendation until it is
- * ruled.
+ * with its failure mode stated, not a settled answer. Each surface that
+ * shows a default says it is a recommendation.
  */
 import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictNode } from '../types/eval.js';
 import { riskEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { decides, isCritical } from './gate.js';
 
-// The gating predicate lives in gate.ts (arc 9, N-13) so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
+// The gating predicate lives in gate.ts so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
 export { decides };
 
 export interface ComposeConfig {

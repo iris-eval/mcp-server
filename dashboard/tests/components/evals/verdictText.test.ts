@@ -1,5 +1,5 @@
 /*
- * The verdict vocabulary table (D-4).
+ * The verdict vocabulary table.
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -11,7 +11,7 @@ import {
   tauOf,
 } from '../../../src/components/evals/verdictText';
 
-describe('verdictText (D-4)', () => {
+describe('verdictText', () => {
   it('every basis the composer can return has its own sentence', () => {
     const bases = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'clean', 'no_rules'];
     expect(Object.keys(BASIS_TEXT).sort()).toEqual([...bases].sort());

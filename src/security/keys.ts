@@ -1,6 +1,6 @@
 /*
  * The key ring — every API key the server accepts, and rotation without a
- * gap (arc 8, R-6).
+ * gap.
  *
  * Until 0.15.0 there was one key, `security.apiKey` (IRIS_API_KEY /
  * --api-key), held in plaintext in the environment or the config file, and

@@ -2,8 +2,8 @@
 # Post-v0.4.0 launch monitoring snapshot.
 #
 # Captures npm downloads, GitHub stars/forks, MCP Registry state, and
-# cascade status. Run hourly (or on-demand) to build a trend curve for
-# AI Council v1 review (4/26) and the YC submit-day metrics snapshot.
+# cascade status. Run hourly (or on-demand) to build a trend curve of
+# adoption metrics.
 #
 # Output: $OUT_DIR/YYYY-MM-DDTHH-MM-SSZ.json (default ./launch-snapshots)
 #

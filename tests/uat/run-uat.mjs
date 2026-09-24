@@ -10,7 +10,7 @@
  *     to be written inside it is dist/ (via `npm run build`, and only
  *     when dist is missing).
  *   - Every spawned server gets its own scratch IRIS_HOME under .work/,
- *     which is wiped at the start of each run. The founder's real
+ *     which is wiped at the start of each run. The developer's real
  *     ~/.iris is content-hashed before and after; any change fails the
  *     run outright.
  *   - Exit code 0 = every check passed, 1 = at least one ✗.

@@ -10,7 +10,7 @@
  * runs offline and must not probe the registry). This suite makes the record
  * bind: every public surface that shows an install command for an
  * unpublished package must say, in the same file, that it is not yet
- * published. Publish-or-retire is the founder's decision; until it is made,
+ * published. Publish-or-retire is still open; until it is decided,
  * no surface lies.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';

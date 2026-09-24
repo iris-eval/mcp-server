@@ -1,5 +1,5 @@
 /*
- * The live trace tail survives a trace that recorded no cost (arc 7, D-9).
+ * The live trace tail survives a trace that recorded no cost.
  *
  * The API serializes a missing cost as `cost_usd: null`, not undefined —
  * the shape every REST or CLI ingest without a price produces. The tail
@@ -35,7 +35,7 @@ function trace(id: string, extra: Partial<Trace> = {}): Trace {
 
 const query = (traces: Trace[]) => ({ data: { traces, total: traces.length, limit: 20, offset: 0 }, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
 
-describe('LiveTraceTail (D-9): a trace with no cost', () => {
+describe('LiveTraceTail: a trace with no cost', () => {
   beforeEach(() => {
     useTracesMock.mockReset();
   });

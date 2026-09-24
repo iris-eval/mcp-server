@@ -1,5 +1,5 @@
 /*
- * The verdict panel (D-4): basis, by, risk, coverage with counts, the
+ * The verdict panel: basis, by, risk, coverage with counts, the
  * composer's sentences, and the ladder control. The fixture is the plan's
  * own case — a $1.33 trace at defaults: cost_under_threshold fails against
  * the shipped $0.10, does not decide, and the verdict passes and says why.
@@ -77,7 +77,7 @@ function panel(over: Partial<VerdictPanelProps> = {}) {
   return { ...render(<VerdictPanel {...props} />), props };
 }
 
-describe('VerdictPanel (D-4): the verdict with its basis, coverage and reasons', () => {
+describe('VerdictPanel: the verdict with its basis, coverage and reasons', () => {
   it('a $1.33 trace at defaults: PASS on basis clean, and the sentence names cost_under_threshold and eval.defaultsGate', () => {
     const { container } = panel();
     expect(container.querySelector('[data-verdict-state]')?.textContent).toBe('PASS');

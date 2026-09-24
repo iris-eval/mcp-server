@@ -56,7 +56,7 @@ export interface SessionAuthOptions {
 }
 
 function keyMatches(candidateRaw: string, keys: KeyRing): boolean {
-  // The same ring the Bearer middleware uses (arc 8, R-6): the candidate is
+  // The same ring the Bearer middleware uses: the candidate is
   // hashed and compared to every configured key in constant time.
   return keys.match(candidateRaw) !== null;
 }

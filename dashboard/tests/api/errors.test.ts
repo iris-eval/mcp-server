@@ -1,5 +1,5 @@
 /*
- * The typed error model (D-1): a failed response is classified by kind,
+ * The typed error model: a failed response is classified by kind,
  * carries the server's reason, and a thrown fetch is "unreachable".
  *
  * What this checks, precisely: each status band maps to its kind; the

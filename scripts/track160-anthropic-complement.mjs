@@ -3,7 +3,7 @@
 // when ANTHROPIC_API_KEY was empty during the OpenAI-only Track 160 run.
 // Targets code-reviewer (claude-sonnet-4-6) + content-drafter
 // (claude-haiku-4-5-20251001). Completes the 5/5 real-LLM validation
-// once the founder sets the Anthropic key.
+// once an Anthropic key is set.
 //
 // Usage:
 //   export ANTHROPIC_API_KEY=sk-ant-...

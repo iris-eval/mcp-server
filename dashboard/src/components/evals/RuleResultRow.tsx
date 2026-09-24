@@ -1,5 +1,5 @@
 /*
- * One rule result, rendered once (arc 7, D-3).
+ * One rule result, rendered once.
  *
  * Every field the composer stamps on a rule result has a place here: the
  * state, the kind, the role, criticality with its source, the evidence
@@ -42,7 +42,7 @@ export interface RuleResultRowProps {
   /** The texts the evidence spans point into, when the page has them. */
   texts?: EvidenceTexts;
   /**
-   * The ladder's depth (D-4). `default` shows the result and, for a failed
+   * The ladder's depth. `default` shows the result and, for a failed
    * row, its evidence; `full` adds method, computation and uncertainty —
    * the measured value, the error bar, the published interval and the
    * definition. Pages pass the verdict panel's control; alone, a row shows
@@ -50,7 +50,7 @@ export interface RuleResultRowProps {
    */
   depth?: 'default' | 'full';
   /**
-   * Your label on this rule's fire (arc 7, D-8), and the handler that
+   * Your label on this rule's fire, and the handler that
    * writes one. The control appears only on a FAILED row and only when a
    * page supplies the handler: a label is a judgement on a fire, so a quiet
    * or skipped rule has nothing here to be right or wrong about.

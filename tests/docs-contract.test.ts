@@ -1,7 +1,7 @@
 /*
  * The docs contract — prose names only things that exist.
  *
- * Arc zero (2026-09-05) found three surfaces that named things the product
+ * An audit on 2026-09-05 found three surfaces that named things the product
  * does not have: delete_trace's description told an agent to use a
  * `--retention-days` flag (no such flag; retention is `retention.days` in
  * config.json), get_traces pointed at "the dashboard's SSE endpoint" (no such
@@ -66,11 +66,11 @@ const PROSE_SURFACES: string[] = [
   'src/prompts.ts',
   'src/judge-enablement.ts',
   'src/capabilities.ts',
-  // The Python client's README (arc 9, N-18): a recipe a reader copies, held to the same routes and variables.
+  // The Python client's README: a recipe a reader copies, held to the same routes and variables.
   'packages/python/README.md',
-  // The gate action (arc 9, N-17): a workflow file a reader copies, held to the same flags and variables.
+  // The gate action: a workflow file a reader copies, held to the same flags and variables.
   '.github/actions/gate/action.yml',
-  // The Python client's README (arc 9, N-18): a recipe a reader copies, held to the same routes and variables.
+  // The Python client's README: a recipe a reader copies, held to the same routes and variables.
   'packages/python/README.md',
 ];
 
@@ -299,7 +299,7 @@ describe('docs contract — IRIS_* variables', () => {
 /* ── rule names ──────────────────────────────────────────────────── */
 
 /**
- * Names a rule no longer has. A rename (arc 3 renames verbosity_ratio)
+ * Names a rule no longer has. A rename (0.10.0 renamed verbosity_ratio)
  * adds the old name here, and any prose still quoting it fails.
  */
 const RETIRED_RULE_NAMES = new Set<string>([
@@ -361,7 +361,7 @@ describe('docs contract — rule names', () => {
 });
 
 /**
- * Paths the repository no longer has. A file deleted in a release (arc 3
+ * Paths the repository no longer has. A file deleted in a release (0.10.0
  * deleted proof/lib/risk.ts when the harness started importing the module
  * that ships) goes here, and any prose still pointing a reader at it fails.
  */

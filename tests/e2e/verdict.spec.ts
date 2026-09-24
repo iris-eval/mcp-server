@@ -1,5 +1,5 @@
 /*
- * The verdict panel and the ladder (arc 7, D-4), driven through the real
+ * The verdict panel and the ladder, driven through the real
  * dashboard on the seeded $1.33 trace: cost_under_threshold fails against
  * the shipped $0.10, does not decide (the number is Iris's, not the
  * deployment's), the verdict passes, and the panel says why and names the

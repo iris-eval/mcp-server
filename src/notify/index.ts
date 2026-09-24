@@ -1,5 +1,5 @@
 /*
- * Where the webhook is installed (arc 9, N-16): on the store, after an
+ * Where the webhook is installed: on the store, after an
  * evaluation row is durable — so every door that writes an evaluation
  * (`evaluate_output`, `log_trace` with `evaluate`, `POST /api/v1/traces`,
  * the OTLP door with `evaluateOnIngest`, a re-evaluation) reaches it

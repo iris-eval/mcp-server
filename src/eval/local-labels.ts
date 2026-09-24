@@ -1,5 +1,5 @@
 /*
- * The local-label source (arc 7, D-8): what the engine reads from the
+ * The local-label source: what the engine reads from the
  * deployment's own labels, built from storage once at boot and again after
  * every label write. The arithmetic lives in ./labels.ts; this module is
  * the one that knows about storage and the rule registry.

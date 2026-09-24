@@ -1,5 +1,5 @@
 /*
- * The exports map promises only what the tree can keep (arc 8, R-1).
+ * The exports map promises only what the tree can keep.
  *
  * `package.json` declares `.`, `./engine`, `./client`, a `./dist/*`
  * passthrough and the two manifests. This holds the map's shape, that

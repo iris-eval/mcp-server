@@ -1,5 +1,5 @@
 /*
- * The capability map is the roadmap (arc 9, N-22).
+ * The capability map is the roadmap.
  *
  * docs/roadmap.md said in prose what docs/capabilities.md says from the
  * truthbase — every evaluation question against every subject, with what

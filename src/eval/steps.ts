@@ -3,7 +3,7 @@
  * arrived in.
  *
  * The same execution reaches Iris three ways: as `tool_calls[]` on the
- * capture path, as OpenTelemetry spans with `kind: 'TOOL'`, and (arc 7) as
+ * capture path, as OpenTelemetry spans with `kind: 'TOOL'`, and as
  * an OTLP receiver's translation of the same. Until now only the first was
  * evaluated. Spans are stored, indexed, timed, status-coded and exported,
  * and no rule has ever read one — so a trace captured by an OTel

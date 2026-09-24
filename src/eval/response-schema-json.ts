@@ -1,5 +1,5 @@
 /*
- * The published response schema, rendered from the one that validates (arc 9, N-22).
+ * The published response schema, rendered from the one that validates.
  *
  * `evaluateOutputResponseSchema` is what `evaluate_output` actually returns
  * and parses every answer through; tools/list advertises only its top level

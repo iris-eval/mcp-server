@@ -1,5 +1,5 @@
 /*
- * 390 px (arc 7, D-9): a phone-width viewport. The dashboard is best on a
+ * 390 px: a phone-width viewport. The dashboard is best on a
  * tablet or wider and says so in a dismissable notice; at this width it
  * still renders every landmark, the failure list, and a trace page whose
  * controls can be used.

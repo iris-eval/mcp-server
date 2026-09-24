@@ -1,5 +1,5 @@
 /*
- * The dashboard's evaluation type names every key the server sends (D-0).
+ * The dashboard's evaluation type names every key the server sends.
  *
  * The dashboard is a separate TypeScript project with its own copy of the
  * response shape in dashboard/src/api/types.ts. From 0.9.0 to 0.13.0 the

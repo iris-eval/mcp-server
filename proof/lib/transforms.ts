@@ -1,6 +1,6 @@
 /*
  * Transforms — does a critical detector survive the evasions a leak or an
- * injection arrives in? (arc 2, M4)
+ * injection arrives in?
  *
  * For every positive case of the three critical families the rule is run on
  * the original; where it fired and reported a span into the raw output, the
@@ -13,7 +13,7 @@
  * Only cases the rule caught untransformed enter a transform's denominator:
  * a case it missed in the clear says nothing about evasion. A transform that
  * does not apply to a span (no letters to swap, no space to replace) is not
- * counted for that case. Spans are raw offsets (arc 1's contract), so the
+ * counted for that case. Spans are raw offsets (the evidence contract), so the
  * transform lands on the evidence and nowhere else.
  */
 import type { EvalRule, Evidence } from '../../src/types/eval.js';
@@ -116,7 +116,7 @@ const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 /**
  * Where a reported span lives.
  *
- * Until arc 4 every span was into the agent's own output, so the harness
+ * Until 0.11.0 every span was into the agent's own output, so the harness
  * could transform one string. `no_injection_compliance` reports into
  * `tool_outputs[i]` — the first rule to do so — which is what makes the
  * evasion question askable of a trajectory rule at all. The matrix records

@@ -80,7 +80,7 @@ describe('iris-eval --self-test (CLI)', () => {
     }
     expect(stdout).toContain(SELF_TEST_PASS_VERDICT);
 
-    // The retention line says what will be deleted and where to change it (A6-7).
+    // The retention line says what will be deleted and where to change it.
     expect(stdout).toMatch(/retention\.days/);
     expect(stdout).toMatch(/retention\.sweepIntervalHours/);
 
@@ -100,7 +100,7 @@ describe('iris-eval --self-test (CLI)', () => {
      * --no-addons makes better-sqlite3's native binding unloadable —
      * the same symptom as the most common genuinely broken install of
      * this package (ABI-mismatched prebuild after a Node upgrade). With
-     * IRIS_SQLITE_DRIVER=native there is no fallback (arc 8, R-0), so the
+     * IRIS_SQLITE_DRIVER=native there is no fallback, so the
      * storage step must report the cross naming the way out, cleanup must
      * still run, and the exit code must be exactly 1 (argument errors
      * exit 2, so 1 pins the diagnostic's own failure path).
@@ -118,7 +118,7 @@ describe('iris-eval --self-test (CLI)', () => {
 
   it('with no driver chosen and the native addon unloadable, the self-test falls back to Node’s built-in SQLite where this Node has it, and names the driver', async () => {
     /*
-     * The bold sentence of arc 8 R-0, end to end through the real CLI:
+     * The driver fallback (0.15.0), end to end through the real CLI:
      * --no-addons breaks the addon; IRIS_SQLITE_DRIVER is cleared (the CI
      * matrix sets it) so the choice is Iris's default — native, falling
      * back. On Node 22.13+ the store opens on node:sqlite, the storage line

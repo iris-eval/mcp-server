@@ -76,7 +76,7 @@ function loadConfigFile(path: string): Partial<IrisConfig> {
   } catch (err: unknown) {
     throw new Error(`Invalid JSON in config file ${path}: ${(err as Error).message}`);
   }
-  // Strict (arc 8, R-6): a key Iris does not read, or a value of the wrong
+  // Strict: a key Iris does not read, or a value of the wrong
   // type, refuses startup naming it — see schema.ts for why.
   return validateConfigFile(parsed, path);
 }
@@ -141,7 +141,7 @@ function loadEnvVars(): Partial<IrisConfig> {
     };
   }
   if (process.env.IRIS_WEBHOOK_URL || process.env.IRIS_WEBHOOK_SECRET) {
-    // The webhook from the environment (arc 9, N-16): merged over the file's, so a URL and a secret can live apart.
+    // The webhook from the environment: merged over the file's, so a URL and a secret can live apart.
     config.notify = {
       webhook: {
         ...(process.env.IRIS_WEBHOOK_URL ? { url: process.env.IRIS_WEBHOOK_URL } : {}),
@@ -152,7 +152,7 @@ function loadEnvVars(): Partial<IrisConfig> {
   if (process.env.IRIS_API_KEY) {
     config.security = { ...(config.security as object), apiKey: process.env.IRIS_API_KEY };
   }
-  // The secret-file pattern (arc 8, R-6): the key ring reads the file at
+  // The secret-file pattern: the key ring reads the file at
   // boot and refuses an unreadable or empty one with a sentence.
   if (process.env.IRIS_API_KEY_FILE) {
     config.security = { ...(config.security as object), apiKeyFile: process.env.IRIS_API_KEY_FILE };
@@ -241,7 +241,7 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
    * "detection that reports an all-clear" failure the veto exists to stop.
    */
   assertValidCriticality(config.eval);
-  // Likewise the webhook (arc 9, N-16): a URL the schema never saw (the environment's), or an unsigned iris-format hook, refuses startup here.
+  // Likewise the webhook: a URL the schema never saw (the environment's), or an unsigned iris-format hook, refuses startup here.
   assertWebhookConfig(config.notify.webhook);
 
   return config;
