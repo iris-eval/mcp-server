@@ -145,8 +145,8 @@ describe('momentsOf', () => {
     const s = await store();
     // A settled baseline — no_pii failing one call in five — then every call failing.
     const results: EvalResult[] = [];
-    for (let i = 0; i < 110; i += 1) {
-      const failed = i < 70 ? i % 5 === 0 : true;
+    for (let i = 0; i < 500; i += 1) {
+      const failed = i < 400 ? i % 5 === 0 : true;
       const stamp = new Date(Date.UTC(2026, 8, 1, 0, i, 0)).toISOString();
       results.push(
         await stored(

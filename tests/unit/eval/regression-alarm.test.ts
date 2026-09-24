@@ -63,9 +63,9 @@ describe('the regression-alarm kind', () => {
   });
 
   it('a trace whose evaluation crossed the line is a regression-alarm moment that names the rule, the rates and the reset', () => {
-    const log = shiftedLog(400, 0.2, 200);
+    const log = shiftedLog(600, 0.2, 400);
     const { entry, history } = firstAlarm(log);
-    expect(Number(entry.traceId.slice(1))).toBeGreaterThanOrEqual(200);
+    expect(Number(entry.traceId.slice(1))).toBeGreaterThanOrEqual(400);
     const m = deriveMoment(traceOf(entry), evalOf(entry), history);
     expect(m.significance.kind).toBe('regression-alarm');
     expect(m.significance.score).toBe(0.85);
@@ -77,7 +77,7 @@ describe('the regression-alarm kind', () => {
   });
 
   it('ranks below a cost spike and above a first failure; a trace with no alarm of its own is not one', () => {
-    const log = shiftedLog(400, 0.2, 200);
+    const log = shiftedLog(600, 0.2, 400);
     const { entry, history } = firstAlarm(log);
     const m = deriveMoment(traceOf(entry), evalOf(entry), history);
     expect(m.significance.kind).toBe('regression-alarm');
@@ -88,11 +88,11 @@ describe('the regression-alarm kind', () => {
   });
 
   it('a run-scoped alarm names its run', () => {
-    // Run B is clean for 150 traces then fails every time; the agent-wide
+    // Run B runs at 20% for 400 traces then fails every time; the agent-wide
     // stream (which also sees run A at 20%) may alarm too, and the label
     // names the run only when every alarm at this trace is run-scoped.
-    const a = shiftedLog(300, 0.2, 10_000, 'run-a', 'A');
-    const b = shiftedLog(300, 0.2, 150, 'run-b', 'B').map((e, i) => ({ ...e, traceId: `u${String(i).padStart(4, '0')}`, timestamp: new Date(Date.UTC(2026, 8, 2, 0, 0, i)).toISOString() }));
+    const a = shiftedLog(400, 0.2, 10_000, 'run-a', 'A');
+    const b = shiftedLog(700, 0.2, 400, 'run-b', 'B').map((e, i) => ({ ...e, traceId: `u${String(i).padStart(4, '0')}`, timestamp: new Date(Date.UTC(2026, 8, 2, 0, 0, i)).toISOString() }));
     const log = [...a, ...b];
     const alarmed = b.find((e) => historyBefore(log, e.traceId, e.timestamp).regressionAlarms.some((x) => x.run === 'B'))!;
     expect(alarmed).toBeDefined();
@@ -129,7 +129,7 @@ describe('the moments filter accepts the new kind', () => {
   }
 
   it('GET /moments?significance_kind=regression-alarm returns only alarm moments, and an unknown kind is refused', async () => {
-    const log = shiftedLog(400, 0.2, 200);
+    const log = shiftedLog(600, 0.2, 400);
     const app = express();
     app.use(createTenantMiddleware());
     const router = express.Router();
