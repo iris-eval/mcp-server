@@ -902,7 +902,7 @@ export const PII_PATTERNS: PiiPattern[] = [
   { name: 'npm Token', pattern: /\bnpm_[A-Za-z0-9]{30,64}\b/ },
   { name: 'DigitalOcean Token', pattern: /\bdop_v1_[a-z0-9]{50,70}\b/ },
   /*
-   * Credentials that carry no vendor prefix (2026-09-23 red team, ADOPT-3).
+   * Credentials that carry no vendor prefix (added 2026-09-23).
    * Every pattern above keys on a prefix a vendor published — sk-, ghp_,
    * AKIA — so a bare AWS secret access key, a database URL with its password
    * and a PASSWORD= line all passed as clean, "decisive". These two read the
