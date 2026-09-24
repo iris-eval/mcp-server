@@ -25,7 +25,8 @@ import type { RequestHandler } from 'express';
  *
  *   Host — enforced only when bound to loopback. A non-loopback bind is a
  *   deliberate network deployment, usually behind a proxy that rewrites
- *   Host, and an exact-match list would break it.
+ *   Host, and an exact-match list would break it. On a loopback bind a
+ *   request with no Host header at all is refused too.
  */
 export function isLoopbackHost(host: string): boolean {
   return host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '[::1]';
@@ -91,8 +92,15 @@ export function createRebindingGuard(options: RebindingGuardOptions): RequestHan
       return;
     }
     if (enforceHost) {
+      /*
+       * A missing or empty Host is refused, not waved through. HTTP/1.0
+       * and hand-built requests can omit it, and skipping the check for
+       * them left the loopback allowlist with a hole any client could step
+       * through. The MCP SDK's own Host validation already refuses an
+       * absent Host; this matches it.
+       */
       const hostHeader = req.headers.host;
-      if (hostHeader && !hosts.has(hostHeader)) {
+      if (!hostHeader || !hosts.has(hostHeader)) {
         res.status(403).json({ error: 'Forbidden: invalid Host header' });
         return;
       }

@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An inline custom rule can fail a verdict.** A `custom_rules` entry takes the same `severity` a deployed rule has: `high` or `critical` gate, and absent, `low` or `medium` advise. Before this, an inline rule could never fail a verdict, whatever it found. The note for an advising custom rule now says to set a severity, instead of blaming "a threshold Iris ships".
 - **`no_pii` no longer vetoes an email address the agent was given.** A support answer that repeats the `returns@` address from the policy text in its input used to fail exactly like a fabricated answer did, so the critical veto could not tell a right answer from a wrong one. An address that appears verbatim (case-insensitively) in `input` is not counted, and the pass message says so. Email only, deliberately: an SSN or a card number repeated back from a ticket still fails. **A gate on `detector_veto` stops tripping on those answers.**
 
+### Fixed
+
+- **On a loopback bind, a request with no `Host` header is refused.** The DNS-rebinding guard on the dashboard API and the HTTP transport checked `Host` against the loopback allowlist only when the header was present, so an HTTP/1.0 or hand-built request that left it out, or sent it empty, was served. Such a request now gets the same `403 Forbidden: invalid Host header` a foreign `Host` gets. Browsers, MCP clients, `curl` and the container health check all send `Host`, so none of them is affected. **A client that deliberately omits `Host` against a loopback server must send it.** Binds beyond loopback are unchanged.
+
 ## [0.17.0] - 2026-09-23
 
 **Hostile input, honest verdicts, a harder release path.** An adversarial review of 0.16.0 attacked Iris the way a determined user or a compromised dependency would. 0.17.0 closes what it found:
