@@ -103,7 +103,7 @@ export interface EvalCategoryResult {
   critical_skipped?: string[];
 }
 
-/* ── The verdict's own vocabulary, mirrored from the server's src/types/eval.ts (D-0). ── */
+/* ── The verdict's own vocabulary, mirrored from the server's src/types/eval.ts. ── */
 
 export type VerdictBasis =
   | 'policy_gate'
@@ -427,7 +427,7 @@ export interface EvalTrendPoint {
   avgScore: number;
   passRate: number;
   evalCount: number;
-  /** The run this bucket belongs to when the trend was asked for split by run (D-6); null for evaluations with no run. */
+  /** The run this bucket belongs to when the trend was asked for split by run; null for evaluations with no run. */
   cohort?: string | null;
 }
 
@@ -501,7 +501,7 @@ export interface DecisionMomentDetail extends DecisionMoment {
     evalType: string;
     score: number;
     passed: boolean;
-    /** Whole rule results, the same object the tool returns (D-0). */
+    /** Whole rule results, the same object the tool returns. */
     ruleResults: EvalRuleResult[];
     verdict?: Verdict;
     coverage?: Coverage;
@@ -740,7 +740,7 @@ export interface DriftWindowSummary {
   passed: number;
   /** Null for an empty window — "0 of 0" is unknown, not zero. */
   passRate: number | null;
-  /** The 95% Wilson interval on this window's pass rate; null for an empty window (D-6). */
+  /** The 95% Wilson interval on this window's pass rate; null for an empty window. */
   interval: { lo: number; hi: number } | null;
 }
 
@@ -777,9 +777,9 @@ export interface HealthResponse {
  */
 export interface CapabilitiesSummary {
   version?: string;
-  /** The built-in roster with each rule's published accuracy (D-3 reads `proof`). */
+  /** The built-in roster with each rule's published accuracy (the rule rows read `proof`). */
   rules?: Array<{ name: string; proof: RuleProofSummary | null }>;
-  /** The questions the server asks, with their text (D-4 renders coverage by question). */
+  /** The questions the server asks, with their text (the verdict panel renders coverage by question). */
   questions?: ReadonlyArray<{ id: string; text: string; answeredBy?: string }>;
   judge?: { enabled: boolean; provider?: string | null; howToEnable?: readonly string[] };
   retention?: { days: number; sweepIntervalHours: number };

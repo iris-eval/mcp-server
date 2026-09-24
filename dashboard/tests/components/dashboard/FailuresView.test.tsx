@@ -16,10 +16,10 @@ const useFailuresMock = vi.fn();
 
 vi.mock('../../../src/api/hooks', () => ({
   useFailures: (...args: unknown[]) => useFailuresMock(...args),
-  // D-8: the recurring-issues list below the failures reads this once; idle here.
+  // The recurring-issues list below the failures reads this once; idle here.
   useIssues: () => ({ data: null, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null }),
 }));
-// D-5: the empty state names the preferences file the server reports.
+// The empty state names the preferences file the server reports.
 vi.mock('../../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: null, displayPath: '/tmp/iris/preferences.json', loading: false, error: null, patch: vi.fn(), refetch: vi.fn() }),
 }));
@@ -114,7 +114,7 @@ describe('FailuresView', () => {
     expect(links.some((l) => l.getAttribute('href') === '/moments/t-2')).toBe(true);
   });
 
-  it('has no axe violations with failures listed (D-9)', async () => {
+  it('has no axe violations with failures listed', async () => {
     useFailuresMock.mockReturnValue(apiResult([makeFailure('t-1'), makeFailure('t-2')]));
     const { container } = renderView();
     expect((await axe(container)).violations).toEqual([]);

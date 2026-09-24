@@ -212,7 +212,7 @@ function pairByCaseKey(beforeRows: RunResultRow[], afterRows: RunResultRow[]): P
 }
 
 /**
- * Per-rule movement with a test behind every row (plan §4.14).
+ * Per-rule movement with a test behind every row.
  *
  * Each rule that fired in either run is tested ONE-SIDED in the regression
  * direction — the question is "worse", not "different". When the runs

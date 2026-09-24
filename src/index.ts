@@ -394,7 +394,7 @@ async function main(): Promise<void> {
   // malformed hash or a duplicate id is one sentence here, before any port
   // is bound, rather than a 403 later.
   const keyRing = buildKeyRing(config.security);
-  // A6-7: refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
+  // Refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
   validateBindPolicy(config);
 
   const storage = createStorage(config);
@@ -478,7 +478,7 @@ async function main(): Promise<void> {
       customRuleStore,
       evalEngine,
       preferenceStore,
-      // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it (D-2).
+      // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it.
       mode: values.demo ? 'demo' : 'real',
     });
     const server = dashboardServer.start();
@@ -633,7 +633,7 @@ async function runDemo(): Promise<void> {
     customRuleStore,
     evalEngine,
     preferenceStore,
-    // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it (D-2).
+    // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it.
     mode: values.demo ? 'demo' : 'real',
   });
   const server = dashboardServer.start();

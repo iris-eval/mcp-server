@@ -88,7 +88,7 @@ export function OutOfSample({ proof }: { proof: ProofClaims }): React.ReactEleme
 }
 
 /*
- * The calibration answer (masterplan §4.16). Every figure below is computed
+ * The calibration answer. Every figure below is computed
  * here from the proof files: the class prior from the method's prior and
  * the number of classes, the PPV of one fire from a rule's own confusion
  * counts, the direction from the reliability bins. Nothing is typed.

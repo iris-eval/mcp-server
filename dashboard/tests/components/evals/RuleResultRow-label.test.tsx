@@ -14,7 +14,7 @@ const fired: EvalRuleResult = { ruleName: 'no_stub_output', passed: false, score
 const passed: EvalRuleResult = { ruleName: 'no_pii', passed: true, score: 1, message: 'No PII detected', kind: 'detection', role: 'risk' };
 const skipped: EvalRuleResult = { ruleName: 'cost_under_threshold', passed: false, score: 0, message: 'no cost', skipped: true, skipReason: 'no cost data' };
 
-describe('RuleResultRow — the label control (D-8)', () => {
+describe('RuleResultRow — the label control', () => {
   it('appears on a failed row with a handler, and hands back the rule and the value', () => {
     const onLabel = vi.fn();
     const { container } = render(<RuleResultRow result={fired} onLabel={onLabel} />);

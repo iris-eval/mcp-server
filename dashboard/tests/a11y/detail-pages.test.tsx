@@ -35,7 +35,7 @@ const idleQuery = () => ({ data: null, loading: false, error: null, refetch: vi.
 vi.mock('../../src/api/hooks', () => ({
   useMomentDetail: (...args: unknown[]) => useMomentDetailMock(...args),
   useTraceDetail: (...args: unknown[]) => useTraceDetailMock(...args),
-  // D-3: both detail pages read the roster and the published table once; idle here.
+  // Both detail pages read the roster and the published table once; idle here.
   useBuiltInRules: () => idleQuery(),
   useCapabilities: () => idleQuery(),
 }));

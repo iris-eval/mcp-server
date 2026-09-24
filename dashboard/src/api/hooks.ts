@@ -63,7 +63,7 @@ export const CADENCE = {
 export interface UseApiDataResult<T> {
   data: T | null;
   loading: boolean;
-  /** The last fetch's failure, classified (D-1), or null if it succeeded. Render it with <QueryError>. */
+  /** The last fetch's failure, classified, or null if it succeeded. Render it with <QueryError>. */
   error: ApiError | null;
   /**
    * Epoch-ms timestamp when the rate limit is expected to reset, or null.
@@ -80,7 +80,7 @@ export interface UseApiDataResult<T> {
 // stale-data race regression test can drive it directly without
 // mocking the entire api client surface.
 /**
- * One query, one state (D-1): a widget branches on `status` and never has
+ * One query, one state: a widget branches on `status` and never has
  * to reason about `loading && !data && !error` by hand.
  */
 export type QueryState<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: ApiError };
@@ -126,7 +126,7 @@ export function useApiData<T>(fetcher: () => Promise<T>, pollInterval?: number):
       setRateLimitedUntil(null);
     } catch (err) {
       if (myId !== requestIdRef.current) return; // stale — drop the error too
-      // Classified, never a bare string (D-1): the widget renders the kind.
+      // Classified, never a bare string: the widget renders the kind.
       const apiErr = asApiError(err);
       setError(apiErr);
       if (apiErr.kind === 'rate-limited' && apiErr.retryAfterMs) {
@@ -201,7 +201,7 @@ export function useSummary(hours?: number) {
 }
 
 /**
- * The shell's health poll (D-2): one query behind the header's pill, judge
+ * The shell's health poll: one query behind the header's pill, judge
  * chip and DEMO chip. SLOW on purpose: the connection store turns the pill
  * red on the first request that fails anywhere, so this poll only refines
  * `degraded`, the judge state and the mode — none of which changes by the
@@ -213,13 +213,13 @@ export function useHealth() {
   return useApiData<HealthResponse>(fetcher, CADENCE.SLOW);
 }
 
-/** Read once: the server's own enable steps for the judge and its retention window (D-2). */
+/** Read once: the server's own enable steps for the judge and its retention window. */
 export function useCapabilities() {
   const fetcher = useCallback(() => api.getCapabilities(), []);
   return useApiData<CapabilitiesSummary>(fetcher);
 }
 
-/* ---- runs and cases (D-5) ---- */
+/* ---- runs and cases ---- */
 export function useRuns(limit = 50) {
   const fetcher = useCallback(() => api.getRuns(limit), [limit]);
   return useApiData<RunsResponse>(fetcher, CADENCE.SLOW);

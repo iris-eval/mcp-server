@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * prepack — refuse to pack a server with no UI (A6-9).
+ * prepack — refuse to pack a server with no UI.
  *
  * `npm run build` used to be `tsc` alone; dist/dashboard existed only
  * because CI and the release workflow ran a separate dashboard build step

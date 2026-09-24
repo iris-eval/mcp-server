@@ -70,7 +70,7 @@ jobs:
       - run: npm run clean
       # The one build (dashboard, then server) needs the dashboard's deps:
       # v0.13.0's first release run failed here, in validate, before any
-      # publish job ran — the site A6-9's sweep of build steps missed.
+      # publish job ran — the one site the 0.13.0 sweep of build steps missed.
       - run: cd dashboard && npm ci --no-audit --no-fund
       - run: npm run build
       # The tag IS the release identity — everything downstream (npm dist-tag,
@@ -132,9 +132,9 @@ jobs:
       - run: npm run clean
       # npm ci, as in ci.yml: the dashboard lockfile carries the Linux
       # rolldown binding and the @emnapi entries; a pruned lockfile fails
-      # here instead of drifting (2026-09-20 audit, H-2).
+      # here instead of drifting (2026-09-20 audit).
       - run: cd dashboard && npm ci
-      # One build: the dashboard, then the server (A6-9); `prepack` refuses
+      # One build: the dashboard, then the server; `prepack` refuses
       # to pack a tarball without dist/dashboard/index.html.
       - run: npm run build
       - name: Verify package integrity

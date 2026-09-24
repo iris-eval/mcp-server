@@ -1,5 +1,5 @@
 /*
- * The discovery manifest equals the built server (A6-8).
+ * The discovery manifest equals the built server.
  *
  * website/public/.well-known/mcp.json was hand-maintained: on 2026-09-07 it
  * carried tool descriptions written apart from the ones the server sends,

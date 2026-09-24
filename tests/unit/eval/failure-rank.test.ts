@@ -69,7 +69,7 @@ describe('isFailureMoment', () => {
   });
 
   it('flags a cost spike even when the verdict is pass', () => {
-    // Against the agent's own baseline (D-7a): thirty cheap prior traces.
+    // Against the agent's own baseline: thirty cheap prior traces.
     const history = historyBefore(
       Array.from({ length: 30 }, (_, i) => ({ traceId: `prior-${i}`, timestamp: `2026-04-22T1${i % 9}:${String(i).padStart(2, '0')}:00.000Z`, failed: [], costUsd: 0.001 + (i % 4) * 0.0002 })),
       'trace-1',

@@ -1,5 +1,5 @@
 /*
- * The built-in roster (D-5): every shipped rule with its kind, mechanism,
+ * The built-in roster: every shipped rule with its kind, mechanism,
  * question, criticality and published precision — or "no family".
  */
 import React from 'react';
@@ -40,7 +40,7 @@ const capabilities: CapabilitiesSummary = {
 
 const query = <T,>(data: T | null) => ({ data, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
 
-describe('BuiltInRoster (D-5)', () => {
+describe('BuiltInRoster', () => {
   beforeEach(() => {
     useBuiltInRulesMock.mockReturnValue(query(rules));
     useCapabilitiesMock.mockReturnValue(query(capabilities));

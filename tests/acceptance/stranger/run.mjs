@@ -455,7 +455,7 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth, gate }) {
     const inline = logEvals.length > 0;
     row('A7', logged && (followed || inline), logged ? `log_trace called (${inline ? 'evaluated inline' : 'no inline evaluation'})` : 'no log_trace', followed || inline ? undefined : 'no resource followed and no inline evaluation');
     /*
-     * The ceiling is a measurement, not a wish (A6-9). 0.9.0 measured 14
+     * The ceiling is a measurement, not a wish. 0.9.0 measured 14
      * calls after connection (3 logs, 3 evaluations, 8 reads); 0.10.0
      * measured 12 for the same work with fewer reads, because the verdict
      * had started to carry its basis. Twelve is the 0.10.0 measurement held
@@ -535,7 +535,7 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth, gate }) {
   if (http) {
     const d = http.d;
     /*
-     * The H rows grade the OUTCOME on any of the three routes (A6-9).
+     * The H rows grade the OUTCOME on any of the three routes.
      *
      * The 0.12.0 run started Iris over HTTP, evaluated the three outputs
      * through MCP-over-HTTP, and wrote the right answer in the right words

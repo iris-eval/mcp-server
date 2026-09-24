@@ -28,7 +28,7 @@ export function App() {
           <TourProvider>
             <CommandPaletteProvider>
               <Shell>
-                {/* One boundary per route (D-1): a page that throws keeps the shell and says so; the route change resets it. */}
+                {/* One boundary per route: a page that throws keeps the shell and says so; the route change resets it. */}
                 <RouteBoundary>
                   <Routes>
                     <Route path="/" element={<DashboardPage />} />

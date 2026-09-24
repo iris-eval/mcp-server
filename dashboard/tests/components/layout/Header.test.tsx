@@ -1,5 +1,5 @@
 /*
- * The header states (D-2): every chip is a fact from the server's last
+ * The header states: every chip is a fact from the server's last
  * answer, and the pill can go red.
  */
 import React from 'react';
@@ -100,7 +100,7 @@ function pill(): HTMLElement {
   return el as HTMLElement;
 }
 
-describe('Header (D-2): the pill is the server, not a constant', () => {
+describe('Header: the pill is the server, not a constant', () => {
   beforeEach(() => {
     resetConnection();
     healthMock.mockReturnValue(query(ok));

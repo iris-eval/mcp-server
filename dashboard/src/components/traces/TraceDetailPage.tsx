@@ -36,11 +36,11 @@ type LabelsByEval = Record<string, Record<string, VerdictLabelValue>>;
 export function TraceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading, error, refetch } = useTraceDetail(id!);
-  // The rule roster and the published table, read once each (D-3): the row's definition and interval.
+  // The rule roster and the published table, read once each: the row's definition and interval.
   const rules = useBuiltInRules();
   const capabilities = useCapabilities();
 
-  // Labels on this trace's evaluations (D-8): read once per evaluation, kept on the page after a write.
+  // Labels on this trace's evaluations: read once per evaluation, kept on the page after a write.
   const [labels, setLabels] = useState<LabelsByEval>({});
   const [labelBusy, setLabelBusy] = useState(false);
   const [labelNotes, setLabelNotes] = useState<Record<string, string>>({});

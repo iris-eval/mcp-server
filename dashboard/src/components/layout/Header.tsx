@@ -93,7 +93,7 @@ export function Header() {
   const meta = resolveRouteMeta(location.pathname);
 
   /*
-   * The header reads the server, not a constant (D-2). One health poll and
+   * The header reads the server, not a constant. One health poll and
    * the client's own record of its last answer decide the pill; the judge
    * chip and the DEMO chip come from the same answers; capabilities is read
    * once for the judge's enable steps and the retention window.

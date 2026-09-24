@@ -28,7 +28,7 @@ export async function createHttpTransport(
   health: HttpTransportHealthDeps = {},
 ): Promise<HttpTransportResult> {
   /*
-   * Refuse, don't warn (A6-7): a bind beyond loopback with no API key is
+   * Refuse, don't warn: a bind beyond loopback with no API key is
    * refused here — before the app is built, before any port is taken —
    * unless the operator set security.allowUnauthenticated on purpose. The
    * CLI pre-flight (validateBindPolicy) says the same sentence earlier;
@@ -56,7 +56,7 @@ export async function createHttpTransport(
   }));
 
   /*
-   * DNS-rebinding guard BEFORE the body parser (A6-7). The SDK transport
+   * DNS-rebinding guard BEFORE the body parser. The SDK transport
    * validates Origin and Host too (below), but it runs inside the /mcp
    * handler — after express.json() has read and parsed up to the request
    * size limit from a page the server is about to refuse. The rejection is

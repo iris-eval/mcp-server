@@ -42,7 +42,7 @@ export interface RuleResultRowProps {
   /** The texts the evidence spans point into, when the page has them. */
   texts?: EvidenceTexts;
   /**
-   * The ladder's depth (D-4). `default` shows the result and, for a failed
+   * The ladder's depth. `default` shows the result and, for a failed
    * row, its evidence; `full` adds method, computation and uncertainty —
    * the measured value, the error bar, the published interval and the
    * definition. Pages pass the verdict panel's control; alone, a row shows

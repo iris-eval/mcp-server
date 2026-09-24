@@ -39,7 +39,7 @@ function sidebar() {
   );
 }
 
-describe('Sidebar at phone width (D-9)', () => {
+describe('Sidebar at phone width', () => {
   beforeEach(() => {
     patchMock.mockClear();
     narrowMock.mockReset();

@@ -501,7 +501,7 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
     L.push('');
     L.push(LATENCY_END);
   }
-  L.push('Human agreement: pending (founder blind label of a 140-case stratified sample, twenty per judgment family).');
+  L.push('Human agreement: pending (human blind label of a 140-case stratified sample, twenty per judgment family).');
   L.push('');
   return L.join('\n');
 }
@@ -509,7 +509,7 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
 /**
  * The generated module: one entry per measured rule, in registry order, plus
  * the provenance every number must travel with. `labelling` flips to
- * 'human-verified' when the founder's blind label lands (humanAgreement
+ * 'human-verified' when a human blind label lands (humanAgreement
  * status), and not before.
  */
 export function renderPublishedAccuracy(results: ProofResults): string {

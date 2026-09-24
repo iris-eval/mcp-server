@@ -17,7 +17,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Dashboard dependencies BEFORE the build: since 0.13.0 `npm run build` is
-# one command that builds the dashboard, then the server (A6-9) — the
+# one command that builds the dashboard, then the server — the
 # artifact no longer depends on a second build step that CI remembers.
 # .claims.json feeds the dashboard's build-time defines (vite.config.ts reads
 # ../.claims.json for __IRIS_RULE_COUNT__) — must be in the build context.

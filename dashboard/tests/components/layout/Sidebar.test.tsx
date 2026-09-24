@@ -1,5 +1,5 @@
 /*
- * The sidebar has four entries for three concepts (D-5), every label from
+ * The sidebar has four entries for three concepts, every label from
  * NAV_LABELS, and none of the raw views or the moments timeline as a top-
  * level entry — those are reachable from Runs, Failures and the palette.
  */
@@ -34,7 +34,7 @@ function sidebar() {
   );
 }
 
-describe('Sidebar (D-5): four entries for three concepts', () => {
+describe('Sidebar: four entries for three concepts', () => {
   it('shows exactly the four entries, named from NAV_LABELS, in order', () => {
     const { container } = sidebar();
     const nav = container.querySelector('nav');

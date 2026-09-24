@@ -190,7 +190,7 @@ describe('the run summary carries what a reader needs to judge it', () => {
   });
 });
 
-describe('N-14 — the discordant cases are named', () => {
+describe('the discordant cases are named', () => {
   const paired = (spec: Array<[string, boolean, string[]]>) => spec.map(([caseKey, passed, failedRules]) => row({ caseKey, passed, failedRules }));
 
   it('lists each paired case whose verdict flipped, regressions first, with the rules that flipped and both evaluations', () => {

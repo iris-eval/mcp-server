@@ -28,7 +28,7 @@ const issues: IssuesResponse = {
 
 const query = <T,>(data: T | null) => ({ data, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
 
-describe('IssuesList (D-8)', () => {
+describe('IssuesList', () => {
   beforeEach(() => {
     useIssuesMock.mockReturnValue(query(issues));
   });

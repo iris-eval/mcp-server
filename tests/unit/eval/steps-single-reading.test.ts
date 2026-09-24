@@ -184,7 +184,7 @@ describe('the step layer — one derived reading of the trajectory', () => {
 });
 
 /*
- * The migration (A4-2): the two shipped trajectory rules now read the
+ * The migration: the two shipped trajectory rules now read the
  * derived list, so a trajectory captured as OpenTelemetry TOOL spans is
  * judged instead of reported as "not judged". Every corpus case still
  * carries tool_calls, which is why `npm run proof -- --check` comes back

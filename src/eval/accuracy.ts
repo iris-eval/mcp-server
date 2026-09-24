@@ -19,7 +19,7 @@
  * the draws run once per process.
  *
  * Every number carries its provenance: the corpus version, the release it
- * was generated for, and the labelling ('same-model' until the founder's
+ * was generated for, and the labelling ('same-model' until a human
  * blind label lands). A surface that drops the labelling tag is a truth
  * defect, not a formatting choice.
  */

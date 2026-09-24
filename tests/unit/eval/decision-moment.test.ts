@@ -35,7 +35,7 @@ describe('deriveMoment', () => {
     const m = deriveMoment(makeTrace(), []);
     expect(m.verdict).toBe('unevaluated');
     expect(m.evalCount).toBe(0);
-    // D-0: nothing judged is its own kind, never a pass.
+    // Nothing judged is its own kind, never a pass.
     expect(m.significance.kind).toBe('unevaluated');
     expect(m.significance.label).toBe('No verdict');
   });
@@ -70,7 +70,7 @@ describe('deriveMoment', () => {
     expect(m.verdict).toBe('fail');
   });
 
-  /** The agent's own baseline (D-7a): thirty cheap prior traces, so a cost is judged against THIS agent. */
+  /** The agent's own baseline: thirty cheap prior traces, so a cost is judged against THIS agent. */
   const cheapHistory = () =>
     historyBefore(
       Array.from({ length: 30 }, (_, i) => ({ traceId: `prior-${i}`, timestamp: `2026-04-22T1${i % 9}:${String(i).padStart(2, '0')}:00.000Z`, failed: [], costUsd: 0.001 + (i % 4) * 0.0002 })),
@@ -220,7 +220,7 @@ describe('deriveMomentDetail', () => {
 });
 
 /*
- * D-0 (0.14.0): the server stops dropping the stamp.
+ * 0.14.0: the server stops dropping the stamp.
  *
  * Until 0.14.0 deriveMomentDetail remapped every rule result to six fields
  * — name, passed, score, message, skipped, skipReason — and the stamp the
@@ -229,7 +229,7 @@ describe('deriveMomentDetail', () => {
  * along with the evaluation's verdict, coverage, interpretations and
  * provenance. And a trace nobody had judged was labelled `normal-pass`.
  */
-describe('deriveMomentDetail carries the stamp whole (D-0)', () => {
+describe('deriveMomentDetail carries the stamp whole', () => {
   const stamped = {
     ruleName: 'cost_under_threshold',
     passed: false,

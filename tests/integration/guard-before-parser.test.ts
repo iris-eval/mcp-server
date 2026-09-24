@@ -1,5 +1,5 @@
 /*
- * The DNS-rebinding guard runs BEFORE the body parser, on both servers (A6-7).
+ * The DNS-rebinding guard runs BEFORE the body parser, on both servers.
  *
  * Until 0.13.0 `express.json()` was mounted first on both the dashboard and
  * the MCP HTTP transport, so a request from a rejected Origin still had its

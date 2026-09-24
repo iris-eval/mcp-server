@@ -1,5 +1,5 @@
 /*
- * The case and run detail pages (D-5): a flaky case says so; a run shows its
+ * The case and run detail pages: a flaky case says so; a run shows its
  * counts and links each case.
  */
 import React from 'react';
@@ -29,7 +29,7 @@ function at(path: string, element: React.ReactElement, pattern: string) {
   );
 }
 
-describe('CasePage (D-5)', () => {
+describe('CasePage', () => {
   beforeEach(() => {
     useCaseMock.mockReturnValue({
       data: {
@@ -70,7 +70,7 @@ describe('CasePage (D-5)', () => {
   });
 });
 
-describe('RunDetailPage (D-5)', () => {
+describe('RunDetailPage', () => {
   beforeEach(() => {
     useRunMock.mockReturnValue({
       data: {

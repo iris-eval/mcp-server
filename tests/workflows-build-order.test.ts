@@ -1,10 +1,10 @@
 /*
  * Every workflow job that runs the root build installs the dashboard's
- * dependencies first (A6-9's follow-up).
+ * dependencies first.
  *
  * Since 0.13.0 `npm run build` builds the dashboard, then the server, so a
  * job that runs it without `dashboard/node_modules` fails on vite's first
- * import. A6-9 swept the workflows for build steps and fixed five; the
+ * import. The 0.13.0 sweep of the workflows found build steps in five; the
  * sixth — the release workflow's `validate` job — was missed, and v0.13.0's
  * first release run failed there before any publish job ran. A sweep is a
  * claim about a set; this file is the enumeration that claim needs, run on

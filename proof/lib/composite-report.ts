@@ -11,9 +11,9 @@
  *                       against τ = 1 / (1 + c), with the prior read as
  *                       "this output is bad" and spread over the classes
  *                       the detectors examine
- *   risk (per-class)  — the same composer with the prior read as plan §4.3
- *                       wrote it, per class — measured because it is the
- *                       literal reading, and reported because it blocks
+ *   risk (per-class)  — the same composer with the prior read per
+ *                       class — measured because it is the literal
+ *                       reading, and reported because it blocks
  *                       nearly everything (why the default reads per output)
  *
  * Against `shouldShip` (true by construction or by a human label) each gets
@@ -65,7 +65,7 @@ export interface CaseRow {
   legacy: { passed: boolean; score: number; criticalFailures: string[] };
   /** The default variant (per-output prior). */
   risk: RiskCell;
-  /** Plan §4.3 as written (per-class prior). */
+  /** The per-class reading of the prior. */
   riskPerClass: RiskCell;
   classesCaught: FailureClass[];
 }

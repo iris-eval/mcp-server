@@ -1,5 +1,5 @@
 /*
- * The comparison vocabulary (D-5): the verdict word from the tool's booleans,
+ * The comparison vocabulary: the verdict word from the tool's booleans,
  * and the number formats.
  */
 import { describe, it, expect } from 'vitest';
@@ -17,7 +17,7 @@ import {
   fmtSmallestDetectable,
 } from '../../../src/components/runs/compareText';
 
-describe('compareText (D-5)', () => {
+describe('compareText', () => {
   it('the verdict word follows the tool: not compared, worse, better, else not distinguishable', () => {
     const base = { comparable: true, forced: false, worse: false, better: false, method: 'paired-mcnemar' as const };
     expect(comparisonVerdict(base)).toBe('same');
@@ -43,7 +43,7 @@ describe('compareText (D-5)', () => {
     expect(fmtSmallestDetectable(null)).toBe('—');
   });
 
-  it('D-6b: q prints like p, the equivalence chip names the margin, and the per-rule and equivalence sentences end', () => {
+  it('q prints like p, the equivalence chip names the margin, and the per-rule and equivalence sentences end', () => {
     expect(fmtQ(0.0004)).toBe('q < 0.001');
     expect(fmtQ(0.0667)).toBe('q = 0.067');
     expect(fmtQ(null)).toBe('—');

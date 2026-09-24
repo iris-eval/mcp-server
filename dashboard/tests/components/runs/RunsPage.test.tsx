@@ -1,5 +1,5 @@
 /*
- * The runs page (D-5): the list with its links, the empty state, and the
+ * The runs page: the list with its links, the empty state, and the
  * compare action that calls POST /api/v1/compare and renders the answer.
  */
 import React from 'react';
@@ -64,7 +64,7 @@ function page() {
   );
 }
 
-describe('RunsPage (D-5)', () => {
+describe('RunsPage', () => {
   beforeEach(() => {
     useRunsMock.mockReturnValue({
       data: { runs: [run('baseline', 8, 10), run('candidate', 9, 10)], count: 2 },

@@ -1,5 +1,5 @@
 /*
- * The vocabulary table (D-3): every kind, role and skip class has a sentence;
+ * The vocabulary table: every kind, role and skip class has a sentence;
  * every evidence type and every uncertainty basis has a short form.
  */
 import { describe, it, expect } from 'vitest';
@@ -14,7 +14,7 @@ import {
 } from '../../../src/components/evals/ruleResultText';
 import type { Evidence } from '../../../src/api/types';
 
-describe('ruleResultText (D-3)', () => {
+describe('ruleResultText', () => {
   it('every kind, role and skip class has its own sentence, ending in a full stop', () => {
     const all = [...Object.values(KIND_TEXT), ...Object.values(ROLE_TEXT), ...Object.values(SKIP_CLASS_TEXT)];
     expect(all).toHaveLength(6 + 4 + 3);

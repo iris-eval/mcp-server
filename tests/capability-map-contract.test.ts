@@ -113,7 +113,7 @@ describe('capability map — evidence', () => {
     }
   });
 
-  it('a gap or n/a cell names no registered tool, rule, route or resource — what ships answers a cell, so the cell cites it (A6-8)', () => {
+  it('a gap or n/a cell names no registered tool, rule, route or resource — what ships answers a cell, so the cell cites it', () => {
     /*
      * The S4 column said "no grouping over repeated runs" in nine cells for a
      * release after compare_traces shipped exactly that, and Q10xS5 said

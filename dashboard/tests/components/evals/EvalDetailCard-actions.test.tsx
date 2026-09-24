@@ -28,7 +28,7 @@ function evalResult(extra: Partial<EvalResult> = {}): EvalResult {
   };
 }
 
-describe('EvalDetailCard — labels and re-scoring (D-8)', () => {
+describe('EvalDetailCard — labels and re-scoring', () => {
   it('draws no control and no actions without handlers', () => {
     const { container } = render(<EvalDetailCard evalResult={evalResult()} />);
     expect(container.querySelector('[data-label-control]')).toBeNull();

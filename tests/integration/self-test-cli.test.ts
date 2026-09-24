@@ -80,7 +80,7 @@ describe('iris-eval --self-test (CLI)', () => {
     }
     expect(stdout).toContain(SELF_TEST_PASS_VERDICT);
 
-    // The retention line says what will be deleted and where to change it (A6-7).
+    // The retention line says what will be deleted and where to change it.
     expect(stdout).toMatch(/retention\.days/);
     expect(stdout).toMatch(/retention\.sweepIntervalHours/);
 

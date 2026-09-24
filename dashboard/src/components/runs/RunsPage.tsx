@@ -169,7 +169,7 @@ export function RunsPage() {
 
   return (
     <div style={styles.page}>
-      {/* The raw views are views of this same data (D-5): reachable here, not top-level entries. */}
+      {/* The raw views are views of this same data: reachable here, not top-level entries. */}
       <nav aria-label="Raw views" style={styles.rawNav}>
         <span style={styles.muted}>Raw views of the same data:</span>
         <Link to="/traces" data-raw-view="traces">

@@ -129,8 +129,8 @@ export class EvalEngine {
   private observer: ((event: EvaluationEvent) => void) | null = null;
 
   /**
-   * One structured event per evaluation, whichever door asked for it (arc
-   * 8, R-6): the server wires it to the logger's `event('evaluation', …)`.
+   * One structured event per evaluation, whichever door asked for it
+   * (0.15.0): the server wires it to the logger's `event('evaluation', …)`.
    * The engine has no logger of its own on purpose — the tools, the ingest
    * path and the CLI all reach it, so the seam is here, once. An observer
    * that throws never fails the evaluation.

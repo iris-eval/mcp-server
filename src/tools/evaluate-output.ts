@@ -170,7 +170,7 @@ export function registerEvaluateOutputTool(
         expectedTrajectory: args.expected_trajectory as ExpectedTrajectory | undefined,
         input: args.input,
         costUsd: args.cost_usd,
-        // The agent's own cost baseline when a trace is linked (H-5): the
+        // The agent's own cost baseline when a trace is linked: the
         // cost under test is the caller's, the history is the trace's agent's.
         costHistory:
           trace !== undefined && args.cost_usd !== undefined

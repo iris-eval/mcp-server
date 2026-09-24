@@ -70,6 +70,6 @@ export function resolveRouteMeta(pathname: string): RouteMeta | undefined {
     );
     if (regex.test(pathname)) return route;
   }
-  // The wildcard (D-1): an address the router does not know still gets a title in the header.
+  // The wildcard: an address the router does not know still gets a title in the header.
   return ROUTE_TITLES.find((r) => r.pattern === '*');
 }

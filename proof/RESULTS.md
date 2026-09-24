@@ -156,4 +156,4 @@ EvalEngine.evaluateAll — the call evaluate_output makes — over every case in
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 
 <!-- latency:end -->
-Human agreement: pending (founder blind label of a 140-case stratified sample, twenty per judgment family).
+Human agreement: pending (human blind label of a 140-case stratified sample, twenty per judgment family).

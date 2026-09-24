@@ -192,7 +192,7 @@ export function LiveTraceTail() {
           </Tooltip>
           <span style={styles.agent}>{t.agent_name}</span>
           <span style={styles.cost} data-tail-cost={t.trace_id}>
-            {/* `!= null`: the API serializes a missing cost as null, not undefined (D-9 — one null took the whole Stream view down). */}
+            {/* `!= null`: the API serializes a missing cost as null, not undefined (one null once took the whole Stream view down). */}
             {t.cost_usd != null ? formatCost(t.cost_usd) : '—'}
           </span>
           <span style={styles.snippet}>{snippet(t)}</span>

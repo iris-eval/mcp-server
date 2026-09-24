@@ -25,7 +25,7 @@
  * rate, and misses 55.6% of the bad outputs against 83.3%. The difference
  * in accuracy is +19.2 points with a 95% interval of [-7.5, 42.4], so the
  * case for it is that it misses less without blocking more — not that it is
- * proven more accurate at that sample size. Plan §4.3, §4.4;
+ * proven more accurate at that sample size.
  * proof/COMPOSITE.md carries the numbers and regenerates them.
  */
 import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js';
@@ -51,7 +51,7 @@ export const DEFAULT_PRIOR = 0.5;
 
 /**
  * What the prior means (measured before the composer shipped in 0.10.0):
- *   'per-class'  — plan §4.3 as written: π is the prior that EACH examined
+ *   'per-class'  — the literal reading: π is the prior that EACH examined
  *                  class is present. With K classes examined the prior that
  *                  nothing is wrong is (1 − π)^K — at π = 0.5 and K = 10 it
  *                  is 0.001, so the noisy-OR blocks nearly everything.

@@ -1,5 +1,5 @@
 /*
- * The wildcard route (D-1). An address the router did not know used to
+ * The wildcard route. An address the router did not know used to
  * render the shell with nothing inside it — no heading, no sentence, no
  * way out. This says what happened and where the sections are.
  */

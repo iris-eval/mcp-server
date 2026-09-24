@@ -7,7 +7,7 @@
  * the HTTP ingest route, and a row read back out of storage days later.
  *
  * The judge tool and the citation verifier join this test when they run
- * through the engine (A3-4, A3-5); until then they compose their own
+ * through the engine; until then they compose their own
  * `passed` and this file says so rather than implying coverage it does not
  * have.
  */

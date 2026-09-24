@@ -1,5 +1,5 @@
 /*
- * The connection store and the client that feeds it (D-2).
+ * The connection store and the client that feeds it.
  *
  * The proposition: every answer the client sees moves the store — a fetch
  * that throws is `unreachable`, an answer of any status is `connected`, a
@@ -19,7 +19,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-describe('the connection store (D-2)', () => {
+describe('the connection store', () => {
   beforeEach(() => resetConnection());
 
   it('starts connected; a different state moves it and stamps when', () => {
@@ -46,7 +46,7 @@ describe('the connection store (D-2)', () => {
   });
 });
 
-describe('the client reports every answer (D-2)', () => {
+describe('the client reports every answer', () => {
   const realFetch = globalThis.fetch;
 
   beforeEach(() => resetConnection());

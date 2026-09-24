@@ -288,7 +288,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   }, { independent: true });
 
   /*
-   * Retention, read from THIS install's config before the scrub (A6-7).
+   * Retention, read from THIS install's config before the scrub.
    * The sweep deletes traces and evaluations older than retention.days at
    * startup and every retention.sweepIntervalHours — a data-loss surprise
    * unless the diagnostic says so where the user is already reading.

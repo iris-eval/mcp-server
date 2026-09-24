@@ -1,7 +1,7 @@
 /*
  * Intervals beyond Wilson — the ones the proof needed and lacked.
  *
- * Dirichlet credible intervals (plan §4.5). The F1 bootstrap resamples
+ * Dirichlet credible intervals. The F1 bootstrap resamples
  * observations, so a family with zero errors gives every resample zero
  * errors and an interval of [1, 1] — a point that says the rule is
  * perfect, which thirty cases cannot say. The posterior over the confusion

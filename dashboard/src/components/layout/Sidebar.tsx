@@ -124,7 +124,7 @@ export function Sidebar() {
 
       <nav style={styles.navContainer}>
         {/*
-         * Four entries for three concepts (D-5): what failed, the data,
+         * Four entries for three concepts: what failed, the data,
          * authoring. Traces and evaluations are raw views reachable from
          * Runs; the moments timeline is reachable from Failures and the
          * palette. The names come from NAV_LABELS — one edit flips them.

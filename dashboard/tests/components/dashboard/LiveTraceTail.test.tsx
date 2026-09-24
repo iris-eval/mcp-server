@@ -35,7 +35,7 @@ function trace(id: string, extra: Partial<Trace> = {}): Trace {
 
 const query = (traces: Trace[]) => ({ data: { traces, total: traces.length, limit: 20, offset: 0 }, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
 
-describe('LiveTraceTail (D-9): a trace with no cost', () => {
+describe('LiveTraceTail: a trace with no cost', () => {
   beforeEach(() => {
     useTracesMock.mockReset();
   });

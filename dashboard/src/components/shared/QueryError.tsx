@@ -1,5 +1,5 @@
 /*
- * The one way a failed query is shown, inside the widget that asked (D-1).
+ * The one way a failed query is shown, inside the widget that asked.
  *
  * A query's error used to be a string rendered by whichever page thought
  * to render it, and a page that did not blanked. Every widget that owns a

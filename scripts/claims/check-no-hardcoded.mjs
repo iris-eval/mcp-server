@@ -226,7 +226,7 @@ const PATTERNS = [
     re: /\bCloud\s+tier\b/gi,
     // The agent-facing and documentation surfaces. The website's legal pages
     // (terms, privacy) describe a waitlist in their own register and are a
-    // founder-owned surface, not a product claim this scanner adjudicates.
+    // separately owned surface, not a product claim this scanner adjudicates.
     onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/'],
     skipPrefixes: ['docs/blog/', 'docs/launch/'],
     skipComments: true,

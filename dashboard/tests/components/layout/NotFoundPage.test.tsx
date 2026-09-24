@@ -1,5 +1,5 @@
 /*
- * The wildcard route (D-1): an unknown address says so, shows the address,
+ * The wildcard route: an unknown address says so, shows the address,
  * and links every section; no axe violations.
  */
 import { describe, it, expect } from 'vitest';

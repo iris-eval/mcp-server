@@ -130,7 +130,7 @@ export function FailuresView() {
         </div>
       )}
 
-      {/* Fires grouped by what the rule found (D-8): ten of one pattern read as one issue. */}
+      {/* Fires grouped by what the rule found: ten of one pattern read as one issue. */}
       {data && data.total > 0 && <IssuesList />}
     </div>
   );

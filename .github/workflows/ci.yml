@@ -51,7 +51,7 @@ jobs:
       # add a triage row, or bump the dep — are edits inside the PR itself.
       - run: npm run lint
       - run: npm run typecheck
-      # npm ci (H-1 of the 2026-09-20 audit; closes the code-scan "pinned
+      # npm ci (from the 2026-09-20 audit; closes the code-scan "pinned
       # dependencies" finding on this file). The dashboard lockfile carries
       # the Linux rolldown binding and the three @emnapi entries a Windows
       # `npm install` used to prune; if a future Windows install prunes them
@@ -173,7 +173,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: cd dashboard && npm ci --no-audit --no-fund
-      # One build: the dashboard, then the server (A6-9). A local `npm pack`
+      # One build: the dashboard, then the server. A local `npm pack`
       # after `npm run build` used to ship a server with no UI because
       # dist/dashboard came from a separate step only CI ran.
       - run: npm run build
@@ -186,7 +186,7 @@ jobs:
           jq -e '.[0].files[] | select(.path == "dist/dashboard/index.html")' pack.json > /dev/null \
             || { echo "::error::dist/dashboard/index.html is not in the pack list"; exit 1; }
           echo "pack carries dist/dashboard/index.html"
-      - name: The packed tarball resolves ./engine, ./client and ./dist/* (R-1)
+      - name: The packed tarball resolves ./engine, ./client and ./dist/*
         # What a consumer does: pack, install the tarball into a never-used
         # directory, import each subpath, evaluate one stub through the engine.
         run: node scripts/check-exports.mjs
@@ -272,7 +272,7 @@ jobs:
         # reachable, since loopback inside a container is not.
         run: |
           set -euo pipefail
-          echo "--- bare run must REFUSE: the image binds 0.0.0.0 and carries no key (A6-7) ---"
+          echo "--- bare run must REFUSE: the image binds 0.0.0.0 and carries no key ---"
           # The image's own ENV puts both servers on 0.0.0.0; with no
           # IRIS_API_KEY the process must stop at boot with one sentence
           # naming the variable, not serve. `|| true` captures the exit

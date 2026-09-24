@@ -1,5 +1,5 @@
 /*
- * A boundary per route (D-1). A render error in one page used to unmount
+ * A boundary per route. A render error in one page used to unmount
  * the whole tree to a blank screen with the message in the console. The
  * boundary keeps the shell — the sidebar, the header, the palette — and
  * says what happened where the page was, with a way back. It resets when

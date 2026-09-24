@@ -1,5 +1,5 @@
 /*
- * The in-widget error (D-1): one component, one sentence per kind, a retry
+ * The in-widget error: one component, one sentence per kind, a retry
  * where a retry can help, a sign-in where a key is needed, and no axe
  * violations in any state.
  */

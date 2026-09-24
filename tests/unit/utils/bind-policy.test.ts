@@ -1,5 +1,5 @@
 /*
- * Refuse, don't warn (A6-7).
+ * Refuse, don't warn.
  *
  * Until 0.13.0 the HTTP transport and the dashboard both WARNED when bound
  * beyond loopback with no API key, then served: every trace, verdict and

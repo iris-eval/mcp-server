@@ -35,7 +35,7 @@ const stats: LabelStats = {
 
 const query = <T,>(data: T | null) => ({ data, loading: false, error: null, refetch: vi.fn(), rateLimitedUntil: null });
 
-describe('LocalPrecisionPanel (D-8)', () => {
+describe('LocalPrecisionPanel', () => {
   beforeEach(() => {
     useLabelStatsMock.mockReturnValue(query(stats));
   });

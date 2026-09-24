@@ -23,8 +23,8 @@ const EntrySchema = z.object({
   /*
    * tenantId added in v0.4.0. Optional for backward compatibility:
    * entries written by v0.3.x don't have it; readers MUST treat them
-   * as 'local' (single-tenant OSS assumption). See threat model §4.3
-   * finding TM-4 for the Cloud-side enforcement plan.
+   * as 'local' (single-tenant OSS assumption). A hosted, multi-tenant
+   * deployment would need to enforce the tenant on write.
    */
   tenantId: z.string().optional(),
   action: z.enum(AUDIT_ACTIONS),

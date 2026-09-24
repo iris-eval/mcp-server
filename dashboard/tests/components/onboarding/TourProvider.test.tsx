@@ -1,5 +1,5 @@
 /*
- * The tour opens on request only (D-5): never on its own, whatever the
+ * The tour opens on request only: never on its own, whatever the
  * browser or the server has recorded; openTour/closeTour drive it.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -34,7 +34,7 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-describe('TourProvider (D-5): on request only', () => {
+describe('TourProvider: on request only', () => {
   it('stays closed on a fresh browser — nothing opens on its own', () => {
     renderProbe();
     expect(screen.getByTestId('tour-state').textContent).toBe('closed');

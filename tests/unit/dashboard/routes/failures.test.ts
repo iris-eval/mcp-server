@@ -52,7 +52,7 @@ const piiRules = [{ ruleName: 'no_pii', passed: false, score: 0, message: 'SSN d
 interface StubData {
   traces: Trace[];
   evalsByTrace: Record<string, EvalResult[]>;
-  /** Older entries of the agent's failure log beyond the scanned window — the cost baseline a spike is judged against (D-7a). */
+  /** Older entries of the agent's failure log beyond the scanned window — the cost baseline a spike is judged against. */
   baselineLog?: AgentFailureLogEntry[];
 }
 
@@ -87,7 +87,7 @@ function makeStubStorage(data: StubData): {
       seenTenants.push(tenantId);
       return new Map(traceIds.filter((id) => (data.evalsByTrace[id] ?? []).length > 0).map((id) => [id, data.evalsByTrace[id]]));
     },
-    // The route reads one failure log per agent (D-7a): the scanned traces as
+    // The route reads one failure log per agent: the scanned traces as
     // entries, plus whatever older baseline the fixture supplies.
     getAgentFailureLog: async (tenantId: string, agentName: string): Promise<AgentFailureLogEntry[]> => {
       seenTenants.push(tenantId);

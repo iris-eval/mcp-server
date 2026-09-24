@@ -64,7 +64,7 @@ describe('GET /api/v1/capabilities', () => {
     expect(pii.critical).toBe(true);
     expect(pii.proof?.ppvAt).toHaveProperty('0.01');
     expect(body.limits).toMatchObject({ customRulesPerCall: 10, regexBudgetMs: 100 });
-    // Retention is a data-loss surprise unless it is said where the agent reads (A6-7).
+    // Retention is a data-loss surprise unless it is said where the agent reads.
     expect(body.retention).toEqual({ days: defaultConfig.retention.days, sweepIntervalHours: defaultConfig.retention.sweepIntervalHours });
     expect(body.dashboard.mode).toBe('demo');
     expect(body.tools.sort()).toEqual([...TOOL_NAMES].sort());

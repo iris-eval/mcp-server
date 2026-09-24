@@ -59,7 +59,7 @@ export function createDashboardServer(
   options?: DashboardServerOptions,
 ): DashboardServer {
   /*
-   * Refuse, don't warn (A6-7): a bind beyond loopback with no API key is
+   * Refuse, don't warn: a bind beyond loopback with no API key is
    * refused here — before the app is built — unless the operator set
    * security.allowUnauthenticated on purpose. The CLI pre-flight
    * (validateBindPolicy) says the same sentence earlier; this is the
@@ -114,7 +114,7 @@ export function createDashboardServer(
 
   /*
    * DNS-rebinding guard BEFORE anything that reads or writes state —
-   * including the body parser (A6-7: until 0.13.0 express.json() was
+   * including the body parser (until 0.13.0 express.json() was
    * mounted first, so a request from a rejected Origin still had up to the
    * size limit read and parsed before the 403). CORS runs after it and
    * only decorates responses the guard already allowed — on its own CORS

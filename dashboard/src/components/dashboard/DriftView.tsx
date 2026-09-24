@@ -126,7 +126,7 @@ export function DriftView() {
         drift={drift ?? undefined}
       />
 
-      {/* §1b BY RUN (D-6) — the split compare_runs tests, so the picture and the test agree on "before" */}
+      {/* §1b BY RUN — the split compare_runs tests, so the picture and the test agree on "before" */}
       <SectionHeader
         title="By run"
         question="Did every run move the same way, or did two runs average into a flat line?"

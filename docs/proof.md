@@ -94,7 +94,7 @@ short version:
   families were written and labelled on 2026-09-04 against each rule's
   **documented** definition, not by running the rule.
 - **The labels are not human gold.** The same model family wrote the cases and
-  labelled them. A founder blind label of a stratified 40-case sample is
+  labelled them. A human blind label of a stratified 40-case sample is
   pending; until it exists, `humanAgreement.status` is `pending` and no page
   may call the labels "gold".
 - **The numbers are corpus-conditional.** The safety rules were repaired with

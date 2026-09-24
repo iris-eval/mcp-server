@@ -1,5 +1,5 @@
 /*
- * cost_anomaly, the rule (H-5 of the 2026-09-20 audit; the approved §4.8).
+ * cost_anomaly, the rule (from the 2026-09-20 audit).
  *
  * A measurement that reads the agent's own recent costs: skips without a
  * cost and below twenty prior costed traces; fires over the agent's own
