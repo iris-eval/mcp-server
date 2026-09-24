@@ -274,7 +274,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       risk: 'class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses)',
       priorModes: {
         'per-output': 'π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)',
-        'per-class': 'π is the prior that each examined class is present (plan §4.3 as written); with K classes examined the prior that nothing is wrong is (1 − π)^K',
+        'per-class': 'π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K',
       },
       legacy: 'the pre-0.10.0 arithmetic, computed explicitly by proof/lib/legacy-composer.ts: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result; from 0.12.0 it is no longer a product behaviour and this file is the only place it survives',
       accuracyCi: 'wilson-95',
