@@ -106,7 +106,7 @@ iris = IrisClient()                       # IRIS_URL, or the running dashboard's
 iris.evaluate_output("…", input="…", agent_name="support-bot")["verdict"]   # {"state": "pass", "basis": "clean", "by": []}
 ```
 
-A thin client over the HTTP API (0.16.0): `log_trace()`, `evaluate_output()`, `get_traces()`, `get_trace()`, `health()`, `capabilities()`, sync and async, typed answers, the server's own sentence on a refusal — and a pytest plugin: an `iris` fixture and `assert_iris(output, expect="pass")` that asserts on the verdict's state. [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
+A thin client over the HTTP API of server 0.16.0 and later, versioned on its own — `iris_eval.__version__` and the PyPI page carry its number, which is not the server's: `log_trace()`, `evaluate_output()`, `get_traces()`, `get_trace()`, `health()`, `capabilities()`, sync and async, typed answers, the server's own sentence on a refusal — and a pytest plugin: an `iris` fixture and `assert_iris(output, expect="pass")` that asserts on the verdict's state. [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
 
 ### A CI gate, no server needed
 
