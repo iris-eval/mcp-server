@@ -5,30 +5,30 @@
  * are the numbers on https://iris-eval.com/proof, for the release named below.
  */
 
-export const PUBLISHED_ACCURACY_CORPUS_VERSION = '72dc9debe697';
+export const PUBLISHED_ACCURACY_CORPUS_VERSION = '068e20299dd3';
 export const PUBLISHED_ACCURACY_RELEASE = '0.17.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
 export const PUBLISHED_ACCURACY = {
   min_output_length: {
-    n: 29, tp: 13, fp: 0, fn: 0, tn: 16,
+    n: 24, tp: 13, fp: 0, fn: 0, tn: 11,
     precision: 1, recall: 1, f1: 1,
     ci95: { precision: [0.7719, 1], recall: [0.7719, 1], f1: [1, 1] },
   },
   non_empty_output: {
-    n: 29, tp: 10, fp: 0, fn: 2, tn: 17,
+    n: 24, tp: 10, fp: 0, fn: 2, tn: 12,
     precision: 1, recall: 0.8333, f1: 0.9091,
     ci95: { precision: [0.7225, 1], recall: [0.552, 0.953], f1: [0.7368, 1] },
   },
   sentence_count: {
-    n: 30, tp: 16, fp: 0, fn: 0, tn: 14,
-    precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.8064, 1], recall: [0.8064, 1], f1: [1, 1] },
-  },
-  expected_coverage: {
-    n: 29, tp: 14, fp: 0, fn: 0, tn: 15,
+    n: 24, tp: 14, fp: 0, fn: 0, tn: 10,
     precision: 1, recall: 1, f1: 1,
     ci95: { precision: [0.7847, 1], recall: [0.7847, 1], f1: [1, 1] },
+  },
+  expected_coverage: {
+    n: 24, tp: 11, fp: 0, fn: 0, tn: 13,
+    precision: 1, recall: 1, f1: 1,
+    ci95: { precision: [0.7412, 1], recall: [0.7412, 1], f1: [1, 1] },
   },
   valid_tool_arguments: {
     n: 33, tp: 15, fp: 0, fn: 0, tn: 18,
@@ -36,9 +36,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7961, 1], recall: [0.7961, 1], f1: [1, 1] },
   },
   ask_coverage: {
-    n: 31, tp: 12, fp: 4, fn: 2, tn: 13,
-    precision: 0.75, recall: 0.8571, f1: 0.8,
-    ci95: { precision: [0.505, 0.8982], recall: [0.6006, 0.9599], f1: [0.6087, 0.9333] },
+    n: 30, tp: 11, fp: 4, fn: 2, tn: 13,
+    precision: 0.7333, recall: 0.8462, f1: 0.7857,
+    ci95: { precision: [0.4805, 0.891], recall: [0.5777, 0.9567], f1: [0.5833, 0.9286] },
   },
   tool_sequence: {
     n: 47, tp: 25, fp: 0, fn: 0, tn: 22,
@@ -46,14 +46,14 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.8668, 1], recall: [0.8668, 1], f1: [1, 1] },
   },
   keyword_overlap: {
-    n: 30, tp: 10, fp: 0, fn: 0, tn: 20,
+    n: 24, tp: 11, fp: 0, fn: 0, tn: 13,
     precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.7225, 1], recall: [0.7225, 1], f1: [1, 1] },
+    ci95: { precision: [0.7412, 1], recall: [0.7412, 1], f1: [1, 1] },
   },
   topic_consistency: {
-    n: 31, tp: 11, fp: 0, fn: 1, tn: 19,
+    n: 24, tp: 11, fp: 0, fn: 1, tn: 12,
     precision: 1, recall: 0.9167, f1: 0.9565,
-    ci95: { precision: [0.7412, 1], recall: [0.6461, 0.9851], f1: [0.8333, 1] },
+    ci95: { precision: [0.7412, 1], recall: [0.6461, 0.9851], f1: [0.8421, 1] },
   },
   tool_choice: {
     n: 46, tp: 18, fp: 0, fn: 2, tn: 26,
@@ -71,9 +71,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.765, 0.9516], recall: [0.765, 0.9516], f1: [0.8125, 0.9495] },
   },
   no_blocklist_words: {
-    n: 32, tp: 14, fp: 1, fn: 1, tn: 16,
+    n: 26, tp: 14, fp: 1, fn: 1, tn: 10,
     precision: 0.9333, recall: 0.9333, f1: 0.9333,
-    ci95: { precision: [0.7018, 0.9881], recall: [0.7018, 0.9881], f1: [0.8148, 1] },
+    ci95: { precision: [0.7018, 0.9881], recall: [0.7018, 0.9881], f1: [0.8182, 1] },
   },
   no_injection_patterns: {
     n: 90, tp: 41, fp: 0, fn: 1, tn: 48,
@@ -91,14 +91,14 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.8985, 1], recall: [0.5974, 0.844], f1: [0.7576, 0.9213] },
   },
   no_silent_tool_failure: {
-    n: 53, tp: 17, fp: 0, fn: 8, tn: 28,
-    precision: 1, recall: 0.68, f1: 0.8095,
-    ci95: { precision: [0.8157, 1], recall: [0.4841, 0.8279], f1: [0.6452, 0.9167] },
+    n: 43, tp: 14, fp: 0, fn: 8, tn: 21,
+    precision: 1, recall: 0.6364, f1: 0.7778,
+    ci95: { precision: [0.7847, 1], recall: [0.4295, 0.8027], f1: [0.5882, 0.9091] },
   },
   grounded_in_reads: {
-    n: 32, tp: 16, fp: 0, fn: 0, tn: 16,
+    n: 30, tp: 14, fp: 0, fn: 0, tn: 16,
     precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.8064, 1], recall: [0.8064, 1], f1: [1, 1] },
+    ci95: { precision: [0.7847, 1], recall: [0.7847, 1], f1: [1, 1] },
   },
   no_injection_compliance: {
     n: 31, tp: 9, fp: 0, fn: 5, tn: 17,
@@ -106,19 +106,19 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7009, 1], recall: [0.3876, 0.8366], f1: [0.5385, 0.9524] },
   },
   cost_under_threshold: {
-    n: 26, tp: 10, fp: 0, fn: 0, tn: 16,
+    n: 24, tp: 10, fp: 0, fn: 0, tn: 14,
     precision: 1, recall: 1, f1: 1,
     ci95: { precision: [0.7225, 1], recall: [0.7225, 1], f1: [1, 1] },
   },
   verbosity_ratio: {
-    n: 25, tp: 9, fp: 0, fn: 0, tn: 16,
+    n: 24, tp: 12, fp: 0, fn: 0, tn: 12,
     precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.7009, 1], recall: [0.7009, 1], f1: [1, 1] },
+    ci95: { precision: [0.7575, 1], recall: [0.7575, 1], f1: [1, 1] },
   },
   no_tool_loop: {
-    n: 42, tp: 19, fp: 0, fn: 0, tn: 23,
+    n: 37, tp: 18, fp: 0, fn: 0, tn: 19,
     precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.8318, 1], recall: [0.8318, 1], f1: [1, 1] },
+    ci95: { precision: [0.8241, 1], recall: [0.8241, 1], f1: [1, 1] },
   },
   max_steps: {
     n: 28, tp: 12, fp: 0, fn: 0, tn: 16,

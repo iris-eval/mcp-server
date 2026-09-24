@@ -1,34 +1,34 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-24T03:43:50.671Z for v0.17.0 (local generating commit `6ce56bd` — branch commits are squashed on merge, so cite the version).
-Corpus version `72dc9debe697` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-24T04:03:30.958Z for v0.17.0 (local generating commit `7c4fdbc` — branch commits are squashed on merge, so cite the version).
+Corpus version `068e20299dd3` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
 | Rule | Bundle | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |
 |---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|
-| `min_output_length` | completeness | 29 | 13 | 0 | 13 | 0 | 0 | 16 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [85.9, 99.9] | 100.0% / 100.0% |
-| `non_empty_output` | completeness | 29 | 12 | 0 | 10 | 0 | 2 | 17 | 100.0% [72.3, 100.0] | 83.3% [55.2, 95.3] | 0.909 [73.7, 100.0] | [69.4, 97.3] | 100.0% / 100.0% |
-| `sentence_count` | completeness | 30 | 16 | 0 | 16 | 0 | 0 | 14 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] | 1.000 [100.0, 100.0] | [88.6, 99.9] | 100.0% / 100.0% |
-| `expected_coverage` | completeness | 29 | 14 | 0 | 14 | 0 | 0 | 15 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [87.0, 99.9] | 100.0% / 100.0% |
+| `min_output_length` | completeness | 24 | 13 | 0 | 13 | 0 | 0 | 11 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [85.9, 99.9] | 100.0% / 100.0% |
+| `non_empty_output` | completeness | 24 | 12 | 0 | 10 | 0 | 2 | 12 | 100.0% [72.3, 100.0] | 83.3% [55.2, 95.3] | 0.909 [73.7, 100.0] | [69.4, 97.3] | 100.0% / 100.0% |
+| `sentence_count` | completeness | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [86.9, 99.9] | 100.0% / 100.0% |
+| `expected_coverage` | completeness | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.7, 99.9] | 100.0% / 100.0% |
 | `valid_tool_arguments` | completeness | 33 | 15 | 0 | 15 | 0 | 0 | 18 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] | 1.000 [100.0, 100.0] | [88.1, 99.9] | 100.0% / 100.0% |
-| `ask_coverage` | completeness | 31 | 14 | 5 | 12 | 4 | 2 | 13 | 75.0% [50.5, 89.8] | 85.7% [60.1, 96.0] | 0.800 [60.9, 93.3] | [59.1, 90.7] | 16.1% / 78.5% |
+| `ask_coverage` | completeness | 30 | 13 | 5 | 11 | 4 | 2 | 13 | 73.3% [48.0, 89.1] | 84.6% [57.8, 95.7] | 0.786 [58.3, 92.9] | [56.5, 90.1] | 15.9% / 78.2% |
 | `tool_sequence` | completeness | 47 | 25 | 0 | 25 | 0 | 0 | 22 | 100.0% [86.7, 100.0] | 100.0% [86.7, 100.0] | 1.000 [100.0, 100.0] | [92.7, 100.0] | 100.0% / 100.0% |
-| `keyword_overlap` | relevance | 30 | 10 | 0 | 10 | 0 | 0 | 20 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [82.2, 99.9] | 100.0% / 100.0% |
-| `topic_consistency` | relevance | 31 | 12 | 1 | 11 | 0 | 1 | 19 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [83.3, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
+| `keyword_overlap` | relevance | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.3, 99.9] | 100.0% / 100.0% |
+| `topic_consistency` | relevance | 24 | 12 | 1 | 11 | 0 | 1 | 12 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [84.2, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
 | `tool_choice` | relevance | 46 | 20 | 4 | 18 | 0 | 2 | 26 | 100.0% [82.4, 100.0] | 90.0% [69.9, 97.2] | 0.947 [85.7, 100.0] | [81.0, 98.4] | 100.0% / 100.0% |
 | `answers_the_ask` | relevance | 45 | 20 | 3 | 20 | 3 | 0 | 22 | 87.0% [67.9, 95.5] | 100.0% [83.9, 100.0] | 0.930 [83.7, 100.0] | [80.6, 97.7] | 30.5% / 89.3% |
 | `no_pii` | safety | 93 | 45 | 0 | 40 | 5 | 5 | 43 | 88.9% [76.5, 95.2] | 88.9% [76.5, 95.2] | 0.889 [81.3, 95.0] | [79.7, 94.0] | 31.0% / 89.5% |
-| `no_blocklist_words` | safety | 32 | 15 | 0 | 14 | 1 | 1 | 16 | 93.3% [70.2, 98.8] | 93.3% [70.2, 98.8] | 0.933 [81.5, 100.0] | [76.4, 98.2] | 45.5% / 94.1% |
+| `no_blocklist_words` | safety | 26 | 15 | 0 | 14 | 1 | 1 | 10 | 93.3% [70.2, 98.8] | 93.3% [70.2, 98.8] | 0.933 [81.8, 100.0] | [76.4, 98.2] | 35.1% / 91.1% |
 | `no_injection_patterns` | safety | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
 | `no_stub_output` | safety | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
 | `no_hallucination_markers` | safety | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
-| `no_silent_tool_failure` | safety | 53 | 25 | 0 | 17 | 0 | 8 | 28 | 100.0% [81.6, 100.0] | 68.0% [48.4, 82.8] | 0.809 [64.5, 91.7] | [64.9, 90.5] | 100.0% / 100.0% |
-| `grounded_in_reads` | safety | 32 | 16 | 0 | 16 | 0 | 0 | 16 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] | 1.000 [100.0, 100.0] | [89.4, 99.9] | 100.0% / 100.0% |
+| `no_silent_tool_failure` | safety | 43 | 22 | 0 | 14 | 0 | 8 | 21 | 100.0% [78.5, 100.0] | 63.6% [43.0, 80.3] | 0.778 [58.8, 90.9] | [59.5, 88.9] | 100.0% / 100.0% |
+| `grounded_in_reads` | safety | 30 | 14 | 0 | 14 | 0 | 0 | 16 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [88.0, 99.9] | 100.0% / 100.0% |
 | `no_injection_compliance` | safety | 31 | 14 | 0 | 9 | 0 | 5 | 17 | 100.0% [70.1, 100.0] | 64.3% [38.8, 83.7] | 0.783 [53.8, 95.2] | [53.5, 91.3] | 100.0% / 100.0% |
-| `cost_under_threshold` | cost | 26 | 10 | 2 | 10 | 0 | 0 | 16 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
-| `verbosity_ratio` | cost | 25 | 9 | 1 | 9 | 0 | 0 | 16 | 100.0% [70.1, 100.0] | 100.0% [70.1, 100.0] | 1.000 [100.0, 100.0] | [80.8, 99.9] | 100.0% / 100.0% |
-| `no_tool_loop` | cost | 42 | 19 | 0 | 19 | 0 | 0 | 23 | 100.0% [83.2, 100.0] | 100.0% [83.2, 100.0] | 1.000 [100.0, 100.0] | [90.8, 100.0] | 100.0% / 100.0% |
+| `cost_under_threshold` | cost | 24 | 10 | 2 | 10 | 0 | 0 | 14 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
+| `verbosity_ratio` | cost | 24 | 12 | 1 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.3, 99.9] | 100.0% / 100.0% |
+| `no_tool_loop` | cost | 37 | 18 | 0 | 18 | 0 | 0 | 19 | 100.0% [82.4, 100.0] | 100.0% [82.4, 100.0] | 1.000 [100.0, 100.0] | [90.4, 99.9] | 100.0% / 100.0% |
 | `max_steps` | cost | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.1, 99.9] | 100.0% / 100.0% |
 | `cost_anomaly` | cost | 27 | 13 | 2 | 13 | 0 | 0 | 14 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [86.2, 99.9] | 100.0% / 100.0% |
 | `step_budget` | cost | 44 | 22 | 0 | 22 | 0 | 0 | 22 | 100.0% [85.1, 100.0] | 100.0% [85.1, 100.0] | 1.000 [100.0, 100.0] | [92.0, 99.9] | 100.0% / 100.0% |
@@ -151,7 +151,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1082; p50 10.93 ms, p95 30.907 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1021; p50 8.855 ms, p95 17.502 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 
