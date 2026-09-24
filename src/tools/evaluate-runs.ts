@@ -45,7 +45,7 @@ export const evaluateRunsOutputSchema = z.looseObject({
   rules_changed: z
     .looseObject({ count: z.number().int().positive(), last_change_at: z.string(), since: z.string(), audit: z.literal('iris://audit') })
     .optional()
-    .describe('present when deployed rules changed since the server started, as on evaluate_output; each change is in iris://audit'),
+    .describe('present when deployed custom rules changed since the server started, as on evaluate_output; each change is in iris://audit'),
 });
 
 export interface EvaluateRunsOptions {

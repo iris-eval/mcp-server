@@ -988,7 +988,7 @@
       "type": "string"
     },
     "rules_changed": {
-      "description": "rule changes since start",
+      "description": "present when deployed custom rules changed since the server started: count, last change, iris://audit; never alters the verdict",
       "type": "object",
       "properties": {
         "count": {

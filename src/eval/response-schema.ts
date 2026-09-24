@@ -149,7 +149,7 @@ export const evaluateOutputResponseSchema = z.looseObject({
     rules_changed: z
       .looseObject({ count: z.number().int().positive(), last_change_at: z.string(), since: z.string(), audit: z.literal('iris://audit') })
       .optional()
-      .describe('rule changes since start'),
+      .describe('present when deployed custom rules changed since the server started: count, last change, iris://audit; never alters the verdict'),
   });
 
 export type EvaluateOutputResponse = z.infer<typeof evaluateOutputResponseSchema>;
