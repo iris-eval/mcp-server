@@ -56,6 +56,4 @@ mcp-server, mcp, model-context-protocol, eval, agent-eval, agent-evaluation, ai-
 
 ## Awesome List PR Template
 
-```markdown
-- [Iris](https://github.com/iris-eval/mcp-server) - Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — {{ruleCount}} deterministic rules, local SQLite, MIT licensed. [![Glama AAA](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server) [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
-```
+The row, in the list's own format and without numbers, is in [`listings/awesome-mcp-servers.md`](listings/awesome-mcp-servers.md).

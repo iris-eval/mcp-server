@@ -5,7 +5,7 @@
  * the demo GIF (under three megabytes, its source beside it), the install
  * buttons in their current forms registering the server as `iris-eval`,
  * the mcp.so badge on the listing's real address, and a works-with table
- * that is clients.json rendered; the Docker catalog entry names only what
+ * that is clients.json rendered; the Docker catalog entry starts over stdio and names only what
  * the manifest names; the Cursor plugin manifest is on the version gates;
  * the site's mockups say the real port; the historical launch drafts say
  * "do not repost"; smithery.yaml is gone with its reason on record.
@@ -100,17 +100,25 @@ describe('the README', () => {
 });
 
 describe('the other listings', () => {
-  it('the Docker catalog entry names the published image, the site\'s icon, and only variables the manifest lists', () => {
+  it('the Docker catalog entry names the published image and the site\'s icon, starts over stdio, and names only variables the manifest lists', () => {
     const yaml = read('docs/launch/listings/docker/server.yaml');
     expect(yaml).toMatch(/^name: iris-eval$/m);
     expect(yaml).toMatch(/^image: ghcr\.io\/iris-eval\/mcp-server$/m);
     expect(yaml).toMatch(/^type: server$/m);
     expect(yaml).toMatch(/^  project: https:\/\/github\.com\/iris-eval\/mcp-server$/m);
+    expect(yaml).toMatch(/^  commit: [0-9a-f]{40}$/m);
     expect(yaml).toMatch(/^  icon: https:\/\/iris-eval\.com\/iris-logo-white-bg\.png$/m);
-    expect(yaml).toContain('description: Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.');
+    expect(yaml).toMatch(/^  description: >-\n    Stop shipping agents on vibes\./m);
+    // The image defaults to the HTTP transport with the dashboard on; the
+    // Toolkit talks over stdio, so the entry must override both.
+    expect(yaml).toMatch(/- name: IRIS_TRANSPORT\n\s+example: "stdio"\n\s+value: "stdio"/);
+    expect(yaml).toMatch(/- name: IRIS_DASHBOARD\n\s+example: "false"\n\s+value: "false"/);
+    // Docker's gateway treats every declared secret as required.
+    expect(yaml).not.toMatch(/^\s+secrets:/m);
+    expect(yaml).not.toMatch(/\d+ (?:tools|rules)\b/);
     const listed = new Set(serverJson.packages.flatMap((p) => (p.environmentVariables ?? []).map((e) => e.name)));
     const named = [...yaml.matchAll(/^\s+env: (IRIS_[A-Z0-9_]+)$/gm), ...yaml.matchAll(/^\s+- name: (IRIS_[A-Z0-9_]+)$/gm)].map((m) => m[1]);
-    expect(named.length).toBeGreaterThanOrEqual(4);
+    expect(named).toEqual(['IRIS_TRANSPORT', 'IRIS_DASHBOARD']);
     expect(named.filter((n) => !listed.has(n))).toEqual([]);
     expect(read('docs/launch/listings/docker.md')).toContain('docker/server.yaml');
     expect(read('docs/launch/listings/README.md')).toContain('| Docker MCP Catalog |');
