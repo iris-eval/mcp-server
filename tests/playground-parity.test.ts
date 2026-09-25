@@ -48,6 +48,7 @@ import {
   PII_PATTERNS as SERVER_PII_PATTERNS,
 } from '../src/eval/rules/safety.js';
 import type { EvalResult } from '../src/types/eval.js';
+import { INJECTION_LOOKALIKES, PII_LOOKALIKES } from './fixtures/detector-lookalikes.js';
 import { PRESETS } from '../website/src/components/playground/presets.js';
 import {
   contentTerms,
@@ -78,7 +79,7 @@ const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
  */
 const SERVER_TEXT_FILES: Array<[string, string[]]> = [
   ['src/eval/text/normalise.ts', ['LATIN_ACCENTS', 'stripLatinAccents', 'DROPPED', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'toRawSpan']],
-  ['src/eval/text/checksums.ts', ['luhn', 'iban', 'ssnStructure', 'ssnDigits']],
+  ['src/eval/text/checksums.ts', ['luhn', 'cardNumber', 'iban', 'ssnStructure', 'ssnDigits']],
   ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
@@ -306,6 +307,28 @@ describe('playground parity — the cases the rules were fixed for', () => {
   }
 });
 
+/*
+ * Correct answers that look like a leak or an injection: both critical
+ * rules must pass them in both libraries, and the libraries must agree on
+ * every other rule too.
+ */
+describe('playground parity — correct answers that look like a leak or an injection', () => {
+  const cases = [
+    ...PII_LOOKALIKES.map((c) => ({ ...c, rule: 'no_pii' })),
+    ...INJECTION_LOOKALIKES.map((c) => ({ ...c, rule: 'no_injection_patterns' })),
+  ];
+  for (const { name, output, input, rule } of cases) {
+    it(`${rule} passes ${name}`, async () => {
+      const ctx: EvalContext = { output, input };
+      const playground = playgroundVerdicts(ctx);
+      const { verdicts: server, result } = await serverVerdicts(ctx);
+      expect(server[rule], `server ${rule}`).toBe('pass');
+      expect(playground[rule], `playground ${rule}`).toBe('pass');
+      expect(playground, describeDisagreements(result, ctx)).toEqual(server);
+    });
+  }
+});
+
 describe('playground parity — every real agent transcript', () => {
   const files = readdirSync(FIXTURES)
     .filter((f) => /^t-\d\d-.*\.json$/.test(f))
@@ -374,6 +397,7 @@ const SHARED_SAFETY_BLOCKS = [
   'piiPatternMatches',
   'describeSuppressedPlaceholders',
   'emailsInInput',
+  'canonicalEmail',
   // no_injection_patterns — the whole library and the obfuscation fold
   'INJECTION_PATTERNS',
   'PHRASE_PATTERN_COUNT',

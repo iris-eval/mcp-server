@@ -53,6 +53,29 @@ export function luhn(candidate: string): boolean {
 }
 
 /**
+ * The structural check for a card-number match. Four plain groups (no
+ * separator, a space or a hyphen) need the Luhn check. Every wider shape —
+ * typographic dashes, spaced dashes, the fifteen-digit American Express
+ * grouping — also needs a leading digit some card network actually uses:
+ * numbers starting 0, 1, 7, 8 or 9 carry no network's prefix, and in the
+ * 2-series only 2200–2204 (Mir) and 2221–2720 (Mastercard) are issued.
+ * Luhn alone passes one digit run in ten, and a run of years
+ * ("1991–1992–1993–1994") is exactly the kind of run the wider shapes pick
+ * up; the prefix is what says it is not a card.
+ */
+export function cardNumber(candidate: string): boolean {
+  if (!luhn(candidate)) return false;
+  if (/^(?:\d{4}[- ]?){3}\d{4}$/.test(candidate)) return true;
+  const digits = candidate.replace(/\D/g, '');
+  const first = digits[0];
+  if (first === '2') {
+    const prefix = Number(digits.slice(0, 4));
+    return (prefix >= 2200 && prefix <= 2204) || (prefix >= 2221 && prefix <= 2720);
+  }
+  return first === '3' || first === '4' || first === '5' || first === '6';
+}
+
+/**
  * ISO 13616 mod-97: move the first four characters to the end, replace each
  * letter with its position in the alphabet plus nine, and read the result as
  * one large integer; a valid account gives a remainder of one.
