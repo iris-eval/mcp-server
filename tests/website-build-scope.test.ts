@@ -20,11 +20,22 @@ const walk = (dir: string): string[] =>
   });
 
 describe('the website build scope', () => {
-  const config = JSON.parse(readFileSync(join(root, 'website', 'vercel.json'), 'utf8')) as { ignoreCommand: string };
+  const config = JSON.parse(readFileSync(join(root, 'website', 'vercel.json'), 'utf8')) as { ignoreCommand: string; git?: { deploymentEnabled?: Record<string, boolean> } };
 
-  it('skips a deployment only when every changed path is in a folder the site never reads', () => {
+  it('skips a build only when every path changed since the last successful deployment is in a folder the site never reads', () => {
     for (const dir of SKIPPED) expect(config.ignoreCommand).toContain(`':(top,exclude)${dir}'`);
-    expect(config.ignoreCommand.startsWith('git diff --quiet HEAD^ HEAD --')).toBe(true);
+    // Against the last successful deployment, not the parent commit: a refused or failed
+    // site deployment must not be followed by a skipped one. With no previous deployment
+    // it falls back to the parent; a commit outside the shallow clone makes git exit 128,
+    // which builds.
+    expect(config.ignoreCommand.startsWith('git diff --quiet "${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}" HEAD --')).toBe(true);
+  });
+
+  it('never creates a deployment for a dependency-bot branch', () => {
+    // A skipped build still counts toward the host's daily deployment limit, so bursts of
+    // bot branches are kept from creating deployments at all. CI still builds and checks
+    // the website on those pull requests; the live site deploys on merge.
+    expect(config.git?.deploymentEnabled?.['dependabot/**']).toBe(false);
   });
 
   it('no website source reaches into a skipped folder', () => {

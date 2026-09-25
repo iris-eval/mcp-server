@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **A database with evaluations from the earliest releases no longer stops the server at startup.** Those releases stored each rule result's name as `rule` rather than `ruleName`. Startup sorts rule names to refresh local labels, so a single such row threw `Cannot read properties of undefined (reading 'localeCompare')` and the server exited before answering any client — every MCP client showed it as disconnected. Every read of stored rule results now goes through one parser that reads the old name, drops entries with no name, and treats unreadable data as empty. **If Iris would not start for you and the log showed that error, upgrade; your stored history is read, not rewritten.**
+- **One malformed stored rule result can no longer stop the server at startup.** Startup sorts stored rule names to refresh local labels, so a single stored result without a `ruleName` threw `Cannot read properties of undefined (reading 'localeCompare')` and the server exited before answering any client. Every read of stored rule results now goes through one parser: a result named `rule` is read under that name, a result with no name is skipped, and unreadable data reads as empty. No release writes such rows; they came from hand-seeded data. Stored rows are not rewritten.
 
 ### Added
 

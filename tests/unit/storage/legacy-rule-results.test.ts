@@ -1,6 +1,6 @@
 /*
- * The earliest releases stored each rule result's name as `rule`, not
- * `ruleName`. A database that still held such a row could not start the
+ * A stored rule result named `rule` instead of `ruleName` (the shape of
+ * hand-seeded or externally written rows; no release writes it). A database that still held such a row could not start the
  * server: the local-label refresh at startup sorts rule names, and one
  * undefined name threw. Every reader now goes through parseRuleResults.
  */
@@ -27,8 +27,9 @@ async function withLegacyRow(): Promise<SqliteAdapter> {
   return storage;
 }
 
-describe('rule results stored by the earliest releases', () => {
+describe('stored rule results without a ruleName', () => {
   it('parseRuleResults reads `rule` as `ruleName`, drops nameless entries, and treats a non-list as empty', () => {
+    expect(parseRuleResults(JSON.stringify(LEGACY))[0]).toMatchObject({ ruleName: 'non_empty_output', message: '', score: 1 });
     expect(parseRuleResults(JSON.stringify(LEGACY)).map((r) => r.ruleName)).toEqual(['non_empty_output', 'no_pii']);
     expect(parseRuleResults(JSON.stringify([{ passed: true }, { ruleName: 'x', passed: true }])).map((r) => r.ruleName)).toEqual(['x']);
     expect(parseRuleResults('{"not":"a list"}')).toEqual([]);
