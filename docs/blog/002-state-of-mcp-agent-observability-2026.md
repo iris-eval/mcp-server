@@ -179,7 +179,7 @@ This doesn't mean every agent needs enterprise compliance tooling today. But it 
 
 ## What Iris Does About This
 
-Iris is the agent eval standard for MCP — an eval and observability tool built MCP-native from day one. Open-source core, MIT licensed. Any MCP-compatible agent discovers Iris automatically — no SDK, no code changes. Log traces, evaluate output quality, detect PII and prompt injection, track costs per execution.
+Iris is an open-source MCP server that scores every agent output for quality, safety, and cost, built MCP-native from day one. Open-source core, MIT licensed. Any MCP-compatible agent discovers Iris automatically — no SDK, no code changes. Log traces, evaluate output quality, detect PII and prompt injection, track costs per execution.
 
 If you're building agents and want to see what they're actually doing:
 
