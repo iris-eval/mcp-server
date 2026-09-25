@@ -16,6 +16,7 @@ import type { LocalLabelSource } from './local-labels.js';
 import { toSteps } from './steps.js';
 import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
+import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
 
@@ -235,6 +236,8 @@ export class EvalEngine {
         onCriticalSkipped: this.compose.onCriticalSkipped,
         prior: this.effectivePrior().pi,
         priorSource: this.effectivePrior().source,
+        priorMode: this.compose.priorMode,
+        calibration: PUBLISHED_CALIBRATION.compositeVersion,
       },
       judgedAt: new Date().toISOString(),
     });
@@ -248,7 +251,7 @@ export class EvalEngine {
     const verdict = compose(result, this.effectiveCompose());
     result.verdict = verdict;
     result.passed = verdict.passed;
-    const notes = interpretations(result, verdict, this.compose);
+    const notes = interpretations(result, verdict, this.effectiveCompose());
     if (notes.length > 0) result.interpretations = notes;
     return result;
   }
@@ -559,6 +562,8 @@ export class EvalEngine {
         onCriticalSkipped: this.compose.onCriticalSkipped,
         prior: this.effectivePrior().pi,
         priorSource: this.effectivePrior().source,
+        priorMode: this.compose.priorMode,
+        calibration: PUBLISHED_CALIBRATION.compositeVersion,
       },
       judgedAt: new Date().toISOString(),
     });

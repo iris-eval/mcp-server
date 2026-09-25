@@ -165,6 +165,10 @@ export interface Provenance {
     /** The prior the risk estimate used and where it came from (0.14.0): your eval.prior, the one your labels implied, or the default. */
     prior?: number;
     priorSource?: 'default' | 'config' | 'estimated';
+    /** How the prior was spread over the failure classes (0.19.0). */
+    priorMode?: 'per-output' | 'per-class';
+    /** The calibration table the confidence label was read from, by composite version (0.19.0). */
+    calibration?: string;
   };
   /** The evaluation this one re-scored (0.14.0); the earlier row is kept. */
   supersedes?: string;

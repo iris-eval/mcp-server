@@ -117,15 +117,17 @@ rule's documented definition on 2026-09-04** — the definition in
 `definition` header — not by running the rule. The labeller is the same model
 family that wrote the cases; no human has checked these labels. Specifically:
 
-- Where the documented definition is a formula (character count, term
-  coverage, keyword overlap, cost, token ratio), the label is that formula
-  applied by an independent script, and every case's `notes` states the
-  count that decided it.
-- Where the definition is a reader's judgement (sentence count, presence of a
-  blocklisted phrase, "stays on topic"), the label is what a reader would
+- Where the documented definition is a formula (character count, sentence
+  count, term coverage, keyword overlap, cost, token ratio), the label is that formula
+  applied independently, by script or by counting, and every case's `notes`
+  states the count that decided it. Sentences are counted as a reader counts
+  them, and the notes flag where the documented split would count otherwise
+  (a decimal point read as a sentence end).
+- Where the definition is a reader's judgement (presence of a blocklisted
+  phrase, whether anything is visible), the label is what a reader would
   say, and the notes disclose where the documented *mechanism* is expected to
-  disagree (a decimal point read as a sentence end; a zero-width space inside
-  a banned phrase; an on-topic answer that avoids the question's words). Those
+  disagree (a zero-width space inside a banned phrase; a zero-width space
+  alone, which trim() keeps as content). Those
   cases are boundaries on purpose: the misses they produce are the rule's
   documented limits, made visible.
 - The two relevance rules were redesigned the same day (#416, `9d9fd50`),

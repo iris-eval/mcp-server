@@ -41,8 +41,9 @@ export interface CorpusFile {
   labelling: string;
   /**
    * What a label is, which decides what a perfect score proves.
-   *   `reading`    — a reader's judgement of the failure itself, made without
-   *                  running the rule: agreement measures detection.
+   *   `reading`    — a judgement made by reading the failure itself, without
+   *                  running the rule: agreement measures detection. In this
+   *                  corpus the reader is a model.
    *   `definition` — the rule's documented definition applied independently
    *                  (by script or by counting): agreement shows the code
    *                  implements its definition, not that the definition

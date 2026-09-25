@@ -152,8 +152,8 @@ export interface ProofRule {
   name: string;
   category: string;
   /**
-   * What the family's labels are: `reading` — a reader's judgement of the
-   * failure, made without running the rule, so agreement measures detection;
+   * What the family's labels are: `reading` — a judgement made by reading the
+   * failure (in this corpus, a model's), without running the rule, so agreement measures detection;
    * `definition` — the rule's own documented definition applied
    * independently, so agreement shows the code implements its formula.
    */
