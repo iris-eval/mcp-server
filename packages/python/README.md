@@ -1,6 +1,6 @@
 # iris-eval — the Python client
 
-[Iris](https://iris-eval.dev) is an open-source agent-evaluation MCP server: it stores your agent's traces and judges each one under 25 built-in rules — PII, injection, hallucination markers, tool loops, cost outliers, a regression watcher — with a verdict that says which layer decided and why. This package is the Python door to a running server: log a trace, get its verdict, gate a test on it.
+[Iris](https://iris-eval.com) is an open-source agent-evaluation MCP server: it stores your agent's traces and judges each one under its built-in rules — PII, injection, hallucination markers, tool loops, cost outliers, a regression watcher — with a verdict that says which layer decided and why. This package is the Python door to a running server: log a trace, get its verdict, gate a test on it.
 
 ```bash
 pip install iris-eval

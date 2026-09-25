@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, useReducedMotion, useInView } from "framer-motion";
 import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN } from "@/lib/claims";
 import { useRef } from "react";
@@ -89,19 +89,9 @@ export function Pricing(): React.ReactElement {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const reduce = useReducedMotion();
-
-  useEffect(() => {
-    fetch("/api/waitlist-count")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.count > 0) setWaitlistCount(data.count);
-      })
-      .catch(() => {});
-  }, []);
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -297,9 +287,7 @@ export function Pricing(): React.ReactElement {
             </>
           )}
           <p className="mt-3 text-[12px] text-text-muted">
-            {waitlistCount && waitlistCount > 0
-              ? `${waitlistCount} developer${waitlistCount === 1 ? "" : "s"} on the waitlist. No spam.`
-              : "No spam. One email if a hosted tier ships — none if it doesn't."}
+            No spam. One email if a hosted tier ships — none if it doesn&apos;t.
           </p>
         </div>
       </div>
