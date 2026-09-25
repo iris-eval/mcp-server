@@ -120,4 +120,4 @@ That's EDD. Write the rules before the prompt. Measure against a standard, not a
 
 ---
 
-*Iris is the agent eval standard for MCP. Start with EDD today: [iris-eval.com/playground](https://iris-eval.com/playground)*
+*Iris is an open-source MCP server that scores every agent output for quality, safety, and cost. Start with EDD today: [iris-eval.com/playground](https://iris-eval.com/playground)*

@@ -84,4 +84,4 @@ This is why the coverage framing matters: protocol-native eval makes high covera
 
 ---
 
-*Iris is the agent eval standard for MCP. Add it to your MCP config and start scoring agent outputs inline. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*
+*Iris is an open-source MCP server that scores every agent output for quality, safety, and cost. Add it to your MCP config and start scoring agent outputs inline. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*

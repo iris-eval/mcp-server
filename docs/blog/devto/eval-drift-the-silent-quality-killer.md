@@ -74,4 +74,4 @@ Name the problem. Measure it. That's how you stop it from killing your product i
 
 ---
 
-*Iris is the agent eval standard for MCP. Any MCP-compatible agent can discover Iris's eval tools and invoke them inline — no SDK, no code changes. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*
+*Iris is an open-source MCP server that scores every agent output for quality, safety, and cost. Any MCP-compatible agent can discover Iris's eval tools and invoke them inline — no SDK, no code changes. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*

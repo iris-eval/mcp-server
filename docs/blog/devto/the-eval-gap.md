@@ -68,4 +68,4 @@ The eval gap closes when you measure real performance, not demo performance. Tha
 
 ---
 
-*Iris is the agent eval standard for MCP. Try it in 60 seconds: [iris-eval.com/playground](https://iris-eval.com/playground)*
+*Iris is an open-source MCP server that scores every agent output for quality, safety, and cost. Try it in 60 seconds: [iris-eval.com/playground](https://iris-eval.com/playground)*

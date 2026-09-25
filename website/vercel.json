@@ -5,5 +5,5 @@
       "dependabot/**": false
     }
   },
-  "ignoreCommand": "git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- ':(top)' ':(top,exclude)dashboard' ':(top,exclude)tests' ':(top,exclude)packages' ':(top,exclude).github'"
+  "ignoreCommand": "sh scripts/ignore-build.sh"
 }

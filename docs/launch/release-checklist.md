@@ -57,6 +57,6 @@ The release workflow (`.github/workflows/release.yml`) does the publishing and, 
 - [ ] npm Trusted Publisher config on npmjs.com still names this repo + `release.yml`. There is no npm token anywhere — publishing is OIDC — so if a token has appeared in Secrets, that is the drift, not the fix
 - [ ] The `mcp-publisher` pin in `release.yml` (`MCP_PUBLISHER_VERSION` + sha256) is still accepted by the registry. A login failure with "invalid audience" means the pin fell behind the registry deployment; bump version and checksum together
 - [ ] Dependabot queue: nothing older than a month. One required check red on every Dependabot PR at once is a self-deadlocking gate (see CONTRIBUTING → Dependabot PRs): fix `main`, then `@dependabot rebase`
-- [ ] Verify Upstash Redis credentials still work (check /api/waitlist-count) — the waitlist is a demand signal for hosted features, not a product commitment
+- [ ] Verify Upstash Redis credentials still work (`curl -H "Authorization: Bearer $WAITLIST_ADMIN_KEY" https://iris-eval.com/api/waitlist-count` answers a count, not 503) — the waitlist is a demand signal for hosted features, not a product commitment
 - [ ] Verify no surface has acquired a price, a usage cap, or a compliance claim. There is no pricing, the open-source server is unlimited, and no certification is held — if any file says otherwise, that is the bug
 - [ ] Search for new MCP directories and awesome lists to submit to

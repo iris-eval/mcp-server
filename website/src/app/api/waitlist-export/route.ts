@@ -1,40 +1,16 @@
 import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
-}
+import { checkAdmin } from "../../../lib/admin-auth";
 
 export async function GET(request: Request) {
   const headers = { "X-Content-Type-Options": "nosniff" };
 
-  const adminKey = process.env.WAITLIST_ADMIN_KEY;
-  if (!adminKey) {
-    return NextResponse.json(
-      { error: "Admin endpoint not configured" },
-      { status: 503, headers }
-    );
+  const admin = checkAdmin(request);
+  if (!admin.ok) {
+    return NextResponse.json({ error: admin.error }, { status: admin.status, headers });
   }
 
   const { searchParams } = new URL(request.url);
-  const authHeader = request.headers.get("authorization") || "";
-  const providedKey = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : "";
-  if (
-    providedKey.length !== adminKey.length ||
-    !timingSafeEqual(providedKey, adminKey)
-  ) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401, headers }
-    );
-  }
 
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
     return NextResponse.json(

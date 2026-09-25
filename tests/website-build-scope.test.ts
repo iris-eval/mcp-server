@@ -23,12 +23,17 @@ describe('the website build scope', () => {
   const config = JSON.parse(readFileSync(join(root, 'website', 'vercel.json'), 'utf8')) as { ignoreCommand: string; git?: { deploymentEnabled?: Record<string, boolean> } };
 
   it('skips a build only when every path changed since the last successful deployment is in a folder the site never reads', () => {
-    for (const dir of SKIPPED) expect(config.ignoreCommand).toContain(`':(top,exclude)${dir}'`);
-    // Against the last successful deployment, not the parent commit: a refused or failed
-    // site deployment must not be followed by a skipped one. With no previous deployment
-    // it falls back to the parent; a commit outside the shallow clone makes git exit 128,
-    // which builds.
-    expect(config.ignoreCommand.startsWith('git diff --quiet "${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}" HEAD --')).toBe(true);
+    // The host caps ignoreCommand at 256 characters (its published schema), so the logic lives in a script.
+    expect(config.ignoreCommand.length).toBeLessThanOrEqual(256);
+    expect(config.ignoreCommand).toBe('sh scripts/ignore-build.sh');
+    const script = readFileSync(join(root, 'website', 'scripts', 'ignore-build.sh'), 'utf8');
+    for (const dir of SKIPPED) expect(script).toContain(`':(top,exclude)${dir}'`);
+    // Against the last successful deployment; a commit that no longer exists (a force-pushed
+    // branch) falls back to the parent, and any git error builds, because the host fails the
+    // deployment on an exit code above 1 instead of building (seen 2026-09-25).
+    expect(script).toContain('base="${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}"');
+    expect(script).toContain('git cat-file -e "${base}^{commit}" 2>/dev/null || base="HEAD^"');
+    expect(script.trimEnd().endsWith('exit 1')).toBe(true);
   });
 
   it('never creates a deployment for a dependency-bot branch', () => {

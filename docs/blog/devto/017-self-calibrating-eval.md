@@ -88,4 +88,4 @@ If you're running agent eval today with static thresholds, start tracking your s
 
 ---
 
-*Iris is the agent eval standard for MCP. Start scoring agent outputs inline and see how your eval distributions trend over time. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*
+*Iris is an open-source MCP server that scores every agent output for quality, safety, and cost. Start scoring agent outputs inline and see how your eval distributions trend over time. Try it: [iris-eval.com/playground](https://iris-eval.com/playground)*
