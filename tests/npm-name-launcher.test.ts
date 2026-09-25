@@ -47,6 +47,14 @@ describe('the iris-eval launcher package', () => {
     expect(launcher.engines).toEqual(server.engines);
   });
 
+  it('every file it publishes has LF line endings, so the shebang runs on macOS and Linux', () => {
+    // .gitattributes pins packages/iris-eval to LF: the package is published by
+    // hand from a checkout, and a Windows checkout would otherwise ship CRLF.
+    for (const file of ['bin/iris-eval.js', 'package.json', 'README.md']) {
+      expect(readFileSync(join(dir, file), 'utf8').includes('\r'), file).toBe(false);
+    }
+  });
+
   it('its bin starts the server by importing its entry, which reads the same arguments', () => {
     const bin = readFileSync(join(dir, launcher.bin[COMMAND]), 'utf8');
     expect(bin.startsWith('#!/usr/bin/env node')).toBe(true);
