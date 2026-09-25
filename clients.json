@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Every MCP client Iris names as a place it runs, one row each. A row is `verified` when a test in this repository drives that client's real integration surface on every CI run. A row is `claimed` when the installer writes the configuration shape the client's own documentation describes and that writer is tested on the shape — but nobody on the Iris side has watched that client connect. No client is called supported without a row. Locked by tests/clients-contract.test.ts: the rows are exactly the installer's profiles, every evidence path exists, every source is a URL with the date it was last read, and the README and the site render their client lists from these rows.",
+  "about": "Every MCP client Iris names as a place it runs, one row each. A row is `verified` when a test in this repository drives that client's real integration surface on every CI run. A row is `claimed` when the installer writes the configuration shape the client's own documentation describes and that writer is tested on the shape — but nobody on the Iris side has watched that client connect. No client is called supported without a row. Locked by tests/clients-contract.test.ts: the rows are exactly the installer's profiles, each row's source is the page its profile was written from, every evidence path exists, every source is a URL with the date it was last read, and the README and the site render their client lists from these rows.",
   "statuses": ["verified", "claimed"],
   "rows": [
     {
@@ -8,11 +8,11 @@
       "name": "Claude Code",
       "status": "verified",
       "configMode": "embedded-in-config-json",
-      "config": "`~/.claude.json`, written by `claude mcp add`; the capture plugin installs from the repository's plugin marketplace",
-      "summary": "The capture plugin's three hooks (UserPromptSubmit, PostToolUse, Stop) are driven through the real hook scripts with the payload shapes Claude Code documents, ending in a real ingest read back from the store — on every CI run. The MCP plugin's manifest is checked by the docs contract. What is not verified by a test: a live `claude` session listing the tools; the stranger harness connects over the SDK client, not the product.",
-      "evidence": ["tests/unit/capture-hooks.test.ts", "claude-plugin-capture/hooks/hooks.json", "claude-plugin/.mcp.json"],
+      "config": "`~/.claude.json` (user scope, `$CLAUDE_CONFIG_DIR` when set), an `mcpServers` block beside Claude Code's own settings; the capture plugin installs from the repository's plugin marketplace",
+      "summary": "On every CI run, on Linux, macOS and Windows, the installer from this commit's packed tarball writes the entry and the real `claude` CLI starts Iris from it: `claude mcp list` reports it Connected and `claude mcp get` shows it at user scope; uninstall takes it out again. The capture plugin's three hooks (UserPromptSubmit, PostToolUse, Stop) are driven through the real hook scripts with the payload shapes Claude Code documents, ending in a real ingest read back from the store. What is not verified by a test: a model session calling the tools.",
+      "evidence": ["tests/real-clients/real-clients.test.ts", "tests/unit/install/command.test.ts", "tests/unit/capture-hooks.test.ts", "claude-plugin-capture/hooks/hooks.json", "claude-plugin/.mcp.json"],
       "source": "https://code.claude.com/docs/en/mcp",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "claude-desktop",
@@ -21,42 +21,42 @@
       "configMode": "dedicated-mcp-json",
       "config": "`claude_desktop_config.json` in the Claude application-data directory, an `mcpServers` block",
       "summary": "The installer writes the `mcpServers` entry into a dedicated JSON file at the path Claude Desktop documents, keeping existing servers; the writer is tested on that shape. No test launches Claude Desktop.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
       "source": "https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "cursor",
       "name": "Cursor",
       "status": "claimed",
       "configMode": "dedicated-mcp-json",
-      "config": "`~/.cursor/mcp.json` (or a workspace `.cursor/mcp.json`), an `mcpServers` block; a one-click install link on the site",
-      "summary": "The installer writes the `mcpServers` entry into `mcp.json` as Cursor's documentation describes; the writer is tested on that shape. No test launches Cursor.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "config": "`~/.cursor/mcp.json` (or a workspace `.cursor/mcp.json`), an `mcpServers` block with `\"type\": \"stdio\"`, which Cursor's field table marks required; a one-click install link on the site",
+      "summary": "The installer writes the `mcpServers` entry, `type` included, into `mcp.json` as Cursor's documentation describes; the writer is tested on that shape. No test launches Cursor: its connection could not be driven headlessly here, so it stays claimed.",
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
       "source": "https://cursor.com/docs/mcp",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "windsurf",
-      "name": "Windsurf",
+      "name": "Devin Desktop (Windsurf)",
       "status": "claimed",
       "configMode": "dedicated-mcp-json",
-      "config": "`~/.codeium/windsurf/mcp_config.json`, an `mcpServers` block",
-      "summary": "The installer writes the `mcpServers` entry into `mcp_config.json` as Windsurf's documentation (now hosted by Cognition) describes; the writer is tested on that shape. No test launches Windsurf.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "config": "`mcp_config.json` in `~/.config/devin/` (`%APPDATA%\\devin\\` on Windows), an `mcpServers` block — Windsurf became Devin Desktop, and its documentation now names this file",
+      "summary": "The installer writes the `mcpServers` entry into `mcp_config.json` at the path Devin Desktop's documentation (formerly Windsurf's) names; the writer is tested on that shape. No test launches Devin Desktop.",
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
       "source": "https://docs.devin.ai/desktop/cascade/mcp",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "continue",
       "name": "Continue",
       "status": "claimed",
-      "configMode": "embedded-in-config-json",
-      "config": "`~/.continue/config.json`, an `mcpServers` block beside Continue's other settings",
-      "summary": "The installer embeds the `mcpServers` entry in Continue's `config.json` without touching its other top-level fields; the writer is tested on that shape. No test launches Continue.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "configMode": "dedicated-mcp-json",
+      "config": "`~/.continue/mcpServers/iris-eval.json`, a file of its own in Continue's MCP folder, an `mcpServers` block",
+      "summary": "The installer writes its own `iris-eval.json` into Continue's global `mcpServers` folder, which Continue's documentation says accepts the Claude Desktop JSON format; the writer is tested on that shape. No test launches Continue.",
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
       "source": "https://docs.continue.dev/customize/deep-dives/mcp",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "vscode",
@@ -65,53 +65,53 @@
       "configMode": "vscode-servers",
       "config": "`mcp.json` in the VS Code user directory (or `.vscode/mcp.json` in a workspace), a `servers` block — VS Code's own key, not `mcpServers`",
       "summary": "The installer writes under `servers`, the key VS Code's native MCP support documents, and uninstalls only its own entry; the writer is tested on that shape. No test launches VS Code.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
       "source": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "cline",
       "name": "Cline",
       "status": "claimed",
       "configMode": "dedicated-mcp-json",
-      "config": "`cline_mcp_settings.json` in Cline's global storage under VS Code, an `mcpServers` block",
-      "summary": "The installer writes the `mcpServers` entry into Cline's own settings file as its documentation describes; the writer is tested on that shape. No test launches Cline.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
-      "source": "https://docs.cline.bot/mcp/mcp-overview",
-      "lastChecked": "2026-09-21"
+      "config": "`~/.cline/data/settings/cline_mcp_settings.json`, shared by Cline in VS Code, JetBrains and the CLI, an `mcpServers` block",
+      "summary": "The installer writes the `mcpServers` entry into `cline_mcp_settings.json` where Cline's configuration documentation puts it; the writer is tested on that shape. No test launches Cline.",
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
+      "source": "https://docs.cline.bot/getting-started/config",
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "zed",
       "name": "Zed",
       "status": "claimed",
       "configMode": "zed-context-servers",
-      "config": "Zed's `settings.json`, a `context_servers` entry with a nested `command` object",
-      "summary": "The installer writes a nested command object under `context_servers`, Zed's own key, and preserves unrelated settings; the writer is tested on that shape. No test launches Zed.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "config": "Zed's `settings.json`, a `context_servers` entry with `command`, `args` and `env`",
+      "summary": "The installer writes the `context_servers` entry in the shape Zed's documentation shows, into the settings file with its comments kept; the writer is tested on that shape, including the comment header Zed writes. No test launches Zed.",
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/jsonc.test.ts", "src/cli/install/clients.ts"],
       "source": "https://zed.dev/docs/ai/mcp",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "codex",
       "name": "OpenAI Codex CLI",
       "status": "claimed",
       "configMode": "codex-toml",
-      "config": "`~/.codex/config.toml`, an `[mcp_servers.iris-eval]` section",
-      "summary": "The installer writes an `[mcp_servers.iris-eval]` TOML section as the Codex configuration reference describes; the writer is tested on that shape. No test launches Codex.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
-      "source": "https://github.com/openai/codex/blob/main/docs/config.md",
-      "lastChecked": "2026-09-21"
+      "config": "`~/.codex/config.toml` (`$CODEX_HOME` when set), an `[mcp_servers.iris-eval]` table",
+      "summary": "The installer writes an `[mcp_servers.iris-eval]` TOML table as the Codex MCP documentation describes; the writer is tested on that shape. No test launches Codex.",
+      "evidence": ["tests/unit/install/config-writer.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
+      "source": "https://learn.chatgpt.com/docs/extend/mcp?surface=cli",
+      "lastChecked": "2026-09-25"
     },
     {
       "id": "gemini",
       "name": "Gemini CLI",
-      "status": "claimed",
+      "status": "verified",
       "configMode": "dedicated-mcp-json",
       "config": "`~/.gemini/settings.json`, an `mcpServers` block",
-      "summary": "The installer writes the `mcpServers` entry into Gemini CLI's `settings.json` as its documentation describes; the writer is tested on that shape. No test launches Gemini CLI.",
-      "evidence": ["packages/init/tests/config-writer.test.ts", "packages/init/src/detect.ts"],
+      "summary": "On every CI run, on Linux, macOS and Windows, the installer from this commit's packed tarball writes the entry and the real `gemini` CLI starts Iris from it: `gemini mcp list` reports it Connected in a trusted folder; uninstall takes it out again. No model call is made. What is not verified by a test: a model session calling the tools.",
+      "evidence": ["tests/real-clients/real-clients.test.ts", "tests/unit/install/command.test.ts", "src/cli/install/clients.ts"],
       "source": "https://geminicli.com/docs/tools/mcp-server/",
-      "lastChecked": "2026-09-21"
+      "lastChecked": "2026-09-25"
     }
   ]
 }

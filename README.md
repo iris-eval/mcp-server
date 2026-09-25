@@ -46,7 +46,15 @@ First, prove the install works on this machine — it runs offline and opens not
 npx @iris-eval/mcp-server --self-test   # exit 0 = healthy
 ```
 
-Then add Iris to your MCP config. It runs in any MCP client, and every client it names has a row with what was actually checked. **Verified on every CI run: Claude Code** — the capture plugin's hooks and the MCP plugin are driven through the real scripts. **Claimed from each client's own MCP documentation** — the installer writes the configuration shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect: Claude Desktop, Cursor, Windsurf, Continue, VS Code, Cline, Zed, OpenAI Codex CLI, Gemini CLI. Every row with its source and the date it was read: https://iris-eval.com/clients. One block, dashboard included:
+Then add Iris to your MCP client. One command writes the client's own config file, keeps every other server in it, and pins the version you ran:
+
+```bash
+npx -y @iris-eval/mcp-server install claude-code
+```
+
+The clients: `claude-code`, `claude-desktop`, `cursor`, `windsurf`, `continue`, `vscode`, `cline`, `zed`, `codex`, `gemini`. `install --list` shows the ones found on this machine and the file each one reads; `install <client> --uninstall` takes Iris out again; after an upgrade, `install <client>` once more moves the pinned version. Restart the client to load it.
+
+It runs in any MCP client, and every client it names has a row with what was actually checked. **Verified on every CI run: Claude Code, Gemini CLI** — the real client starts Iris from the config the installer wrote and reports it connected (`claude mcp list`, `gemini mcp list`), on Linux, macOS and Windows; Claude Code's capture plugin hooks are driven through the real scripts too. **Claimed from each client's own MCP documentation** — the installer writes the configuration shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect: Claude Desktop, Cursor, Devin Desktop (Windsurf), Continue, VS Code, Cline, Zed, OpenAI Codex CLI. Every row with its source and the date it was read: https://iris-eval.com/clients. By hand instead, one block, dashboard included:
 
 ```json
 {
@@ -114,7 +122,7 @@ A thin client over the HTTP API of server 0.16.0 and later, versioned on its own
 npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on detector_veto
 ```
 
-Or the GitHub Action (0.16.0), which fails the job on the verdicts you name, writes the receipt to the job summary and posts it as one pull-request comment updated in place: `uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0` with `traces: traces.ndjson` — [docs/ci-gate.md](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md#github-actions--the-action-0160).
+Or the GitHub Action (0.16.0), which fails the job on the verdicts you name, writes the receipt to the job summary and posts it as one pull-request comment updated in place: `uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0` with `traces: traces.ndjson` — [docs/ci-gate.md](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md#github-actions--the-action-0160).
 
 A fourth door (0.15.0): `POST /v1/traces` on the dashboard port takes the OTLP/HTTP JSON or protobuf your OpenTelemetry instrumentation already emits (the Python SDK's exporter speaks protobuf only, so this is the Python door too), and each OTLP trace becomes an Iris trace with its spans — [docs/otel-integration.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-integration.md#traces-arrive-by-otlp); one recipe per framework, each proved by a fixture, in [docs/otel-recipes.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md). `ingest` reads one JSON trace (or NDJSON, one per line) from stdin or a file, stores it, evaluates it under exactly the rules `evaluate_output` runs, prints one JSON line per trace with the verdict and its basis, and exits 1 when a verdict matches `--fail-on`. `--dataset <id|label>` restricts that gate to the case keys in a dataset (`POST /api/v1/datasets` promotes a run's case keys into one), so a job fails only on the cases you chose. The full recipe, the exit codes and the eight bases are in [docs/ci-gate.md](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md).
 
@@ -163,19 +171,21 @@ npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 0.5.1
 <!-- iris:clients-table:start -->
 | Client | Status | What that means | Read |
 |---|---|---|---|
-| Claude Code | verified | driven through the real scripts on every CI run | [2026-09-21](https://code.claude.com/docs/en/mcp) |
-| Claude Desktop | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers) |
-| Cursor | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://cursor.com/docs/mcp) |
-| Windsurf | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://docs.devin.ai/desktop/cascade/mcp) |
-| Continue | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://docs.continue.dev/customize/deep-dives/mcp) |
-| VS Code | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://code.visualstudio.com/docs/agent-customization/mcp-servers) |
-| Cline | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://docs.cline.bot/mcp/mcp-overview) |
-| Zed | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://zed.dev/docs/ai/mcp) |
-| OpenAI Codex CLI | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://github.com/openai/codex/blob/main/docs/config.md) |
-| Gemini CLI | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-21](https://geminicli.com/docs/tools/mcp-server/) |
+| Claude Code | verified | a test drives the real client on every CI run | [2026-09-25](https://code.claude.com/docs/en/mcp) |
+| Claude Desktop | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers) |
+| Cursor | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://cursor.com/docs/mcp) |
+| Devin Desktop (Windsurf) | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://docs.devin.ai/desktop/cascade/mcp) |
+| Continue | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://docs.continue.dev/customize/deep-dives/mcp) |
+| VS Code | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://code.visualstudio.com/docs/agent-customization/mcp-servers) |
+| Cline | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://docs.cline.bot/getting-started/config) |
+| Zed | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://zed.dev/docs/ai/mcp) |
+| OpenAI Codex CLI | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) |
+| Gemini CLI | verified | a test drives the real client on every CI run | [2026-09-25](https://geminicli.com/docs/tools/mcp-server/) |
 
 Every row with what was checked: [iris-eval.com/clients](https://iris-eval.com/clients). No client is called supported without a row.
 <!-- iris:clients-table:end -->
+
+`npx -y @iris-eval/mcp-server install <client>` writes each of these for you. By hand, per client:
 
 #### Claude Desktop
 
@@ -195,9 +205,17 @@ Then restart the session (`/clear` or relaunch) for tools to load.
 
 > **Windows note:** Do *not* use `cmd /c` wrapper — it causes path parsing issues. The `npx` command works directly.
 
-#### Cursor / Windsurf
+#### Cursor
 
-Add to your workspace `.cursor/mcp.json` or global MCP settings using the JSON config above.
+Add the JSON config above to `~/.cursor/mcp.json` (every project) or `.cursor/mcp.json` in a workspace, with `"type": "stdio"` in the `iris-eval` entry — Cursor's docs mark it required.
+
+#### Devin Desktop (Windsurf)
+
+Add the JSON config above to `mcp_config.json`: `~/.config/devin/mcp_config.json` on macOS and Linux, `%APPDATA%\devin\mcp_config.json` on Windows.
+
+#### Continue
+
+Save the JSON config above as its own file in Continue's `mcpServers` folder: `~/.continue/mcpServers/iris-eval.json` (every workspace) or `.continue/mcpServers/iris-eval.json` in one.
 
 #### VS Code (native MCP)
 
@@ -216,7 +234,7 @@ Add to `.vscode/mcp.json` in your workspace (note: VS Code uses `servers`, not `
 
 #### Cline
 
-Open Cline's MCP Servers panel → Configure MCP Servers, and add the `mcpServers` JSON config above to `cline_mcp_settings.json`.
+Open Cline's MCP Servers panel → Configure MCP Servers, and add the `mcpServers` JSON config above to `cline_mcp_settings.json` (`~/.cline/data/settings/cline_mcp_settings.json`, shared by Cline in VS Code, JetBrains and the CLI).
 
 #### Zed
 
@@ -226,10 +244,9 @@ Add to Zed `settings.json`:
 {
   "context_servers": {
     "iris-eval": {
-      "command": {
-        "path": "npx",
-        "args": ["-y", "@iris-eval/mcp-server"]
-      }
+      "command": "npx",
+      "args": ["-y", "@iris-eval/mcp-server"],
+      "env": {}
     }
   }
 }
@@ -247,7 +264,7 @@ args = ["-y", "@iris-eval/mcp-server"]
 
 #### Gemini CLI
 
-Add the `mcpServers` JSON config above to `~/.gemini/settings.json`.
+Add the `mcpServers` JSON config above to `~/.gemini/settings.json`. Gemini CLI connects to MCP servers only in folders it trusts: if `gemini mcp list` shows `iris-eval` as Disabled, run `/permissions` in that folder.
 
 #### Anything else that speaks MCP
 
@@ -407,6 +424,8 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
 | `--purge` | `false` | Delete **every** stored trace, span and evaluation from the configured database, compact the file and truncate the write-ahead log so the deleted text does not linger on disk, then exit. Deployed rules, the audit log and preferences are kept. Not reversible. Stop any running Iris server first — the file is compacted in place. Refuses to combine with `--demo`, `--demo-clear` or `--self-test` |
 | `--version` | — | Print the bare version (e.g. `0.5.1`) to stdout and exit 0. Reads nothing under your Iris home |
+
+Two commands take their own arguments and exit: `iris-eval ingest` loads traces from a file or stdin ([A CI gate, no server needed](#a-ci-gate-no-server-needed)), and `iris-eval install <client>` writes Iris into an MCP client's config — `--uninstall` takes it out, `--list` shows the clients found on this machine ([Hook up your own agent](#hook-up-your-own-agent)). Neither starts a server.
 
 **`config.json` is validated when Iris starts.** A key Iris does not read — a typo such as `eval.critcalRules`, a key from another tool — or a value of the wrong type refuses startup with one sentence naming the full key, the key it most likely meant, or the type it wanted. Nothing in the file is silently ignored.
 

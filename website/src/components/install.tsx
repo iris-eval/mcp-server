@@ -66,6 +66,8 @@ export function Install(): React.ReactElement {
                 <code>
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npx @iris-eval/mcp-server --self-test</span>{"\n"}
                   <span className="text-eval-pass">✓ PASS — this install works</span>{"\n"}
+                  <span className="text-text-muted">$ </span><span className="text-text-primary">npx -y @iris-eval/mcp-server install claude-desktop</span>{"\n"}
+                  <span className="text-eval-pass">✓ Added iris-eval in the Claude Desktop config</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npm install -g @iris-eval/mcp-server</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">iris-eval --dashboard</span>{"\n"}
                   <span className="text-eval-pass">✓ Dashboard running at http://localhost:6920</span>

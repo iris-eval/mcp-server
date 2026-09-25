@@ -15,7 +15,7 @@
  * preceded, in the same job, by a step that installs under dashboard/
  * (`cd dashboard && npm install …` or `… npm ci`). Jobs whose default
  * working directory is elsewhere, and steps that build a sub-package
- * (`cd packages/init && npm run build`), are not root builds.
+ * (`cd packages/<name> && npm run build`), are not root builds.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

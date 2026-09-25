@@ -1,14 +1,6 @@
-# @iris-eval/init
+# @iris-eval/init (retired)
 
-> **Not yet published to npm.** `@iris-eval/init` lives in this repository and is built and tested in CI, but it is not on the npm registry, so the `npx @iris-eval/init …` commands below do not resolve yet. To use it today, build from source:
->
-> ```bash
-> git clone https://github.com/iris-eval/mcp-server && cd mcp-server/packages/init
-> npm ci && npm run build
-> node dist/cli.js claude-code     # any command below, with `npx @iris-eval/init` replaced by `node dist/cli.js`
-> ```
->
-> Whether this package is published or retired is an open decision; this note is removed with the first publish.
+> **Retired, never published.** The installer is part of the server package now: `npx -y @iris-eval/mcp-server install <client>` (see the [root README](https://github.com/iris-eval/mcp-server#hook-up-your-own-agent)). This copy is kept for its history only — it is not built, tested or released, and several of its client paths are out of date (Continue, Cline, Windsurf, Zed). The commands below do not resolve.
 
 **Universal installer for Iris** — detects your MCP client and writes the right config in one command.
 

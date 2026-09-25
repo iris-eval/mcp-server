@@ -89,7 +89,7 @@ async function getDocumentedGhsas() {
  * lockfile in its cwd and does not traverse into nested projects, so each
  * one needs its own run.
  */
-const AUDIT_WORKSPACES = ['.', 'dashboard', 'website', 'packages/init'];
+const AUDIT_WORKSPACES = ['.', 'dashboard', 'website'];
 
 function auditWorkspace(workspace) {
   const cwd = resolve(root, workspace);

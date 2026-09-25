@@ -32,7 +32,7 @@ const SCAN_DIRS = [
   // published to npm and led with the retired tagline for a full release
   // while the scanner walked only its source.
   'packages/langchain',
-  'packages/init',
+  'packages/iris-eval',
   'claude-plugin',
   'claude-plugin-capture',
   // The DOT-prefixed one, which is where the real manifests live —

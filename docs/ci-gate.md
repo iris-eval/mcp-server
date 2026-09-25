@@ -48,7 +48,7 @@ Four steps, in the order the person who gates deploys does them; each prints one
 ## GitHub Actions — the action (0.16.0)
 
 ```yaml
-- uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0
+- uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0
   with:
     traces: traces.ndjson
 ```
@@ -63,7 +63,7 @@ That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_v
 | `eval-type` | every bundle | `completeness` · `relevance` · `safety` · `cost` · `custom` · `all` |
 | `redact` | the server's default | `none` · `critical_spans` |
 | `iris-home` | a scratch directory | Where the database lives; a cached directory keeps history across runs and holds the dataset |
-| `version` | the version this action was released with | The `@iris-eval/mcp-server` version `npx` runs. Pinned, so a workflow on `@v0.16.0` runs server 0.16.0 until you move the tag |
+| `version` | the version this action was released with | The `@iris-eval/mcp-server` version `npx` runs. Pinned, so a workflow on `@vX.Y.Z` runs server X.Y.Z until you move the tag |
 | `command` | `npx -y @iris-eval/mcp-server@<version>` | Advanced: the command that runs `iris-eval` instead — `node dist/index.js` in a checkout of this repo |
 | `comment` | `true` | On a pull request, the comment |
 | `github-token` | `${{ github.token }}` | The token that posts it |
@@ -82,7 +82,7 @@ steps:
     with:
       path: ${{ runner.temp }}/iris
       key: iris-${{ github.ref_name }}
-  - uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0
+  - uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0
     with:
       traces: traces.ndjson
       fail-on: detector_veto

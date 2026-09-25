@@ -1,6 +1,7 @@
 {
   "name": "@iris-eval/init",
   "version": "0.1.0",
+  "private": true,
   "description": "Universal installer for Iris — detects your MCP client and writes the right config in one command.",
   "type": "module",
   "main": "dist/index.js",
