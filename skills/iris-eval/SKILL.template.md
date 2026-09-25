@@ -30,10 +30,10 @@ deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code
 
 ```bash
 npx @iris-eval/mcp-server --self-test   # first: offline, exit 0 = healthy
-npx @iris-eval/mcp-server
+npx -y @iris-eval/mcp-server install <client>   # writes the client's MCP config: {{installClients}}
 ```
 
-Or add to your MCP config:
+Or add to your MCP config by hand:
 
 ```json
 {

@@ -23,6 +23,18 @@ const rootPkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8'))
 const adapterPath = 'packages/langchain/package.json';
 const adapter = JSON.parse(readFileSync(resolve(root, adapterPath), 'utf-8'));
 
+/*
+ * A private adapter is not installable, so no fresh install can resolve
+ * through its range and there is nothing for this gate to protect. The
+ * adapter is marked private while it is rebuilt; the moment the rebuild
+ * drops `"private": true` to publish it, this check applies again with no
+ * other edit. Skipped out loud, never silently.
+ */
+if (adapter.private === true) {
+  console.log(`  SKIP: ${adapterPath} is "private": true (not published), so its range on @iris-eval/mcp-server is not checked`);
+  process.exit(0);
+}
+
 const range =
   adapter.dependencies?.['@iris-eval/mcp-server'] ??
   adapter.peerDependencies?.['@iris-eval/mcp-server'];

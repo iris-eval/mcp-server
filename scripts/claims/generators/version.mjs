@@ -1,30 +1,23 @@
-// Version generator — reads package.json across workspaces.
+// Version generator — the version of every package in the repository.
 //
-// Output shape: { mcpServer, langchainPackage, websitePackage, dashboardPackage, initPackage, published }
-
-/*
- * Registry status of the npm-facing packages. STATIC on purpose: the
- * generator must run offline and deterministically, so probing the registry
- * (`npm view`) at generate time is not allowed — this is a recorded
- * decision, not a measurement. As of 2026-09-03, `npm view @iris-eval/init`
- * and `npm view @iris-eval/langchain` both return 404: the packages live in
- * this repo, build and test in CI, and have never been published, yet a CI
- * comment called one "a PUBLISHED npm package" and both READMEs opened with
- * install commands that cannot resolve. Whether to publish or retire them is
- * an open decision; until then no surface may present them as installable
- * (tests/unpublished-packages-not-cited.test.ts walks every public surface).
- * Flip a flag to true in the same PR as the first publish, or delete the
- * package if it is retired.
- */
-const PUBLISHED = {
-  mcpServer: true,
-  initPackage: false,
-  langchainPackage: false,
-};
+// Output shape: { mcpServer, <dir>Package… for every package in the inventory,
+// websitePackage, dashboardPackage, published }
+//
+// The packages come from ../packages.mjs, which enumerates every package.json
+// and pyproject.toml and classifies each from its own manifest (released by
+// release.yml, released by publish-python.yml, "private": true, or the frozen
+// `iris-eval` placeholder) — never from a hand list, so a package added later
+// is covered the moment it exists. `published` says, per package, whether it
+// is on its registry: true for the two that a workflow publishes, false for a
+// private package, and the recorded fact for the placeholder (the generator
+// runs offline and must not probe a registry). No public surface may present
+// a package with `published: false` as installable;
+// tests/unpublished-packages-not-cited.test.ts walks every surface for each.
 
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inventory } from '../packages.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..', '..');
@@ -41,12 +34,13 @@ async function readVersion(pkgPath) {
 }
 
 export async function generate() {
+  const packages = inventory(root);
+  const versions = Object.fromEntries(packages.map((p) => [p.key, p.version]));
+  const published = Object.fromEntries(packages.map((p) => [p.key, p.published]));
   return {
-    mcpServer: await readVersion(resolve(root, 'package.json')),
-    langchainPackage: await readVersion(resolve(root, 'packages/langchain/package.json')),
+    ...versions,
     websitePackage: await readVersion(resolve(root, 'website/package.json')),
     dashboardPackage: await readVersion(resolve(root, 'dashboard/package.json')),
-    initPackage: await readVersion(resolve(root, 'packages/init/package.json')),
-    published: { ...PUBLISHED },
+    published,
   };
 }

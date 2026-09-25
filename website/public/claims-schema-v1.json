@@ -861,10 +861,11 @@
       "type": "object",
       "required": [
         "dashboardPackage",
-        "initPackage",
+        "irisEvalPackage",
         "langchainPackage",
         "mcpServer",
         "published",
+        "pythonPackage",
         "websitePackage"
       ],
       "properties": {
@@ -878,7 +879,7 @@
             }
           ]
         },
-        "initPackage": {
+        "irisEvalPackage": {
           "oneOf": [
             {
               "$ref": "#/$defs/semver"
@@ -898,16 +899,20 @@
             }
           ]
         },
+        "mcpServer": {
+          "$ref": "#/$defs/semver"
+        },
         "published": {
           "type": "object",
-          "description": "Whether each npm-facing package is on the npm registry. Recorded in the generator, not probed: a false entry means the package is in-repo only and no surface may present it as installable.",
+          "description": "Whether each package in the repository is on its registry, keyed like the versions beside it. Derived from each manifest (scripts/claims/packages.mjs): true for the server, which release.yml publishes to npm, and the Python client, which publish-python.yml publishes to PyPI; false for a \"private\": true package; recorded, not probed, for the frozen iris-eval placeholder. A false entry means no surface may present that package as installable.",
           "required": [
-            "initPackage",
+            "irisEvalPackage",
             "langchainPackage",
-            "mcpServer"
+            "mcpServer",
+            "pythonPackage"
           ],
           "properties": {
-            "initPackage": {
+            "irisEvalPackage": {
               "type": "boolean"
             },
             "langchainPackage": {
@@ -915,12 +920,22 @@
             },
             "mcpServer": {
               "type": "boolean"
+            },
+            "pythonPackage": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
         },
-        "mcpServer": {
-          "$ref": "#/$defs/semver"
+        "pythonPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "websitePackage": {
           "oneOf": [

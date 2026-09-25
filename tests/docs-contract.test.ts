@@ -91,6 +91,10 @@ function cliFlags(): Set<string> {
   if (!block) throw new Error('docs-contract: the parseArgs options block in src/index.ts was not found');
   const flags = new Set<string>();
   for (const m of block[1].matchAll(/^\s*'?([a-z][a-z0-9-]*)'?:\s*\{/gm)) flags.add(m[1]);
+  // `install` parses its own flags (src/cli/install/command.ts), handed off before the block above.
+  const install = read('src/cli/install/command.ts').match(/parseArgs\(\{\s*args: argv,\s*options:\s*\{([\s\S]*?)\n\s*\},\s*allowPositionals/);
+  if (!install) throw new Error('docs-contract: the parseArgs options block in src/cli/install/command.ts was not found');
+  for (const m of install[1].matchAll(/^\s*'?([a-z][a-z0-9-]*)'?:\s*\{/gm)) flags.add(m[1]);
   return flags;
 }
 

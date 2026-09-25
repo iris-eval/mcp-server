@@ -72,6 +72,18 @@ const CliSchema = z
   })
   .strict();
 
+/*
+ * `install` is handed off before the server's own argument parsing: it has
+ * its own flags (--list, --uninstall), writes a client's config and exits,
+ * and never reaches the MCP stdio path below, where stdout belongs to the
+ * JSON-RPC stream. Only as the first argument, so a server flag's value can
+ * never be read as the verb.
+ */
+if (process.argv[2] === 'install') {
+  const { runInstall } = await import('./cli/install/command.js');
+  process.exit(await runInstall(process.argv.slice(3), { stdout: process.stdout, stderr: process.stderr }));
+}
+
 let parsed;
 try {
   parsed = parseArgs({
@@ -146,6 +158,7 @@ Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
 Usage: ${COMMAND} [options]
        ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--dataset <id|label>] [--redact <mode>] [--source cli|hook]
+       ${COMMAND} install <client> [--uninstall] | --list   (add Iris to an MCP client's config; install --help for the clients)
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
@@ -246,13 +259,17 @@ Dashboard preferences ($IRIS_HOME/preferences.json, default ~/.iris/preferences.
  * `--self-test --purge` must not quietly run only the first one it sees.
  */
 /*
- * The one verb. A positional other than `ingest` is refused before anything
- * runs, and `ingest` cannot be combined with a server mode: it opens the
- * store, does its work and exits.
+ * The verbs. `install` was handed off above, before this parse; a positional
+ * other than `ingest` is refused before anything runs, and `ingest` cannot be
+ * combined with a server mode: it opens the store, does its work and exits.
  */
 const verb = parsed.positionals[0];
+if (verb === 'install') {
+  process.stderr.write(`${COMMAND}: install comes first and takes no server flags: ${COMMAND} install <client>.\nRun \`${COMMAND} install --help\` for usage.\n`);
+  process.exit(2);
+}
 if (parsed.positionals.length > 1 || (verb !== undefined && verb !== 'ingest')) {
-  process.stderr.write(`${COMMAND}: unknown command "${parsed.positionals.join(' ')}". The only command is "ingest".\nRun \`${COMMAND} --help\` for usage.\n`);
+  process.stderr.write(`${COMMAND}: unknown command "${parsed.positionals.join(' ')}". The commands are "ingest" and "install".\nRun \`${COMMAND} --help\` for usage.\n`);
   process.exit(2);
 }
 if (verb === 'ingest') {

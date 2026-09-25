@@ -302,6 +302,8 @@ export function slotsFrom(claims) {
     discoverySentence: claims.brand.discoverySentence,
     dataResidency: claims.brand.dataResidency,
     clientsSentence: clientsSentence(claims),
+    // The names `install <client>` accepts, from the same rows (the rows are the installer's profiles).
+    installClients: claims.clients.rows.map((r) => r.id).join(', '),
     disclosureAckHours: claims.security.disclosure.acknowledgeWithinHours,
     disclosureResponseBusinessDays: claims.security.disclosure.detailedResponseWithinBusinessDays,
     proofSummary: proofSummary(claims),
@@ -355,7 +357,7 @@ export function clientsTable(claims) {
     ...claims.clients.rows.map((r) => {
       const meaning =
         r.status === 'verified'
-          ? 'driven through the real scripts on every CI run'
+          ? 'a test drives the real client on every CI run'
           : 'the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect';
       return `| ${r.name} | ${r.status} | ${meaning} | [${r.lastChecked}](${r.source}) |`;
     }),

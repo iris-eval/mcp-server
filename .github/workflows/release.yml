@@ -75,8 +75,7 @@ jobs:
       - run: npm run build
       # The tag IS the release identity — everything downstream (npm dist-tag,
       # GHCR :vX + :latest, the GitHub release) is named from it. Nothing here
-      # checked that it matched what actually gets published, while the
-      # sibling release-init.yml has always had this guard.
+      # checked that it matched what actually gets published.
       #
       # Without it: tag v0.4.6 at a commit whose package.json still says
       # 0.4.5 -> npm publish tries 0.4.5 -> EPUBLISHCONFLICT -> the

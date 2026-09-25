@@ -18,9 +18,13 @@ Iris is an open-source MCP (Model Context Protocol) server for agent evaluation.
 
 ## Quickstart (any MCP client)
 
-First: `npx -y {{pinnedPackage}} --self-test` (offline; exit 0 = healthy). Then the config block below; the key is `iris-eval` on every surface.
+First: `npx -y {{pinnedPackage}} --self-test` (offline; exit 0 = healthy). Then one command writes the client's own config file, keeps every other server in it, and pins this release:
 
-Standard `mcpServers` JSON config (Claude Desktop, Cursor, Windsurf, Cline, Gemini CLI):
+    npx -y {{pinnedPackage}} install <client>
+
+`<client>` is one of {{installClients}}; `install --list` shows the clients found on the machine and `install <client> --uninstall` removes the entry. By hand instead, the config blocks below; the key is `iris-eval` on every surface.
+
+Standard `mcpServers` JSON config (Claude Desktop, Cursor, Devin Desktop (Windsurf), Cline, Gemini CLI; Cursor's docs also require `"type": "stdio"` in the entry; for Continue, save it as its own file in `~/.continue/mcpServers/`):
 
     {
       "mcpServers": {
@@ -46,7 +50,7 @@ VS Code (`.vscode/mcp.json`, uses `servers` key):
 
 Zed (`settings.json`, uses `context_servers`):
 
-    { "context_servers": { "iris-eval": { "command": { "path": "npx", "args": ["-y", "{{pinnedPackage}}"] } } } }
+    { "context_servers": { "iris-eval": { "command": "npx", "args": ["-y", "{{pinnedPackage}}"], "env": {} } } }
 
 OpenAI Codex CLI (`~/.codex/config.toml`):
 

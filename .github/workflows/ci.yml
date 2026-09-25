@@ -141,25 +141,84 @@ jobs:
       - run: cd website && npm run lint
       - run: cd website && npx tsc --noEmit
 
-  # packages/init is an in-repo npm package (@iris-eval/init — NOT yet on the
-  # npm registry; `npm view` 404s as of 2026-09-03, see .claims.json
-  # version.published) that had NO PR gate at all — breaks landed invisibly
-  # and first surfaced inside the tag-triggered release-init.yml job, which
-  # holds the OIDC publishing identity (issue #335). This job runs the same
-  # typecheck + test + build that release-init.yml depends on, on every PR.
-  init-typecheck-test-build:
+  # Real MCP clients against the config `iris-eval install` writes: the
+  # evidence behind every `verified` row in clients.json that names
+  # tests/real-clients/real-clients.test.ts. The pack job builds this commit
+  # and packs it under a version no registry has (0.0.0-ci.<run id>), so the
+  # entry the installer writes pins a version only the tarball can satisfy:
+  # when a client reports Connected, the server it started is this commit's,
+  # never a release. Each OS then installs the tarball into an empty project,
+  # installs Claude Code and Gemini CLI at pinned versions, and runs the test.
+  # `claude mcp list` / `claude mcp get` and `gemini mcp list` make no model
+  # call and need no account. Bump a client's version here to re-verify it.
+  real-clients-pack:
     runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: packages/init/package-lock.json
-      - run: cd packages/init && npm ci
-      - run: cd packages/init && npm run typecheck
-      - run: cd packages/init && npm test
-      - run: cd packages/init && npm run build
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: cd dashboard && npm ci --no-audit --no-fund
+      - name: A version no registry has
+        run: npm version "0.0.0-ci.${GITHUB_RUN_ID}" --no-git-tag-version
+      - run: npm run build
+      - name: Pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/pack"
+          npm pack --pack-destination "$RUNNER_TEMP/pack"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: real-clients-tarball
+          path: ${{ runner.temp }}/pack/*.tgz
+          retention-days: 3
+
+  real-clients:
+    name: Real clients (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: [real-clients-pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # The test runner only: the server under test is the tarball.
+      - run: npm ci
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: real-clients-tarball
+          path: ${{ runner.temp }}/pack
+      - name: Install the tarball into an empty project
+        run: |
+          tarball="$(cd "$RUNNER_TEMP/pack" && ls *.tgz)"
+          mkdir -p "$RUNNER_TEMP/project"
+          cd "$RUNNER_TEMP/project"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP/pack/$tarball"
+          ./node_modules/.bin/iris-eval --version
+      # Exact versions: a client release that changes what it reads is found by bumping one here, not by a red run.
+      - name: Install the clients at pinned versions
+        run: |
+          npm install -g @anthropic-ai/claude-code@2.1.282 @google/gemini-cli@0.61.0
+          claude --version
+          gemini --version
+      - name: The clients connect to the server install wrote
+        env:
+          IRIS_REAL_CLIENTS: '1'
+          IRIS_REAL_CLIENTS_PROJECT: ${{ runner.temp }}/project
+        run: npx vitest run tests/real-clients
 
   build:
     runs-on: ubuntu-latest

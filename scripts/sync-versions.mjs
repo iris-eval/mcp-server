@@ -82,10 +82,20 @@ let skipped = 0;
 // move the action tag (2026-09-23 security review). Text edits, so each file's
 // formatting survives.
 // ============================================================
+const GATE_USES_PATTERN = /iris-eval\/mcp-server\/\.github\/actions\/gate@v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?/g;
 const LAUNCHERS = [
   { path: "claude-plugin/.mcp.json", pattern: /@iris-eval\/mcp-server(?:@[0-9A-Za-z.+-]+)?"/g, replace: `@iris-eval/mcp-server@${VERSION}"` },
   { path: ".cursor-plugin/plugin.json", pattern: /@iris-eval\/mcp-server(?:@[0-9A-Za-z.+-]+)?"/g, replace: `@iris-eval/mcp-server@${VERSION}"` },
   { path: ".github/actions/gate/action.yml", pattern: /(\r?\n  version:\r?\n[\s\S]*?\r?\n    default: )'[^']*'/, replace: `$1'${VERSION}'` },
+  // The gate action's own tag in every `uses:` line a reader copies. Each
+  // release tags vX.Y.Z, so a snippet names the release it documents instead
+  // of the one that was current when it was written. check-version.sh walks
+  // the same three files with the same pattern.
+  ...["README.md", "docs/ci-gate.md", ".github/actions/gate/action.yml"].map((path) => ({
+    path,
+    pattern: GATE_USES_PATTERN,
+    replace: `iris-eval/mcp-server/.github/actions/gate@v${VERSION}`,
+  })),
 ];
 
 console.log(`Syncing all versions to ${VERSION} (from package.json)\n`);
@@ -155,7 +165,12 @@ if (existsSync(LANGCHAIN_PKG)) {
   const range =
     lc.dependencies?.["@iris-eval/mcp-server"] ??
     lc.peerDependencies?.["@iris-eval/mcp-server"];
-  if (range) {
+  // A private adapter is not installable, so its range protects no install
+  // (scripts/check-langchain-range.mjs skips it the same way).
+  if (lc.private === true) {
+    console.log(`
+  SKIP: ${LANGCHAIN_PKG} is "private": true (not published); its range is not reviewed`);
+  } else if (range) {
     let semver;
     try {
       semver = createRequire(import.meta.url)("semver");

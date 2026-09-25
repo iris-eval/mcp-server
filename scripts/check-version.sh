@@ -115,12 +115,23 @@ check_launcher "claude-plugin/.mcp.json" "@iris-eval/mcp-server@$PKG_VERSION\""
 check_launcher ".cursor-plugin/plugin.json" "@iris-eval/mcp-server@$PKG_VERSION\""
 check_launcher ".github/actions/gate/action.yml" "default: '$PKG_VERSION'"
 
+# The gate action's tag in every `uses:` line a reader copies (README.md,
+# docs/ci-gate.md, the action's header): each must name this release.
+if node scripts/check-gate-uses.mjs; then
+  :
+else
+  ERRORS=$((ERRORS + 1))
+fi
+
 # @iris-eval/langchain's dependency range on this package. Not a `.version`
 # field and not synced (the adapter releases on its own cadence), but the
 # range must admit the version being released: `^0.4.0` excluded every
 # 0.5.x, so a fresh install of the adapter resolved to the pre-veto,
 # pre-sandbox 0.4.6 line for the whole 0.5.0 release. Fails when the range
 # does not admit the current version; the fix is a deliberate hand edit.
+# While the adapter is "private": true (it is being rebuilt and is not
+# published) the script prints a SKIP line and passes: a range no install can
+# resolve through protects nothing. Dropping "private" re-arms it.
 if node scripts/check-langchain-range.mjs; then
   :
 else

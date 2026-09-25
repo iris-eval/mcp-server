@@ -9,7 +9,8 @@
  * connect) — the evidence, the source it was read from and the date. This
  * file locks it: the rows are exactly the installer's client profiles; each
  * row's config mode is the profile's and its config text names the file the
- * installer writes; every evidence path exists and a verified row's evidence
+ * installer writes and its source is the documentation page the profile was
+ * written from; every evidence path exists and a verified row's evidence
  * includes a test; every source is an https URL and every date is a real
  * date not in the future; the truthbase carries the rows verbatim with the
  * counts; and the README, the install section, llms.txt and the sitemap
@@ -20,7 +21,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import clientsFile from '../clients.json' with { type: 'json' };
-import { allProfiles, configPathFor, type SupportedClient } from '../packages/init/src/detect.js';
+import { allProfiles, configPathFor, type SupportedClient } from '../src/cli/install/clients.js';
 import { generate as generateClients, STATUSES } from '../scripts/claims/generators/clients.mjs';
 
 const root = resolve(__dirname, '..');
@@ -39,6 +40,12 @@ describe('clients.json — the rows are the installer’s profiles', () => {
       const row = rows.find((r) => r.id === p.id);
       expect(row?.name, p.id).toBe(p.displayName);
       expect(row?.configMode, p.id).toBe(p.configMode);
+    }
+  });
+
+  it('each row’s source is the page its installer profile was written from', () => {
+    for (const p of allProfiles()) {
+      expect(rows.find((r) => r.id === p.id)?.source, p.id).toBe(p.docsUrl);
     }
   });
 

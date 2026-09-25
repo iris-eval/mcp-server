@@ -68,10 +68,16 @@ function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-export function writeAtomic(targetPath: string, contents: string): void {
+/**
+ * `mode` defaults to owner-only, right for the files Iris owns. A caller
+ * rewriting a file that belongs to someone else (an MCP client's config)
+ * passes that file's current mode so the rewrite does not change who can
+ * read it.
+ */
+export function writeAtomic(targetPath: string, contents: string, mode: number = OWNER_ONLY_FILE_MODE): void {
   mkdirSync(dirname(targetPath), { recursive: true });
   const tmp = `${targetPath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-  writeFileSync(tmp, contents, { encoding: 'utf-8', mode: OWNER_ONLY_FILE_MODE });
+  writeFileSync(tmp, contents, { encoding: 'utf-8', mode });
 
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {

@@ -15,8 +15,7 @@ name: Real-LLM Smoke (on demand)
 # (gh workflow run nightly-real-llm-smoke.yml), and a run without the key
 # still fails, loudly, naming the setting that fixes it.
 #
-# The filename keeps its old name because proof-judge.yml and
-# release-init.yml point at it.
+# The filename keeps its old name because proof-judge.yml points at it.
 
 on:
   workflow_dispatch:

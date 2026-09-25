@@ -33,10 +33,10 @@ If this plugin is installed, the 12 tools are already available — no setup nee
 
 ```bash
 npx @iris-eval/mcp-server --self-test   # first: offline, exit 0 = healthy
-npx @iris-eval/mcp-server
+npx -y @iris-eval/mcp-server install <client>   # writes the client's MCP config: claude-code, claude-desktop, cursor, windsurf, continue, vscode, cline, zed, codex, gemini
 ```
 
-Or add to your MCP config:
+Or add to your MCP config by hand:
 
 ```json
 {

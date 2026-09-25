@@ -9,7 +9,7 @@ branding:
 
 # One step in a workflow:
 #
-#   - uses: iris-eval/mcp-server/.github/actions/gate@v0.16.0
+#   - uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0
 #     with:
 #       traces: traces.ndjson
 #

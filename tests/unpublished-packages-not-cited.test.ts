@@ -1,31 +1,30 @@
 /**
  * Cite only what is published.
  *
- * `@iris-eval/init` and `@iris-eval/langchain` return 404 from `npm view`:
- * they live in this repo, build and test in CI, and have never been
- * published — yet a CI comment called one "a PUBLISHED npm package" and both
- * READMEs opened with `npx` / `npm install` commands that cannot resolve.
- * The truthbase now records `version.published` per package (a static,
- * dated decision in scripts/claims/generators/version.mjs — the generator
- * runs offline and must not probe the registry). This suite makes the record
- * bind: every public surface that shows an install command for an
- * unpublished package must say, in the same file, that it is not yet
- * published. Publish-or-retire is still open; until it is decided,
- * no surface lies.
+ * Two in-repo npm packages once returned 404 from `npm view` while their
+ * READMEs opened with `npx` / `npm install` commands that could not resolve
+ * and a CI comment called one "a PUBLISHED npm package". The truthbase
+ * records `version.published` for every package in the repository — derived
+ * from each manifest by scripts/claims/packages.mjs, so no package is left
+ * off a hand list — and this suite makes the record bind: every public
+ * surface that shows an install command for an npm package that is not on
+ * the registry must say, in the same file, that it is not yet published.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-ignore — plain .mjs module, no type declarations needed for a test
 import { generate as generateVersion } from '../scripts/claims/generators/version.mjs';
+// @ts-ignore — plain .mjs module
+import { inventory } from '../scripts/claims/packages.mjs';
 
 const ROOT = resolve(__dirname, '..');
 
-/** Truthbase key → package directory; the npm name is read from package.json. */
-const PACKAGE_DIRS: Record<string, string> = {
-  initPackage: 'packages/init',
-  langchainPackage: 'packages/langchain',
-};
+type Entry = { manifest: string; dir: string; key: string; name: string | null; published: boolean };
+const PACKAGES = (inventory() as Entry[]).filter((p) => p.manifest.endsWith('package.json') && p.dir !== '.');
+
+/** Truthbase key → package directory, for every npm package in the repository besides the server. */
+const PACKAGE_DIRS: Record<string, string> = Object.fromEntries(PACKAGES.map((p) => [p.key, p.dir]));
 
 /**
  * Everything a stranger can read: the repo's public prose and manifests.
@@ -102,6 +101,12 @@ describe('unpublished packages are never presented as installable', () => {
       const pkg = JSON.parse(readFileSync(resolve(ROOT, dir, 'package.json'), 'utf-8')) as { name: string };
       return { dir, name: pkg.name };
     });
+
+  it('the inventory found the in-repo npm packages that are not on the registry', () => {
+    // The walk itself is guarded: a regression that found nothing would pass every check below vacuously.
+    expect(unpublished.map((p) => p.dir).sort()).toEqual(PACKAGES.filter((p) => !p.published).map((p) => p.dir).sort());
+    expect(unpublished.length).toBeGreaterThan(0);
+  });
 
   it.each(unpublished)('$name: every surface that shows an install command says it is not yet published', ({ name }) => {
     const re = installCommandRe(name);

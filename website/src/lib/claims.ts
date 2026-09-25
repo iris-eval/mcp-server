@@ -19,11 +19,12 @@ export const VERSION_LANGCHAIN_PACKAGE = claimsRaw.version.langchainPackage as s
 export const VERSION_WEBSITE_PACKAGE = claimsRaw.version.websitePackage as string | null;
 export const VERSION_DASHBOARD_PACKAGE = claimsRaw.version.dashboardPackage as string | null;
 // Registry status — a false entry is an in-repo package that no surface may
-// present as installable (see scripts/claims/generators/version.mjs).
+// present as installable (see scripts/claims/packages.mjs).
 export const PACKAGE_PUBLISHED = claimsRaw.version.published as {
   mcpServer: boolean;
-  initPackage: boolean;
+  irisEvalPackage: boolean;
   langchainPackage: boolean;
+  pythonPackage: boolean;
 };
 
 // Tests
