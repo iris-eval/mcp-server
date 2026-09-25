@@ -232,7 +232,7 @@ export function detectStyle(text: string): Style {
   // The shallowest indented key line is one level deep.
   const indents = [...text.matchAll(/\n([ \t]+)"/g)].map((m) => m[1]);
   const spaces = indents.filter((d) => !d.includes('\t')).map((d) => d.length);
-  const unit = indents.some((d) => d.startsWith('\t')) ? '\t' : spaces.length > 0 ? ' '.repeat(Math.min(...spaces, 8)) : '  ';
+  const unit = indents.some((d) => d.startsWith('\t')) ? '\t' : spaces.length > 0 ? ' '.repeat(spaces.reduce((min, n) => Math.min(min, n), 8)) : '  ';
   return { unit, eol: text.includes('\r\n') ? '\r\n' : '\n' };
 }
 

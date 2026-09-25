@@ -39,7 +39,7 @@ import { installIris, uninstallIris, IRIS_SERVER_KEY, LEGACY_IRIS_SERVER_KEY } f
  * every client's config by hand. It used to be a `/docs/clients` page on the
  * marketing site, restated across three surfaces, and that page never
  * existed — a 404 printed at exactly the moment someone was stuck.
- * tests/unit/install/docs-link.test.ts holds this to a real README heading.
+ * tests/unit/install/command.test.ts holds this to a real README heading.
  */
 export const CLIENT_DOCS_URL = 'https://github.com/iris-eval/mcp-server#hook-up-your-own-agent';
 
@@ -68,8 +68,8 @@ Usage:
 Clients: ${SUPPORTED_CLIENTS.join(', ')}
 
 The config runs \`npx -y ${IRIS_PACKAGE}@<this version>\` under the key "${IRIS_SERVER_KEY}"; run install again
-after upgrading to move it. Other servers in the file are kept, and an entry under the older key "${LEGACY_IRIS_SERVER_KEY}" is
-moved to "${IRIS_SERVER_KEY}".
+after upgrading to move it. Other servers in the file are kept. An entry under the older key "${LEGACY_IRIS_SERVER_KEY}" moves
+to "${IRIS_SERVER_KEY}" when it runs Iris; one that runs another server is left as it is.
 
 Examples:
   ${RUN} install claude-code
@@ -161,6 +161,7 @@ export async function runInstall(argv: string[], io: InstallIo): Promise<number>
           ? `Removed ${IRIS_SERVER_KEY} from the ${profile.displayName} config.\n  ${result.configPath}\nRestart ${profile.displayName} to drop the server.\n`
           : `No change: ${IRIS_SERVER_KEY} was not in the ${profile.displayName} config.\n  ${result.configPath}\n`,
       );
+      if (result.note) io.stderr.write(`${result.note}\n`);
       return 0;
     }
 
@@ -178,6 +179,7 @@ export async function runInstall(argv: string[], io: InstallIo): Promise<number>
         `Check the install: ${RUN}@${version} --self-test\n` +
         `See scored traces: ${RUN}@${version} --dashboard\n`,
     );
+    if (result.note) io.stderr.write(`${result.note}\n`);
     return 0;
   } catch (err) {
     io.stderr.write(`${COMMAND} install: ${(err as Error).message}\n`);

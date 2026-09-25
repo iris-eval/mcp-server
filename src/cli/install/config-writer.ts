@@ -63,11 +63,14 @@ export const LEGACY_IRIS_SERVER_KEY = 'iris';
 export interface InstallResult {
   configPath: string;
   action: 'created' | 'updated' | 'no-change';
+  /** Something the user should know about the file, e.g. an entry left alone. */
+  note?: string;
 }
 
 export interface UninstallResult {
   configPath: string;
   action: 'removed' | 'not-present';
+  note?: string;
 }
 
 type Json = Record<string, unknown>;
@@ -164,11 +167,41 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function withoutIris(map: Json): Json {
-  const { [IRIS_SERVER_KEY]: _current, [LEGACY_IRIS_SERVER_KEY]: _legacy, ...rest } = map;
+/** The command words that mean an entry starts Iris: the package, or a bin it installs. */
+const IRIS_COMMAND_WORDS = [IRIS_PACKAGE, IRIS_SERVER_KEY, 'iris-mcp'];
+
+/**
+ * Whether a command and its arguments start Iris. The key `iris` is only a
+ * name: older Iris docs used it, but so can any other server, so an entry
+ * under it is ours only when what it runs is Iris.
+ */
+export function startsIris(command: unknown, args: unknown): boolean {
+  const words = [command, ...(Array.isArray(args) ? args : [])].filter((w): w is string => typeof w === 'string');
+  return words.some((word) => {
+    const base = word.replace(/\\/g, '/').split('/').pop()!.replace(/\.(?:cmd|exe|js)$/i, '');
+    return IRIS_COMMAND_WORDS.some((name) => word === name || word.startsWith(`${name}@`) || base === name);
+  });
+}
+
+/** Whether a JSON entry under the legacy key is an Iris entry (either entry shape). */
+function isIrisEntry(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const nested = isRecord(value.command) ? value.command : undefined;
+  return nested ? startsIris(nested.path, nested.args) : startsIris(value.command, value.args);
+}
+
+function legacyLeftAlone(path: string): string {
+  return `An entry named "${LEGACY_IRIS_SERVER_KEY}" in ${path} does not start Iris, so it was left as it is.`;
+}
+
+/** The map without the Iris entries: the current key always, the legacy key only when it is Iris. */
+function withoutIris(map: Json, legacyIsIris: boolean): Json {
+  const { [IRIS_SERVER_KEY]: _current, ...rest } = map;
   void _current;
+  if (!legacyIsIris) return rest;
+  const { [LEGACY_IRIS_SERVER_KEY]: _legacy, ...others } = rest;
   void _legacy;
-  return rest;
+  return others;
 }
 
 /* ---------------- JSON strategies (mcpServers / servers / context_servers) ---------------- */
@@ -233,13 +266,15 @@ function installJson(profile: ClientProfile, launch: LaunchCommand): InstallResu
   const root = parseConfig(path, file.text);
   const map = mapNode(path, root, key);
   const currentMember = map ? memberOf(map, IRIS_SERVER_KEY) : undefined;
-  const legacyMember = map ? memberOf(map, LEGACY_IRIS_SERVER_KEY) : undefined;
+  const legacyAny = map ? memberOf(map, LEGACY_IRIS_SERVER_KEY) : undefined;
+  const legacyMember = legacyAny && isIrisEntry(valueOf(file.text, legacyAny.value)) ? legacyAny : undefined;
+  const note = legacyAny && !legacyMember ? legacyLeftAlone(path) : undefined;
   const existing = currentMember ?? legacyMember;
   const current = existing ? valueOf(file.text, existing.value) : undefined;
   const next = mergeEntry(current, profile, launch);
 
   if (currentMember && !legacyMember && canonical(current) === canonical(next)) {
-    return { configPath: path, action: 'no-change' };
+    return { configPath: path, action: 'no-change', ...(note ? { note } : {}) };
   }
 
   let text = file.text;
@@ -251,10 +286,10 @@ function installJson(profile: ClientProfile, launch: LaunchCommand): InstallResu
     text = setMember(text, mapNode(path, parseConfig(path, text), key)!, IRIS_SERVER_KEY, next, style);
   }
 
-  const others = map ? withoutIris(valueOf(file.text, map) as Json) : {};
+  const others = map ? withoutIris(valueOf(file.text, map) as Json, Boolean(legacyMember)) : {};
   checkEdit(path, file.text, text, key, { ...others, [IRIS_SERVER_KEY]: next });
   writeText(path, file, text);
-  return { configPath: path, action: existing ? 'updated' : 'created' };
+  return { configPath: path, action: existing ? 'updated' : 'created', ...(note ? { note } : {}) };
 }
 
 function uninstallJson(profile: ClientProfile): UninstallResult {
@@ -265,17 +300,20 @@ function uninstallJson(profile: ClientProfile): UninstallResult {
 
   const root = parseConfig(path, file.text);
   const map = mapNode(path, root, key);
-  if (!map || (!memberOf(map, IRIS_SERVER_KEY) && !memberOf(map, LEGACY_IRIS_SERVER_KEY))) {
-    return { configPath: path, action: 'not-present' };
+  const legacyAny = map ? memberOf(map, LEGACY_IRIS_SERVER_KEY) : undefined;
+  const legacyIsIris = Boolean(legacyAny && isIrisEntry(valueOf(file.text, legacyAny.value)));
+  const note = legacyAny && !legacyIsIris ? legacyLeftAlone(path) : undefined;
+  if (!map || (!memberOf(map, IRIS_SERVER_KEY) && !legacyIsIris)) {
+    return { configPath: path, action: 'not-present', ...(note ? { note } : {}) };
   }
 
   let text = file.text;
-  for (const k of [IRIS_SERVER_KEY, LEGACY_IRIS_SERVER_KEY]) {
+  for (const k of legacyIsIris ? [IRIS_SERVER_KEY, LEGACY_IRIS_SERVER_KEY] : [IRIS_SERVER_KEY]) {
     text = removeMember(text, mapNode(path, parseConfig(path, text), key)!, k);
   }
-  checkEdit(path, file.text, text, key, withoutIris(valueOf(file.text, map) as Json));
+  checkEdit(path, file.text, text, key, withoutIris(valueOf(file.text, map) as Json, legacyIsIris));
   writeText(path, file, text);
-  return { configPath: path, action: 'removed' };
+  return { configPath: path, action: 'removed', ...(note ? { note } : {}) };
 }
 
 /* ---------------- Codex strategy (TOML table) ---------------- */
@@ -306,6 +344,45 @@ function headerName(line: string): string | null {
     .join('.');
 }
 
+/**
+ * For each line of `raw`, whether it starts inside a TOML multi-line string
+ * ("""…""" or '''…'''). A header-like line there is the user's text, not
+ * a table, so the scanners below skip it.
+ */
+function insideMultilineString(raw: string): boolean[] {
+  const inside: boolean[] = [];
+  let open: '"""' | "'''" | null = null;
+  for (const line of raw.split('\n')) {
+    inside.push(open !== null);
+    let i = 0;
+    while (i < line.length) {
+      if (open) {
+        const close = line.indexOf(open, i);
+        if (close === -1) break;
+        i = close + 3;
+        open = null;
+        continue;
+      }
+      const c = line[i];
+      if (c === '#') break;
+      if (line.startsWith('"""', i) || line.startsWith("'''", i)) {
+        open = line.slice(i, i + 3) as '"""' | "'''";
+        i += 3;
+      } else if (c === '"') {
+        i++;
+        while (i < line.length && line[i] !== '"') i += line[i] === '\\' ? 2 : 1;
+        i++;
+      } else if (c === "'") {
+        const close = line.indexOf("'", i + 1);
+        i = close === -1 ? line.length : close + 1;
+      } else {
+        i++;
+      }
+    }
+  }
+  return inside;
+}
+
 interface TableSpan {
   start: number;
   end: number;
@@ -321,10 +398,11 @@ interface TableSpan {
  */
 function tableSpans(raw: string, name: string): TableSpan[] {
   const spans: TableSpan[] = [];
+  const inString = insideMultilineString(raw);
   let offset = 0;
   let open: TableSpan | null = null;
-  for (const line of raw.split('\n')) {
-    const header = headerName(line);
+  for (const [index, line] of raw.split('\n').entries()) {
+    const header = inString[index] ? null : headerName(line);
     if (header !== null) {
       if (open) {
         spans.push({ ...open, end: offset });
@@ -338,10 +416,15 @@ function tableSpans(raw: string, name: string): TableSpan[] {
   return spans;
 }
 
+/** Remove a table and its sub-tables; blank lines change only at the seams they leave. */
 function removeTables(raw: string, name: string): string {
   let out = raw;
-  for (const span of tableSpans(raw, name).reverse()) out = out.slice(0, span.start) + out.slice(span.end);
-  return out.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '').replace(/\n\n$/, '\n');
+  for (const span of tableSpans(raw, name).reverse()) {
+    const before = out.slice(0, span.start).replace(/\n+$/, '\n');
+    const after = out.slice(span.end).replace(/^\n+/, '');
+    out = before === '\n' || before === '' ? after : after === '' ? before : `${before}\n${after}`;
+  }
+  return out;
 }
 
 interface KeySpan {
@@ -405,14 +488,72 @@ function setKey(body: string, key: string, line: string, afterLine: string): str
   return lineEnd === -1 ? `${body}\n${line}` : `${body.slice(0, lineEnd + 1)}${line}\n${body.slice(lineEnd + 1)}`;
 }
 
+/** The string value of `key = "…"` (or '…') in a table's text; undefined when absent or not a plain string. */
+function stringKey(body: string, key: string): string | undefined {
+  const found = findKey(body, key);
+  if (!found || found.items.length > 0) return undefined;
+  const value = body.slice(found.start, found.end).split('=').slice(1).join('=').trim();
+  if (value.length >= 2 && (value[0] === '"' || value[0] === "'") && value.endsWith(value[0])) {
+    return value[0] === '"' ? (JSON.parse(value) as string) : value.slice(1, -1);
+  }
+  return undefined;
+}
+
+/** Whether the table at `span` starts Iris. */
+function codexTableIsIris(raw: string, span: TableSpan): boolean {
+  const body = raw.slice(span.start, span.end);
+  return startsIris(stringKey(body, 'command'), findKey(body, 'args')?.items ?? []);
+}
+
+/**
+ * A server under `name` written in a TOML form other than its own
+ * `[mcp_servers.<name>]` header: a key inside `[mcp_servers]`
+ * (`iris-eval = { … }`, `"iris-eval".command = …`), or a dotted key from the
+ * root or another table (`mcp_servers.iris-eval.command = …`). The installer
+ * edits only the header form, so it refuses rather than add a second
+ * definition, which TOML forbids.
+ */
+function otherTomlForm(raw: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const inTable = new RegExp(`^(?:"${escaped}"|'${escaped}'|${escaped})\\s*[=.]`);
+  const dotted = new RegExp(`^mcp_servers\\s*\\.\\s*(?:"${escaped}"|'${escaped}'|${escaped})\\s*[=.]`);
+  const inString = insideMultilineString(raw);
+  let table = '';
+  for (const [index, line] of raw.split('\n').entries()) {
+    if (inString[index]) continue;
+    const header = headerName(line);
+    if (header !== null) {
+      table = header;
+      continue;
+    }
+    const t = line.trim();
+    if ((table === 'mcp_servers' && inTable.test(t)) || dotted.test(t)) return true;
+  }
+  return false;
+}
+
+function refuseOtherForm(path: string, raw: string): void {
+  for (const name of [IRIS_SERVER_KEY, LEGACY_IRIS_SERVER_KEY]) {
+    if (otherTomlForm(raw, name)) {
+      throw new Error(
+        `${path} defines "${name}" under mcp_servers in a form other than a [mcp_servers.${name}] table, which install does not edit. ` +
+          `Move it to a [mcp_servers.${name}] table, or remove it, and run install again. The file was not changed.`,
+      );
+    }
+  }
+}
+
 function installCodex(profile: ClientProfile, launch: LaunchCommand): InstallResult {
   const path = profile.configPath;
   const file = readText(path);
   const crlf = file.text.includes('\r\n');
   const raw = file.text.replace(/\r\n/g, '\n');
+  refuseOtherForm(path, raw);
 
   const own = tableSpans(raw, CODEX_TABLE).find((s) => s.main);
-  const legacy = tableSpans(raw, CODEX_LEGACY_TABLE).find((s) => s.main);
+  const legacyAny = tableSpans(raw, CODEX_LEGACY_TABLE).find((s) => s.main);
+  const legacy = legacyAny && codexTableIsIris(raw, legacyAny) ? legacyAny : undefined;
+  const note = legacyAny && !legacy ? legacyLeftAlone(path) : undefined;
   let next: string;
 
   if (own || legacy) {
@@ -433,16 +574,17 @@ function installCodex(profile: ClientProfile, launch: LaunchCommand): InstallRes
       next = removeTables(next, CODEX_LEGACY_TABLE);
     } else if (legacy) {
       // A migrated table's sub-tables move with it.
-      next = next.replace(/^\[mcp_servers\.iris\./gm, `[${CODEX_TABLE}.`);
+      next = next.replace(/^\[mcp_servers\.(?:"iris"|'iris'|iris)\./gm, `[${CODEX_TABLE}.`);
     }
   } else {
     const table = `[${CODEX_TABLE}]\ncommand = ${JSON.stringify(launch.command)}\nargs = ${tomlArray(launch.args)}\n`;
     next = raw.length === 0 || raw.endsWith('\n\n') ? raw + table : raw.endsWith('\n') ? raw + '\n' + table : raw + '\n\n' + table;
   }
 
-  if (next === raw) return { configPath: path, action: 'no-change' };
+  const extra = note ? { note } : {};
+  if (next === raw) return { configPath: path, action: 'no-change', ...extra };
   writeText(path, file, crlf ? next.replace(/\n/g, '\r\n') : next);
-  return { configPath: path, action: own || legacy ? 'updated' : 'created' };
+  return { configPath: path, action: own || legacy ? 'updated' : 'created', ...extra };
 }
 
 function uninstallCodex(profile: ClientProfile): UninstallResult {
@@ -451,13 +593,18 @@ function uninstallCodex(profile: ClientProfile): UninstallResult {
   if (!file.exists) return { configPath: path, action: 'not-present' };
   const crlf = file.text.includes('\r\n');
   const raw = file.text.replace(/\r\n/g, '\n');
-  if (tableSpans(raw, CODEX_TABLE).length === 0 && tableSpans(raw, CODEX_LEGACY_TABLE).length === 0) {
-    return { configPath: path, action: 'not-present' };
+  refuseOtherForm(path, raw);
+  const legacyAny = tableSpans(raw, CODEX_LEGACY_TABLE).find((s) => s.main);
+  const legacyIsIris = Boolean(legacyAny && codexTableIsIris(raw, legacyAny));
+  const extra = legacyAny && !legacyIsIris ? { note: legacyLeftAlone(path) } : {};
+  if (tableSpans(raw, CODEX_TABLE).length === 0 && !legacyIsIris) {
+    return { configPath: path, action: 'not-present', ...extra };
   }
-  // Only the Iris tables are removed — current key and legacy key, with their sub-tables.
-  const next = removeTables(removeTables(raw, CODEX_TABLE), CODEX_LEGACY_TABLE);
+  // Only the Iris tables are removed — the current key, and the legacy key when it is Iris, with their sub-tables.
+  const withoutCurrent = removeTables(raw, CODEX_TABLE);
+  const next = legacyIsIris ? removeTables(withoutCurrent, CODEX_LEGACY_TABLE) : withoutCurrent;
   writeText(path, file, crlf ? next.replace(/\n/g, '\r\n') : next);
-  return { configPath: path, action: 'removed' };
+  return { configPath: path, action: 'removed', ...extra };
 }
 
 /* ---------------- Dispatch ---------------- */

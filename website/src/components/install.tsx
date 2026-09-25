@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CLIENT_NAMES_CLAIMED, CLIENT_NAMES_VERIFIED, DATA_RESIDENCY } from "@/lib/claims";
+import { CLIENT_NAMES_CLAIMED, CLIENT_NAMES_VERIFIED, DATA_RESIDENCY, VERSION_MCP_SERVER } from "@/lib/claims";
 
 export function Install(): React.ReactElement {
   return (
@@ -67,10 +67,10 @@ export function Install(): React.ReactElement {
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npx @iris-eval/mcp-server --self-test</span>{"\n"}
                   <span className="text-eval-pass">✓ PASS — this install works</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npx -y @iris-eval/mcp-server install claude-desktop</span>{"\n"}
-                  <span className="text-eval-pass">✓ Added iris-eval in the Claude Desktop config</span>{"\n"}
+                  <span className="text-text-secondary">Added iris-eval in the Claude Desktop config: npx -y @iris-eval/mcp-server@{VERSION_MCP_SERVER}</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">npm install -g @iris-eval/mcp-server</span>{"\n"}
                   <span className="text-text-muted">$ </span><span className="text-text-primary">iris-eval --dashboard</span>{"\n"}
-                  <span className="text-eval-pass">✓ Dashboard running at http://localhost:6920</span>
+                  <span className="text-text-secondary">Dashboard available at http://localhost:6920</span>
                 </code>
               </pre>
             </div>
