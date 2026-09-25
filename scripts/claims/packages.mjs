@@ -8,10 +8,12 @@
 //                .github/workflows/publish-python.yml builds and publishes;
 //   private      a package.json marked "private": true — npm refuses to
 //                publish it;
-//   placeholder  packages/iris-eval, which holds the unscoped npm name
-//                `iris-eval`: no dependencies and a version frozen at
-//                PLACEHOLDER_VERSION, so it never needs a release when the
-//                server has one.
+//   launcher     packages/iris-eval, the unscoped npm name `iris-eval`:
+//                it depends on the server alone, at LAUNCHER_SERVER_RANGE,
+//                an open-ended range, and starts it, so `npx iris-eval`
+//                runs the server's latest release. Its own version is
+//                frozen at LAUNCHER_VERSION and it runs no scripts, so it
+//                never needs a release when the server has one.
 // Anything else is unclassified, and tests/package-inventory.test.ts fails on
 // it. That is the point: two in-repo packages once sat for weeks with install
 // commands on public surfaces, CI jobs building them and publish workflows
@@ -19,10 +21,10 @@
 // package was. The classification is read from the manifests themselves, not
 // from a list here, so a new package cannot escape it.
 //
-// The generator runs offline, so whether the placeholder is on the registry
-// is a recorded fact, not a probe: PLACEHOLDER_PUBLISHED. `npm view iris-eval`
+// The generator runs offline, so whether the launcher is on the registry is
+// a recorded fact, not a probe: LAUNCHER_PUBLISHED. `npm view iris-eval`
 // returned 404 on 2026-09-25. Flip it in the same change that records the
-// first publish.
+// first publish, which is by hand: no workflow publishes it.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
@@ -31,9 +33,11 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, '..', '..');
 
-export const PLACEHOLDER_DIR = 'packages/iris-eval';
-export const PLACEHOLDER_VERSION = '1.0.0';
-export const PLACEHOLDER_PUBLISHED = false;
+export const LAUNCHER_DIR = 'packages/iris-eval';
+export const LAUNCHER_VERSION = '1.0.0';
+/** The first server release with `install`; open-ended so the launcher never needs a release. */
+export const LAUNCHER_SERVER_RANGE = '>=0.19.0';
+export const LAUNCHER_PUBLISHED = false;
 export const PYPI_DIR = 'packages/python';
 
 /** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server) and examples. */
@@ -84,7 +88,7 @@ export function keyFor(dir) {
 /**
  * One manifest, classified from what it says. Returns
  * { manifest, dir, key, name, version, kind, published, reason? } where kind
- * is release | pypi | private | placeholder | unclassified.
+ * is release | pypi | private | launcher | unclassified.
  */
 export function classify(manifest, root = ROOT) {
   const text = readFileSync(join(root, manifest), 'utf-8');
@@ -102,14 +106,18 @@ export function classify(manifest, root = ROOT) {
   const common = { ...base, name: pkg.name ?? null, version: pkg.version ?? null };
   if (dir === '.') return { ...common, kind: 'release', published: true };
   if (pkg.private === true) return { ...common, kind: 'private', published: false };
-  if (dir === PLACEHOLDER_DIR) {
-    const deps = DEPENDENCY_FIELDS.filter((f) => pkg[f] !== undefined);
-    if (deps.length > 0) return { ...common, kind: 'unclassified', published: false, reason: `the placeholder must have no dependencies; it declares ${deps.join(', ')}` };
-    if (pkg.version !== PLACEHOLDER_VERSION) return { ...common, kind: 'unclassified', published: false, reason: `the placeholder is frozen at ${PLACEHOLDER_VERSION}; it says ${pkg.version}` };
-    if (pkg.scripts !== undefined) return { ...common, kind: 'unclassified', published: false, reason: 'the placeholder must run no scripts' };
-    return { ...common, kind: 'placeholder', published: PLACEHOLDER_PUBLISHED };
+  if (dir === LAUNCHER_DIR) {
+    const server = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).name;
+    const fields = DEPENDENCY_FIELDS.filter((f) => pkg[f] !== undefined);
+    const deps = pkg.dependencies ?? {};
+    if (fields.join() !== 'dependencies' || Object.keys(deps).join() !== server || deps[server] !== LAUNCHER_SERVER_RANGE) {
+      return { ...common, kind: 'unclassified', published: false, reason: `the launcher must depend on ${server}@${LAUNCHER_SERVER_RANGE} and nothing else` };
+    }
+    if (pkg.version !== LAUNCHER_VERSION) return { ...common, kind: 'unclassified', published: false, reason: `the launcher is frozen at ${LAUNCHER_VERSION}; it says ${pkg.version}` };
+    if (pkg.scripts !== undefined) return { ...common, kind: 'unclassified', published: false, reason: 'the launcher must run no scripts' };
+    return { ...common, kind: 'launcher', published: LAUNCHER_PUBLISHED };
   }
-  return { ...common, kind: 'unclassified', published: false, reason: 'not the released server, not the PyPI client, not "private": true and not the placeholder' };
+  return { ...common, kind: 'unclassified', published: false, reason: 'not the released server, not the PyPI client, not "private": true and not the launcher' };
 }
 
 export function inventory(root = ROOT) {
