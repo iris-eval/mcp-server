@@ -27,3 +27,8 @@ docs/capabilities.template.md text eol=lf
 docs/capabilities.md text eol=lf
 docs/evaluators.template.md text eol=lf
 docs/evaluators.md text eol=lf
+
+# The iris-eval launcher is published by hand from a checkout: its bin must
+# start with an LF shebang on every platform: a carriage return after "node"
+# fails on macOS and Linux under installers that do not rewrite it.
+packages/iris-eval/** text eol=lf
