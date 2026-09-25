@@ -6,20 +6,12 @@
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { checkAdmin, timingSafeEqual } from '../website/src/lib/admin-auth.js';
-import { GET as countRoute } from '../website/src/app/api/waitlist-count/route.js';
+import { waitlistCount } from '../website/src/lib/waitlist-count.js';
 
 const root = resolve(__dirname, '..');
-const saved = { key: process.env.WAITLIST_ADMIN_KEY, url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN };
 const req = (auth?: string) => new Request('https://iris-eval.com/api/waitlist-count', { headers: auth ? { authorization: auth } : {} });
-
-afterEach(() => {
-  for (const [k, v] of [['WAITLIST_ADMIN_KEY', saved.key], ['KV_REST_API_URL', saved.url], ['KV_REST_API_TOKEN', saved.token]] as const) {
-    if (v === undefined) delete process.env[k];
-    else process.env[k] = v;
-  }
-});
 
 describe('admin check', () => {
   it('accepts only the exact bearer key, and reports an unconfigured key as 503', () => {
@@ -32,21 +24,30 @@ describe('admin check', () => {
   });
 });
 
-describe('the waitlist count route', () => {
-  it('refuses a caller without the key', async () => {
-    process.env.WAITLIST_ADMIN_KEY = 'k-123';
-    const res = await countRoute(req());
+describe('the waitlist count answer', () => {
+  const env = (over: Partial<{ adminKey: string; storeConfigured: boolean }> = {}) => ({ adminKey: 'k-123', storeConfigured: true, ...over });
+
+  it('refuses a caller without the key, and never reveals the count', async () => {
+    let asked = false;
+    const res = await waitlistCount(req(), env(), async () => { asked = true; return 7; });
     expect(res.status).toBe(401);
-    expect(await res.json()).not.toHaveProperty('count');
+    expect(res.body).not.toHaveProperty('count');
+    expect(asked).toBe(false);
   });
 
-  it('reports a missing store as 503 with the key, never as a count of 0', async () => {
-    process.env.WAITLIST_ADMIN_KEY = 'k-123';
-    delete process.env.KV_REST_API_URL;
-    delete process.env.KV_REST_API_TOKEN;
-    const res = await countRoute(req('Bearer k-123'));
-    expect(res.status).toBe(503);
-    expect(res.headers.get('cache-control')).toBe('no-store');
+  it('reports a missing or failing store as 503 with the key, never as a count of 0', async () => {
+    expect((await waitlistCount(req('Bearer k-123'), env({ storeConfigured: false }), async () => 0)).status).toBe(503);
+    expect((await waitlistCount(req('Bearer k-123'), env(), async () => { throw new Error('down'); })).status).toBe(503);
+  });
+
+  it('answers the count to the operator', async () => {
+    expect(await waitlistCount(req('Bearer k-123'), env(), async () => 7)).toEqual({ status: 200, body: { count: 7 } });
+  });
+
+  it('the route serves the answer uncached, with the store behind the shared check', () => {
+    const route = readFileSync(join(root, 'website', 'src', 'app', 'api', 'waitlist-count', 'route.ts'), 'utf8');
+    expect(route).toContain('waitlistCount(');
+    expect(route).toContain('"Cache-Control": "no-store"');
   });
 
   it('is not fetched or printed by the site', () => {
