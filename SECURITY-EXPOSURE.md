@@ -223,57 +223,57 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 | Advisory(ies) | Package | Was → Now | Load path | Decision |
 |---|---|---|---|---|
 | [GHSA-5jgf-p345-68v8](https://github.com/advisories/GHSA-5jgf-p345-68v8), [GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc), [GHSA-fph4-wmhf-6fwf](https://github.com/advisories/GHSA-fph4-wmhf-6fwf), [GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp) (HIGH — host confusion via skipped IDN canonicalization / percent-encoded scheme normalization; SSRF via malformed IPv6 normalization / repeated hostname percent-decoding) | `fast-uri` | 3.1.5 → 3.1.7 | root ← `ajv@8.18.0` ← `@modelcontextprotocol/sdk@1.30.0` — runtime; same reachability as the 2026-05-08 fast-uri rows above (ajv `format: "uri"` validation only; iris's own outbound URL handling has its own scheme allowlist and SSRF guard) | **Patch** — lockfile bump; the existing `overrides.fast-uri = "^3.1.2"` pin admits 3.1.7 |
-| [GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8) (HIGH — custom generators can loop indefinitely when size is zero) | `nanoid` | 3.3.17 → 3.3.18 | root ← `postcss` ← `vite` ← `vitest`; website / dashboard / packages/init ← `postcss` — dev tooling only, never in the shipped package's runtime graph | **Patch** — lockfile bump |
+| [GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8) (HIGH — custom generators can loop indefinitely when size is zero) | `nanoid` | 3.3.17 → 3.3.18 | root ← `postcss` ← `vite` ← `vitest`; website / dashboard / the since-retired installer package ← `postcss` — dev tooling only, never in the shipped package's runtime graph | **Patch** — lockfile bump |
 | [GHSA-c83g-rgw3-j3cx](https://github.com/advisories/GHSA-c83g-rgw3-j3cx), [GHSA-73wf-gq98-2v4g](https://github.com/advisories/GHSA-73wf-gq98-2v4g) (HIGH — unbounded cache growth via distinct query results; crash / prototype write via untrusted `browserslist-stats.json`) | `browserslist` | 4.28.4 → 4.28.8 | website, dashboard ← `@babel/helper-compilation-targets` — build-time only; no untrusted stats file exists in either tree | **Patch** — lockfile bump |
 | [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx), [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) (moderate — array-limit bypass via bracket-key comma parsing; DoS via attacker-controlled `isBuffer`) | `qs` | 6.15.2 → 6.16.0 | root ← `express@5.2.1` (+ `body-parser`) — runtime on the dashboard HTTP server; query strings are untrusted input | **Patch** — lockfile bump |
 | [GHSA-p498-v437-472g](https://github.com/advisories/GHSA-p498-v437-472g) (moderate — recursive copy follows symlinked files outside the source tree) | `@humanfs/node` | 0.16.7 → 0.16.8 (pulls in new dep `@humanfs/types@0.15.0`) | root, website ← `eslint` — dev tooling only | **Patch** — lockfile bump |
 
-**Lockfile provenance, again the platform trap.** The first attempt ran `npm update` on Windows: the root and website lockfiles came out clean, but the dashboard and packages/init lockfiles lost their `@emnapi/core` and `@emnapi/runtime` top-level entries — the rolldown trap this file's 2026-08-06 provenance note records. Reverted and regenerated under **WSL Linux** with `npm update <pkg> --package-lock-only --no-audit --no-fund --ignore-scripts` in each workspace. Verified per lockfile after the Linux run: zero package entries removed (`git diff main -- <lockfile> | grep -cE '^-\s+"node_modules/'` = 0 ×4), `@emnapi` line counts unchanged (root 0, website 24, dashboard 20, init 11), integrity-hash counts intact (+1 at root and website for the one genuinely new dep), and only the packages named above plus their own subdependencies moved.
+**Lockfile provenance, again the platform trap.** The first attempt ran `npm update` on Windows: the root and website lockfiles came out clean, but the dashboard and since-retired installer lockfiles lost their `@emnapi/core` and `@emnapi/runtime` top-level entries — the rolldown trap this file's 2026-08-06 provenance note records. Reverted and regenerated under **WSL Linux** with `npm update <pkg> --package-lock-only --no-audit --no-fund --ignore-scripts` in each workspace. Verified per lockfile after the Linux run: zero package entries removed (`git diff main -- <lockfile> | grep -cE '^-\s+"node_modules/'` = 0 ×4), `@emnapi` line counts unchanged (root 0, website 24, dashboard 20, init 11), integrity-hash counts intact (+1 at root and website for the one genuinely new dep), and only the packages named above plus their own subdependencies moved.
 
 **Gate after:** `npm audit reports 0 advisory(ies) at >=moderate severity`. The Dependabot PR for the fast-uri bump (#390) is superseded by this batch.
 
-
-### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
-
-Not an advisory. A standing assessment, recorded here because it is the one place in iris where a
-caller supplies something that is COMPILED rather than merely parsed.
-
-A tools catalogue arrives over `log_trace` (unauthenticated in stdio mode), over `POST /api/v1/traces`,
-and inline on `evaluate_output`. Its `inputSchema` is JSON Schema, and ajv does not interpret a schema —
-it generates JavaScript from it, compiles that with `new Function`, and runs it on the main thread.
-
-The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test that fires it
-(`tests/unit/eval/schema-validator.test.ts`). A reviewer changing that module checks this list:
-
-1. Static caps first, before ajv is imported: 32 KiB serialised, depth 12, 2,000 nodes, 24 patterns.
-   This is the real boundary against compile blowup — total, cheap, and it bounds every rung after it.
-2. `$ref` must start with `#`. A remote reference is refused by the walk, and `loadSchema` is never
-   configured, so nothing can be fetched even if the walk were bypassed. `$id`, `$dynamicRef`,
-   `$dynamicAnchor`, `$recursiveRef` and `$vocabulary` are refused: their validation depth cannot be
-   bounded from the schema alone.
-3. Every `pattern` and every `patternProperties` KEY: length cap, then syntax, then safe-regex2 star
-   height, then the empirical probe behind the sandbox worker’s hard deadline. Star height sits ahead of
-   the probe because the probe has to guess an igniting payload and cannot in general — an exponential
-   pattern in a `patternProperties` key passed the probe during development and star height caught it.
-4. `allErrors: false` (ajv’s own docs name it a DoS vector on untrusted schemas), `validateFormats:
-   false`, `$data: false`, and `coerceTypes` / `useDefaults` / `removeAdditional` all false — a validator
-   that mutated the instance would change what the repeat detector hashes.
-5. Rejections are cached alongside acceptances, so a hostile catalogue resent a thousand times pays its
-   probe cost once per process.
-6. A rung that trips rejects the WHOLE tool’s schema. A partially applied schema reporting a call valid
-   is a false all-clear about a security-relevant class.
-
+
+### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
+
+Not an advisory. A standing assessment, recorded here because it is the one place in iris where a
+caller supplies something that is COMPILED rather than merely parsed.
+
+A tools catalogue arrives over `log_trace` (unauthenticated in stdio mode), over `POST /api/v1/traces`,
+and inline on `evaluate_output`. Its `inputSchema` is JSON Schema, and ajv does not interpret a schema —
+it generates JavaScript from it, compiles that with `new Function`, and runs it on the main thread.
+
+The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test that fires it
+(`tests/unit/eval/schema-validator.test.ts`). A reviewer changing that module checks this list:
+
+1. Static caps first, before ajv is imported: 32 KiB serialised, depth 12, 2,000 nodes, 24 patterns.
+   This is the real boundary against compile blowup — total, cheap, and it bounds every rung after it.
+2. `$ref` must start with `#`. A remote reference is refused by the walk, and `loadSchema` is never
+   configured, so nothing can be fetched even if the walk were bypassed. `$id`, `$dynamicRef`,
+   `$dynamicAnchor`, `$recursiveRef` and `$vocabulary` are refused: their validation depth cannot be
+   bounded from the schema alone.
+3. Every `pattern` and every `patternProperties` KEY: length cap, then syntax, then safe-regex2 star
+   height, then the empirical probe behind the sandbox worker’s hard deadline. Star height sits ahead of
+   the probe because the probe has to guess an igniting payload and cannot in general — an exponential
+   pattern in a `patternProperties` key passed the probe during development and star height caught it.
+4. `allErrors: false` (ajv’s own docs name it a DoS vector on untrusted schemas), `validateFormats:
+   false`, `$data: false`, and `coerceTypes` / `useDefaults` / `removeAdditional` all false — a validator
+   that mutated the instance would change what the repeat detector hashes.
+5. Rejections are cached alongside acceptances, so a hostile catalogue resent a thousand times pays its
+   probe cost once per process.
+6. A rung that trips rejects the WHOLE tool’s schema. A partially applied schema reporting a call valid
+   is a false all-clear about a security-relevant class.
+
 **One tuning note, because it is a trap this repository has fallen into before.** The compile ceiling is
 wall-clock and therefore deliberately generous (1s). A tight one refuses honest schemas on a loaded
 host — the guard-ladder test caught a three-property object schema being rejected at 50ms during
 development — and a checker that randomly stops checking is worse than one that occasionally pays a
 second. The static caps are the boundary; the ceiling is a hang-killer that caches its refusal.
 
-**The residual, stated.** The probe is a courtesy and not a boundary, and on this path there is no
-boundary behind it: ajv inlines a pattern into generated code and runs it on the main thread, so a
-polynomial pattern that survives star height and does not ignite the probe will run there. What bounds it
-is everything around it — the instance is capped at 64 KiB, the pattern count at 24, the per-schema probe
-at 2s, and `eval.validateToolArguments` turns the whole path off without an uninstall.
+**The residual, stated.** The probe is a courtesy and not a boundary, and on this path there is no
+boundary behind it: ajv inlines a pattern into generated code and runs it on the main thread, so a
+polynomial pattern that survives star height and does not ignite the probe will run there. What bounds it
+is everything around it — the instance is capped at 64 KiB, the pattern count at 24, the per-schema probe
+at 2s, and `eval.validateToolArguments` turns the whole path off without an uninstall.
 ## Operational notes
 
 - **When a new Dependabot alert opens:** add a section here within one PR cycle. The CI gate (`scripts/security/check-exposure-coverage.mjs`) will fail PRs that introduce or surface a new ≥medium alert without a corresponding row.

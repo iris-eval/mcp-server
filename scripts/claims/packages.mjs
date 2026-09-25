@@ -36,8 +36,8 @@ export const PLACEHOLDER_VERSION = '1.0.0';
 export const PLACEHOLDER_PUBLISHED = false;
 export const PYPI_DIR = 'packages/python';
 
-/** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server), examples, and retired code. */
-export const EXCLUDED_TOP_LEVEL = new Set(['archive', 'website', 'dashboard', 'examples']);
+/** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server) and examples. */
+export const EXCLUDED_TOP_LEVEL = new Set(['website', 'dashboard', 'examples']);
 const SKIP_ANYWHERE = new Set(['node_modules', 'dist', 'build', 'coverage']);
 
 const MANIFESTS = new Set(['package.json', 'pyproject.toml']);
