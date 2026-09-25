@@ -58,11 +58,14 @@ import { runMigrations, migrationState, type MigrationState } from './migrations
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 
 /**
- * Stored rule results, read back in one shape. The earliest releases wrote
- * each result's name as `rule`, not `ruleName`; every reader sorts or groups
- * by `ruleName`, so a single such row stopped the server at startup (the
- * local-label refresh sorts rule names). A result with neither name is
- * dropped, and a value that is not a JSON list reads as no results.
+ * Stored rule results, read back in one shape. Every reader sorts or groups
+ * by `ruleName`, so a single stored result without one stopped the server at
+ * startup (the local-label refresh sorts rule names). A result written with
+ * `rule` instead of `ruleName` — the shape of hand-seeded or externally
+ * written rows; no release writes it — is read under `rule`; a result with
+ * neither is dropped; a value that is not a JSON list reads as no results.
+ * Missing `message` and `score` read as '' and 0, so the result still fits
+ * the published response schema.
  */
 export function parseRuleResults<T = EvalRuleResult>(raw: unknown): T[] {
   if (raw === null || raw === undefined || raw === '') return [];
@@ -79,7 +82,7 @@ export function parseRuleResults<T = EvalRuleResult>(raw: unknown): T[] {
     const r = item as Record<string, unknown>;
     const ruleName = typeof r.ruleName === 'string' ? r.ruleName : typeof r.rule === 'string' ? r.rule : undefined;
     if (ruleName === undefined) continue;
-    out.push({ ...r, ruleName } as T);
+    out.push({ message: '', score: 0, ...r, ruleName } as T);
   }
   return out;
 }
@@ -1643,12 +1646,7 @@ export class SqliteAdapter implements IStorageAdapter {
     let erased = 0;
     for (const traceId of traceIds) {
       for (const row of select.all(tenantId, traceId) as Array<{ id: string; rule_results: string }>) {
-        let rules: EvalRuleResult[] = [];
-        try {
-          rules = parseRuleResults<EvalRuleResult>(row.rule_results);
-        } catch {
-          rules = [];
-        }
+        const rules = parseRuleResults<EvalRuleResult>(row.rule_results);
         const erasedRules = rules.map((r) => ({
           ...r,
           message: ERASED_MESSAGE,
