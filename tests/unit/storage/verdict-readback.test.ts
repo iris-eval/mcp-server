@@ -100,7 +100,9 @@ describe('a stored verdict reads back as given', () => {
       expect(read.verdict?.confidence).toBeUndefined();
       const texts = (read.interpretations ?? []).map((i) => i.text);
       expect(texts.some((t) => t.includes('carries no confidence label'))).toBe(true);
-      if (calibration) expect(texts.join(' ')).toContain(calibration);
+      // The note names what happened in words; a table's internal id is not shown.
+      expect(texts.join(' ')).toContain(calibration ? 'an earlier calibration' : 'before verdicts recorded');
+      if (calibration) expect(texts.join(' ')).not.toContain(calibration);
     });
   }
 });

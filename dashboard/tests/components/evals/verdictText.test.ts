@@ -55,7 +55,9 @@ describe('verdictText', () => {
     const risk = (pBad: number, lo: number, hi: number) => ({ pBad, lo, hi, perClass: {}, assumptions: [] });
     const pass = confidenceChip({ state: 'pass', risk: risk(0.13, 0.1, 0.16), confidence: 'marginal' }, composer, true)!;
     expect(pass.tone).toBe('muted');
-    expect(pass.tooltip).toContain('not yet been confirmed by labelled data');
+    expect(pass.tooltip).toContain('labelled data has not confirmed the risk estimate');
+    expect(pass.tooltip).toContain('may be too low or too high');
+    expect(pass.tooltip).not.toContain('not that this output is a close call');
     expect(pass.tooltip).toContain('The note below says which');
     expect(confidenceChip({ state: 'fail', risk: risk(0.75, 0.6, 0.9), confidence: 'marginal' }, composer, true)!.tone).toBe('warn');
     expect(confidenceChip({ state: 'pass', risk: risk(0.45, 0.3, 0.6), confidence: 'marginal' }, composer, true)!.tone).toBe('warn');
