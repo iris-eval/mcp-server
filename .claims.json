@@ -4942,13 +4942,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "256ae189bd16"
+        "compositeVersion": "7b375542274e"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "31cb028e438a",
+        "corpusVersion": "7022143b0265",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -4961,8 +4961,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-25T18:29:30.147Z",
-  "generatedFromCommit": "946d2dd",
+  "generatedAt": "2026-09-25T18:39:45.591Z",
+  "generatedFromCommit": "d6ba0b6",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5035,14 +5035,14 @@
     ]
   },
   "proof": {
-    "commit": "d6a878b",
+    "commit": "d6ba0b6",
     "composite": {
-      "compositeVersion": "256ae189bd16",
+      "compositeVersion": "7b375542274e",
       "confidence": {
         "changed": {
           "of": 101,
           "toDecisive": 0,
-          "toMarginal": 54
+          "toMarginal": 63
         },
         "intervalOnly": {
           "decisive": {
@@ -5053,16 +5053,18 @@
               ],
               "k": 34,
               "n": 46,
+              "patterns": 10,
               "rate": 0.7391
             },
-            "realTranscripts": {
+            "realTranscriptsTest": {
               "ci95": [
-                0.2914,
-                0.7679
+                0.3424,
+                1
               ],
-              "k": 7,
-              "n": 13,
-              "rate": 0.5385
+              "k": 2,
+              "n": 2,
+              "patterns": 1,
+              "rate": 1
             },
             "test": {
               "ci95": [
@@ -5071,6 +5073,7 @@
               ],
               "k": 11,
               "n": 17,
+              "patterns": 6,
               "rate": 0.6471
             }
           },
@@ -5082,16 +5085,18 @@
               ],
               "k": 24,
               "n": 30,
+              "patterns": 12,
               "rate": 0.8
             },
-            "realTranscripts": {
+            "realTranscriptsTest": {
               "ci95": [
-                0.4365,
-                0.9699
+                0.2077,
+                0.9385
               ],
-              "k": 5,
-              "n": 6,
-              "rate": 0.8333
+              "k": 2,
+              "n": 3,
+              "patterns": 3,
+              "rate": 0.6667
             },
             "test": {
               "ci95": [
@@ -5100,68 +5105,76 @@
               ],
               "k": 7,
               "n": 8,
+              "patterns": 7,
               "rate": 0.875
             }
           }
         },
-        "rule": "decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev-split observed bad rate of risk-decided verdicts to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval) with that interval wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)",
+        "minBin": {
+          "n": 10,
+          "patterns": 4
+        },
+        "overlap": {
+          "sharedPatterns": 11,
+          "sharedWithDev": 23,
+          "test": 25,
+          "testPatterns": 13
+        },
+        "rule": "decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev split to hold at least 10 risk-decided verdicts from at least 4 distinct detector-firing patterns, their observed bad rate to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval), and that interval to lie wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)",
         "shipped": {
           "decisive": {
             "dev": {
-              "ci95": [
-                0.6457,
-                1
-              ],
-              "k": 7,
-              "n": 7,
-              "rate": 1
+              "ci95": null,
+              "k": 0,
+              "n": 0,
+              "patterns": 0,
+              "rate": null
             },
-            "realTranscripts": {
-              "ci95": [
-                0.2065,
-                1
-              ],
-              "k": 1,
-              "n": 1,
-              "rate": 1
+            "realTranscriptsTest": {
+              "ci95": null,
+              "k": 0,
+              "n": 0,
+              "patterns": 0,
+              "rate": null
             },
             "test": {
-              "ci95": [
-                0.3424,
-                1
-              ],
-              "k": 2,
-              "n": 2,
-              "rate": 1
+              "ci95": null,
+              "k": 0,
+              "n": 0,
+              "patterns": 0,
+              "rate": null
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.6249,
-                0.8281
+                0.6564,
+                0.8446
               ],
-              "k": 51,
-              "n": 69,
-              "rate": 0.7391
+              "k": 58,
+              "n": 76,
+              "patterns": 22,
+              "rate": 0.7632
             },
-            "realTranscripts": {
+            "realTranscriptsTest": {
               "ci95": [
-                0.3862,
-                0.7969
+                0.3755,
+                0.9638
               ],
-              "k": 11,
-              "n": 18,
-              "rate": 0.6111
+              "k": 4,
+              "n": 5,
+              "patterns": 4,
+              "rate": 0.8
             },
             "test": {
               "ci95": [
-                0.4913,
-                0.844
+                0.5242,
+                0.8572
               ],
-              "k": 16,
-              "n": 23,
-              "rate": 0.6957
+              "k": 18,
+              "n": 25,
+              "patterns": 13,
+              "rate": 0.72
             }
           }
         },
@@ -5172,6 +5185,7 @@
               "from": 0,
               "meanPredicted": null,
               "n": 0,
+              "patterns": 0,
               "to": 0.1
             },
             {
@@ -5179,6 +5193,7 @@
               "from": 0.1,
               "meanPredicted": 0.1339,
               "n": 39,
+              "patterns": 6,
               "to": 0.2
             },
             {
@@ -5186,6 +5201,7 @@
               "from": 0.2,
               "meanPredicted": null,
               "n": 0,
+              "patterns": 0,
               "to": 0.3
             },
             {
@@ -5193,6 +5209,7 @@
               "from": 0.3,
               "meanPredicted": 0.3605,
               "n": 2,
+              "patterns": 1,
               "to": 0.4
             },
             {
@@ -5200,6 +5217,7 @@
               "from": 0.4,
               "meanPredicted": 0.4322,
               "n": 1,
+              "patterns": 1,
               "to": 0.5
             },
             {
@@ -5207,6 +5225,7 @@
               "from": 0.5,
               "meanPredicted": 0.5213,
               "n": 1,
+              "patterns": 1,
               "to": 0.6
             },
             {
@@ -5214,6 +5233,7 @@
               "from": 0.6,
               "meanPredicted": 0.6827,
               "n": 10,
+              "patterns": 3,
               "to": 0.7
             },
             {
@@ -5221,6 +5241,7 @@
               "from": 0.7,
               "meanPredicted": 0.7522,
               "n": 15,
+              "patterns": 5,
               "to": 0.8
             },
             {
@@ -5228,6 +5249,7 @@
               "from": 0.8,
               "meanPredicted": 0.8094,
               "n": 1,
+              "patterns": 1,
               "to": 0.9
             },
             {
@@ -5235,16 +5257,17 @@
               "from": 0.9,
               "meanPredicted": 0.9255,
               "n": 7,
+              "patterns": 4,
               "to": 1
             }
           ],
-          "compositeVersion": "256ae189bd16",
+          "compositeVersion": "7b375542274e",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev"
         }
       },
-      "corpusVersion": "31cb028e438a",
+      "corpusVersion": "7022143b0265",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -6622,7 +6645,7 @@
       },
       "version": "0.18.0"
     },
-    "corpusVersion": "31cb028e438a",
+    "corpusVersion": "7022143b0265",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7247,7 +7270,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-24T20:20:06.589Z",
+    "generatedAt": "2026-09-25T18:38:22.609Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7266,8 +7289,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1021,
-      "p50Ms": 8.766,
-      "p95Ms": 17.085
+      "p50Ms": 8.852,
+      "p95Ms": 17.291
     },
     "method": {
       "ci": "wilson-95",
@@ -7411,7 +7434,7 @@
         "f1": 1,
         "fn": 0,
         "fp": 0,
-        "labelBasis": "reading",
+        "labelBasis": "definition",
         "n": 24,
         "name": "sentence_count",
         "negatives": 10,
@@ -9140,16 +9163,16 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3562,
+    "totalCombined": 3573,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 334,
-      "total": 334
+      "passed": 337,
+      "total": 337
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3193,
-      "total": 3193
+      "passed": 3201,
+      "total": 3201
     }
   },
   "version": {
