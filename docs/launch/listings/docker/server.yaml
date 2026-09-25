@@ -1,44 +1,48 @@
-# Docker MCP Catalog entry for Iris — paste-ready for a pull
-# request to docker/mcp-registry as servers/iris-eval/server.yaml. The image
-# is the one this repository publishes (ghcr.io/iris-eval/mcp-server); the
-# secrets are the variables server.json lists. Fill source.commit from the
-# release tag at submission: git rev-list -n 1 v<version>.
+# Docker MCP Catalog entry for Iris, as submitted to docker/mcp-registry as
+# servers/iris-eval/server.yaml. The image is the one this repository
+# publishes (ghcr.io/iris-eval/mcp-server). It starts in HTTP mode with the
+# dashboard on, so the entry sets IRIS_TRANSPORT=stdio and IRIS_DASHBOARD=false:
+# the MCP Toolkit talks to the container over stdio. source.commit is the
+# release commit (git rev-list -n 1 v<version>); Docker's pin bot skips images
+# outside its own namespace, so a small PR moves it after each release.
 name: iris-eval
 image: ghcr.io/iris-eval/mcp-server
 type: server
 meta:
-  category: devops
+  category: monitoring
   tags:
+    - agent-evaluation
+    - ai-agent
+    - claude
+    - eval
     - evaluation
-    - agents
+    - llm
+    - model-context-protocol
     - observability
-    - devops
+    - security
+    - tracing
 about:
   title: Iris
-  description: Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.
+  description: >-
+    Stop shipping agents on vibes. Iris scores every agent output for quality,
+    safety, and cost. It detects PII, credentials and prompt injection, checks
+    grounding and tool use, and compares runs with confidence intervals. The
+    measured accuracy of its rules is published. An LLM judge is optional.
+    Traces and verdicts stay local in SQLite, and the same image serves a
+    dashboard. MIT licensed.
   icon: https://iris-eval.com/iris-logo-white-bg.png
 source:
   project: https://github.com/iris-eval/mcp-server
-  commit: FILL_AT_SUBMISSION_FROM_THE_RELEASE_TAG
+  commit: 51ee1355fb486998c40f820ef4d984d53487b69a
+run:
+  volumes:
+    - iris-eval-data:/data
 config:
-  description: >-
-    Runs over stdio with no key by default; the SQLite database lives inside the container unless a volume is mounted.
-    The web dashboard is not reachable from a stdio container, so it stays off here. The LLM judge is off unless a
-    provider key is set; nothing leaves the container unless IRIS_OTEL_ENDPOINT names a collector.
-  secrets:
-    - name: iris.api_key
-      env: IRIS_API_KEY
-      example: <YOUR_KEY>
-      description: Optional — only a server bound beyond loopback (HTTP transport or dashboard) requires it; stdio does not.
-    - name: iris.anthropic_api_key
-      env: IRIS_ANTHROPIC_API_KEY
-      example: <YOUR_KEY>
-      description: Optional — enables the LLM judge tool with your own Anthropic key.
-    - name: iris.openai_api_key
-      env: IRIS_OPENAI_API_KEY
-      example: <YOUR_KEY>
-      description: Optional — enables the LLM judge tool with your own OpenAI key.
+  description: Runs over stdio with no required settings. Traces and verdicts persist in the iris-eval-data volume.
   env:
-    - name: IRIS_LOG_LEVEL
-      example: info
-      value: info
+    - name: IRIS_TRANSPORT
+      example: "stdio"
+      value: "stdio"
+    - name: IRIS_DASHBOARD
+      example: "false"
+      value: "false"
