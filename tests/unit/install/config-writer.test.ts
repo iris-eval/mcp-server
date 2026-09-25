@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync, lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { installIris, uninstallIris } from '../../../src/cli/install/config-writer.js';
+import { installIris, startsIris, uninstallIris } from '../../../src/cli/install/config-writer.js';
 import { type ClientProfile, type ConfigMode, type LaunchCommand } from '../../../src/cli/install/clients.js';
 
 let tmpDir: string;
@@ -434,9 +434,145 @@ describe('legacy `iris` key migration', () => {
     writeFileSync(profile.configPath, raw + '\n[mcp_servers.iris]\ncommand = "npx"\nargs = ["-y", "@iris-eval/mcp-server"]\n', 'utf-8');
     expect(installIris(profile, V1).action).toBe('updated');
     expect(readFileSync(profile.configPath, 'utf-8')).not.toContain('[mcp_servers.iris]');
-    writeFileSync(profile.configPath, raw + '\n[mcp_servers.iris]\ncommand = "npx"\n', 'utf-8');
+    writeFileSync(profile.configPath, raw + '\n[mcp_servers.iris]\ncommand = "npx"\nargs = ["-y", "@iris-eval/mcp-server"]\n', 'utf-8');
     expect(uninstallIris(profile).action).toBe('removed');
     raw = readFileSync(profile.configPath, 'utf-8');
     expect(raw).toBe('model = "o4"\n\n[mcp_servers.other]\ncommand = "echo"\n');
+  });
+});
+
+describe('the legacy `iris` key is migrated only when it runs Iris', () => {
+  const OTHER = { command: 'uvx', args: ['iris-image-search'], env: { IRIS_KEY: 'x' } };
+
+  it('startsIris names the package, its bins and their paths, and nothing else', () => {
+    expect(startsIris('npx', ['-y', '@iris-eval/mcp-server'])).toBe(true);
+    expect(startsIris('npx', ['-y', '@iris-eval/mcp-server@0.4.0'])).toBe(true);
+    expect(startsIris('iris-eval', [])).toBe(true);
+    expect(startsIris('iris-mcp', [])).toBe(true);
+    expect(startsIris('/usr/local/bin/iris-mcp', [])).toBe(true);
+    expect(startsIris('C:\\Users\\a\\AppData\\Roaming\\npm\\iris-eval.cmd', [])).toBe(true);
+    expect(startsIris('cmd', ['/c', 'npx', '-y', '@iris-eval/mcp-server'])).toBe(true);
+    expect(startsIris('uvx', ['iris-image-search'])).toBe(false);
+    expect(startsIris('npx', ['-y', '@someone/iris-eval-tools'])).toBe(false);
+    expect(startsIris('npx', [])).toBe(false);
+    expect(startsIris(undefined, undefined)).toBe(false);
+  });
+
+  it('install leaves another server under `iris` as it is, adds iris-eval beside it, and says so', () => {
+    const profile = makeProfile();
+    writeFileSync(profile.configPath, JSON.stringify({ mcpServers: { iris: OTHER } }, null, 2), 'utf-8');
+    const result = installIris(profile, V1);
+    expect(result.action).toBe('created');
+    expect(result.note).toContain('does not start Iris');
+    expect(readJson(profile.configPath).mcpServers).toEqual({ iris: OTHER, 'iris-eval': V1_ENTRY });
+    const again = installIris(profile, V1);
+    expect(again.action).toBe('no-change');
+    expect(again.note).toContain('does not start Iris');
+  });
+
+  it('uninstall removes iris-eval and leaves another server under `iris`', () => {
+    const profile = makeProfile();
+    writeFileSync(profile.configPath, JSON.stringify({ mcpServers: { iris: OTHER, 'iris-eval': V1_ENTRY } }), 'utf-8');
+    const result = uninstallIris(profile);
+    expect(result.action).toBe('removed');
+    expect(result.note).toContain('does not start Iris');
+    expect(readJson(profile.configPath).mcpServers).toEqual({ iris: OTHER });
+    expect(uninstallIris(profile).action).toBe('not-present');
+    expect(readJson(profile.configPath).mcpServers).toEqual({ iris: OTHER });
+  });
+
+  it('an `iris` entry that runs the globally installed bin is migrated', () => {
+    const profile = makeProfile();
+    writeFileSync(profile.configPath, JSON.stringify({ mcpServers: { iris: { command: 'iris-mcp' } } }), 'utf-8');
+    expect(installIris(profile, V1).action).toBe('updated');
+    expect(Object.keys(readJson(profile.configPath).mcpServers)).toEqual(['iris-eval']);
+  });
+
+  it('Zed: an `iris` entry in the nested command shape is judged by its path', () => {
+    const profile = makeProfile('zed-context-servers', 'settings.json');
+    const other = { command: { path: 'uvx', args: ['iris-image-search'] } };
+    writeFileSync(profile.configPath, JSON.stringify({ context_servers: { iris: other } }), 'utf-8');
+    installIris(profile, V1);
+    expect(readJson(profile.configPath).context_servers.iris).toEqual(other);
+  });
+
+  it('Codex: another server in [mcp_servers.iris] is left as it is by install and uninstall', () => {
+    const profile = makeProfile('codex-toml', 'config.toml');
+    const other = '[mcp_servers.iris]\ncommand = "uvx"\nargs = ["iris-image-search"]\n';
+    writeFileSync(profile.configPath, other, 'utf-8');
+    const result = installIris(profile, V1);
+    expect(result.action).toBe('created');
+    expect(result.note).toContain('does not start Iris');
+    const raw = readFileSync(profile.configPath, 'utf-8');
+    expect(raw.startsWith(other)).toBe(true);
+    expect(raw).toContain('[mcp_servers.iris-eval]');
+    expect(uninstallIris(profile).action).toBe('removed');
+    expect(readFileSync(profile.configPath, 'utf-8')).toBe(other);
+  });
+});
+
+describe('Codex: iris-eval written in another TOML form is refused, not duplicated', () => {
+  const forms = [
+    '[mcp_servers]\niris-eval = { command = "npx", args = ["-y", "@iris-eval/mcp-server"] }\n',
+    '[mcp_servers]\n"iris-eval".command = "npx"\n',
+    'mcp_servers.iris-eval.command = "npx"\n',
+    'mcp_servers."iris".command = "npx"\n',
+  ];
+  for (const text of forms) {
+    it(`install and uninstall refuse: ${JSON.stringify(text.split('\n')[0] + ' …')}`, () => {
+      const profile = makeProfile('codex-toml', 'config.toml');
+      writeFileSync(profile.configPath, text, 'utf-8');
+      expect(() => installIris(profile, V1)).toThrow(/in a form other than a \[mcp_servers\..+\] table/);
+      expect(() => uninstallIris(profile)).toThrow(/The file was not changed/);
+      expect(readFileSync(profile.configPath, 'utf-8')).toBe(text);
+    });
+  }
+
+  it('a server merely named like it (iris-eval-other) is not a match', () => {
+    const profile = makeProfile('codex-toml', 'config.toml');
+    writeFileSync(profile.configPath, '[mcp_servers]\niris-eval-other = { command = "echo" }\n', 'utf-8');
+    expect(installIris(profile, V1).action).toBe('created');
+  });
+});
+
+describe('a very large config', () => {
+  it('installs into a file with more indented lines than a spread argument list can hold', () => {
+    const profile = makeProfile('embedded-in-config-json', '.claude.json');
+    const projects: Record<string, { n: number }> = {};
+    for (let i = 0; i < 150_000; i++) projects[`/p/${i}`] = { n: i };
+    writeFileSync(profile.configPath, JSON.stringify({ projects }, null, 2), 'utf-8');
+    expect(installIris(profile, V1).action).toBe('created');
+    expect(readJson(profile.configPath).mcpServers['iris-eval']).toEqual(V1_ENTRY);
+  }, 60_000);
+});
+
+describe('Codex: edits stay inside the Iris tables', () => {
+  it('a migrated table carries its quoted-name sub-tables with it', () => {
+    const profile = makeProfile('codex-toml', 'config.toml');
+    writeFileSync(profile.configPath, '[mcp_servers.iris]\ncommand = "npx"\nargs = ["-y", "@iris-eval/mcp-server"]\n\n[mcp_servers."iris".env]\nA = "1"\n', 'utf-8');
+    expect(installIris(profile, V1).action).toBe('updated');
+    const raw = readFileSync(profile.configPath, 'utf-8');
+    expect(raw).toContain('[mcp_servers.iris-eval.env]\nA = "1"');
+    expect(raw).not.toMatch(/mcp_servers\.("?)iris\1[.\]]/);
+  });
+
+  it('uninstall leaves blank lines away from the removed table as they were', () => {
+    const profile = makeProfile('codex-toml', 'config.toml');
+    const head = 'model = "o3"\n\n\n\n[mcp_servers.other]\ncommand = "echo"\n';
+    writeFileSync(profile.configPath, `${head}\n[mcp_servers.iris-eval]\ncommand = "npx"\nargs = ["-y", "@iris-eval/mcp-server@0.18.0"]\n`, 'utf-8');
+    expect(uninstallIris(profile).action).toBe('removed');
+    expect(readFileSync(profile.configPath, 'utf-8')).toBe(head);
+  });
+
+  it('a header-like line inside a multi-line string is the user\'s text, not a table', () => {
+    const profile = makeProfile('codex-toml', 'config.toml');
+    const text = 'instructions = """\nExample:\n[mcp_servers.iris-eval]\ncommand = "x"\n"""\n';
+    writeFileSync(profile.configPath, text, 'utf-8');
+    expect(installIris(profile, V1).action).toBe('created');
+    const raw = readFileSync(profile.configPath, 'utf-8');
+    expect(raw.startsWith(text)).toBe(true);
+    expect(raw.slice(text.length)).toBe('\n[mcp_servers.iris-eval]\ncommand = "npx"\nargs = ["-y", "@iris-eval/mcp-server@0.18.0"]\n');
+    expect(uninstallIris(profile).action).toBe('removed');
+    expect(readFileSync(profile.configPath, 'utf-8')).toBe(text);
   });
 });

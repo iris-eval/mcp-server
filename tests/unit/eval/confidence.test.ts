@@ -144,7 +144,7 @@ describe('the shipped calibration', () => {
     }
   });
 
-  it('a clean pass that is marginal at the defaults is said plainly, with the measured numbers, and never called a close call', async () => {
+  it('a clean pass that is marginal at the defaults is said plainly: the corpus measured the estimate as too low there, with the numbers, and it is not called a close call', async () => {
     // The typical clean pass: every shipped detector examines the output and none fires.
     const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
     const result = await engine.evaluateAll({
@@ -157,7 +157,7 @@ describe('the shipped calibration', () => {
     expect(notes).toHaveLength(1);
     const [note] = notes;
     expect(note.severity).toBe('note');
-    expect(note.text).toMatch(/^Risk estimate not yet confirmed by labelled data at this level; see iris-eval\.com\/proof\./);
+    expect(note.text).toMatch(/^Risk estimate measured as too low at this level on labelled data; see iris-eval\.com\/proof\./);
     expect(note.text).not.toContain('close call');
     expect(note.text).not.toContain('scored');
     expect(note.text).toMatch(/outputs with a risk estimate of 0\.1–0\.2 were bad \d+% of the time \(\d+ of \d+/);
