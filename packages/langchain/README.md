@@ -8,7 +8,7 @@
 > cd /path/to/your-project && npm install /path/to/mcp-server/packages/langchain
 > ```
 >
-> Whether this package is published or retired is an open decision; this note is removed with the first publish.
+> It is being rebuilt for 0.20.0, with a Python counterpart in the `iris-eval` client and a CI job that runs a real LangGraph app, in [#642](https://github.com/iris-eval/mcp-server/issues/642). This note is removed with the first publish.
 
 Evaluate LangChain agent output with [Iris](https://iris-eval.com) — stop shipping agents on vibes. Auto-trace runs, score output quality, catch safety failures.
 
