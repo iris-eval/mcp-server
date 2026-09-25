@@ -93,6 +93,20 @@ describe('real clients connect to the server install wrote', () => {
     expect(version()).toMatch(/^\d+\.\d+\.\d+/);
   });
 
+  it('the iris-eval launcher starts the packed server: its bin, beside the installed tarball, answers --version and install --help', () => {
+    // The launcher package's bin, verbatim. Placed in the project, its import
+    // resolves to the tarball installed there, as it does from npm.
+    const launcher = join(project, 'iris-eval-launcher.mjs');
+    writeFileSync(launcher, readFileSync(resolve(__dirname, '..', '..', 'packages', 'iris-eval', 'bin', 'iris-eval.js'), 'utf8'));
+    const at = { cwd: project, env: env(), encoding: 'utf8' as const, timeout: 120_000, windowsHide: true };
+    const v = spawnSync(process.execPath, [launcher, '--version'], at);
+    expect(v.status, `${v.stdout}${v.stderr}`).toBe(0);
+    expect(v.stdout.trim()).toBe(version());
+    const help = spawnSync(process.execPath, [launcher, 'install', '--help'], at);
+    expect(help.status, `${help.stdout}${help.stderr}`).toBe(0);
+    expect(help.stdout).toContain('install <client>');
+  });
+
   it('Claude Code: `claude mcp list` reports iris-eval Connected; `claude mcp get` shows user scope; uninstall removes it', () => {
     const add = iris(['install', 'claude-code']);
     expect(add.status, add.out).toBe(0);
