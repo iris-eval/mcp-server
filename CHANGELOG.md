@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-25
+
 **Verdicts that say how sure they are, detectors that see through disguises, and one command to set up any client.** 0.19.0:
 - A verdict is called `decisive` only where labelled data shows its risk estimate holds, and a verdict stored from this release on reads back exactly as it was given.
 - The PII and injection detectors catch the common ways a leak or an attack is disguised, and stay quiet on correct answers that only look like one.
@@ -36,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A stored verdict reads back as it was given.** `provenance.composer` now records `priorMode` and the calibration table the label was read from. For verdicts stored from 0.19.0 on, a fail under `eval.priorMode: "per-class"` no longer reads back as a pass. A verdict labelled under another table, or stored before the record existed, keeps its stored result and reads back with no confidence label instead of taking today's.
 - **One malformed stored rule result can no longer stop the server at startup.** Startup sorts stored rule names to refresh local labels, so a single stored result without a `ruleName` threw `Cannot read properties of undefined (reading 'localeCompare')` and the server exited before answering any client. Every read of stored rule results now goes through one parser: a result named `rule` is read under that name, a result with no name is skipped, and unreadable data reads as empty. No release writes such rows; they came from hand-seeded data. Stored rows are not rewritten.
-- **No blog post tells readers to run `iris-mcp`.** Three posts from the 0.4 era still showed the original command name. `iris-mcp` stays installed so existing configs keep running, but on npm it is another project's package, so a reader who copied `npx iris-mcp` would have run that. The posts now show `npx -y @iris-eval/mcp-server`, and the check that keeps the legacy name off every live page now covers the blog.
+- **No blog post tells readers to run the retired command name.** Three posts from the 0.4 era still showed the original command. It stays installed so existing configs keep running, but on npm that name belongs to another project's package, so a reader who copied it with `npx` would have run that package instead. The posts now show `npx -y @iris-eval/mcp-server`, and the check that keeps the legacy name off every live page now covers the blog.
 - **The Python client's README links to iris-eval.com** (its PyPI page shows the change from the client's next release), and two dead links on the site are fixed.
 
 ## [0.18.0] - 2026-09-24

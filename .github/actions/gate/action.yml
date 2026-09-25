@@ -9,7 +9,7 @@ branding:
 
 # One step in a workflow:
 #
-#   - uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0
+#   - uses: iris-eval/mcp-server/.github/actions/gate@v0.19.0
 #     with:
 #       traces: traces.ndjson
 #
@@ -52,7 +52,7 @@ inputs:
       The @iris-eval/mcp-server version npx runs. Defaults to the version this action was released with,
       so a workflow pinned to a tag runs the matching server and a new npm release reaches it only when you move the pin.
     required: false
-    default: '0.18.0'
+    default: '0.19.0'
   command:
     description: >-
       Advanced — the command that runs iris-eval instead of npx, e.g. `node dist/index.js` in a checkout of this repo.
