@@ -2,7 +2,7 @@
 
 > This is the expanded machine-readable reference for Iris. Short index: https://iris-eval.com/llms.txt
 
-Current release: v0.18.0 (2026-09-24) — Honest numbers, a lighter footprint, nothing done silently.
+Current release: v0.19.0 (2026-09-25) — Verdicts that say how sure they are, detectors that see through disguises, and one command to set up any client.
 
 ## What Iris is
 
@@ -18,9 +18,9 @@ Iris is an open-source MCP (Model Context Protocol) server for agent evaluation.
 
 ## Quickstart (any MCP client)
 
-First: `npx -y @iris-eval/mcp-server@0.18.0 --self-test` (offline; exit 0 = healthy). Then one command writes the client's own config file, keeps every other server in it, and pins this release:
+First: `npx -y @iris-eval/mcp-server@0.19.0 --self-test` (offline; exit 0 = healthy). Then one command writes the client's own config file, keeps every other server in it, and pins this release:
 
-    npx -y @iris-eval/mcp-server@0.18.0 install <client>
+    npx -y @iris-eval/mcp-server@0.19.0 install <client>
 
 `<client>` is one of claude-code, claude-desktop, cursor, windsurf, continue, vscode, cline, zed, codex, gemini; `install --list` shows the clients found on the machine and `install <client> --uninstall` removes the entry. By hand instead, the config blocks below; the key is `iris-eval` on every surface.
 
@@ -30,7 +30,7 @@ Standard `mcpServers` JSON config (Claude Desktop, Cursor, Devin Desktop (Windsu
       "mcpServers": {
         "iris-eval": {
           "command": "npx",
-          "args": ["-y", "@iris-eval/mcp-server@0.18.0"]
+          "args": ["-y", "@iris-eval/mcp-server@0.19.0"]
         }
       }
     }
@@ -42,29 +42,29 @@ Claude Code (plugin — includes an agent-eval skill that guides eval workflows)
 
 Claude Code (plain MCP server, no plugin):
 
-    claude mcp add --transport stdio iris-eval -- npx -y @iris-eval/mcp-server@0.18.0
+    claude mcp add --transport stdio iris-eval -- npx -y @iris-eval/mcp-server@0.19.0
 
 VS Code (`.vscode/mcp.json`, uses `servers` key):
 
-    { "servers": { "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server@0.18.0"] } } }
+    { "servers": { "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server@0.19.0"] } } }
 
 Zed (`settings.json`, uses `context_servers`):
 
-    { "context_servers": { "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server@0.18.0"], "env": {} } } }
+    { "context_servers": { "iris-eval": { "command": "npx", "args": ["-y", "@iris-eval/mcp-server@0.19.0"], "env": {} } } }
 
 OpenAI Codex CLI (`~/.codex/config.toml`):
 
     [mcp_servers.iris-eval]
     command = "npx"
-    args = ["-y", "@iris-eval/mcp-server@0.18.0"]
+    args = ["-y", "@iris-eval/mcp-server@0.19.0"]
 
 Docker:
 
-    docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server:v0.18.0
+    docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server:v0.19.0
 
 Port 3000 is the MCP HTTP transport; 6920 is the dashboard, which also serves the `POST /api/v1/traces` ingest endpoint. The image listens on every interface inside the container, so it refuses to start without `IRIS_API_KEY`.
 
-Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx -y @iris-eval/mcp-server@0.18.0`.
+Iris is a standard stdio MCP server: if a client supports MCP, it supports Iris. Point the client at `npx -y @iris-eval/mcp-server@0.19.0`.
 
 Every snippet here pins the current release, so a config copied today keeps running the version it was copied for; change the version after `@` to upgrade. `-y` answers npx's install prompt, which a client that starts the server has no terminal to answer.
 

@@ -48,7 +48,7 @@ Four steps, in the order the person who gates deploys does them; each prints one
 ## GitHub Actions — the action (0.16.0)
 
 ```yaml
-- uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0
+- uses: iris-eval/mcp-server/.github/actions/gate@v0.19.0
   with:
     traces: traces.ndjson
 ```
@@ -82,7 +82,7 @@ steps:
     with:
       path: ${{ runner.temp }}/iris
       key: iris-${{ github.ref_name }}
-  - uses: iris-eval/mcp-server/.github/actions/gate@v0.18.0
+  - uses: iris-eval/mcp-server/.github/actions/gate@v0.19.0
     with:
       traces: traces.ndjson
       fail-on: detector_veto

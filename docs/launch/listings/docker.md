@@ -10,7 +10,7 @@
 | `config.env` `IRIS_TRANSPORT` | `stdio` | the image starts the HTTP transport by default; the Toolkit talks to a container over stdio |
 | `config.env` `IRIS_DASHBOARD` | `false` | a stdio container publishes no port, so the dashboard would be unreachable |
 | `run.volumes` | `iris-eval-data:/data` | traces and verdicts survive a container restart |
-| `source.commit` | the release commit, `git rev-list -n 1 v0.18.0` at submission | Docker audits the source at that commit |
+| `source.commit` | the release commit, `git rev-list -n 1 v0.19.0` at submission | Docker audits the source at that commit |
 | `meta.category` / `tags` | `monitoring`; the repository's GitHub topics | what `task create` generates from the repository |
 | `about.icon` | the site logo | passes the registry's icon check |
 | secrets | none | see below |
