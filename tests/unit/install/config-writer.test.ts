@@ -165,23 +165,42 @@ describe('file handling', () => {
     expect(JSON.parse(text.slice(1)).mcpServers['iris-eval']).toEqual(V1_ENTRY);
   });
 
-  it.skipIf(process.platform === 'win32')('keeps the file mode of an existing config', () => {
+  // Both tests run on every platform so the suite's counts are the same
+  // everywhere; where Windows has no equivalent, the assertion branches.
+  it('keeps the file mode of an existing config', () => {
     const profile = makeProfile();
     writeFileSync(profile.configPath, '{}', 'utf-8');
     chmodSync(profile.configPath, 0o640);
+    // Windows keeps only the read-only bit, so 0o640 reads back as 0o666 there.
+    const before = statSync(profile.configPath).mode & 0o777;
+    expect(before).toBe(process.platform === 'win32' ? 0o666 : 0o640);
     installIris(profile, V1);
-    expect(statSync(profile.configPath).mode & 0o777).toBe(0o640);
+    expect(statSync(profile.configPath).mode & 0o777).toBe(before);
   });
 
-  it.skipIf(process.platform === 'win32')('writes through a symlinked config instead of replacing the link', () => {
+  it('writes through a symlinked config instead of replacing the link', () => {
     const real = join(tmpDir, 'dotfiles', 'mcp.json');
     mkdirSync(join(tmpDir, 'dotfiles'));
     writeFileSync(real, '{}', 'utf-8');
     const profile = makeProfile();
-    symlinkSync(real, profile.configPath);
+    let linked = true;
+    try {
+      symlinkSync(real, profile.configPath);
+    } catch (err) {
+      // Windows creates file symlinks only with Developer Mode or elevation;
+      // without them no user can have a linked config to preserve.
+      expect(process.platform).toBe('win32');
+      expect((err as NodeJS.ErrnoException).code).toBe('EPERM');
+      linked = false;
+    }
     installIris(profile, V1);
-    expect(lstatSync(profile.configPath).isSymbolicLink()).toBe(true);
-    expect(readJson(real).mcpServers['iris-eval']).toEqual(V1_ENTRY);
+    if (linked) {
+      expect(lstatSync(profile.configPath).isSymbolicLink()).toBe(true);
+      expect(readJson(real).mcpServers['iris-eval']).toEqual(V1_ENTRY);
+    } else {
+      expect(readJson(profile.configPath).mcpServers['iris-eval']).toEqual(V1_ENTRY);
+      expect(readJson(real)).toEqual({});
+    }
   });
 });
 
