@@ -241,10 +241,11 @@ function measured(r: NonNullable<ConfidenceCall['region']>): string {
  *
  * A pass that is marginal only because the corpus has not confirmed the
  * estimate at its risk level is the ordinary case at the defaults, and it is
- * said plainly rather than as a warning: it reports how far the corpus has
- * checked the estimate, with the numbers, not a close call on this output.
- * A fail, and any verdict whose interval straddles the threshold, is a close
- * call and says so.
+ * said plainly rather than as a warning, with the numbers. Where the corpus
+ * measured more bad outputs than the estimate states, the note says the
+ * estimate understated risk there: a calm note must not read as more
+ * reassurance than the data gives. A fail, and any verdict whose interval
+ * straddles the threshold, is a close call and says so.
  */
 function marginalText(call: ConfidenceCall, state: Verdict['state']): string {
   const close = 'Treat it as a close call rather than a clear one.';
@@ -265,6 +266,9 @@ function marginalText(call: ConfidenceCall, state: Verdict['state']): string {
     case 'region_too_few':
       return `${lead} Only ${r!.n} labelled verdict${r!.n === 1 ? '' : 's'}, from ${r!.patterns} distinct detector pattern${r!.patterns === 1 ? '' : 's'}, had a risk estimate of ${r!.from.toFixed(1)}–${r!.to.toFixed(1)}: too few to test the estimate there (at least ${MIN_BIN_N} verdicts from ${MIN_BIN_PATTERNS} patterns).${tail}`;
     case 'region_miscalibrated':
+      if (state === 'pass' && r!.bad / r!.n > r!.meanPredicted!) {
+        return `Risk estimate measured as too low at this level on labelled data; see iris-eval.com/proof. On the labelled corpus, ${measured(r!)}, against the ${pct(r!.meanPredicted!)} the estimate states.`;
+      }
       return `${lead} On the labelled corpus, ${measured(r!)}, against the ${pct(r!.meanPredicted!)} the estimate states.${tail}`;
     case 'region_not_backed':
       return `${lead} On the labelled corpus, ${measured(r!)}, an interval that reaches your threshold.${tail}`;
@@ -277,9 +281,9 @@ function marginalText(call: ConfidenceCall, state: Verdict['state']): string {
 function unlabelledText(cfg: Pick<ComposeConfig, 'calibration'>): string {
   const was =
     typeof cfg.calibration === 'string'
-      ? `It was labelled under calibration table ${cfg.calibration}`
-      : 'It was stored before a verdict recorded which calibration table labelled it';
-  return `This stored verdict carries no confidence label. ${was}, and this release reads table ${PUBLISHED_CALIBRATION.compositeVersion}; re-deriving the label under a different table would state something other than what the caller was told. Re-evaluate the output to label it under the current table.`;
+      ? 'It was labelled under an earlier calibration of the risk estimate than this release uses'
+      : 'It was stored before verdicts recorded which calibration labelled them';
+  return `This stored verdict carries no confidence label. ${was}; labelling it again under the current calibration would state something other than what the caller was told. Its result and risk are as stored. Re-evaluate the output to label it under the current calibration.`;
 }
 
 /**

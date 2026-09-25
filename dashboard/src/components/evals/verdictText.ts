@@ -30,7 +30,7 @@ export const CONFIDENCE_TEXT = {
     'Decisive: the credible interval on the risk estimate lies wholly on one side of your loss threshold, and on the composite corpus verdicts at this risk level were measured to land on that side.',
   /** A pass whose interval clears the threshold, not yet confirmed by labelled data at its risk level: the ordinary case at the defaults. */
   unconfirmed:
-    'Marginal: the risk estimate has not yet been confirmed by labelled data at this level, so the verdict is not called decisive. It says how far the estimate has been checked, not that this output is a close call; iris-eval.com/proof has the measured numbers.',
+    'Marginal: labelled data has not confirmed the risk estimate at this level, so the verdict is not called decisive. The estimate here may be too low or too high; iris-eval.com/proof has the measured numbers.',
   /** A fail, or any verdict whose interval straddles the threshold: a close call. */
   close:
     'Marginal: either the credible interval on the risk estimate straddles your loss threshold, or the composite corpus did not confirm the estimate at this risk level. Treat it as a close call.',
@@ -40,8 +40,9 @@ export const CONFIDENCE_TEXT = {
 
 /**
  * How the confidence chip reads. A marginal PASS whose interval clears the
- * threshold is neutral: it says the corpus has not yet confirmed the
- * estimate there, not that this output is in doubt. A marginal fail, and a
+ * threshold is neutral in tone: it says the corpus has not confirmed the
+ * estimate there, and the words say the estimate may be off in either
+ * direction rather than reassuring. A marginal fail, and a
  * verdict whose interval straddles the threshold, is a close call and keeps
  * the warning tone.
  */
