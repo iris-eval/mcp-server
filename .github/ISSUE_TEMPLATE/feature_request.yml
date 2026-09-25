@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a feature. The public roadmap is organised as three tracks — **proof** (measure our own evaluators), **coverage** (rules aimed at the failures that actually occur), **reach** (capture that does not depend on the model choosing to call a tool) — see [docs/roadmap.md](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md). Saying where a request fits helps it get scheduled; it is fine to say "not sure".
+        Thanks for suggesting a feature. The public roadmap is organised as three tracks — **proof** (measure our own evaluators), **coverage** (rules aimed at the failures that actually occur), **reach** (capture that does not depend on the model choosing to call a tool) — see [the three tracks](https://iris-eval.com/#roadmap), and [the capability map](https://iris-eval.com/capabilities) for what Iris can and cannot judge today. Saying where a request fits helps it get scheduled; it is fine to say "not sure".
   - type: dropdown
     id: area
     attributes:

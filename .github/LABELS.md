@@ -58,7 +58,7 @@ A priority is a statement about consequence, not effort. Effort has its own axis
 
 ## Milestones
 
-- One open milestone per version in flight, named exactly like the tag: `v0.6.0`. Its description says what the version is *for* in one paragraph, in the roadmap's language (`docs/roadmap.md`: proof, coverage, reach) — never a feature ladder, and never anything hosted or priced.
+- One open milestone per version in flight, named exactly like the tag: `v0.6.0`. Its description says what the version is *for* in one paragraph, in the language of the three tracks on the site ([iris-eval.com/#roadmap](https://iris-eval.com/#roadmap): proof, coverage, reach), with what Iris can and cannot judge read from the capability map ([iris-eval.com/capabilities](https://iris-eval.com/capabilities)) — never a feature ladder, and never anything hosted or priced.
 - Every open `P0`/`P1` issue has a milestone. `P2`/`P3` may sit unscheduled.
 - When a version ships, its milestone is **closed the same day**: issues that did not ship move to the next milestone, and the description is edited to say what shipped and where the rest went. A milestone that outlives its release is a public roadmap for a version that already happened.
 - No due dates unless a date is a real commitment.
