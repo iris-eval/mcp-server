@@ -1,57 +1,63 @@
 /*
- * The unscoped npm name `iris-eval` is held by a frozen placeholder.
+ * The unscoped npm name `iris-eval` is a launcher for the server.
  *
  * `npx iris-eval` resolves the unscoped npm name, not the command our package
  * installs, so whoever owns the name decides what a reader who types the
- * command name runs. packages/iris-eval holds it and does one thing: prints,
- * to stderr, the commands that do work, then exits 1. It carries no
- * dependencies and a fixed version, so it never needs a release when the
- * server has one — an earlier version that depended on the server and
- * re-exported it would have needed a publish on every server release, and
- * was never published at all. This suite runs the bin and holds the shape.
+ * command name runs. packages/iris-eval takes it and starts the real server:
+ * it depends on @iris-eval/mcp-server alone, at an open-ended range, so a
+ * fresh install gets the server's latest release and the launcher itself
+ * never needs one. Its version is frozen and it runs no install scripts.
+ *
+ * This suite holds the manifest and the bin. That the bin starts the server
+ * packed from this commit is proved on Linux, macOS and Windows by
+ * tests/real-clients/real-clients.test.ts, which runs the bin against the
+ * installed tarball.
  */
-import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { COMMAND } from '../src/identity.js';
+// @ts-ignore — plain .mjs module
+import { LAUNCHER_SERVER_RANGE, LAUNCHER_VERSION } from '../scripts/claims/packages.mjs';
 
 const root = resolve(__dirname, '..');
 const dir = join(root, 'packages/iris-eval');
 const json = (rel: string) => JSON.parse(readFileSync(join(root, rel), 'utf8'));
 const server = json('package.json');
-const placeholder = json('packages/iris-eval/package.json');
+const launcher = json('packages/iris-eval/package.json');
 
-/** The version the placeholder is frozen at; changing it means a new publish, which the placeholder exists to avoid. */
-const PLACEHOLDER_VERSION = '1.0.0';
-
-describe('the iris-eval placeholder package', () => {
+describe('the iris-eval launcher package', () => {
   it('takes the command name as its npm name, installs that one command, and is frozen at its version', () => {
-    expect(placeholder.name).toBe(COMMAND);
-    expect(Object.keys(placeholder.bin)).toEqual([COMMAND]);
-    expect(placeholder.version).toBe(PLACEHOLDER_VERSION);
-    expect(placeholder.private).toBeUndefined();
+    expect(launcher.name).toBe(COMMAND);
+    expect(Object.keys(launcher.bin)).toEqual([COMMAND]);
+    expect(launcher.version).toBe(LAUNCHER_VERSION);
+    expect(launcher.private).toBeUndefined();
   });
 
-  it('has no dependencies of any kind and runs no install scripts', () => {
-    for (const key of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies', 'bundleDependencies', 'bundledDependencies']) {
-      expect(placeholder[key], key).toBeUndefined();
+  it('depends on the server package alone, at an open-ended range that starts at the first release with install', () => {
+    expect(launcher.dependencies).toEqual({ [server.name]: LAUNCHER_SERVER_RANGE });
+    expect(LAUNCHER_SERVER_RANGE).toBe('>=0.19.0');
+    for (const key of ['devDependencies', 'peerDependencies', 'optionalDependencies', 'bundleDependencies', 'bundledDependencies']) {
+      expect(launcher[key], key).toBeUndefined();
     }
-    expect(placeholder.scripts).toBeUndefined();
+    expect(launcher.scripts).toBeUndefined();
   });
 
-  it('prints the server package commands to stderr, nothing to stdout, and exits 1', () => {
-    const run = spawnSync(process.execPath, [join(dir, placeholder.bin[COMMAND]), '--anything'], { encoding: 'utf8' });
-    expect(run.status).toBe(1);
-    expect(run.stdout).toBe('');
-    expect(run.stderr).toContain(`npx -y ${server.name}\n`);
-    expect(run.stderr).toContain(`npx -y ${server.name} install <client>`);
+  it('asks for the same Node floor as the server', () => {
+    expect(launcher.engines).toEqual(server.engines);
   });
 
-  it('its README names the same commands and says it is a placeholder', () => {
+  it('its bin starts the server by importing its entry, which reads the same arguments', () => {
+    const bin = readFileSync(join(dir, launcher.bin[COMMAND]), 'utf8');
+    expect(bin.startsWith('#!/usr/bin/env node')).toBe(true);
+    expect(bin).toContain(`await import('${server.name}')`);
+    expect(server.exports['.'].default).toBe(`./${server.bin[COMMAND]}`);
+  });
+
+  it('its README says it launches the server and names the server package for client configs', () => {
     const readme = readFileSync(join(dir, 'README.md'), 'utf8');
-    expect(readme).toMatch(/placeholder/);
-    expect(readme).toContain(`npx -y ${server.name} install <client>`);
-    expect(readme).not.toMatch(/npx (-y )?iris-eval\b/);
+    expect(readme).toContain('`npx iris-eval` starts');
+    expect(readme).toContain(`npx -y ${server.name}@<version>`);
+    expect(readme).not.toMatch(/placeholder/i);
   });
 });

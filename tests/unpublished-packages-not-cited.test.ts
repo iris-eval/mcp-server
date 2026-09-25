@@ -20,7 +20,7 @@ import { inventory } from '../scripts/claims/packages.mjs';
 
 const ROOT = resolve(__dirname, '..');
 
-type Entry = { manifest: string; dir: string; key: string; name: string | null; published: boolean };
+type Entry = { manifest: string; dir: string; key: string; name: string | null; kind: string; published: boolean };
 const PACKAGES = (inventory() as Entry[]).filter((p) => p.manifest.endsWith('package.json') && p.dir !== '.');
 
 /** Truthbase key → package directory, for every npm package in the repository besides the server. */
@@ -99,7 +99,7 @@ describe('unpublished packages are never presented as installable', () => {
     .filter(([key]) => claims.version.published[key] === false)
     .map(([, dir]) => {
       const pkg = JSON.parse(readFileSync(resolve(ROOT, dir, 'package.json'), 'utf-8')) as { name: string };
-      return { dir, name: pkg.name };
+      return { dir, name: pkg.name, kind: PACKAGES.find((p) => p.dir === dir)!.kind };
     });
 
   it('the inventory found the in-repo npm packages that are not on the registry', () => {
@@ -108,10 +108,14 @@ describe('unpublished packages are never presented as installable', () => {
     expect(unpublished.length).toBeGreaterThan(0);
   });
 
-  it.each(unpublished)('$name: every surface that shows an install command says it is not yet published', ({ name }) => {
+  it.each(unpublished)('$name: every surface that shows an install command says it is not yet published', ({ name, dir, kind }) => {
     const re = installCommandRe(name);
     const offenders: string[] = [];
-    for (const file of surfaceFiles()) {
+    // The launcher is published by hand from its own folder, so its README
+    // and manifest are what npm will show: they describe the package as it
+    // will be, and are not surfaces that could send a reader to it early.
+    const own = kind === 'launcher' ? [resolve(ROOT, dir, 'README.md'), resolve(ROOT, dir, 'package.json')] : [];
+    for (const file of surfaceFiles().filter((f) => !own.includes(f))) {
       const text = readFileSync(file, 'utf-8');
       if (!re.test(text)) continue;
       if (!/not yet published/i.test(text)) offenders.push(relative(ROOT, file));

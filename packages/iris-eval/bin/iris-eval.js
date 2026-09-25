@@ -1,18 +1,7 @@
 #!/usr/bin/env node
-// This package holds the unscoped npm name `iris-eval` and nothing else. Iris
-// is published as @iris-eval/mcp-server; this says so and exits. It has no
-// dependencies and never needs a new release: the commands below do not
-// change when the server does.
-process.stderr.write(
-  [
-    'iris-eval: this npm package is a placeholder. Iris is published as @iris-eval/mcp-server.',
-    '',
-    '  Run the server:        npx -y @iris-eval/mcp-server',
-    '  Set up an MCP client:  npx -y @iris-eval/mcp-server install <client>',
-    '  See the clients:       npx -y @iris-eval/mcp-server install --help',
-    '',
-    'https://github.com/iris-eval/mcp-server',
-    '',
-  ].join('\n'),
-);
-process.exitCode = 1;
+// `npx iris-eval` resolves the unscoped npm name. This package starts the real
+// server, @iris-eval/mcp-server, whose entry reads the same arguments, so
+// `npx iris-eval --self-test` and `npx iris-eval install <client>` are the
+// server's own commands. The dependency range is open-ended, so a fresh
+// install takes the server's latest release and this package never needs one.
+await import('@iris-eval/mcp-server');
