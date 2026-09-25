@@ -160,7 +160,7 @@ One body on every door: it is what `log_trace` and `iris-eval ingest` accept. A 
 
 ```bash
 npx @iris-eval/mcp-server --self-test   # offline diagnostic; exit 0 = healthy, 1 = a check failed
-npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 0.5.1
+npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 1.2.3
 ```
 
 `--self-test` first creates your Iris home if it is missing and checks that it is writable (exit 1, naming the path, if it is not), then runs its checks — storage round-trip, a planted SSN and a planted injection caught by the safety rules, dashboard boot, the DNS-rebinding guard — inside an isolated temp home, so your real database is never opened. Everything Iris writes lives under one directory, your **Iris home**: `~/.iris` by default (`%USERPROFILE%\.iris` on Windows), or wherever `IRIS_HOME` points. That is where `iris.db`, `config.json`, `custom-rules.json`, `audit.log`, `preferences.json` and the demo files live; point `IRIS_HOME` at a scratch directory to try Iris without touching your real data.
@@ -293,7 +293,7 @@ docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
 | | |
 |---|---|
 | **Trace Logging** | Hierarchical span trees with per-tool-call latency, token usage, and cost in USD. Stored in SQLite, queryable instantly. |
-| **Output Evaluation** | 25 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (21 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, plus AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, credentials inside URLs, secret-named assignments, PEM private-key blocks and seed phrases), prompt injection (38 patterns, phrase + structural), stub-output detection, hallucination detection (25 context-grounded fabrication/contradiction signals — pass `input` to ground them against the agent's source material), and six trajectory rules that read what the agent DID: an unacknowledged failed tool call, a repeated one (by call, by repeated sequence, or by target once you send `tools`), a call whose arguments the tool's own JSON Schema rejects and the agent never retried, a file, directory or URL the answer cites that appears in nothing the agent read, an instruction that arrived inside a TOOL RESULT and was then obeyed by a later call, and a task that took more tool calls than your step budget. A trajectory can arrive as `tool_calls` or as OpenTelemetry TOOL spans. Add custom rules with Zod schemas. |
+| **Output Evaluation** | 25 built-in rules across 4 categories: completeness, relevance, safety, cost. PII detection (21 patterns: SSN, credit card, phone, email, IBAN, DOB, MRN, IP, API key, passport, plus AWS/Slack/SendGrid/GitHub/Google/npm/DigitalOcean tokens, credentials inside URLs, secret-named assignments, PEM private-key blocks and seed phrases; date of birth, medical record number, passport and seed phrase fire only beside their label, [by design](https://github.com/iris-eval/mcp-server/blob/main/docs/api-reference.md#safety-rules)), prompt injection (38 patterns, phrase + structural), stub-output detection, hallucination detection (25 context-grounded fabrication/contradiction signals — pass `input` to ground them against the agent's source material), and six trajectory rules that read what the agent DID: an unacknowledged failed tool call, a repeated one (by call, by repeated sequence, or by target once you send `tools`), a call whose arguments the tool's own JSON Schema rejects and the agent never retried, a file, directory or URL the answer cites that appears in nothing the agent read, an instruction that arrived inside a TOOL RESULT and was then obeyed by a later call, and a task that took more tool calls than your step budget. A trajectory can arrive as `tool_calls` or as OpenTelemetry TOOL spans. Add custom rules with Zod schemas. |
 | **LLM-as-Judge** | Optional semantic scoring via Anthropic or OpenAI — bring your own API key. Five templates. Hard per-eval cost cap (`IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL`, default $0.25), per-eval pricing disclosed in the result. |
 | **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. |
 | **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
@@ -423,7 +423,7 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--demo-clear` | `false` | Delete the demo database and exit |
 | `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
 | `--purge` | `false` | Delete **every** stored trace, span and evaluation from the configured database, compact the file and truncate the write-ahead log so the deleted text does not linger on disk, then exit. Deployed rules, the audit log and preferences are kept. Not reversible. Stop any running Iris server first — the file is compacted in place. Refuses to combine with `--demo`, `--demo-clear` or `--self-test` |
-| `--version` | — | Print the bare version (e.g. `0.5.1`) to stdout and exit 0. Reads nothing under your Iris home |
+| `--version` | — | Print the bare version (e.g. `1.2.3`) to stdout and exit 0. Reads nothing under your Iris home |
 
 Two commands take their own arguments and exit: `iris-eval ingest` loads traces from a file or stdin ([A CI gate, no server needed](#a-ci-gate-no-server-needed)), and `iris-eval install <client>` writes Iris into an MCP client's config — `--uninstall` takes it out, `--list` shows the clients found on this machine ([Hook up your own agent](#hook-up-your-own-agent)). Neither starts a server.
 
@@ -469,7 +469,7 @@ When using HTTP transport, Iris includes:
 
 - API key authentication with timing-safe comparison (Bearer for API clients; browser sign-in to the dashboard via `?key=`)
 - CORS restricted to localhost by default
-- Rate limiting (600 req/min dashboard API, 20 req/min MCP)
+- Rate limiting per client address and minute: 600 requests to the dashboard API (`security.rateLimit.api`) and 20 to the MCP endpoint (`security.rateLimit.mcp`), both set in `config.json`; an MCP request over the limit gets a JSON-RPC error that names the key
 - Helmet security headers
 - Zod input validation on all routes
 - ReDoS-safe regex for custom eval rules

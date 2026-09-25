@@ -37,12 +37,14 @@ function liveSurfaces(): string[] {
       const child = `${rel}/${entry}`;
       if (['node_modules', '.next', 'dist', 'blog', 'launch', 'changelog.generated.json'].includes(entry)) continue;
       if (statSync(join(root, child)).isDirectory()) walk(child);
-      else if (/\.(md|mdx|ts|tsx|json|mjs)$/.test(entry)) out.push(child);
+      else if (/\.(md|mdx|ts|tsx|json|mjs|ya?ml)$/.test(entry)) out.push(child);
     }
   };
   walk('docs');
   walk('website/src');
   walk('scripts');
+  // Issue forms and contributor guides link readers onward too.
+  walk('.github');
   return out;
 }
 

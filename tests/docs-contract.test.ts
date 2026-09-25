@@ -298,6 +298,17 @@ describe('docs contract — IRIS_* variables', () => {
     const missing = [...read_].filter((v) => !listed.has(v) && !INTERNAL_ENV_VARS.has(v)).sort();
     expect(missing).toEqual([]);
   });
+
+  it('the README environment-variable table has a row for every variable the server reads, and no other', () => {
+    const readme = read('README.md').replace(/\r\n/g, '\n');
+    const start = readme.indexOf('\n### Environment Variables\n');
+    expect(start, 'the README section').toBeGreaterThan(-1);
+    const section = readme.slice(start + 1, readme.indexOf('\n#', start + 2));
+    const rows = new Set([...section.matchAll(/^\| `(IRIS_[A-Z0-9_]+)` \|/gm)].map((m) => m[1]));
+    expect(rows.size, 'rows found (guards the parse)').toBeGreaterThan(10);
+    expect([...read_].filter((v) => !rows.has(v) && !INTERNAL_ENV_VARS.has(v)).sort()).toEqual([]);
+    expect([...rows].filter((v) => !read_.has(v)).sort()).toEqual([]);
+  });
 });
 
 /* ── rule names ──────────────────────────────────────────────────── */
