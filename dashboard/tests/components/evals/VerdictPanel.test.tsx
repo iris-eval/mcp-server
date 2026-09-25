@@ -146,7 +146,35 @@ describe('VerdictPanel: the verdict with its basis, coverage and reasons', () =>
     expect(container.querySelector('[data-basis]')?.getAttribute('data-basis')).toBe('risk_over_loss');
     expect(container.querySelector('[data-by]')?.textContent).toBe('by pii_leak');
     expect(container.querySelector('[data-risk]')?.textContent).toBe('p(bad) 0.62 [0.41, 0.80]');
-    expect(container.querySelector('[data-confidence="marginal"]')).not.toBeNull();
+    expect(container.querySelector('[data-confidence="marginal"]')?.getAttribute('data-confidence-tone')).toBe('warn');
+  });
+
+  it('a clean pass that is marginal only because the corpus has not confirmed the estimate reads neutral, not as a warning', () => {
+    const { container } = panel({
+      verdict: {
+        state: 'pass',
+        passed: true,
+        basis: 'clean',
+        by: [],
+        risk: { pBad: 0.13, lo: 0.1, hi: 0.16, perClass: {}, assumptions: [] },
+        confidence: 'marginal',
+      },
+    });
+    expect(container.querySelector('[data-confidence="marginal"]')?.getAttribute('data-confidence-tone')).toBe('muted');
+  });
+
+  it('a pass whose interval straddles the threshold is still a close call', () => {
+    const { container } = panel({
+      verdict: {
+        state: 'pass',
+        passed: true,
+        basis: 'clean',
+        by: [],
+        risk: { pBad: 0.45, lo: 0.3, hi: 0.6, perClass: {}, assumptions: [] },
+        confidence: 'marginal',
+      },
+    });
+    expect(container.querySelector('[data-confidence="marginal"]')?.getAttribute('data-confidence-tone')).toBe('warn');
   });
 
   it('a critical rule that could not judge: UNKNOWN, the notice, and the block sentence', () => {

@@ -74,6 +74,7 @@
           ]
         },
         "confidence": {
+          "description": "present when the risk estimate decided the verdict. decisive: the credible interval on pBad excludes the loss threshold AND the composite corpus measured the estimate holding at that risk level, relative to this deployment's threshold; marginal otherwise, with an interpretation naming which test it did not pass. Absent on a stored row labelled under a different calibration table than this release reads.",
           "type": "string",
           "enum": [
             "decisive",
@@ -227,6 +228,29 @@
                 "fail",
                 "pass"
               ]
+            },
+            "prior": {
+              "type": "number"
+            },
+            "priorSource": {
+              "type": "string",
+              "enum": [
+                "default",
+                "config",
+                "estimated"
+              ]
+            },
+            "priorMode": {
+              "description": "how the prior was spread over the failure classes",
+              "type": "string",
+              "enum": [
+                "per-output",
+                "per-class"
+              ]
+            },
+            "calibration": {
+              "description": "the composite version of the calibration table the confidence label was read from",
+              "type": "string"
             }
           },
           "required": [

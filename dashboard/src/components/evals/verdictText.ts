@@ -25,12 +25,40 @@ export const STATE_TEXT: Record<Verdict['state'], { label: string; tone: 'pass' 
   unknown: { label: 'UNKNOWN', tone: 'unknown' },
 };
 
-export const CONFIDENCE_TEXT: Record<NonNullable<Verdict['confidence']>, string> = {
+export const CONFIDENCE_TEXT = {
   decisive:
     'Decisive: the credible interval on the risk estimate lies wholly on one side of your loss threshold, and on the composite corpus verdicts at this risk level were measured to land on that side.',
-  marginal:
-    'Marginal: either the credible interval on the risk estimate straddles your loss threshold, or the composite corpus did not measure the estimate holding at this risk level. The interpretation below says which.',
-};
+  /** A pass whose interval clears the threshold, not yet confirmed by labelled data at its risk level: the ordinary case at the defaults. */
+  unconfirmed:
+    'Marginal: the risk estimate has not yet been confirmed by labelled data at this level, so the verdict is not called decisive. It says how far the estimate has been checked, not that this output is a close call; iris-eval.com/proof has the measured numbers.',
+  /** A fail, or any verdict whose interval straddles the threshold: a close call. */
+  close:
+    'Marginal: either the credible interval on the risk estimate straddles your loss threshold, or the composite corpus did not confirm the estimate at this risk level. Treat it as a close call.',
+  /** Appended when the row carries the composer's notes; a row stored without them carries none, so nothing is promised. */
+  which: ' The note below says which test it did not pass.',
+} as const;
+
+/**
+ * How the confidence chip reads. A marginal PASS whose interval clears the
+ * threshold is neutral: it says the corpus has not yet confirmed the
+ * estimate there, not that this output is in doubt. A marginal fail, and a
+ * verdict whose interval straddles the threshold, is a close call and keeps
+ * the warning tone.
+ */
+export function confidenceChip(
+  verdict: Pick<Verdict, 'state' | 'risk' | 'confidence'>,
+  composer: Provenance['composer'] | null,
+  hasNotes: boolean,
+): { tone: 'warn' | 'muted'; tooltip: string } | null {
+  if (!verdict.confidence) return null;
+  if (verdict.confidence === 'decisive') return { tone: 'muted', tooltip: CONFIDENCE_TEXT.decisive };
+  // A row with no composer facts re-composed under the defaults, whose threshold is 0.5.
+  const t = composer ? tauOf(composer) : 0.5;
+  const straddles = verdict.risk !== null && verdict.risk.lo <= t && t <= verdict.risk.hi;
+  const close = verdict.state !== 'pass' || straddles;
+  const which = hasNotes ? CONFIDENCE_TEXT.which : '';
+  return close ? { tone: 'warn', tooltip: CONFIDENCE_TEXT.close + which } : { tone: 'muted', tooltip: CONFIDENCE_TEXT.unconfirmed + which };
+}
 
 /** The short name of each question, for a row; the server sends the full text on capabilities. */
 export const QUESTION_LABEL: Record<QuestionId, string> = {

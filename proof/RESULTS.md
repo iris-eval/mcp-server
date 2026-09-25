@@ -1,17 +1,17 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-24T20:20:06.589Z for v0.18.0 (local generating commit `d6a878b` — branch commits are squashed on merge, so cite the version).
-Corpus version `31cb028e438a` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-09-25T18:38:22.609Z for v0.18.0 (local generating commit `d6ba0b6` — branch commits are squashed on merge, so cite the version).
+Corpus version `7022143b0265` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
-**What the 25 measured rules show is two different things.** 13 are measured against labels a reader gave the failure itself, without running the rule: those numbers measure detection (2 of 13 score F1 1.00). 12 are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (11 of 12 score F1 1.00). The "Labels" column says which; each family's `labelling` statement says how.
+**What the 25 measured rules show is two different things.** 12 are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (1 of 12 score F1 1.00). 13 are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (12 of 13 score F1 1.00). The "Labels" column says which; each family's `labelling` statement says how.
 
 | Rule | Bundle | Labels | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|
 | `min_output_length` | completeness | own definition | 24 | 13 | 0 | 13 | 0 | 0 | 11 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [85.9, 99.9] | 100.0% / 100.0% |
 | `non_empty_output` | completeness | reader | 24 | 12 | 0 | 10 | 0 | 2 | 12 | 100.0% [72.3, 100.0] | 83.3% [55.2, 95.3] | 0.909 [73.7, 100.0] | [69.4, 97.3] | 100.0% / 100.0% |
-| `sentence_count` | completeness | reader | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [86.9, 99.9] | 100.0% / 100.0% |
+| `sentence_count` | completeness | own definition | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [86.9, 99.9] | 100.0% / 100.0% |
 | `expected_coverage` | completeness | own definition | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.7, 99.9] | 100.0% / 100.0% |
 | `valid_tool_arguments` | completeness | own definition | 33 | 15 | 0 | 15 | 0 | 0 | 18 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] | 1.000 [100.0, 100.0] | [88.1, 99.9] | 100.0% / 100.0% |
 | `ask_coverage` | completeness | reader | 30 | 13 | 5 | 11 | 4 | 2 | 13 | 73.3% [48.0, 89.1] | 84.6% [57.8, 95.7] | 0.786 [58.3, 92.9] | [56.5, 90.1] | 15.9% / 78.2% |
@@ -153,7 +153,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1021; p50 8.766 ms, p95 17.085 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1021; p50 8.852 ms, p95 17.291 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 

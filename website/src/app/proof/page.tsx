@@ -32,14 +32,15 @@ const measured = PROOF !== null && PROOF.rules.length > 0;
 
 /*
  * A perfect score means two different things here, and the headline never
- * adds them together. A rule measured against labels a reader gave the
- * failure is a detection number; a rule checked against its own documented
+ * adds them together. A rule measured against labels a model gave by
+ * reading the failure is a detection number; a rule checked against its own documented
  * definition, applied independently, shows the code matches its formula and
  * nothing about whether the formula catches the failure. The class is read
  * from each family's `labelBasis` in the proof results, never typed here.
  */
 const byBasis = (rules: ProofRule[], basis: "reading" | "definition"): ProofRule[] =>
-  rules.filter((r) => (r.labelBasis ?? "reading") === basis);
+  // A family that does not say what its labels are is never counted as a detection number.
+  rules.filter((r) => (r.labelBasis ?? "definition") === basis);
 const DETECTION = measured ? byBasis(PROOF!.rules, "reading") : [];
 const FORMULA = measured ? byBasis(PROOF!.rules, "definition") : [];
 
@@ -202,7 +203,7 @@ function RuleTable({ category, rules }: { category: string; rules: ProofRule[] }
                 <th scope="row" className="px-3 py-3 align-middle font-mono text-[13px] font-medium text-text-primary">
                   {r.name}
                   <div className="mt-0.5 font-sans text-[11px] font-normal text-text-muted">
-                    {r.labelBasis === "definition" ? "checked against its own formula" : "measured against reader labels"}
+                    {r.labelBasis === "reading" ? "measured against labels from reading the failure" : "checked against its own formula"}
                   </div>
                 </th>
                 <td className="px-3 py-3 align-middle font-mono text-[13px] tabular-nums text-text-secondary">
@@ -282,8 +283,8 @@ function Results(): React.ReactElement {
 
       <p className="mt-6 text-[14px] leading-relaxed text-text-secondary">
         <strong className="text-text-primary">Two kinds of number, never added together.</strong>{" "}
-        {DETECTION.length} rules are measured against labels a reader gave the failure itself, without running
-        the rule: their precision and recall say how well the rule detects it ({DETECTION.filter((r) => r.f1 === 1).length} of{" "}
+        {DETECTION.length} rules are measured against labels a model gave by reading the failure itself, without
+        running the rule (a synthetic, model-labelled corpus; a human blind label is pending): their precision and recall say how well the rule detects it ({DETECTION.filter((r) => r.f1 === 1).length} of{" "}
         {DETECTION.length} score F1 1.00). {FORMULA.length} rules are checked against their own documented
         definition, applied independently by script or by counting: a score there shows the code implements its
         formula, not that the formula catches what a reader would call the failure ({FORMULA.filter((r) => r.f1 === 1).length} of{" "}

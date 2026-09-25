@@ -40,9 +40,9 @@ import { wilson } from '../judge/lib/wilson.js';
 import { calibration, type Calibration } from './intervals.js';
 import { newcombeDifference } from '../../src/eval/stats.js';
 import { compositeContext, loadComposite, splitOf, validateComposite, type CompositeCase, type LoadedComposite, type Split } from './composite.js';
-import { riskVerdict, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from '../../src/eval/risk.js';
+import { riskVerdict, detectorsOf, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from '../../src/eval/risk.js';
 import { legacyWouldShip } from './legacy-composer.js';
-import { verdictConfidence, type CalibrationTable, type Confidence } from '../../src/eval/confidence.js';
+import { verdictConfidence, testable, MIN_BIN_N, MIN_BIN_PATTERNS, type CalibrationTable, type Confidence } from '../../src/eval/confidence.js';
 
 export const COMPOSITE_RESULTS_JSON = 'proof/composite-results.json';
 export const COMPOSITE_MD = 'proof/COMPOSITE.md';
@@ -106,10 +106,18 @@ export interface SweepRow {
 
 export type Difference = { delta: number; lo: number; hi: number } | null;
 
-/** How often a confidence label was right, per split, under one labelling rule. */
+/** A rate over labelled verdicts, with how many distinct detector-firing patterns those verdicts came from. */
+export type PatternRate = Rate & { patterns: number };
+
+/**
+ * How often a confidence label was right, per split, under one labelling
+ * rule. `realTranscriptsTest` is the real transcripts in the TEST split only:
+ * the calibration table is fitted on dev, so a real transcript in dev is
+ * in-sample for the label and cannot check it.
+ */
 export interface LabelAccuracy {
-  decisive: { test: Rate; dev: Rate; realTranscripts: Rate };
-  marginal: { test: Rate; dev: Rate; realTranscripts: Rate };
+  decisive: { test: PatternRate; dev: PatternRate; realTranscriptsTest: PatternRate };
+  marginal: { test: PatternRate; dev: PatternRate; realTranscriptsTest: PatternRate };
 }
 
 export interface CompositeResults {
@@ -151,7 +159,17 @@ export interface CompositeResults {
    * src/eval/confidence.ts; `changed` counts the default-variant verdicts whose
    * label differs between the two.
    */
-  confidence: { rule: string; table: CalibrationTable; intervalOnly: LabelAccuracy; shipped: LabelAccuracy; changed: { toMarginal: number; toDecisive: number; of: number } };
+  confidence: {
+    rule: string;
+    /** The evidence floor a bin must clear before it is tested (src/eval/confidence.ts). */
+    minBin: { n: number; patterns: number };
+    table: CalibrationTable;
+    intervalOnly: LabelAccuracy;
+    shipped: LabelAccuracy;
+    changed: { toMarginal: number; toDecisive: number; of: number };
+    /** Risk-decided, labelled test verdicts, and how many of them share a detector-firing pattern with a dev verdict. */
+    overlap: { test: number; sharedWithDev: number; testPatterns: number; sharedPatterns: number };
+  };
   cases: CaseRow[];
 }
 
@@ -198,33 +216,34 @@ function cellOf(v: RiskVerdict): RiskCell {
 }
 
 /** The dev-split calibration of the verdicts the risk node decided, in the ten bins the reliability table uses. */
-function calibrationTable(rows: CaseRow[], compositeVersion: string): CalibrationTable {
-  const bins = Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: 0, bad: 0, sum: 0 }));
+function calibrationTable(rows: CaseRow[], compositeVersion: string, patternOf: ReadonlyMap<string, string>): CalibrationTable {
+  const bins = Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: 0, bad: 0, sum: 0, patterns: new Set<string>() }));
   for (const r of rows) {
     if (r.split !== 'dev' || r.shouldShip === null || r.risk.confidence === null || r.risk.pBad === null) continue;
     const b = bins[Math.min(9, Math.floor(Math.min(1, Math.max(0, r.risk.pBad)) * 10))];
     b.n += 1;
     b.bad += r.shouldShip ? 0 : 1;
     b.sum += r.risk.pBad;
+    b.patterns.add(patternOf.get(r.id)!);
   }
   return {
     compositeVersion,
     split: 'dev',
     prior: DEFAULT_PRIOR,
     priorMode: DEFAULT_PRIOR_MODE,
-    bins: bins.map((b) => ({ from: b.from, to: b.to, n: b.n, bad: b.bad, meanPredicted: b.n === 0 ? null : round4(b.sum / b.n) })),
+    bins: bins.map((b) => ({ from: b.from, to: b.to, n: b.n, bad: b.bad, patterns: b.patterns.size, meanPredicted: b.n === 0 ? null : round4(b.sum / b.n) })),
   };
 }
 
-function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null): LabelAccuracy {
-  const of = (want: Confidence, keep: (r: CaseRow) => boolean): Rate => {
+function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null, patternOf: ReadonlyMap<string, string>): LabelAccuracy {
+  const of = (want: Confidence, keep: (r: CaseRow) => boolean): PatternRate => {
     const hit = rows.filter((r) => keep(r) && r.shouldShip !== null && label(r) === want);
-    return rate(hit.filter((r) => (r.risk.state === 'pass') === r.shouldShip).length, hit.length);
+    return { ...rate(hit.filter((r) => (r.risk.state === 'pass') === r.shouldShip).length, hit.length), patterns: new Set(hit.map((r) => patternOf.get(r.id))).size };
   };
   const per = (want: Confidence): LabelAccuracy['decisive'] => ({
     test: of(want, (r) => r.split === 'test'),
     dev: of(want, (r) => r.split === 'dev'),
-    realTranscripts: of(want, (r) => r.provenance === 'real-transcript'),
+    realTranscriptsTest: of(want, (r) => r.provenance === 'real-transcript' && r.split === 'test'),
   });
   return { decisive: per('decisive'), marginal: per('marginal') };
 }
@@ -236,8 +255,16 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
   const eng = engine ?? new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
 
   const rows: CaseRow[] = [];
+  /*
+   * Which detectors with a published rate examined each case and which of
+   * them fired. p_bad is a function of this pattern, so two cases with the
+   * same one are the same evidence about the estimate twice; the
+   * calibration table counts patterns beside cases.
+   */
+  const patternOf = new Map<string, string>();
   for (const c of loaded.cases) {
     const result: EvalResult = await eng.evaluateAll(compositeContext(loaded, c));
+    patternOf.set(c.id, detectorsOf(result).map((d) => `${d.name}:${d.fired ? 'fired' : 'quiet'}`).sort().join(','));
     /*
      * The pre-0.10.0 arithmetic, computed explicitly. `result.passed` is the
      * COMPOSED verdict from 0.10.0 onward, so reading it here would compare
@@ -272,7 +299,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
    * never depends on the table it regenerates; the test split stays held out
    * to measure the labels.
    */
-  const table = calibrationTable(rows, loaded.compositeVersion);
+  const table = calibrationTable(rows, loaded.compositeVersion, patternOf);
   const intervalOnlyLabels = new Map<string, Confidence | null>(
     rows.map((r) => [r.id, r.risk.confidence === null || r.risk.lo === null || r.risk.hi === null ? null : r.risk.lo <= DEFAULT_TAU && DEFAULT_TAU <= r.risk.hi ? 'marginal' : 'decisive']),
   );
@@ -283,15 +310,25 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
     }
   }
   const labelled = rows.filter((r) => r.risk.confidence !== null && r.shouldShip !== null);
+  const devPatterns = new Set(labelled.filter((r) => r.split === 'dev').map((r) => patternOf.get(r.id)));
+  const labelledTest = labelled.filter((r) => r.split === 'test');
+  const testPatterns = new Set(labelledTest.map((r) => patternOf.get(r.id)));
   const confidence: CompositeResults['confidence'] = {
-    rule: "decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev-split observed bad rate of risk-decided verdicts to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval) with that interval wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)",
+    rule: `decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev split to hold at least ${MIN_BIN_N} risk-decided verdicts from at least ${MIN_BIN_PATTERNS} distinct detector-firing patterns, their observed bad rate to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval), and that interval to lie wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)`,
+    minBin: { n: MIN_BIN_N, patterns: MIN_BIN_PATTERNS },
     table,
-    intervalOnly: labelAccuracy(rows, (r) => intervalOnlyLabels.get(r.id) ?? null),
-    shipped: labelAccuracy(rows, (r) => r.risk.confidence),
+    intervalOnly: labelAccuracy(rows, (r) => intervalOnlyLabels.get(r.id) ?? null, patternOf),
+    shipped: labelAccuracy(rows, (r) => r.risk.confidence, patternOf),
     changed: {
       toMarginal: labelled.filter((r) => intervalOnlyLabels.get(r.id) === 'decisive' && r.risk.confidence === 'marginal').length,
       toDecisive: labelled.filter((r) => intervalOnlyLabels.get(r.id) === 'marginal' && r.risk.confidence === 'decisive').length,
       of: labelled.length,
+    },
+    overlap: {
+      test: labelledTest.length,
+      sharedWithDev: labelledTest.filter((r) => devPatterns.has(patternOf.get(r.id))).length,
+      testPatterns: testPatterns.size,
+      sharedPatterns: [...testPatterns].filter((p) => devPatterns.has(p)).length,
     },
   };
 
@@ -452,23 +489,32 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push(`A verdict the risk estimate decides carries \`confidence\`: \`decisive\` or \`marginal\`. Through 0.18.0 it was decisive whenever the credible interval on p_bad excluded τ. That interval carries the uncertainty in each detector's published error rates and nothing else, and the calibration above shows the estimate itself can be off by more than that: the rule now is that ${r.confidence.rule}.`);
   L.push('');
+  L.push(`**The evidence floor.** A bin is tested only when it holds at least ${r.confidence.minBin.n} verdicts from at least ${r.confidence.minBin.patterns} distinct detector-firing patterns; below that it reads "too few to test" and every verdict in it is marginal. Ten, because the observed rate is compared with the estimate at the resolution of a bin 0.1 wide, and below ten verdicts one label moves the observed rate by more than that width. Patterns, because p_bad is a function of which detectors examined the output and which fired: cases with the same pattern get the same estimate and are the same evidence counted again. Four, because counting each pattern once, fewer than four could not exclude τ = 0.5 even if every one agreed (the Wilson 95% upper bound on 0 of 3 is 0.56). Without the floor, a deployment that moves τ with eval.falsePassCost could be told "decisive" on the strength of one or two verdicts.`);
+  L.push('');
   L.push(`The calibration the label reads (dev split, risk-decided verdicts, generated into \`${PUBLISHED_CALIBRATION_TS}\`):`);
   L.push('');
-  L.push('| Bin | n | Mean predicted P(bad) | Observed bad rate (95% CI) | Estimate consistent? | Backs a pass at τ | Backs a fail at τ |');
-  L.push('|---|--:|--:|---|---|---|---|');
+  L.push('| Bin | n | Patterns | Mean predicted P(bad) | Observed bad rate (95% CI) | Estimate consistent? | Backs a pass at τ | Backs a fail at τ |');
+  L.push('|---|--:|--:|--:|---|---|---|---|');
   for (const b of r.confidence.table.bins) {
     if (b.n === 0) continue;
     const w = wilson(b.bad, b.n)!;
+    const observed = `${(b.bad / b.n).toFixed(3)} [${w.lo.toFixed(3)}, ${w.hi.toFixed(3)}]`;
+    const head = `| ${b.from.toFixed(1)}–${b.to.toFixed(1)} | ${b.n} | ${b.patterns} | ${b.meanPredicted === null ? '—' : b.meanPredicted.toFixed(3)} | ${observed} |`;
+    if (!testable(b)) {
+      L.push(`${head} too few to test | no | no |`);
+      continue;
+    }
     const consistent = b.meanPredicted !== null && b.meanPredicted >= w.lo && b.meanPredicted <= w.hi;
-    L.push(`| ${b.from.toFixed(1)}–${b.to.toFixed(1)} | ${b.n} | ${b.meanPredicted === null ? '—' : b.meanPredicted.toFixed(3)} | ${(b.bad / b.n).toFixed(3)} [${w.lo.toFixed(3)}, ${w.hi.toFixed(3)}] | ${consistent ? 'yes' : 'no'} | ${consistent && w.hi < r.method.tau ? 'yes' : 'no'} | ${consistent && w.lo > r.method.tau ? 'yes' : 'no'} |`);
+    L.push(`${head} ${consistent ? 'yes' : 'no'} | ${consistent && w.hi < r.method.tau ? 'yes' : 'no'} | ${consistent && w.lo > r.method.tau ? 'yes' : 'no'} |`);
   }
   L.push('');
-  L.push(`How often each label was right about shipping, under the rule through 0.18.0 and the rule now. ${r.confidence.changed.toMarginal} of ${r.confidence.changed.of} labelled verdicts move from decisive to marginal and ${r.confidence.changed.toDecisive} the other way. The table was measured on the dev split, so read the test and real-transcript rows:`);
+  const o = r.confidence.overlap;
+  L.push(`How often each label was right about shipping, under the rule through 0.18.0 and the rule now. ${r.confidence.changed.toMarginal} of ${r.confidence.changed.of} labelled verdicts move from decisive to marginal and ${r.confidence.changed.toDecisive} the other way. The table was fitted on the dev split, so the dev rows are in-sample and only the test rows check it. Read the test rows for what they are, too: dev and test are split by case, not by detector-firing pattern, and ${o.sharedWithDev} of the ${o.test} labelled test verdicts (${o.sharedPatterns} of their ${o.testPatterns} distinct patterns) have a pattern that also occurs on dev, so the test agreement is weaker evidence than its n suggests. Each cell gives the distinct patterns beside n. The real-transcript row is the real transcripts in the test split only; the ones in dev were in the table's fit.`);
   L.push('');
   L.push('| Split | Rule | Decisive: right (95% CI) | Marginal: right (95% CI) |');
   L.push('|---|---|---|---|');
-  const cell = (x: Rate): string => (x.n === 0 ? 'none labelled' : `${x.k} of ${x.n}, ${pct(x.rate)} ${ci(x.ci95)}`);
-  for (const [name, split] of [['test', 'test'], ['real transcripts (held out, staged)', 'realTranscripts'], ['dev', 'dev']] as const) {
+  const cell = (x: PatternRate): string => (x.n === 0 ? 'none labelled' : `${x.k} of ${x.n}, ${pct(x.rate)} ${ci(x.ci95)}; ${x.patterns} pattern${x.patterns === 1 ? '' : 's'}`);
+  for (const [name, split] of [['test', 'test'], ['real transcripts, test split only (staged)', 'realTranscriptsTest'], ['dev (in-sample)', 'dev']] as const) {
     for (const [label, acc] of [['interval only (through 0.18.0)', r.confidence.intervalOnly], ['shipped', r.confidence.shipped]] as const) {
       L.push(`| ${name} | ${label} | ${cell(acc.decisive[split])} | ${cell(acc.marginal[split])} |`);
     }
@@ -526,7 +572,7 @@ export function renderPublishedCalibration(r: CompositeResults): string {
   L.push(`  prior: ${t.prior},`);
   L.push(`  priorMode: '${t.priorMode}',`);
   L.push('  bins: [');
-  for (const b of t.bins) L.push(`    { from: ${b.from}, to: ${b.to}, n: ${b.n}, bad: ${b.bad}, meanPredicted: ${b.meanPredicted === null ? 'null' : b.meanPredicted} },`);
+  for (const b of t.bins) L.push(`    { from: ${b.from}, to: ${b.to}, n: ${b.n}, bad: ${b.bad}, patterns: ${b.patterns}, meanPredicted: ${b.meanPredicted === null ? 'null' : b.meanPredicted} },`);
   L.push('  ],');
   L.push('} as const;');
   L.push('');

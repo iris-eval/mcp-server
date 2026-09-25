@@ -39,7 +39,8 @@
  */
 import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictNode } from '../types/eval.js';
 import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
-import { verdictConfidence, type ConfidenceCall } from './confidence.js';
+import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
+import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
 
 // The gating predicate lives in gate.ts so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
@@ -70,6 +71,15 @@ export interface ComposeConfig {
   prior: number;
   /** How that prior is spread over the failure classes the detectors examine. */
   priorMode: PriorMode;
+  /**
+   * The calibration table the confidence label is read from, by composite
+   * version. Absent when judging now: the table this build ships. A stored
+   * row passes the version it was stamped with (null when it carries none),
+   * and its label is re-derived only when that is the table this build
+   * ships — a label read from a different table would be a different
+   * statement than the one the caller was given.
+   */
+  calibration?: string | null;
 }
 
 export const DEFAULT_COMPOSE: ComposeConfig = {
@@ -199,6 +209,15 @@ export function verdictPath(
   return path;
 }
 
+/**
+ * Whether a verdict's confidence label can be derived under this
+ * configuration: always when judging now, and on a stored row only when it
+ * was stamped with the calibration table this build ships.
+ */
+export function calibrationAvailable(cfg: Pick<ComposeConfig, 'calibration'>): boolean {
+  return cfg.calibration === undefined || cfg.calibration === PUBLISHED_CALIBRATION.compositeVersion;
+}
+
 /** The confidence label and why, for a verdict that came through the risk node. */
 export function confidenceCall(
   result: Pick<EvalResult, 'rule_results'>,
@@ -211,27 +230,56 @@ export function confidenceCall(
 
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 
-/** The sentence a marginal verdict carries, naming which test it did not pass. */
-function marginalText(call: ConfidenceCall): string {
+/** What the labelled corpus measured in the region a verdict's risk estimate fell in, as a clause. */
+function measured(r: NonNullable<ConfidenceCall['region']>): string {
+  return `outputs with a risk estimate of ${r.from.toFixed(1)}–${r.to.toFixed(1)} were bad ${pct(r.bad / r.n)} of the time (${r.bad} of ${r.n}; 95% interval ${pct(r.observed[0])}–${pct(r.observed[1])})`;
+}
+
+/**
+ * The sentence a marginal verdict carries, naming which test it did not
+ * pass, with the measured numbers behind it.
+ *
+ * A pass that is marginal only because the corpus has not confirmed the
+ * estimate at its risk level is the ordinary case at the defaults, and it is
+ * said plainly rather than as a warning: it reports how far the corpus has
+ * checked the estimate, with the numbers, not a close call on this output.
+ * A fail, and any verdict whose interval straddles the threshold, is a close
+ * call and says so.
+ */
+function marginalText(call: ConfidenceCall, state: Verdict['state']): string {
   const close = 'Treat it as a close call rather than a clear one.';
+  const leadAt = (where: string): string =>
+    state === 'pass'
+      ? `Risk estimate not yet confirmed by labelled data ${where}; see iris-eval.com/proof.`
+      : `This block is not yet confirmed by labelled data ${where}; see iris-eval.com/proof.`;
+  const lead = leadAt(state === 'pass' ? 'at this level' : 'at this risk level');
+  const tail = state === 'pass' ? '' : ` ${close}`;
+  const r = call.region;
   switch (call.reason) {
     case 'interval_straddles':
       return `The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. ${close}`;
     case 'setting_unmeasured':
-      return `This risk estimate was computed at a prior, or with local labels, that the composite corpus did not measure, so how far it can be trusted is not known. ${close}`;
+      return `${leadAt('at this setting')} The labelled corpus measured the estimate at the shipped prior and prior reading with published error rates; this one was computed at another prior or reading, or with your own labels.${tail}`;
     case 'region_unmeasured':
-      return `No verdict on the composite corpus landed at this risk level, so how far the estimate can be trusted here is not measured. ${close}`;
-    case 'region_miscalibrated': {
-      const r = call.region!;
-      return `At this risk level the estimate is measured to be off: on the composite corpus, outputs scored ${r.from.toFixed(1)}–${r.to.toFixed(1)} were bad ${pct(r.bad / r.n)} of the time (${r.bad} of ${r.n}; 95% interval ${pct(r.observed[0])}–${pct(r.observed[1])}) against the ${pct(r.meanPredicted!)} the estimate states. ${close}`;
-    }
-    case 'region_not_backed': {
-      const r = call.region!;
-      return `On the composite corpus, outputs scored ${r.from.toFixed(1)}–${r.to.toFixed(1)} were bad ${pct(r.bad / r.n)} of the time (${r.bad} of ${r.n}; 95% interval ${pct(r.observed[0])}–${pct(r.observed[1])}), an interval that reaches your threshold. ${close}`;
-    }
+      return `${lead} No labelled verdict had a risk estimate at this level.${tail}`;
+    case 'region_too_few':
+      return `${lead} Only ${r!.n} labelled verdict${r!.n === 1 ? '' : 's'}, from ${r!.patterns} distinct detector pattern${r!.patterns === 1 ? '' : 's'}, had a risk estimate of ${r!.from.toFixed(1)}–${r!.to.toFixed(1)}: too few to test the estimate there (at least ${MIN_BIN_N} verdicts from ${MIN_BIN_PATTERNS} patterns).${tail}`;
+    case 'region_miscalibrated':
+      return `${lead} On the labelled corpus, ${measured(r!)}, against the ${pct(r!.meanPredicted!)} the estimate states.${tail}`;
+    case 'region_not_backed':
+      return `${lead} On the labelled corpus, ${measured(r!)}, an interval that reaches your threshold.${tail}`;
     default:
       return close;
   }
+}
+
+/** The sentence a stored verdict carries when its label cannot be re-derived under the table it was given with. */
+function unlabelledText(cfg: Pick<ComposeConfig, 'calibration'>): string {
+  const was =
+    typeof cfg.calibration === 'string'
+      ? `It was labelled under calibration table ${cfg.calibration}`
+      : 'It was stored before a verdict recorded which calibration table labelled it';
+  return `This stored verdict carries no confidence label. ${was}, and this release reads table ${PUBLISHED_CALIBRATION.compositeVersion}; re-deriving the label under a different table would state something other than what the caller was told. Re-evaluate the output to label it under the current table.`;
 }
 
 /**
@@ -249,8 +297,12 @@ export function compose(
   const decided = path.find((n) => n.decided);
   const riskNode = path.find((n) => n.node === 'risk');
   const risk = riskNode?.risk ?? null;
-  // Decisive only where the composite corpus measured the estimate to hold (./confidence.ts).
-  const confidence: Verdict['confidence'] = risk === null ? undefined : confidenceCall(result, risk, cfg).confidence;
+  /*
+   * Decisive only where the composite corpus measured the estimate to hold
+   * (./confidence.ts), and only under the table the verdict was given with:
+   * a stored row labelled under another table carries no label on read.
+   */
+  const confidence: Verdict['confidence'] = risk === null || !calibrationAvailable(cfg) ? undefined : confidenceCall(result, risk, cfg).confidence;
 
   switch (decided?.node) {
     case 'nothing_judged':
@@ -382,8 +434,11 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
     out.push({
       severity: 'note',
       addressee: 'operator',
-      text: marginalText(confidenceCall(result, verdict.risk, cfg)),
+      text: marginalText(confidenceCall(result, verdict.risk, cfg), verdict.state),
     });
+  }
+  if (verdict.risk !== null && !calibrationAvailable(cfg)) {
+    out.push({ severity: 'note', addressee: 'operator', text: unlabelledText(cfg) });
   }
   return out;
 }

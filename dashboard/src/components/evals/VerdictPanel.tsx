@@ -18,13 +18,13 @@ import { Tooltip } from '../shared/Tooltip';
 import {
   ADDRESSEE_TEXT,
   BASIS_TEXT,
-  CONFIDENCE_TEXT,
   NO_VERDICT_TEXT,
   QUESTION_LABEL,
   QUESTION_STATUS_TEXT,
   SEVERITY_TEXT,
   STATE_TEXT,
   composerFacts,
+  confidenceChip,
   fmtRisk,
 } from './verdictText';
 
@@ -134,6 +134,8 @@ export function VerdictPanel({
   };
   const state = verdict ? STATE_TEXT[verdict.state] : passed ? STATE_TEXT.pass : STATE_TEXT.fail;
   const composer = provenance?.composer ?? null;
+  // The server writes the composer's notes only for a row that carries its composer facts.
+  const chip = verdict ? confidenceChip(verdict, composer, composer !== null && (interpretations?.length ?? 0) > 0) : null;
 
   return (
     <div style={styles.panel} data-verdict-panel={evalType}>
@@ -155,13 +157,8 @@ export function VerdictPanel({
             </span>
           </Tooltip>
         )}
-        {verdict?.confidence && (
-          <Chip
-            label={verdict.confidence}
-            tone={verdict.confidence === 'marginal' ? 'warn' : 'muted'}
-            tooltip={CONFIDENCE_TEXT[verdict.confidence]}
-            attr={{ 'data-confidence': verdict.confidence }}
-          />
+        {verdict?.confidence && chip && (
+          <Chip label={verdict.confidence} tone={chip.tone} tooltip={chip.tooltip} attr={{ 'data-confidence': verdict.confidence, 'data-confidence-tone': chip.tone }} />
         )}
         <Tooltip content="The weighted score is a quality gradient. The composer never consults it.">
           <span tabIndex={0}>

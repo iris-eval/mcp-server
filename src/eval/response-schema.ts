@@ -105,14 +105,29 @@ export const verdictSchema = z.looseObject({
   basis: z.enum(['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'clean', 'no_rules']),
   by: z.array(z.string()),
   risk: z.looseObject({ pBad: z.number(), lo: z.number(), hi: z.number() }).nullable(),
-  confidence: z.enum(['decisive', 'marginal']).optional(),
+  confidence: z
+    .enum(['decisive', 'marginal'])
+    .optional()
+    .describe(
+      "present when the risk estimate decided the verdict. decisive: the credible interval on pBad excludes the loss threshold AND the composite corpus measured the estimate holding at that risk level, relative to this deployment's threshold; marginal otherwise, with an interpretation naming which test it did not pass. Absent on a stored row labelled under a different calibration table than this release reads.",
+    ),
 });
 export const provenanceSchema = z.looseObject({
   irisVersion: z.string(),
   rulesetHash: z.string(),
   configHash: z.string(),
   thresholds: z.looseObject({ default: z.number(), perRule: z.record(z.string(), z.unknown()).optional() }),
-  composer: z.looseObject({ defaultsGate: z.boolean(), falsePassCost: z.number(), onCriticalSkipped: z.enum(['unknown', 'fail', 'pass']) }).optional(),
+  composer: z
+    .looseObject({
+      defaultsGate: z.boolean(),
+      falsePassCost: z.number(),
+      onCriticalSkipped: z.enum(['unknown', 'fail', 'pass']),
+      prior: z.number().optional(),
+      priorSource: z.enum(['default', 'config', 'estimated']).optional(),
+      priorMode: z.enum(['per-output', 'per-class']).optional().describe('how the prior was spread over the failure classes'),
+      calibration: z.string().optional().describe('the composite version of the calibration table the confidence label was read from'),
+    })
+    .optional(),
   corpusVersion: z.string(),
   judgedAt: z.string(),
 });

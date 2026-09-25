@@ -395,6 +395,21 @@ export interface Provenance {
      */
     prior?: number;
     priorSource?: 'default' | 'config' | 'estimated';
+    /**
+     * How the prior was spread over the failure classes. Absent on rows
+     * written before 0.19.0, which read back under the default reading —
+     * wrong for a deployment that set eval.priorMode, and the reason it is
+     * now stored.
+     */
+    priorMode?: 'per-output' | 'per-class';
+    /**
+     * The composite version of the calibration table the confidence label
+     * was read from (src/eval/published-calibration.ts). A read re-derives
+     * the label only under that same table; a row stamped under another
+     * table, or before this field existed, reads back without a label and
+     * with a note saying why, rather than silently taking today's.
+     */
+    calibration?: string;
   };
   /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row. The earlier row is kept: the change is the finding. */
   supersedes?: string;

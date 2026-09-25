@@ -153,15 +153,20 @@ export function proofSummary(claims) {
       'and will carry the numbers when they land.'
     );
   }
-  // Two kinds of number, never summed: a family labelled by a reader measures
-  // detection; one labelled by the rule's own definition only shows the code
-  // implements its formula (proof/lib/corpus.ts, `labelBasis`).
-  const detection = proof.rules.filter((r) => (r.labelBasis ?? 'reading') === 'reading').length;
+  // Two kinds of number, never summed: a family labelled by reading the
+  // failure measures detection; one labelled by the rule's own definition only
+  // shows the code implements its formula (proof/lib/corpus.ts, `labelBasis`).
+  // A family that does not say which is a defect in the proof file, not a
+  // detection number.
+  for (const r of proof.rules) {
+    if (r.labelBasis !== 'reading' && r.labelBasis !== 'definition') throw new Error(`llms: proof rule ${r.name} carries no labelBasis`);
+  }
+  const detection = proof.rules.filter((r) => r.labelBasis === 'reading').length;
   const formula = proof.rules.filter((r) => r.labelBasis === 'definition').length;
   const date = String(proof.generatedAt).slice(0, 10);
   return (
     `Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 ` +
-    `with 95% confidence intervals for built-in rules — ${detection} measured for detection against labels a reader gave the failure, ` +
+    `with 95% confidence intervals for built-in rules — ${detection} measured for detection against labels a model gave by reading the failure (synthetic, model-labelled corpus; a human blind label is pending), ` +
     `and ${formula} checked against their own documented formula (a score there shows the code implements the formula, not that it detects the failure) — ` +
     `corpus ${proof.corpusVersion}, generated ${date} from the source these numbers were measured on; reproduce with \`npm run proof\`.`
   );

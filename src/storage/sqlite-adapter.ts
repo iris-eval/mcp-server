@@ -1806,9 +1806,18 @@ export class SqliteAdapter implements IStorageAdapter {
      * provenance.composer now carries the three facts the composer needs;
      * a row written before it exists reads back under the defaults and
      * with an empty interpretations list — absent, never fabricated.
+     *
+     * Two facts joined them in 0.19.0. priorMode: without it a row judged
+     * under eval.priorMode "per-class" read back under the per-output
+     * default and could flip from fail to pass. calibration: the confidence
+     * label is re-derived only under the calibration table it was given
+     * with; a row stamped under another table, or before the stamp existed,
+     * reads back with no label and a note saying why, instead of silently
+     * taking the label today's table would give.
      */
     if (result.provenance) {
-      const cfg = { ...DEFAULT_COMPOSE, ...(result.provenance.composer ?? {}) };
+      const composer = result.provenance.composer;
+      const cfg = { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null };
       result.verdict = compose(result, cfg);
       if (result.provenance.composer) {
         const notes = interpretations(result, result.verdict, cfg);
