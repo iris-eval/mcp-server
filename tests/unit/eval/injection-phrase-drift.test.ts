@@ -23,6 +23,15 @@ import { INJECTED_DIRECTIVE_PHRASES, TOOL_ONLY_DIRECTIVE_PHRASES } from '../../.
 
 const phraseTier = INJECTION_PATTERNS.slice(0, PHRASE_PATTERN_COUNT);
 
+/*
+ * A literal stands for every casing of itself: the tool-output side folds
+ * case before it matches. Most patterns fold case too, but the DAN pattern
+ * is case-sensitive on purpose (the persona is written DAN; "Dan" is a
+ * person), so a pattern recognises a literal when it matches the literal as
+ * written or in capitals.
+ */
+const recognises = (pattern: RegExp, phrase: string): boolean => pattern.test(phrase) || pattern.test(phrase.toUpperCase());
+
 describe('the injection phrase lists stay in step', () => {
   it('the tier boundary is where the pattern library says it is', () => {
     expect(phraseTier).toHaveLength(PHRASE_PATTERN_COUNT);
@@ -31,14 +40,14 @@ describe('the injection phrase lists stay in step', () => {
 
   it('coverage: every phrase-tier pattern has at least one literal counterpart', () => {
     const uncovered = phraseTier
-      .filter((pattern) => !INJECTED_DIRECTIVE_PHRASES.some((phrase) => pattern.test(phrase)))
+      .filter((pattern) => !INJECTED_DIRECTIVE_PHRASES.some((phrase) => recognises(pattern, phrase)))
       .map((pattern) => pattern.source);
     expect(uncovered, 'add a literal for each of these to INJECTED_DIRECTIVE_PHRASES').toEqual([]);
   });
 
   it('soundness: every literal is recognised by the pattern library', () => {
     const unrecognised = INJECTED_DIRECTIVE_PHRASES.filter(
-      (phrase) => !phraseTier.some((pattern) => pattern.test(phrase)),
+      (phrase) => !phraseTier.some((pattern) => recognises(pattern, phrase)),
     );
     expect(unrecognised, 'these literals call something an injection that no pattern does').toEqual([]);
   });
