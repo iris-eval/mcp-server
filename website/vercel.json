@@ -5,5 +5,5 @@
       "dependabot/**": false
     }
   },
-  "ignoreCommand": "git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- ':(top)' ':(top,exclude)dashboard' ':(top,exclude)tests' ':(top,exclude)packages' ':(top,exclude).github'"
+  "ignoreCommand": "base=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git cat-file -e \"$base^{commit}\" 2>/dev/null || base=\"HEAD^\"; git diff --quiet \"$base\" HEAD -- ':(top)' ':(top,exclude)dashboard' ':(top,exclude)tests' ':(top,exclude)packages' ':(top,exclude).github' && exit 0 || exit 1"
 }

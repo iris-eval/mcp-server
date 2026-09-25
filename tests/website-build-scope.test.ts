@@ -28,7 +28,12 @@ describe('the website build scope', () => {
     // site deployment must not be followed by a skipped one. With no previous deployment
     // it falls back to the parent; a commit outside the shallow clone makes git exit 128,
     // which builds.
-    expect(config.ignoreCommand.startsWith('git diff --quiet "${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}" HEAD --')).toBe(true);
+    expect(config.ignoreCommand).toContain('git diff --quiet "$base" HEAD --');
+    // A commit that no longer exists (a force-pushed branch) falls back to the parent,
+    // and any git error becomes "build": the host fails the deployment on an exit
+    // code above 1 instead of building (seen 2026-09-25).
+    expect(config.ignoreCommand).toContain('git cat-file -e "$base^{commit}" 2>/dev/null || base="HEAD^"');
+    expect(config.ignoreCommand.trimEnd().endsWith('&& exit 0 || exit 1')).toBe(true);
   });
 
   it('never creates a deployment for a dependency-bot branch', () => {
