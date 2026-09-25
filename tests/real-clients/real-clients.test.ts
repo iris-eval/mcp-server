@@ -13,7 +13,8 @@
  * clients at pinned versions, and runs this file on Linux, macOS and Windows
  * with IRIS_REAL_CLIENTS=1. npm runs offline for the client's `npx`, so the
  * server that connects is this commit's tarball from the project, never a
- * release from the registry. Outside that job the suite is skipped.
+ * release from the registry. The root vitest config excludes this folder; the job runs it through
+ * tests/real-clients/vitest.config.ts, and outside that job it fails on purpose.
  *
  * Every run gets a scratch home: HOME, USERPROFILE, APPDATA, the clients'
  * own directory variables and IRIS_HOME all point inside it.
@@ -85,8 +86,9 @@ const escapeRe = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, 
 
 const version = (): string => JSON.parse(readFileSync(join(project, 'node_modules', '@iris-eval', 'mcp-server', 'package.json'), 'utf8')).version;
 
-describe.skipIf(!enabled)('real clients connect to the server install wrote', () => {
+describe('real clients connect to the server install wrote', () => {
   it('the project holds the packed server', () => {
+    expect(enabled, 'IRIS_REAL_CLIENTS=1, which the CI real-clients job sets').toBe(true);
     expect(project, 'IRIS_REAL_CLIENTS_PROJECT').not.toBe('');
     expect(version()).toMatch(/^\d+\.\d+\.\d+/);
   });

@@ -218,7 +218,7 @@ jobs:
         env:
           IRIS_REAL_CLIENTS: '1'
           IRIS_REAL_CLIENTS_PROJECT: ${{ runner.temp }}/project
-        run: npx vitest run tests/real-clients
+        run: npx vitest run --config tests/real-clients/vitest.config.ts
 
   build:
     runs-on: ubuntu-latest
