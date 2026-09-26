@@ -234,6 +234,8 @@ Every vocabulary above is held by a fixture in [`tests/fixtures/otlp/conventions
 
 **Evaluation is off by default**: an OTLP feed is a firehose you did not necessarily mean to grade. `otel.evaluateOnIngest: true` in `config.json` scores each stored trace that carries an output, under exactly the rules `evaluate_output` runs; a trace without one answers `evaluation: null`.
 
+**A sender can ask for its own traces to be scored** (0.20.0): `iris.evaluate` set to `true` on the resource or the root span (the string `"true"` too, for an exporter that writes only strings) scores that trace with the config off, the per-trace twin of `evaluate: true` on `POST /api/v1/traces`. `iris.eval_type` names the bundle (`completeness`, `relevance`, `safety`, `cost`, `custom` or `all`; omitted, every bundle runs); an unknown one stores the trace unscored and says why in the entry's `evaluation_error`. The provider wrappers set it on every trace they send: `wrap_openai` / `wrap_anthropic` in the Python client and `wrapOpenAI` / `wrapAnthropic` / `irisMiddleware` in `@iris-eval/sdk` (not yet published to npm), each call one GenAI span — [packages/sdk/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/sdk/README.md).
+
 The answer is OTLP's `ExportTraceServiceResponse` — `{}` when every span was accepted, `partialSuccess: { rejectedSpans, errorMessage }` when some carried no trace or span id — plus an `iris-eval` block:
 
 ```json

@@ -10,6 +10,13 @@
 A thin client over the HTTP API (docs/sdk-spec.md rules it so): the rules, the
 composer and the storage live in the server; this package speaks to them. The
 pytest plugin (``iris`` fixture, ``assert_iris``) rides on it.
+
+To record every model call an application makes, wrap its provider client:
+
+    from openai import OpenAI
+    from iris_eval import wrap_openai
+
+    client = wrap_openai(OpenAI(), agent_name="support-bot")   # each call → an OTLP span → a scored Iris trace
 """
 
 from .client import (
@@ -20,6 +27,7 @@ from .client import (
     IrisError,
 )
 from .discovery import ServerLocation, find_server
+from .recorder import IrisRecorder, Span, TraceRecord, default_recorder
 from .types import (
     Capabilities,
     Evaluation,
@@ -34,6 +42,7 @@ from .types import (
     Verdict,
     VerdictState,
 )
+from .wrappers import wrap_anthropic, wrap_openai
 
 __version__ = "0.1.0"
 
@@ -46,16 +55,22 @@ __all__ = [
     "IrisClient",
     "IrisConnectionError",
     "IrisError",
+    "IrisRecorder",
     "LoggedTrace",
     "RuleResult",
     "ServerLocation",
+    "Span",
     "TokenUsage",
     "ToolCall",
     "Trace",
     "TraceDetail",
+    "TraceRecord",
     "TracePage",
     "Verdict",
     "VerdictState",
     "__version__",
+    "default_recorder",
     "find_server",
+    "wrap_anthropic",
+    "wrap_openai",
 ]

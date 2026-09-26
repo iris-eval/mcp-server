@@ -12,7 +12,9 @@
  * was accepted, `partialSuccess` when some were dropped — plus an
  * `iris-eval` block an operator can read: the Iris trace id each OTLP trace became,
  * how many spans and steps it carries, what it lacked, and the evaluation
- * when `otel.evaluateOnIngest` is on and the trace carried an output.
+ * when the trace carried an output and either `otel.evaluateOnIngest` is on
+ * or the sender asked for it (`iris.evaluate` on the resource or the root
+ * span, with an optional `iris.eval_type`).
  * Nothing here re-exports: a trace that arrived by OTLP never goes back
  * out to IRIS_OTEL_ENDPOINT, which may well be the collector that sent it.
  */
@@ -28,6 +30,8 @@ import { decodeExportTraceServiceRequest, OtlpProtobufError } from '../../otel/p
 import { toSteps } from '../../eval/steps.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
+import type { IngestEvalType } from '../../eval/ingest.js';
+import { logTraceInputShape } from '../../tools/log-trace.js';
 
 /**
  * The most traces one OTLP request may store. A collector's default batch is
@@ -121,7 +125,7 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     }
     const stored: Array<Record<string, unknown>> = [];
     let done = 0;
-    for (const { trace, otelTraceId, lacked } of accepted) {
+    for (const { trace, otelTraceId, lacked, evaluate: requested, evalType: requestedType } of accepted) {
       if (++done % YIELD_EVERY === 0) await new Promise((resolve) => setImmediate(resolve));
       const entry: Record<string, unknown> = {
         trace_id: trace.trace_id,
@@ -131,13 +135,25 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
         steps: toSteps({ spans: trace.spans }).length,
         lacked,
       };
-      if (options.evaluateOnIngest && options.evalEngine && trace.output !== undefined) {
+      const wanted = options.evaluateOnIngest || requested;
+      /*
+       * `iris.eval_type` is checked against the same bundles the other doors
+       * accept. An unknown one is not a reason to refuse the batch — the
+       * trace is stored — but it is not silently widened to every bundle
+       * either: the entry says why nothing was scored.
+       */
+      const evalType = requestedType === undefined ? undefined : logTraceInputShape.eval_type.safeParse(requestedType);
+      if (wanted && evalType !== undefined && (!evalType.success || evalType.data === undefined)) {
+        entry.evaluation = null;
+        entry.evaluation_error = `iris.eval_type "${requestedType}" is not one of completeness, relevance, safety, cost, custom, all; the trace was stored and not scored`;
+      } else if (wanted && options.evalEngine && trace.output !== undefined) {
         const { response } = await evaluateStoredTrace(options.evalEngine, storage, tenantId, trace as Trace & { output: string }, {
+          ...(evalType?.success && evalType.data !== undefined ? { evalType: evalType.data as IngestEvalType } : {}),
           dormant: options.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
           rulesChanged: options.customRuleStore?.changesSinceStart(tenantId),
         });
         entry.evaluation = response;
-      } else if (options.evaluateOnIngest && trace.output === undefined) {
+      } else if (wanted && trace.output === undefined) {
         entry.evaluation = null;
       }
       stored.push(entry);

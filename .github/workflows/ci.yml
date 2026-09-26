@@ -560,14 +560,26 @@ jobs:
   # checkout builds — the contract test on every door with a key, the
   # pytest plugin's own tests, and the wheel installed into a fresh
   # environment — on every Python the package claims.
+  #
+  # The same job proves wrap_openai / wrap_anthropic end to end: the official
+  # openai and anthropic packages (from the test extras), wrapped, against the
+  # scripted provider in tests/fixtures/scripted-provider, each call required
+  # to arrive in a real Iris server with its input, output, usage and verdict
+  # (tests/test_wrappers_e2e.py; IRIS_E2E=1 makes a missing prerequisite a
+  # failure, not a skip). One cell runs them on the oldest provider SDKs the
+  # extras allow.
   python-client:
-    name: Python client (${{ matrix.python }})
+    name: Python client (${{ matrix.python }}${{ matrix.sdks == 'oldest' && ', oldest provider SDKs' || '' }})
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck]
     strategy:
       fail-fast: false
       matrix:
         python: ['3.10', '3.11', '3.12', '3.13']
+        sdks: [latest]
+        include:
+          - python: '3.12'
+            sdks: oldest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -594,11 +606,15 @@ jobs:
           curl -fsS http://127.0.0.1:6930/api/v1/health || { cat "$RUNNER_TEMP/iris-py.log"; exit 1; }
       - name: Install the package with its test extras
         run: python -m pip install --quiet --upgrade pip build && python -m pip install --quiet -e "packages/python[test]"
-      - name: The client's tests — the fake server, the plugin, and the contract against the live one
+      - name: The oldest provider SDKs the test extras allow
+        if: matrix.sdks == 'oldest'
+        run: python -m pip install --quiet "openai==1.66.0" "anthropic==0.43.0" && python -m pip show openai anthropic | grep -E '^(Name|Version)'
+      - name: The client's tests — the fake server, the plugin, the contract against the live one, and the wrappers end to end
         env:
           IRIS_URL: http://127.0.0.1:6930
           IRIS_API_KEY: py-contract-key
-        run: python -m pytest packages/python -q
+          IRIS_E2E: '1'
+        run: python -m pytest packages/python -q -rs
       - name: The wheel builds and installs into a fresh environment
         run: |
           python -m build packages/python --outdir "$RUNNER_TEMP/py-dist"
@@ -608,3 +624,49 @@ jobs:
       - name: The server's log, on failure
         if: failure()
         run: cat "$RUNNER_TEMP/iris-py.log" || true
+
+  # The JavaScript SDK (packages/sdk, @iris-eval/sdk): the official openai
+  # and @anthropic-ai/sdk clients, wrapped, against the scripted provider in
+  # tests/fixtures/scripted-provider, and the `ai` package's generateText /
+  # streamText through irisMiddleware — each call required to arrive in a
+  # real Iris server built from this checkout with its input, output, token
+  # usage and verdict. No key; the same result every run. Then the package as
+  # a consumer gets it: packed, installed into an empty project beside
+  # openai, and loaded by both import and require. The package is private and
+  # not yet published: this job is its proof, and it uploads nothing.
+  sdk-js:
+    name: JavaScript SDK (node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/sdk/package-lock.json
+      - run: npm ci
+      - name: The server the tests send to
+        run: npm run build:server
+      - run: cd packages/sdk && npm ci --no-audit --no-fund
+      - run: cd packages/sdk && npm run build && npm run typecheck
+      - name: The wrappers and the middleware, end to end against a real Iris
+        run: cd packages/sdk && npm test
+      - name: Packed, installed into an empty project, loaded by import and by require
+        run: |
+          set -euo pipefail
+          cd packages/sdk
+          npm pack --pack-destination "$RUNNER_TEMP"
+          tarball="$(ls "$RUNNER_TEMP"/iris-eval-sdk-*.tgz)"
+          mkdir -p "$RUNNER_TEMP/consumer" && cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$tarball" openai
+          node --input-type=module -e "import { wrapOpenAI } from '@iris-eval/sdk'; import OpenAI from 'openai'; const c = wrapOpenAI(new OpenAI({ apiKey: 'x' })); if (!(c instanceof OpenAI)) process.exit(1); console.log('import: ok');"
+          node -e "const { wrapOpenAI, IrisRecorder } = require('@iris-eval/sdk'); if (typeof wrapOpenAI !== 'function' || typeof IrisRecorder !== 'function') process.exit(1); console.log('require: ok');"
+          node -e "const deps = require('./node_modules/@iris-eval/sdk/package.json').dependencies ?? {}; if (Object.keys(deps).length) { console.error('runtime dependencies:', deps); process.exit(1); } console.log('no runtime dependencies');"

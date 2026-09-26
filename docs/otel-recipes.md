@@ -14,6 +14,8 @@ Every recipe below is the vendor's own setup lines, read from the page it links 
 | Scoring | `otel.evaluateOnIngest: true` in `config.json` — off by default; an OTLP feed is a firehose you did not necessarily mean to grade |
 | The answer | OTLP's own `ExportTraceServiceResponse` plus an `iris-eval` block naming each stored trace, its agent, its span and step counts, and what the payload lacked |
 
+Calling OpenAI or Anthropic directly, with no framework? The provider wrappers record each call as one GenAI span to this same door and ask for its verdict: `wrap_openai` / `wrap_anthropic` in the Python client, `wrapOpenAI` / `wrapAnthropic` and the Vercel AI SDK's `irisMiddleware` in `@iris-eval/sdk` (not yet published to npm) — [packages/sdk/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/sdk/README.md), [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
+
 The Python OTLP/HTTP exporter is protobuf-only; Iris takes `application/x-protobuf` since 0.16.0, so none of the Python recipes needs a Collector. A Collector still works — `otlphttp` exporter, `endpoint: http://127.0.0.1:6920` — when one is already in the path.
 
 ## The recipes

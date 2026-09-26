@@ -866,6 +866,7 @@
         "mcpServer",
         "published",
         "pythonPackage",
+        "sdkPackage",
         "websitePackage"
       ],
       "properties": {
@@ -909,7 +910,8 @@
             "irisEvalPackage",
             "langchainPackage",
             "mcpServer",
-            "pythonPackage"
+            "pythonPackage",
+            "sdkPackage"
           ],
           "properties": {
             "irisEvalPackage": {
@@ -923,11 +925,24 @@
             },
             "pythonPackage": {
               "type": "boolean"
+            },
+            "sdkPackage": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
         },
         "pythonPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sdkPackage": {
           "oneOf": [
             {
               "$ref": "#/$defs/semver"
