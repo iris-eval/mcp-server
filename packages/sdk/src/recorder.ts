@@ -158,9 +158,16 @@ export function exportRequest(traces: readonly TraceRecord[]): Record<string, un
 
 /* ---------- where Iris is ---------- */
 
+/** A base URL without its trailing slashes; a loop, not a regex, so a long run of slashes costs linear time. */
+export function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url.charCodeAt(end - 1) === 47) end -= 1;
+  return url.slice(0, end);
+}
+
 /** `IRIS_URL`, else the port a running server recorded in runtime.json — the rule the Python client applies. */
 export function findServer(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  if (env.IRIS_URL) return env.IRIS_URL.replace(/\/+$/, '');
+  if (env.IRIS_URL) return withoutTrailingSlashes(env.IRIS_URL);
   try {
     const home = env.IRIS_HOME ? env.IRIS_HOME : join(homedir(), '.iris');
     const runtime = JSON.parse(readFileSync(join(home, 'runtime.json'), 'utf8')) as { dashboardPort?: unknown };
@@ -322,7 +329,8 @@ export class IrisRecorder {
   }
 
   private async send(batch: TraceRecord[]): Promise<void> {
-    const base = (this.options.url ?? findServer())?.replace(/\/+$/, '');
+    const found = this.options.url ?? findServer();
+    const base = found === undefined ? undefined : withoutTrailingSlashes(found);
     if (!base) {
       this.stats.dropped += batch.length;
       this.fail('no-server', new Error('iris: no server to send to. Set IRIS_URL (for example http://127.0.0.1:6920), pass { url }, or start one with `npx -y @iris-eval/mcp-server --dashboard`.'));
