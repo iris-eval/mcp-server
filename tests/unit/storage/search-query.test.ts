@@ -14,6 +14,7 @@ import { buildMatch, describeTerm, matchesTrace, parseSearch, searchableText, to
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
+import { SEARCH_DRIVER } from './fts5-here.js';
 
 const terms = (q: string) => parseSearch(q).terms.map(describeTerm);
 
@@ -180,9 +181,9 @@ describe('search against a real FTS5 index', () => {
   let scanned: SqliteAdapter;
 
   beforeAll(async () => {
-    indexed = new SqliteAdapter(':memory:');
+    indexed = new SqliteAdapter(':memory:', { driver: SEARCH_DRIVER });
     await indexed.initialize();
-    scanned = new SqliteAdapter(':memory:', { fts5: false });
+    scanned = new SqliteAdapter(':memory:', { driver: SEARCH_DRIVER, fts5: false });
     await scanned.initialize();
     await indexed.insertTraces(LOCAL_TENANT, corpus);
     await scanned.insertTraces(LOCAL_TENANT, corpus);

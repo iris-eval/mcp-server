@@ -8,6 +8,7 @@ import type { Server } from 'node:http';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
 import { defaultConfig } from '../../src/config/defaults.js';
+import { SEARCH_DRIVER } from '../unit/storage/fts5-here.js';
 
 const quiet = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 const booted: Array<{ server: Server; storage: SqliteAdapter }> = [];
@@ -21,7 +22,7 @@ afterEach(async () => {
 });
 
 async function boot(): Promise<string> {
-  const storage = new SqliteAdapter(':memory:');
+  const storage = new SqliteAdapter(':memory:', { driver: SEARCH_DRIVER });
   await storage.initialize();
   const config = { ...defaultConfig, dashboard: { ...defaultConfig.dashboard, port: 0 } };
   const server = createDashboardServer(storage, config, quiet).start();

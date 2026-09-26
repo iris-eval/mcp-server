@@ -112,14 +112,15 @@ jobs:
       # (a plain `npm test` run would leave the thresholds unenforced).
       - run: npm run test:coverage
 
-  # Full-text trace search (#7) needs FTS5 with secure-delete (SQLite 3.42+)
+  # Full-text trace search (#7) uses FTS5 with secure-delete (SQLite 3.42+)
   # from whichever driver holds the file: better-sqlite3's bundled SQLite, or
   # Node's built-in node:sqlite. The test matrix above covers Linux on both
   # and macOS on native only, and no job runs the store on Windows. This one
-  # runs the search suites on every OS with both drivers, the built-in at the
-  # oldest Node the package accepts (its bundled SQLite is the oldest a user
-  # can have) and at 24. A cell without FTS5 fails here, by name, rather
-  # than shipping a silent fallback to the scan.
+  # runs the search suites on every OS with both drivers, the built-in at 24
+  # and at the oldest Node the package accepts, 22.13.0, whose SQLite has no
+  # FTS5 (the built-in gains it at 22.16.0). Each cell asserts that promise
+  # for its own driver and Node, and the 22.13.0 cells run the scan fallback
+  # end to end on a real SQLite without FTS5.
   search-index:
     name: search index (${{ matrix.os }}, ${{ matrix.driver }}, Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
