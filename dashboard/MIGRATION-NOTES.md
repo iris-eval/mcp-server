@@ -62,7 +62,7 @@ states was most of the app's flat feeling.
    `shared/Badge.tsx`, `shared/ScoreBadge.tsx`, `shared/Tooltip.tsx`,
    `shared/JsonViewer.tsx`, `shared/CopyableId.tsx`,
    `shared/RateLimitBanner.tsx`, `shared/EmptyState.tsx`,
-   `shared/LoadingSpinner.tsx`, `shared/EvalSparkline.tsx`.
+   `shared/LoadingSpinner.tsx`.
 7. `dashboard/charts/*` — chart internals are mostly fine inline (heavy
    d3 math), but their card shells should adopt `iris-card`.
 8. `audit/AuditPage.tsx`, `command/KeyboardShortcutsOverlay.tsx`,
@@ -72,9 +72,6 @@ states was most of the app's flat feeling.
 
 - `PeriodSelector` buttons still style hover via JS props — works, but
   should move to `.iris-btn--ghost` when touched.
-- The dashboard bundle still ships recharts for one sparkline
-  (`shared/EvalSparkline.tsx`) while every other chart is d3 — replacing
-  it is a dependency change, out of scope for a no-new-deps pass.
 - Persona leftovers flagged in the direction doc (notifications bell,
   Account avatar, rate-limit banner on localhost) are product decisions,
   not styling — left untouched here.
