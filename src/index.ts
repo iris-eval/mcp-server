@@ -419,7 +419,7 @@ async function main(): Promise<void> {
 
   const storage = createStorage(config);
   await storage.initialize();
-  logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path})`);
+  logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path}; driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'})`);
 
   // Load the custom rule store first so it can be shared between the
   // MCP server (for deploy_rule / delete_rule / list_rules tools) and

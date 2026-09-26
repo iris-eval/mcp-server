@@ -216,6 +216,11 @@ export class SqliteAdapter implements IStorageAdapter {
   get driver(): DriverName {
     return this.db.name;
   }
+
+  /** Why that driver holds the file: the default, a deployment's choice, or the fallback and its cause. */
+  get driverReason(): string {
+    return this.db.reason;
+  }
   private db: Driver;
   private readonly dbPath: string;
 

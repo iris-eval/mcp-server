@@ -334,7 +334,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     // One engine for all three evals, exactly as createIrisServer builds it.
     evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
     // Which driver holds the file: the native addon, or the built-in it fell back to.
-    return `${config.storage.path} (driver ${storage.driver})`;
+    return `${config.storage.path} (driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'})`;
   });
 
   await step(SELF_TEST_STEPS.trace, async () => {

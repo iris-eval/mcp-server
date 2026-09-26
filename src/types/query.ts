@@ -257,6 +257,8 @@ export interface DashboardSummary {
 export interface IStorageAdapter {
   /** The driver word the health contract reports. */
   readonly driver: string;
+  /** Why that driver was chosen, for the self-test and the startup log. */
+  readonly driverReason?: string;
   initialize(): Promise<void>;
   close(): Promise<void>;
   /** Applied migrations against the ones this build knows; the health contract's `checks.migrations`. */
