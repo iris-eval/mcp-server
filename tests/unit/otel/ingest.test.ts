@@ -105,7 +105,9 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
     expect(trace.spans?.[0]).not.toHaveProperty('parent_span_id');
     expect(trace.spans?.[1]).toMatchObject({ span_id: 'span-2', parent_span_id: 'span-1', kind: 'TOOL', status_code: 'OK', attributes: { 'otel.span_id': 'a1b2c3d4e5f60718', 'gen_ai.tool.name': 'refund' } });
 
-    // The exact Step[] the mapper reads off the tool span — unchanged code, GenAI keys it already knew.
+    // The exact Step[] the mapper reads off the tool span. `gen_ai.tool.call.arguments` is a JSON
+    // document sent as a string, so the step carries the object it encodes, which is what a tool's
+    // input schema is checked against.
     expect(toSteps({ spans: trace.spans })).toEqual([
       {
         index: 0,
@@ -113,7 +115,7 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
         name: 'refund',
         source: 'span',
         status: 'ok',
-        input: '{"order":42}',
+        input: { order: 42 },
         output: '{"ok":true}',
         startedAt: '2026-09-21T12:00:00.200Z',
         endedAt: '2026-09-21T12:00:00.900Z',

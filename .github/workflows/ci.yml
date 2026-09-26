@@ -567,7 +567,11 @@ jobs:
   # to arrive in a real Iris server with its input, output, usage and verdict
   # (tests/test_wrappers_e2e.py; IRIS_E2E=1 makes a missing prerequisite a
   # failure, not a skip). One cell runs them on the oldest provider SDKs the
-  # extras allow.
+  # extras allow. And the LangChain handler: a real LangGraph app with a
+  # scripted model, each run arriving as one trace with its tool call and a
+  # verdict (tests/test_langchain_e2e.py), and the OpenTelemetry route run for
+  # real, LangSmith's own export of the same graph posted to Iris exactly as
+  # docs/otel-recipes.md says (tests/test_langsmith_otel_e2e.py).
   python-client:
     name: Python client (${{ matrix.python }}${{ matrix.sdks == 'oldest' && ', oldest provider SDKs' || '' }})
     runs-on: ubuntu-latest
@@ -670,3 +674,51 @@ jobs:
           node --input-type=module -e "import { wrapOpenAI } from '@iris-eval/sdk'; import OpenAI from 'openai'; const c = wrapOpenAI(new OpenAI({ apiKey: 'x' })); if (!(c instanceof OpenAI)) process.exit(1); console.log('import: ok');"
           node -e "const { wrapOpenAI, IrisRecorder } = require('@iris-eval/sdk'); if (typeof wrapOpenAI !== 'function' || typeof IrisRecorder !== 'function') process.exit(1); console.log('require: ok');"
           node -e "const deps = require('./node_modules/@iris-eval/sdk/package.json').dependencies ?? {}; if (Object.keys(deps).length) { console.error('runtime dependencies:', deps); process.exit(1); } console.log('no runtime dependencies');"
+
+  # The LangChain.js integration (packages/langchain, @iris-eval/langchain):
+  # a real LangGraph.js app — the tool loop in test/langgraph-app.ts, a
+  # scripted chat model — run with IrisCallbackHandler in its callbacks, each
+  # run required to arrive in a real Iris server built from this commit as
+  # one trace with its tool call, token usage and verdict. Then the package
+  # as a consumer gets it: packed with @iris-eval/sdk, installed into an empty
+  # project beside @langchain/core, loaded by import and by require. Both
+  # packages are private and not yet published: this job is their proof, and
+  # it uploads nothing.
+  langchain-js:
+    name: LangChain.js integration (node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/sdk/package-lock.json
+            packages/langchain/package-lock.json
+      - run: npm ci
+      - name: The server the tests send to
+        run: npm run build:server
+      - name: The recorder it builds on
+        run: cd packages/sdk && npm ci --no-audit --no-fund && npm run build
+      - run: cd packages/langchain && npm ci --no-audit --no-fund
+      - run: cd packages/langchain && npm run build && npm run typecheck
+      - name: A real LangGraph.js app, end to end against a real Iris
+        run: cd packages/langchain && npm test
+      - name: Packed, installed into an empty project, loaded by import and by require
+        run: |
+          set -euo pipefail
+          (cd packages/sdk && npm pack --pack-destination "$RUNNER_TEMP")
+          (cd packages/langchain && npm pack --pack-destination "$RUNNER_TEMP")
+          mkdir -p "$RUNNER_TEMP/consumer" && cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/iris-eval-sdk-*.tgz @langchain/core
+          npm install --no-audit --no-fund --no-save "$RUNNER_TEMP"/iris-eval-langchain-*.tgz
+          node --input-type=module -e "import { IrisCallbackHandler } from '@iris-eval/langchain'; const h = new IrisCallbackHandler(); if (h.name !== 'iris-eval') process.exit(1); console.log('import: ok');"
+          node -e "const { IrisCallbackHandler } = require('@iris-eval/langchain'); if (typeof IrisCallbackHandler !== 'function') process.exit(1); console.log('require: ok');"

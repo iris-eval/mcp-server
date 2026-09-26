@@ -130,6 +130,15 @@ const openai = wrapOpenAI(new OpenAI(), { agentName: 'support-bot' });
 
 Wrap the provider client once and each model call becomes one OpenTelemetry GenAI span sent to the OTLP door, stored with its input, output, token usage and tool calls, and scored: capture that does not depend on the model calling a tool. `wrap_openai` / `wrap_anthropic` in the Python client; `wrapOpenAI`, `wrapAnthropic` and `irisMiddleware` for the Vercel AI SDK in `@iris-eval/sdk`. Both are not yet published (the next `iris-eval` release on PyPI; `@iris-eval/sdk` is built from source until its first npm release). Streams, the SDKs' stream helpers and tool calls are covered, the original client is not changed, and Iris being down never breaks a call — [packages/sdk/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/sdk/README.md), [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md#record-every-openai-and-anthropic-call).
 
+### Score every LangChain and LangGraph run
+
+```python
+from iris_eval.langchain import IrisCallbackHandler
+graph.invoke(inputs, config={"callbacks": [IrisCallbackHandler(agent_name="support-bot")]})
+```
+
+Each top-level run becomes one trace (the run, its model calls, its tool calls and its graph nodes as GenAI spans) with its input, output, tool calls, token usage and a verdict. Python in the client (next release, not yet published to PyPI), JavaScript as `@iris-eval/langchain` (not yet published to npm). Both are proven in CI against a real LangGraph app with a scripted model; LangSmith's own OpenTelemetry export is proven the same way — [docs/otel-recipes.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md#langgraph-via-langsmiths-export).
+
 ### A CI gate, no server needed
 
 ```bash
@@ -407,8 +416,8 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 - [Claude Desktop setup](https://github.com/iris-eval/mcp-server/tree/main/examples/claude-desktop) — MCP config for stdio and HTTP modes
 - [TypeScript — MCP SDK client](https://github.com/iris-eval/mcp-server/blob/main/examples/typescript/basic-usage.ts) — connect and invoke tools
 - [HTTP transport (TS + Python)](https://github.com/iris-eval/mcp-server/tree/main/examples/http-transport) — full client code for REST-style integration
-- [LangChain instrumentation (Python, conceptual)](https://github.com/iris-eval/mcp-server/blob/main/examples/langchain/observe-agent.py) — scaffold showing the shape; needs your agent code to be runnable
-- [CrewAI instrumentation (Python, conceptual)](https://github.com/iris-eval/mcp-server/blob/main/examples/crewai/observe-crew.py) — scaffold; same caveat
+- [A LangGraph agent, scored run by run (Python)](https://github.com/iris-eval/mcp-server/blob/main/examples/langchain/observe-agent.py) — `IrisCallbackHandler` in the graph's callbacks; CI runs the same graph with a scripted model
+- [A CrewAI crew over OpenTelemetry (Python)](https://github.com/iris-eval/mcp-server/blob/main/examples/crewai/observe-crew.py) — the OpenInference instrumentor straight to Iris's OTLP door, the CrewAI recipe as a script
 
 ## Community
 

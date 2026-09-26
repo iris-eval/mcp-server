@@ -99,9 +99,12 @@ def _launch(node: str, home: str, api_key: str) -> tuple[subprocess.Popen[bytes]
         time.sleep(0.15)
 
 
-def start_iris() -> Iterator[Iris]:
+def start_iris(config: dict[str, Any] | None = None) -> Iterator[Iris]:
+    """This checkout's server in a scratch home; ``config`` is written as that home's config.json."""
     node = require_prerequisites()
     home = tempfile.mkdtemp(prefix="iris-py-e2e-")
+    if config is not None:
+        (Path(home) / "config.json").write_text(json.dumps(config), encoding="utf-8")
     api_key = "py-e2e-key"
     # A free port can be taken between choosing it and binding it; a second attempt picks another.
     for attempt in range(3):

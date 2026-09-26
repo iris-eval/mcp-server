@@ -40,9 +40,18 @@ const range =
   adapter.peerDependencies?.['@iris-eval/mcp-server'];
 
 if (!range) {
-  // A missing range is a failure, not a skip — see check-version.sh on why
-  // silently passing over a missing surface turns the gate into a no-op.
-  console.error(`MISSING: ${adapterPath} declares no dependency on @iris-eval/mcp-server`);
+  /*
+   * Since 0.20.0 the adapter does not install the server at all: it sends
+   * OTLP to a running one through @iris-eval/sdk, so no install of it can
+   * resolve to an old server line. What it must name instead is that SDK,
+   * and a manifest naming neither is still a failure, not a skip.
+   */
+  const sdk = adapter.dependencies?.['@iris-eval/sdk'] ?? adapter.peerDependencies?.['@iris-eval/sdk'];
+  if (sdk) {
+    console.log(`  OK: ${adapterPath} depends on @iris-eval/sdk ("${sdk}"), not on the server, so no server range applies`);
+    process.exit(0);
+  }
+  console.error(`MISSING: ${adapterPath} declares no dependency on @iris-eval/mcp-server or @iris-eval/sdk`);
   process.exit(1);
 }
 
