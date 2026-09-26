@@ -225,22 +225,19 @@ jobs:
           cmp iris-eval.mcpb "$RUNNER_TEMP/second.mcpb" || (echo "FATAL: two builds of the bundle from the same inputs differ" && exit 1)
           node scripts/mcpb/verify.mjs --bundle iris-eval.mcpb --tarball "$TARBALL"
           echo "sha256=$(sha256sum iris-eval.mcpb | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      - name: Install the reference MCPB tooling (pinned)
-        run: |
-          mkdir -p "$RUNNER_TEMP/mcpb-lib"
-          cd "$RUNNER_TEMP/mcpb-lib"
-          npm init -y > /dev/null
-          npm install --no-audit --no-fund @anthropic-ai/mcpb@2.1.2
+      # The reference tooling is @anthropic-ai/mcpb, an exact devDependency:
+      # `npm ci` above installed the version and tree package-lock.json locks.
       - name: The reference tooling unpacks it and validates the manifest
         run: |
-          mcpb="$RUNNER_TEMP/mcpb-lib/node_modules/.bin/mcpb"
+          mcpb=./node_modules/.bin/mcpb
+          "$mcpb" --version
           "$mcpb" unpack iris-eval.mcpb "$RUNNER_TEMP/unpacked"
           "$mcpb" validate "$RUNNER_TEMP/unpacked/manifest.json"
           "$mcpb" info iris-eval.mcpb
       - name: It starts from the host's launch config and lists every tool
         env:
           IRIS_MCPB_BUNDLE: iris-eval.mcpb
-          IRIS_MCPB_LIB: ${{ runner.temp }}/mcpb-lib
+          IRIS_MCPB_LIB: ${{ github.workspace }}
         run: npx vitest run --config tests/mcpb/vitest.config.ts
       - name: Upload the bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
