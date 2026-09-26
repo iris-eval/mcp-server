@@ -91,6 +91,7 @@ export async function evaluateStoredTrace(
     toolCalls: trace.tool_calls,
     spans: trace.spans,
     tools: trace.tools,
+    ...(trace.metadata ? { metadata: trace.metadata } : {}),
   };
   const omitted = options.evalType === undefined;
   const evalType = options.evalType ?? DEFAULT_EVAL_TYPE;

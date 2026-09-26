@@ -21,6 +21,7 @@ import { createStorage } from '../storage/index.js';
 import { createCustomRuleStore } from '../custom-rule-store.js';
 import { createCustomRule } from '../eval/rules/custom.js';
 import { EvalEngine } from '../eval/engine.js';
+import { relevanceJudgeFromEnv } from '../eval/llm-judge/relevance-judge.js';
 import { evaluateStoredTrace, type IngestEvalType } from '../eval/ingest.js';
 import { dormantRulesFrom } from '../eval/dormant.js';
 import { ingestTraceSchema } from '../dashboard/validation.js';
@@ -129,6 +130,8 @@ export async function runIngest(o: IngestOptions): Promise<number> {
   try {
     const customRuleStore = createCustomRuleStore();
     const engine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
+    // The relevance judge, when the deployment named one: the same engine the server boots, so a trace scores the same through every door.
+    engine.setRelevanceJudge(relevanceJudgeFromEnv());
     for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
       engine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
     }

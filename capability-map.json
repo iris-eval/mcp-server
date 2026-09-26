@@ -484,7 +484,7 @@
       "question": "Q4",
       "subject": "S2",
       "status": "has",
-      "summary": "Lexical, three rules: the share of the input's content terms the output carries (keyword_overlap) and continuity of topic across sentences (topic_consistency) are measurements that score; answers_the_ask is the pair as a policy — when both fail at their thresholds, and on a bare refusal or the ask handed back, the output answers something else. At the shipped thresholds it advises, because comparing words fails correct paraphrases; it gates on policy_gate once the deployment sets either measurement's threshold. It skips whenever either measurement skips and on a one-term ask, so a one-word right answer is never a fire. Measured on 45 reader-labelled cases. A keyed helpfulness judge template exists and is unmeasured.",
+      "summary": "Lexical by default, semantic when the deployment sets a relevance judge. keyword_overlap (the share of the input's content terms the output carries) and topic_consistency (continuity of topic across sentences) are measurements that score; answers_the_ask is the question itself. Without a judge it reads the pair lexically and advises at the shipped thresholds, because comparing words fails correct paraphrases: it fires when both measurements fail and on a bare refusal or the ask handed back, and gates once the deployment sets either measurement's threshold. With IRIS_RELEVANCE_JUDGE_MODEL and a provider key, the relevance judge template decides and the rule gates: an off-topic answer fails on policy_gate, a paraphrase, a one-word answer and a one-term ask are judged rather than skipped, and a judge that cannot answer is named while the lexical reading advises. The lexical rule is measured on 45 reader-labelled cases; the judged rule and the relevance template are measured by the keyed proof:judge run and are pending until one is published.",
       "evidence": [
         {
           "kind": "rule",
@@ -505,6 +505,10 @@
         {
           "kind": "template",
           "name": "helpfulness"
+        },
+        {
+          "kind": "template",
+          "name": "relevance"
         }
       ],
       "needs": [

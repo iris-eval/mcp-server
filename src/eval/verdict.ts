@@ -92,20 +92,28 @@ export function deriveCriticalSkipped(ruleResults: readonly EvalRuleResult[]): s
 }
 
 /** sha256 over the rules that ran — name, definition version, kind, effective criticality, weight — so two evaluations under the same ruleset hash the same. */
-export function rulesetHash(rules: readonly EvalRule[], resolve: (rule: EvalRule) => EffectiveCriticality): string {
+export function rulesetHash(rules: readonly EvalRule[], resolve: (rule: EvalRule) => EffectiveCriticality, judge?: string): string {
   const rows = rules
     .map((r) => [r.name, r.version ?? 0, r.kind ?? '', resolve(r).critical ? 1 : 0, r.weight] as const)
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-  return createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0, 16);
+  /*
+   * A relevance judge changes what answers_the_ask decides (#649), so a
+   * ruleset with one is a different ruleset. Appended only when present:
+   * every hash computed without a judge stays exactly what it was.
+   */
+  const payload = judge === undefined ? rows : [...rows, ['judge', judge]];
+  return createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 16);
 }
 
 /** sha256 over the evaluation configuration that shapes a verdict. */
-export function configHash(config: { threshold: number; ruleThresholds?: Record<string, unknown>; criticalRules?: readonly string[]; nonCriticalRules?: readonly string[] }): string {
+export function configHash(config: { threshold: number; ruleThresholds?: Record<string, unknown>; criticalRules?: readonly string[]; nonCriticalRules?: readonly string[]; judge?: string }): string {
   const stable = JSON.stringify({
     threshold: config.threshold,
     ruleThresholds: Object.fromEntries(Object.entries(config.ruleThresholds ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))),
     criticalRules: [...(config.criticalRules ?? [])].sort(),
     nonCriticalRules: [...(config.nonCriticalRules ?? [])].sort(),
+    // The relevance judge in force, when there is one; absent keeps every judge-less hash as it was.
+    ...(config.judge !== undefined ? { judge: config.judge } : {}),
   });
   return createHash('sha256').update(stable).digest('hex').slice(0, 16);
 }

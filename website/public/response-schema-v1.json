@@ -885,6 +885,30 @@
                     "value"
                   ],
                   "additionalProperties": {}
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "sample"
+                    },
+                    "score": {
+                      "type": "number"
+                    },
+                    "selfReportedPass": {
+                      "type": "boolean"
+                    },
+                    "rationaleHash": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "score",
+                    "rationaleHash"
+                  ],
+                  "additionalProperties": {}
                 }
               ]
             }
@@ -906,6 +930,94 @@
               "stat",
               "unit",
               "value"
+            ],
+            "additionalProperties": {}
+          },
+          "judge": {
+            "description": "answers_the_ask only, when IRIS_RELEVANCE_JUDGE_MODEL installed a relevance judge: what it scored against which pass line, why, and what it cost; error when it did not answer and the rule fell back to its lexical reading",
+            "type": "object",
+            "properties": {
+              "template": {
+                "type": "string",
+                "const": "relevance"
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "anthropic",
+                      "openai"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "score": {
+                "type": "number"
+              },
+              "passThreshold": {
+                "type": "number"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "selfReportedPass": {
+                "type": "boolean"
+              },
+              "disagreement": {
+                "type": "boolean"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "dimensions": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "costUsd": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "inputTokens": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "latencyMs": {
+                "type": "number"
+              },
+              "agentModel": {
+                "type": "string"
+              },
+              "sameFamily": {
+                "type": "boolean"
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "template",
+              "provider",
+              "model",
+              "costUsd",
+              "inputTokens",
+              "outputTokens",
+              "latencyMs"
             ],
             "additionalProperties": {}
           }

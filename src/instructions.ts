@@ -13,6 +13,7 @@
  */
 import type { JudgeState } from './judge-enablement.js';
 import { JUDGE_KEY_VARS, judgeStateLine } from './judge-enablement.js';
+import type { RelevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 
 /*
  * 2,600 until 0.13.0. The WHEN paragraph below is the highest-leverage text
@@ -27,6 +28,8 @@ export interface InstructionsInput {
   threshold: number;
   critical: readonly string[];
   judge: JudgeState;
+  /** The relevance judge answers_the_ask gates on; said only when one is installed, since without it nothing about the call changes. */
+  relevanceJudge?: RelevanceJudgeState;
 }
 
 function prose(items: readonly string[]): string {
@@ -61,7 +64,13 @@ export function buildInstructions(i: InstructionsInput): string {
       'interpretations[] says why a rule that failed did not decide and which setting would change that, and names any question not judged with the input that would let it be. coverage says which questions were judged. A critical rule that could not judge is named in critical_skipped: treat that as UNKNOWN, not clean. ' +
       'score is a quality gradient over the rules that ran; never read it alone as a safety signal.',
 
-    `The LLM judge (evaluate_with_llm_judge) and the citation verifier (verify_citations) are ${judgeStateLine(i.judge)}. ${judgeHowTo}`,
+    `The LLM judge (evaluate_with_llm_judge) and the citation verifier (verify_citations) are ${judgeStateLine(i.judge)}. ${judgeHowTo}` +
+      // Said only with a key present: without one the judge cannot run at all, and the sentence above already says how to enable it.
+      (i.judge.enabled && i.relevanceJudge?.configured
+        ? i.relevanceJudge.ready
+          ? ` answers_the_ask asks the relevance judge (${i.relevanceJudge.model}) whenever input is present, and gates on it.`
+          : ' A relevance judge is configured and cannot be called; see iris://capabilities.'
+        : ''),
 
     'Resources: iris://capabilities (what this server can judge, each rule\'s needs, judge state, limits), iris://proof (precision and recall per rule, with intervals), iris://traces/{trace_id}, iris://evaluations/{id}, iris://dashboard/summary, iris://audit. Responses link what they created.',
 

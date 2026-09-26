@@ -105,6 +105,13 @@
           "name": "IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL"
         },
         {
+          "description": "A priced judge model; answers_the_ask then asks it on every evaluation with input and gates on its verdict (off by default)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_RELEVANCE_JUDGE_MODEL"
+        },
+        {
           "description": "Let verify_citations fetch URLs (off by default)",
           "isRequired": false,
           "format": "boolean",

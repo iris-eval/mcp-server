@@ -128,9 +128,18 @@ export function stampRuleResult(
 ): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty' | 'origin'> {
   const present = inputsPresent(context);
   const skipClass = skipClassOf(raw);
-  const uncertainty = uncertaintyOf(rule, raw, options);
+  /*
+   * A result an LLM judge decided (answers_the_ask with a relevance judge,
+   * #649) is a judgment, whatever the rule declares for its lexical
+   * reading: the claim is the model's, so the kind and the uncertainty say
+   * so. A judge that did not answer leaves the rule's own kind in place —
+   * the lexical reading is what spoke.
+   */
+  const judged = raw.judge !== undefined && raw.judge.error === undefined && !raw.skipped;
+  const kind = judged ? 'judgment' : rule.kind;
+  const uncertainty = uncertaintyOf(judged ? { ...rule, kind: 'judgment' } : rule, raw, options);
   return {
-    ...(rule.kind !== undefined ? { kind: rule.kind } : {}),
+    ...(kind !== undefined ? { kind } : {}),
     ...(rule.question !== undefined ? { question: rule.question } : {}),
     ...(rule.classes !== undefined ? { classes: [...rule.classes] } : {}),
     ...(rule.version !== undefined ? { ruleVersion: rule.version } : {}),

@@ -50,6 +50,8 @@ export const evidenceSchema = z.discriminatedUnion('type', [
   z.looseObject({ type: z.literal('toolCall'), index: z.number().int().nonnegative(), toolName: z.string(), label: z.string() }),
   z.looseObject({ type: z.literal('citation'), url: z.string(), status: z.enum(['resolved', 'dead', 'unverifiable', 'supported', 'unsupported']) }),
   z.looseObject({ type: z.literal('count'), stat: z.string(), unit: z.string(), value: z.number(), threshold: z.number().optional(), thresholdSource: z.enum(['default', 'config', 'call', 'rule']).optional() }),
+  // A judge's sample: what a judge-decided rule (answers_the_ask with a relevance judge) and a stored judge evaluation carry.
+  z.looseObject({ type: z.literal('sample'), score: z.number(), selfReportedPass: z.boolean().optional(), rationaleHash: z.string() }),
 ]);
 export const measuredValueSchema = z.looseObject({ stat: z.string(), unit: z.string(), value: z.number() });
 
@@ -82,6 +84,28 @@ export const evalRuleResultSchema = z.looseObject({
     uncertainty: uncertaintySchema.optional(),
     evidence: z.array(evidenceSchema).optional(),
     value: measuredValueSchema.optional(),
+    judge: z
+      .looseObject({
+        template: z.literal('relevance'),
+        provider: z.enum(['anthropic', 'openai']).nullable(),
+        model: z.string(),
+        score: z.number().optional(),
+        passThreshold: z.number().optional(),
+        passed: z.boolean().optional(),
+        selfReportedPass: z.boolean().optional(),
+        disagreement: z.boolean().optional(),
+        rationale: z.string().optional(),
+        dimensions: z.record(z.string(), z.number()).optional(),
+        costUsd: z.number().nullable(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        latencyMs: z.number(),
+        agentModel: z.string().optional(),
+        sameFamily: z.boolean().optional(),
+        error: z.string().optional(),
+      })
+      .optional()
+      .describe('answers_the_ask only, when IRIS_RELEVANCE_JUDGE_MODEL installed a relevance judge: what it scored against which pass line, why, and what it cost; error when it did not answer and the rule fell back to its lexical reading'),
   });
 
 export const evalCategoryResultSchema = z.looseObject({

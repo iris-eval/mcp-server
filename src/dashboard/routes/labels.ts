@@ -214,6 +214,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       toolCalls: trace.tool_calls,
       spans,
       tools: trace.tools,
+      ...(trace.metadata ? { metadata: trace.metadata } : {}),
     };
     const result = before.eval_type === 'all' ? await engine.evaluateAll(context) : await engine.evaluate(before.eval_type as EvalType, context);
     result.trace_id = trace.trace_id;

@@ -12,6 +12,7 @@ import { createCustomRuleStore } from './custom-rule-store.js';
 import { buildInstructions } from './instructions.js';
 import { buildCapabilities, type Capabilities } from './capabilities.js';
 import { judgeState } from './judge-enablement.js';
+import { relevanceJudgeFromEnv, relevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -35,6 +36,13 @@ export function createIrisServer(
   options?: IrisServerOptions,
 ): IrisServer {
   const evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
+  /*
+   * The relevance judge answers_the_ask gates on, when the deployment named
+   * its model (IRIS_RELEVANCE_JUDGE_MODEL). A key alone never installs it:
+   * the key enables evaluate_with_llm_judge, which a caller invokes and pays
+   * for per call, and must not start billing every evaluation on upgrade.
+   */
+  evalEngine.setRelevanceJudge(relevanceJudgeFromEnv());
   // Caller can inject a shared rule store (e.g. index.ts passes the
   // same instance the HTTP dashboard uses, so a rule deployed via MCP
   // is immediately visible in the dashboard without a restart). If
@@ -59,6 +67,7 @@ export function createIrisServer(
     threshold: config.eval.defaultThreshold,
     critical: roster.filter((r) => r.critical).map((r) => r.name),
     judge: judgeState(),
+    relevanceJudge: relevanceJudgeState(evalEngine.relevanceJudgeInForce()),
   });
 
   const mcpServer = new McpServer(

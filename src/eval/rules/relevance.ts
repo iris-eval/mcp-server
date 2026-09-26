@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js';
 import { sentencesOf } from '../text/sentences.js';
 
@@ -197,11 +198,10 @@ export const topicConsistency: EvalRule = {
       score: Math.min(ratio * 1.5, 1),
       value: { stat: 'connected_sentences', unit: 'ratio', value: ratio },
       /*
-       * Where the threshold came from, never its value. The shipped config
+       * Where the threshold came from, never its value: the shipped config
        * carries topic_consistency 0.33, not this file's 1/3, so a value test
-       * read every server's default as a deployment's setting, and
-       * answers_the_ask (which reads this stamp) gated at the shipped config
-       * from 0.18.0 while its notes said it advised.
+       * stamped every server's default "config" and answers_the_ask gated at
+       * the shipped defaults while every surface said it advised (#649).
        */
       evidence: [{ type: 'count', stat: 'connected_sentences', unit: 'ratio', value: ratio, threshold, thresholdSource: thresholdSourceOf(context, 'topic_consistency') }],
       message: `Topic consistency: ${connected}/${sentences} content sentences connect to the input's topic (${(ratio * 100).toFixed(0)}%)`,
@@ -256,10 +256,51 @@ function isEcho(output: string, ask: string): boolean {
   return out.every((t) => askTerms.has(t)) && output.trim().length <= ask.trim().length * 1.2;
 }
 
+/*
+ * With a relevance judge installed (#649), the judge decides. The engine
+ * asks it once, before any rule runs, whenever the call carries an input and
+ * a non-empty output, and hands its answer over as context.relevanceJudgment;
+ * this rule stays synchronous and never reaches the network. The judge
+ * reads meaning, so the lexical rule's limits go with it: a paraphrase that
+ * shares none of the ask's words, a one-term ask and an output too brief to
+ * measure are all judged rather than skipped. The result carries the judge's
+ * sample as its evidence and no shipped-threshold count, so the composer
+ * reads it as a policy the deployment configured and it GATES — the
+ * deployment chose the judge by naming its model. A judge that could not
+ * answer (misconfigured, over the cost cap, a provider error) is recorded on
+ * the result with its reason, and the rule falls back to the lexical reading
+ * below, which advises at the shipped thresholds; the composer names the
+ * fallback in interpretations so it is never read as the judge's verdict.
+ */
+function judgedByTheJudge(context: EvalContext, lexical: string): EvalRuleResult | null {
+  const j = context.relevanceJudgment;
+  if (!j || j.error !== undefined || j.score === undefined || j.passed === undefined) return null;
+  const by = `the relevance judge (${j.provider}/${j.model})`;
+  const line = `${j.score.toFixed(2)} against its ${(j.passThreshold ?? 0).toFixed(2)} pass line`;
+  const why = j.rationale ? ` ${j.rationale}` : '';
+  return {
+    ruleName: 'answers_the_ask',
+    passed: j.passed,
+    score: j.score,
+    evidence: [
+      {
+        type: 'sample',
+        score: j.score,
+        ...(j.selfReportedPass !== undefined ? { selfReportedPass: j.selfReportedPass } : {}),
+        rationaleHash: createHash('sha256').update(j.rationale ?? '').digest('hex').slice(0, 16),
+      },
+    ],
+    judge: j,
+    message: j.passed
+      ? `The output addresses the ask, says ${by}: ${line}.${why} (Lexically, ${lexical}.)`
+      : `The output answers something else, says ${by}: ${line}.${why} (Lexically, ${lexical}.)`,
+  };
+}
+
 export const answersTheAsk: EvalRule = {
   name: 'answers_the_ask',
   description:
-    'The output answers THIS ask, not another: fails when the input is present and BOTH relevance measurements fail at their thresholds — fewer than 35% of the ask\'s content terms appear in the output (keyword_overlap) AND fewer than a third of the output\'s sentences connect to the ask (topic_consistency). One measurement alone never fires it. A bare refusal or the ask handed back fires it directly. It ADVISES at the shipped thresholds, because comparing words fails correct paraphrases, and GATES once the deployment sets a threshold for either measurement. Skips whenever either measurement skips (no input, an output too brief to measure) and on an ask with fewer than two content terms, so a one-word right answer is never a fire. Lexical: a right answer that reuses none of the ask\'s words reads as off task — the published precision counts those',
+    'The output answers THIS ask, not another. With a relevance judge configured (IRIS_RELEVANCE_JUDGE_MODEL and a provider key), the LLM judge decides, reading meaning rather than words, and the rule GATES: an off-topic answer fails the verdict. Without one it reads the ask lexically and ADVISES at the shipped thresholds: it fires when BOTH relevance measurements fail — fewer than 35% of the ask\'s content terms appear in the output (keyword_overlap) and fewer than a third of its sentences connect to the ask (topic_consistency) — and on a bare refusal or the ask handed back; set either measurement\'s threshold to make the lexical reading gate. Lexically it skips without an input, on an output too brief to measure and on a one-term ask, and a right answer that reuses none of the ask\'s words reads as off task',
   evalType: 'relevance',
   weight: 1,
   kind: 'policy',
@@ -271,50 +312,59 @@ export const answersTheAsk: EvalRule = {
   evaluate(context: EvalContext): EvalRuleResult {
     const ko = keywordOverlap.evaluate(context);
     const tc = topicConsistency.evaluate(context);
-    const askTerms = new Set(contentTerms(context.input ?? '')).size;
-    /*
-     * The threshold behind this rule is its two measurements' thresholds.
-     * At the shipped defaults they are numbers WE chose, so the rule
-     * advises; once a deployment sets either, the rule gates on the
-     * deployment's word (2026-09-23 review: at the defaults it
-     * failed 6 of 10 correct paraphrased answers and passed every refusal).
-     */
-    const configured = [ko, tc].some((r) => (r.evidence ?? []).some((e) => e.type === 'count' && e.thresholdSource === 'config'));
-    const thresholdSource = configured ? 'config' : 'default';
-    const ask = context.input ?? '';
-    if (ask.trim().length > 0 && askTerms >= MIN_ASK_TERMS_TO_JUDGE) {
-      // A decline that goes on to answer ("I can't see your order, but the policy gives you 30 days…")
-      // shares the ask's terms and is judged on its content, not as a refusal.
-      const refusal = isRefusal(context.output) && !(ko.passed && !ko.skipped);
-      const echo = !refusal && isEcho(context.output, ask);
-      if (refusal || echo) {
-        return {
-          ruleName: 'answers_the_ask',
-          passed: false,
-          score: 0,
-          evidence: [{ type: 'count', stat: refusal ? 'refusal' : 'echo_of_ask', unit: 'outputs', value: 1, threshold: 1, thresholdSource }],
-          message: refusal ? 'The output declines instead of answering the ask' : 'The output hands the ask back instead of answering it',
-        };
-      }
-    }
-    const skipped = ko.skipped ? ko : tc.skipped ? tc : askTerms < MIN_ASK_TERMS_TO_JUDGE ? { skipReason: `the ask has ${askTerms} content term${askTerms === 1 ? '' : 's'}; ${MIN_ASK_TERMS_TO_JUDGE} are needed to say an output answers something else` } : null;
-    if (skipped) {
-      // not_applicable, never "asked and could not answer": without an ask, or an output too brief to measure, the question does not apply — a critical rule's skip must not turn every output-only evaluation unknown.
-      return { ruleName: 'answers_the_ask', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: skipped.skipReason ?? 'a relevance measurement skipped', message: 'Not judged: a relevance measurement skipped' };
-    }
-    const fired = !ko.passed && !tc.passed;
     const pct = (r: EvalRuleResult) => (r.value ? `${(r.value.value * 100).toFixed(0)}%` : '?');
-    return {
-      ruleName: 'answers_the_ask',
-      passed: !fired,
-      score: fired ? 0 : 1,
-      // Its own count, with no guess in it: how many of the two measurements failed, against the two the definition requires.
-      evidence: [{ type: 'count', stat: 'relevance_measurements_failed', unit: 'measurements', value: Number(!ko.passed) + Number(!tc.passed), threshold: 2, thresholdSource }],
-      message: fired
-        ? `The output answers something else: ${pct(ko)} of the ask's terms appear in it and ${pct(tc)} of its sentences connect to the ask — both below threshold`
-        : `${pct(ko)} of the ask's terms appear in the output and ${pct(tc)} of its sentences connect to it; at least one measurement passes`,
-    };
+    const judged = judgedByTheJudge(context, `${pct(ko)} of the ask's terms appear in the output and ${pct(tc)} of its sentences connect to it`);
+    if (judged) return judged;
+    // The judge's failed attempt rides on whichever lexical result follows, so the reader sees both.
+    const attempt = context.relevanceJudgment ? { judge: context.relevanceJudgment } : {};
+    const lexical = answersTheAskLexically(context, ko, tc, pct);
+    return { ...lexical, ...attempt };
   },
 };
+
+function answersTheAskLexically(context: EvalContext, ko: EvalRuleResult, tc: EvalRuleResult, pct: (r: EvalRuleResult) => string): EvalRuleResult {
+  const askTerms = new Set(contentTerms(context.input ?? '')).size;
+  /*
+   * The threshold behind this rule is its two measurements' thresholds.
+   * At the shipped defaults they are numbers WE chose, so the rule
+   * advises; once a deployment sets either, the rule gates on the
+   * deployment's word (2026-09-23 review: at the defaults it
+   * failed 6 of 10 correct paraphrased answers and passed every refusal).
+   */
+  const configured = [ko, tc].some((r) => (r.evidence ?? []).some((e) => e.type === 'count' && e.thresholdSource === 'config'));
+  const thresholdSource = configured ? 'config' : 'default';
+  const ask = context.input ?? '';
+  if (ask.trim().length > 0 && askTerms >= MIN_ASK_TERMS_TO_JUDGE) {
+    // A decline that goes on to answer ("I can't see your order, but the policy gives you 30 days…")
+    // shares the ask's terms and is judged on its content, not as a refusal.
+    const refusal = isRefusal(context.output) && !(ko.passed && !ko.skipped);
+    const echo = !refusal && isEcho(context.output, ask);
+    if (refusal || echo) {
+      return {
+        ruleName: 'answers_the_ask',
+        passed: false,
+        score: 0,
+        evidence: [{ type: 'count', stat: refusal ? 'refusal' : 'echo_of_ask', unit: 'outputs', value: 1, threshold: 1, thresholdSource }],
+        message: refusal ? 'The output declines instead of answering the ask' : 'The output hands the ask back instead of answering it',
+      };
+    }
+  }
+  const skipped = ko.skipped ? ko : tc.skipped ? tc : askTerms < MIN_ASK_TERMS_TO_JUDGE ? { skipReason: `the ask has ${askTerms} content term${askTerms === 1 ? '' : 's'}; ${MIN_ASK_TERMS_TO_JUDGE} are needed to say an output answers something else` } : null;
+  if (skipped) {
+    // not_applicable, never "asked and could not answer": without an ask, or an output too brief to measure, the question does not apply — a critical rule's skip must not turn every output-only evaluation unknown.
+    return { ruleName: 'answers_the_ask', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: skipped.skipReason ?? 'a relevance measurement skipped', message: 'Not judged: a relevance measurement skipped' };
+  }
+  const fired = !ko.passed && !tc.passed;
+  return {
+    ruleName: 'answers_the_ask',
+    passed: !fired,
+    score: fired ? 0 : 1,
+    // Its own count, with no guess in it: how many of the two measurements failed, against the two the definition requires.
+    evidence: [{ type: 'count', stat: 'relevance_measurements_failed', unit: 'measurements', value: Number(!ko.passed) + Number(!tc.passed), threshold: 2, thresholdSource }],
+    message: fired
+      ? `The output answers something else: ${pct(ko)} of the ask's terms appear in it and ${pct(tc)} of its sentences connect to the ask — both below threshold`
+      : `${pct(ko)} of the ask's terms appear in the output and ${pct(tc)} of its sentences connect to it; at least one measurement passes`,
+  };
+}
 
 export const relevanceRules: EvalRule[] = [keywordOverlap, topicConsistency, toolChoice, answersTheAsk];

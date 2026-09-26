@@ -56,6 +56,7 @@ await callTool('evaluate_with_llm_judge', {
 3. Restart the MCP session. A running process never sees a variable set after it started.
 4. Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. A key exported in your shell is not passed to the process your client spawns unless its config lists it. On a machine, `npx @iris-eval/mcp-server --self-test` prints the judge line for that shell, and GET /api/v1/health reports judge.enabled on a running dashboard.
 5. Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it.
+6. Optional: set IRIS_RELEVANCE_JUDGE_MODEL to a priced model id (claude-haiku-4-5, for example) to have answers_the_ask ask the judge whether each answer addresses its ask, and fail an off-topic one. That is one judge call per evaluation that carries an input, on your key and under the cap above; the key alone never turns it on.
 
 ### 2. Optional: set a stricter cost cap
 
@@ -79,6 +80,8 @@ Each template is a (system, user) prompt pair tuned to elicit a single JSON verd
 | `safety`        | Harm-potential beyond heuristic PII/injection detection        | `output`                                                                | 0.90           |
 | `correctness`   | Compare against a known-correct reference answer (labeled eval) | `output`, `expected`                                                    | 0.80           |
 | `faithfulness`  | RAG grounding — does the output invent beyond the sources?     | `output`, `source_material`                                             | 0.80           |
+| `task_completed` | Did the task actually complete, or only read as if it had?    | `output`, `input`; the trajectory as `source_material` when you have it | 0.70           |
+| `relevance`     | Does the output address THIS request, not another subject or question? | `output`, `input`                                              | 0.60           |
 
 Dimensions returned (per template):
 
@@ -87,6 +90,45 @@ Dimensions returned (per template):
 - `safety` → `harm_potential`, `pii_leak`, `injection_compliance` (higher = safer)
 - `correctness` → `semantic_match`, `missing_facts`, `added_errors`
 - `faithfulness` → `source_grounding`, `invented_specifics`, `summarization_quality`
+- `task_completed` → `parts_done`, `claims_supported`, `scope_kept`
+- `relevance` → `addresses_request`, `on_subject`, `specific_to_request`
+
+---
+
+## The relevance judge behind `answers_the_ask`
+
+`answers_the_ask` asks whether an output answers the ask it was given. Without a judge it compares words: it fires when both relevance measurements fail (fewer than 35% of the ask's content terms in the output, fewer than a third of its sentences connected to the ask), and on a bare refusal or the ask handed back. Comparing words fails correct answers that paraphrase, so at the shipped thresholds that reading **advises**: it is reported, the verdict's `interpretations` says why it did not decide, and an off-topic answer passes.
+
+Set `IRIS_RELEVANCE_JUDGE_MODEL` to a priced model id, with that provider's key, and the rule asks the `relevance` template instead and **gates** on its verdict: an off-topic answer fails with `verdict.basis: "policy_gate"` and `verdict.by: ["answers_the_ask"]`.
+
+```json
+"env": {
+  "IRIS_ANTHROPIC_API_KEY": "sk-ant-...",
+  "IRIS_RELEVANCE_JUDGE_MODEL": "claude-haiku-4-5"
+}
+```
+
+- **What it costs.** One judge call for each evaluation that runs `answers_the_ask` on a call carrying an input: `evaluate_output`, `log_trace` with `evaluate: true`, the HTTP ingest route, OTLP traces sent with `iris.evaluate: true`, `iris-eval ingest` and `evaluate_runs` alike, so every door gives a trace the same verdict. Each call is capped by `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` and refused before any spend if its worst case exceeds it. On the 36 cases in `proof/judge/cases/relevance.json`, the worst case of one judgment (two attempts, the full output cap billed) is $0.0059 on `claude-haiku-4-5-20251001` and $0.0008 on `gpt-4o-mini`, measured by `tests/unit/proof/relevance-judge-proof.test.ts`. The evaluation's spend is on the rule result as `judge.costUsd`.
+- **A key alone never turns it on.** The key enables `evaluate_with_llm_judge`, which you call and pay for per call. The model has to be named because cost varies a hundredfold across models, and so that a key set for the judge tool does not start billing every evaluation.
+- **What the result carries.** `rule_results[answers_the_ask]` has `kind: "judgment"`, `role: "gate"`, the judge's `sample` evidence, and a `judge` object: `provider`, `model`, `score`, `passThreshold` (0.60), `passed`, `rationale`, `dimensions`, `costUsd`, tokens and latency. The verdict is the score against the pass line; the model's own `passed` is kept as `selfReportedPass` and never obeyed.
+- **What it judges that the words cannot.** A paraphrase that shares none of the ask's words, a one-word answer, and an ask with a single content term are all judged, not skipped. A wrong answer to the question asked is relevant; correctness is another template's question.
+- **When the judge cannot answer.** An unpriced model, a missing key, a cost-cap refusal or a provider error is recorded as `judge.error`. The rule then falls back to the lexical reading, which advises, and `interpretations` carries a warning naming the reason. A deployment that believes the judge is on never reads a lexical verdict as the judge's.
+- **Same family.** When the linked trace records the agent's model (`metadata.model` or a span's `gen_ai.request.model`) and the judge shares its family, the verdict stands and `interpretations` carries the same-family warning `evaluate_with_llm_judge` returns.
+- **Where to check.** `iris://capabilities` → `judge.relevance` says whether a relevance judge is configured and whether it can be called. `--self-test` prints the same line.
+- **Replays.** A judge changes the ruleset hash, so `evaluate_runs` re-scores traces that were judged without it.
+- **Embedders.** The engine calls no model unless you install one: `engine.setRelevanceJudge(createRelevanceJudge({ model, apiKey }))`, both exported from `@iris-eval/mcp-server/engine`.
+
+How accurate the judge is, and how the judged rule compares with the lexical one on the rule's own 45 labelled cases, is measured by `npm run proof:judge` (see [the measurement](#measuring-the-relevance-judge) below). Until a keyed run is published, those numbers are pending.
+
+### Measuring the relevance judge
+
+`npm run proof:judge` measures the `relevance` template the way it measures every template: 36 labelled cases in `proof/judge/cases/relevance.json` (18 that must pass, 9 of them shaped to fool a word-matching reader: a paraphrase, a one-word answer, a query, a hedge, a clarifying question, a refusal that engages the request, a wrong answer to the right question; 12 violations; 6 injection twins that add an instruction to the judge), with precision, recall, Wilson intervals and the score drift the injections cause. In the same run it measures `answers_the_ask` with the judge installed, through the engine a deployment runs, on the rule's corpus family `proof/corpus/answers_the_ask.json`, beside the lexical rule on the same cases. It then runs the composite corpus through the shipped engine with the judge installed, and reports how often the whole verdict is right about shipping, the false and missed blocks, and which verdicts the judge moved, beside the same corpus without it (`proof/COMPOSITE.md`). Both need a key; the committed `proof/judge-results.json` says `pending` until a keyed run replaces it, and https://iris-eval.com/proof shows the same status.
+
+What is measured without a key, on every CI run:
+
+- the case file's rubric is whole lines of the shipped system prompt, so the labels were judged against the bar the judge is given;
+- the worst-case cost above;
+- the lexical `answers_the_ask` on the 36 relevance cases, the gap the judge exists to close: it fails 10 of the 18 cases that should fail and misses 8: two answers to a neighbouring question on the same subject, a drift, a keyword match on the wrong subject, a wrong ticket, two injection twins of those, and a placeholder too brief to measure. Of the 18 that should pass it wrongly fails 2 (a paraphrase and a hedged estimate) and cannot measure 4, which are too brief.
 
 ---
 
@@ -176,7 +218,7 @@ They're stored under `eval_type='custom'` because LLM-judge spans all four heuri
 ## Design rationale
 
 **Why a separate tool, not a flag on `evaluate_output`?**
-Different operational shape. `evaluate_output` is in-process, free and deterministic. `evaluate_with_llm_judge` waits on a provider round-trip, costs money, and can fail for reasons `evaluate_output` never can (auth, rate limit, upstream outage). MCP annotations reflect this — `evaluate_output.readOnlyHint=false, openWorldHint=false` vs `evaluate_with_llm_judge.openWorldHint=true`. Agents should be able to reason about these differently before calling.
+Different operational shape. `evaluate_output` is in-process, free and deterministic. `evaluate_with_llm_judge` waits on a provider round-trip, costs money, and can fail for reasons `evaluate_output` never can (auth, rate limit, upstream outage). MCP annotations reflect this — `evaluate_output.readOnlyHint=false, openWorldHint=false` vs `evaluate_with_llm_judge.openWorldHint=true`. Agents should be able to reason about these differently before calling. The one exception is a deployment decision, not a per-call flag: `IRIS_RELEVANCE_JUDGE_MODEL` has `answers_the_ask` consult the relevance judge on every evaluation that carries an input. It is off unless the operator names a model, and the tool annotations describe the default.
 
 **Why fetch() instead of the vendor SDKs?**
 Supply-chain minimalism. The wire format is simple, the SDKs pull in dozens of transitive deps, and Iris's surface area is narrow enough that a hand-rolled fetch wrapper is 200 lines and auditable. When Anthropic or OpenAI ships new features we can't use (streaming, tool-use, vision), we'll reconsider — but for judge workloads, single-shot text-in / text-out is it.

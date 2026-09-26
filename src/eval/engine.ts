@@ -17,6 +17,9 @@ import { toSteps } from './steps.js';
 import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
+import { answersTheAsk } from './rules/relevance.js';
+import { agentModelOf } from './llm-judge/family.js';
+import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
 
@@ -130,6 +133,15 @@ export class EvalEngine {
   private observer: ((event: EvaluationEvent) => void) | null = null;
 
   /**
+   * The relevance judge answers_the_ask gates on (#649), or null when the
+   * deployment installed none — then the rule reads the ask lexically and
+   * advises. The server installs it from IRIS_RELEVANCE_JUDGE_MODEL; an
+   * embedder calls setRelevanceJudge. Never installed by default: a judge
+   * call costs money, and this engine is what every evaluation door shares.
+   */
+  private relevanceJudge: RelevanceJudge | null = null;
+
+  /**
    * One structured event per evaluation, whichever door asked for it
    * (0.15.0): the server wires it to the logger's `event('evaluation', …)`.
    * The engine has no logger of its own on purpose — the tools, the ingest
@@ -138,6 +150,27 @@ export class EvalEngine {
    */
   setObserver(observer: ((event: EvaluationEvent) => void) | null): void {
     this.observer = observer;
+  }
+
+  /**
+   * Install (or clear) the relevance judge. From then on every evaluation
+   * that runs answers_the_ask on a call carrying an input makes one judge
+   * call first, capped by the judge's per-call cost cap, and the rule gates
+   * on its verdict. It changes the ruleset hash, so a stored verdict made
+   * without the judge is not taken as current for one made with it.
+   */
+  setRelevanceJudge(judge: RelevanceJudge | null): void {
+    this.relevanceJudge = judge;
+  }
+
+  /** The relevance judge in force, for the surfaces that describe it. */
+  relevanceJudgeInForce(): RelevanceJudge | null {
+    return this.relevanceJudge;
+  }
+
+  /** The judge's identity as the ruleset and config hashes fold it in: absent without a judge, so no existing hash moves. */
+  private judgeIdentity(): string | undefined {
+    return this.relevanceJudge ? `relevance:${this.relevanceJudge.provider ?? 'unknown'}/${this.relevanceJudge.model}` : undefined;
   }
 
   /** Install (or clear) the local-label source every later evaluation reads. */
@@ -227,6 +260,7 @@ export class EvalEngine {
         ruleThresholds: this.ruleThresholds,
         criticalRules: this.criticalityOverrides?.criticalRules,
         nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
+        judge: this.judgeIdentity(),
       }),
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
@@ -366,7 +400,7 @@ export class EvalEngine {
     for (const type of ALL_EVAL_TYPES) {
       rules.push(...getRulesForType(type), ...(this.additionalRules.get(type) ?? []));
     }
-    return rulesetHash(rules, (r) => this.criticality(r));
+    return rulesetHash(rules, (r) => this.criticality(r), this.judgeIdentity());
   }
 
   async evaluateAll(context: EvalContext, customRules?: CustomRuleDefinition[]): Promise<EvalResult> {
@@ -465,6 +499,24 @@ export class EvalEngine {
      */
     const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 }, steps: toSteps(context) };
     /*
+     * The relevance judge, asked once and before any rule (#649). Only when
+     * the deployment installed one, answers_the_ask is among the rules this
+     * call runs, and the call carries an ask and an answer to compare — so a
+     * completeness-only call, an output-only call and an empty output never
+     * spend. A caller-supplied relevanceJudgment is discarded first: only
+     * the engine may say what the judge said.
+     */
+    delete evalContext.relevanceJudgment;
+    const judge = this.relevanceJudge;
+    if (judge !== null && rules.includes(answersTheAsk) && typeof context.input === 'string' && context.input.trim() !== '' && context.output.trim() !== '') {
+      evalContext.relevanceJudgment = await judge.judge({
+        input: context.input,
+        output: context.output,
+        agentModel: agentModelOf({ metadata: context.metadata, spans: context.spans as Array<{ attributes?: Record<string, unknown> }> | undefined }),
+      });
+    }
+    const judgeSpend = evalContext.relevanceJudgment;
+    /*
      * Sequential, and it must stay sequential when a rule becomes awaitable:
      * every rule in one evaluation shares the regex circuit breaker above,
      * and running them concurrently would race the breach count that bounds
@@ -547,12 +599,13 @@ export class EvalEngine {
     const provenance = buildProvenance({
       toolsHash: toolsHash(context.tools),
       irisVersion: PKG_VERSION,
-      rulesetHash: rulesetHash(rules, (r) => this.criticality(r)),
+      rulesetHash: rulesetHash(rules, (r) => this.criticality(r), this.judgeIdentity()),
       configHash: configHash({
         threshold: this.threshold,
         ruleThresholds: this.ruleThresholds,
         criticalRules: this.criticalityOverrides?.criticalRules,
         nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
+        judge: this.judgeIdentity(),
       }),
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
@@ -590,6 +643,7 @@ export class EvalEngine {
         ...(perCategory ? { categories: perCategory } : {}),
         coverage,
         provenance,
+        ...spendOf(judgeSpend),
       };
       return this.decide(unknown);
     }
@@ -622,6 +676,7 @@ export class EvalEngine {
       ...(perCategory ? { categories: perCategory } : {}),
       coverage,
       provenance,
+      ...spendOf(judgeSpend),
     };
     return this.decide(result);
   }
@@ -764,4 +819,14 @@ function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
       skipReason: 'the rule threw on this input',
     };
   }
+}
+
+/** What the evaluation itself spent on a judge, stored on the row beside the verdict it bought; nothing when no judge was called. */
+function spendOf(j: EvalContext['relevanceJudgment']): Pick<EvalResult, 'eval_cost_usd' | 'eval_tokens'> {
+  if (!j) return {};
+  const tokens = j.inputTokens + j.outputTokens;
+  return {
+    ...(j.costUsd !== null && j.costUsd > 0 ? { eval_cost_usd: j.costUsd } : {}),
+    ...(tokens > 0 ? { eval_tokens: tokens } : {}),
+  };
 }

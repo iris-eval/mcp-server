@@ -635,7 +635,7 @@ When a deployed custom rule changed since the server started, the response also 
 
 ### evaluate_with_llm_judge
 
-Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Cost-capped.
+Score output using an LLM as the judge (Anthropic or OpenAI). Seven templates. Cost-capped.
 
 **See the full guide:** [docs/llm-as-judge.md](./llm-as-judge.md).
 
@@ -644,10 +644,10 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Five templates. Co
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `output` | `string` | Yes | Text to evaluate |
-| `template` | `enum` | Yes | `accuracy` / `helpfulness` / `safety` / `correctness` / `faithfulness` |
+| `template` | `enum` | Yes | `accuracy` / `helpfulness` / `safety` / `correctness` / `faithfulness` / `task_completed` / `relevance` |
 | `model` | `string` | Yes | Any model in the pricing table (`docs/llm-as-judge.md`, read from both providers on 2026-09-20); an unknown id is refused with the full list |
 | `provider` | `enum` | No | `anthropic` / `openai` — auto-inferred from model if omitted |
-| `input` | `string` | No | Original user question (improves helpfulness/safety templates) |
+| `input` | `string` | Required for `relevance` template | Original user question (improves helpfulness/safety templates). `relevance` without it is refused with `IRIS_INVALID_ARGUMENT` before any spend |
 | `expected` | `string` | Required for `correctness` template | Reference answer |
 | `source_material` | `string` | Required for `faithfulness` template | RAG sources |
 | `max_cost_usd` | `number` | No | Cost cap; default `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` or $0.25 |
@@ -1566,6 +1566,10 @@ Used when `eval_type` is `"relevance"`. These rules check whether the output sta
 | `topic_consistency` | 1.0 | **Continuity** — the share of the output's content-bearing sentences that connect to the input's topic (directly, or through an earlier connected sentence; list items are read under the sentence that introduces them) | `topic_consistency` (default: `0.33`, a third) · `topic_consistency_min_words` (default: `6`) | `>= 1/3` of content sentences connect; skipped when the output has fewer than 6 words of 4+ characters |
 
 Both rules share one tokenizer: stopwords (articles, pronouns, auxiliaries, question words, request verbs such as "explain"/"summarise", and the deliverable's form — "paragraph", "bullets", "summary") are not terms; code identifiers, paths and flags are **split into their words** (`EvalEngine.evaluateAll()` → eval, engine, evaluate; `src/index.ts` → src, index) rather than dropped; numbers and fenced code blocks are neutral; inflections are folded by a light stemmer (purge/purged/purging, rule/rules, evaluate/evaluation/evaluator).
+
+| `answers_the_ask` | 1.0 | Whether the output answers **this** ask, not another. With a relevance judge configured (`IRIS_RELEVANCE_JUDGE_MODEL` and that provider's key), the LLM judge's `relevance` template decides and the rule **gates**. Without one it reads the ask lexically and **advises** | The two measurements' thresholds (for the lexical reading); `IRIS_RELEVANCE_JUDGE_MODEL` (for the judge) | Judge: score `>= 0.60`. Lexical: at least one of the two measurements passes, and the output is not a bare refusal or the ask handed back |
+
+**`answers_the_ask` with a judge (0.20.0).** When a relevance judge is installed, the engine asks it once per evaluation that carries an input, before any rule runs. The rule's result then has `kind: "judgment"`, `role: "gate"`, the judge's `sample` evidence and a `judge` object (`provider`, `model`, `score`, `passThreshold`, `passed`, `selfReportedPass`, `rationale`, `dimensions`, `costUsd`, `inputTokens`, `outputTokens`, `latencyMs`, and `agentModel`/`sameFamily` when the linked trace records the agent's model). A judge that could not answer leaves `judge.error` and the lexical reading in place, and `interpretations` names the reason. Without a judge a lexical fire advises, and `interpretations` says so and names `IRIS_RELEVANCE_JUDGE_MODEL`. Setting a `keyword_overlap` or `topic_consistency` threshold in your config file makes the lexical reading gate. Full guide: [docs/llm-as-judge.md](./llm-as-judge.md#the-relevance-judge-behind-answers_the_ask).
 
 **`keyword_overlap` scoring:** Score is `min(overlap_ratio * 2, 1)`. A 50% overlap yields a perfect score.
 

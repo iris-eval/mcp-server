@@ -19,6 +19,14 @@
  *   4. Citations: resolve accuracy (did the verifier resolve/skip/error each
  *      citation as labelled) and support precision/recall (of the citations it
  *      judged, did it rate supported the ones that truly are).
+ *   5. answers_the_ask with the relevance judge installed, on the rule's own
+ *      corpus family (proof/corpus/answers_the_ask.json) — through the REAL
+ *      engine, so the number is the rule a deployment gets when it sets
+ *      IRIS_RELEVANCE_JUDGE_MODEL — beside the lexical rule on the same cases.
+ *   6. The composite corpus with that judge installed: how often the whole
+ *      verdict is right about shipping at the shipped settings when a
+ *      deployment turns the relevance judge on, beside the same measurement
+ *      without it (proof/COMPOSITE.md), on the test and dev splits.
  *
  * The positive class for the judge half is FAIL — the judge flagging a
  * problem. So precision answers "of the outputs it flagged, how many were
@@ -43,6 +51,14 @@ import { verifyCitations } from '../../src/eval/citation-verify/verifier.js';
 import { getTemplate } from '../../src/eval/llm-judge/templates/index.js';
 import { estimateCostUsd, findPricing } from '../../src/eval/llm-judge/pricing.js';
 import { estimateInputTokens, type LLMProvider } from '../../src/eval/llm-judge/client.js';
+import { EvalEngine } from '../../src/eval/engine.js';
+import { createRelevanceJudge } from '../../src/eval/llm-judge/relevance-judge.js';
+import { answersTheAsk } from '../../src/eval/rules/relevance.js';
+import type { CorpusFile } from '../lib/corpus.js';
+import { materialiseCase } from '../lib/materialise.js';
+import { contextFor } from '../lib/context.js';
+import { measureComposite, type ComposerSlice } from '../lib/composite-report.js';
+import { defaultConfig } from '../../src/config/defaults.js';
 
 import {
   readJudgeCaseFile,
@@ -89,6 +105,44 @@ interface TemplateResult {
   adversarialDriftMean: number | null;
   adversarialCasesMoved: number;
   adversarialCasesMeasured: number;
+}
+
+/** A rule measured with a judge installed, beside the same rule without one, on the rule's own corpus family. */
+interface JudgedRuleResult {
+  rule: 'answers_the_ask';
+  family: string;
+  n: number;
+  /** Cases not measured: the run-wide cap was reached, or the judge did not answer (the rule then fell back to its lexical reading, which is not what this row measures). */
+  skipped: number;
+  judgeErrors: number;
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  ci95: Summary['ci95'];
+  /** The lexical rule (no judge) on the same measured cases, a skip counted as not failed as proof/run.ts counts it. */
+  lexical: { tp: number; fp: number; fn: number; tn: number; skipped: number; precision: number | null; recall: number | null; f1: number | null; ci95: Summary['ci95'] };
+  /** The ids each reading got wrong, so a reader can open the case. */
+  errors: { judged: { fp: string[]; fn: string[] }; lexical: { fp: string[]; fn: string[] } };
+}
+
+export const ANSWERS_THE_ASK_FAMILY = 'proof/corpus/answers_the_ask.json';
+
+/** The composite verdict measured with the relevance judge installed, beside the same corpus without it. */
+interface CompositeWithJudge {
+  compositeVersion: string;
+  /** Judge calls made, and how many did not answer (each of those fell back to the lexical reading, so the row is incomplete). */
+  judgeCalls: number;
+  judgeErrors: number;
+  complete: boolean;
+  /** The risk composer (per-output prior, shipped τ), per split. */
+  withJudge: { test: ComposerSlice; dev: ComposerSlice; realTranscripts: ComposerSlice };
+  withoutJudge: { test: ComposerSlice; dev: ComposerSlice; realTranscripts: ComposerSlice };
+  /** Cases whose verdict the judge changed, by id: now failing, now passing. */
+  flipped: { toFail: string[]; toPass: string[] };
 }
 
 interface CitationResults {
@@ -261,6 +315,149 @@ async function runTemplate(
   };
 }
 
+/**
+ * answers_the_ask with the relevance judge, through the engine a deployment
+ * runs: an EvalEngine with createRelevanceJudge installed, evaluating the
+ * relevance bundle, reading answers_the_ask's row. The lexical rule runs on
+ * the same case with no judge, so the two rows differ by the judge alone.
+ */
+async function runAnswersTheAskJudged(config: RunConfig, budget: Budget): Promise<JudgedRuleResult> {
+  const file = JSON.parse(readFileSync(resolve(repoRoot, ANSWERS_THE_ASK_FAMILY), 'utf-8')) as CorpusFile;
+  const engine = new EvalEngine();
+  engine.setRelevanceJudge(
+    createRelevanceJudge({ model: config.model, provider: config.provider, apiKey: config.apiKey, maxCostUsdPerEval: config.perEvalCapUsd }),
+  );
+  const judged = emptyConfusion();
+  const lexical = emptyConfusion();
+  const errors = { judged: { fp: [] as string[], fn: [] as string[] }, lexical: { fp: [] as string[], fn: [] as string[] } };
+  let skipped = 0;
+  let judgeErrors = 0;
+  let lexicalSkipped = 0;
+
+  for (const raw of file.cases) {
+    const c = materialiseCase(raw);
+    const context = contextFor(c, file.config);
+    const estimate = estimateJudgeCostUsd(config.model, { id: c.id, template: 'relevance', group: 'clean', label: 'pass', rubricRef: 'pass', input: c.input, output: c.output, why: '' });
+    if (budget.exhausted || !budget.canAfford(estimate)) {
+      budget.exhausted = true;
+      skipped++;
+      continue;
+    }
+    const result = await engine.evaluate('relevance', context);
+    const row = result.rule_results.find((r) => r.ruleName === 'answers_the_ask');
+    budget.spend(row?.judge?.costUsd ?? 0);
+    if (!row?.judge || row.judge.error !== undefined) {
+      process.stderr.write(`  ! answers_the_ask/${c.id}: ${row?.judge?.error ?? 'no judgment'}\n`);
+      judgeErrors++;
+      skipped++;
+      continue;
+    }
+    const actual = c.label === 'positive';
+    const predicted = !row.skipped && row.passed === false;
+    tally(judged, actual, predicted);
+    if (predicted && !actual) errors.judged.fp.push(c.id);
+    if (!predicted && actual) errors.judged.fn.push(c.id);
+
+    const lex = answersTheAsk.evaluate(context);
+    if (lex.skipped) lexicalSkipped++;
+    const lexPredicted = !lex.skipped && lex.passed === false;
+    tally(lexical, actual, lexPredicted);
+    if (lexPredicted && !actual) errors.lexical.fp.push(c.id);
+    if (!lexPredicted && actual) errors.lexical.fn.push(c.id);
+
+    process.stdout.write(
+      `  answers_the_ask ${c.id.padEnd(24)} label=${c.label.padEnd(8)} judge=${(predicted ? 'fail' : 'pass').padEnd(4)} lexical=${lex.skipped ? 'skip' : lexPredicted ? 'fail' : 'pass'} score=${row.judge.score?.toFixed(2)} $${budget.spent.toFixed(4)}\n`,
+    );
+  }
+
+  const s = summarise(judged);
+  const l = summarise(lexical);
+  return {
+    rule: 'answers_the_ask',
+    family: ANSWERS_THE_ASK_FAMILY,
+    n: s.n,
+    skipped,
+    judgeErrors,
+    tp: s.tp,
+    fp: s.fp,
+    fn: s.fn,
+    tn: s.tn,
+    precision: s.precision,
+    recall: s.recall,
+    f1: s.f1,
+    ci95: s.ci95,
+    lexical: { tp: l.tp, fp: l.fp, fn: l.fn, tn: l.tn, skipped: lexicalSkipped, precision: l.precision, recall: l.recall, f1: l.f1, ci95: l.ci95 },
+    errors,
+  };
+}
+
+/**
+ * The composite corpus through an engine built from the shipped config with
+ * the relevance judge installed — the verdict a deployment gets when it sets
+ * IRIS_RELEVANCE_JUDGE_MODEL — beside the same engine without the judge. The
+ * judge's calls are charged to the run-wide budget; once it is spent the
+ * judge refuses, the rule falls back to its lexical reading, and the result
+ * is marked incomplete rather than passed off as the judge's.
+ */
+async function runCompositeWithJudge(config: RunConfig, budget: Budget): Promise<CompositeWithJudge> {
+  let judgeCalls = 0;
+  let judgeErrors = 0;
+  const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+  engine.setRelevanceJudge(
+    createRelevanceJudge({
+      model: config.model,
+      provider: config.provider,
+      apiKey: config.apiKey,
+      maxCostUsdPerEval: config.perEvalCapUsd,
+      evaluate: async (params) => {
+        judgeCalls++;
+        if (budget.exhausted || budget.remaining < config.perEvalCapUsd) {
+          budget.exhausted = true;
+          judgeErrors++;
+          throw new Error('the proof run-wide cost cap was reached before this case');
+        }
+        try {
+          const r = await evaluateWithLLMJudge(params);
+          budget.spend(r.costUsd ?? 0);
+          return r;
+        } catch (err) {
+          judgeErrors++;
+          throw err;
+        }
+      },
+    }),
+  );
+  const compared = await compareCompositeWithJudge(repoRoot, engine);
+  process.stdout.write(`  composite with judge: test acc=${fmtPct(compared.withJudge.test.accuracy.rate)} (without ${fmtPct(compared.withoutJudge.test.accuracy.rate)}), dev acc=${fmtPct(compared.withJudge.dev.accuracy.rate)} (without ${fmtPct(compared.withoutJudge.dev.accuracy.rate)}), ${judgeCalls} judge calls $${budget.spent.toFixed(4)}\n`);
+  return { ...compared, judgeCalls, judgeErrors, complete: judgeErrors === 0 };
+}
+
+/**
+ * The composite measured through `engine` (a relevance judge installed) and
+ * through the shipped engine without one, and the verdicts that differ.
+ * Exported so the comparison itself is tested without a key, on a stand-in
+ * judge.
+ */
+export async function compareCompositeWithJudge(root: string, engine: EvalEngine): Promise<Omit<CompositeWithJudge, 'judgeCalls' | 'judgeErrors' | 'complete'>> {
+  const judged = await measureComposite(root, engine);
+  const plain = await measureComposite(root);
+  const byId = new Map(plain.rows.map((r) => [r.id, r]));
+  const toFail: string[] = [];
+  const toPass: string[] = [];
+  for (const r of judged.rows) {
+    const before = byId.get(r.id);
+    if (!before) continue;
+    if (before.risk.state !== 'fail' && r.risk.state === 'fail') toFail.push(r.id);
+    if (before.risk.state === 'fail' && r.risk.state !== 'fail') toPass.push(r.id);
+  }
+  return {
+    compositeVersion: judged.results.compositeVersion,
+    withJudge: { test: judged.results.risk.test, dev: judged.results.risk.dev, realTranscripts: judged.results.risk.realTranscripts },
+    withoutJudge: { test: plain.results.risk.test, dev: plain.results.risk.dev, realTranscripts: plain.results.risk.realTranscripts },
+    flipped: { toFail, toPass },
+  };
+}
+
 async function runCitations(config: RunConfig, budget: Budget): Promise<CitationResults> {
   const file = await readCitationCaseFile(repoRoot);
   let resolveMatched = 0;
@@ -358,6 +555,8 @@ function renderResultsMd(
   meta: { generatedAt: string; commit: string; model: string; provider: string; totalCostUsd: number; promptTemplateSha: string; complete: boolean },
   templates: TemplateResult[],
   citations: CitationResults,
+  rules: JudgedRuleResult[],
+  composite: CompositeWithJudge,
 ): string {
   const lines: string[] = [];
   lines.push('# Iris judge + citation measurement');
@@ -386,6 +585,37 @@ function renderResultsMd(
   }
   lines.push('');
   lines.push('Injection drift is the mean absolute change in the judge\'s score when a prompt-injection instruction is appended to an output, measured against the identical output without it. Lower is better; 0 means the injection moved nothing. "moved" counts pairs whose score changed by at least ' + DRIFT_MOVED_THRESHOLD + '.');
+  lines.push('');
+  lines.push('## Rules with the judge installed');
+  lines.push('');
+  lines.push('Each rule a judge can decide, measured on its own corpus family through the engine a deployment runs with the judge installed, beside the same rule with no judge on the same cases. The positive class is the violation, as on the rule proof table.');
+  lines.push('');
+  lines.push('| Rule | Family | n | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 | Without the judge: precision · recall · F1 |');
+  lines.push('|---|---|--:|--:|--:|--:|--:|--:|---|---|--:|---|');
+  for (const r of rules) {
+    lines.push(
+      `| ${r.rule} | ${r.family} | ${r.n} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${fmtPct(r.precision)} ${fmtCi(r.ci95.precision)} | ${fmtPct(r.recall)} ${fmtCi(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} | ${fmtPct(r.lexical.precision)} · ${fmtPct(r.lexical.recall)} · ${r.lexical.f1 === null ? '—' : r.lexical.f1.toFixed(3)} |`,
+    );
+  }
+  lines.push('');
+  for (const r of rules) {
+    lines.push(`- \`${r.rule}\` with the judge — FP: ${r.errors.judged.fp.join(', ') || 'none'} · FN: ${r.errors.judged.fn.join(', ') || 'none'}. Without it — FP: ${r.errors.lexical.fp.join(', ') || 'none'} · FN: ${r.errors.lexical.fn.join(', ') || 'none'}.${r.judgeErrors > 0 ? ` The judge did not answer on ${r.judgeErrors} case(s); they are counted under skip.` : ''}`);
+  }
+  lines.push('');
+  lines.push('## The composite verdict with the relevance judge');
+  lines.push('');
+  lines.push(`The composite corpus (${composite.compositeVersion}) through an engine built from the shipped config, with and without the relevance judge installed. Risk composer, per-output prior, shipped τ; Wilson 95% intervals. ${composite.judgeCalls} judge calls.${composite.complete ? '' : ` INCOMPLETE: the judge did not answer on ${composite.judgeErrors} call(s) (the run-wide cap or a provider error), and those cases fell back to the lexical reading.`}`);
+  lines.push('');
+  lines.push('| Split | Relevance judge | Right about shipping | False blocks on clean | Missed blocks |');
+  lines.push('|---|---|---|---|---|');
+  const rate = (r: ComposerSlice['accuracy']) => `${fmtPct(r.rate)} ${fmtCi(r.ci95 ? { lo: r.ci95[0], hi: r.ci95[1] } : null)} (${r.k}/${r.n})`;
+  for (const split of ['test', 'dev', 'realTranscripts'] as const) {
+    for (const [label, slice] of [['off', composite.withoutJudge[split]], ['on', composite.withJudge[split]]] as const) {
+      lines.push(`| ${split} | ${label} | ${rate(slice.accuracy)} | ${rate(slice.falseBlock)} | ${rate(slice.missedBlock)} |`);
+    }
+  }
+  lines.push('');
+  lines.push(`Verdicts the judge moved to fail: ${composite.flipped.toFail.join(', ') || 'none'}. Moved to pass: ${composite.flipped.toPass.join(', ') || 'none'}.`);
   lines.push('');
   lines.push('## Citation verifier');
   lines.push('');
@@ -419,6 +649,8 @@ async function main(): Promise<void> {
     templates.push(await runTemplate(t as TemplateName, config, budget));
   }
   const citations = await runCitations(config, budget);
+  const rules = [await runAnswersTheAskJudged(config, budget)];
+  const composite = await runCompositeWithJudge(config, budget);
 
   const complete = !budget.exhausted;
   const generatedAt = new Date().toISOString();
@@ -465,6 +697,8 @@ async function main(): Promise<void> {
       supportTn: citations.supportTn,
       ci95: citations.ci95,
     },
+    rules,
+    composite,
   };
 
   await writeFile(resolve(repoRoot, 'proof/judge-results.json'), JSON.stringify(results, null, 2) + '\n');
@@ -474,6 +708,8 @@ async function main(): Promise<void> {
       { generatedAt, commit, model: config.model, provider: config.provider, totalCostUsd, promptTemplateSha, complete },
       templates,
       citations,
+      rules,
+      composite,
     ),
   );
 

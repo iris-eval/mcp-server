@@ -23,9 +23,9 @@ import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
 const inputSchema = {
   output: z.string().min(1).describe('The agent output text to evaluate'),
   template: z
-    .enum(['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed'])
+    .enum(['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed', 'relevance'])
     .describe(
-      'The question the judge answers; correctness needs expected, faithfulness and task_completed read source_material',
+      'The question the judge answers; correctness needs expected, relevance needs input, faithfulness and task_completed read source_material',
     ),
   model: z
     .string()
@@ -33,7 +33,7 @@ const inputSchema = {
       `Model ID. Supported: ${supportedModelsSummary()}; an unknown id is refused with the full priced list. Required — cost varies a hundredfold across models`,
     ),
   provider: z.enum(['anthropic', 'openai']).optional().describe('Auto-detected from model when omitted'),
-  input: z.string().optional().describe('User question / prompt that produced the output (improves accuracy for helpfulness/safety)'),
+  input: z.string().optional().describe('User question / prompt that produced the output (required for relevance; improves helpfulness and safety)'),
   expected: z.string().optional().describe('Reference answer (required for correctness template)'),
   source_material: z.string().optional().describe('Provided RAG sources (required for faithfulness template)'),
   trace_id: z.string().optional().describe('Link this evaluation to a stored trace (id from log_trace / get_traces); an unknown id is rejected BEFORE the judge is called'),
@@ -127,7 +127,7 @@ export function registerEvaluateWithLLMJudgeTool(
         summary:
           'Score an output with an LLM judge on your own key: a 0..1 score, a rationale and the spend.',
         does:
-          `Calls Anthropic or OpenAI with ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}; Iris never proxies. correctness needs expected, faithfulness needs source_material. The worst-case cost is checked against max_cost_usd first.`,
+          `Calls Anthropic or OpenAI with ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}; Iris never proxies. correctness needs expected, relevance input, faithfulness source_material. The worst-case cost is checked against max_cost_usd first.`,
         whenNot:
           'For length, keyword, PII or cost checks (evaluate_output, free).',
         returns: judgeOutputSchema,
@@ -148,6 +148,14 @@ export function registerEvaluateWithLLMJudgeTool(
       },
     },
     guarded(async (args) => {
+      // Refused before the key, the trace or the provider is touched: a relevance judgment with no request has nothing to compare.
+      if (args.template === 'relevance' && (args.input === undefined || args.input.trim() === '')) {
+        throw irisError('IRIS_INVALID_ARGUMENT', 'The relevance template judges an output against the request that produced it, and no input was given. Nothing was spent.', {
+          field: 'input',
+          recovery: ['Pass the request (the user question or prompt) as input.'],
+          retryable: false,
+        });
+      }
       const provider = (args.provider as LLMProvider | undefined) ?? inferProvider(args.model);
       const apiKey = resolveApiKey(provider);
       const maxCostUsd = resolveMaxCost(args.max_cost_usd);

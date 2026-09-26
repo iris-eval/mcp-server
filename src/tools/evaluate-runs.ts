@@ -160,6 +160,7 @@ export function registerEvaluateRunsTool(
           toolCalls: trace.tool_calls,
           spans,
           tools: trace.tools,
+          ...(trace.metadata ? { metadata: trace.metadata } : {}),
         });
         result.trace_id = traceId;
         result.run_id = target;

@@ -61,7 +61,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
   },
   evaluate_output: {
     does:
-      'In-process, no network, no key. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown; an omitted eval_type runs every bundle, safety included, and the response carries a note saying the default ran. ' +
+      'In-process, no network, no key — unless the deployment set IRIS_RELEVANCE_JUDGE_MODEL: then answers_the_ask asks that LLM judge (one call on the deployment key, under IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL) whenever input is present and gates on its relevance verdict; without it answers_the_ask reads the ask lexically and advises. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown; an omitted eval_type runs every bundle, safety included, and the response carries a note saying the default ran. ' +
       'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it) and grounds the hallucination signals; ' +
       'tool_calls (or a trace_id) feed the trajectory rules, and tools lets them check argument validity; cost_usd and token_usage feed the cost rules; expected feeds expected_coverage. ' +
       'A rule without its input SKIPS, is named, and never counts as a pass: an evaluation with no trajectory data reports "not judged", never "clean". custom_rules always fire, whatever eval_type says. One row is stored, linked to trace_id.',
@@ -215,7 +215,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
   evaluate_with_llm_judge: {
     does:
       `Calls Anthropic or OpenAI directly with the key in this process's environment (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}); Iris never proxies. ` +
-      'template picks the question: accuracy, helpfulness, safety, correctness (needs expected), faithfulness (needs source_material) or task_completed (pass the trajectory as source_material when you have it); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
+      'template picks the question: accuracy, helpfulness, safety, correctness (needs expected), faithfulness (needs source_material), task_completed (pass the trajectory as source_material when you have it) or relevance (needs input: does the output address this request, not another); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
       `The worst-case spend — both attempts, full max_output_tokens — is computed BEFORE the call and refused if it exceeds max_cost_usd (default ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}). ` +
       'temperature defaults to 0; a rate-limited call is retried once. One evaluation row is stored with the provider response id, tokens, cost and latency, linked to trace_id when given. ' +
       'A judge from the same model family as the agent (agent_model, or the linked trace) is warned about, never refused. ' +
@@ -223,11 +223,11 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
     whenNot:
       'For length, keyword, PII, injection or cost checks: evaluate_output is free and deterministic. Without a key: the call returns IRIS_JUDGE_NOT_ENABLED with the enable steps — do not search for them. On very large outputs without raising max_cost_usd: the pre-check refuses.',
     errors:
-      'IRIS_JUDGE_NOT_ENABLED (no key for the provider reached this process; recovery carries the steps). IRIS_JUDGE_UNKNOWN_MODEL (valid lists the models). IRIS_UNKNOWN_TRACE, checked before any spend. ' +
+      'IRIS_INVALID_ARGUMENT for relevance without input, before any spend. IRIS_JUDGE_NOT_ENABLED (no key for the provider reached this process; recovery carries the steps). IRIS_JUDGE_UNKNOWN_MODEL (valid lists the models). IRIS_UNKNOWN_TRACE, checked before any spend. ' +
       'IRIS_BUDGET_EXCEEDED (nothing spent; the message carries both numbers). IRIS_PROVIDER_ERROR with kind auth, rate_limit, bad_request, server_error, timeout or malformed_response, and retryable set.',
     parameters: {
       template:
-        'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`), task_completed (did the task actually complete — pass the trajectory as `source_material` when you have it).',
+        'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`), task_completed (did the task actually complete — pass the trajectory as `source_material` when you have it), relevance (does it address THIS request rather than another — requires `input`; the judge answers_the_ask gates on when IRIS_RELEVANCE_JUDGE_MODEL is set).',
       agent_model:
         'The model that produced the output, for the same-family check, when no linked trace records it (a trace carries it as metadata.model or a span\'s gen_ai.request.model). A judge from the agent\'s own family is warned about, never refused',
     },

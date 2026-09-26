@@ -127,13 +127,19 @@ function customCells(type, row, meta) {
   };
 }
 
-function judgeCells(template, judge) {
+function judgeCells(template, judge, cases) {
   const measured = judge?.status === 'measured';
-  const perTemplate = measured && judge.templates ? judge.templates[template] ?? null : null;
+  /*
+   * proof:judge writes `templates` as an array of rows named by `name`; a
+   * keyed lookup never found one, so a measured run would still have read
+   * as pending here. An object keyed by template name is read too.
+   */
+  const rows = judge?.templates;
+  const perTemplate = measured && rows ? (Array.isArray(rows) ? rows.find((t) => t.name === template) : rows[template]) ?? null : null;
   const has = (k) => Boolean(perTemplate && perTemplate[k] !== undefined && perTemplate[k] !== null);
   const pending = (harness) => cell('measurable', harness, 'needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending');
   return {
-    q1: has('precision') || has('accuracy') ? cell('measured', `${JUDGE} → templates[${template}]`) : pending('npm run proof:judge — 165 cases across the five templates under a cost cap'),
+    q1: has('precision') || has('accuracy') ? cell('measured', `${JUDGE} → templates[${template}]`) : pending(`npm run proof:judge — ${cases.total} cases across the ${cases.templates} templates under a cost cap (${cases.of[template] ?? 0} for ${template})`),
     q2: has('misses') ? cell('measured', `${JUDGE} → templates[${template}].misses`) : pending('the same run names the misses by id'),
     q3: cell('stated', 'src/eval/llm-judge/templates → dimensions and passThreshold', 'the template names its dimensions and the threshold a score is read against'),
     q4: pending('compare the model\'s self-reported pass with the threshold verdict on the same run'),
@@ -211,8 +217,16 @@ export async function generate() {
     if (!row) throw new Error(`evaluators: no conformance family for custom type ${type}`);
     evaluators.push({ id: `custom:${type}`, group: 'custom', name: type, cells: customCells(type, row, customMeta[type]) });
   }
+  // The judge case counts, read from the committed case files rather than typed.
+  const judgeCases = { total: 0, templates: templates.names.length, of: {} };
   for (const name of templates.names) {
-    evaluators.push({ id: `judge:${name}`, group: 'judge', name, cells: judgeCells(name, judge) });
+    const file = await readJson(`proof/judge/cases/${name}.json`);
+    const n = Array.isArray(file?.cases) ? file.cases.length : 0;
+    judgeCases.of[name] = n;
+    judgeCases.total += n;
+  }
+  for (const name of templates.names) {
+    evaluators.push({ id: `judge:${name}`, group: 'judge', name, cells: judgeCells(name, judge, judgeCases) });
   }
   evaluators.push({ id: 'citations:verify_citations', group: 'citations', name: 'verify_citations', cells: citationCells(judge) });
   evaluators.push({ id: 'composer:passed', group: 'composer', name: 'the verdict composer (passed)', cells: composerCells(composite) });
