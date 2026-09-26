@@ -190,6 +190,7 @@ describe('citation judge cost estimate — priced on the prompt actually sent', 
     });
 
     expect(res.citations[0].resolveError).toBeUndefined();
+    expect(res.citations[0].judgeError).toBeUndefined();
     expect(res.citations[0].judge?.supported).toBe(true);
     expect(res.totalJudged).toBe(1);
     // What went over the wire is the truncated source, not the body.
@@ -211,7 +212,8 @@ describe('citation judge cost estimate — priced on the prompt actually sent', 
       maxCostUsdTotal: 0.000001,
     });
 
-    expect(res.citations[0].resolveError?.kind).toBe('cost_cap_reached');
+    expect(res.citations[0].judgeError?.kind).toBe('cost_cap_reached');
+    expect(res.citations[0].resolveError).toBeUndefined();
     expect(res.totalJudged).toBe(0);
   });
 });

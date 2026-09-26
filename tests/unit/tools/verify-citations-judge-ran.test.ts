@@ -7,9 +7,9 @@
 import { describe, it, expect } from 'vitest';
 import { assertJudgeRan } from '../../../src/tools/verify-citations.js';
 
-const authFailed = { resolveStatus: 'ok', resolveError: { kind: 'auth', message: 'Anthropic API returned 401: invalid x-api-key' } };
+const authFailed = { resolveStatus: 'ok', judgeError: { kind: 'auth', message: 'Anthropic API returned 401: invalid x-api-key' } };
 const judged = { resolveStatus: 'ok' };
-const unresolved = { resolveStatus: 'fetch_failed', resolveError: { kind: 'network', message: 'ECONNREFUSED' } };
+const unresolved = { resolveStatus: 'error', resolveError: { kind: 'timeout', message: 'Fetch timed out after 10000ms' } };
 
 describe('assertJudgeRan', () => {
   it('throws, naming the cause, when every resolved citation failed at the judge', () => {

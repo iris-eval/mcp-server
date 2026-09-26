@@ -51,6 +51,12 @@ function resolveDomainAllowlist(paramValue?: string[]): readonly string[] | unde
   return fromEnv.length > 0 ? fromEnv : undefined;
 }
 
+type CitationFailures = ReadonlyArray<{
+  resolveStatus: string;
+  resolveError?: { kind: string; message: string } | string;
+  judgeError?: { kind: string; message: string };
+}>;
+
 /**
  * `passed: true` with `overall_score: null` is the honest answer when there
  * was nothing to judge (no citations, none resolved). It is NOT the honest
@@ -62,13 +68,13 @@ function resolveDomainAllowlist(paramValue?: string[]): readonly string[] | unde
 export function assertJudgeRan(result: {
   totalResolved: number;
   totalJudged: number;
-  citations: ReadonlyArray<{ resolveStatus: string; resolveError?: { kind: string; message: string } }>;
+  citations: CitationFailures;
 }): void {
   if (result.totalResolved === 0 || result.totalJudged > 0) return;
-  const judgeFailures = result.citations.filter((c) => c.resolveStatus === 'ok' && c.resolveError);
+  const judgeFailures = result.citations.flatMap((c) => (c.judgeError ? [c.judgeError] : []));
   if (judgeFailures.length === 0) return;
-  const kinds = [...new Set(judgeFailures.map((c) => c.resolveError!.kind))].join(', ');
-  const first = judgeFailures[0].resolveError!.message;
+  const kinds = [...new Set(judgeFailures.map((e) => e.kind))].join(', ');
+  const first = judgeFailures[0].message;
   throw irisError(
     'IRIS_JUDGE_FAILED',
     `verify_citations could not judge any of the ${result.totalResolved} resolved citation(s): the judge failed on every one (${kinds}). ` +
@@ -82,6 +88,39 @@ export function assertJudgeRan(result: {
       ],
     },
   );
+}
+
+/** `kind` for one failure, `kind: n` for several; sorted so the text is stable. */
+function kindTally(kinds: readonly string[]): string {
+  const counts = new Map<string, number>();
+  for (const k of kinds) counts.set(k, (counts.get(k) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, n]) => (n > 1 ? `${k}: ${n}` : k))
+    .join(', ');
+}
+
+/**
+ * What the stored row says about the citations that got no verdict, split
+ * by the stage that failed: the source (not resolved) or the judge (resolved,
+ * then no ruling). Empty when every citation was judged. The stored row
+ * carries no per-citation list, so this sentence is how a reader of the
+ * evaluation — on the dashboard or at iris://evaluations/{id} — tells a
+ * judge outage from a dead link (#407).
+ */
+export function unjudgedSummary(citations: CitationFailures): string {
+  const judge: string[] = [];
+  const source: string[] = [];
+  for (const c of citations) {
+    if (c.judgeError) judge.push(c.judgeError.kind);
+    else if (c.resolveStatus !== 'ok' && c.resolveError) {
+      source.push(typeof c.resolveError === 'string' ? 'unknown' : c.resolveError.kind);
+    }
+  }
+  const parts: string[] = [];
+  if (judge.length > 0) parts.push(`the judge failed on ${judge.length} resolved source${judge.length === 1 ? '' : 's'} (${kindTally(judge)})`);
+  if (source.length > 0) parts.push(`${source.length} source${source.length === 1 ? ' was' : 's were'} not resolved (${kindTally(source)})`);
+  return parts.length === 0 ? '' : `Not judged: ${parts.join('; ')}.`;
 }
 
 export const verifyCitationsOutputSchema = z.looseObject({
@@ -101,7 +140,7 @@ export const verifyCitationsOutputSchema = z.looseObject({
   total_judged: z.number().int().describe('citations the judge ruled on'),
   total_supported: z.number().int().describe('citations the judge found supported'),
   total_cost_usd: z.number().describe('the spend across every judge call'),
-  citations: z.array(z.looseObject({ resolve_status: z.string() })).describe('per citation: the citation (raw, kind, identifier, offsets), resolve_status ok | skipped | error, resolve_error, source (url, status, content_type, bytes_fetched, truncated), judge (supported, confidence, rationale, cost_usd, latency_ms, tokens)'),
+  citations: z.array(z.looseObject({ resolve_status: z.string() })).describe('per citation: the citation (raw, kind, identifier, offsets), resolve_status ok | skipped | error, resolve_error { kind, message } when the source was not resolved, source (url, status, content_type, bytes_fetched, truncated), judge (supported, confidence, rationale, cost_usd, latency_ms, tokens), judge_error { kind, message } when the source resolved but the judge gave no verdict'),
 });
 
 export function registerVerifyCitationsTool(server: McpServer, storage: IStorageAdapter, engine: EvalEngine): void {
@@ -161,6 +200,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
 
       const evalId = generateEvalId();
       const score = result.overallScore ?? 0;
+      const unjudged = unjudgedSummary(result.citations);
 
       // Persist so dashboard can surface. eval_type='custom' — same
       // rationale as evaluate_with_llm_judge (spans all 4 heuristic
@@ -188,10 +228,14 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
               : {}),
             kind: 'judgment',
             score,
-            message:
+            message: [
               result.overallScore === null
-                ? `No citations judged (found ${result.totalCitationsFound}, resolved ${result.totalResolved}, judged 0)`
-                : `${result.totalSupported}/${result.totalJudged} judged sources supported the output`,
+                ? `No citations judged (found ${result.totalCitationsFound}, resolved ${result.totalResolved}, judged 0).`
+                : `${result.totalSupported}/${result.totalJudged} judged sources supported the output.`,
+              unjudged,
+            ]
+              .filter(Boolean)
+              .join(' '),
           },
         ],
         rules_evaluated: 1,
@@ -243,7 +287,15 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
               offset_end: c.citation.offsetEnd,
             },
             resolve_status: c.resolveStatus,
+            /*
+             * Two fields, one per stage (#407). resolve_error says the
+             * source was not resolved; judge_error says it was, and the
+             * judge gave no verdict (cost cap, provider error, unreadable
+             * reply). Until 0.20.0 both went under resolve_error, so a
+             * `timeout` there could be the fetch or the judge.
+             */
             resolve_error: c.resolveError,
+            judge_error: c.judgeError,
             // Mapped to the documented snake_case keys. The verifier's
             // internal shape is camelCase (contentType, bytesFetched) and
             // used to be passed through verbatim, so a client parsing

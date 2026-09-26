@@ -236,7 +236,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
     does:
       'Three phases. Extraction, no network: [N] references, (Author, Year), bare URLs and DOIs. Fetch of URL and DOI citations only when allow_fetch is true or IRIS_CITATION_ALLOW_FETCH=1, through a scheme allowlist, private and cloud-metadata address blocking, an optional hostname allowlist (domain_allowlist, merged with IRIS_CITATION_DOMAINS), a per-source timeout and byte cap, and at most three re-checked redirects. ' +
       'Then one judge call per resolved citation on your own key, reading the first part of each source, capped in total by max_cost_usd_total. Up to max_citations are verified; extras are skipped, not errored. ' +
-      'overall_score is supported / judged and null when nothing was judged. Per-citation failures (bad scheme, blocked address, timeout, too large, cost cap, fetch disabled) are reported on the citation, never scored as unsupported. One evaluation row is stored.',
+      'overall_score is supported / judged and null when nothing was judged. Per-citation failures are reported on the citation, never scored as unsupported: resolve_error when the source was not resolved (fetch disabled, bad scheme, blocked address, fetch timeout, bad status), judge_error when it was and the judge gave no verdict (cost cap, provider error, unreadable reply). One evaluation row is stored.',
     whenNot:
       "When the output has no citations: the score is null, and evaluate_output's hallucination signals are the cheap check. " +
       `Without a key (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}): the call returns IRIS_JUDGE_NOT_ENABLED with the enable steps. ` +

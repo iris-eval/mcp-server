@@ -28,7 +28,7 @@ await callTool('verify_citations', {
 // →
 // {
 //   "overall_score": 1.0,    // supported / judged — 1/1
-//   "passed": true,     // 1.0 >= 0.5 threshold
+//   "passed": true,     // every judged citation was supported
 //   "total_citations_found": 2,
 //   "total_resolved": 1,     // [1] is unresolvable — no URL to fetch
 //   "total_judged": 1,
@@ -126,7 +126,7 @@ Iris does **not** send cookies, authentication headers, or any identifying info 
 
 Same structure as `evaluate_with_llm_judge`:
 
-- **Per-call cost cap** — `max_cost_usd_total` (default $1.00). Budget across all judge calls in one `verify_citations` invocation. When the next call's pessimistic estimate would push total cost past the cap, the pipeline stops and reports `resolve_error.kind: "cost_cap_reached"` for remaining citations.
+- **Per-call cost cap** — `max_cost_usd_total` (default $1.00). Budget across all judge calls in one `verify_citations` invocation. When the next call's pessimistic estimate would push total cost past the cap, the pipeline stops: the citation it stopped on reports `judge_error.kind: "cost_cap_reached"`, and later citations are not attempted (`total_citations_found` still counts them).
 - **Per-citation pessimistic estimate** — before each judge call, worst-case cost is computed. If adding it exceeds the cap, skip.
 - **Typical cost** — on haiku with 5 citations averaging 2KB source text: ~$0.002-$0.005 total. On opus with the same: ~$0.10-$0.25.
 
@@ -147,6 +147,12 @@ Same structure as `evaluate_with_llm_judge`:
 
 ## Failure modes
 
+A citation that got no verdict says which stage failed, in one of two fields. Either way it is unverified, never unsupported: it is left out of `total_judged` and of the score.
+
+### The source was not resolved: `resolve_error`
+
+Set when `resolve_status` is `skipped` or `error`.
+
 | `resolve_error.kind`      | Meaning                                                                   |
 |---------------------------|---------------------------------------------------------------------------|
 | `unresolvable_kind`       | Numbered or author-year citation with no URL/DOI to fetch                 |
@@ -159,9 +165,26 @@ Same structure as `evaluate_with_llm_judge`:
 | `bad_status`              | 4xx/5xx response, or redirect with no Location header                     |
 | `redirect_loop`           | More than `max_redirects` hops                                            |
 | `not_text`                | Content-type is binary (PDF, octet-stream, etc.) — future work: PDF parse |
-| `malformed_judge_response`| Judge didn't emit valid JSON even after retry                             |
-| `llm_judge_error`         | Provider-side error (auth, rate limit, server error)                      |
-| `cost_cap_reached`        | Budget exhausted; remaining citations skipped                             |
+
+### The source resolved and the judge gave no verdict: `judge_error`
+
+Set when `resolve_status` is `ok` and `judge` is absent. Until 0.20.0 these were reported under `resolve_error`, which read as a failed source when the source had resolved; a `timeout` there could have been either stage.
+
+| `judge_error.kind`        | Meaning                                                                   |
+|---------------------------|---------------------------------------------------------------------------|
+| `cost_cap_reached`        | The next judge call would pass `max_cost_usd_total`; later citations are not attempted |
+| `malformed_judge_response`| The judge replied, but not with a readable verdict                        |
+| `auth`                    | The provider refused the key                                              |
+| `rate_limit`              | The provider rate-limited the call, after one retry                       |
+| `bad_request`             | The provider refused the request (for example, a model it does not serve) |
+| `server_error`            | The provider returned a 5xx                                               |
+| `timeout`                 | The judge call timed out                                                  |
+| `malformed_response`      | The provider's reply was not the shape its API documents                  |
+| `unknown`, `llm_judge_error` | Any other failure of the judge call                                    |
+
+When every resolved citation fails at the judge, the call returns `IRIS_JUDGE_FAILED` naming the kinds, and nothing is stored.
+
+The stored evaluation keeps the split too. Its rule message names what was not judged, by stage: for example `1/1 judged sources supported the output. Not judged: the judge failed on 1 resolved source (timeout); 1 source was not resolved (bad_status).`
 
 ---
 
