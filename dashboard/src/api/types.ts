@@ -41,6 +41,17 @@ export interface Trace {
   created_at?: string;
   /** The conversation this turn belongs to; the trace page shows the session strip when set. */
   session_id?: string;
+  /** Present on a search result (`q`): where the trace matched. */
+  match?: TraceMatch;
+}
+
+/** Where a searched trace matched: the field, and an excerpt split at the matched words. */
+export interface TraceMatch {
+  field: 'input' | 'output' | 'tool_calls' | 'metadata';
+  /** Plain text; an ellipsis marks a cut. */
+  snippet: string;
+  /** The snippet in order; `hit` marks the matched words. Rendered as text, never as HTML. */
+  fragments: Array<{ text: string; hit: boolean }>;
 }
 
 export interface EvalRuleResult {
@@ -386,6 +397,8 @@ export interface TraceQueryResult {
   total: number;
   limit: number;
   offset: number;
+  /** Present when the query searched: the terms as the server read them, and whether the full-text index answered. */
+  search?: { terms: string[]; index: 'fts5' | 'scan' };
 }
 
 export interface TraceDetail {

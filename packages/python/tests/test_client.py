@@ -97,6 +97,11 @@ def test_get_traces_sends_only_the_filters_given_and_get_trace_reads_one(client:
     assert detail["trace"]["trace_id"] == "trace_9" and detail["evals"] == []
 
 
+def test_get_traces_sends_the_search_text_as_q(client: IrisClient, fake: FakeIris) -> None:
+    client.get_traces(q='"refund approved" escal*', agent_name="bot")
+    assert dict(fake.requests[-1].url.params) == {"q": '"refund approved" escal*', "agent_name": "bot"}
+
+
 def test_health_and_capabilities(client: IrisClient) -> None:
     assert client.health()["status"] == "ok"
     assert client.capabilities()["version"] == "0.16.0"
@@ -170,6 +175,14 @@ def test_live_the_five_doors_round_trip() -> None:
         assert clean["verdict"]["state"] == "pass"
         page = c.get_traces(agent_name="python-contract", limit=10)
         assert page["total"] >= 3
+        found = c.get_traces(q="refund approved", agent_name="python-contract")
+        assert found["search"]["terms"] == ["refund", "approved"] and found["search"]["index"] == "fts5"
+        assert found["total"] >= 1
+        assert all(t["match"]["fragments"] for t in found["traces"])
+        assert {"refund", "approved"} <= {f["text"].lower() for t in found["traces"] for f in t["match"]["fragments"] if f["hit"]}
+        with pytest.raises(IrisError) as nothing:
+            c.get_traces(q="(*)")
+        assert nothing.value.status == 400
         detail = c.get_trace(logged["trace_id"])
         assert detail["trace"]["agent_name"] == "python-contract"
         with pytest.raises(IrisError) as err:

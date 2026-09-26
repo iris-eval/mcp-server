@@ -118,6 +118,7 @@ def _query(
     agent_name: str | None,
     framework: str | None,
     session: str | None,
+    q: str | None,
     since: str | None,
     until: str | None,
     min_score: float | None,
@@ -132,6 +133,7 @@ def _query(
         ("agent_name", agent_name),
         ("framework", framework),
         ("session", session),
+        ("q", q),
         ("since", since),
         ("until", until),
         ("min_score", min_score),
@@ -295,6 +297,7 @@ class IrisClient(_Base):
         agent_name: str | None = None,
         framework: str | None = None,
         session: str | None = None,
+        q: str | None = None,
         since: str | None = None,
         until: str | None = None,
         min_score: float | None = None,
@@ -307,6 +310,13 @@ class IrisClient(_Base):
     ) -> TracePage:
         """A page of traces (``GET /api/v1/traces``) — every filter the route reads.
 
+        ``q`` is a full-text search over input, output, tool-call values and
+        metadata values: every word must appear, ``"a phrase"`` in order,
+        ``word*`` as a prefix. Results come back ranked by relevance unless
+        ``sort_by`` says otherwise; each trace carries ``match`` (the field,
+        a snippet, and the snippet as fragments with the matched words
+        marked) and the page carries ``search``.
+
         Any other keyword is sent as a query parameter as it is, so a filter the
         server gains later needs no new client; one the server does not read is
         a 400 naming it (``IrisError``), never silently ignored.
@@ -315,6 +325,7 @@ class IrisClient(_Base):
             agent_name=agent_name,
             framework=framework,
             session=session,
+            q=q,
             since=since,
             until=until,
             min_score=min_score,
@@ -464,6 +475,7 @@ class AsyncIrisClient(_Base):
         agent_name: str | None = None,
         framework: str | None = None,
         session: str | None = None,
+        q: str | None = None,
         since: str | None = None,
         until: str | None = None,
         min_score: float | None = None,
@@ -478,6 +490,7 @@ class AsyncIrisClient(_Base):
             agent_name=agent_name,
             framework=framework,
             session=session,
+            q=q,
             since=since,
             until=until,
             min_score=min_score,

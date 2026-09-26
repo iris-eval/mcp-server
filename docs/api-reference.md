@@ -324,7 +324,7 @@ The response echoes the `eval_type` that ran. When `eval_type` is omitted, every
 
 ### get_traces
 
-Query stored traces with filters, pagination, and optional summary stats.
+Query stored traces with filters, full-text search, pagination, and optional summary stats.
 
 #### Parameters
 
@@ -333,15 +333,60 @@ Query stored traces with filters, pagination, and optional summary stats.
 | `agent_name` | `string` | No | -- | Filter by agent name (exact match) |
 | `framework` | `string` | No | -- | Filter by framework (exact match) |
 | `session` | `string` | No | -- | The turns of one conversation, as logged with `session_id` |
+| `q` | `string` | No | -- | Full-text search over input, output, tool-call values and metadata values; at most 500 characters. See [Searching traces](#searching-traces) |
 | `since` | `string` | No | -- | ISO 8601 timestamp lower bound |
 | `until` | `string` | No | -- | ISO 8601 timestamp upper bound |
 | `min_score` | `number` | No | -- | Minimum eval score filter |
 | `max_score` | `number` | No | -- | Maximum eval score filter |
 | `limit` | `number` | No | `50` | Results per page (max 1000) |
 | `offset` | `number` | No | `0` | Pagination offset |
-| `sort_by` | `enum` | No | `"timestamp"` | Sort field. One of: `timestamp`, `latency_ms`, `cost_usd` |
-| `sort_order` | `enum` | No | `"desc"` | Sort direction. One of: `asc`, `desc` |
+| `sort_by` | `enum` | No | `"relevance"` with `q`, else `"timestamp"` | Sort field. One of: `timestamp`, `latency_ms`, `cost_usd`, `relevance` (needs `q`) |
+| `sort_order` | `enum` | No | `"desc"` | Sort direction. One of: `asc`, `desc`. With `relevance`, `desc` is best match first |
 | `include_summary` | `boolean` | No | `false` | Include dashboard summary stats in response |
+
+#### Searching traces
+
+`q` finds the run where the agent said something. It searches four fields of every trace: `input`, `output`, and the values inside `tool_calls` and `metadata` (strings and numbers, never the keys, so `status` does not match every tool call that has a status).
+
+- Every word must appear, in any of the four fields and in any order: `refund approved`.
+- `"a quoted phrase"` must appear as those words in that order.
+- `word*` matches any word it starts: `refund*` finds refunded and refunds.
+- Case and accents are ignored: `cafe` finds Café.
+- Punctuation separates words and is not searchable itself: `order-5521` is searched as the phrase `"order 5521"`, which is how it was indexed.
+
+Whatever `q` contains is read as words, never as query syntax: `AND`, `OR`, `NOT`, `NEAR(`, parentheses, column prefixes like `input:` and unbalanced quotes are searched as the words they contain, so no input can fail the query or widen it. A `q` with no letter or digit in it (`*`, `()`) is refused with a message saying so, rather than answered with an empty page. A blank `q` is no search.
+
+Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call or metadata value) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in, a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur).
+
+```json
+{
+  "traces": [
+    {
+      "trace_id": "trc_1a2b3c4d5e6f",
+      "agent_name": "support-bot",
+      "output": "Your refund for order 5521 was approved and is on its way.",
+      "timestamp": "2026-09-21T10:00:00.000Z",
+      "match": {
+        "field": "output",
+        "snippet": "Your refund for order 5521 was approved and is on its way.",
+        "fragments": [
+          { "text": "Your ", "hit": false },
+          { "text": "refund", "hit": true },
+          { "text": " for order 5521 was ", "hit": false },
+          { "text": "approved", "hit": true },
+          { "text": " and is on its way.", "hit": false }
+        ]
+      }
+    }
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0,
+  "search": { "terms": ["refund", "approved"], "index": "fts5" }
+}
+```
+
+The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
 
 #### Example Request
 
@@ -953,16 +998,17 @@ List traces with filtering and pagination.
 | `agent_name` | `string` | -- | -- | Filter by agent name |
 | `framework` | `string` | -- | -- | Filter by framework |
 | `session` | `string` | -- | -- | The turns of one conversation, as logged with `session_id` |
+| `q` | `string` | -- | at most 500 characters; at least one letter or digit | Full-text search, as [`get_traces`](#searching-traces) reads it |
 | `since` | `string` | -- | ISO 8601 timestamp or date | Timestamp lower bound (inclusive) |
 | `until` | `string` | -- | ISO 8601 timestamp or date; not earlier than `since` | Timestamp upper bound (inclusive) |
 | `min_score` | `number` | -- | 0..1; not above `max_score` | Minimum latest-eval score |
 | `max_score` | `number` | -- | 0..1 | Maximum latest-eval score |
 | `limit` | `integer` | `50` | 1-1000 | Results per page |
 | `offset` | `integer` | `0` | >= 0 | Pagination offset |
-| `sort_by` | `string` | `"timestamp"` | `timestamp`, `latency_ms`, `cost_usd` | Sort field |
+| `sort_by` | `string` | `"relevance"` with `q`, else `"timestamp"` | `timestamp`, `latency_ms`, `cost_usd`, `relevance` (needs `q`) | Sort field |
 | `sort_order` | `string` | `"desc"` | `asc`, `desc` | Sort direction |
 
-Same rules as the [`get_traces`](#get_traces) tool, enforced by the same validators: a `since` later than `until`, a `since`/`until` that is not an ISO 8601 timestamp (`2026-08-01T00:00:00Z`, offsets allowed) or calendar date (`2026-08-01`), a `min_score` above `max_score`, a score outside 0..1, or a negative `offset` is a `400` — `{ "error": "Invalid query parameters", "details": [...] }`, with both values named — rather than an empty page.
+Same rules as the [`get_traces`](#get_traces) tool, enforced by the same validators: a `since` later than `until`, a `since`/`until` that is not an ISO 8601 timestamp (`2026-08-01T00:00:00Z`, offsets allowed) or calendar date (`2026-08-01`), a `min_score` above `max_score`, a score outside 0..1, a negative `offset`, a `q` with no letter or digit, or `sort_by=relevance` without `q` is a `400` — `{ "error": "Invalid query parameters", "details": [...] }`, with the values named — rather than an empty page. With `q`, each trace carries `match` and the response carries `search`, as [described for the tool](#searching-traces).
 
 #### Response
 
