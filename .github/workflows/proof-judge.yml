@@ -38,7 +38,10 @@ permissions:
 jobs:
   proof-judge:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The run makes about 440 judge calls one after another (seven template
+    # sets, the answers_the_ask family and the composite with the judge
+    # installed), plus the citation fetches; 20 minutes left no margin.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
