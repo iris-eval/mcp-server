@@ -3,8 +3,7 @@
  *
  * The column and the index it adds, applied once on a cold file and on a
  * database written before it; the session stored and read back through the
- * adapter and filtered on the index; and the count of known migrations,
- * which the newest migration's test owns.
+ * adapter and filtered on the index.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -36,8 +35,8 @@ const trace = (id: string, session?: string, timestamp = '2026-09-21T12:00:00.00
 });
 
 describe('migration 014 — the trace session', () => {
-  it('is the fourteenth known migration, and the last', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(14);
+  it('is the fourteenth known migration', () => {
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[13]).toBe('014-trace-session');
     expect(KNOWN_MIGRATION_IDS[12]).toBe('013-run-baseline');
   });
@@ -68,9 +67,12 @@ describe('migration 014 — the trace session', () => {
     await store.initialize();
     await store.insertTrace(LOCAL_TENANT, trace('old-1'));
     await store.close();
-    // Roll the file back to the 013 shape: drop the index, the column and the row that says 014 ran.
+    // Roll the file back to the 013 shape: undo 015 (the search index, which reads session_id), then drop the index, the column and the rows that say 014 and 015 ran.
     const db = new Database(path);
-    db.exec("DROP INDEX idx_traces_tenant_session; ALTER TABLE traces DROP COLUMN session_id; DELETE FROM _iris_migrations WHERE id = '014-trace-session'");
+    db.exec(
+      'DROP TRIGGER trace_search_au; DROP TRIGGER trace_search_ad; DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter; ' +
+        "DROP INDEX idx_traces_tenant_session; ALTER TABLE traces DROP COLUMN session_id; DELETE FROM _iris_migrations WHERE id IN ('014-trace-session', '015-trace-search')",
+    );
     db.close();
     const upgraded = new SqliteAdapter(path);
     await upgraded.initialize();

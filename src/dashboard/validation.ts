@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { logTraceInputShape } from '../tools/log-trace.js';
-import { isoTimestamp, addTraceRangeIssues } from '../tools/get-traces.js';
+import { isoTimestamp, addTraceRangeIssues, traceSearchText } from '../tools/get-traces.js';
 
 /*
  * Strict request-body schema for the dashboard's MUTATING routes.
@@ -110,13 +110,14 @@ export const traceQuerySchema = strictQuery({
   agent_name: z.string().optional(),
   framework: z.string().optional(),
   session: z.string().min(1).max(200).optional(),
+  q: traceSearchText.optional(),
   since: isoTimestamp.optional(),
   until: isoTimestamp.optional(),
   min_score: z.coerce.number().min(0).max(1).optional(),
   max_score: z.coerce.number().min(0).max(1).optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(50),
   offset: z.coerce.number().int().min(0).default(0),
-  sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp'),
+  sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd', 'relevance']).optional(),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
   }).superRefine(addTraceRangeIssues);
 

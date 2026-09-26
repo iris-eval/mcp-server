@@ -92,7 +92,8 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
   get_traces: {
     does:
       'Read-only, local storage only. Filters are exact-match (agent_name, framework), inclusive time bounds (since, until — an ISO 8601 timestamp or date) and a score range applied to the LATEST evaluation of each trace (min_score, max_score, 0..1). ' +
-      'limit is 1..1000 (default 50), offset counts from 0, sort_by is timestamp, latency_ms or cost_usd, sort_order asc or desc (default: newest first). include_summary adds the one-hour dashboard aggregates. ' +
+      'q searches the text of each trace — input, output, the values in its tool calls and its metadata (never their keys) — through a full-text index: every word must appear, "a quoted phrase" must appear in order, word* matches any word it starts, and case and accents are ignored. Whatever q contains is read as words, never as query syntax, so no input errors or widens the search; a q with no word in it is refused. With q, each trace carries match: the field it matched in, a snippet, and the snippet as fragments marking the matched words; results are ranked by relevance (BM25) unless sort_by says otherwise, and every other filter still applies. ' +
+      'limit is 1..1000 (default 50), offset counts from 0, sort_by is timestamp, latency_ms, cost_usd, or relevance with q, sort_order asc or desc (default: newest first, or best match first with q). include_summary adds the one-hour dashboard aggregates. ' +
       'A crossed range (min above max, since after until) is refused naming both values rather than returning an empty page that reads as "no such traces".',
     whenNot:
       'To score a trace (evaluate_output). To create one (log_trace). As a live stream: this is a query, and Iris has no event stream — poll with backoff.',
