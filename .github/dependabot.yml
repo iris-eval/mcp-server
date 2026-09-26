@@ -103,6 +103,26 @@ updates:
           - "@anthropic-ai/sdk"
           - "ai"
 
+  # The LangChain.js integration's toolchain and the framework its tests drive
+  # (packages/langchain has its own lockfile; @iris-eval/sdk is linked from ../sdk).
+  - package-ecosystem: "npm"
+    directory: "/packages/langchain"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(langchain)"
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]  # the same ceiling as the root (see #58)
+    groups:
+      langchain:
+        patterns:
+          - "@langchain/*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

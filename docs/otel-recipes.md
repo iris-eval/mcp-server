@@ -24,7 +24,7 @@ The Python OTLP/HTTP exporter is protobuf-only; Iris takes `application/x-protob
 |---|---|
 | [Pydantic AI](#pydantic-ai) | `pydantic-ai.otlp.json` |
 | [Google ADK](#google-adk) | `google-adk.otlp.json` |
-| [LangGraph via LangSmith's export](#langgraph-via-langsmiths-export) | `langsmith.otlp.json` |
+| [LangGraph via LangSmith's export](#langgraph-via-langsmiths-export) | `langsmith-langgraph.otlp.json` (captured) |
 | [CrewAI via OpenInference](#crewai-via-openinference) | `crewai-openinference.otlp.json` |
 | [AutoGen](#autogen) | `python-genai.otlp.json` (the vocabulary) |
 | [Microsoft Agent Framework](#microsoft-agent-framework) | `agent-framework.otlp.json` |
@@ -83,18 +83,25 @@ Source: https://adk.dev/observability/traces/ · https://docs.cloud.google.com/s
 
 ### LangGraph via LangSmith's export
 
-Proved by: `tests/fixtures/otlp/conventions/langsmith.otlp.json`
+Proved by: `tests/fixtures/otlp/langsmith-langgraph.otlp.json`
 
-LangChain and LangGraph trace through LangSmith's SDK, which can emit OpenTelemetry instead of, or beside, its own service.
+LangChain and LangGraph trace through LangSmith's SDK, which can emit OpenTelemetry instead of, or beside, its own service. Two of its settings differ from the lines every other recipe shares, and the end-to-end test found both: LangSmith posts to `OTEL_EXPORTER_OTLP_ENDPOINT` exactly as written, so the path `/v1/traces` goes in it, and it passes `OTEL_EXPORTER_OTLP_HEADERS` through without percent-decoding, so the space after `Bearer` is a plain space.
 
 ```bash
+pip install "langsmith[otel]" opentelemetry-exporter-otlp-proto-http
+export LANGSMITH_TRACING=true
 export LANGSMITH_OTEL_ENABLED=true
 export LANGSMITH_OTEL_ONLY=true                       # SDK 0.4.1 or later: OTel only, nothing to LangSmith
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:6920
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer%20<key>"   # on a keyed server
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:6920/v1/traces
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer <key>"      # on a keyed server; not percent-encoded
+export OTEL_SERVICE_NAME=support-graph                # the agent name; LangSmith's default is "langsmith"
 ```
 
-What Iris reads: `langsmith.span.kind` finds the `tool` and `llm` spans; the content in `gen_ai.prompt` and `gen_ai.completion` (the older names, still what this export emits); the model from `gen_ai.request.model`; the usage from `gen_ai.usage.*`.
+LangSmith batches spans in the background: a short script flushes before it exits (`langsmith.run_trees.get_cached_client().flush()`, then `opentelemetry.trace.get_tracer_provider().force_flush()`). Its resource carries the service name and a marker of its own, so a verdict on these traces comes from `otel.evaluateOnIngest: true` on the server.
+
+What Iris reads: LangSmith sends `gen_ai.prompt` / `gen_ai.completion` as bytes holding the run's whole state as JSON (`{"messages": [...]}` for a graph, `{"generations": ...}` for a model call); Iris decodes the bytes and reads that state down to the last question asked and the last answer given. `langsmith.span.kind` finds the `tool` and `llm` spans, `gen_ai.tool.name` and `gen_ai.tool.call.id` name the tool step, the usage is the sum of the model calls' `gen_ai.usage.*`, and the model comes from `gen_ai.request.model`. The fixture is a capture of this export for a real LangGraph tool loop (`tests/fixtures/otlp/capture_langsmith.py` records it); `langsmith.otlp.json` beside the other conventions is the vocabulary as LangSmith's page describes it. CI runs the recipe itself: `packages/python/tests/test_langsmith_otel_e2e.py` sets these variables, runs the graph, and requires the trace in Iris with its words, its tool call, its token usage and a verdict.
+
+Without LangSmith: `IrisCallbackHandler` sends the same run straight to this door with a verdict asked for, in Python (`from iris_eval.langchain import IrisCallbackHandler`) and in JavaScript (`@iris-eval/langchain`, not yet published to npm) — [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md#langchain-and-langgraph), [packages/langchain/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/langchain/README.md).
 
 Source: https://docs.langchain.com/langsmith/trace-with-opentelemetry
 

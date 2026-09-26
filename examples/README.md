@@ -21,7 +21,7 @@ Use Iris over HTTP for multi-client access, REST integrations, and frontend dash
 
 ## Python
 
-> **Conceptual scaffolds.** The langchain and crewai examples below illustrate the integration shape; they are NOT shipped as published packages and are not yet a maintained product surface. A TypeScript LangChain wrapper exists in this repo at [`packages/langchain/`](../packages/langchain/) but is **not published to npm** (its README says so); the supported path for a LangChain agent today is [HTTP ingest](../docs/http-ingest.md) — `POST /api/v1/traces` from any language.
+Complete programs: each needs a model key and a running Iris, and lists its installs.
 
-- [`langchain/observe-agent.py`](langchain/observe-agent.py) — Instrument a LangChain agent with Iris trace logging *(conceptual scaffold)*
-- [`crewai/observe-crew.py`](crewai/observe-crew.py) — Instrument a CrewAI crew with Iris observability *(conceptual scaffold)*
+- [`langchain/observe-agent.py`](langchain/observe-agent.py) — a LangGraph agent with `IrisCallbackHandler` in its callbacks: each run arrives as one trace with its tool calls and a verdict. CI runs the same graph with a scripted model (`packages/python/tests/test_langchain_e2e.py`). The handler ships in the Python client's next release; the file shows the install from this repository until then. The JavaScript handler is [`packages/langchain`](../packages/langchain/README.md) (`@iris-eval/langchain`, not yet published to npm).
+- [`crewai/observe-crew.py`](crewai/observe-crew.py) — a crew traced by the OpenInference instrumentor straight to Iris's OTLP door, the [CrewAI recipe](../docs/otel-recipes.md#crewai-via-openinference) as a script.

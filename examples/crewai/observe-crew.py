@@ -1,64 +1,52 @@
 """
-Iris + CrewAI Integration Example
+Iris + CrewAI: a crew's run, traced with OpenInference and scored by Iris.
 
-Logs CrewAI crew task executions to Iris for observability.
+CrewAI's own tracing uploads to CrewAI's platform; the OpenInference
+instrumentor is how a crew reaches any OpenTelemetry backend, and Iris reads
+what it emits at POST /v1/traces. This is the CrewAI recipe in
+docs/otel-recipes.md as a script; the vocabulary it relies on is held by
+tests/fixtures/otlp/conventions/crewai-openinference.otlp.json.
 
 Prerequisites:
-  pip install crewai mcp
-  Start Iris: npx @iris-eval/mcp-server --transport http --dashboard
+  pip install crewai openinference-instrumentation-crewai opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+  export OPENAI_API_KEY=...          # or whichever model your crew uses
+  Start Iris with scoring on for its OTLP feed:
+    echo '{"otel": {"evaluateOnIngest": true}}' > ~/.iris/config.json
+    npx -y @iris-eval/mcp-server --dashboard
+  (started with --api-key? set IRIS_API_KEY in this shell)
 
-Note: This is a conceptual example showing how to instrument
-a CrewAI crew with Iris trace logging.
+Then:  python observe-crew.py
 """
 
-import time
+import os
 
+from crewai import Agent, Crew, Task
+from openinference.instrumentation.crewai import CrewAIInstrumentor
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-def log_crew_trace(crew_name, task_description, result, latency_ms, agents_used=None):
-    """Log a CrewAI crew execution trace to Iris."""
-    trace = {
-        "agent_name": crew_name,
-        "framework": "crewai",
-        "input": task_description,
-        "output": result,
-        "latency_ms": latency_ms,
-        "metadata": {
-            "agents_used": agents_used or [],
-            "framework_version": "crewai",
-        },
-    }
+IRIS = os.environ.get("IRIS_URL", "http://127.0.0.1:6920")
+KEY = os.environ.get("IRIS_API_KEY")
 
-    print(f"Logged crew trace for '{crew_name}': {result[:50]}...")
-    print(f"  Task: {task_description[:50]}...")
-    print(f"  Latency: {latency_ms}ms")
-    if agents_used:
-        print(f"  Agents: {', '.join(agents_used)}")
+provider = TracerProvider(resource=Resource({"service.name": "launch-crew"}))
+provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{IRIS}/v1/traces", headers={"Authorization": f"Bearer {KEY}"} if KEY else None))
+)
+trace.set_tracer_provider(provider)
+CrewAIInstrumentor().instrument(tracer_provider=provider)
 
 
 def main():
-    """Example: instrument a CrewAI crew run."""
-    # --- Your CrewAI code goes here ---
-    # from crewai import Crew, Agent, Task
-    # researcher = Agent(role="Researcher", ...)
-    # writer = Agent(role="Writer", ...)
-    # task = Task(description="Research and write about AI observability", ...)
-    # crew = Crew(agents=[researcher, writer], tasks=[task])
-    # result = crew.kickoff()
-    # ---
-
-    # Simulated output for this example
-    start = time.time()
-    task_description = "Research and write a summary about AI agent observability best practices"
-    result = "AI agent observability requires three pillars: trace logging for execution flow, quality evaluation for output scoring, and drift detection for monitoring changes over time."
-    latency_ms = (time.time() - start) * 1000 + 8500  # simulated
-
-    log_crew_trace(
-        crew_name="research-crew",
-        task_description=task_description,
-        result=result,
-        latency_ms=latency_ms,
-        agents_used=["researcher", "writer"],
-    )
+    planner = Agent(role="Launch planner", goal="Plan product launches", backstory="You plan launches in three phases.")
+    task = Task(description="Plan the Q4 launch of a note-taking app in three sentences.", expected_output="A three-sentence plan.", agent=planner)
+    result = Crew(agents=[planner], tasks=[task]).kickoff()
+    print(result)
+    # Send what is batched before the script ends; then open the dashboard to see the trace and its verdict.
+    provider.force_flush()
+    print(f"Traced to Iris: {IRIS} (agent launch-crew)")
 
 
 if __name__ == "__main__":

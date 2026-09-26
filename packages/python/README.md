@@ -127,7 +127,22 @@ recorder.results[-1]["evaluation"]["verdict"]   # the last call's verdict
 
 Proven in CI on every Python the package supports, and once more on the oldest provider SDKs the test extras allow (`openai` 1.66.0, `anthropic` 0.43.0): the official clients, wrapped, against a scripted provider that answers in each API's own JSON and Server-Sent Events, each call required to arrive in a real Iris server built from the same commit with its input, output, token usage and verdict, and an answer carrying an SSN required to fail.
 
-A framework that already emits OpenTelemetry (Pydantic AI, Google ADK, LangGraph, CrewAI, Semantic Kernel and the others) needs no wrapper: point its exporter at the same door ([docs/otel-recipes.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md)).
+A framework that already emits OpenTelemetry (Pydantic AI, Google ADK, CrewAI, Semantic Kernel and the others) needs no wrapper: point its exporter at the same door ([docs/otel-recipes.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md)).
+
+## LangChain and LangGraph
+
+```python
+from iris_eval.langchain import IrisCallbackHandler
+
+iris = IrisCallbackHandler(agent_name="support-bot")
+graph.invoke({"messages": [("user", "What is the weather in Paris?")]}, config={"callbacks": [iris]})
+```
+
+Each top-level run (a graph, a chain, an agent, or a model called on its own) becomes one trace, sent through the same recorder as the wrappers with a verdict asked for. The run is the root span, and every model call, tool call, graph node, chain step and retriever inside it is a child span in the GenAI conventions (`invoke_agent`, `chat`, `execute_tool`), so Iris stores the run's input and output (the last question asked and the last answer given), its tool calls with their arguments and results, the token usage of every model call, the model, the tool catalogue and the latency. A LangGraph `thread_id` becomes the session unless you pass `session_id`. A run that raises still arrives, with its error, and is not scored. The handler needs `langchain-core`, which your application already has; `import iris_eval` alone does not load it. The options are the wrappers': `recorder`, `agent_name`, `session_id`, `run`, `evaluate`, `eval_type`. It arrives with the same release as the wrappers.
+
+Proven in CI on every Python the package supports: a real LangGraph app (the canonical tool loop, with LangGraph's `ToolNode`, and a scripted chat model) run with the handler, each run required to arrive in a real Iris server with its tool call, token usage and verdict (`tests/test_langchain_e2e.py`). The JavaScript handler is `@iris-eval/langchain`.
+
+Already exporting OpenTelemetry through LangSmith? That route is run for real in CI too (`tests/test_langsmith_otel_e2e.py`): the recipe is in [docs/otel-recipes.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md#langgraph-via-langsmiths-export).
 
 ## Versions
 
