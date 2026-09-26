@@ -232,6 +232,18 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 **Gate after:** `npm audit reports 0 advisory(ies) at >=moderate severity`. The Dependabot PR for the fast-uri bump (#390) is superseded by this batch.
 
+### 2026-09-26 — `tmp` overridden when the MCPB tooling became a locked devDependency
+
+**Why.** `@anthropic-ai/mcpb` (the reference MCPB CLI and library that CI and the release use to unpack, validate and launch `iris-eval.mcpb`) became an exact devDependency, so its whole tree is locked. Its interactive prompts pull in `tmp@0.0.33` through `@inquirer/prompts` → `@inquirer/editor` → `external-editor@3.1.0`, and `npm audit` reported it.
+
+| Advisory(ies) | Package | Was → Now | Load path | Decision |
+|---|---|---|---|---|
+| [GHSA-ph9p-34f9-6g65](https://github.com/advisories/GHSA-ph9p-34f9-6g65) (HIGH — path traversal via unsanitized prefix/postfix), [GHSA-52f5-9888-hmc6](https://github.com/advisories/GHSA-52f5-9888-hmc6) (low — symlinked `dir` parameter) | `tmp` | 0.0.33 → 0.2.7 | root ← `external-editor` ← `@inquirer/editor` ← `@inquirer/prompts` ← `@anthropic-ai/mcpb` — dev tooling only, loaded by `mcpb init`'s editor prompt, which nothing here runs; never in the shipped package or the bundle | **Override** — `overrides.tmp = "^0.2.6"`; `external-editor` calls only `tmp.tmpNameSync`, which 0.2.x keeps |
+
+**Lockfile provenance.** Regenerated on Linux (`node:22-bookworm`, npm 11.20.0) with `npm install --package-lock-only --ignore-scripts --save-dev --save-exact @anthropic-ai/mcpb@2.1.2`: 49 packages added, none removed (`git diff main -- package-lock.json | grep -cE '^-\s+"node_modules/'` = 0), `libc` fields intact. Electron, the host runtime the MCPB CI job starts the bundle in, is deliberately not locked: see the `mcpb-electron` job in `.github/workflows/ci.yml`.
+
+**Gate after:** `npm audit` reports 0 vulnerabilities.
+
 
 ### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
 

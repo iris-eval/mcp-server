@@ -197,13 +197,27 @@ describe('release.yml — the MCPB bundle', () => {
     expect(build).toContain('sha256=$(sha256sum iris-eval.mcpb');
   });
 
-  it('is unpacked and validated by the pinned reference tooling, and started by tests/mcpb, before it is handed on', () => {
+  it('is unpacked and validated by the reference tooling the lockfile pins, and started by tests/mcpb, before it is handed on', () => {
     const build = steps('build-mcpb');
-    expect(build).toContain('npm install --no-audit --no-fund @anthropic-ai/mcpb@2.1.2');
+    // @anthropic-ai/mcpb comes from `npm ci`, locked with its whole tree; nothing is installed beside it.
+    expect(build).toMatch(/- run: npm ci\n/);
+    expect(build).not.toMatch(/npm install\b/);
+    expect(build).toContain('mcpb=./node_modules/.bin/mcpb');
+    expect(build).toContain('IRIS_MCPB_LIB: ${{ github.workspace }}');
     expect(build).toMatch(/"\$mcpb" unpack iris-eval\.mcpb/);
     expect(build).toMatch(/"\$mcpb" validate "\$RUNNER_TEMP\/unpacked\/manifest\.json"/);
     expect(build).toContain('npx vitest run --config tests/mcpb/vitest.config.ts');
     expect(build.indexOf('tests/mcpb/vitest.config.ts')).toBeLessThan(build.indexOf('name: mcpb-bundle'));
+  });
+
+  it('CI reads the reference tooling from the lockfile too; only Electron, the host runtime, is installed by version', () => {
+    const ci = workflow('.github/workflows/ci.yml');
+    expect(ci).not.toContain('@anthropic-ai/mcpb@');
+    expect(ci).toContain('IRIS_MCPB_LIB: ${{ github.workspace }}');
+    expect(ci.match(/npm install [^\n]*/g) ?? []).toEqual(
+      expect.arrayContaining(['npm install --no-audit --no-fund --save-exact electron@40.4.1']),
+    );
+    for (const line of ci.match(/npm install [^\n]*/g) ?? []) expect(line, line).not.toMatch(/mcpb/);
   });
 
   it('leaves the npm publish alone', () => {

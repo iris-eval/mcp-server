@@ -259,8 +259,9 @@ jobs:
   # The bundle as a host sees it, on the three platforms and at both ends of
   # the Node range the manifest declares (22.13.0, where node:sqlite starts,
   # and the current line). The reference MCPB tooling (@anthropic-ai/mcpb,
-  # pinned; Claude Desktop uses its unpacker and launch-config code) unpacks
-  # and validates it; each runner rebuilds it from the same tarball with its
+  # an exact devDependency locked in package-lock.json; Claude Desktop uses
+  # its unpacker and launch-config code) unpacks and validates it; each
+  # runner rebuilds it from the same tarball with its
   # own install and must get the same bytes; then tests/mcpb starts it from
   # the launch config that tooling builds and requires every tool.
   mcpb:
@@ -287,16 +288,10 @@ jobs:
         with:
           name: mcpb-bundle
           path: ${{ runner.temp }}/mcpb
-      - name: Install the reference MCPB tooling (pinned)
-        run: |
-          mkdir -p "$RUNNER_TEMP/mcpb-lib"
-          cd "$RUNNER_TEMP/mcpb-lib"
-          npm init -y > /dev/null
-          npm install --no-audit --no-fund @anthropic-ai/mcpb@2.1.2
-          ./node_modules/.bin/mcpb --version
       - name: The reference tooling unpacks it, validates the manifest and reads it
         run: |
-          mcpb="$RUNNER_TEMP/mcpb-lib/node_modules/.bin/mcpb"
+          mcpb=./node_modules/.bin/mcpb
+          "$mcpb" --version
           "$mcpb" unpack "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/unpacked"
           "$mcpb" validate "$RUNNER_TEMP/unpacked/manifest.json"
           "$mcpb" info "$RUNNER_TEMP/mcpb/iris-eval.mcpb"
@@ -308,7 +303,7 @@ jobs:
       - name: It starts from the host's launch config and lists every tool
         env:
           IRIS_MCPB_BUNDLE: ${{ runner.temp }}/mcpb/iris-eval.mcpb
-          IRIS_MCPB_LIB: ${{ runner.temp }}/mcpb-lib
+          IRIS_MCPB_LIB: ${{ github.workspace }}
         run: npx vitest run --config tests/mcpb/vitest.config.ts
 
   # Claude Desktop runs a Node bundle in its built-in Node — an Electron
@@ -318,6 +313,15 @@ jobs:
   # and a stored trace. Electron 40.4.1 (Node 24.13.0) is what Claude
   # Desktop 1.1.6679 ships; bump it here to re-verify a newer host. macOS
   # and Windows only: the platforms Claude Desktop runs on.
+  #
+  # Electron is installed by exact version into a scratch directory, not
+  # locked in package-lock.json. It is a test runtime pinned on purpose to
+  # an older release (the one the host ships), so the advisories against
+  # that release would open as alerts on this repository and fail
+  # security-exposure, and a devDependency would download its ~100 MB
+  # binary in every `npm ci`. npm checks the package against the registry's
+  # integrity hash, and Electron's installer checks the binary against the
+  # release's SHASUMS256.txt.
   mcpb-electron:
     name: MCPB bundle in Electron's Node (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -334,21 +338,23 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: mcpb-bundle
           path: ${{ runner.temp }}/mcpb
-      - name: Install Electron and the reference MCPB tooling (pinned)
+      - name: Install Electron (exact version)
         run: |
-          mkdir -p "$RUNNER_TEMP/mcpb-lib"
-          cd "$RUNNER_TEMP/mcpb-lib"
+          mkdir -p "$RUNNER_TEMP/electron"
+          cd "$RUNNER_TEMP/electron"
           npm init -y > /dev/null
-          npm install --no-audit --no-fund electron@40.4.1 @anthropic-ai/mcpb@2.1.2
+          npm install --no-audit --no-fund --save-exact electron@40.4.1
       - name: The bundle runs in Electron's Node, lists every tool and stores a trace
         run: |
-          lib="$RUNNER_TEMP/mcpb-lib"
-          "$lib/node_modules/.bin/mcpb" unpack "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/unpacked"
-          npx --prefix "$lib" electron tests/mcpb/electron-host/main.mjs "$RUNNER_TEMP/unpacked" "$lib"
+          ./node_modules/.bin/mcpb unpack "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/unpacked"
+          npx --prefix "$RUNNER_TEMP/electron" electron tests/mcpb/electron-host/main.mjs "$RUNNER_TEMP/unpacked" "$GITHUB_WORKSPACE"
 
   build:
     runs-on: ubuntu-latest
