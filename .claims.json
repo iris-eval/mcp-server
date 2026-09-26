@@ -4972,8 +4972,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-25T22:25:32.334Z",
-  "generatedFromCommit": "1dca73b",
+  "generatedAt": "2026-09-26T06:11:32.587Z",
+  "generatedFromCommit": "4fbac08",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -9174,7 +9174,7 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3688,
+    "totalCombined": 3686,
     "vitestDashboard": {
       "failed": 0,
       "passed": 337,
@@ -9182,8 +9182,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3316,
-      "total": 3316
+      "passed": 3314,
+      "total": 3314
     }
   },
   "version": {
@@ -9192,7 +9192,7 @@
     "langchainPackage": "0.1.0",
     "mcpServer": "0.19.0",
     "published": {
-      "irisEvalPackage": false,
+      "irisEvalPackage": true,
       "langchainPackage": false,
       "mcpServer": true,
       "pythonPackage": true

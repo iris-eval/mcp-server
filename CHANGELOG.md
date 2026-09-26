@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`npx iris-eval` starts Iris.** The unscoped npm package `iris-eval` is a launcher: it depends on `@iris-eval/mcp-server` alone, at an open-ended range, and starts it, so `npx iris-eval --self-test`, `npx iris-eval install <client>` and `npx iris-eval --dashboard` are the server's own commands at its latest release. An MCP client config should still name the server package and a version, which is what `install` writes.
+
 ## [0.19.0] - 2026-09-25
 
 **Verdicts that say how sure they are, detectors that see through disguises, and one command to set up any client.** 0.19.0:
