@@ -22,9 +22,10 @@
 // from a list here, so a new package cannot escape it.
 //
 // The generator runs offline, so whether the launcher is on the registry is
-// a recorded fact, not a probe: LAUNCHER_PUBLISHED. `npm view iris-eval`
-// returned 404 on 2026-09-25. Flip it in the same change that records the
-// first publish, which is by hand: no workflow publishes it.
+// a recorded fact, not a probe: LAUNCHER_PUBLISHED. iris-eval@1.0.0 was
+// published by hand on 2026-09-26 (`npm view iris-eval version` → 1.0.0); no
+// workflow publishes it, and the open dependency range means it never needs
+// another release.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
@@ -37,7 +38,7 @@ export const LAUNCHER_DIR = 'packages/iris-eval';
 export const LAUNCHER_VERSION = '1.0.0';
 /** The first server release with `install`; open-ended so the launcher never needs a release. */
 export const LAUNCHER_SERVER_RANGE = '>=0.19.0';
-export const LAUNCHER_PUBLISHED = false;
+export const LAUNCHER_PUBLISHED = true;
 export const PYPI_DIR = 'packages/python';
 
 /** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server) and examples. */
