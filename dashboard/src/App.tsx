@@ -1,3 +1,4 @@
+import { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { Shell } from './components/layout/Shell';
 import { ThemeProvider } from './components/layout/ThemeProvider';
@@ -5,21 +6,15 @@ import { DensitySync } from './components/layout/DensitySync';
 import { CommandPaletteProvider } from './components/command/CommandPaletteProvider';
 import { PreferencesProvider } from './hooks/usePreferences';
 import { TourProvider } from './components/onboarding/TourProvider';
-import { DashboardPage } from './components/dashboard/DashboardPage';
-import { TraceListPage } from './components/traces/TraceListPage';
-import { TraceDetailPage } from './components/traces/TraceDetailPage';
-import { EvalListPage } from './components/evals/EvalListPage';
-import { MomentsTimelinePage } from './components/moments/MomentsTimelinePage';
-import { MomentDetailPage } from './components/moments/MomentDetailPage';
-import { RulesPage } from './components/rules/RulesPage';
-import { AuditPage } from './components/audit/AuditPage';
 import { RouteBoundary } from './components/layout/ErrorBoundary';
 import { NotFoundPage } from './components/layout/NotFoundPage';
-import { RunsPage } from './components/runs/RunsPage';
-import { RunDetailPage } from './components/runs/RunDetailPage';
-import { CasePage } from './components/runs/CasePage';
+import { RouteLoading } from './components/layout/RouteLoading';
+import { PAGE_ROUTES, prefetchPages } from './routes';
 
 export function App() {
+  // Once the first page is up, fetch the other pages' code while the
+  // browser is idle, so later navigation does not wait on the network.
+  useEffect(() => prefetchPages(), []);
   return (
     <PreferencesProvider>
       <DensitySync />
@@ -30,20 +25,15 @@ export function App() {
               <Shell>
                 {/* One boundary per route: a page that throws keeps the shell and says so; the route change resets it. */}
                 <RouteBoundary>
-                  <Routes>
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/moments" element={<MomentsTimelinePage />} />
-                    <Route path="/moments/:id" element={<MomentDetailPage />} />
-                    <Route path="/rules" element={<RulesPage />} />
-                    <Route path="/audit" element={<AuditPage />} />
-                    <Route path="/traces" element={<TraceListPage />} />
-                    <Route path="/traces/:id" element={<TraceDetailPage />} />
-                    <Route path="/evals" element={<EvalListPage />} />
-                    <Route path="/runs" element={<RunsPage />} />
-                    <Route path="/runs/:id" element={<RunDetailPage />} />
-                    <Route path="/cases/:key" element={<CasePage />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Routes>
+                  {/* Inside the boundary, so a page whose code fails to load is reported where the page was. */}
+                  <Suspense fallback={<RouteLoading />}>
+                    <Routes>
+                      {PAGE_ROUTES.map(({ path, Page }) => (
+                        <Route key={path} path={path} element={<Page />} />
+                      ))}
+                      <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                  </Suspense>
                 </RouteBoundary>
               </Shell>
             </CommandPaletteProvider>

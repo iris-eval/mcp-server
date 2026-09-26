@@ -45,5 +45,24 @@ export default defineConfig({
   build: {
     outDir: '../dist/dashboard',
     emptyOutDir: false,
+    // Read by scripts/check-bundle-size.mjs to tell the first load from the
+    // chunks loaded on demand (#662). Written to .vite/, which the dashboard
+    // server does not serve.
+    manifest: true,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            /*
+             * The d3 modules the Health and Drift charts are drawn with,
+             * under one stable name, so the bundle budget can name the
+             * chunk rather than whichever chart component Rolldown would
+             * otherwise name it after.
+             */
+            { name: 'd3', test: /[\\/]node_modules[\\/](d3-[^\\/]+|internmap)[\\/]/ },
+          ],
+        },
+      },
+    },
   },
 });

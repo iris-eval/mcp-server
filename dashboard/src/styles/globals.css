@@ -159,6 +159,38 @@ html {
 }
 
 /*
+ * A page whose code is still arriving (#662). Invisible for the first
+ * 250ms so a fast load does not flash; the status text is announced at
+ * once regardless, because opacity does not hide it from a screen reader.
+ */
+.iris-route-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  opacity: 0;
+  animation: iris-route-loading-in 150ms ease-out 250ms forwards;
+}
+.iris-route-loading__bar {
+  width: 120px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--iris-500), transparent);
+  background-size: 200% 100%;
+  animation: iris-route-loading-sweep 1.2s linear infinite;
+}
+@keyframes iris-route-loading-in {
+  to { opacity: 1; }
+}
+@keyframes iris-route-loading-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/*
  * Reduced-motion accessibility (B8.6). When the user has set their OS
  * preference to reduce motion, kill all animations + transitions globally.
  * Tooltip respects this prop directly (skips the fade), but other surfaces

@@ -250,9 +250,10 @@ jobs:
         # directory, import each subpath, evaluate one stub through the engine.
         run: node scripts/check-exports.mjs
       - name: Bundle size budget gate
-        # Fails if dashboard JS/CSS exceeds the declared budget. Raising
-        # budgets requires an explicit commit editing
-        # scripts/check-bundle-size.mjs with justification.
+        # Fails if the dashboard's first load (the entry and what it imports
+        # up front, read from Vite's build manifest) or any chunk loaded on
+        # demand exceeds its budget. Raising a budget requires an explicit
+        # commit editing scripts/check-bundle-size.mjs with justification.
         run: node scripts/check-bundle-size.mjs
       - name: Verify package integrity
         run: |
