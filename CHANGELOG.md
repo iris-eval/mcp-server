@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Check before upgrading.**
+
+- **The dashboard's Moments page opens ranked by significance, not newest first, and refreshes every 10 seconds instead of 3.** Add `?sort=newest` to the page address, or pick Newest first in its Order control, for the old stream. `GET /api/v1/moments` is unchanged unless a caller passes `sort_by=significance`.
+
 ### Added
 
 - **The LLM judge prices Claude Opus 5.5** (`claude-opus-5-5`, $4 in and $20 out per million tokens, read from claude.com/pricing on 2026-09-25), so it can be named as a judge and costed as an agent's model. An unpriced model is refused, because the cost cap cannot hold without a price. `claude-opus-5` stays priced and is marked legacy, as the provider's page lists it.
