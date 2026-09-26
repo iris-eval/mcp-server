@@ -32,6 +32,7 @@ COPY dashboard/ dashboard/
 RUN cd dashboard && npm ci
 
 COPY tsconfig.json tsconfig.build.json ./
+COPY scripts/build-dashboard.mjs scripts/
 COPY src/ src/
 RUN npm run build
 
