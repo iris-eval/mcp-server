@@ -407,6 +407,22 @@ jobs:
           docker rm -f iris-ci
           test "$code" != "000"
 
+  # Directories that build Iris from a clone (Glama runs `pnpm install &&
+  # pnpm run build`, then starts the server and reads tools/list) failed for
+  # three weeks after the dashboard joined `build`, and no job here built
+  # that way. This one does, from the fresh checkout, with pnpm and no
+  # dashboard install of its own, then requires every tool to be listed.
+  fresh-clone-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+      - run: npm install -g pnpm@10
+      - run: pnpm install && pnpm run build
+      - run: node scripts/check-tools-listed.mjs
+
   e2e:
     runs-on: ubuntu-latest
     needs: build

@@ -30,7 +30,7 @@
   "scripts": {
     "build": "npm run build:dashboard && npm run build:server",
     "build:server": "tsc -p tsconfig.build.json",
-    "build:dashboard": "npm --prefix dashboard run build",
+    "build:dashboard": "node scripts/build-dashboard.mjs",
     "prepack": "node scripts/check-pack.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "dev": "tsx src/index.ts",
