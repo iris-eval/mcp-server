@@ -176,6 +176,56 @@ jobs:
           path: ${{ runner.temp }}/pack/*.tgz
           retention-days: 3
 
+  # better-sqlite3 is optional (#661): an install where it cannot build must
+  # still succeed, and Iris must run on Node's built-in SQLite. The packed
+  # tarball is installed into an empty project with the native build forced
+  # to fail (no prebuilt download, a compiler that always fails), and the
+  # job requires npm to finish without it, the self-test to start the
+  # server, store a trace and read it back on node:sqlite, and ingest to
+  # store and score one more.
+  no-native-sqlite:
+    name: Install without better-sqlite3 (node:sqlite)
+    runs-on: ubuntu-latest
+    needs: [real-clients-pack]
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: real-clients-tarball
+          path: ${{ runner.temp }}/pack
+      - name: Install with the native build forced to fail
+        env:
+          # No prebuilt binary: prebuild-install skips the download and hands over to node-gyp.
+          npm_config_build_from_source: 'true'
+          # And node-gyp cannot compile: every compiler invocation fails.
+          CC: /bin/false
+          CXX: /bin/false
+        run: |
+          tarball="$(cd "$RUNNER_TEMP/pack" && ls *.tgz)"
+          mkdir -p "$RUNNER_TEMP/project"
+          cd "$RUNNER_TEMP/project"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund --foreground-scripts "$RUNNER_TEMP/pack/$tarball"
+          if [ -d node_modules/better-sqlite3 ]; then
+            echo "::error::better-sqlite3 is installed; the forced build failure did not take, so this job proves nothing"
+            exit 1
+          fi
+      - name: The self-test starts the server, stores a trace and reads it back on node:sqlite
+        run: |
+          cd "$RUNNER_TEMP/project"
+          ./node_modules/.bin/iris-eval --self-test | tee self-test.txt
+          grep -q "driver node: better-sqlite3 is not installed" self-test.txt
+          grep -q "PASS — this install works" self-test.txt
+      - name: Ingest stores and scores a trace on node:sqlite
+        run: |
+          cd "$RUNNER_TEMP/project"
+          export IRIS_HOME="$RUNNER_TEMP/iris-home"
+          echo '{"agent_name":"ci","input":"What is 2 + 2?","output":"2 + 2 is 4."}' | ./node_modules/.bin/iris-eval ingest --evaluate 2> ingest.err | tee ingest.out
+          grep -q '"trace_id"' ingest.out
+          grep -q "is not installed" ingest.err
+
   real-clients:
     name: Real clients (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

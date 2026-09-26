@@ -133,7 +133,9 @@ describe('the seam', () => {
     drivers.push(d);
     expect(d.name).toBe('node');
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/better-sqlite3\) could not load \(Could not locate the bindings file\. Tried: build\/Release\/better_sqlite3\.node\); falling back to Node's built-in SQLite/);
+    expect(warnings[0]).toMatch(/better-sqlite3\) could not load \(Could not locate the bindings file\. Tried: build\/Release\/better_sqlite3\.node\); using Node's built-in SQLite/);
+    expect(warnings[0]).toMatch(/npm rebuild better-sqlite3/);
+    expect(d.reason).toMatch(/^better-sqlite3 could not load \(Could not locate the bindings file/);
     expect(warnings[0]).toMatch(/IRIS_SQLITE_DRIVER=node/);
     d.exec('CREATE TABLE t (a TEXT)');
     expect(d.prepare('INSERT INTO t VALUES (?)').run('x').changes).toBe(1);
@@ -162,6 +164,36 @@ describe('the seam', () => {
     expect(existsSync(missing)).toBe(false);
   });
 
+  it('better-sqlite3 not installed at all (it is optional since 0.20.0): the built-in holds the file, and the warning and the reason say it is absent, not broken', () => {
+    if (!builtIn) return withoutBuiltIn(tempDb());
+    const warnings: string[] = [];
+    const d = openDriver(tempDb(), {
+      loadNative: () => {
+        throw Object.assign(new Error(["Cannot find module 'better-sqlite3'", 'Require stack:', '- /app/dist/storage/driver.js'].join('\n')), { code: 'MODULE_NOT_FOUND' });
+      },
+      warn: (line) => warnings.push(line),
+    });
+    drivers.push(d);
+    expect(d.name).toBe('node');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/better-sqlite3\) is not installed — it is optional, and npm skips it when it cannot build it for this platform; using Node's built-in SQLite/);
+    expect(warnings[0]).toMatch(/npm install better-sqlite3/);
+    expect(warnings[0]).not.toMatch(/npm rebuild/);
+    expect(d.reason).toMatch(/^better-sqlite3 is not installed/);
+    d.exec('CREATE TABLE t (a TEXT)');
+    expect(d.prepare('INSERT INTO t VALUES (?)').run('x').changes).toBe(1);
+  });
+
+  it('every driver says why it holds the file', () => {
+    const native = openDriver(tempDb());
+    drivers.push(native);
+    if (native.name === 'better-sqlite3') expect(native.reason).toBe('better-sqlite3 loaded (the default)');
+    if (!builtIn) return;
+    const chosen = openDriver(tempDb(), { driver: 'node' });
+    drivers.push(chosen);
+    expect(chosen.reason).toBe("IRIS_SQLITE_DRIVER=node chose Node's built-in SQLite");
+  });
+
   it('with the fallback forbidden — IRIS_SQLITE_DRIVER=native — a native load failure refuses, naming both the reason and the way out', () => {
     expect(() =>
       openDriver(tempDb(), {
@@ -173,7 +205,7 @@ describe('the seam', () => {
           throw new Error('must not warn');
         },
       }),
-    ).toThrow(/could not load: invalid ELF header\. IRIS_SQLITE_DRIVER=native forbids the fallback; unset it .* or reinstall the module \(npm rebuild better-sqlite3\)/);
+    ).toThrow(/could not load \(invalid ELF header\)\. IRIS_SQLITE_DRIVER=native forbids the fallback; unset it .* or reinstall it with npm rebuild better-sqlite3/);
     // And with no built-in to fall to, the same refusal points at Node.
     expect(() =>
       openDriver(tempDb(), {
@@ -184,7 +216,7 @@ describe('the seam', () => {
           throw new Error('no node:sqlite here');
         },
       }),
-    ).toThrow(/could not load: invalid ELF header\. Node's built-in SQLite is not available/);
+    ).toThrow(/could not load \(invalid ELF header\)\. Node's built-in SQLite is not available/);
   });
 
   it('transactions on the built-in commit, roll back on a throw, run BEGIN IMMEDIATE, and nest as savepoints', () => {
