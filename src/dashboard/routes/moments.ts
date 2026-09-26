@@ -12,6 +12,7 @@ import type {
 import { deriveMoment, deriveMomentDetail, historyBefore } from '../../eval/decision-moment.js';
 import { MOMENT_SIGNIFICANCE_KINDS } from '../../types/decision-moment.js';
 import type { AgentFailureLogEntry } from '../../types/query.js';
+import { regressionAlarmsByTrace, type RegressionAlarm } from '../../eval/cusum.js';
 import type { Trace } from '../../types/trace.js';
 import type { TenantId } from '../../types/tenant.js';
 import {
@@ -87,14 +88,18 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
      * on a page render. Read once, filter by timestamp in memory.
      */
     const logs = new Map<string, AgentFailureLogEntry[]>();
+    // The regression watcher once per agent log, not once per trace (#680).
+    const alarms = new Map<string, Map<string, RegressionAlarm[]>>();
     for (const agent of new Set(traces.map((t) => t.agent_name))) {
-      logs.set(agent, await storage.getAgentFailureLog(tenantId, agent));
+      const log = await storage.getAgentFailureLog(tenantId, agent);
+      logs.set(agent, log);
+      alarms.set(agent, regressionAlarmsByTrace(log));
     }
     return traces.map((trace) =>
       deriveMoment(
         trace,
         evalsByTrace.get(trace.trace_id) ?? [],
-        historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp),
+        historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp, alarms.get(trace.agent_name)),
       ),
     );
   }

@@ -286,43 +286,70 @@ export interface RegressionAlarm {
  */
 export function watchStream(observations: readonly StreamObservation[], rule: string, run: string | null = null, delta: number = CUSUM_DELTA, streams: number = 1): RegressionAlarm[] {
   const alarms: RegressionAlarm[] = [];
-  let baseN = 0;
-  let baseFails = 0;
-  let watching = false;
-  let p0 = 0;
-  let p1 = 0;
-  let h = 0;
-  let stat = 0;
-  let monN = 0;
-  let monFails = 0;
+  const state = newWatchState();
   for (const o of observations) {
-    if (!watching) {
-      baseN += 1;
-      if (o.failed) baseFails += 1;
-      if (baselineSettled(baseFails, baseN)) {
-        p0 = jeffreysRate(baseFails, baseN);
-        p1 = shiftedRate(p0, delta);
-        h = familyThreshold(baseFails, baseN, streams, delta);
-        watching = true;
-        stat = 0;
-        monN = 0;
-        monFails = 0;
-      }
-      continue;
-    }
-    monN += 1;
-    if (o.failed) monFails += 1;
-    stat = Math.max(0, stat + llr(o.failed, p0, p1));
-    if (stat > h) {
-      alarms.push({ rule, traceId: o.traceId, run, p0, baselineN: baseN, monitoredN: monN, monitoredFails: monFails, currentRate: monFails / monN, h, streams, statistic: stat });
-      // Reset and re-baseline from the next observation.
-      watching = false;
-      baseN = 0;
-      baseFails = 0;
-      stat = 0;
-    }
+    const alarm = stepWatch(state, o, rule, run, delta, streams);
+    if (alarm) alarms.push(alarm);
   }
   return alarms;
+}
+
+/** Where one stream's watcher stands between observations. */
+interface WatchState {
+  baseN: number;
+  baseFails: number;
+  watching: boolean;
+  p0: number;
+  p1: number;
+  h: number;
+  stat: number;
+  monN: number;
+  monFails: number;
+}
+
+function newWatchState(): WatchState {
+  return { baseN: 0, baseFails: 0, watching: false, p0: 0, p1: 0, h: 0, stat: 0, monN: 0, monFails: 0 };
+}
+
+/** One observation through a stream's watcher: updates `state`, returns the alarm it raised, if any. */
+function stepWatch(state: WatchState, o: StreamObservation, rule: string, run: string | null, delta: number, streams: number): RegressionAlarm | null {
+  if (!state.watching) {
+    state.baseN += 1;
+    if (o.failed) state.baseFails += 1;
+    if (baselineSettled(state.baseFails, state.baseN)) {
+      state.p0 = jeffreysRate(state.baseFails, state.baseN);
+      state.p1 = shiftedRate(state.p0, delta);
+      state.h = familyThreshold(state.baseFails, state.baseN, streams, delta);
+      state.watching = true;
+      state.stat = 0;
+      state.monN = 0;
+      state.monFails = 0;
+    }
+    return null;
+  }
+  state.monN += 1;
+  if (o.failed) state.monFails += 1;
+  state.stat = Math.max(0, state.stat + llr(o.failed, state.p0, state.p1));
+  if (state.stat <= state.h) return null;
+  const alarm: RegressionAlarm = {
+    rule,
+    traceId: o.traceId,
+    run,
+    p0: state.p0,
+    baselineN: state.baseN,
+    monitoredN: state.monN,
+    monitoredFails: state.monFails,
+    currentRate: state.monFails / state.monN,
+    h: state.h,
+    streams,
+    statistic: state.stat,
+  };
+  // Reset and re-baseline from the next observation.
+  state.watching = false;
+  state.baseN = 0;
+  state.baseFails = 0;
+  state.stat = 0;
+  return alarm;
 }
 
 /** One evaluated trace as the failure log records it, for the stream watcher. */
@@ -356,8 +383,8 @@ export function regressionAlarms(log: readonly StreamEntry[], delta: number = CU
     const failed = new Set(e.failed);
     for (const rule of e.judged ?? []) {
       const o = { traceId: e.traceId, failed: failed.has(rule) };
-      push(`agent ${rule}`, rule, null, o);
-      if (e.runId) push(`run ${e.runId} ${rule}`, rule, e.runId, o);
+      push(`agent\0${rule}`, rule, null, o);
+      if (e.runId) push(`run\0${e.runId}\0${rule}`, rule, e.runId, o);
     }
   }
   // Every stream an evaluation feeds shares the agent's false-alarm budget:
@@ -374,6 +401,102 @@ export function regressionAlarms(log: readonly StreamEntry[], delta: number = CU
 export function regressionAlarmsAt(log: readonly StreamEntry[], traceId: string, timestamp: string, delta: number = CUSUM_DELTA): RegressionAlarm[] {
   const upTo = log.filter((e) => e.timestamp < timestamp || e.traceId === traceId);
   return regressionAlarms(upTo, delta).filter((a) => a.traceId === traceId);
+}
+
+/**
+ * regressionAlarmsAt for every trace in the log at once (#680): the map
+ * holds, for each trace id, exactly the alarms regressionAlarmsAt(log,
+ * id, its timestamp) returns, in the same order.
+ *
+ * regressionAlarmsAt re-runs every stream's watcher over the log up to its
+ * trace, so a list route that asks it for each of n traces runs the
+ * watchers n times over up to n entries: for one agent with 25 rules over
+ * 500 traces, 4.7 s of CPU on a cold server and 1.2 s warm, on every poll.
+ * This runs them once.
+ *
+ * What a trace's alarms depend on is its prefix: the entries timestamped
+ * before it, and the trace itself (a peer with the same timestamp is not
+ * part of it). Two things make that more than one causal pass:
+ *
+ *   - The alarm line depends on the family size, the number of streams the
+ *     prefix feeds (one per rule, doubled once any entry carries a run). A
+ *     rule first judged later raises the family, and the watcher of an
+ *     earlier trace never saw it. So the watchers run once per family size
+ *     that occurs, each serving the traces whose prefix has that size; on a
+ *     log whose rules and runs are there from the start, that is one pass.
+ *   - Traces that share a timestamp do not see each other. Each is stepped
+ *     from the watchers' state before its timestamp, and the state then
+ *     advances through the whole group in trace-id order.
+ */
+export function regressionAlarmsByTrace(log: readonly StreamEntry[], delta: number = CUSUM_DELTA): Map<string, RegressionAlarm[]> {
+  const ordered = [...log].filter((e) => Array.isArray(e.judged)).sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : a.traceId < b.traceId ? -1 : 1));
+  const groups: StreamEntry[][] = [];
+  for (const e of ordered) {
+    const last = groups[groups.length - 1];
+    if (last && last[0].timestamp === e.timestamp) last.push(e);
+    else groups.push([e]);
+  }
+  const keysOf = (e: StreamEntry): Array<{ key: string; rule: string; run: string | null; failed: boolean }> => {
+    const failed = new Set(e.failed);
+    const out: Array<{ key: string; rule: string; run: string | null; failed: boolean }> = [];
+    for (const rule of e.judged ?? []) {
+      out.push({ key: `agent\0${rule}`, rule, run: null, failed: failed.has(rule) });
+      if (e.runId) out.push({ key: `run\0${e.runId}\0${rule}`, rule, run: e.runId, failed: failed.has(rule) });
+    }
+    return out;
+  };
+
+  // The family size each trace's prefix has, and the order streams were
+  // created in before each group (the order regressionAlarms lists them in).
+  const familyOf = new Map<StreamEntry, number>();
+  const rulesBefore = new Set<string>();
+  let runBefore = false;
+  for (const group of groups) {
+    for (const e of group) {
+      const rules = new Set([...rulesBefore, ...(e.judged ?? [])]);
+      familyOf.set(e, rules.size * (runBefore || e.runId ? 2 : 1));
+    }
+    for (const e of group) {
+      for (const rule of e.judged ?? []) rulesBefore.add(rule);
+      if (e.runId) runBefore = true;
+    }
+  }
+
+  const out = new Map<string, RegressionAlarm[]>();
+  for (const family of new Set(familyOf.values())) {
+    const states = new Map<string, WatchState>();
+    const created = new Map<string, number>();
+    for (const group of groups) {
+      for (const e of group) {
+        if (familyOf.get(e) !== family) continue;
+        const keys = keysOf(e);
+        // Streams that already existed come first, in creation order; streams
+        // this trace opens follow in its own order. At most one alarm per
+        // stream, since the trace is one observation on each.
+        const existing = keys.filter((k) => created.has(k.key)).sort((a, b) => created.get(a.key)! - created.get(b.key)!);
+        const opened = keys.filter((k) => !created.has(k.key));
+        const alarms: RegressionAlarm[] = [];
+        for (const k of [...existing, ...opened]) {
+          const state = { ...(states.get(k.key) ?? newWatchState()) };
+          const alarm = stepWatch(state, { traceId: e.traceId, failed: k.failed }, k.rule, k.run, delta, family);
+          if (alarm) alarms.push(alarm);
+        }
+        if (alarms.length > 0) out.set(e.traceId, alarms);
+      }
+      for (const e of group) {
+        for (const k of keysOf(e)) {
+          if (!created.has(k.key)) created.set(k.key, created.size);
+          let state = states.get(k.key);
+          if (!state) {
+            state = newWatchState();
+            states.set(k.key, state);
+          }
+          stepWatch(state, { traceId: e.traceId, failed: k.failed }, k.rule, k.run, delta, family);
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** The sentence a regression-alarm moment carries. */

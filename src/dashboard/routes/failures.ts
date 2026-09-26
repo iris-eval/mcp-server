@@ -3,6 +3,7 @@ import type { AgentFailureLogEntry, IStorageAdapter } from '../../types/query.js
 import { requireTenant } from '../../middleware/tenant.js';
 import type { FailureQueryResult, RankedFailure } from '../../types/decision-moment.js';
 import { deriveMoment, historyBefore } from '../../eval/decision-moment.js';
+import { regressionAlarmsByTrace, type RegressionAlarm } from '../../eval/cusum.js';
 import { isFailureMoment, rankFailureScore } from '../../eval/failure-rank.js';
 import { failuresQuerySchema } from '../validation.js';
 
@@ -53,8 +54,12 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
        * failures, so this page ranks what the moments page ranks.
        */
       const logs = new Map<string, AgentFailureLogEntry[]>();
+      // The regression watcher once per agent log, not once per trace (#680).
+      const alarms = new Map<string, Map<string, RegressionAlarm[]>>();
       for (const agent of new Set(traceResult.traces.map((t) => t.agent_name))) {
-        logs.set(agent, await storage.getAgentFailureLog(tenantId, agent));
+        const log = await storage.getAgentFailureLog(tenantId, agent);
+        logs.set(agent, log);
+        alarms.set(agent, regressionAlarmsByTrace(log));
       }
 
       // The page's evaluations in one read, as the moments route does.
@@ -66,7 +71,7 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
       const failures: RankedFailure[] = [];
       for (const trace of traceResult.traces) {
         const evals = evalsByTrace.get(trace.trace_id) ?? [];
-        const history = historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp);
+        const history = historyBefore(logs.get(trace.agent_name) ?? [], trace.trace_id, trace.timestamp, alarms.get(trace.agent_name));
         const moment = deriveMoment(trace, evals, history);
         if (!isFailureMoment(moment)) continue;
         failures.push({ ...moment, rankScore: rankFailureScore(moment, nowMs) });
