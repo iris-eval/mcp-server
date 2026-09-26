@@ -1,0 +1,87 @@
+{
+  "name": "@iris-eval/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Record every OpenAI, Anthropic and Vercel AI SDK call as an OpenTelemetry GenAI span, sent to Iris for a verdict.",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "node scripts/build.mjs --tests"
+  },
+  "keywords": [
+    "iris",
+    "openai",
+    "anthropic",
+    "ai-sdk",
+    "opentelemetry",
+    "genai",
+    "tracing",
+    "evaluation",
+    "llm",
+    "agent-eval"
+  ],
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://github.com/iris-eval"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iris-eval/mcp-server.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://iris-eval.com",
+  "bugs": {
+    "url": "https://github.com/iris-eval/mcp-server/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": "*",
+    "ai": "*",
+    "openai": "*"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@types/node": "^22.19.0",
+    "ai": "^7.0.116",
+    "openai": "^7.23.0",
+    "typescript": "^5.9.3"
+  }
+}

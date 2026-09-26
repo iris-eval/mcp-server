@@ -1,0 +1,101 @@
+{
+  "about": "One model call per case, in each provider's wire shape. The JavaScript mapping (packages/sdk/src/genai.ts) and the Python one (packages/python/src/iris_eval/_genai.py) must both turn each into the span in expected.json, so a trace from either language reads the same in Iris.",
+  "cases": [
+    {
+      "name": "chat, plain, with parameters",
+      "api": "chat",
+      "request": { "model": "gpt-5.2", "temperature": 0.2, "max_completion_tokens": 300, "stop": "END", "seed": 7, "messages": [{ "role": "system", "content": "Be brief." }, { "role": "user", "content": "What is the capital of France?" }] },
+      "response": { "id": "chatcmpl-1", "model": "gpt-5.2-2026-08-01", "choices": [{ "index": 0, "message": { "role": "assistant", "content": "Paris." }, "finish_reason": "stop" }], "usage": { "prompt_tokens": 20, "completion_tokens": 2, "total_tokens": 22, "prompt_tokens_details": { "cached_tokens": 4 }, "completion_tokens_details": { "reasoning_tokens": 0 } } }
+    },
+    {
+      "name": "chat, a tool call requested, parts and an image in the input",
+      "api": "chat",
+      "request": {
+        "model": "gpt-5.2",
+        "tools": [{ "type": "function", "function": { "name": "get_weather", "description": "The weather in a city", "parameters": { "type": "object", "properties": { "city": { "type": "string" } } } } }],
+        "messages": [{ "role": "user", "content": [{ "type": "text", "text": "What is the weather where this photo was taken?" }, { "type": "image_url", "image_url": { "url": "data:image/png;base64,AAAA" } }] }]
+      },
+      "response": { "id": "chatcmpl-2", "model": "gpt-5.2", "choices": [{ "index": 0, "message": { "role": "assistant", "content": null, "tool_calls": [{ "id": "call_1", "type": "function", "function": { "name": "get_weather", "arguments": "{\"city\":\"Paris\"}" } }] }, "finish_reason": "tool_calls" }], "usage": { "prompt_tokens": 50, "completion_tokens": 12, "total_tokens": 62 } }
+    },
+    {
+      "name": "chat, the follow-up with the tool's result",
+      "api": "chat",
+      "request": {
+        "model": "gpt-5.2",
+        "messages": [
+          { "role": "user", "content": "Weather in Paris?" },
+          { "role": "assistant", "content": null, "tool_calls": [{ "id": "call_1", "type": "function", "function": { "name": "get_weather", "arguments": "{\"city\":\"Paris\"}" } }] },
+          { "role": "tool", "tool_call_id": "call_1", "content": "18C, sunny" }
+        ]
+      },
+      "response": { "id": "chatcmpl-3", "model": "gpt-5.2", "choices": [{ "index": 0, "message": { "role": "assistant", "content": "It is 18C and sunny." }, "finish_reason": "stop" }], "usage": { "prompt_tokens": 70, "completion_tokens": 7, "total_tokens": 77 } }
+    },
+    {
+      "name": "chat, refused by the provider",
+      "api": "chat",
+      "request": { "model": "gpt-5.2", "messages": [{ "role": "user", "content": "hi" }] },
+      "error": ["400", "Invalid request"]
+    },
+    {
+      "name": "responses, instructions and a function call item",
+      "api": "responses",
+      "request": {
+        "model": "gpt-5.2",
+        "instructions": "You are a weather bot.",
+        "max_output_tokens": 500,
+        "tools": [{ "type": "function", "name": "get_weather", "parameters": { "type": "object" } }, { "type": "web_search" }],
+        "input": [
+          { "role": "user", "content": [{ "type": "input_text", "text": "Weather in Paris?" }] },
+          { "type": "function_call", "call_id": "call_9", "name": "get_weather", "arguments": "{\"city\":\"Paris\"}" },
+          { "type": "function_call_output", "call_id": "call_9", "output": "18C" }
+        ]
+      },
+      "response": {
+        "id": "resp_1",
+        "model": "gpt-5.2",
+        "status": "completed",
+        "output": [
+          { "type": "reasoning", "summary": [{ "type": "summary_text", "text": "The tool said 18C." }] },
+          { "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "It is 18C in Paris.", "annotations": [] }] }
+        ],
+        "usage": { "input_tokens": 80, "output_tokens": 9, "total_tokens": 89, "input_tokens_details": { "cached_tokens": 0 }, "output_tokens_details": { "reasoning_tokens": 3 } }
+      }
+    },
+    {
+      "name": "responses, cut off at the token limit",
+      "api": "responses",
+      "request": { "model": "gpt-5.2", "input": "Write a long story." },
+      "response": { "id": "resp_2", "model": "gpt-5.2", "status": "incomplete", "incomplete_details": { "reason": "max_output_tokens" }, "output": [{ "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "Once upon a" }] }], "usage": { "input_tokens": 5, "output_tokens": 3, "total_tokens": 8 } }
+    },
+    {
+      "name": "messages, system blocks, thinking, tool use and cached tokens",
+      "api": "messages",
+      "request": {
+        "model": "claude-opus-5-5",
+        "max_tokens": 1024,
+        "top_k": 40,
+        "stop_sequences": ["###"],
+        "system": [{ "type": "text", "text": "You are terse." }],
+        "tools": [{ "name": "get_weather", "description": "The weather in a city", "input_schema": { "type": "object" } }],
+        "messages": [
+          { "role": "user", "content": "Weather in Paris?" },
+          { "role": "assistant", "content": [{ "type": "tool_use", "id": "toolu_1", "name": "get_weather", "input": { "city": "Paris" } }] },
+          { "role": "user", "content": [{ "type": "tool_result", "tool_use_id": "toolu_1", "content": [{ "type": "text", "text": "18C" }] }] }
+        ]
+      },
+      "response": {
+        "id": "msg_1",
+        "model": "claude-opus-5-5",
+        "content": [{ "type": "thinking", "thinking": "The tool said 18C." }, { "type": "text", "text": "18C and clear." }],
+        "stop_reason": "end_turn",
+        "usage": { "input_tokens": 12, "output_tokens": 6, "cache_read_input_tokens": 100, "cache_creation_input_tokens": 0 }
+      }
+    },
+    {
+      "name": "messages, a tool use with no text",
+      "api": "messages",
+      "request": { "model": "claude-opus-5-5", "max_tokens": 64, "messages": [{ "role": "user", "content": [{ "type": "text", "text": "Weather?" }, { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "AAAA" } }] }] },
+      "response": { "id": "msg_2", "model": "claude-opus-5-5", "content": [{ "type": "tool_use", "id": "toolu_2", "name": "get_weather", "input": { "city": "Paris" } }], "stop_reason": "tool_use", "usage": { "input_tokens": 30, "output_tokens": 12 } }
+    }
+  ]
+}

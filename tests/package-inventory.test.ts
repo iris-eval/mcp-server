@@ -76,10 +76,41 @@ describe('the workflows do what the classification says', () => {
     expect(publishers.sort()).toEqual(['publish-python.yml', 'release.yml']);
   });
 
-  it('no workflow builds or tests a private package as if it shipped', () => {
+  /*
+   * A private package may be built and tested in CI: that is how one earns
+   * its first publish (the JavaScript SDK's wrappers are proven end to end
+   * before anyone can install them). What CI must not do is present it as
+   * shipped. So the job that runs it says, in its own text, that it is not
+   * yet published, and nothing uploads its tarball anywhere. Publishing is
+   * held by the test above: only release.yml and publish-python.yml publish.
+   */
+  it('a job that builds or tests a private package says it is not yet published, and ships nothing', () => {
+    /** Each top-level job with the comment lines written above it: the text a reader of that job sees. */
+    const jobsOf = (text: string): Array<{ id: string; text: string }> => {
+      const lines = text.split('\n');
+      const jobs: Array<{ id: string; lines: string[] }> = [];
+      let pending: string[] = [];
+      for (const line of lines.slice(lines.findIndex((l) => /^jobs:\s*$/.test(l)) + 1)) {
+        const head = /^ {2}([\w-]+):\s*$/.exec(line);
+        if (head) {
+          jobs.push({ id: head[1], lines: [...pending, line] });
+          pending = [];
+        } else if (/^ {2}#/.test(line) || line.trim() === '') {
+          pending.push(line);
+        } else if (jobs.length > 0) {
+          jobs[jobs.length - 1].lines.push(...pending, line);
+          pending = [];
+        }
+      }
+      return jobs.map((j) => ({ id: j.id, text: j.lines.join('\n') }));
+    };
     for (const p of packages.filter((x) => x.kind === 'private')) {
+      const runs = new RegExp(`(cd|working-directory:)\\s*${p.dir.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\\b`);
       for (const f of workflows) {
-        expect(read(`.github/workflows/${f}`), `${f} runs ${p.dir}`).not.toMatch(new RegExp(`(cd|working-directory:)\\s*${p.dir.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\\b`));
+        for (const job of jobsOf(read(`.github/workflows/${f}`)).filter((j) => runs.test(j.text))) {
+          expect(job.text, `${f} job ${job.id} runs ${p.dir} without saying it is not yet published`).toMatch(/not yet published/i);
+          expect(job.text, `${f} job ${job.id} uploads something while running ${p.dir}`).not.toMatch(/upload-artifact|npm publish/);
+        }
       }
     }
   });

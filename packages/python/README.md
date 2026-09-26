@@ -81,10 +81,54 @@ In CI, start the server in the job and point the tests at it:
 
 Or gate a traces file without a server at all — the [CI gate](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md) and its GitHub Action.
 
-## Tracing from Python
+## Record every OpenAI and Anthropic call
 
-This package does not instrument your code. Iris reads the OpenTelemetry traces your framework already emits — Pydantic AI, Google ADK, LangGraph, CrewAI, Semantic Kernel and the others — through `POST /v1/traces` on the dashboard port ([docs/otel-integration.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-integration.md)); a decorator SDK that built a second trace model is a maintenance surface Iris chose not to carry.
+Wrap the provider client once and every model call it makes is recorded and scored, without the model having to call a tool and without changing the calls:
+
+```python
+from openai import OpenAI
+from anthropic import Anthropic
+from iris_eval import wrap_openai, wrap_anthropic
+
+client = wrap_openai(OpenAI(), agent_name="support-bot")
+client.chat.completions.create(model="gpt-5.2", messages=[{"role": "user", "content": "Was the refund approved?"}])
+
+claude = wrap_anthropic(Anthropic(), agent_name="support-bot")
+```
+
+`wrap_openai` and `wrap_anthropic` arrive in the release after 0.1.0 and are not yet published to PyPI. Until then, install the client from the repository: `pip install "iris-eval @ git+https://github.com/iris-eval/mcp-server#subdirectory=packages/python"`.
+
+Each call becomes one standard OpenTelemetry GenAI span (`gen_ai.*`) sent to Iris's OTLP ingest, `POST /v1/traces` on the dashboard port; Iris stores it as a trace with the input, the output, the token usage and the tool calls, and scores it. The span is the one the JavaScript package, `@iris-eval/sdk`, sends for the same call: both are held to one fixture, `tests/fixtures/genai-parity` at the repository root.
+
+| Covered | Calls |
+|---|---|
+| `OpenAI`, `AsyncOpenAI` | `chat.completions.create` (plain and `stream=True`), `parse`, `stream`; `responses.create` (plain and `stream=True`), `stream` |
+| `Anthropic`, `AsyncAnthropic` | `messages.create` (plain and `stream=True`), `stream` |
+
+How it works: both SDKs send every request through one method on the client, `post()`. The wrapper takes `client.copy()`, a real client of the same class sharing the original's connection pool, and gives the copy a `post` that watches the three model endpoints and passes every other request through. The original client is not changed; `with_options()` on the wrapped client stays wrapped. `with_raw_response` and `with_streaming_response` calls pass through unrecorded.
+
+- **Never in the way.** A response is recorded after it has been read, a stream as it ends or is closed. The trace goes onto a bounded queue (1,000 traces, oldest dropped first) and a background thread sends it; nothing raises into your code, each kind of delivery failure is logged once on the `iris_eval` logger, and at exit the queue gets up to two seconds to deliver.
+- **A refused call** raises the provider's own exception, unchanged, and is recorded with `error.type` and the provider's message.
+- **One change you can turn off.** OpenAI Chat Completions streams carry no token usage unless asked. When a streamed call does not set `stream_options`, the wrapper asks and removes the usage-only final chunk before your code reads the stream. `wrap_openai(client, stream_usage=False)` sends the request as written, for an OpenAI-compatible server that refuses the option.
+- **A verdict per trace.** The recorder sets `iris.evaluate` on each trace, so Iris scores these without scoring the rest of an OTLP feed. `evaluate=False` stores without scoring; `eval_type="safety"` runs one bundle.
+- **What is never recorded:** the bytes of an image, audio or file part (it is named by its type only). A text part longer than 16,384 characters is cut, with a note of how much was left out.
+
+The options: `recorder` (default: one process-wide `IrisRecorder`, which finds the server as `IrisClient` does and reads `IRIS_API_KEY`), `agent_name` (default: the running program's name), `session_id` (`gen_ai.conversation.id`, which Iris reads as the session), `run` (`iris.run`), `evaluate`, `eval_type`. What Iris answered is on the recorder:
+
+```python
+from iris_eval import IrisRecorder, wrap_openai
+
+recorder = IrisRecorder("http://127.0.0.1:6920", api_key="…", on_result=lambda r: print(r["trace_id"], r["evaluation"]["verdict"]["state"]))
+client = wrap_openai(OpenAI(), recorder=recorder, agent_name="support-bot")
+# … at the end of a script or a test:
+recorder.flush()
+recorder.results[-1]["evaluation"]["verdict"]   # the last call's verdict
+```
+
+Proven in CI on every Python the package supports, and once more on the oldest provider SDKs the test extras allow (`openai` 1.66.0, `anthropic` 0.43.0): the official clients, wrapped, against a scripted provider that answers in each API's own JSON and Server-Sent Events, each call required to arrive in a real Iris server built from the same commit with its input, output, token usage and verdict, and an answer carrying an SSN required to fail.
+
+A framework that already emits OpenTelemetry (Pydantic AI, Google ADK, LangGraph, CrewAI, Semantic Kernel and the others) needs no wrapper: point its exporter at the same door ([docs/otel-recipes.md](https://github.com/iris-eval/mcp-server/blob/main/docs/otel-recipes.md)).
 
 ## Versions
 
-The client follows the HTTP API, which the server versions; `iris_eval.__version__` is this package's own. Python 3.10+, `httpx` the only dependency. Source: [packages/python](https://github.com/iris-eval/mcp-server/tree/main/packages/python).
+The client follows the HTTP API, which the server versions; `iris_eval.__version__` is this package's own. Python 3.10+, `httpx` the only dependency; the wrappers import no provider SDK themselves. Source: [packages/python](https://github.com/iris-eval/mcp-server/tree/main/packages/python).

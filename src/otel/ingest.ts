@@ -23,6 +23,9 @@
  *   cost         `iris.cost_usd`, `gen_ai.usage.cost`, `llm.usage.total_cost`,
  *                summed
  *   run / case   `iris.run`, `iris.case_key` on the resource or the root
+ *   evaluate     `iris.evaluate` (true) and `iris.eval_type` on the resource
+ *                or the root: the sender asks for this trace to be scored,
+ *                as `evaluate: true` does on POST /api/v1/traces
  *   spans        every span: kind from `iris.span_kind`, else TOOL when it
  *                carries a tool attribute or `gen_ai.operation.name` is
  *                execute_tool, else LLM when it carries a GenAI request
@@ -301,6 +304,15 @@ export interface MappedTrace {
   otelTraceId: string;
   /** What the payload did not carry, in the reader's words. */
   lacked: string[];
+  /**
+   * The sender asked for this trace to be scored: `iris.evaluate` true on the
+   * resource or the root span. The per-trace twin of `evaluate: true` on
+   * POST /api/v1/traces, for a sender that wants a verdict without the
+   * server scoring its whole OTLP feed (`otel.evaluateOnIngest`).
+   */
+  evaluate: boolean;
+  /** `iris.eval_type` as sent, unvalidated: the route checks it against the bundles. */
+  evalType?: string;
 }
 
 export interface MappedPayload {
@@ -427,6 +439,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
     const runId = group.resource['iris.run'] ?? root.attrs['iris.run'];
     const caseKey = group.resource['iris.case_key'] ?? root.attrs['iris.case_key'];
     const framework = group.resource['iris.framework'] ?? root.attrs['iris.framework'];
+    const evaluateFlag = group.resource['iris.evaluate'] ?? root.attrs['iris.evaluate'];
+    const evalType = group.resource['iris.eval_type'] ?? root.attrs['iris.eval_type'];
 
     const irisTraceId = mint();
     const spanIds = new Map<string, string>();
@@ -466,7 +480,14 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       ...(typeof caseKey === 'string' && caseKey.length > 0 ? { case_key: caseKey } : {}),
       source: 'otel',
     };
-    traces.push({ trace, otelTraceId, lacked });
+    traces.push({
+      trace,
+      otelTraceId,
+      lacked,
+      // A boolean true, or the string "true" from an exporter that only writes strings.
+      evaluate: evaluateFlag === true || evaluateFlag === 'true',
+      ...(typeof evalType === 'string' && evalType.length > 0 ? { evalType } : {}),
+    });
   }
 
   return { traces, rejectedSpans, rejections };

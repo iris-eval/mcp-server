@@ -30,6 +30,15 @@ def test_the_package_is_typed_and_registers_its_pytest_plugin() -> None:
 
 
 def test_every_public_name_is_exported() -> None:
-    for name in ("IrisClient", "AsyncIrisClient", "IrisError", "IrisConnectionError", "find_server", "Evaluation", "Verdict"):
+    for name in ("IrisClient", "AsyncIrisClient", "IrisError", "IrisConnectionError", "find_server", "Evaluation", "Verdict", "wrap_openai", "wrap_anthropic", "IrisRecorder"):
         assert hasattr(iris_eval, name), name
         assert name in iris_eval.__all__, name
+
+
+def test_importing_the_package_imports_no_provider_sdk() -> None:
+    """The wrappers work on whichever SDK the application already has; the package itself brings none."""
+    import subprocess
+
+    probe = "import sys, iris_eval; print(sorted(m for m in ('openai', 'anthropic', 'langchain_core') if m in sys.modules))"
+    out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True).stdout.strip()
+    assert out == "[]"

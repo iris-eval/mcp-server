@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [{ name = "Iris" }]
-keywords = ["iris", "evaluation", "agents", "llm", "mcp", "pytest"]
+keywords = ["iris", "evaluation", "agents", "llm", "mcp", "pytest", "opentelemetry", "openai", "anthropic"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Framework :: Pytest",
@@ -27,7 +27,8 @@ classifiers = [
 dependencies = ["httpx>=0.27,<1"]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "pytest-asyncio>=0.24"]
+# The provider SDKs the wrappers are proven against; the package itself imports neither.
+test = ["pytest>=8", "pytest-asyncio>=0.24", "openai>=1.66", "anthropic>=0.43"]
 
 [project.urls]
 Homepage = "https://iris-eval.com"

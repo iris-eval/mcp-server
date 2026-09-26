@@ -1,0 +1,194 @@
+[
+  {
+    "name": "chat, plain, with parameters",
+    "span": {
+      "name": "chat gpt-5.2",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-5.2",
+        "gen_ai.request.max_tokens": 300,
+        "gen_ai.request.temperature": 0.2,
+        "gen_ai.request.seed": 7,
+        "gen_ai.request.stop_sequences": [
+          "END"
+        ],
+        "gen_ai.input.messages": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"Be brief.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"What is the capital of France?\"}]}]",
+        "iris.input": "What is the capital of France?",
+        "gen_ai.response.id": "chatcmpl-1",
+        "gen_ai.response.model": "gpt-5.2-2026-08-01",
+        "gen_ai.response.finish_reasons": [
+          "stop"
+        ],
+        "gen_ai.usage.input_tokens": 20,
+        "gen_ai.usage.output_tokens": 2,
+        "gen_ai.usage.cache_read.input_tokens": 4,
+        "gen_ai.usage.reasoning.output_tokens": 0,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"Paris.\"}],\"finish_reason\":\"stop\"}]",
+        "iris.output": "Paris."
+      }
+    }
+  },
+  {
+    "name": "chat, a tool call requested, parts and an image in the input",
+    "span": {
+      "name": "chat gpt-5.2",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-5.2",
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"What is the weather where this photo was taken?\"},{\"type\":\"image_url\"}]}]",
+        "gen_ai.tool.definitions": "[{\"type\":\"function\",\"name\":\"get_weather\",\"description\":\"The weather in a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}}]",
+        "iris.input": "What is the weather where this photo was taken?",
+        "gen_ai.response.id": "chatcmpl-2",
+        "gen_ai.response.model": "gpt-5.2",
+        "gen_ai.response.finish_reasons": [
+          "tool_calls"
+        ],
+        "gen_ai.usage.input_tokens": 50,
+        "gen_ai.usage.output_tokens": 12,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}],\"finish_reason\":\"tool_call\"}]",
+        "iris.output": "[{\"tool\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}]"
+      }
+    }
+  },
+  {
+    "name": "chat, the follow-up with the tool's result",
+    "span": {
+      "name": "chat gpt-5.2",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-5.2",
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Weather in Paris?\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"tool_call_response\",\"id\":\"call_1\",\"response\":\"18C, sunny\"}]}]",
+        "iris.input": "Weather in Paris?",
+        "gen_ai.response.id": "chatcmpl-3",
+        "gen_ai.response.model": "gpt-5.2",
+        "gen_ai.response.finish_reasons": [
+          "stop"
+        ],
+        "gen_ai.usage.input_tokens": 70,
+        "gen_ai.usage.output_tokens": 7,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"It is 18C and sunny.\"}],\"finish_reason\":\"stop\"}]",
+        "iris.output": "It is 18C and sunny."
+      }
+    }
+  },
+  {
+    "name": "chat, refused by the provider",
+    "span": {
+      "name": "chat gpt-5.2",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-5.2",
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"hi\"}]}]",
+        "iris.input": "hi",
+        "error.type": "400"
+      }
+    }
+  },
+  {
+    "name": "responses, instructions and a function call item",
+    "span": {
+      "name": "chat gpt-5.2",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-5.2",
+        "gen_ai.request.max_tokens": 500,
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Weather in Paris?\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_9\",\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"tool_call_response\",\"id\":\"call_9\",\"response\":\"18C\"}]}]",
+        "gen_ai.system_instructions": "[{\"type\":\"text\",\"content\":\"You are a weather bot.\"}]",
+        "gen_ai.tool.definitions": "[{\"type\":\"function\",\"name\":\"get_weather\",\"parameters\":{\"type\":\"object\"}},{\"type\":\"web_search\",\"name\":\"web_search\"}]",
+        "iris.input": "Weather in Paris?",
+        "gen_ai.response.id": "resp_1",
+        "gen_ai.response.model": "gpt-5.2",
+        "gen_ai.response.finish_reasons": [
+          "completed"
+        ],
+        "gen_ai.usage.input_tokens": 80,
+        "gen_ai.usage.output_tokens": 9,
+        "gen_ai.usage.cache_read.input_tokens": 0,
+        "gen_ai.usage.reasoning.output_tokens": 3,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"reasoning\",\"content\":\"The tool said 18C.\"},{\"type\":\"text\",\"content\":\"It is 18C in Paris.\"}],\"finish_reason\":\"stop\"}]",
+        "iris.output": "It is 18C in Paris."
+      }
+    }
+  },
+  {
+    "name": "responses, cut off at the token limit",
+    "span": {
+      "name": "chat gpt-5.2",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-5.2",
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Write a long story.\"}]}]",
+        "iris.input": "Write a long story.",
+        "gen_ai.response.id": "resp_2",
+        "gen_ai.response.model": "gpt-5.2",
+        "gen_ai.response.finish_reasons": [
+          "max_output_tokens"
+        ],
+        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.output_tokens": 3,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"Once upon a\"}],\"finish_reason\":\"length\"}]",
+        "iris.output": "Once upon a"
+      }
+    }
+  },
+  {
+    "name": "messages, system blocks, thinking, tool use and cached tokens",
+    "span": {
+      "name": "chat claude-opus-5-5",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "anthropic",
+        "gen_ai.request.model": "claude-opus-5-5",
+        "gen_ai.request.max_tokens": 1024,
+        "gen_ai.request.top_k": 40,
+        "gen_ai.request.stop_sequences": [
+          "###"
+        ],
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Weather in Paris?\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"toolu_1\",\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"tool_call_response\",\"id\":\"toolu_1\",\"response\":[{\"type\":\"text\",\"content\":\"18C\"}]}]}]",
+        "gen_ai.system_instructions": "[{\"type\":\"text\",\"content\":\"You are terse.\"}]",
+        "gen_ai.tool.definitions": "[{\"type\":\"function\",\"name\":\"get_weather\",\"description\":\"The weather in a city\",\"parameters\":{\"type\":\"object\"}}]",
+        "iris.input": "Weather in Paris?",
+        "gen_ai.response.id": "msg_1",
+        "gen_ai.response.model": "claude-opus-5-5",
+        "gen_ai.response.finish_reasons": [
+          "end_turn"
+        ],
+        "gen_ai.usage.input_tokens": 112,
+        "gen_ai.usage.output_tokens": 6,
+        "gen_ai.usage.cache_read.input_tokens": 100,
+        "gen_ai.usage.cache_creation.input_tokens": 0,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"reasoning\",\"content\":\"The tool said 18C.\"},{\"type\":\"text\",\"content\":\"18C and clear.\"}],\"finish_reason\":\"stop\"}]",
+        "iris.output": "18C and clear."
+      }
+    }
+  },
+  {
+    "name": "messages, a tool use with no text",
+    "span": {
+      "name": "chat claude-opus-5-5",
+      "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "anthropic",
+        "gen_ai.request.model": "claude-opus-5-5",
+        "gen_ai.request.max_tokens": 64,
+        "gen_ai.input.messages": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Weather?\"},{\"type\":\"image\"}]}]",
+        "iris.input": "Weather?",
+        "gen_ai.response.id": "msg_2",
+        "gen_ai.response.model": "claude-opus-5-5",
+        "gen_ai.response.finish_reasons": [
+          "tool_use"
+        ],
+        "gen_ai.usage.input_tokens": 30,
+        "gen_ai.usage.output_tokens": 12,
+        "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"toolu_2\",\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}],\"finish_reason\":\"tool_call\"}]",
+        "iris.output": "[{\"tool\":\"get_weather\",\"arguments\":{\"city\":\"Paris\"}}]"
+      }
+    }
+  }
+]

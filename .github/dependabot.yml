@@ -81,6 +81,28 @@ updates:
         patterns:
           - "@types/*"
 
+  # The JavaScript SDK's own toolchain and the provider SDKs its tests drive
+  # (packages/sdk has its own lockfile; the package has no runtime dependencies).
+  - package-ecosystem: "npm"
+    directory: "/packages/sdk"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(sdk)"
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]  # the same ceiling as the root (see #58)
+    groups:
+      providers:
+        patterns:
+          - "openai"
+          - "@anthropic-ai/sdk"
+          - "ai"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

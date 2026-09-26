@@ -19,7 +19,8 @@
     "tests",
     "version",
     "capabilityMap",
-    "evaluators"
+    "evaluators",
+    "clients"
   ],
   "properties": {
     "$schema": {
@@ -866,6 +867,7 @@
         "mcpServer",
         "published",
         "pythonPackage",
+        "sdkPackage",
         "websitePackage"
       ],
       "properties": {
@@ -909,7 +911,8 @@
             "irisEvalPackage",
             "langchainPackage",
             "mcpServer",
-            "pythonPackage"
+            "pythonPackage",
+            "sdkPackage"
           ],
           "properties": {
             "irisEvalPackage": {
@@ -923,11 +926,24 @@
             },
             "pythonPackage": {
               "type": "boolean"
+            },
+            "sdkPackage": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
         },
         "pythonPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sdkPackage": {
           "oneOf": [
             {
               "$ref": "#/$defs/semver"
@@ -1167,6 +1183,123 @@
           "type": "object"
         }
       }
+    },
+    "clients": {
+      "type": "object",
+      "description": "Every MCP client Iris names as a place it runs, read verbatim from clients.json with counts by status: `verified` when a test in this repository drives the client's real integration surface on every CI run, `claimed` when the installer writes the shape the client documents and that writer is tested (tests/clients-contract.test.ts).",
+      "required": [
+        "version",
+        "about",
+        "statuses",
+        "rows",
+        "counts",
+        "total"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "about": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "verified",
+              "claimed"
+            ]
+          },
+          "minItems": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "status",
+              "configMode",
+              "config",
+              "summary",
+              "source",
+              "lastChecked",
+              "evidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "verified",
+                  "claimed"
+                ]
+              },
+              "configMode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "config": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "type": "string",
+                "pattern": "^https://"
+              },
+              "lastChecked": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "verified",
+            "claimed"
+          ],
+          "properties": {
+            "verified": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "claimed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,

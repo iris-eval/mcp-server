@@ -116,6 +116,20 @@ iris.evaluate_output("…", input="…", agent_name="support-bot")["verdict"]   
 
 A thin client over the HTTP API of server 0.16.0 and later, versioned on its own — `iris_eval.__version__` and the PyPI page carry its number, which is not the server's: `log_trace()`, `evaluate_output()`, `get_traces()`, `get_trace()`, `health()`, `capabilities()`, sync and async, typed answers, the server's own sentence on a refusal — and a pytest plugin: an `iris` fixture and `assert_iris(output, expect="pass")` that asserts on the verdict's state. [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md).
 
+### Record every OpenAI and Anthropic call
+
+```python
+from iris_eval import wrap_openai
+client = wrap_openai(OpenAI(), agent_name="support-bot")   # every call: a GenAI span to POST /v1/traces, scored
+```
+
+```ts
+import { wrapOpenAI } from '@iris-eval/sdk';
+const openai = wrapOpenAI(new OpenAI(), { agentName: 'support-bot' });
+```
+
+Wrap the provider client once and each model call becomes one OpenTelemetry GenAI span sent to the OTLP door, stored with its input, output, token usage and tool calls, and scored: capture that does not depend on the model calling a tool. `wrap_openai` / `wrap_anthropic` in the Python client; `wrapOpenAI`, `wrapAnthropic` and `irisMiddleware` for the Vercel AI SDK in `@iris-eval/sdk`. Both are not yet published (the next `iris-eval` release on PyPI; `@iris-eval/sdk` is built from source until its first npm release). Streams, the SDKs' stream helpers and tool calls are covered, the original client is not changed, and Iris being down never breaks a call — [packages/sdk/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/sdk/README.md), [packages/python/README.md](https://github.com/iris-eval/mcp-server/blob/main/packages/python/README.md#record-every-openai-and-anthropic-call).
+
 ### A CI gate, no server needed
 
 ```bash
