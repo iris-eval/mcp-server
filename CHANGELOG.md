@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Check before upgrading.**
 
+- **`verify_citations` reports a judge failure under `judge_error`, not `resolve_error`.** A caller that read the judge's error from `resolve_error` on a citation whose `resolve_status` is `"ok"` reads it from `judge_error` instead, with the same `kind` and `message`. `resolve_error` now means only that the source was not resolved.
 - **The dashboard's Moments page opens ranked by significance, not newest first, and refreshes every 10 seconds instead of 3.** Add `?sort=newest` to the page address, or pick Newest first in its Order control, for the old stream. `GET /api/v1/moments` is unchanged unless a caller passes `sort_by=significance`.
 
 ### Added
