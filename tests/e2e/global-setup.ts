@@ -13,7 +13,7 @@
  * Scope: LOCAL_TENANT only. Multi-tenant isolation is covered by the
  * unit test at tests/unit/storage/sqlite-adapter.test.ts.
  */
-import { mkdirSync, appendFileSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
@@ -21,6 +21,7 @@ import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { Trace } from '../../src/types/trace.js';
 import type { EvalResult } from '../../src/types/eval.js';
 import { E2E_BASE_URL, E2E_DB_DIR, E2E_DB_PATH } from './_constants.js';
+import { assertServesThisBuild } from './_build-identity.js';
 
 const AGENTS = ['research-synthesizer', 'content-drafter', 'data-extractor', 'code-reviewer'];
 /** The seeded $1.33 trace: tests/e2e/verdict.spec.ts opens /traces/e2e-trace-0019. */
@@ -134,6 +135,16 @@ async function waitForHealth(url: string, timeoutMs = 30_000): Promise<void> {
 export default async function globalSetup(): Promise<void> {
   // 1. Wait for webServer to finish initialization (migrations, etc.).
   await waitForHealth(`${E2E_BASE_URL}/api/v1/health`);
+
+  /*
+   * 1b. The server answering is the dashboard this checkout built (#665),
+   * or the run stops here, before any test can pass or fail on another
+   * build's behalf. Resolved from the working directory, as the webServer
+   * command's `dist/index.js` is.
+   */
+  const served = await (await fetch(`${E2E_BASE_URL}/`)).text();
+  const built = readFileSync(join(process.cwd(), 'dist', 'dashboard', 'index.html'), 'utf8');
+  assertServesThisBuild(served, built, E2E_BASE_URL);
 
   // 2. Open a second connection against the same DB. SqliteAdapter's
   //    initialize() is idempotent — migrations that already ran are
