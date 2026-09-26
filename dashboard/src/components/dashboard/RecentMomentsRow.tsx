@@ -135,6 +135,10 @@ export function RecentMomentsRow() {
   const { data, loading } = useMoments({
     limit: String(MAX_ROWS * 3),
     min_significance: '0.4',
+    // A filtered read covers a window of recent traces (#657). Until then
+    // this row read 4 x 12 = 48 traces and missed anything older; 200 is
+    // the window the Stream view's list reads beside it.
+    window: '200',
   });
 
   // Filter to true significance (not normal-fail), take MAX_ROWS by recency

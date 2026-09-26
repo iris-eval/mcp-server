@@ -185,7 +185,7 @@ describe('Decision Moments ranked by significance', () => {
 
   it('refuses parameters that would do nothing, and a window past the bound', async () => {
     expect((await get('window=100')).status).toBe(400);
-    expect(JSON.stringify((await get('window=100')).body)).toContain('window applies only to sort_by=significance');
+    expect(JSON.stringify((await get('window=100')).body)).toContain('window applies to sort_by=significance, or with a verdict');
     expect((await get('sort_by=significance&sort_order=asc')).status).toBe(400);
     expect((await get('sort_by=significance&window=501')).status).toBe(400);
     expect((await get('sort_by=significance&window=0')).status).toBe(400);

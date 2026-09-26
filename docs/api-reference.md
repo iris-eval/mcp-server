@@ -1035,16 +1035,16 @@ List Decision Moments. A moment is one trace with its evaluations, classified by
 | `since` | `string` | -- | ISO 8601 | Trace timestamp lower bound |
 | `until` | `string` | -- | ISO 8601 | Trace timestamp upper bound, inclusive |
 | `sort_by` | `string` | `timestamp` | `timestamp` or `significance` | The order; see below |
-| `window` | `integer` | `500` | 1-500; only with `sort_by=significance` | How many of the most recent matching traces the ranking reads |
+| `window` | `integer` | `500` | 1-500; with `sort_by=significance` or a verdict or significance filter | How many matching traces a ranked or filtered read covers |
 | `sort_order` | `string` | `desc` | `asc` or `desc`; only with `sort_by=timestamp` | Timestamp direction |
 | `limit` | `integer` | `50` | 1-200 | Moments per page |
 | `offset` | `integer` | `0` | >= 0 | Pagination offset |
 
-A `window` without `sort_by=significance`, or `sort_order=asc` with it, is a 400: a parameter that would change nothing is refused rather than ignored.
+A `window` with neither `sort_by=significance` nor a filter, or `sort_order=asc` with `sort_by=significance`, is a 400: a parameter that would change nothing is refused rather than ignored.
 
 #### Two orders
 
-**`sort_by=timestamp`** (the default) pages through traces newest first. The verdict and significance filters are applied to each page after it is read, so a filtered page can hold fewer than `limit` moments, and `total` counts matching traces before those filters.
+**`sort_by=timestamp`** (the default) orders by time, newest first unless `sort_order=asc`. Without a verdict or significance filter it pages through traces, and `total` counts them. With a filter it reads a window: the first `window` traces matching `agent_name`, `since` and `until`, in the order asked for. It derives and filters every moment in that window before it cuts a page, so a page holds `limit` moments whenever that many match, page two starts where page one ended, and `total` is exact within the window. The response states the window, as below. Until 0.20.0 a filtered page was cut from `limit` traces (`4 × limit` with a significance filter), so it could come back short, `offset` counted traces, and `total` counted traces before the filters.
 
 **`sort_by=significance`** reads the newest `window` traces that match `agent_name`, `since` and `until`, classifies every one, applies the verdict and significance filters, and ranks what is left: `significance.score` descending, then newest first, then trace id. The page is cut from that ranking, so `total` is exact within the window, and page two begins where page one ended. The response states the window:
 
@@ -1059,7 +1059,7 @@ A `window` without `sort_by=significance`, or `sort_order=asc` with it, is a 400
 }
 ```
 
-A moment older than `window.oldest` is not in the ranking. When `scanned` is below `tracesInRange`, the ranking covers only the most recent part of the range: narrow `agent_name`, `since` or `until` to reach older traces. New traces move the window, so to page through one ranking while traces arrive, pass `until` set to the first page's `window.newest`.
+A moment older than `window.oldest` is not in the ranking. When `scanned` is below `tracesInRange`, the ranking covers only the most recent part of the range: narrow `agent_name`, `since` or `until` to reach older traces. New traces move the window, so to page through one ranking or one filtered list while traces arrive, pass `until` set to the first page's `window.newest`.
 
 #### Significance
 
