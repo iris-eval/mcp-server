@@ -30,6 +30,7 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [POST /api/v1/traces](#post-apiv1traces)
   - [GET /api/v1/traces](#get-apiv1traces)
   - [GET /api/v1/traces/:id](#get-apiv1tracesid)
+  - [GET /api/v1/moments](#get-apiv1moments)
   - [GET /api/v1/evaluations](#get-apiv1evaluations)
   - [GET /api/v1/summary](#get-apiv1summary)
   - [GET /api/v1/filters](#get-apiv1filters)
@@ -1016,6 +1017,67 @@ Get full detail for a single trace, including its spans and linked evaluations.
   "error": "Trace not found"
 }
 ```
+
+---
+
+### GET /api/v1/moments
+
+List Decision Moments. A moment is one trace with its evaluations, classified by what makes it worth a reader's attention. The dashboard's Moments page reads this route.
+
+#### Query Parameters
+
+| Parameter | Type | Default | Constraints | Description |
+|-----------|------|---------|-------------|-------------|
+| `agent_name` | `string` | -- | 1-200 chars | Filter by agent |
+| `verdict` | `string` | -- | `pass`, `fail`, `partial`, `unevaluated` | Filter by the moment's verdict |
+| `significance_kind` | `string` | -- | a kind from the table below | Filter by significance kind |
+| `min_significance` | `number` | -- | 0-1 | Keep moments whose `significance.score` is at least this |
+| `since` | `string` | -- | ISO 8601 | Trace timestamp lower bound |
+| `until` | `string` | -- | ISO 8601 | Trace timestamp upper bound, inclusive |
+| `sort_by` | `string` | `timestamp` | `timestamp` or `significance` | The order; see below |
+| `window` | `integer` | `500` | 1-500; only with `sort_by=significance` | How many of the most recent matching traces the ranking reads |
+| `sort_order` | `string` | `desc` | `asc` or `desc`; only with `sort_by=timestamp` | Timestamp direction |
+| `limit` | `integer` | `50` | 1-200 | Moments per page |
+| `offset` | `integer` | `0` | >= 0 | Pagination offset |
+
+A `window` without `sort_by=significance`, or `sort_order=asc` with it, is a 400: a parameter that would change nothing is refused rather than ignored.
+
+#### Two orders
+
+**`sort_by=timestamp`** (the default) pages through traces newest first. The verdict and significance filters are applied to each page after it is read, so a filtered page can hold fewer than `limit` moments, and `total` counts matching traces before those filters.
+
+**`sort_by=significance`** reads the newest `window` traces that match `agent_name`, `since` and `until`, classifies every one, applies the verdict and significance filters, and ranks what is left: `significance.score` descending, then newest first, then trace id. The page is cut from that ranking, so `total` is exact within the window, and page two begins where page one ended. The response states the window:
+
+```json
+{
+  "moments": [ { "id": "trc_…", "timestamp": "2026-09-01T00:30:00.000Z", "significance": { "kind": "safety-violation", "score": 1, "label": "Safety: no_pii", "reason": "…" }, "…": "…" } ],
+  "total": 240,
+  "limit": 50,
+  "offset": 0,
+  "sortBy": "significance",
+  "window": { "size": 500, "scanned": 240, "tracesInRange": 240, "newest": "2026-09-01T03:59:00.000Z", "oldest": "2026-09-01T00:00:00.000Z" }
+}
+```
+
+A moment older than `window.oldest` is not in the ranking. When `scanned` is below `tracesInRange`, the ranking covers only the most recent part of the range: narrow `agent_name`, `since` or `until` to reach older traces. New traces move the window, so to page through one ranking while traces arrive, pass `until` set to the first page's `window.newest`.
+
+#### Significance
+
+Each moment gets one kind and that kind's score. The tiers answer three questions, most serious first: severity, then change against the agent's own baseline, then rarity. The ordinary outcomes come after them.
+
+| Kind | Score | Fires when |
+|------|-------|------------|
+| `safety-violation` | 1.0 | A rule in the safety bundle failed, or a rule that vetoes under this deployment's config |
+| `cost-spike` | 0.9 | The trace's cost is a modified z above 3.5 against the agent's last 200 costs (median and MAD), or, when those costs did not vary, more than 10% above every one. Needs 20 prior costs |
+| `regression-alarm` | 0.85 | A rule's fail rate for this agent crossed its CUSUM line at this evaluation |
+| `first-failure` | 0.8 | A rule failed that had never failed for this agent. Needs 5 prior evaluated traces |
+| `novel-pattern` | 0.75 | Every failed rule has failed before for this agent, but never together. Needs 5 prior evaluated traces |
+| `rule-collision` | 0.7 | Evaluations of two or more types failed on the trace |
+| `normal-fail` | 0.5 / 0.4 | A fail (0.5) or a partial (0.4) that is none of the above |
+| `unevaluated` | 0.1 | Nothing was judged |
+| `normal-pass` | 0.05 | A clean pass |
+
+Severity comes first because a leak or an injection must not ship, however often it has happened. Change comes next: a cost spike or a shifted fail rate is the agent behaving differently from its own history. Rarity follows: a failure this agent has never had before. Until an agent has the history a class needs, that class stays silent, so a new agent's first afternoon is ranked on what each trace did, not on how new it looks.
 
 ---
 

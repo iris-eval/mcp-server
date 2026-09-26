@@ -174,7 +174,7 @@ src/
       filters.ts        GET /api/v1/filters
       health.ts         GET /api/v1/health
       eval-stats.ts     GET /api/v1/eval-stats (+ /trend, /rules, /failures)
-      moments.ts        GET /api/v1/moments — Decision Moment classification
+      moments.ts        GET /api/v1/moments — Decision Moment classification and significance ranking
       rules.ts          GET/POST/PATCH/DELETE custom rules, GET rules/builtin, POST rules/custom/preview
       audit.ts          GET /api/v1/audit — read of the append-only audit log
       preferences.ts    GET/PATCH /api/v1/preferences
