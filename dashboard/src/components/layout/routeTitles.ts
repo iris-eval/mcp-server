@@ -25,7 +25,7 @@ export const ROUTE_TITLES: RouteMeta[] = [
   {
     pattern: '/moments',
     title: NAV_LABELS.moments,
-    subtitle: 'Every trace, classified by significance',
+    subtitle: 'Recent traces, ranked by significance',
     kind: 'static',
   },
   {

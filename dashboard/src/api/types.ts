@@ -522,9 +522,20 @@ export interface DecisionMomentDetail extends DecisionMoment {
 
 export interface MomentQueryResult {
   moments: DecisionMoment[];
+  /** Newest first: matching traces before filters ("at least"). Ranked by significance: moments in the window after filters, exact. */
   total: number;
   limit: number;
   offset: number;
+  /** Present when the server ranked by significance (sort_by=significance). */
+  sortBy?: 'significance';
+  /** How far back a significance ranking reached. Present with sortBy. */
+  window?: {
+    size: number;
+    scanned: number;
+    tracesInRange: number;
+    newest?: string;
+    oldest?: string;
+  };
 }
 
 /* ── Ranked failures (failure-first landing view) ── */

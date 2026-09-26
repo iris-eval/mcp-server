@@ -184,9 +184,36 @@ export interface MomentQueryOptions {
 
 export interface MomentQueryResult {
   moments: DecisionMoment[];
+  /**
+   * Newest first (the default): matching traces, counted before the
+   * verdict and significance filters, so "at least this many". Ranked by
+   * significance: the moments in the window after every filter, exact.
+   */
   total: number;
   limit: number;
   offset: number;
+  /** Present when the moments were ranked by significance (sort_by=significance). */
+  sortBy?: 'significance';
+  /** The traces a significance ranking read. Present with sortBy. */
+  window?: MomentRankWindow;
+}
+
+/**
+ * How far back a significance ranking reaches: the newest `size` traces
+ * that match agent/since/until. A moment older than `oldest` is not in the
+ * ranking at all, which is why the window is stated rather than implied.
+ */
+export interface MomentRankWindow {
+  /** Traces asked for: the `window` parameter, or its default. */
+  size: number;
+  /** Traces read; below `size` when fewer matched. */
+  scanned: number;
+  /** Every trace matching agent/since/until. Above `scanned` when the ranking did not reach the oldest. */
+  tracesInRange: number;
+  /** Timestamp of the newest trace read. Pass it as `until` to page without new traces shifting the window. */
+  newest?: string;
+  /** Timestamp of the oldest trace read. */
+  oldest?: string;
 }
 
 /*

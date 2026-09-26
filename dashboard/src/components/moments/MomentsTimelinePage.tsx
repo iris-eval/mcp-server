@@ -3,8 +3,10 @@
  *
  * The category-defining surface. Renders a vertically-stacked timeline of
  * Decision Moments derived from trace + eval data. Each moment is a card
- * with a significance-coded rail glyph; the timeline reads top-down (most
- * recent first by default).
+ * with a significance-coded rail glyph. By default the list is ranked by
+ * significance within a stated window of recent traces (#409), so a safety
+ * violation is not buried behind every pass since; `?sort=newest` is the
+ * plain newest-first stream.
  *
  * Filter state is encoded in URL search params so every filtered view is
  * shareable (per Phase B1 enterprise-depth requirement: permalinks).
@@ -17,12 +19,13 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useMoments, useFilters } from '../../api/hooks';
+import { CADENCE, useMoments, useFilters } from '../../api/hooks';
 import { usePreferences } from '../../hooks/usePreferences';
 import { api } from '../../api/client';
 import type { DecisionMoment, DecisionMomentDetail, MomentSignificanceKind } from '../../api/types';
 import { Activity } from 'lucide-react';
 import { MomentCard } from './MomentCard';
+import { orderOf, rankingNote } from './momentOrder';
 import { BulkActionsBar } from './BulkActionsBar';
 import { MakeRuleModal } from './MakeRuleModal';
 import {
@@ -233,8 +236,11 @@ export function MomentsTimelinePage() {
     hydratedFromPrefs.current = true;
   }, [preferences, searchParams, setSearchParams]);
 
+  const order = orderOf(searchParams);
+
   const queryParams = useMemo<Record<string, string>>(() => {
     const params: Record<string, string> = { limit: '50' };
+    if (orderOf(searchParams) === 'significance') params.sort_by = 'significance';
     const agent = searchParams.get('agent');
     const verdict = searchParams.get('verdict');
     const kind = searchParams.get('kind');
@@ -248,7 +254,13 @@ export function MomentsTimelinePage() {
     return params;
   }, [searchParams]);
 
-  const { data, loading, error, refetch } = useMoments(queryParams);
+  // A ranking reads a whole window, not a live tail: poll it at the
+  // cadence the other window-reading views use.
+  const { data, loading, error, refetch } = useMoments(
+    queryParams,
+    order === 'significance' ? CADENCE.NORMAL : CADENCE.FAST,
+  );
+  const note = data ? rankingNote(data) : null;
 
   // Persist filter changes back to preferences (best-effort; failures are
   // surfaced as a console warning but don't block the UI). We only persist
@@ -291,7 +303,11 @@ export function MomentsTimelinePage() {
   };
 
   const clearFilters = () => {
-    setSearchParams(new URLSearchParams());
+    // The order is not a filter: clearing filters keeps it.
+    const next = new URLSearchParams();
+    const sort = searchParams.get('sort');
+    if (sort) next.set('sort', sort);
+    setSearchParams(next);
     patch({ momentFilters: {} }).catch(() => undefined);
   };
 
@@ -398,7 +414,11 @@ export function MomentsTimelinePage() {
   return (
     <div style={styles.page}>
       <PageHeader
-        subtitle="Every trace, newest first, classified by what makes it noteworthy. Use the significance filter to surface safety violations and cost spikes; the Failures view on the dashboard already leads with them. Click a moment to see why it was flagged and turn the observed pattern into a deployable rule."
+        subtitle={
+          order === 'significance'
+            ? 'Recent traces ranked by what they found: safety violations first, then departures from the agent\'s own baseline (cost spikes, regression alarms), then failures new to the agent, then routine failures and passes. Newest first among equals. Click a moment to see why it was flagged and turn the observed pattern into a deployable rule.'
+            : 'Every trace, newest first, classified by what makes it noteworthy. Switch the order to rank by significance. Click a moment to see why it was flagged and turn the observed pattern into a deployable rule.'
+        }
         meta={
           data && (
             <span
@@ -417,6 +437,16 @@ export function MomentsTimelinePage() {
       <PageToolbar
         filters={
           <>
+            <span style={styles.filterLabel}>Order</span>
+            <select
+              style={styles.select}
+              value={order}
+              onChange={(e) => updateFilter('sort', e.target.value === 'newest' ? 'newest' : '')}
+              aria-label="Order moments"
+            >
+              <option value="significance">Most significant</option>
+              <option value="newest">Newest first</option>
+            </select>
             <span style={styles.filterLabel}>Filter</span>
             <select
               style={styles.select}
@@ -495,6 +525,12 @@ export function MomentsTimelinePage() {
           </div>
         }
       />
+
+      {note && (
+        <p style={styles.subtitle} data-testid="ranking-note">
+          {note}
+        </p>
+      )}
 
       {error && <QueryError error={error} what="decision moments" onRetry={refetch} />}
 
