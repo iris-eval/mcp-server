@@ -29,7 +29,7 @@ export interface ModelPricing {
 }
 
 /** The date the table was last read from PRICING_SOURCES. */
-export const PRICING_SOURCED_ON = '2026-09-20';
+export const PRICING_SOURCED_ON = '2026-09-25';
 
 export const PRICING_SOURCES: Readonly<Record<PricingProvider, string>> = {
   anthropic: 'https://claude.com/pricing',
@@ -39,10 +39,12 @@ export const PRICING_SOURCES: Readonly<Record<PricingProvider, string>> = {
 export const MODEL_PRICING: readonly ModelPricing[] = [
   // Anthropic — current
   { provider: 'anthropic', model: 'claude-fable-5-1', inputUsdPer1M: 10, outputUsdPer1M: 50 },
-  { provider: 'anthropic', model: 'claude-opus-5', inputUsdPer1M: 5, outputUsdPer1M: 25 },
+  { provider: 'anthropic', model: 'claude-opus-5-5', inputUsdPer1M: 4, outputUsdPer1M: 20 },
   { provider: 'anthropic', model: 'claude-sonnet-5', inputUsdPer1M: 2, outputUsdPer1M: 10 },
   { provider: 'anthropic', model: 'claude-haiku-4-5', inputUsdPer1M: 1, outputUsdPer1M: 5 },
   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', inputUsdPer1M: 1, outputUsdPer1M: 5 },
+  // Anthropic — legacy on the provider's page, still priced
+  { provider: 'anthropic', model: 'claude-opus-5', inputUsdPer1M: 5, outputUsdPer1M: 25 },
   // Anthropic — the 4.x line, still priced
   { provider: 'anthropic', model: 'claude-opus-4-8', inputUsdPer1M: 5, outputUsdPer1M: 25 },
   { provider: 'anthropic', model: 'claude-opus-4-7', inputUsdPer1M: 5, outputUsdPer1M: 25 },
