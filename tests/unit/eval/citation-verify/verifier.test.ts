@@ -101,6 +101,8 @@ describe('verifyCitations', () => {
     });
     expect(res.citations[0].resolveStatus).toBe('error');
     expect(res.citations[0].resolveError?.kind).toBe('bad_status');
+    // A resolve-stage failure never reaches the judge, so it has no judgeError.
+    expect(res.citations[0].judgeError).toBeUndefined();
     expect(res.totalResolved).toBe(0);
   });
 
@@ -220,7 +222,11 @@ describe('verifyCitations', () => {
     // First source judged + cost consumed. Second source fetched but
     // judge skipped due to cap.
     expect(res.citations[0].judge).toBeDefined();
-    expect(res.citations[1].resolveError?.kind).toBe('cost_cap_reached');
+    // A judge-stage failure, on a source that resolved: judgeError, and
+    // resolveError stays empty (#407).
+    expect(res.citations[1].resolveStatus).toBe('ok');
+    expect(res.citations[1].judgeError?.kind).toBe('cost_cap_reached');
+    expect(res.citations[1].resolveError).toBeUndefined();
     // Hitting the cap is an infrastructure stop, not evidence against the
     // citation: 1 judged, 1 supported — full marks, not 1/2.
     expect(res.totalResolved).toBe(2);
@@ -272,7 +278,10 @@ describe('verifyCitations', () => {
     expect(res.overallScore).toBe(1);
     expect(res.passed).toBe(true);
     expect(res.citations[1].judge).toBeUndefined();
-    expect(res.citations[1].resolveError?.kind).toBe('timeout');
+    // A judge-stage failure, on a source that resolved: judgeError, and
+    // resolveError stays empty (#407).
+    expect(res.citations[1].judgeError?.kind).toBe('timeout');
+    expect(res.citations[1].resolveError).toBeUndefined();
   });
 
   it('scores null (not zero) when every judge call fails', async () => {
@@ -302,7 +311,11 @@ describe('verifyCitations', () => {
      * bill of health for the sources.
      */
     expect(res.passed).toBeNull();
-    expect(res.citations[0].resolveError?.kind).toBe('server_error');
+    // A judge-stage failure, on a source that resolved: judgeError, and
+    // resolveError stays empty (#407).
+    expect(res.citations[0].resolveStatus).toBe('ok');
+    expect(res.citations[0].judgeError?.kind).toBe('server_error');
+    expect(res.citations[0].resolveError).toBeUndefined();
   });
 
   it('excludes malformed judge responses from the denominator', async () => {
@@ -342,7 +355,10 @@ describe('verifyCitations', () => {
     expect(res.totalResolved).toBe(2);
     expect(res.totalJudged).toBe(1);
     expect(res.overallScore).toBe(1);
-    expect(res.citations[1].resolveError?.kind).toBe('malformed_judge_response');
+    // A judge-stage failure, on a source that resolved: judgeError, and
+    // resolveError stays empty (#407).
+    expect(res.citations[1].judgeError?.kind).toBe('malformed_judge_response');
+    expect(res.citations[1].resolveError).toBeUndefined();
   });
 
   it('respects max_citations', async () => {

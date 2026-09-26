@@ -31,7 +31,20 @@ export interface VerifyCitationsParams {
 export interface VerifiedCitation {
   citation: ExtractedCitation;
   resolveStatus: 'ok' | 'skipped' | 'error';
+  /**
+   * Why the source could not be resolved: the citation has no fetchable
+   * form, fetching is off, or the fetch failed. Set only when
+   * resolveStatus is 'skipped' or 'error'.
+   */
   resolveError?: { kind: string; message: string };
+  /**
+   * Why a resolved source got no verdict: the cost cap stopped the call,
+   * the provider failed, or the reply could not be read. Set only when
+   * resolveStatus is 'ok' and judge is absent. Until 0.20.0 these were
+   * filed under resolveError, which said the source had failed when it had
+   * not (#407).
+   */
+  judgeError?: { kind: string; message: string };
   source?: Pick<ResolvedSource, 'url' | 'status' | 'contentType' | 'bytesFetched' | 'truncated'>;
   // LLM judge verdict — only set when resolve succeeded.
   judge?: {
@@ -74,8 +87,8 @@ export interface VerifyCitationsResult {
   totalCitationsFound: number;
   totalResolved: number;
   // Citations with a parseable judge verdict — the score denominator.
-  // totalResolved - totalJudged = infrastructure failures, each carrying
-  // its resolveError kind per-citation.
+  // totalResolved - totalJudged = judge-stage failures, each carrying
+  // its judgeError kind per-citation.
   totalJudged: number;
   totalSupported: number;
 }
@@ -264,7 +277,7 @@ export async function verifyCitations(
           bytesFetched: source.bytesFetched,
           truncated: source.truncated,
         },
-        resolveError: {
+        judgeError: {
           kind: 'cost_cap_reached',
           message: `Total cost cap $${maxCostTotal.toFixed(2)} would be exceeded by next judge call`,
         },
@@ -295,7 +308,7 @@ export async function verifyCitations(
           bytesFetched: source.bytesFetched,
           truncated: source.truncated,
         },
-        resolveError: {
+        judgeError: {
           kind: err instanceof LLMJudgeError ? err.kind : 'llm_judge_error',
           message: e.message,
         },
@@ -321,7 +334,7 @@ export async function verifyCitations(
           bytesFetched: source.bytesFetched,
           truncated: source.truncated,
         },
-        resolveError: {
+        judgeError: {
           kind: 'malformed_judge_response',
           message: e.message,
         },

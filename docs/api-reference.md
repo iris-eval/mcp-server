@@ -713,10 +713,20 @@ Extract citations from output, fetch sources behind an SSRF-guarded resolver, ru
   "total_cost_usd": 0.002145,
   "citations": [
     { "citation": {"raw": "[1]", "kind": "numbered", "identifier": "1", ...}, "resolve_status": "skipped", "resolve_error": {"kind": "unresolvable_kind", ...} },
-    { "citation": {...}, "resolve_status": "ok", "source": {...}, "judge": {"supported": true, "confidence": 0.95, "rationale": "..."} }
+    { "citation": {...}, "resolve_status": "ok", "source": {...}, "judge": {"supported": true, "confidence": 0.95, "rationale": "..."} },
+    { "citation": {...}, "resolve_status": "ok", "source": {...}, "judge_error": {"kind": "timeout", "message": "..."} }
   ]
 }
 ```
+
+Each citation carries at most one of two error fields, one per stage:
+
+| Field | Set when | Kinds |
+|-------|----------|-------|
+| `resolve_error` | The source was not resolved (`resolve_status` is `skipped` or `error`) | `unresolvable_kind`, `fetch_disabled`, `bad_scheme`, `ssrf`, `not_allowed_domain`, `timeout`, `too_large`, `bad_status`, `redirect_loop`, `not_text` |
+| `judge_error` | The source resolved (`resolve_status` is `ok`) and the judge gave no verdict, so `judge` is absent | `cost_cap_reached`, `malformed_judge_response`, and the provider error kinds `auth`, `rate_limit`, `bad_request`, `server_error`, `timeout`, `malformed_response`, `unknown` |
+
+A citation with either error is unverified, never unsupported: it is left out of `total_judged` and of the score. Until 0.20.0 judge failures were reported under `resolve_error` on citations whose `resolve_status` was `ok`.
 
 **SSRF defense + auth:** Eight layers documented in [semantic-citation-verify.md](./semantic-citation-verify.md). Requires an LLM judge API key (same as `evaluate_with_llm_judge`).
 
