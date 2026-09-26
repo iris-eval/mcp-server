@@ -17,7 +17,7 @@
  * the next start that can). And erasure: a deleted trace's words are not
  * left in the file.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +26,9 @@ import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
+
+// File-backed stores, several opens per test: 70-90 ms on a Windows laptop, up to 8 s on a hosted Windows runner (CI, 2026-09-26).
+vi.setConfig({ testTimeout: 30_000 });
 
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
