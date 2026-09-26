@@ -73,6 +73,11 @@ describe('the one table', () => {
     expect(findPricing('o1-mini')?.retired).toBe('2026-09-20');
   });
 
+  it('the truthbase lists exactly the priced, non-retired models, in table order', () => {
+    const claims = JSON.parse(readFileSync(resolve(__dirname, '..', '..', '..', '..', '.claims.json'), 'utf8')) as { llmJudgeTemplates: { supportedModels: string[] } };
+    expect(claims.llmJudgeTemplates.supportedModels).toEqual(MODEL_PRICING.filter((p) => !p.retired).map((p) => p.model));
+  });
+
   it('the tools’ model sentence leads with current models per provider and never a retired one', () => {
     const s = supportedModelsSummary();
     expect(s).toContain('claude-opus-5');

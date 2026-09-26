@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The LLM judge prices Claude Opus 5.5** (`claude-opus-5-5`, $4 in and $20 out per million tokens, read from claude.com/pricing on 2026-09-25), so it can be named as a judge and costed as an agent's model. An unpriced model is refused, because the cost cap cannot hold without a price. `claude-opus-5` stays priced and is marked legacy, as the provider's page lists it.
 - **`npx iris-eval` starts Iris.** The unscoped npm package `iris-eval` is a launcher: it depends on `@iris-eval/mcp-server` alone, at an open-ended range, and starts it, so `npx iris-eval --self-test`, `npx iris-eval install <client>` and `npx iris-eval --dashboard` are the server's own commands at its latest release. An MCP client config should still name the server package and a version, which is what `install` writes.
+
+### Fixed
+
+- **The published list of judge models is the list the judge accepts.** `llmJudgeTemplates.supportedModels` in `.claims.json` was typed by hand. It named `o1-mini`, which the judge marks retired, and no Claude 5 model. It is now read from the pricing table the judge enforces, and a test holds the two equal.
 
 ## [0.19.0] - 2026-09-25
 

@@ -94,15 +94,16 @@ Dimensions returned (per template):
 
 Iris carries a curated pricing table. Using an unknown model is an immediate error — the engine can't enforce the cost cap without pricing data.
 
-Read from the providers' own pricing pages on 2026-09-20 (Anthropic: claude.com/pricing; OpenAI: developers.openai.com/api/docs/pricing). This table is held to `src/eval/llm-judge/pricing.ts` by a test; edit the code, then this table, and the test says when they disagree.
+Read from the providers' own pricing pages on 2026-09-25 (Anthropic: claude.com/pricing; OpenAI: developers.openai.com/api/docs/pricing). This table is held to `src/eval/llm-judge/pricing.ts` by a test; edit the code, then this table, and the test says when they disagree.
 
 | Provider  | Model                            | Input $/1M | Output $/1M | Notes                                                        |
 |-----------|----------------------------------|------------|-------------|--------------------------------------------------------------|
 | anthropic | claude-fable-5-1                 | 10.00      | 50.00       | Highest quality, dearest                                     |
-| anthropic | claude-opus-5                    | 5.00       | 25.00       |                                                              |
+| anthropic | claude-opus-5-5                  | 4.00       | 20.00       |                                                              |
 | anthropic | claude-sonnet-5                  | 2.00       | 10.00       | Good default for production eval                             |
 | anthropic | claude-haiku-4-5                 | 1.00       | 5.00        | Recommended for high volume                                  |
 | anthropic | claude-haiku-4-5-20251001        | 1.00       | 5.00        | Same model, dated id                                         |
+| anthropic | claude-opus-5                    | 5.00       | 25.00       | Legacy on the provider's page                                |
 | anthropic | claude-opus-4-8                  | 5.00       | 25.00       |                                                              |
 | anthropic | claude-opus-4-7                  | 5.00       | 25.00       | Was listed at 15/75 before 0.14.0; corrected (#478, Roy Tong) |
 | anthropic | claude-opus-4-6                  | 5.00       | 25.00       |                                                              |
