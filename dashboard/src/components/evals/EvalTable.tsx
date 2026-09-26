@@ -52,5 +52,13 @@ export function EvalTable({
     },
   ];
 
-  return <DataTable columns={columns} data={evals} onRowClick={onSelect} emptyMessage="No evaluations found" />;
+  return (
+    <DataTable
+      columns={columns}
+      data={evals}
+      onRowClick={onSelect}
+      rowActionLabel={(e) => `Open ${e.eval_type} evaluation ${e.id.slice(-8)}`}
+      emptyMessage="No evaluations found"
+    />
+  );
 }

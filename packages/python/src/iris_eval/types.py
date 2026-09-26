@@ -67,6 +67,26 @@ class ToolCall(TypedDict, total=False):
     error: str
 
 
+class MatchFragment(TypedDict):
+    text: str
+    hit: bool
+
+
+class TraceMatch(TypedDict, total=False):
+    """Where a searched trace matched: the field, an excerpt, and the excerpt split at the matched words."""
+
+    field: Literal["input", "output", "tool_calls", "metadata"]
+    snippet: str
+    fragments: list[MatchFragment]
+
+
+class SearchInfo(TypedDict, total=False):
+    """How a search with ``q`` was read: the terms, and ``fts5`` (the full-text index) or ``scan``."""
+
+    terms: list[str]
+    index: Literal["fts5", "scan"]
+
+
 class Trace(TypedDict, total=False):
     trace_id: str
     agent_name: str
@@ -84,6 +104,7 @@ class Trace(TypedDict, total=False):
     case_key: str
     session_id: str
     source: str
+    match: TraceMatch
 
 
 class LoggedTrace(TypedDict, total=False):
@@ -99,6 +120,7 @@ class TracePage(TypedDict, total=False):
     total: int
     limit: int
     offset: int
+    search: SearchInfo
 
 
 class TraceDetail(TypedDict, total=False):

@@ -54,6 +54,8 @@ import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, searchIndexWriter, bulkIndexDelete, BM25_WEIGHTS, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, type ParsedSearch } from './search.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 
@@ -106,6 +108,8 @@ export interface SqliteAdapterOptions {
   redact?: RedactMode;
   /** Force a driver (tests, the self-test); unset reads IRIS_SQLITE_DRIVER, then native with the fallback. */
   driver?: 'native' | 'node';
+  /** Tests only: false behaves as a SQLite built without FTS5, so the search fallback can be exercised on a build that has it. */
+  fts5?: boolean;
 }
 /** What every text field of an erased evaluation reads afterwards. */
 export const ERASED_MESSAGE = 'erased with the trace';
@@ -198,6 +202,18 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
+/** What queryTraces hands its search half: the filters as SQL, and the page wanted. */
+interface SearchPlan {
+  whereClause: string;
+  params: unknown[];
+  /** Whether any filter other than the tenant applies. */
+  filtered: boolean;
+  sortBy: string;
+  sortOrder: string;
+  limit: number;
+  offset: number;
+}
+
 /** The native driver's name — the default, and what the proof was measured on. */
 export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
@@ -222,9 +238,14 @@ export class SqliteAdapter implements IStorageAdapter {
   /** storage.redact — see SqliteAdapterOptions. */
   private readonly redact: RedactMode;
 
+  /** Whether searches use the FTS5 index or read the traces; settled in initialize(). */
+  private searchIndex: SearchIndexState = 'unavailable';
+  private readonly fts5Override: boolean | undefined;
+
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
     this.redact = options?.redact ?? 'none';
+    this.fts5Override = options?.fts5;
     /*
      * The busy wait belongs to the CONNECTION, not to a pragma run after
      * the first statement. `PRAGMA journal_mode = WAL` on a cold file takes
@@ -290,8 +311,11 @@ export class SqliteAdapter implements IStorageAdapter {
      * alternative is the whole point of #372.
      */
     this.db.pragma('secure_delete = ON');
+    if (this.fts5Override !== undefined) assumeFts5(this.db, this.fts5Override);
     try {
       runMigrations(this.db);
+      // After the migrations, every start: build, repair or stand down the search index (search-index.ts).
+      this.searchIndex = reconcileSearchIndex(this.db, fts5Available(this.db));
     } catch (err) {
       // A refused boot (a newer writer, a failed migration) must not leak the handle.
       this.db.close();
@@ -329,7 +353,12 @@ export class SqliteAdapter implements IStorageAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    // The search index is written here, in the same transaction, not by a trigger (search-index.ts says why).
+    const indexTrace = this.searchIndex === 'ready' ? searchIndexWriter(this.db) : undefined;
+
     const insertOne = (t: Trace) => {
+      const toolCalls = t.tool_calls ? JSON.stringify(t.tool_calls) : null;
+      const metadata = t.metadata ? JSON.stringify(t.metadata) : null;
       insertTraceStmt.run(
         tenantId,
         t.trace_id,
@@ -337,11 +366,11 @@ export class SqliteAdapter implements IStorageAdapter {
         t.framework ?? null,
         t.input ?? null,
         t.output ?? null,
-        t.tool_calls ? JSON.stringify(t.tool_calls) : null,
+        toolCalls,
         t.latency_ms ?? null,
         t.token_usage ? JSON.stringify(t.token_usage) : null,
         t.cost_usd ?? null,
-        t.metadata ? JSON.stringify(t.metadata) : null,
+        metadata,
         t.timestamp,
         t.tools ? JSON.stringify(t.tools) : null,
         // Derived on write so "same toolset?" is an indexed question rather
@@ -358,6 +387,7 @@ export class SqliteAdapter implements IStorageAdapter {
         t.source ?? null,
         t.session_id ?? null,
       );
+      indexTrace?.(tenantId, { traceId: t.trace_id, input: t.input ?? null, output: t.output ?? null, toolCalls, metadata });
 
       if (t.spans) {
         for (const span of t.spans) {
@@ -461,17 +491,27 @@ export class SqliteAdapter implements IStorageAdapter {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-    const sortBy = options.sort_by ?? 'timestamp';
+    const search = options.search !== undefined && options.search.trim() !== '' ? parseSearch(options.search) : undefined;
+    // A search is ranked by relevance unless the caller chose an order.
+    const sortBy = options.sort_by ?? (search ? 'relevance' : 'timestamp');
     const sortOrder = options.sort_order ?? 'desc';
 
-    if (!ALLOWED_SORT_COLUMNS.has(sortBy)) {
-      throw new Error(`Invalid sort column: ${sortBy} (allowed: ${[...ALLOWED_SORT_COLUMNS].join(', ')})`);
+    if (sortBy === 'relevance' ? !search : !ALLOWED_SORT_COLUMNS.has(sortBy)) {
+      throw new Error(
+        sortBy === 'relevance'
+          ? 'Invalid sort column: relevance ranks a search, and this query has none (pass a search, or sort by timestamp, latency_ms or cost_usd)'
+          : `Invalid sort column: ${sortBy} (allowed: ${[...ALLOWED_SORT_COLUMNS].join(', ')}, and relevance with a search)`,
+      );
     }
     if (!ALLOWED_SORT_ORDERS.has(sortOrder)) {
       throw new Error(`Invalid sort order: ${sortOrder} (allowed: ${[...ALLOWED_SORT_ORDERS].join(', ')})`);
     }
     const limit = options.limit ?? 50;
     const offset = options.offset ?? 0;
+
+    if (search) {
+      return this.searchTraces(tenantId, search, { whereClause, params, filtered: conditions.length > 1, sortBy, sortOrder, limit, offset });
+    }
 
     const countRow = this.db
       .prepare(`SELECT COUNT(*) as count FROM traces ${whereClause}`)
@@ -487,6 +527,126 @@ export class SqliteAdapter implements IStorageAdapter {
       limit,
       offset,
     };
+  }
+
+  /**
+   * The search half of queryTraces (#7). The filters are the same WHERE
+   * clause, applied to the traces the search matched; the match itself is
+   * the FTS5 index when this SQLite has it and a read of the traces when it
+   * does not. Either way the page is chosen from trace ids first and the
+   * full rows are read for that page only, so a query that matches most of
+   * the store sorts ids and scores, not every input and output.
+   */
+  private searchTraces(tenantId: TenantId, parsed: ParsedSearch, q: SearchPlan): TraceQueryResult {
+    const index: 'fts5' | 'scan' = this.searchIndex === 'ready' ? 'fts5' : 'scan';
+    const info = { terms: parsed.terms.map(describeTerm), index };
+    if (parsed.terms.length === 0) return { traces: [], total: 0, limit: q.limit, offset: q.offset, search: info };
+
+    let total: number;
+    let pageIds: string[];
+    if (index === 'fts5') {
+      const match = toFtsQuery(parsed);
+      /*
+       * The traces table is joined only when a filter or the sort needs a
+       * column of it; a plain ranked search is answered from the index and
+       * the id table alone. When it is joined, idx_traces_search_filter
+       * covers every column the filters read, so the join never reads a
+       * trace row (search-index.ts has the measurement). The total comes
+       * from the same pass as the page (COUNT(*) OVER ()), and from a second
+       * count only when the page is empty because the offset ran past it.
+       */
+      const joinTraces = q.filtered || q.sortBy !== 'relevance';
+      const matched =
+        `SELECT d.trace_id AS matched_id, d.doc_id AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS relevance ` +
+        `FROM ${SEARCH_TABLE} JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = ${SEARCH_TABLE}.rowid ` +
+        `WHERE ${SEARCH_TABLE} MATCH ? AND d.tenant_id = ?`;
+      const from = joinTraces ? `FROM (${matched}) m JOIN traces ON traces.trace_id = m.matched_id ${q.whereClause}` : `FROM (${matched}) m`;
+      const params = joinTraces ? [match, tenantId, ...q.params] : [match, tenantId];
+      // bm25 is lower for a better match, so "desc" (the default) is best first; the newest indexed wins a tie.
+      const order =
+        q.sortBy === 'relevance'
+          ? `m.relevance ${q.sortOrder === 'desc' ? 'ASC' : 'DESC'}, m.doc DESC`
+          : `traces.${q.sortBy} ${q.sortOrder}, m.relevance ASC, m.doc DESC`;
+      const rows = this.db
+        .prepare(`SELECT m.matched_id AS trace_id, COUNT(*) OVER () AS total ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)
+        .all(...params, q.limit, q.offset) as Array<{ trace_id: string; total: number }>;
+      pageIds = rows.map((r) => r.trace_id);
+      total =
+        rows.length > 0
+          ? Number(rows[0].total)
+          : q.offset === 0
+            ? 0
+            : Number((this.db.prepare(`SELECT COUNT(*) AS count ${from}`).get(...params) as { count: number }).count);
+    } else {
+      ({ total, pageIds } = this.scanForSearch(parsed, q));
+    }
+
+    const byId = new Map<string, Trace>();
+    if (pageIds.length > 0) {
+      const rows = this.db
+        .prepare(`SELECT * FROM traces WHERE tenant_id = ? AND trace_id IN (${pageIds.map(() => '?').join(', ')})`)
+        .all(tenantId, ...pageIds) as Array<Record<string, unknown>>;
+      for (const row of rows) byId.set(row.trace_id as string, this.rowToTrace(row));
+    }
+    const traces = pageIds.flatMap((id) => {
+      const trace = byId.get(id);
+      if (!trace) return [];
+      const match = buildMatch(searchableText(trace), parsed);
+      return [match ? { ...trace, match } : trace];
+    });
+    return { traces, total, limit: q.limit, offset: q.offset, search: info };
+  }
+
+  /**
+   * Search without FTS5: read the traces the filters admit, in batches by
+   * rowid so memory stays flat, and test each with the tokenizer the index
+   * would have used. Relevance is how many times the terms occur.
+   */
+  private scanForSearch(parsed: ParsedSearch, q: SearchPlan): { total: number; pageIds: string[] } {
+    const BATCH = 500;
+    const read = this.db.prepare(
+      `SELECT rowid AS rid, trace_id, input, output, tool_calls, metadata, timestamp, latency_ms, cost_usd FROM traces ${q.whereClause} AND rowid > ? ORDER BY rowid LIMIT ${BATCH}`,
+    );
+    const parse = (v: unknown): unknown => {
+      if (typeof v !== 'string') return undefined;
+      try {
+        return JSON.parse(v);
+      } catch {
+        return v;
+      }
+    };
+    const found: Array<{ id: string; hits: number; timestamp: string; key: number | string | null }> = [];
+    let after = 0;
+    for (;;) {
+      const rows = read.all(...q.params, after) as Array<Record<string, unknown>>;
+      for (const row of rows) {
+        const fields = searchableText({ input: row.input, output: row.output, tool_calls: parse(row.tool_calls), metadata: parse(row.metadata) });
+        const { matched, hits } = matchesTrace(fields, parsed);
+        if (!matched) continue;
+        found.push({
+          id: row.trace_id as string,
+          hits,
+          timestamp: row.timestamp as string,
+          key: q.sortBy === 'relevance' ? null : ((row[q.sortBy] as number | string | null | undefined) ?? null),
+        });
+      }
+      if (rows.length < BATCH) break;
+      after = Number(rows[rows.length - 1].rid);
+    }
+    // SQLite's order, so the fallback pages exactly as the indexed path would: NULL before any value.
+    const cmp = (a: number | string | null, b: number | string | null): number => {
+      if (a === b) return 0;
+      if (a === null) return -1;
+      if (b === null) return 1;
+      return a < b ? -1 : 1;
+    };
+    const dir = q.sortOrder === 'desc' ? -1 : 1;
+    found.sort((a, b) =>
+      q.sortBy === 'relevance'
+        ? dir * (a.hits - b.hits) || cmp(b.timestamp, a.timestamp) || cmp(a.id, b.id)
+        : dir * cmp(a.key, b.key) || b.hits - a.hits || cmp(a.id, b.id),
+    );
+    return { total: found.length, pageIds: found.slice(q.offset, q.offset + q.limit).map((f) => f.id) };
   }
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
@@ -1555,7 +1715,12 @@ export class SqliteAdapter implements IStorageAdapter {
     const run = this.db.transaction((tid: TenantId, cut: string): number => {
       const ids = (this.db.prepare('SELECT trace_id FROM traces WHERE tenant_id = ? AND timestamp < ?').all(tid, cut) as Array<{ trace_id: string }>).map((r) => r.trace_id);
       this.eraseEvaluationsOfTraces(tid, ids);
-      return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?').run(tid, cut).changes;
+      const remove = () => this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?').run(tid, cut).changes;
+      if (this.searchIndex !== 'ready') return remove();
+      const indexed = this.db
+        .prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ?`)
+        .get(tid, cut) as { n: number };
+      return bulkIndexDelete(this.db, Number(indexed.n), remove);
     });
     return run(tenantId, cutoff);
   }
@@ -1581,7 +1746,9 @@ export class SqliteAdapter implements IStorageAdapter {
     const deleteAll = this.db.transaction(() => {
       const evalResults = this.db.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(tenantId).changes;
       // spans cascade (FK ON DELETE CASCADE).
-      const traces = this.db.prepare('DELETE FROM traces WHERE tenant_id = ?').run(tenantId).changes;
+      const remove = () => this.db.prepare('DELETE FROM traces WHERE tenant_id = ?').run(tenantId).changes;
+      const indexed = this.searchIndex === 'ready' ? Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} WHERE tenant_id = ?`).get(tenantId) as { n: number }).n) : 0;
+      const traces = this.searchIndex === 'ready' ? bulkIndexDelete(this.db, indexed, remove) : remove();
       return { traces, evalResults };
     });
     const counts = deleteAll();

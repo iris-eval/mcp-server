@@ -21,6 +21,8 @@ import { describe, expect, it } from 'vitest';
 import { EvalEngine } from '../src/eval/engine.js';
 import { defaultConfig } from '../src/config/defaults.js';
 import { toEvaluationResponse } from '../src/eval/response.js';
+import { SqliteAdapter } from '../src/storage/sqlite-adapter.js';
+import { LOCAL_TENANT } from '../src/types/tenant.js';
 
 const root = resolve(__dirname, '..');
 const source = readFileSync(join(root, 'dashboard', 'src', 'api', 'types.ts'), 'utf8').replace(/\r\n/g, '\n');
@@ -78,4 +80,19 @@ describe('dashboard/src/api/types.ts names every key the server sends', () => {
     expect(missing, 'rule-result keys the dashboard type does not declare').toEqual([]);
     for (const must of ['kind', 'role', 'evidence', 'uncertainty', 'criticalSource']) expect(declared.has(must), must).toBe(true);
   });
+
+  it('a searched trace page: TraceQueryResult declares search, Trace declares match, TraceMatch declares every key the adapter sends', async () => {
+    const storage = new SqliteAdapter(':memory:');
+    await storage.initialize();
+    await storage.insertTrace(LOCAL_TENANT, { trace_id: 't-1', agent_name: 'bot', output: 'the refund was approved', timestamp: '2026-09-21T00:00:00.000Z' });
+    const page = await storage.queryTraces(LOCAL_TENANT, { search: 'refund' });
+    await storage.close();
+    const pageKeys = Object.keys(page).filter((k) => !fieldsOf('TraceQueryResult').has(k));
+    expect(pageKeys, 'page keys the dashboard type does not declare').toEqual([]);
+    expect(fieldsOf('Trace').has('match')).toBe(true);
+    const matchKeys = Object.keys(page.traces[0].match ?? {}).filter((k) => !fieldsOf('TraceMatch').has(k));
+    expect(matchKeys, 'match keys the dashboard type does not declare').toEqual([]);
+    expect(Object.keys(page.traces[0].match ?? {})).toEqual(['field', 'snippet', 'fragments']);
+  });
 });
+

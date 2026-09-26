@@ -4,6 +4,7 @@ import type { EvalResult, QuestionId } from './eval.js';
 import type { TenantId } from './tenant.js';
 import type { RegressionAlarm } from '../eval/cusum.js';
 import type { MigrationState } from '../storage/migrations/index.js';
+import type { TraceMatch } from '../storage/search.js';
 
 export interface TraceFilter {
   agent_name?: string;
@@ -19,17 +20,36 @@ export interface TraceFilter {
 
 export interface TraceQueryOptions {
   filter?: TraceFilter;
+  /**
+   * Full-text search over input, output, tool-call values and metadata
+   * values (#7): every word must appear, "a phrase" in order, `word*` as a
+   * prefix. Blank means no search. See src/storage/search.ts.
+   */
+  search?: string;
   limit?: number;
   offset?: number;
-  sort_by?: 'timestamp' | 'latency_ms' | 'cost_usd';
+  /** `relevance` needs `search`; with a search and no sort_by, results are ranked by relevance. */
+  sort_by?: 'timestamp' | 'latency_ms' | 'cost_usd' | 'relevance';
   sort_order?: 'asc' | 'desc';
 }
 
+/** A trace in a search result: the trace, and where it matched. */
+export type SearchedTrace = Trace & { match?: TraceMatch };
+
 export interface TraceQueryResult {
-  traces: Trace[];
+  traces: SearchedTrace[];
   total: number;
   limit: number;
   offset: number;
+  /** Present when the query searched: the terms as parsed, and which path answered. */
+  search?: TraceSearchInfo;
+}
+
+export interface TraceSearchInfo {
+  /** Each term as it was searched: `refund`, `"agent said"`, `refund*`. */
+  terms: string[];
+  /** `fts5`: the full-text index, ranked by BM25. `scan`: this SQLite has no FTS5, so the traces were read and ranked by how often the terms occur. */
+  index: 'fts5' | 'scan';
 }
 
 /*

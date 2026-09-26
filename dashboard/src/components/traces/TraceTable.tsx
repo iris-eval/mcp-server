@@ -5,13 +5,19 @@ import { LatencyDisplay } from '../shared/LatencyDisplay';
 import { CostDisplay } from '../shared/CostDisplay';
 import { Badge } from '../shared/Badge';
 import { CopyableId } from '../shared/CopyableId';
+import { MatchSnippet } from './MatchSnippet';
 
 export function TraceTable({
   traces,
   onSelect,
+  searching = false,
+  emptyMessage = 'No traces found',
 }: {
   traces: Trace[];
   onSelect: (trace: Trace) => void;
+  /** A search is showing: add the column with where each trace matched. */
+  searching?: boolean;
+  emptyMessage?: string;
 }) {
   const columns: Column<Trace>[] = [
     {
@@ -19,6 +25,17 @@ export function TraceTable({
       header: 'Agent',
       render: (t) => <strong>{t.agent_name}</strong>,
     },
+    ...(searching
+      ? [
+          {
+            key: 'match',
+            header: 'Match',
+            render: (t: Trace) => (t.match ? <MatchSnippet match={t.match} /> : null),
+            // The excerpt is the reason the row is on screen; it takes the room the text needs.
+            width: '45%',
+          },
+        ]
+      : []),
     {
       key: 'framework',
       header: 'Framework',
@@ -62,5 +79,13 @@ export function TraceTable({
     },
   ];
 
-  return <DataTable columns={columns} data={traces} onRowClick={onSelect} emptyMessage="No traces found" />;
+  return (
+    <DataTable
+      columns={columns}
+      data={traces}
+      onRowClick={onSelect}
+      rowActionLabel={(t) => `Open trace ${t.trace_id.slice(-8)} from ${t.agent_name}`}
+      emptyMessage={emptyMessage}
+    />
+  );
 }

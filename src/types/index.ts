@@ -24,6 +24,8 @@ export type {
   TraceFilter,
   TraceQueryOptions,
   TraceQueryResult,
+  TraceSearchInfo,
+  SearchedTrace,
   DashboardSummary,
   EvalStatsPeriod,
   EvalStats,

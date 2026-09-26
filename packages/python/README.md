@@ -21,6 +21,8 @@ evaluation["verdict"]            # {"state": "pass", "basis": "clean", "by": []}
 
 logged = iris.log_trace("support-bot", input="…", output="…", run="nightly-42", case_key="refund-policy")
 page = iris.get_traces(agent_name="support-bot", limit=20)
+found = iris.get_traces(q='"refund approved"')   # full-text search, best match first
+found["traces"][0]["match"]["snippet"]          # the words around the match
 iris.health()["status"]          # "ok" | "degraded"
 iris.capabilities()["rules"]     # every rule, what it needs, its published accuracy
 ```
@@ -33,7 +35,7 @@ A thin client over the HTTP API: the rules, the composer and the storage live in
 |---|---|---|
 | `log_trace(agent_name, *, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, tools, run, case_key, session_id, spans, timestamp, evaluate, eval_type)` | `POST /api/v1/traces` | `{"trace_id", "status"}` — with `evaluate=True`, `"evaluation"` too |
 | `evaluate_output(output, *, input, agent_name, eval_type, …)` | `POST /api/v1/traces` with `evaluate: true` | The evaluation: `verdict` (`state`, `basis`, `by`), `score`, `rule_results`, `critical_failures`, `coverage`, `provenance`. Over HTTP the evaluate door is the ingest door, so the output is stored as a trace of `agent_name` and shows on the dashboard |
-| `get_traces(*, agent_name, framework, session, since, until, min_score, max_score, limit, offset, sort_by, sort_order, **extra)` | `GET /api/v1/traces` | `{"traces", "total", "limit", "offset"}` — any other keyword is sent as a query parameter as it is; one the server does not read is a 400 naming it |
+| `get_traces(*, agent_name, framework, session, q, since, until, min_score, max_score, limit, offset, sort_by, sort_order, **extra)` | `GET /api/v1/traces` | `{"traces", "total", "limit", "offset"}` — with `q` (full-text search over input, output, tool-call values and metadata; every word must appear, `"a phrase"` in order, `word*` as a prefix), ranked by relevance, each trace with `match` (`field`, `snippet`, `fragments`) and the page with `search`. Any other keyword is sent as a query parameter as it is; one the server does not read is a 400 naming it |
 | `get_trace(trace_id)` | `GET /api/v1/traces/:id` | `{"trace", "spans", "evals"}` |
 | `health()` | `GET /api/v1/health` | Open, unkeyed; `status`, `version`, `checks` |
 | `capabilities()` | `GET /api/v1/capabilities` | What this server can do |
