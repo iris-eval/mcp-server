@@ -2,7 +2,20 @@
 > **Rendered from `.claims.json` by `npm run llms:render`; `llms:check` fails if this file and its template disagree.** Edit `docs/launch/listings/smithery.template.md`, never this file. Every number is a slot. Never write "first", "best", "leading" or "standard"; never say Iris captures or scores anything "automatically" — under MCP a tool call is the model's decision, and the two capture paths that do not depend on it (`POST /api/v1/traces`, the `iris-eval-capture` plugin) are named as such. The paste is the listing owner's act.
 
 
-**Listing:** retired, not listed. Smithery's publish path today (https://smithery.ai/docs/build/publish, read 2026-09-21) is a hosted HTTPS URL, or a local server shipped as an MCPB bundle through `smithery mcp publish ./server.mcpb -n <org>/<name>`. The `smithery.yaml` stdio form this repository carried (a `startCommand` over `npx @iris-eval/mcp-server` with a config schema) was not that path, cited a project-configuration docs page that now returns 404, and named four of the server's variables while the manifest named more — a second source of truth that drifted. It was removed; if a Smithery listing is wanted, the path is an MCPB bundle built from the published package and one `publish` by a maintainer, with the copy below.
+**Listing:** not live yet; published from the release's MCPB bundle. Smithery lists a local server from an MCPB bundle it is sent (https://smithery.ai/docs/build/publish, read 2026-09-25: `smithery mcp publish ./server.mcpb -n <org>/<name>`, a multipart upload), and reads the name, icon, tools and settings it shows from the bundle's manifest. Each release attaches that bundle, `iris-eval.mcpb`, built from the published npm package, signed and attested (`mcpb/manifest.json`, `scripts/mcpb/pack.mjs`). The `smithery.yaml` stdio form this repository once carried (a `startCommand` over `npx @iris-eval/mcp-server` with a config schema) was not that path, cited a project-configuration docs page that returns 404, and drifted from `server.json`; it stays retired.
+
+## Publish (the listing owner, once per release)
+
+1. Download this release's bundle and check it was built by the release workflow:
+
+   ```bash
+   curl -fLO https://github.com/iris-eval/mcp-server/releases/download/v0.19.0/iris-eval.mcpb
+   gh attestation verify iris-eval.mcpb -R iris-eval/mcp-server
+   ```
+
+2. Sign in to Smithery (a browser sign-in): `npx -y @smithery/cli auth login`
+3. Publish the bundle under the organisation's namespace: `npx -y @smithery/cli mcp publish ./iris-eval.mcpb -n iris-eval/iris-eval`
+4. Finish the flow Smithery opens, then use the Description field and the check below. The settings form comes from the bundle: two optional judge keys and a dashboard switch, none required.
 
 ## Description field
 

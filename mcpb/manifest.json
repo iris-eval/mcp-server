@@ -1,0 +1,140 @@
+{
+  "manifest_version": "0.3",
+  "name": "iris-eval",
+  "display_name": "Iris",
+  "version": "0.19.0",
+  "description": "Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.",
+  "long_description": "Iris is an open-source MCP server that scores AI agent output for quality, safety and cost. Its built-in rules are deterministic and need no key: PII and prompt-injection detection, hallucination signals, cost thresholds, and checks on the agent's tool calls. Each verdict says which layer decided it and what was not judged.\n\nEvery trace and evaluation is stored in a local SQLite database under `~/.iris`. Nothing leaves your machine unless you add an Anthropic or OpenAI key below, which lets `evaluate_with_llm_judge` and `verify_citations` send the output they judge to that provider under a hard per-call cost cap, or set up an export yourself (an OpenTelemetry collector or a webhook).\n\nThe web dashboard is off unless you turn it on here; it then serves http://localhost:6920 on this machine only.",
+  "author": {
+    "name": "Iris",
+    "email": "hello@iris-eval.com",
+    "url": "https://github.com/iris-eval"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iris-eval/mcp-server"
+  },
+  "homepage": "https://iris-eval.com",
+  "documentation": "https://github.com/iris-eval/mcp-server#readme",
+  "support": "https://github.com/iris-eval/mcp-server/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "IRIS_TRANSPORT": "stdio",
+        "IRIS_SQLITE_DRIVER": "node",
+        "IRIS_DASHBOARD": "${user_config.dashboard}",
+        "IRIS_ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}",
+        "IRIS_OPENAI_API_KEY": "${user_config.openai_api_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "log_trace",
+      "description": "Store one agent execution (input, output, tool calls, spans, cost, tokens) and get the trace_id later calls key on."
+    },
+    {
+      "name": "evaluate_output",
+      "description": "Score an agent output with the deterministic rules: a ship verdict with its basis, per-rule evidence, and what was not judged."
+    },
+    {
+      "name": "get_traces",
+      "description": "Query stored traces with filters, pagination and sorting; optionally with the dashboard summary."
+    },
+    {
+      "name": "compare_runs",
+      "description": "Did this change make the agent worse? Compares two runs: worse, better, equivalent, or too little evidence to tell."
+    },
+    {
+      "name": "compare_traces",
+      "description": "How reliably does the agent answer the same question? Per-case pass rates, flaky cases, and an interval that respects repeats."
+    },
+    {
+      "name": "evaluate_runs",
+      "description": "Re-score every trace in a run under the current rules into a new run, so a rules change is compared, not overwritten."
+    },
+    {
+      "name": "list_rules",
+      "description": "The rule inventory: every built-in rule with what it needs, its effective criticality and published accuracy, plus every deployed custom rule."
+    },
+    {
+      "name": "deploy_rule",
+      "description": "Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited."
+    },
+    {
+      "name": "delete_rule",
+      "description": "Remove a deployed custom rule — or, with enabled, disable or re-enable it without removing it — effective on the next evaluate_output call."
+    },
+    {
+      "name": "delete_trace",
+      "description": "Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text."
+    },
+    {
+      "name": "evaluate_with_llm_judge",
+      "description": "Score an output with an LLM judge on your own key: a 0..1 score, a rationale and the spend."
+    },
+    {
+      "name": "verify_citations",
+      "description": "Is each citation in an output supported by its source? Extracts, fetches (opt-in, SSRF-guarded) and judges on your key."
+    }
+  ],
+  "prompts_generated": true,
+  "keywords": [
+    "mcp",
+    "agent",
+    "evaluation",
+    "observability",
+    "llm",
+    "agent-evaluation",
+    "pii-detection",
+    "cost-tracking",
+    "quality-gate"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://www.anthropic.com/legal/privacy",
+    "https://openai.com/policies/"
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.13.0"
+    }
+  },
+  "user_config": {
+    "anthropic_api_key": {
+      "type": "string",
+      "title": "Anthropic API key (optional)",
+      "description": "Enables evaluate_with_llm_judge and verify_citations with an Anthropic model. Leave empty to use the deterministic rules only; they never need a key.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "openai_api_key": {
+      "type": "string",
+      "title": "OpenAI API key (optional)",
+      "description": "Enables evaluate_with_llm_judge and verify_citations with an OpenAI model. Leave empty to use the deterministic rules only; they never need a key.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "dashboard": {
+      "type": "boolean",
+      "title": "Web dashboard",
+      "description": "Also serve the dashboard at http://localhost:6920 (this machine only). Off by default.",
+      "required": false,
+      "default": false
+    }
+  }
+}

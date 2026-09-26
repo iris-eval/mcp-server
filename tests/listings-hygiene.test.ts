@@ -135,12 +135,14 @@ describe('the other listings', () => {
     expect(read('scripts/sync-versions.mjs')).toContain('path: ".cursor-plugin/plugin.json"');
   });
 
-  it('smithery.yaml is gone, and the listing copy says why', () => {
+  it('smithery.yaml is gone; the Smithery copy publishes this release\'s MCPB bundle, the one server.json names', () => {
     expect(existsSync(join(root, 'smithery.yaml'))).toBe(false);
     const copy = read('docs/launch/listings/smithery.md');
-    expect(copy).toContain('**Listing:** retired');
-    expect(copy).toContain('smithery mcp publish');
-    expect(read('docs/launch/listings/README.md')).toMatch(/\| Smithery \| `smithery\.md` \| retired/);
+    expect(copy).toContain('it stays retired');
+    const bundle = (JSON.parse(read('server.json')) as { packages: Array<{ registryType: string; identifier: string }> }).packages.find((p) => p.registryType === 'mcpb');
+    expect(copy).toContain(`curl -fLO ${bundle!.identifier}`);
+    expect(copy).toContain('npx -y @smithery/cli mcp publish ./iris-eval.mcpb -n ');
+    expect(read('docs/launch/listings/README.md')).toMatch(/\| Smithery \| `smithery\.md` \| MCPB bundle/);
   });
 
   it('the site\'s mockups show the real dashboard port', () => {

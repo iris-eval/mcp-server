@@ -11,9 +11,10 @@
  *   F1 npm       the dist-tag (`latest`, or `next` for a pre-release) resolves to it
  *   F2 GHCR      the `v<version>` tag and (production) `:latest` resolve, and to one digest
  *   F3 release   the GitHub release is published, typed right, carries the four SBOM
- *                assets and the CHANGELOG section (signature verification stays the job's:
- *                it needs cosign)
- *   F4 registry  the Official MCP Registry's `latest` is this version, isLatest true
+ *                assets, the MCPB bundle and its signature, and the CHANGELOG section
+ *                (signature verification stays the job's: it needs cosign)
+ *   F4 registry  the Official MCP Registry's `latest` is this version, isLatest true, and
+ *                its MCPB entry names this release's bundle with that file's hash
  *   F5 site      iris-eval.com/.well-known/mcp.json says the version, and /llms.txt,
  *                /proof, /capabilities name it
  *   F6 install   `npx -y <package>@<version> --self-test` passes in an empty directory
@@ -28,6 +29,7 @@
  * is ✗. Nothing here writes anywhere but a temp directory for F6.
  */
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
@@ -116,11 +118,11 @@ try {
   } else {
     const rel = JSON.parse(gh.stdout);
     const names = new Set((rel.assets ?? []).map((a) => a.name));
-    const wanted = ['iris-npm-sbom.spdx.json', 'iris-npm-sbom.spdx.json.sigstore.json', 'iris-docker-sbom.spdx.json', 'iris-docker-sbom.spdx.json.sigstore.json'];
+    const wanted = ['iris-npm-sbom.spdx.json', 'iris-npm-sbom.spdx.json.sigstore.json', 'iris-docker-sbom.spdx.json', 'iris-docker-sbom.spdx.json.sigstore.json', 'iris-eval.mcpb', 'iris-eval.mcpb.sigstore.json'];
     const missing = wanted.filter((n) => !names.has(n));
     const notes = prerelease || String(rel.body ?? '').includes(`[${version}]`);
     const ok = rel.isDraft === false && rel.isPrerelease === prerelease && missing.length === 0 && notes;
-    row('F3 release', ok, `draft=${rel.isDraft} prerelease=${rel.isPrerelease} sbom assets missing=[${missing.join(', ')}] changelog section=${notes}`);
+    row('F3 release', ok, `draft=${rel.isDraft} prerelease=${rel.isPrerelease} assets missing=[${missing.join(', ')}] changelog section=${notes}`);
   }
 }
 
@@ -131,6 +133,12 @@ try {
   const got = body?.server?.version;
   const isLatest = body?._meta?.['io.modelcontextprotocol.registry/official']?.isLatest;
   row('F4 registry', got === version && isLatest === true, `${serverJson.name} latest = ${got ?? '?'} isLatest=${isLatest ?? '?'}`);
+  // The MCPB entry: this release's bundle, with the hash of the file the release page serves.
+  const entry = (body?.server?.packages ?? []).find((p) => p.registryType === 'mcpb');
+  const url = `https://github.com/${repo}/releases/download/v${version}/iris-eval.mcpb`;
+  const res = await fetch(url);
+  const served = res.ok ? createHash('sha256').update(Buffer.from(await res.arrayBuffer())).digest('hex') : null;
+  row('F4 registry MCPB', entry?.identifier === url && Boolean(served) && entry?.fileSha256 === served, `identifier ${entry?.identifier ?? 'missing'}; fileSha256 ${entry?.fileSha256 ?? 'missing'}; served ${served ?? `HTTP ${res.status}`}`);
 } catch (err) {
   row('F4 registry', false, `could not read the registry: ${err.message}`);
 }

@@ -24,8 +24,11 @@ on:
 # and so does mcp-publisher (`login github-oidc`) in publish-registry — one
 # identity, zero long-lived secrets in this file.
 #
-# Job graph: validate → publish-npm + publish-docker → github-release;
-# publish-npm → publish-registry (production tags only); everything →
+# Job graph: validate → build-npm → publish-npm + build-mcpb, and
+# validate → publish-docker; those three → github-release (which attaches
+# the signed MCPB bundle); publish-npm + github-release → publish-registry
+# (production tags only, after the bundle its server.json names is
+# attached); everything →
 # verify-release, which reads npm, GHCR, the release page and the MCP
 # Registry back from outside and is the only job whose green means
 # "the release happened".
@@ -183,6 +186,67 @@ jobs:
         with:
           name: npm-sbom
           path: iris-npm-sbom.spdx.json
+          retention-days: 90
+
+  # The MCPB bundle (iris-eval.mcpb): one-click install in Claude Desktop,
+  # and how Smithery lists a local server. Built from the tarball build-npm
+  # packed — the exact bytes publish-npm uploads — plus the production
+  # dependencies from this tag's lockfile (scripts/mcpb/pack.mjs), twice, to
+  # show the build is deterministic. The reference MCPB tooling then unpacks
+  # and validates it and tests/mcpb starts it from the launch config a host
+  # builds. Like build-npm it runs dependency code, so it holds no identity:
+  # github-release signs and attests the file this job hands over.
+  build-mcpb:
+    needs: build-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read         # checkout
+    outputs:
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: npm-tarball
+      - name: Build the bundle from the npm tarball
+        id: pack
+        env:
+          TARBALL: ${{ needs.build-npm.outputs.tarball }}
+        run: |
+          test -f "$TARBALL" || (echo "FATAL: $TARBALL was not handed over by build-npm" && exit 1)
+          node scripts/mcpb/pack.mjs --tarball "$TARBALL" --out iris-eval.mcpb
+          node scripts/mcpb/pack.mjs --tarball "$TARBALL" --out "$RUNNER_TEMP/second.mcpb"
+          cmp iris-eval.mcpb "$RUNNER_TEMP/second.mcpb" || (echo "FATAL: two builds of the bundle from the same inputs differ" && exit 1)
+          node scripts/mcpb/verify.mjs --bundle iris-eval.mcpb --tarball "$TARBALL"
+          echo "sha256=$(sha256sum iris-eval.mcpb | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Install the reference MCPB tooling (pinned)
+        run: |
+          mkdir -p "$RUNNER_TEMP/mcpb-lib"
+          cd "$RUNNER_TEMP/mcpb-lib"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund @anthropic-ai/mcpb@2.1.2
+      - name: The reference tooling unpacks it and validates the manifest
+        run: |
+          mcpb="$RUNNER_TEMP/mcpb-lib/node_modules/.bin/mcpb"
+          "$mcpb" unpack iris-eval.mcpb "$RUNNER_TEMP/unpacked"
+          "$mcpb" validate "$RUNNER_TEMP/unpacked/manifest.json"
+          "$mcpb" info iris-eval.mcpb
+      - name: It starts from the host's launch config and lists every tool
+        env:
+          IRIS_MCPB_BUNDLE: iris-eval.mcpb
+          IRIS_MCPB_LIB: ${{ runner.temp }}/mcpb-lib
+        run: npx vitest run --config tests/mcpb/vitest.config.ts
+      - name: Upload the bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: mcpb-bundle
+          path: iris-eval.mcpb
           retention-days: 90
 
   publish-npm:
@@ -382,11 +446,12 @@ jobs:
           retention-days: 90
 
   github-release:
-    needs: [publish-npm, publish-docker]
+    needs: [publish-npm, publish-docker, build-mcpb]
     runs-on: ubuntu-latest
     permissions:
       contents: write        # softprops/action-gh-release creates the release
-      id-token: write        # cosign sign-blob keyless OIDC for SBOM sigs
+      id-token: write        # cosign sign-blob keyless OIDC for SBOM + bundle sigs; attest-build-provenance
+      attestations: write    # attest-build-provenance writes the bundle's attestation
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -400,6 +465,19 @@ jobs:
         with:
           name: docker-sbom
           path: ./release-assets
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: mcpb-bundle
+          path: ./release-assets
+      # The file signed and attached is the file build-mcpb built and tested:
+      # the hash it recorded must be the hash of what arrived here.
+      - name: The MCPB bundle is the one build-mcpb built
+        env:
+          WANT: ${{ needs.build-mcpb.outputs.sha256 }}
+        run: |
+          got="$(sha256sum release-assets/iris-eval.mcpb | cut -d' ' -f1)"
+          [ -n "$WANT" ] && [ "$got" = "$WANT" ] || { echo "FATAL: iris-eval.mcpb is $got here, build-mcpb recorded '$WANT'" && exit 1; }
+          echo "iris-eval.mcpb sha256 $got"
 
       # Cosign sign-blob both SBOMs and attach a .sigstore.json per SBOM to
       # the GitHub Release. Closes Scorecard Signed-Releases — auditors
@@ -432,6 +510,21 @@ jobs:
               --bundle "${sbom}.sigstore.json"
           done
           ls -la
+
+      # The MCPB bundle is signed the same way (a Sigstore bundle beside it,
+      # verified by verify-release) and also carries a GitHub build-provenance
+      # attestation, the kind the npm SBOM carries, so `gh attestation verify`
+      # ties the file to this workflow run.
+      - name: Sign the MCPB bundle with cosign (keyless)
+        run: |
+          cd release-assets
+          cosign sign-blob --yes iris-eval.mcpb \
+            --bundle "iris-eval.mcpb.sigstore.json"
+
+      - name: Attest the MCPB bundle
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        with:
+          subject-path: release-assets/iris-eval.mcpb
 
       # Pre-release detection: any tag NOT matching strict vX.Y.Z (e.g.
       # vX.Y.Z-rc.N) is published as a GitHub pre-release so it doesn't
@@ -490,6 +583,15 @@ jobs:
               --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
             ```
           - **Build attestation**: both the npm SBOM and Docker image manifest carry GitHub-signed build-provenance attestations. Inspect with `gh attestation verify` or `cosign verify-attestation`.
+          - **MCPB bundle**: `iris-eval.mcpb` (open it to install in Claude Desktop) is built from the npm tarball above plus the production dependencies in this tag's `package-lock.json`, and holds the tarball's files byte for byte. It is signed (`iris-eval.mcpb.sigstore.json`) and carries a build-provenance attestation. Verify with:
+            ```
+            cosign verify-blob \
+              --bundle iris-eval.mcpb.sigstore.json \
+              --certificate-identity='https://github.com/__REPO__/.github/workflows/release.yml@refs/tags/__TAG__' \
+              --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+              iris-eval.mcpb
+            gh attestation verify iris-eval.mcpb -R __REPO__
+            ```
           EOF
           sed -i "s|__REPO__|${REPO}|g; s|__TAG__|${TAG}|g" supply-chain.md
           { cat notes.md; echo; cat supply-chain.md; } > release-body.md
@@ -506,6 +608,8 @@ jobs:
             ./release-assets/iris-npm-sbom.spdx.json.sigstore.json
             ./release-assets/iris-docker-sbom.spdx.json
             ./release-assets/iris-docker-sbom.spdx.json.sigstore.json
+            ./release-assets/iris-eval.mcpb
+            ./release-assets/iris-eval.mcpb.sigstore.json
           body_path: release-body.md
 
   publish-registry:
@@ -521,7 +625,10 @@ jobs:
     # grants the io.github.<owner>/* namespace to workflows running in that
     # owner's repos), publishes server.json, then reads the registry back
     # and FAILS unless `latest` is this tag.
-    needs: publish-npm
+    # And after github-release: server.json names the MCPB bundle by its
+    # release URL, and the registry fetches that URL when it accepts the
+    # version, so the asset must already be attached.
+    needs: [publish-npm, build-mcpb, github-release]
     # Production tags only. The registry has one "latest" per server and no
     # dist-tag concept, so an RC published here would become the version
     # every downstream directory advertises. RCs stay on npm's `next`.
@@ -568,6 +675,27 @@ jobs:
             echo "version=$VERSION"
             echo "encoded=$(jq -rn --arg s "$NAME" '$s | @uri')"
           } >> "$GITHUB_OUTPUT"
+
+      # The registry requires an MCPB package to carry the SHA-256 of its
+      # file, and clients check the download against it. The hash is a fact
+      # about the file this release attached, so it is taken from that file
+      # — downloaded from the release page, as a client would — checked
+      # against what build-mcpb recorded, and written into server.json here;
+      # the repository's copy carries none (tests/mcpb-manifest.test.ts).
+      - name: Stamp the MCPB bundle's hash into server.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANT: ${{ needs.build-mcpb.outputs.sha256 }}
+        run: |
+          url="$(jq -r '[.packages[] | select(.registryType == "mcpb")] | if length == 1 then .[0].identifier else error("expected one mcpb package") end' server.json)"
+          expected="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/iris-eval.mcpb"
+          [ "$url" = "$expected" ] || { echo "FATAL: server.json names $url, this release attached $expected" && exit 1; }
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p iris-eval.mcpb -D "$RUNNER_TEMP"
+          got="$(sha256sum "$RUNNER_TEMP/iris-eval.mcpb" | cut -d' ' -f1)"
+          [ -n "$WANT" ] && [ "$got" = "$WANT" ] || { echo "FATAL: the attached iris-eval.mcpb is $got, build-mcpb built '$WANT'" && exit 1; }
+          jq --arg h "$got" '(.packages[] | select(.registryType == "mcpb")).fileSha256 = $h' server.json > "$RUNNER_TEMP/server.json"
+          mv "$RUNNER_TEMP/server.json" server.json
+          jq '.packages[] | select(.registryType == "mcpb")' server.json
 
       - name: Validate server.json
         run: ./mcp-publisher validate server.json
@@ -654,6 +782,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read         # checkout (server.json) + gh release view
+      attestations: read     # gh attestation verify on the MCPB bundle
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -720,7 +849,8 @@ jobs:
           jq -e '.isDraft == false' release.json > /dev/null || { echo "✗ release is still a draft" && exit 1; }
           jq -e --argjson p "$PRERELEASE" '.isPrerelease == $p' release.json > /dev/null || { echo "✗ prerelease flag does not match the tag" && exit 1; }
           for a in iris-npm-sbom.spdx.json iris-npm-sbom.spdx.json.sigstore.json \
-                   iris-docker-sbom.spdx.json iris-docker-sbom.spdx.json.sigstore.json; do
+                   iris-docker-sbom.spdx.json iris-docker-sbom.spdx.json.sigstore.json \
+                   iris-eval.mcpb iris-eval.mcpb.sigstore.json; do
             jq -e --arg a "$a" '.assets[] | select(.name == $a)' release.json > /dev/null || { echo "✗ release asset $a is missing" && exit 1; }
           done
           if [ "$PRERELEASE" = "false" ]; then
@@ -753,6 +883,34 @@ jobs:
             echo "✓ ${sbom}: signed by https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}"
           done
 
+      # The MCPB bundle, read back from the release page: its signature
+      # verifies under this workflow's identity, its attestation verifies, and
+      # it holds the files of the package npm now serves for this version,
+      # byte for byte — "built from the published package", checked from
+      # outside.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+
+      - name: GitHub release — the MCPB bundle verifies and holds the published package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.rt.outputs.version }}
+        run: |
+          mkdir -p verify-mcpb && cd verify-mcpb
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p iris-eval.mcpb -p iris-eval.mcpb.sigstore.json
+          cosign verify-blob \
+            --bundle iris-eval.mcpb.sigstore.json \
+            --certificate-identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}" \
+            --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+            iris-eval.mcpb || { echo "✗ iris-eval.mcpb: the signature does not verify" && exit 1; }
+          gh attestation verify iris-eval.mcpb -R "$GITHUB_REPOSITORY" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml" \
+            || { echo "✗ iris-eval.mcpb: the build-provenance attestation does not verify" && exit 1; }
+          curl -fsSL -o package.tgz "$(curl -fsSL "https://registry.npmjs.org/@iris-eval%2Fmcp-server/${VERSION}" | jq -r '.dist.tarball')"
+          node ../scripts/mcpb/verify.mjs --bundle iris-eval.mcpb --tarball package.tgz
+          echo "✓ iris-eval.mcpb: signed and attested by this workflow; sha256 $(sha256sum iris-eval.mcpb | cut -d' ' -f1)"
+
       - name: MCP Registry — latest is this version
         if: steps.rt.outputs.prerelease == 'false'
         env:
@@ -766,6 +924,15 @@ jobs:
             echo "✓ registry latest = $got"
           else
             echo "✗ registry latest = '${got:-?}' (isLatest='${is_latest:-?}'), expected $WANT" && exit 1
+          fi
+          # The registry's MCPB entry names this release's bundle, with the hash of the file attached to it.
+          bundle_url=$(printf '%s' "$body" | jq -r '.server.packages[] | select(.registryType == "mcpb") | .identifier')
+          bundle_sha=$(printf '%s' "$body" | jq -r '.server.packages[] | select(.registryType == "mcpb") | .fileSha256')
+          attached_sha=$(sha256sum verify-mcpb/iris-eval.mcpb | cut -d' ' -f1)
+          if [ "$bundle_url" = "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/iris-eval.mcpb" ] && [ "$bundle_sha" = "$attached_sha" ]; then
+            echo "✓ registry MCPB entry = the attached bundle (sha256 $bundle_sha)"
+          else
+            echo "✗ registry MCPB entry = '${bundle_url:-missing}' sha256 '${bundle_sha:-missing}'; attached bundle sha256 $attached_sha" && exit 1
           fi
 
       # F5 — the website. THE ONE SURFACE NOTHING WAS CHECKING.

@@ -220,6 +220,136 @@ jobs:
           IRIS_REAL_CLIENTS_PROJECT: ${{ runner.temp }}/project
         run: npx vitest run --config tests/real-clients/vitest.config.ts
 
+  # The MCPB bundle (iris-eval.mcpb): what release.yml attaches to each
+  # release for one-click install in Claude Desktop, and what Smithery lists
+  # a local server from. The pack job builds this commit, packs it with
+  # `npm pack`, and builds the bundle from that tarball the way the release
+  # does (scripts/mcpb/pack.mjs) — twice, to show the build is deterministic
+  # — then checks the bundle holds the tarball's files byte for byte.
+  mcpb-pack:
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: cd dashboard && npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Pack the package, then the bundle from it
+        run: |
+          mkdir -p "$RUNNER_TEMP/mcpb"
+          npm pack --pack-destination "$RUNNER_TEMP/mcpb"
+          tarball="$RUNNER_TEMP/mcpb/$(cd "$RUNNER_TEMP/mcpb" && ls *.tgz)"
+          node scripts/mcpb/pack.mjs --tarball "$tarball" --out "$RUNNER_TEMP/mcpb/iris-eval.mcpb"
+          node scripts/mcpb/pack.mjs --tarball "$tarball" --out "$RUNNER_TEMP/second.mcpb"
+          cmp "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/second.mcpb" || { echo "::error::two builds of the bundle from the same inputs differ"; exit 1; }
+          node scripts/mcpb/verify.mjs --bundle "$RUNNER_TEMP/mcpb/iris-eval.mcpb" --tarball "$tarball"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: mcpb-bundle
+          path: |
+            ${{ runner.temp }}/mcpb/*.tgz
+            ${{ runner.temp }}/mcpb/iris-eval.mcpb
+          retention-days: 3
+
+  # The bundle as a host sees it, on the three platforms and at both ends of
+  # the Node range the manifest declares (22.13.0, where node:sqlite starts,
+  # and the current line). The reference MCPB tooling (@anthropic-ai/mcpb,
+  # pinned; Claude Desktop uses its unpacker and launch-config code) unpacks
+  # and validates it; each runner rebuilds it from the same tarball with its
+  # own install and must get the same bytes; then tests/mcpb starts it from
+  # the launch config that tooling builds and requires every tool.
+  mcpb:
+    name: MCPB bundle (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    needs: [mcpb-pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: ['22.13.0', 24]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: mcpb-bundle
+          path: ${{ runner.temp }}/mcpb
+      - name: Install the reference MCPB tooling (pinned)
+        run: |
+          mkdir -p "$RUNNER_TEMP/mcpb-lib"
+          cd "$RUNNER_TEMP/mcpb-lib"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund @anthropic-ai/mcpb@2.1.2
+          ./node_modules/.bin/mcpb --version
+      - name: The reference tooling unpacks it, validates the manifest and reads it
+        run: |
+          mcpb="$RUNNER_TEMP/mcpb-lib/node_modules/.bin/mcpb"
+          "$mcpb" unpack "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/unpacked"
+          "$mcpb" validate "$RUNNER_TEMP/unpacked/manifest.json"
+          "$mcpb" info "$RUNNER_TEMP/mcpb/iris-eval.mcpb"
+      - name: Rebuilt on this runner from the same tarball, the bundle is the same bytes
+        run: |
+          tarball="$RUNNER_TEMP/mcpb/$(cd "$RUNNER_TEMP/mcpb" && ls *.tgz)"
+          node scripts/mcpb/pack.mjs --tarball "$tarball" --out "$RUNNER_TEMP/rebuilt.mcpb"
+          cmp "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/rebuilt.mcpb" || { echo "::error::the bundle rebuilt on ${{ matrix.os }} (Node ${{ matrix.node-version }}) differs from the one built on Linux"; exit 1; }
+      - name: It starts from the host's launch config and lists every tool
+        env:
+          IRIS_MCPB_BUNDLE: ${{ runner.temp }}/mcpb/iris-eval.mcpb
+          IRIS_MCPB_LIB: ${{ runner.temp }}/mcpb-lib
+        run: npx vitest run --config tests/mcpb/vitest.config.ts
+
+  # Claude Desktop runs a Node bundle in its built-in Node — an Electron
+  # utility process, not a Node release — whenever that Node satisfies the
+  # manifest's range, which is the default. tests/mcpb/electron-host starts
+  # the bundle the same way under a pinned Electron and requires every tool
+  # and a stored trace. Electron 40.4.1 (Node 24.13.0) is what Claude
+  # Desktop 1.1.6679 ships; bump it here to re-verify a newer host. macOS
+  # and Windows only: the platforms Claude Desktop runs on.
+  mcpb-electron:
+    name: MCPB bundle in Electron's Node (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: [mcpb-pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: mcpb-bundle
+          path: ${{ runner.temp }}/mcpb
+      - name: Install Electron and the reference MCPB tooling (pinned)
+        run: |
+          mkdir -p "$RUNNER_TEMP/mcpb-lib"
+          cd "$RUNNER_TEMP/mcpb-lib"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund electron@40.4.1 @anthropic-ai/mcpb@2.1.2
+      - name: The bundle runs in Electron's Node, lists every tool and stores a trace
+        run: |
+          lib="$RUNNER_TEMP/mcpb-lib"
+          "$lib/node_modules/.bin/mcpb" unpack "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/unpacked"
+          npx --prefix "$lib" electron tests/mcpb/electron-host/main.mjs "$RUNNER_TEMP/unpacked" "$lib"
+
   build:
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck, test]

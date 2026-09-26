@@ -32,3 +32,6 @@ docs/evaluators.md text eol=lf
 # start with an LF shebang on every platform: a carriage return after "node"
 # fails on macOS and Linux under installers that do not rewrite it.
 packages/iris-eval/** text eol=lf
+
+# The MCPB bundle icon (mcpb/manifest.json): bytes, never a text conversion.
+mcpb/icon.png binary

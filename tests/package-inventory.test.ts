@@ -64,6 +64,16 @@ describe('the workflows do what the classification says', () => {
     expect(release).not.toMatch(/cd packages\//);
   });
 
+  it('release.yml builds the MCPB bundle from that same tarball and attaches it to the release, not to a package registry', () => {
+    const release = read('.github/workflows/release.yml');
+    expect(release).toContain('TARBALL: ${{ needs.build-npm.outputs.tarball }}');
+    expect(release).toContain('node scripts/mcpb/pack.mjs --tarball "$TARBALL" --out iris-eval.mcpb');
+    expect(release).toContain('./release-assets/iris-eval.mcpb');
+    // One bundle, not a package of its own: nothing in the repository declares it, and the workflows publish it nowhere else.
+    expect(packages.some((p) => p.dir === 'mcpb')).toBe(false);
+    for (const f of workflows) expect(read(`.github/workflows/${f}`), f).not.toMatch(/(npm|smithery)[^\n]*publish[^\n]*\.mcpb/);
+  });
+
   it('publish-python.yml builds and publishes the Python client from its directory', () => {
     const py = read('.github/workflows/publish-python.yml');
     expect(py).toContain(`python -m build ${PYPI_DIR}`);

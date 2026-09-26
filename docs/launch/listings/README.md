@@ -9,7 +9,7 @@ The **send is the listing owner's act** — a sign-in, a form, a PR from the org
 | Glama | `glama.md` | Build & Release (runs the server, reads `tools/list`), then Sync Server |
 | mcp.so | `mcp-so.md` | ingests the Official MCP Registry; hand edit only as the claimed owner |
 | PulseMCP | `pulsemcp.md` | ingests the Official MCP Registry; re-check before editing |
-| Smithery | `smithery.md` | retired: Smithery lists a local server as an MCPB bundle through `smithery mcp publish`, or a hosted URL — the `smithery.yaml` stdio form this repository carried is not that path, and the docs page it cited returns 404 (read 2026-09-21); the file is gone and the copy says why |
+| Smithery | `smithery.md` | MCPB bundle: each release attaches `iris-eval.mcpb`, and the listing owner uploads it with `smithery mcp publish` (the steps are in the copy); the old `smithery.yaml` stdio form is retired and the copy says why |
 | cursor.directory | `cursor-directory.md` | sign-in edit; the slug `iris` should become `iris-eval` |
 | awesome-mcp-servers | `awesome-mcp-servers.md` | a one-line PR from the organisation's fork; mcpservers.org mirrors it; the line carries no numbers |
 | Docker MCP Catalog | `docker.md` + `docker/server.yaml` | a pull request to `docker/mcp-registry` with the file beside the copy; Docker reviews; `source.commit` moves by a small PR after each release |
