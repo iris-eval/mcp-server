@@ -11,13 +11,16 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { KNOWN_MIGRATION_IDS } from '../../../src/storage/migrations/index.js';
 import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import { fts5Available } from '../../../src/storage/search-index.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import { CELL_DRIVER, NODE_SQLITE_FTS5_FROM, SEARCH_DRIVER, expectedFts5 } from './fts5-here.js';
+
+// File-backed stores, several opens per test: 70-90 ms on a Windows laptop, up to 8 s on a hosted Windows runner (CI, 2026-09-26).
+vi.setConfig({ testTimeout: 30_000 });
 
 const dirs: string[] = [];
 afterEach(() => {
