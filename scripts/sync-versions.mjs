@@ -69,6 +69,12 @@ const FILES = [
     path: "package-lock.json",
     description: "npm lockfile (root + packages[\"\"] version metadata only — never runs npm install; surgical write avoids the rolldown lockfile trap)",
   },
+  {
+    // The MCPB bundle's manifest: the version Claude Desktop shows and
+    // scripts/mcpb/pack.mjs refuses to pack under any other.
+    path: "mcpb/manifest.json",
+    description: "MCPB bundle manifest",
+  },
 ];
 
 let updated = 0;
@@ -137,6 +143,32 @@ for (const file of FILES) {
   writeFileSync(file.path, JSON.stringify(content, null, 2) + "\n");
   console.log(`  SYNC: ${file.path} (${current} → ${VERSION})`);
   updated++;
+}
+
+// ------------------------------------------------------------
+// server.json's MCPB package names its bundle by URL, and the URL carries
+// the release tag: https://github.com/<repo>/releases/download/v<version>/iris-eval.mcpb.
+// The registry reads that URL at publish time and refuses one that is not
+// there, so it must name the release being cut. check-version.sh checks it.
+// ------------------------------------------------------------
+{
+  const content = JSON.parse(readFileSync("server.json", "utf8"));
+  let changed = false;
+  for (const entry of content.packages ?? []) {
+    if (entry.registryType !== "mcpb") continue;
+    const next = entry.identifier.replace(/\/releases\/download\/v[^/]+\//, `/releases/download/v${VERSION}/`);
+    if (next !== entry.identifier) {
+      console.log(`  SYNC: server.json MCPB identifier (${entry.identifier} → ${next})`);
+      entry.identifier = next;
+      changed = true;
+    }
+  }
+  if (changed) {
+    writeFileSync("server.json", JSON.stringify(content, null, 2) + "\n");
+    updated++;
+  } else {
+    console.log(`  OK:   server.json MCPB identifier (already names v${VERSION})`);
+  }
 }
 
 for (const launcher of LAUNCHERS) {

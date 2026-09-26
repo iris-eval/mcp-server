@@ -4,9 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/**/*.test.ts'],
-    // The real-client tests start installed MCP clients; only their CI job runs
-    // them, through tests/real-clients/vitest.config.ts.
-    exclude: ['**/node_modules/**', 'tests/real-clients/**'],
+    // The real-client tests start installed MCP clients, and the MCPB tests a
+    // built bundle; only their CI jobs run them, through each folder's own
+    // vitest.config.ts.
+    exclude: ['**/node_modules/**', 'tests/real-clients/**', 'tests/mcpb/**'],
     /*
      * Confines every in-process test to a scratch IRIS_HOME. Without it, a
      * test that builds a server from defaultConfig writes to the developer's

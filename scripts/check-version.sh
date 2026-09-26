@@ -72,6 +72,28 @@ check_all_packages() {
   done
 }
 check_all_packages "server.json"
+
+# The MCPB package in server.json names its bundle by the release URL, and
+# the URL carries the tag. The registry fetches it when the release
+# publishes; a URL naming another release would point installs at another
+# version's bundle, or at nothing.
+check_mcpb_identifier() {
+  local want="https://github.com/iris-eval/mcp-server/releases/download/v$PKG_VERSION/iris-eval.mcpb"
+  local got
+  got=$(node -p "(require('./server.json').packages || []).filter((p) => p.registryType === 'mcpb').map((p) => p.identifier).join(' ')")
+  if [ "$got" = "$want" ]; then
+    echo "  OK: server.json MCPB identifier ($got)"
+  else
+    echo "MISMATCH: server.json MCPB identifier is '$got', expected exactly one: $want"
+    ERRORS=$((ERRORS + 1))
+  fi
+}
+check_mcpb_identifier
+
+# The MCPB bundle's manifest: the version Claude Desktop shows, and the one
+# scripts/mcpb/pack.mjs refuses to pack under any other.
+check_version "mcpb/manifest.json" ".version"
+
 check_version "package-lock.json" ".version"
 
 # Agent discovery endpoint
