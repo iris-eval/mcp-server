@@ -452,7 +452,7 @@
         "question": "Q4",
         "status": "has",
         "subject": "S2",
-        "summary": "Lexical, three rules: the share of the input's content terms the output carries (keyword_overlap) and continuity of topic across sentences (topic_consistency) are measurements that score; answers_the_ask is the pair as a policy with no number of its own — when both fail at their thresholds the output answers something else and the verdict fails on policy_gate at the shipped defaults, and it skips whenever either measurement skips and on a one-term ask, so a one-word right answer is never a fire. Measured on the composite corpus before it existed: no classless clean case flipped, four of eight off-task cases caught (two too short to measure, two reuse the ask's words), six stub misses caught. A keyed helpfulness judge template exists and is unmeasured."
+        "summary": "Lexical, three rules: the share of the input's content terms the output carries (keyword_overlap) and continuity of topic across sentences (topic_consistency) are measurements that score; answers_the_ask is the pair as a policy — when both fail at their thresholds, and on a bare refusal or the ask handed back, the output answers something else. At the shipped thresholds it advises, because comparing words fails correct paraphrases; it gates on policy_gate once the deployment sets either measurement's threshold. It skips whenever either measurement skips and on a one-term ask, so a one-word right answer is never a fire. Measured on 45 reader-labelled cases. A keyed helpfulness judge template exists and is unmeasured."
       },
       {
         "evidence": [
@@ -4972,8 +4972,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-26T07:55:50.511Z",
-  "generatedFromCommit": "aa81dae",
+  "generatedAt": "2026-09-26T08:24:20.222Z",
+  "generatedFromCommit": "8797765",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 6,
@@ -5064,21 +5064,21 @@
       "compositeVersion": "7b375542274e",
       "confidence": {
         "changed": {
-          "of": 101,
+          "of": 112,
           "toDecisive": 0,
-          "toMarginal": 63
+          "toMarginal": 69
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.5974,
-                0.844
+                0.5419,
+                0.7924
               ],
               "k": 34,
-              "n": 46,
+              "n": 50,
               "patterns": 10,
-              "rate": 0.7391
+              "rate": 0.68
             },
             "realTranscriptsTest": {
               "ci95": [
@@ -5092,25 +5092,25 @@
             },
             "test": {
               "ci95": [
-                0.413,
-                0.8269
+                0.3628,
+                0.7686
               ],
               "k": 11,
-              "n": 17,
+              "n": 19,
               "patterns": 6,
-              "rate": 0.6471
+              "rate": 0.5789
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.6269,
-                0.9049
+                0.5789,
+                0.8675
               ],
               "k": 24,
-              "n": 30,
+              "n": 32,
               "patterns": 12,
-              "rate": 0.8
+              "rate": 0.75
             },
             "realTranscriptsTest": {
               "ci95": [
@@ -5124,13 +5124,13 @@
             },
             "test": {
               "ci95": [
-                0.5291,
-                0.9776
+                0.4344,
+                0.9025
               ],
-              "k": 7,
-              "n": 8,
-              "patterns": 7,
-              "rate": 0.875
+              "k": 8,
+              "n": 11,
+              "patterns": 8,
+              "rate": 0.7273
             }
           }
         },
@@ -5139,10 +5139,10 @@
           "patterns": 4
         },
         "overlap": {
-          "sharedPatterns": 11,
-          "sharedWithDev": 23,
-          "test": 25,
-          "testPatterns": 13
+          "sharedPatterns": 12,
+          "sharedWithDev": 28,
+          "test": 30,
+          "testPatterns": 14
         },
         "rule": "decisive needs the credible interval to exclude τ AND, in the verdict's tenth of p_bad, the dev split to hold at least 10 risk-decided verdicts from at least 4 distinct detector-firing patterns, their observed bad rate to be consistent with the stated p_bad (mean predicted inside its Wilson 95% interval), and that interval to lie wholly on the verdict's side of τ; otherwise marginal (src/eval/confidence.ts)",
         "shipped": {
@@ -5172,13 +5172,13 @@
           "marginal": {
             "dev": {
               "ci95": [
-                0.6564,
-                0.8446
+                0.6013,
+                0.7947
               ],
               "k": 58,
-              "n": 76,
+              "n": 82,
               "patterns": 22,
-              "rate": 0.7632
+              "rate": 0.7073
             },
             "realTranscriptsTest": {
               "ci95": [
@@ -5192,13 +5192,13 @@
             },
             "test": {
               "ci95": [
-                0.5242,
-                0.8572
+                0.4551,
+                0.7813
               ],
-              "k": 18,
-              "n": 25,
-              "patterns": 13,
-              "rate": 0.72
+              "k": 19,
+              "n": 30,
+              "patterns": 14,
+              "rate": 0.6333
             }
           }
         },
@@ -5213,10 +5213,10 @@
               "to": 0.1
             },
             {
-              "bad": 12,
+              "bad": 16,
               "from": 0.1,
-              "meanPredicted": 0.1339,
-              "n": 39,
+              "meanPredicted": 0.1337,
+              "n": 43,
               "patterns": 6,
               "to": 0.2
             },
@@ -5237,10 +5237,10 @@
               "to": 0.4
             },
             {
-              "bad": 0,
+              "bad": 2,
               "from": 0.4,
               "meanPredicted": 0.4322,
-              "n": 1,
+              "n": 3,
               "patterns": 1,
               "to": 0.5
             },
@@ -5329,9 +5329,9 @@
             "lo": -0.0265
           },
           "test": {
-            "delta": 0.4118,
-            "hi": 0.5889,
-            "lo": 0.1766
+            "delta": 0.2941,
+            "hi": 0.4894,
+            "lo": 0.0566
           }
         },
         "riskPerClass": {
@@ -5850,12 +5850,12 @@
         "dev": {
           "accuracy": {
             "ci95": [
-              0.728,
-              0.8728
+              0.6692,
+              0.8271
             ],
-            "k": 90,
+            "k": 84,
             "n": 111,
-            "rate": 0.8108
+            "rate": 0.7568
           },
           "calibration": {
             "bins": [
@@ -5945,12 +5945,12 @@
           },
           "missedBlock": {
             "ci95": [
-              0.113,
-              0.2858
+              0.1773,
+              0.3718
             ],
-            "k": 14,
+            "k": 20,
             "n": 76,
-            "rate": 0.1842
+            "rate": 0.2632
           }
         },
         "realTranscripts": {
@@ -6062,12 +6062,12 @@
         "test": {
           "accuracy": {
             "ci95": [
-              0.6,
-              0.8756
+              0.4791,
+              0.7851
             ],
-            "k": 26,
+            "k": 22,
             "n": 34,
-            "rate": 0.7647
+            "rate": 0.6471
           },
           "calibration": {
             "bins": [
@@ -6157,12 +6157,12 @@
           },
           "missedBlock": {
             "ci95": [
-              0.1491,
-              0.4917
+              0.2789,
+              0.6493
             ],
-            "k": 7,
+            "k": 11,
             "n": 24,
-            "rate": 0.2917
+            "rate": 0.4583
           }
         }
       },
@@ -6510,157 +6510,157 @@
             "utility": -35
           },
           {
-            "accuracy": 0.8198,
-            "fn": 12,
+            "accuracy": 0.7838,
+            "fn": 16,
             "fp": 8,
             "tau": 0.15,
             "tn": 27,
-            "tp": 64,
-            "utility": -20
+            "tp": 60,
+            "utility": -24
           },
           {
-            "accuracy": 0.8198,
-            "fn": 12,
+            "accuracy": 0.7838,
+            "fn": 16,
             "fp": 8,
             "tau": 0.2,
             "tn": 27,
-            "tp": 64,
-            "utility": -20
+            "tp": 60,
+            "utility": -24
           },
           {
-            "accuracy": 0.8198,
-            "fn": 12,
+            "accuracy": 0.7838,
+            "fn": 16,
             "fp": 8,
             "tau": 0.25,
             "tn": 27,
-            "tp": 64,
-            "utility": -20
+            "tp": 60,
+            "utility": -24
           },
           {
-            "accuracy": 0.8198,
-            "fn": 12,
+            "accuracy": 0.7838,
+            "fn": 16,
             "fp": 8,
             "tau": 0.3,
             "tn": 27,
-            "tp": 64,
-            "utility": -20
+            "tp": 60,
+            "utility": -24
           },
           {
-            "accuracy": 0.8198,
-            "fn": 12,
+            "accuracy": 0.7838,
+            "fn": 16,
             "fp": 8,
             "tau": 0.35,
             "tn": 27,
-            "tp": 64,
-            "utility": -20
+            "tp": 60,
+            "utility": -24
           },
           {
-            "accuracy": 0.8018,
-            "fn": 14,
+            "accuracy": 0.7658,
+            "fn": 18,
             "fp": 8,
             "tau": 0.4,
             "tn": 27,
-            "tp": 62,
-            "utility": -22
+            "tp": 58,
+            "utility": -26
           },
           {
-            "accuracy": 0.8108,
-            "fn": 14,
+            "accuracy": 0.7568,
+            "fn": 20,
             "fp": 7,
             "tau": 0.45,
             "tn": 28,
-            "tp": 62,
-            "utility": -21
+            "tp": 56,
+            "utility": -27
           },
           {
-            "accuracy": 0.8108,
-            "fn": 14,
+            "accuracy": 0.7568,
+            "fn": 20,
             "fp": 7,
             "tau": 0.5,
             "tn": 28,
-            "tp": 62,
-            "utility": -21
-          },
-          {
-            "accuracy": 0.8018,
-            "fn": 15,
-            "fp": 7,
-            "tau": 0.55,
-            "tn": 28,
-            "tp": 61,
-            "utility": -22
-          },
-          {
-            "accuracy": 0.8018,
-            "fn": 15,
-            "fp": 7,
-            "tau": 0.6,
-            "tn": 28,
-            "tp": 61,
-            "utility": -22
-          },
-          {
-            "accuracy": 0.8018,
-            "fn": 15,
-            "fp": 7,
-            "tau": 0.65,
-            "tn": 28,
-            "tp": 61,
-            "utility": -22
+            "tp": 56,
+            "utility": -27
           },
           {
             "accuracy": 0.7477,
-            "fn": 23,
-            "fp": 5,
-            "tau": 0.7,
-            "tn": 30,
-            "tp": 53,
+            "fn": 21,
+            "fp": 7,
+            "tau": 0.55,
+            "tn": 28,
+            "tp": 55,
+            "utility": -28
+          },
+          {
+            "accuracy": 0.7477,
+            "fn": 21,
+            "fp": 7,
+            "tau": 0.6,
+            "tn": 28,
+            "tp": 55,
+            "utility": -28
+          },
+          {
+            "accuracy": 0.7477,
+            "fn": 21,
+            "fp": 7,
+            "tau": 0.65,
+            "tn": 28,
+            "tp": 55,
             "utility": -28
           },
           {
             "accuracy": 0.6937,
             "fn": 29,
             "fp": 5,
-            "tau": 0.75,
+            "tau": 0.7,
             "tn": 30,
             "tp": 47,
             "utility": -34
           },
           {
-            "accuracy": 0.6486,
-            "fn": 36,
+            "accuracy": 0.6396,
+            "fn": 35,
+            "fp": 5,
+            "tau": 0.75,
+            "tn": 30,
+            "tp": 41,
+            "utility": -40
+          },
+          {
+            "accuracy": 0.5946,
+            "fn": 42,
             "fp": 3,
             "tau": 0.8,
             "tn": 32,
-            "tp": 40,
-            "utility": -39
-          },
-          {
-            "accuracy": 0.6396,
-            "fn": 37,
-            "fp": 3,
-            "tau": 0.85,
-            "tn": 32,
-            "tp": 39,
-            "utility": -40
-          },
-          {
-            "accuracy": 0.6396,
-            "fn": 37,
-            "fp": 3,
-            "tau": 0.9,
-            "tn": 32,
-            "tp": 39,
-            "utility": -40
+            "tp": 34,
+            "utility": -45
           },
           {
             "accuracy": 0.5856,
             "fn": 43,
             "fp": 3,
-            "tau": 0.95,
+            "tau": 0.85,
             "tn": 32,
             "tp": 33,
             "utility": -46
+          },
+          {
+            "accuracy": 0.5856,
+            "fn": 43,
+            "fp": 3,
+            "tau": 0.9,
+            "tn": 32,
+            "tp": 33,
+            "utility": -46
+          },
+          {
+            "accuracy": 0.5315,
+            "fn": 49,
+            "fp": 3,
+            "tau": 0.95,
+            "tn": 32,
+            "tp": 27,
+            "utility": -52
           }
         ],
         "shippedTau": 0.5,
@@ -9187,7 +9187,7 @@
       "passed": null,
       "total": 35
     },
-    "totalCombined": 3709,
+    "totalCombined": 3714,
     "vitestDashboard": {
       "failed": 0,
       "passed": 342,
@@ -9195,8 +9195,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3332,
-      "total": 3332
+      "passed": 3337,
+      "total": 3337
     }
   },
   "version": {
