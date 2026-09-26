@@ -26,7 +26,7 @@ import type {
 } from '../types/decision-moment.js';
 import { safetyRules } from './rules/safety.js';
 import { COST_ANOMALY_WINDOW, costAnomaly, describeCostAnomaly } from './cost-anomaly.js';
-import { describeRegressionAlarm, regressionAlarmsAt } from './cusum.js';
+import { describeRegressionAlarm, regressionAlarmsAt, type RegressionAlarm } from './cusum.js';
 
 /* Rule names that, if failed, escalate the moment to safety-violation
  * regardless of the rest of the verdict. Derived from the safety bundle
@@ -59,8 +59,17 @@ const MIN_HISTORY_TRACES_FOR_NOVELTY = 5;
  * backfilled or re-read old trace must not make every later failure look
  * novel. A tie in timestamp is excluded by trace id, so a trace is never
  * part of its own history.
+ *
+ * `alarmsByTrace` is regressionAlarmsByTrace(log), computed once by a caller
+ * that asks for many traces of the same log (the list routes, #680); without
+ * it the alarms are computed for this one trace.
  */
-export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: string, timestamp: string): AgentFailureHistory {
+export function historyBefore(
+  log: readonly AgentFailureLogEntry[],
+  traceId: string,
+  timestamp: string,
+  alarmsByTrace?: ReadonlyMap<string, RegressionAlarm[]>,
+): AgentFailureHistory {
   const rulesEverFailed = new Set<string>();
   const combinationsSeen = new Set<string>();
   const prior: AgentFailureLogEntry[] = [];
@@ -86,7 +95,7 @@ export function historyBefore(log: readonly AgentFailureLogEntry[], traceId: str
     recentCosts,
     // The stream watcher reads the log up to and INCLUDING the trace
     // under test: an alarm is raised at the evaluation that crossed the line.
-    regressionAlarms: regressionAlarmsAt(log, traceId, timestamp),
+    regressionAlarms: alarmsByTrace ? (alarmsByTrace.get(traceId) ?? []) : regressionAlarmsAt(log, traceId, timestamp),
   };
 }
 
