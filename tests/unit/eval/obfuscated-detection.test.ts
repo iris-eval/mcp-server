@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { noInjectionPatterns, noPii } from '../../../src/eval/rules/safety.js';
 import { INJECTION_LOOKALIKES, PII_LOOKALIKES } from '../../fixtures/detector-lookalikes.js';
+import { cpuMsAsync } from '../../helpers/cpu-time.js';
 
 const engine = new EvalEngine();
 const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64');
@@ -187,11 +188,12 @@ describe('hostile input: the new readings stay linear', () => {
   for (const [name, shape] of shapes) {
     it(`${name} × ${SIZE.toLocaleString('en-US')} characters, through both rules and the engine`, async () => {
       const text = shape.repeat(Math.ceil(SIZE / shape.length)).slice(0, SIZE);
-      const started = performance.now();
-      noPii.evaluate({ output: text });
-      noInjectionPatterns.evaluate({ output: text });
-      await engine.evaluate('safety', { output: text });
-      expect(performance.now() - started).toBeLessThan(5_000);
+      const cpu = await cpuMsAsync(async () => {
+        noPii.evaluate({ output: text });
+        noInjectionPatterns.evaluate({ output: text });
+        await engine.evaluate('safety', { output: text });
+      });
+      expect(cpu).toBeLessThan(5_000);
     }, 30_000);
   }
 });

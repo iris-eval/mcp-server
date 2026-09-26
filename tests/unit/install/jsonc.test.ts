@@ -7,6 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { detectStyle, parseTree, removeMember, setMember, toPlainJson, type ObjectNode } from '../../../src/cli/install/jsonc.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 const root = (text: string): ObjectNode => {
   const node = parseTree(text);
@@ -78,9 +79,8 @@ describe('setMember', () => {
 
   it('finds a trailing comma behind thousands of comment markers in linear time', () => {
     const text = `{"a": 1 ${'//'.repeat(20000)}\n ${'/**/'.repeat(20000)} ,}`;
-    const started = performance.now();
-    const out = setMember(text, root(text), 'b', 2, detectStyle(text));
-    expect(performance.now() - started).toBeLessThan(1000);
+    let out!: string;
+    expect(cpuMs(() => (out = setMember(text, root(text), 'b', 2, detectStyle(text))))).toBeLessThan(1000);
     expect(plain(out)).toEqual({ a: 1, b: 2 });
   });
 

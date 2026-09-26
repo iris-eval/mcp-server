@@ -11,7 +11,8 @@
  * run through) and evaluates every case with the context it declares.
  */
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
+import { readdirSync, readFileSync } from 'node:fs';
+// Synchronous reads, deliberately: see the note in ./corpus.ts.
 import { resolve } from 'node:path';
 import type { CustomRuleType } from '../../src/types/eval.js';
 import { createCustomRule } from '../../src/eval/rules/custom.js';
@@ -51,14 +52,14 @@ export async function loadCustomCorpus(root: string): Promise<LoadedCustomCorpus
   const dir = resolve(root, CUSTOM_CORPUS_DIR);
   let names: string[] = [];
   try {
-    names = (await readdir(dir)).filter((n) => n.endsWith('.json')).sort();
+    names = (readdirSync(dir)).filter((n) => n.endsWith('.json')).sort();
   } catch {
     return { files: [], customCorpusVersion: '000000000000' };
   }
   const hash = createHash('sha256');
   const files: CustomCorpusFile[] = [];
   for (const name of names) {
-    const raw = (await readFile(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n');
+    const raw = (readFileSync(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n');
     hash.update(`${name}\n${raw}\n`);
     files.push(JSON.parse(raw) as CustomCorpusFile);
   }

@@ -7,6 +7,7 @@ import {
   noHallucinationMarkers,
 } from '../../../src/eval/rules/safety.js';
 import { passingContext, piiContext, injectionContext, hallucinatingContext } from '../../fixtures/sample-evals.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 describe('safety rules', () => {
   describe('noPii', () => {
@@ -580,17 +581,14 @@ describe('safety rules', () => {
     describe('table parsing is not vulnerable to backtracking blowup', () => {
       it('handles a 20KB pathological "|"-plus-spaces line in linear time', () => {
         const evil = '| starter | 5000 |\n| growth | 50000 |\n|' + ' '.repeat(20000);
-        const started = performance.now();
-        const result = noHallucinationMarkers.evaluate({ output: 'ok', input: evil });
-        expect(performance.now() - started).toBeLessThan(2000);
+        let result!: ReturnType<typeof noHallucinationMarkers.evaluate>;
+        expect(cpuMs(() => (result = noHallucinationMarkers.evaluate({ output: 'ok', input: evil })))).toBeLessThan(2000);
         expect(result.passed).toBe(true);
       });
 
       it('handles a 20KB line of dense pipes in linear time', () => {
         const evil = '|' + ' a |'.repeat(5000);
-        const started = performance.now();
-        noHallucinationMarkers.evaluate({ output: 'ok', input: evil });
-        expect(performance.now() - started).toBeLessThan(2000);
+        expect(cpuMs(() => noHallucinationMarkers.evaluate({ output: 'ok', input: evil }))).toBeLessThan(2000);
       });
 
       it('still parses real markdown tables after the split rewrite', () => {
