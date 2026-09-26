@@ -17,6 +17,7 @@ import { KNOWN_MIGRATION_IDS } from '../../../src/storage/migrations/index.js';
 import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import { fts5Available } from '../../../src/storage/search-index.js';
 import type { Driver } from '../../../src/storage/driver.js';
+import { CELL_DRIVER, NODE_SQLITE_FTS5_FROM, SEARCH_DRIVER, expectedFts5 } from './fts5-here.js';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -32,17 +33,41 @@ function tempDb(): string {
 const SEARCH_OBJECTS = "SELECT type, name FROM sqlite_master WHERE name LIKE 'trace_search%' AND name NOT LIKE 'sqlite_%' ORDER BY type, name";
 
 describe('migration 015 — the trace search index', () => {
-  it('this platform and driver have FTS5 with secure-delete — the CI search-index job runs this on Linux, macOS and Windows, both drivers', async () => {
-    const store = new SqliteAdapter(':memory:');
+  it(`this cell's driver has FTS5 exactly when promised (better-sqlite3 always, node:sqlite from Node ${NODE_SQLITE_FTS5_FROM}), and search answers either way`, async () => {
+    const path = tempDb();
+    const store = new SqliteAdapter(path, { driver: CELL_DRIVER });
     await store.initialize();
     const db = (store as unknown as { db: Driver }).db;
-    expect(fts5Available(db)).toBe(true);
     const version = (db.prepare('SELECT sqlite_version() AS v').get() as { v: string }).v;
-    // secure-delete arrived in 3.42.0.
-    const [major, minor] = version.split('.').map(Number);
-    expect(major * 1000 + minor, `SQLite ${version} on ${store.driver}`).toBeGreaterThanOrEqual(3042);
-    expect((await store.queryTraces(LOCAL_TENANT, { search: 'anything' })).search?.index).toBe('fts5');
+    const has = fts5Available(db);
+    expect(has, `SQLite ${version} on ${store.driver}, Node ${process.versions.node}`).toBe(expectedFts5(CELL_DRIVER));
+    if (has) {
+      // secure-delete arrived in 3.42.0.
+      const [major, minor] = version.split('.').map(Number);
+      expect(major * 1000 + minor, `SQLite ${version}`).toBeGreaterThanOrEqual(3042);
+    }
+    // End to end on this SQLite as it is: no override, no simulation.
+    await store.insertTraces(LOCAL_TENANT, [
+      { trace_id: 'a', agent_name: 'bot', output: 'The refund was approved on Monday.', timestamp: '2026-09-01T00:00:00.000Z' },
+      { trace_id: 'b', agent_name: 'bot', output: 'Refund refused: past the window.', tool_calls: [{ tool_name: 'lookup', input: { reason: 'window' } }], timestamp: '2026-09-02T00:00:00.000Z' },
+    ]);
+    const found = await store.queryTraces(LOCAL_TENANT, { search: 'refund' });
+    expect(found.search?.index).toBe(has ? 'fts5' : 'scan');
+    expect(found.traces.map((t) => t.trace_id).sort()).toEqual(['a', 'b']);
+    expect(found.traces.every((t) => t.match?.fragments.some((f) => f.hit))).toBe(true);
+    expect((await store.queryTraces(LOCAL_TENANT, { search: '"refund was"' })).traces.map((t) => t.trace_id)).toEqual(['a']);
+    expect(await store.deleteTrace(LOCAL_TENANT, 'a')).toBe(true);
+    expect((await store.queryTraces(LOCAL_TENANT, { search: 'approved' })).total).toBe(0);
     await store.close();
+    if (!has) {
+      // The same file on a driver with FTS5 is indexed at its first start, including what the scan-only start wrote.
+      const later = new SqliteAdapter(path, { driver: 'native' });
+      await later.initialize();
+      const again = await later.queryTraces(LOCAL_TENANT, { search: 'refund' });
+      expect(again.search?.index).toBe('fts5');
+      expect(again.traces.map((t) => t.trace_id)).toEqual(['b']);
+      await later.close();
+    }
   });
 
   it('is the fifteenth known migration, and the last', () => {
@@ -53,10 +78,10 @@ describe('migration 015 — the trace search index', () => {
 
   it('creates the index, its id table, its covering index and two triggers on a cold file, once', async () => {
     const path = tempDb();
-    const store = new SqliteAdapter(path);
+    const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await store.initialize();
     await store.close();
-    const again = new SqliteAdapter(path);
+    const again = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await again.initialize();
     await again.close();
 
@@ -75,7 +100,7 @@ describe('migration 015 — the trace search index', () => {
 
   it('indexes the traces a database already held when it was written before the migration', async () => {
     const path = tempDb();
-    const store = new SqliteAdapter(path);
+    const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await store.initialize();
     await store.insertTraces(LOCAL_TENANT, [
       { trace_id: 'old-1', agent_name: 'bot', input: 'Where is parcel 7781?', output: 'Parcel 7781 left the depot this morning.', timestamp: '2026-08-01T00:00:00.000Z' },
@@ -95,7 +120,7 @@ describe('migration 015 — the trace search index', () => {
     expect(raw.prepare("SELECT 1 FROM sqlite_master WHERE name = 'idx_traces_search_filter'").get()).toBeUndefined();
     raw.close();
 
-    const upgraded = new SqliteAdapter(path);
+    const upgraded = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await upgraded.initialize();
     const page = await upgraded.queryTraces(LOCAL_TENANT, { search: 'parcel' });
     expect(page.search?.index).toBe('fts5');
@@ -108,7 +133,7 @@ describe('migration 015 — the trace search index', () => {
 
   it('on a SQLite without FTS5, is recorded as applied and creates nothing', async () => {
     const path = tempDb();
-    const store = new SqliteAdapter(path, { fts5: false });
+    const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false });
     await store.initialize();
     expect(await store.migrations()).toEqual({ applied: KNOWN_MIGRATION_IDS.length, known: KNOWN_MIGRATION_IDS.length, pending: [] });
     await store.close();

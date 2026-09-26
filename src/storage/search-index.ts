@@ -60,10 +60,12 @@
  * pay; bulkIndexDelete below erases a large delete by rewriting the index
  * once instead, with the same result on disk.
  *
- * Without FTS5. Both shipped drivers compile FTS5 in (better-sqlite3's
- * bundled SQLite and Node's node:sqlite; a CI job proves it on Linux, macOS
- * and Windows). A better-sqlite3 built from source against a system SQLite
- * may not. Then the migration creates nothing, the adapter answers a search
+ * Without FTS5. better-sqlite3's bundled SQLite has FTS5. Node's built-in
+ * node:sqlite has it from Node 22.16.0; on 22.13.0 to 22.15.0 it does not
+ * (checked on each release), and a better-sqlite3 built from source against
+ * a system SQLite may not either. The CI search-index job runs Linux, macOS
+ * and Windows with both drivers, the built-in at 22.13.0 and 24. Without
+ * FTS5 the migration creates nothing, the adapter answers a search
  * by reading the traces themselves with the same tokenizer (slower, the same
  * matches), and on the first start with FTS5 the index is built. A file whose
  * index exists but whose SQLite cannot load FTS5 has its triggers dropped at

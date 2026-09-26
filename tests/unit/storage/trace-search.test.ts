@@ -25,6 +25,7 @@ import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
+import { SEARCH_DRIVER } from './fts5-here.js';
 
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
@@ -40,7 +41,7 @@ function tempDb(): string {
 }
 
 async function adapter(path = ':memory:', options: { fts5?: boolean } = {}): Promise<SqliteAdapter> {
-  const s = new SqliteAdapter(path, options);
+  const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER, ...options });
   await s.initialize();
   open.push(s);
   return s;

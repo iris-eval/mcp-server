@@ -13,6 +13,7 @@ import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { createIrisServer } from '../../../src/server.js';
 import { createCustomRuleStore } from '../../../src/custom-rule-store.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
+import { SEARCH_DRIVER } from '../storage/fts5-here.js';
 
 type Content = Array<{ type: string; text: string }>;
 const body = (r: unknown) => (r as { content: Content }).content[0].text;
@@ -24,7 +25,7 @@ describe('get_traces q over MCP', () => {
   let ruleDir: string;
 
   beforeEach(async () => {
-    storage = new SqliteAdapter(':memory:');
+    storage = new SqliteAdapter(':memory:', { driver: SEARCH_DRIVER });
     await storage.initialize();
     ruleDir = mkdtempSync(join(tmpdir(), 'iris-search-mcp-'));
     const ruleStore = createCustomRuleStore({ pathFor: () => join(ruleDir, 'custom-rules.json'), auditPath: join(ruleDir, 'audit.log') });
