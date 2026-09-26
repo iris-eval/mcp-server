@@ -250,6 +250,16 @@ export function createDashboardServer(
 
   if (existsSync(indexHtml)) {
     app.use(createApiRateLimiter(config));
+    /*
+     * Built assets carry a content hash in their names, so a name never
+     * changes meaning: the browser may keep them for a year without asking
+     * again. Since the dashboard is split into a chunk per page (#662), a
+     * cold load fetches a few dozen files; without this, every reload
+     * re-validated each one, and each check counts against the per-IP
+     * rate limit the polling shares. index.html is not hashed and stays
+     * revalidated, so an upgraded server is picked up on the next load.
+     */
+    app.use('/assets', express.static(join(staticDir, 'assets'), { immutable: true, maxAge: '365d', fallthrough: false }));
     app.use(express.static(staticDir));
     app.get('/{*path}', (_req, res) => {
       res.sendFile(indexHtml);

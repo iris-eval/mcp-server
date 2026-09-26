@@ -45,6 +45,28 @@ export class ErrorBoundary extends Component<BoundaryProps, BoundaryState> {
 
   render(): ReactNode {
     if (!this.state.error) return this.props.children;
+    if (isChunkLoadError(this.state.error)) {
+      /*
+       * The page's code did not arrive (#662). Usually the server was
+       * upgraded while this tab stayed open, so the chunk this tab asks for
+       * no longer exists; a reload fetches the current dashboard. "Try
+       * again" cannot help: the failed import is remembered until reload.
+       */
+      return (
+        <div className="iris-error-box" role="alert" data-error-boundary="chunk" style={{ margin: 'var(--space-4)' }}>
+          <strong>This page's code could not be loaded.</strong>
+          <span>If Iris was upgraded while this tab was open, reloading fetches the new dashboard. Otherwise check that the server is still running.</span>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+            <button type="button" className="iris-btn iris-btn--danger" onClick={() => window.location.reload()}>
+              Reload the dashboard
+            </button>
+            <Link to="/" style={{ color: 'inherit' }}>
+              {this.props.homeLabel ?? 'Back to the dashboard'}
+            </Link>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="iris-error-box" role="alert" data-error-boundary="route" style={{ margin: 'var(--space-4)' }}>
         <strong>This page hit an error it could not recover from.</strong>
@@ -60,6 +82,17 @@ export class ErrorBoundary extends Component<BoundaryProps, BoundaryState> {
       </div>
     );
   }
+}
+
+/**
+ * Did a page's code fail to download? The browsers word it differently:
+ * Chromium "Failed to fetch dynamically imported module", Firefox "error
+ * loading dynamically imported module", Safari "Importing a module script
+ * failed". Vite's preload helper reports a missing CSS or JS dependency as
+ * "Unable to preload CSS" / "Failed to fetch".
+ */
+export function isChunkLoadError(error: Error): boolean {
+  return /dynamically imported module|Importing a module script failed|Unable to preload CSS/i.test(error.message ?? '');
 }
 
 /** The boundary keyed by the current route, so navigating away clears a page's error. */
