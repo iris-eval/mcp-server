@@ -64,12 +64,22 @@ type RegistryPackage = { registryType: string; identifier: string; version?: str
 const serverJson = JSON.parse(read('server.json')) as { repository: { url: string }; packages: RegistryPackage[] };
 
 describe('mcpb/manifest.json', () => {
-  it('validates against the MCPB manifest schema for its version (v0.3, vendored from @anthropic-ai/mcpb 2.1.2)', () => {
+  it('validates against the MCPB manifest schema for its version (v0.3, vendored from @anthropic-ai/mcpb)', () => {
     expect(manifest.manifest_version).toBe('0.3');
     const schema = JSON.parse(read('schemas/mcpb-manifest-v0.3.schema.json')) as Record<string, unknown>;
     const ajv = new Ajv({ strict: false, validateFormats: false, allErrors: true });
     const validate = ajv.compile(schema);
     expect(validate(manifest), JSON.stringify(validate.errors, null, 2)).toBe(true);
+  });
+
+  it('the vendored schema is the one the locked @anthropic-ai/mcpb ships, and that package is an exact devDependency', () => {
+    const want = (JSON.parse(read('package.json')) as { devDependencies: Record<string, string> }).devDependencies['@anthropic-ai/mcpb'];
+    expect(want).toMatch(/^\d+\.\d+\.\d+$/);
+    const lock = JSON.parse(read('package-lock.json')) as { packages: Record<string, { version?: string; dev?: boolean }> };
+    expect(lock.packages['node_modules/@anthropic-ai/mcpb']).toMatchObject({ version: want, dev: true });
+    const installed = join(root, 'node_modules', '@anthropic-ai', 'mcpb');
+    expect((JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8')) as { version: string }).version).toBe(want);
+    expect(JSON.parse(read('schemas/mcpb-manifest-v0.3.schema.json'))).toEqual(JSON.parse(readFileSync(join(installed, 'dist', 'mcpb-manifest-v0.3.schema.json'), 'utf8')));
   });
 
   it('names the product as the package does: identifier, version, tagline, author, licence, homepage and repository', () => {

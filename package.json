@@ -124,7 +124,8 @@
     "fast-uri": "^3.1.5",
     "ip-address": "^10.4.0",
     "postcss": "^8.5.25",
-    "@hono/node-server": "^2.1.0"
+    "@hono/node-server": "^2.1.0",
+    "tmp": "^0.2.6"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -138,6 +139,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
     "@playwright/test": "^1.59.1",
     "@types/better-sqlite3": "^7.6.0",
     "@types/express": "^5.0.0",
