@@ -77,9 +77,11 @@ export function productionClosure(lock, { exclude = Object.keys(EXCLUDED_DEPENDE
     }
   };
   const found = new Set();
-  const queue = Object.keys(packages[''].dependencies ?? {})
-    .filter((name) => !exclude.includes(name))
-    .map((name) => ({ from: '', name, optional: false }));
+  // A production install brings the root's optional dependencies too (better-sqlite3 is one since 0.20.0), so the walk starts from both.
+  const queue = [
+    ...Object.keys(packages[''].dependencies ?? {}).map((name) => ({ from: '', name, optional: false })),
+    ...Object.keys(packages[''].optionalDependencies ?? {}).map((name) => ({ from: '', name, optional: true })),
+  ].filter(({ name }) => !exclude.includes(name));
   while (queue.length > 0) {
     const { from, name, optional } = queue.shift();
     const at = resolveFrom(from, name);

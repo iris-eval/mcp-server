@@ -26,6 +26,12 @@
  * is available, Iris warns once and uses the built-in, so a bad prebuild
  * is a slower start, not a dead one. A name that is neither is refused.
  *
+ * better-sqlite3 is an OPTIONAL dependency (0.20.0, #661): when npm cannot
+ * install it — a release with no prebuilt binary for the platform, and no
+ * compiler to build one — the install still succeeds without it, and this
+ * seam finds it absent and uses the built-in. Every driver says why it was
+ * chosen (`reason`), and the self-test and the startup log print it.
+ *
  * Both drivers return the same shapes the adapter reads: `run()` gives
  * `{ changes }`, `get()` one row or undefined, `all()` rows; positional `?`
  * parameters; `transaction(fn)` returns a callable with `.immediate()`
@@ -46,6 +52,8 @@ export type Transaction<A extends unknown[], R> = ((...args: A) => R) & { immedi
 
 export interface Driver {
   readonly name: DriverName;
+  /** Why this driver holds the file, in a sentence the self-test and the startup log print. */
+  readonly reason: string;
   prepare(sql: string): Statement;
   exec(sql: string): void;
   /** `PRAGMA <text>` — reads and assignments alike; returns the first row when the pragma answers with one. */
@@ -95,10 +103,11 @@ function defaultLoadNative(): NativeModule {
   return require('better-sqlite3') as NativeModule;
 }
 
-function nativeDriver(Database: NativeModule, path: string, options: OpenOptions): Driver {
+function nativeDriver(Database: NativeModule, path: string, options: OpenOptions, reason: string): Driver {
   const db = new Database(path, { ...(options.timeout !== undefined ? { timeout: options.timeout } : {}), ...(options.fileMustExist ? { fileMustExist: true } : {}) });
   return {
     name: 'better-sqlite3',
+    reason,
     prepare: (sql) => db.prepare(sql),
     exec: (sql) => {
       db.exec(sql);
@@ -127,7 +136,7 @@ export function nodeSqliteAvailable(loadNode: () => NodeSqliteModule = defaultLo
   }
 }
 
-function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions): Driver {
+function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, reason: string): Driver {
   if (options.fileMustExist && path !== ':memory:' && !existsSync(path)) {
     // DatabaseSync has no "must exist" switch and open() creates the file; refuse here, as the native driver does.
     throw new Error(`SQLite database file does not exist: ${path}`);
@@ -171,6 +180,7 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions): 
   };
   return {
     name: 'node',
+    reason,
     prepare: (sql) => {
       const st = db.prepare(sql);
       return {
@@ -225,7 +235,7 @@ export function openDriver(path: string, options: OpenOptions = {}): Driver {
     if (!nodeSupportsSqlite() && options.loadNode === undefined) {
       throw new Error(`${DRIVER_VAR}=node needs Node ${NODE_SQLITE_MIN} or later for node:sqlite; this is Node ${process.versions.node}. Unset it to use better-sqlite3.`);
     }
-    return nodeDriver(loadNode(), path, options);
+    return nodeDriver(loadNode(), path, options, `${DRIVER_VAR}=node chose Node's built-in SQLite`);
   }
 
   let Database: NativeModule;
@@ -237,23 +247,35 @@ export function openDriver(path: string, options: OpenOptions = {}): Driver {
     // reason to switch drivers.
     new Database(':memory:').close();
   } catch (err) {
+    const absent = notInstalled(err);
     const reason = err instanceof Error ? err.message.split('\n')[0] : String(err);
+    // Not installed and failed to load are different facts with different fixes: say which.
+    const what = absent
+      ? 'The native SQLite module (better-sqlite3) is not installed — it is optional, and npm skips it when it cannot build it for this platform'
+      : `The native SQLite module (better-sqlite3) could not load (${reason})`;
+    const fix = absent ? 'install it with npm install better-sqlite3 where a prebuilt binary or a C++ toolchain is available' : 'reinstall it with npm rebuild better-sqlite3';
     const canFallBack = options.allowFallback !== false && choice === undefined && nodeSqliteAvailable(loadNode);
     if (!canFallBack) {
       throw new Error(
-        `The native SQLite module (better-sqlite3) could not load: ${reason}. ` +
+        `${what}. ` +
           (choice === 'native'
-            ? `${DRIVER_VAR}=native forbids the fallback; unset it to let Iris use Node's built-in SQLite (Node ${NODE_SQLITE_MIN}+), or reinstall the module (npm rebuild better-sqlite3).`
-            : `Node's built-in SQLite is not available on Node ${process.versions.node} (it needs ${NODE_SQLITE_MIN}+); reinstall the module (npm rebuild better-sqlite3) or upgrade Node.`),
+            ? `${DRIVER_VAR}=native forbids the fallback; unset it to let Iris use Node's built-in SQLite (Node ${NODE_SQLITE_MIN}+), or ${fix}.`
+            : `Node's built-in SQLite is not available on Node ${process.versions.node} (it needs ${NODE_SQLITE_MIN}+); ${fix}, or upgrade Node.`),
       );
     }
     warn(
-      `[iris.storage] The native SQLite module (better-sqlite3) could not load (${reason}); falling back to Node's built-in SQLite (node:sqlite). ` +
-        `The store works the same; the native driver is faster and is what the proof was measured on — reinstall it with npm rebuild better-sqlite3, or set ${DRIVER_VAR}=node to choose the built-in on purpose.`,
+      `[iris.storage] ${what}; using Node's built-in SQLite (node:sqlite). ` +
+        `The store works the same; the native driver is faster and is what the proof was measured on — ${fix}, or set ${DRIVER_VAR}=node to choose the built-in on purpose.`,
     );
-    return nodeDriver(loadNode(), path, options);
+    return nodeDriver(loadNode(), path, options, absent ? 'better-sqlite3 is not installed (optional; npm skips it when it cannot build it here), so Iris uses Node\'s built-in SQLite' : `better-sqlite3 could not load (${reason}), so Iris uses Node's built-in SQLite`);
   }
-  return nativeDriver(Database, path, options);
+  return nativeDriver(Database, path, options, choice === 'native' ? `${DRIVER_VAR}=native chose better-sqlite3` : 'better-sqlite3 loaded (the default)');
+}
+
+/** The module is absent, as opposed to present and failing to load its binding. */
+function notInstalled(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  return !!e && e.code === 'MODULE_NOT_FOUND' && typeof e.message === 'string' && e.message.includes("'better-sqlite3'");
 }
 
 /**
