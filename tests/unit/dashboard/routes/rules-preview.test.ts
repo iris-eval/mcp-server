@@ -12,7 +12,7 @@
  * checks. These tests hit the REAL route with the REAL rule compiler —
  * only storage is stubbed.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
 import { registerRuleRoutes } from '../../../../src/dashboard/routes/rules.js';
 import { createTenantMiddleware } from '../../../../src/middleware/tenant.js';
@@ -20,6 +20,24 @@ import type { CustomRuleStore } from '../../../../src/custom-rule-store.js';
 import type { EvalEngine } from '../../../../src/eval/engine.js';
 import type { IStorageAdapter } from '../../../../src/types/query.js';
 import type { Trace } from '../../../../src/types/trace.js';
+
+/*
+ * The real sandbox, counted: how many matches ran out the budget. The
+ * shared-breaker test below counts these instead of timing the request, so
+ * a loaded machine cannot fail it.
+ */
+const sandbox = vi.hoisted(() => ({ timeouts: 0 }));
+vi.mock('../../../../src/eval/rules/regex-sandbox.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../src/eval/rules/regex-sandbox.js')>();
+  return {
+    ...actual,
+    sandboxedRegexTest: (...args: Parameters<typeof actual.sandboxedRegexTest>) => {
+      const outcome = actual.sandboxedRegexTest(...args);
+      if (outcome.kind === 'timeout') sandbox.timeouts += 1;
+      return outcome;
+    },
+  };
+});
 
 const traces: Trace[] = [
   {
@@ -217,7 +235,7 @@ describe('POST /rules/custom/preview — definition rejection', () => {
     const server = app.listen(0);
     const addr = server.address() as { port: number };
     try {
-      const started = Date.now();
+      sandbox.timeouts = 0;
       const res = await fetch(`http://localhost:${addr.port}/api/v1/rules/custom/preview`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -226,14 +244,12 @@ describe('POST /rules/custom/preview — definition rejection', () => {
           definition: { name: 'hostile', type: 'regex_match', config: { pattern: '^(a|a)*$' } }, // codeql-suppress js/redos
         }),
       });
-      const elapsed = Date.now() - started;
       const body = (await res.json()) as Record<string, unknown>;
       expect(res.status).toBe(200);
-      // All 12 hostile traces report wouldSkip; only ~3 paid the budget.
+      // All 12 hostile traces report wouldSkip, and only 3 paid the budget:
+      // per-trace budgets would have run all 12 out, ≥12 × ~140 ms.
       expect(body.wouldSkip).toBe(12);
-      // Per-trace budgets would be ≥12 × ~140ms ≈ 1.7s minimum; the shared
-      // breaker caps it at ~3 breaches. Generous bound for slow CI.
-      expect(elapsed).toBeLessThan(1500);
+      expect(sandbox.timeouts).toBe(3);
     } finally {
       server.close();
     }

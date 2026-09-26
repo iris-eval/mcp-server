@@ -225,7 +225,14 @@ describe('the false-alarm budget is per agent', () => {
     expect(family, `${family} false alarms over ${evaluations} evaluations; the budget is ${budget}`).toBeLessThanOrEqual(budget);
     // Without the family control the same agents alarm several times over budget.
     expect(perStream).toBeGreaterThan(3 * budget);
-  }, 180_000);
+    /*
+     * Inherent work: 8 agents × 4,000 evaluations × 25 rules is the sample the
+     * false-alarm budget needs, and each re-baselined stream draws a fresh
+     * simulated threshold. 36 s in the full suite; from 102 s to over 180 s with 20
+     * busy-loop processes on a 20-core machine, where the old 180 s timeout
+     * failed in 2 of 10 runs. About twice the loaded maximum.
+     */
+  }, 400_000);
 
   it('the family line is the per-stream line raised, and rises with the number of streams', () => {
     const one = familyThreshold(10, 200, 1);

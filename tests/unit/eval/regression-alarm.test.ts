@@ -13,6 +13,7 @@ import express from 'express';
 import { deriveMoment, historyBefore } from '../../../src/eval/decision-moment.js';
 import { isFailureMoment } from '../../../src/eval/failure-rank.js';
 import { fnv1a, mulberry32 } from '../../../src/eval/stats.js';
+import { regressionAlarms } from '../../../src/eval/cusum.js';
 import { MOMENT_SIGNIFICANCE_KINDS } from '../../../src/types/decision-moment.js';
 import { registerMomentRoutes } from '../../../src/dashboard/routes/moments.js';
 import { createTenantMiddleware } from '../../../src/middleware/tenant.js';
@@ -94,7 +95,13 @@ describe('the regression-alarm kind', () => {
     const a = shiftedLog(400, 0.2, 10_000, 'run-a', 'A');
     const b = shiftedLog(700, 0.2, 400, 'run-b', 'B').map((e, i) => ({ ...e, traceId: `u${String(i).padStart(4, '0')}`, timestamp: new Date(Date.UTC(2026, 8, 2, 0, 0, i)).toISOString() }));
     const log = [...a, ...b];
-    const alarmed = b.find((e) => historyBefore(log, e.traceId, e.timestamp).regressionAlarms.some((x) => x.run === 'B'))!;
+    /*
+     * Find the alarm with one pass of the watcher over the log, then confirm
+     * it the way the route reads it. Scanning run B trace by trace ran the
+     * watcher once per trace (1.3 s here, over 5 s on a loaded machine).
+     */
+    const alarmedIds = new Set(regressionAlarms(log).filter((x) => x.run === 'B').map((x) => x.traceId));
+    const alarmed = b.find((e) => alarmedIds.has(e.traceId) && historyBefore(log, e.traceId, e.timestamp).regressionAlarms.some((x) => x.run === 'B'))!;
     expect(alarmed).toBeDefined();
     const history = historyBefore(log, alarmed.traceId, alarmed.timestamp);
     const m = deriveMoment(traceOf(alarmed), evalOf(alarmed), history);

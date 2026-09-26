@@ -11,7 +11,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { generate, QUESTIONS, STATUSES, GROUPS } from '../scripts/claims/generators/evaluators.mjs';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -35,8 +35,18 @@ interface Matrix {
 }
 
 describe('evaluator-of-evaluators matrix', () => {
+  /*
+   * The matrix is generated once for the file. Each test used to generate
+   * it again, reading every proof file and rule registry each time; the
+   * result depends only on the files on disk.
+   */
+  let matrix: Matrix;
+  beforeAll(async () => {
+    matrix = (await generate()) as Matrix;
+  });
+
   it('has one evaluator per registered rule, custom type and judge template plus the verifier and the composer, thirteen questions each, every status in the vocabulary', async () => {
-    const m = (await generate()) as Matrix;
+    const m = matrix;
     const claims = JSON.parse(await readFile(resolve(root, '.claims.json'), 'utf-8')) as { evalRules: { builtInCount: number; customRuleTypeCount: number }; llmJudgeTemplates: { count: number } };
     // The 2026-09-05 audit's matrix said 26 by grouping the custom types; the generator counts each registered thing once.
     expect(m.counts.evaluators).toBe(claims.evalRules.builtInCount + claims.evalRules.customRuleTypeCount + claims.llmJudgeTemplates.count + 2);
@@ -63,7 +73,7 @@ describe('evaluator-of-evaluators matrix', () => {
   });
 
   it('every measured cell points at a committed proof file, and a named rule or type key exists there', async () => {
-    const m = (await generate()) as Matrix;
+    const m = matrix;
     const results = JSON.parse(await readFile(resolve(root, 'proof/results.json'), 'utf-8')) as {
       rules: Array<{ name: string }>;
       custom: { types: Array<{ type: string }> };
@@ -91,7 +101,7 @@ describe('evaluator-of-evaluators matrix', () => {
   });
 
   it('the published bar holds from the files: at least fifteen evaluators with three or more questions measured, and the committed truthbase agrees', async () => {
-    const m = (await generate()) as Matrix;
+    const m = matrix;
     expect(m.counts.measuredThreeOrMore).toBeGreaterThanOrEqual(15);
     for (const e of m.evaluators) expect(e.measured).toBe(Object.values(e.cells).filter((c) => c.status === 'measured').length);
     const committed = JSON.parse(await readFile(resolve(root, '.claims.json'), 'utf-8')) as { evaluators: Matrix };
@@ -101,7 +111,7 @@ describe('evaluator-of-evaluators matrix', () => {
 
   it('the judge rows stay measurable, not measured, while proof/judge-results.json is pending', async () => {
     const judge = JSON.parse(await readFile(resolve(root, 'proof/judge-results.json'), 'utf-8')) as { status: string };
-    const m = (await generate()) as Matrix;
+    const m = matrix;
     for (const e of m.evaluators.filter((x) => x.group === 'judge' || x.group === 'citations')) {
       const measuredCells = Object.values(e.cells).filter((c) => c.status === 'measured').length;
       if (judge.status === 'pending') expect(measuredCells, e.id).toBe(0);

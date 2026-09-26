@@ -17,7 +17,11 @@
 // The count every surface quotes — evaluators with three or more questions
 // measured — is computed here and locked by tests/evaluators-matrix.test.ts.
 
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+// Synchronous reads, deliberately: tests call this generator, and under the
+// full test suite each async fs call waited to be scheduled (#678 measured
+// the same cause in the proof loaders). A few local files; nothing to gain
+// from yielding.
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generate as evalRules } from './eval-rules.mjs';
@@ -63,7 +67,7 @@ const cell = (status, evidence, note) => {
 
 async function readJson(rel) {
   try {
-    return JSON.parse(await readFile(resolve(root, rel), 'utf-8'));
+    return JSON.parse(readFileSync(resolve(root, rel), 'utf-8'));
   } catch {
     return null;
   }

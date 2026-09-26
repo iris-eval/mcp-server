@@ -73,6 +73,14 @@ const CONFIG_FOR: Record<(typeof RULE_TYPE_VALUES)[number], Record<string, unkno
 };
 
 describe('POST /api/v1/rules/custom accepts every rule type the tool accepts', () => {
+  /*
+   * Inherent work: one deploy per rule type over HTTP, each writing the rule
+   * store and its audit log (and the regex types running the deploy-time
+   * backtracking probe, 1-44 ms). Measured at 0.7-0.8 s in the full suite and
+   * at up to 2.5 s, once 5.3 s, with 20 busy-loop processes on a 20-core
+   * machine, against vitest's 5 s default. About three times the loaded
+   * maximum.
+   */
   it('the constant carries action_policy, and the route deploys one of every type', async () => {
     expect(RULE_TYPE_VALUES).toContain('action_policy');
     const app = makeApp(new EvalEngine());
@@ -88,7 +96,7 @@ describe('POST /api/v1/rules/custom accepts every rule type the tool accepts', (
     }
     const deployed = store.list(LOCAL_TENANT).map((r) => r.definition.type).sort();
     expect(deployed).toEqual([...RULE_TYPE_VALUES].sort());
-  });
+  }, 15_000);
 
   it('the action_policy deployed over HTTP fires on the trajectory it forbids', async () => {
     const engine = new EvalEngine();

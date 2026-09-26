@@ -2,7 +2,11 @@
 // tool name from each `server.registerTool('<name>', ...)` call, and counts
 // annotations.
 
-import { readFile, readdir } from 'node:fs/promises';
+import { readdirSync, readFileSync } from 'node:fs';
+// Synchronous reads, deliberately: tests call this generator, and under the
+// full test suite each async fs call waited to be scheduled (#678 measured
+// the same cause in the proof loaders). A few local files; nothing to gain
+// from yielding.
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,7 +51,7 @@ function stripComments(block) {
 
 export async function generate() {
   const toolsDir = resolve(root, 'src/tools');
-  const files = (await readdir(toolsDir))
+  const files = (readdirSync(toolsDir))
     .filter(f => f.endsWith('.ts') && f !== 'index.ts');
 
   const names = [];
@@ -56,7 +60,7 @@ export async function generate() {
   let openWorldHintCount = 0;
 
   for (const f of files) {
-    const src = await readFile(resolve(toolsDir, f), 'utf-8');
+    const src = readFileSync(resolve(toolsDir, f), 'utf-8');
     for (const m of src.matchAll(REGISTER_TOOL_RE)) names.push(m[1]);
     const block = src.match(ANNOTATIONS_BLOCK_RE);
     if (!block) continue;
