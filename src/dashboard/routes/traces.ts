@@ -10,6 +10,7 @@ import { requireTenant } from '../../middleware/tenant.js';
 import { generateTraceId, generateSpanId } from '../../utils/ids.js';
 import { bestEffortExport } from '../../otel/lazy.js';
 import { traceQuerySchema, ingestTraceSchema } from '../validation.js';
+import { searchOf } from '../../tools/get-traces.js';
 
 export interface TraceRouteOptions {
   /**
@@ -118,7 +119,9 @@ export function registerTraceRoutes(
     try {
       const tenantId = requireTenant(req);
       const query = traceQuerySchema.parse(req.query);
+      const search = searchOf(query.q);
       const result = await storage.queryTraces(tenantId, {
+        ...(search !== undefined ? { search } : {}),
         filter: {
           agent_name: query.agent_name,
           framework: query.framework,
@@ -130,7 +133,7 @@ export function registerTraceRoutes(
         },
         limit: query.limit,
         offset: query.offset,
-        sort_by: query.sort_by,
+        ...(query.sort_by !== undefined ? { sort_by: query.sort_by } : {}),
         sort_order: query.sort_order,
       });
       res.json(result);

@@ -6,6 +6,7 @@ import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
+import { parseSearch, SEARCH_MAX_LENGTH } from '../storage/search.js';
 
 /*
  * An ISO-8601 instant (2026-08-01T00:00:00Z, offsets allowed) or calendar
@@ -37,6 +38,21 @@ export interface TraceRangeArgs {
   max_score?: number;
   since?: string;
   until?: string;
+  q?: string;
+  sort_by?: string;
+}
+
+/**
+ * The search text (#7), shared by both read paths. Any string is safe to
+ * send — it is parsed into terms, never passed to SQLite as query syntax
+ * (src/storage/search.ts) — so the only refusals are length and a query
+ * with no word in it at all, which would otherwise read as "no matches".
+ */
+export const traceSearchText = z.string().max(SEARCH_MAX_LENGTH, { error: `q is at most ${SEARCH_MAX_LENGTH} characters` });
+
+/** Blank search text is no search: an empty search box, not a query for nothing. */
+export function searchOf(q: string | undefined): string | undefined {
+  return q !== undefined && q.trim() !== '' ? q : undefined;
 }
 
 /**
@@ -65,12 +81,28 @@ export function addTraceRangeIssues(args: TraceRangeArgs, ctx: z.RefinementCtx):
       message: `since (${args.since}) must not be later than until (${args.until}) — the window is empty and no trace could match it`,
     });
   }
+  const q = searchOf(args.q);
+  if (q !== undefined && parseSearch(q).terms.length === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['q'],
+      message: `q (${JSON.stringify(q)}) has no word to search for — search matches words and numbers; punctuation and a bare * are not searchable`,
+    });
+  }
+  if (args.sort_by === 'relevance' && q === undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['sort_by'],
+      message: 'sort_by "relevance" ranks a search, and this query has no q — pass q, or sort by timestamp, latency_ms or cost_usd',
+    });
+  }
 }
 
 const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards)'),
   framework: z.string().optional().describe('Filter by agent framework — exact match (e.g., langchain, autogen)'),
   session: z.string().optional().describe('Filter by session id — the turns of one conversation, as logged with session_id'),
+  q: traceSearchText.optional().describe('Full-text search over input, output, tool-call values and metadata values. Every word must appear; "quoted phrase"; word* for a prefix. Case and accents ignored'),
   since: isoTimestamp.optional().describe('Inclusive lower bound, an ISO 8601 timestamp or date; anything else is rejected'),
   until: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) upper bound — return traces with timestamp <= this; must not be earlier than `since`'),
   min_score: z.number().min(0).max(1).optional().describe('Minimum score (0..1) of each trace\'s latest evaluation; at most max_score'),
@@ -80,7 +112,7 @@ const inputSchema = {
   // meant "LIMIT -1" in SQLite, i.e. every row (#332).
   limit: z.number().int().min(1).max(1000).default(50).describe('Results per page (default 50, max 1000 — values above are rejected)'),
   offset: z.number().int().min(0).default(0).describe('Zero-based pagination offset — skip first N results (non-negative integer)'),
-  sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd']).default('timestamp').describe('Sort by timestamp | latency_ms | cost_usd (default timestamp)'),
+  sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd', 'relevance']).optional().describe('Sort by timestamp | latency_ms | cost_usd | relevance (default relevance with q, else timestamp)'),
   sort_order: z.enum(['asc', 'desc']).default('desc').describe('Sort order: asc | desc (default desc — most recent / highest first)'),
   include_summary: z.boolean().default(false).describe('Include dashboard summary stats in same response — saves a round-trip when ingesting for dashboards'),
 };
@@ -89,11 +121,15 @@ const inputSchema = {
 const inputSchemaWithRanges = strictInput(inputSchema).superRefine(addTraceRangeIssues);
 
 export const getTracesOutputSchema = z.looseObject({
-  traces: z.array(z.looseObject({ trace_id: z.string() })).describe('the page of traces: trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp'),
+  traces: z.array(z.looseObject({ trace_id: z.string() })).describe('the page of traces: trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp; with q, match { field, snippet, fragments } too'),
   total: z.number().int().describe('how many traces match the filters, across every page'),
   limit: z.number().int().describe('the page size applied'),
   offset: z.number().int().describe('the offset applied'),
   summary: z.looseObject({}).optional().describe('the dashboard aggregates for the last hour, when include_summary was true'),
+  search: z
+    .looseObject({ terms: z.array(z.string()), index: z.enum(['fts5', 'scan']) })
+    .optional()
+    .describe('with q: the terms searched, and whether the full-text index or a scan answered'),
 });
 
 export function registerGetTracesTool(server: McpServer, storage: IStorageAdapter): void {
@@ -105,7 +141,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         summary:
           'Query stored traces with filters, pagination and sorting; optionally with the dashboard summary.',
         does:
-          'Read-only, local. Exact-match agent_name and framework, inclusive since and until, and min_score and max_score on each trace\'s latest evaluation. limit is 1..1000 (default 50), newest first by default. A crossed range is refused, never returned as an empty page.',
+          'Read-only, local. Exact-match agent_name and framework, inclusive since and until, min_score and max_score on each trace\'s latest evaluation, and q: full-text search, ranked, with a snippet. limit is 1..1000 (default 50). A crossed range is refused, never returned as an empty page.',
         whenNot:
           'To score a trace (evaluate_output) or create one (log_trace). As a live stream: poll with backoff.',
         returns: getTracesOutputSchema,
@@ -128,7 +164,9 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
     },
     guarded(async (args) => {
       // OSS single-tenant: MCP caller is the local user.
+      const search = searchOf(args.q);
       const result = await storage.queryTraces(LOCAL_TENANT, {
+        ...(search !== undefined ? { search } : {}),
         filter: {
           agent_name: args.agent_name,
           framework: args.framework,
@@ -140,7 +178,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         },
         limit: args.limit,
         offset: args.offset,
-        sort_by: args.sort_by as 'timestamp' | 'latency_ms' | 'cost_usd',
+        ...(args.sort_by !== undefined ? { sort_by: args.sort_by as 'timestamp' | 'latency_ms' | 'cost_usd' | 'relevance' } : {}),
         sort_order: args.sort_order as 'asc' | 'desc',
       });
 
@@ -149,6 +187,7 @@ export function registerGetTracesTool(server: McpServer, storage: IStorageAdapte
         total: result.total,
         limit: result.limit,
         offset: result.offset,
+        ...(result.search ? { search: result.search } : {}),
       };
 
       if (args.include_summary) {

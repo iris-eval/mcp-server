@@ -110,7 +110,8 @@ describe('traceQuerySchema', () => {
     const result = traceQuerySchema.parse({});
     expect(result.limit).toBe(50);
     expect(result.offset).toBe(0);
-    expect(result.sort_by).toBe('timestamp');
+    // No default: the adapter ranks a search by relevance and everything else by timestamp.
+    expect(result.sort_by).toBeUndefined();
     expect(result.sort_order).toBe('desc');
   });
 
