@@ -47,6 +47,8 @@ async function adapter(path = ':memory:', options: { fts5?: boolean } = {}): Pro
   const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER, ...options });
   await s.initialize();
   open.push(s);
+  // These suites are about the steady state; the build itself has its own describe below.
+  await s.whenSearchIndexReady();
   return s;
 }
 
@@ -310,6 +312,75 @@ describe('trace search — the index stays in step', () => {
     await expect(s.insertTraces(LOCAL_TENANT, [weatherTrace, { ...weatherTrace, output: 'duplicate' }])).rejects.toThrow();
     expect(await ids(s, 'zurich')).toEqual([]);
     assertIndexHealthy(s);
+  });
+});
+
+describe('trace search — building the index after the start', () => {
+  /** A file holding `n` traces and no index, as a build before the index left it. */
+  async function storeWithoutIndex(n: number): Promise<string> {
+    const path = tempDb();
+    const bare = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false });
+    await bare.initialize();
+    await bare.insertTraces(
+      LOCAL_TENANT,
+      Array.from({ length: n }, (_, i) => ({ trace_id: `pre-${i}`, agent_name: 'a', output: `${i % 100 === 0 ? 'needle' : 'hay'} number ${i}`, timestamp: at(i % 50) })),
+    );
+    await bare.close();
+    return path;
+  }
+  const docs = (s: SqliteAdapter) => Number((dbOf(s).prepare('SELECT COUNT(*) AS n FROM trace_search_docs').get() as { n: number }).n);
+
+  it('initialize() returns before any stored trace is indexed; searches read the traces until the build is done, then use the index', async () => {
+    const path = await storeWithoutIndex(1000);
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    open.push(s);
+    await s.initialize();
+    // Nothing indexed yet: the start did not wait for the build.
+    expect(docs(s)).toBe(0);
+    const during = await s.queryTraces(LOCAL_TENANT, { search: 'needle', limit: 1000 });
+    expect(during.search?.index).toBe('scan');
+    expect(during.total).toBe(10);
+    // A trace written mid-build is indexed on insert and found either way.
+    await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'new', agent_name: 'a', output: 'a fresh needle', timestamp: at(55) }]);
+    expect(await s.whenSearchIndexReady()).toBe('ready');
+    assertIndexHealthy(s);
+    const after = await s.queryTraces(LOCAL_TENANT, { search: 'needle', limit: 1000 });
+    expect(after.search?.index).toBe('fts5');
+    expect(after.traces.map((t) => t.trace_id).sort()).toEqual([...during.traces.map((t) => t.trace_id), 'new'].sort());
+  });
+
+  it('the build runs in steps and yields between them, so other work is served while it runs', async () => {
+    const path = await storeWithoutIndex(3000);
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    open.push(s);
+    await s.initialize();
+    let turns = 0;
+    let stop = false;
+    const tick = () => {
+      if (stop) return;
+      turns += 1;
+      setImmediate(tick);
+    };
+    setImmediate(tick);
+    await s.whenSearchIndexReady();
+    stop = true;
+    // 3,000 traces is twelve steps of 256; the event loop turned between them.
+    expect(turns).toBeGreaterThanOrEqual(Math.floor(3000 / 256));
+  });
+
+  it('close() stops the build at its next step, and the next start carries on to a whole index', async () => {
+    const path = await storeWithoutIndex(3000);
+    const first = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await first.initialize();
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    await first.close();
+    const next = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    open.push(next);
+    await next.initialize();
+    expect(await next.whenSearchIndexReady()).toBe('ready');
+    assertIndexHealthy(next);
+    expect((await next.queryTraces(LOCAL_TENANT, { search: 'needle' })).total).toBe(30);
   });
 });
 

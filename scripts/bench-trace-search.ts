@@ -16,7 +16,7 @@
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { cpus, platform, release, tmpdir, totalmem } from 'node:os';
 import { join } from 'node:path';
-import { performance } from 'node:perf_hooks';
+import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 import { SqliteAdapter } from '../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../src/types/tenant.js';
 import type { Trace } from '../src/types/trace.js';
@@ -167,8 +167,16 @@ for (const size of SIZES) {
     await store.close();
     const reopened = new SqliteAdapter(path);
     const t2 = performance.now();
+    // The event loop's worst stall while the build runs: how long a request could wait behind it.
+    const loop = monitorEventLoopDelay({ resolution: 5 });
+    loop.enable();
     await reopened.initialize();
-    console.log(`  index built from ${size.toLocaleString('en-US')} stored traces (the upgrade): ${((performance.now() - t2) / 1000).toFixed(1)} s`);
+    const startedMs = performance.now() - t2;
+    await reopened.whenSearchIndexReady();
+    loop.disable();
+    console.log(
+      `  the upgrade, ${size.toLocaleString('en-US')} stored traces: start ${startedMs.toFixed(0)} ms; index built in the background in ${((performance.now() - t2) / 1000).toFixed(1)} s; longest event-loop stall during it ${(loop.max / 1e6).toFixed(0)} ms`,
+    );
     store = reopened;
 
     // Deletes: one trace at a time (delete_trace, erased row by row), then a retention sweep of the oldest 3%.

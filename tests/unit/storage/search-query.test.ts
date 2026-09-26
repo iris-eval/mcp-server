@@ -208,7 +208,7 @@ describe('search against a real FTS5 index', () => {
       }),
       { numRuns: 400 },
     );
-  });
+  }, 60_000);
 
   it('a query that is only syntax matches nothing, and says it searched no terms', async () => {
     for (const q of ['*', '"', '()', ':', '^', '"*"', '((( )))', '- + {}']) {

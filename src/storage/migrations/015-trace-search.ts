@@ -7,8 +7,11 @@ import { fts5Available, installSearchIndex } from '../search-index.js';
  * The FTS5 index over each trace's input, output, tool-call values and
  * metadata values, the table that gives every trace a stable integer id in
  * it, and the triggers that keep it in step with the traces table on every
- * insert, update and delete. Existing traces are indexed here, in the same
- * transaction. The design and the reasons for it: src/storage/search-index.ts.
+ * update and delete. The index is created empty: the traces already stored
+ * are indexed after the server has started, in steps, while searches read
+ * the traces (a start that waited would keep a stdio MCP client waiting;
+ * 20.4 s at 100,000 traces). The design and the reasons for it:
+ * src/storage/search-index.ts.
  *
  * On a SQLite without FTS5 this creates nothing and is still recorded as
  * applied: the schema of the rest of the database does not depend on it,

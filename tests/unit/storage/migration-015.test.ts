@@ -66,6 +66,7 @@ describe('migration 015 — the trace search index', () => {
       // The same file on a driver with FTS5 is indexed at its first start, including what the scan-only start wrote.
       const later = new SqliteAdapter(path, { driver: 'native' });
       await later.initialize();
+      expect(await later.whenSearchIndexReady()).toBe('ready');
       const again = await later.queryTraces(LOCAL_TENANT, { search: 'refund' });
       expect(again.search?.index).toBe('fts5');
       expect(again.traces.map((t) => t.trace_id)).toEqual(['b']);
@@ -125,6 +126,7 @@ describe('migration 015 — the trace search index', () => {
 
     const upgraded = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await upgraded.initialize();
+    expect(await upgraded.whenSearchIndexReady()).toBe('ready');
     const page = await upgraded.queryTraces(LOCAL_TENANT, { search: 'parcel' });
     expect(page.search?.index).toBe('fts5');
     expect(page.traces.map((t) => t.trace_id)).toEqual(['old-1']);

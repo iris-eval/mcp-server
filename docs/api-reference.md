@@ -386,7 +386,7 @@ Results are ranked by relevance (BM25, with a word in `input` or `output` weight
 }
 ```
 
-The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
+The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`, the same results, slower). At 100,000 traces the build took 8.5 s. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
 
 #### Example Request
 

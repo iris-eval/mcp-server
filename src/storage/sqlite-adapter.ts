@@ -54,7 +54,7 @@ import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, searchIndexWriter, bulkIndexDelete, BM25_WEIGHTS, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, unindexedRemain, searchIndexWriter, bulkIndexDelete, BM25_WEIGHTS, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, type ParsedSearch } from './search.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
@@ -240,6 +240,9 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** Whether searches use the FTS5 index or read the traces; settled in initialize(). */
   private searchIndex: SearchIndexState = 'unavailable';
+  /** The background build of the search index, while one runs; see buildSearchIndex. */
+  private searchBuild: Promise<SearchIndexState> | undefined;
+  private closing = false;
   private readonly fts5Override: boolean | undefined;
 
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
@@ -332,10 +335,61 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.dbPath !== ':memory:') {
       ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
     }
+    // Traces stored before the index existed are indexed after the start, not during it.
+    if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
   }
 
   async close(): Promise<void> {
+    // A build in progress stops at its next step; the index keeps what it had, and the next start carries on.
+    this.closing = true;
+    await this.searchBuild;
     this.db.close();
+  }
+
+  /**
+   * Resolves when the search index holds every trace (`ready`), or at once
+   * with the state when there is nothing to build. Searches never wait for
+   * it: until then they read the traces. For tests, the benchmark and any
+   * caller that wants to know.
+   */
+  whenSearchIndexReady(): Promise<SearchIndexState> {
+    return this.searchBuild ?? Promise.resolve(this.searchIndex);
+  }
+
+  /**
+   * Fill the search index from the traces already stored, after the start
+   * rather than during it (search-index.ts, installSearchIndex, says why).
+   * One step of BUILD_BATCH traces at a time, each under its own write lock,
+   * yielding to the event loop between steps so requests are answered while
+   * it runs. Another process writing the same file only makes a step wait
+   * (busy_timeout); a step that still fails leaves the index building and
+   * searches on the scan, and the next start tries again.
+   */
+  private async buildSearchIndex(): Promise<SearchIndexState> {
+    const yieldToRequests = () => new Promise<void>((resolve) => setImmediate(resolve));
+    await yieldToRequests();
+    try {
+      let after = 0;
+      while (!this.closing) {
+        const last = indexNextBatch(this.db, after);
+        if (last === null) {
+          // Past the end. A purge's VACUUM may have renumbered rowids behind the walk: check, and walk again if so.
+          if (!unindexedRemain(this.db)) {
+            this.searchIndex = 'ready';
+            break;
+          }
+          after = 0;
+        } else {
+          after = last;
+        }
+        await yieldToRequests();
+      }
+    } catch (err) {
+      process.stderr.write(`[iris.storage] Building the trace search index stopped (${err instanceof Error ? err.message : String(err)}); search reads the traces until the next start finishes it.\n`);
+    } finally {
+      this.searchBuild = undefined;
+    }
+    return this.searchIndex;
   }
 
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
@@ -354,7 +408,7 @@ export class SqliteAdapter implements IStorageAdapter {
     `);
 
     // The search index is written here, in the same transaction, not by a trigger (search-index.ts says why).
-    const indexTrace = this.searchIndex === 'ready' ? searchIndexWriter(this.db) : undefined;
+    const indexTrace = this.searchIndex !== 'unavailable' ? searchIndexWriter(this.db) : undefined;
 
     const insertOne = (t: Trace) => {
       const toolCalls = t.tool_calls ? JSON.stringify(t.tool_calls) : null;
@@ -1716,7 +1770,7 @@ export class SqliteAdapter implements IStorageAdapter {
       const ids = (this.db.prepare('SELECT trace_id FROM traces WHERE tenant_id = ? AND timestamp < ?').all(tid, cut) as Array<{ trace_id: string }>).map((r) => r.trace_id);
       this.eraseEvaluationsOfTraces(tid, ids);
       const remove = () => this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?').run(tid, cut).changes;
-      if (this.searchIndex !== 'ready') return remove();
+      if (this.searchIndex === 'unavailable') return remove();
       const indexed = this.db
         .prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ?`)
         .get(tid, cut) as { n: number };
@@ -1747,8 +1801,8 @@ export class SqliteAdapter implements IStorageAdapter {
       const evalResults = this.db.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(tenantId).changes;
       // spans cascade (FK ON DELETE CASCADE).
       const remove = () => this.db.prepare('DELETE FROM traces WHERE tenant_id = ?').run(tenantId).changes;
-      const indexed = this.searchIndex === 'ready' ? Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} WHERE tenant_id = ?`).get(tenantId) as { n: number }).n) : 0;
-      const traces = this.searchIndex === 'ready' ? bulkIndexDelete(this.db, indexed, remove) : remove();
+      const indexed = this.searchIndex !== 'unavailable' ? Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} WHERE tenant_id = ?`).get(tenantId) as { n: number }).n) : 0;
+      const traces = this.searchIndex !== 'unavailable' ? bulkIndexDelete(this.db, indexed, remove) : remove();
       return { traces, evalResults };
     });
     const counts = deleteAll();

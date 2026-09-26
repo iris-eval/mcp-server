@@ -45,7 +45,15 @@
  *     is one insert route (insertTraces), and it writes the index in the
  *     transaction that writes the trace. A trace inserted any other way has
  *     no docs row, so the delete trigger leaves the index alone for it, and
- *     the next start indexes it (reconcileSearchIndex).
+ *     the next start indexes it (reconcileSearchIndex, then the build).
+ *
+ * Building. The migration creates the index empty. The traces already
+ * stored are indexed after the start, BUILD_BATCH at a time, each step its
+ * own short transaction with the event loop free between steps, so the
+ * server answers MCP and HTTP requests throughout; searches read the traces
+ * (the scan) until the index holds every one, then use it. A new trace is
+ * indexed on insert even mid-build, and the build skips it. Closing stops the
+ * build at its next step and the next start carries on from there.
  *
  * Erasure. `secure-delete` is set on the index (SQLite 3.42+): deleting a
  * row removes its words from the index at once instead of leaving them in
@@ -161,13 +169,37 @@ const CREATE_TRIGGERS = `
   END;
 `;
 
-/** Index every trace that has no docs row yet: ids first, then the words, in two statements. */
-function backfill(db: Driver): void {
-  const before = Number((db.prepare(`SELECT COALESCE(MAX(doc_id), 0) AS m FROM ${SEARCH_DOCS_TABLE}`).get() as { m: number }).m);
-  db.exec(
-    `INSERT INTO ${SEARCH_DOCS_TABLE} (tenant_id, trace_id) SELECT tenant_id, trace_id FROM traces WHERE trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) ORDER BY rowid`,
-  );
-  db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
+/** Traces per step of the background build: about 50 ms of work at the measured rate, so a request never waits longer than that. */
+export const BUILD_BATCH = 256;
+
+/**
+ * One step of the build: the next `max` traces after `after` (a traces
+ * rowid), each indexed unless it already is (ids first, then its words),
+ * under one write lock. Walking by rowid keeps every step the same small
+ * cost; a step that searched the whole table for unindexed traces made the
+ * build quadratic (178 s at 100,000 traces, one step stalling 2.5 s).
+ * Returns the last rowid it covered, or null past the end of the table.
+ */
+export function indexNextBatch(db: Driver, after: number, max = BUILD_BATCH): number | null {
+  return db
+    .transaction((): number | null => {
+      const upTo = (db.prepare('SELECT MAX(rowid) AS m FROM (SELECT rowid FROM traces WHERE rowid > ? ORDER BY rowid LIMIT ?)').get(after, max) as { m: number | null }).m;
+      if (upTo === null || upTo === undefined) return null;
+      const before = Number((db.prepare(`SELECT COALESCE(MAX(doc_id), 0) AS m FROM ${SEARCH_DOCS_TABLE}`).get() as { m: number }).m);
+      const added = db
+        .prepare(
+          `INSERT INTO ${SEARCH_DOCS_TABLE} (tenant_id, trace_id) SELECT tenant_id, trace_id FROM traces WHERE rowid > ? AND rowid <= ? AND trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) ORDER BY rowid`,
+        )
+        .run(after, upTo).changes;
+      if (added > 0) db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
+      return Number(upTo);
+    })
+    .immediate();
+}
+
+/** Whether any trace is not in the index yet. */
+export function unindexedRemain(db: Driver): boolean {
+  return db.prepare(`SELECT 1 FROM traces WHERE trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) LIMIT 1`).get() !== undefined;
 }
 
 const cache = new WeakMap<Driver, boolean>();
@@ -208,31 +240,45 @@ function objectExists(db: Driver, type: 'table' | 'trigger', name: string): bool
   return db.prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?').get(type, name) !== undefined;
 }
 
-/** Create the index and fill it from the traces already stored. The migration's body; idempotent. */
+/**
+ * Create the index, empty. The migration's body; idempotent. The traces
+ * already stored are indexed after the server has started, in steps
+ * (indexNextBatch), never here: on a large store the build takes seconds
+ * (20.4 s at 100,000 traces on the machine in the changelog), and a start
+ * that waited for it would leave a stdio MCP client timing out on connect.
+ */
 export function installSearchIndex(db: Driver): void {
   db.exec(CREATE_TABLES);
   db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rank) VALUES ('secure-delete', 1)`);
-  backfill(db);
   db.exec(CREATE_TRIGGERS);
 }
 
-export type SearchIndexState = 'ready' | 'unavailable';
+/**
+ * `ready`: every trace is in the index and searches use it. `building`: the
+ * index exists and is being filled; searches read the traces until it is
+ * done, so they are slower but never miss a trace. `unavailable`: no FTS5.
+ */
+export type SearchIndexState = 'ready' | 'building' | 'unavailable';
 
 /**
  * Run at every start, after the migrations. Brings the index to a state the
  * triggers and the adapter can keep, whatever happened since the last start:
  *
  *   - FTS5 here, index missing (the migration ran on a build without FTS5):
- *     build it.
+ *     create it; `building`.
  *   - FTS5 here, triggers missing (a start without FTS5 dropped them, and
  *     deletes and updates since then were not applied to the index), or more
- *     docs rows than traces: drop the index rows and rebuild from the traces.
- *   - FTS5 here, fewer docs rows than traces (a trace inserted by something
- *     other than the adapter): index the missing ones.
+ *     docs rows than traces: empty the index and start over; `building`.
+ *   - FTS5 here, fewer docs rows than traces (the upgrade, or a trace
+ *     inserted by something other than the adapter): `building`.
+ *   - every trace indexed: `ready`.
+ *
+ * Nothing here indexes a trace: that is the caller's background build.
  *   - no FTS5, triggers present: drop them, so deletes and updates keep
  *     working; search reads the traces instead.
  */
 export function reconcileSearchIndex(db: Driver, available = fts5Available(db)): SearchIndexState {
+  let state: SearchIndexState = 'unavailable';
   // Checked and repaired under one write lock, so two processes starting on one file cannot both rebuild.
   db.transaction(() => {
     const hasTable = objectExists(db, 'table', SEARCH_TABLE);
@@ -241,25 +287,23 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
       for (const t of TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
       return;
     }
-    if (!hasTable) {
-      installSearchIndex(db);
-      return;
-    }
+    if (!hasTable) installSearchIndex(db);
     const counts = db
       .prepare(`SELECT (SELECT COUNT(*) FROM traces) AS traces, (SELECT COUNT(*) FROM ${SEARCH_DOCS_TABLE}) AS docs`)
       .get() as { traces: number; docs: number };
     const traces = Number(counts.traces);
     const docs = Number(counts.docs);
-    if (triggersPresent < TRIGGERS.length || docs > traces) {
+    if (hasTable && (triggersPresent < TRIGGERS.length || docs > traces)) {
       for (const t of TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
       db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}) VALUES ('delete-all')`);
       db.exec(`DELETE FROM ${SEARCH_DOCS_TABLE}`);
       installSearchIndex(db);
-    } else if (docs < traces) {
-      backfill(db);
+      state = traces > 0 ? 'building' : 'ready';
+      return;
     }
+    state = docs < traces ? 'building' : 'ready';
   }).immediate();
-  return available ? 'ready' : 'unavailable';
+  return state;
 }
 
 /**

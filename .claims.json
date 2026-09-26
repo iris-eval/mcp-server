@@ -5049,8 +5049,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-26T17:10:19.781Z",
-  "generatedFromCommit": "4687465",
+  "generatedAt": "2026-09-26T21:12:26.318Z",
+  "generatedFromCommit": "74cdc8d",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -9266,16 +9266,16 @@
       "passed": null,
       "total": 40
     },
-    "totalCombined": 3802,
+    "totalCombined": 3867,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 347,
-      "total": 347
+      "passed": 356,
+      "total": 356
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3415,
-      "total": 3415
+      "passed": 3471,
+      "total": 3471
     }
   },
   "version": {
