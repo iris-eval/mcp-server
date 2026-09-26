@@ -51,6 +51,7 @@ import { sentencesOf } from '../text/sentences.js';
  */
 
 import { FENCED_CODE, contentTerms, stemTerm } from '../terms.js';
+import { thresholdSourceOf } from '../thresholds.js';
 import { toolChoice } from './tool-choice.js';
 // The tokenizer lives in src/eval/terms.ts; re-exported so nothing that imported it from here moves.
 export { contentTerms, stemTerm };
@@ -85,7 +86,7 @@ export const keywordOverlap: EvalRule = {
     const passed = ratio >= threshold;
     return {
       value: { stat: 'input_terms_in_output', unit: 'ratio', value: ratio },
-      evidence: [{ type: 'count', stat: 'input_terms_in_output', unit: 'ratio', value: ratio, threshold, thresholdSource: threshold === 0.35 ? 'default' : 'config' }],
+      evidence: [{ type: 'count', stat: 'input_terms_in_output', unit: 'ratio', value: ratio, threshold, thresholdSource: thresholdSourceOf(context, 'keyword_overlap') }],
       ruleName: 'keyword_overlap',
       passed,
       score: Math.min(ratio * 2, 1),
@@ -195,7 +196,14 @@ export const topicConsistency: EvalRule = {
       // Full marks at two thirds connected; proportional below.
       score: Math.min(ratio * 1.5, 1),
       value: { stat: 'connected_sentences', unit: 'ratio', value: ratio },
-      evidence: [{ type: 'count', stat: 'connected_sentences', unit: 'ratio', value: ratio, threshold, thresholdSource: threshold === DEFAULT_TOPIC_THRESHOLD ? 'default' : 'config' }],
+      /*
+       * Where the threshold came from, never its value. The shipped config
+       * carries topic_consistency 0.33, not this file's 1/3, so a value test
+       * read every server's default as a deployment's setting, and
+       * answers_the_ask (which reads this stamp) gated at the shipped config
+       * from 0.18.0 while its notes said it advised.
+       */
+      evidence: [{ type: 'count', stat: 'connected_sentences', unit: 'ratio', value: ratio, threshold, thresholdSource: thresholdSourceOf(context, 'topic_consistency') }],
       message: `Topic consistency: ${connected}/${sentences} content sentences connect to the input's topic (${(ratio * 100).toFixed(0)}%)`,
     };
   },
@@ -251,7 +259,7 @@ function isEcho(output: string, ask: string): boolean {
 export const answersTheAsk: EvalRule = {
   name: 'answers_the_ask',
   description:
-    'The output answers THIS ask, not another: fails when the input is present and BOTH relevance measurements fail at their thresholds — fewer than 35% of the ask\'s content terms appear in the output (keyword_overlap) AND fewer than a third of the output\'s sentences connect to the ask (topic_consistency). One measurement alone never fires it. A policy with no number of its own, so it GATES at the shipped defaults; move the two measurements\' thresholds to move it. Skips whenever either measurement skips (no input, an output too brief to measure) and on an ask with fewer than two content terms, so a one-word right answer is never a fire. Lexical: a right answer that reuses none of the ask\'s words reads as off task — the published precision counts those',
+    'The output answers THIS ask, not another: fails when the input is present and BOTH relevance measurements fail at their thresholds — fewer than 35% of the ask\'s content terms appear in the output (keyword_overlap) AND fewer than a third of the output\'s sentences connect to the ask (topic_consistency). One measurement alone never fires it. A bare refusal or the ask handed back fires it directly. It ADVISES at the shipped thresholds, because comparing words fails correct paraphrases, and GATES once the deployment sets a threshold for either measurement. Skips whenever either measurement skips (no input, an output too brief to measure) and on an ask with fewer than two content terms, so a one-word right answer is never a fire. Lexical: a right answer that reuses none of the ask\'s words reads as off task — the published precision counts those',
   evalType: 'relevance',
   weight: 1,
   kind: 'policy',

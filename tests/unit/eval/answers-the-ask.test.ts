@@ -40,12 +40,17 @@ describe('answers_the_ask — the pair as a detection', () => {
     expect(shortAnswer.passed).toBe(false);
     expect(run({ input: 'Please help me now', output: offTopic }).skipped).toBe(true);
   });
-  it('is a policy with no number of its own, formula-backed and classed off_task — the composer gates on it where the measurements only scored', async () => {
+  it('is a policy with no number of its own, formula-backed and classed off_task — the composer gates on it once the deployment sets a relevance threshold', async () => {
     expect(answersTheAsk.kind).toBe('policy');
     expect(answersTheAsk.mechanism).toBe('formula');
     expect(answersTheAsk.critical).toBeUndefined();
     expect(answersTheAsk.classes).toEqual(['off_task']);
-    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    // At the shipped config the lexical reading advises (0.18.0); this test used to pass only because the shipped
+    // topic_consistency 0.33 was read as a deployment's setting. A config file that sets it gates.
+    const shipped = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    const advised = await shipped.evaluateAll({ input: ask, output: offTopic });
+    expect(advised.rule_results.find((r) => r.ruleName === 'answers_the_ask')).toMatchObject({ passed: false, role: 'advisory' });
+    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, configuredThresholdKeys: ['topic_consistency'] });
     const off = await engine.evaluateAll({ input: ask, output: offTopic });
     expect(off.passed).toBe(false);
     expect(off.verdict?.basis).toBe('policy_gate');

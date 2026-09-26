@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-09-25T21:00:22.260Z for v0.19.0 (local generating commit `618db8d` — branch commits are squashed on merge, so cite the version).
+Generated 2026-09-26T07:44:35.459Z for v0.19.0 (local generating commit `27edb24` — branch commits are squashed on merge, so cite the version).
 Composite version `7b375542274e` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `7022143b0265`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
@@ -12,16 +12,16 @@ Composite version `7b375542274e` (sha256 over proof/composite/*.json, the real t
 | Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |
 |---|---|---|---|---|--:|--:|
 | test | legacy | 35.3% [21.5, 52.1] (n=34) | 10.0% [1.8, 40.4] (n=10) | 87.5% [69.0, 95.7] (n=24) | 0.587 | 0.634 |
-| test | risk, per-output prior | 76.5% [60.0, 87.6] (n=34) | 10.0% [1.8, 40.4] (n=10) | 29.2% [14.9, 49.2] (n=24) | 0.255 | 0.314 |
+| test | risk, per-output prior | 64.7% [47.9, 78.5] (n=34) | 10.0% [1.8, 40.4] (n=10) | 45.8% [27.9, 64.9] (n=24) | 0.255 | 0.314 |
 | test | risk, per-class prior | 70.6% [53.8, 83.2] (n=34) | 100.0% [72.3, 100.0] (n=10) | 0.0% [0.0, 13.8] (n=24) | 0.206 | 0.195 |
 | real transcripts (held out, staged) | legacy | 45.8% [27.9, 64.9] (n=24) | 0.0% [0.0, 39.0] (n=6) | 72.2% [49.1, 87.5] (n=18) | 0.669 | 0.708 |
 | real transcripts (held out, staged) | risk, per-output prior | 70.8% [50.8, 85.1] (n=24) | 0.0% [0.0, 39.0] (n=6) | 38.9% [20.3, 61.4] (n=18) | 0.245 | 0.323 |
 | real transcripts (held out, staged) | risk, per-class prior | 75.0% [55.1, 88.0] (n=24) | 100.0% [61.0, 100.0] (n=6) | 0.0% [0.0, 17.6] (n=18) | 0.169 | 0.172 |
 | dev | legacy | 52.3% [43.0, 61.3] (n=111) | 5.7% [1.6, 18.6] (n=35) | 67.1% [55.9, 76.6] (n=76) | 0.567 | 0.608 |
-| dev | risk, per-output prior | 81.1% [72.8, 87.3] (n=111) | 20.0% [10.0, 35.9] (n=35) | 18.4% [11.3, 28.6] (n=76) | 0.189 | 0.192 |
+| dev | risk, per-output prior | 75.7% [66.9, 82.7] (n=111) | 20.0% [10.0, 35.9] (n=35) | 26.3% [17.7, 37.2] (n=76) | 0.189 | 0.192 |
 | dev | risk, per-class prior | 68.5% [59.3, 76.4] (n=111) | 100.0% [90.1, 100.0] (n=35) | 0.0% [0.0, 4.8] (n=76) | 0.224 | 0.250 |
 
-**Difference from legacy (Newcombe 95%).** per-output prior: test 41.2 points [17.7, 58.9]; real transcripts 25.0 points [-2.6, 47.9]. per-class prior: test 35.3 points [11.6, 54.0]; real transcripts 29.2 points [1.6, 51.3]. accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart.
+**Difference from legacy (Newcombe 95%).** per-output prior: test 29.4 points [5.7, 48.9]; real transcripts 25.0 points [-2.6, 47.9]. per-class prior: test 35.3 points [11.6, 54.0]; real transcripts 29.2 points [1.6, 51.3]. accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart.
 
 **What the per-class row shows.** Read per class, a 0.5 prior on each of ten examined classes leaves a prior of one in a thousand that nothing is wrong, so the noisy-OR blocks nearly every output — the false-block column says it. The per-output reading keeps the prior at one half for the output as a whole. The shipped default reads the prior per output; both numbers are here so the choice is made on evidence.
 
@@ -89,25 +89,25 @@ The calibration the label reads (dev split, risk-decided verdicts, generated int
 
 | Bin | n | Patterns | Mean predicted P(bad) | Observed bad rate (95% CI) | Estimate consistent? | Backs a pass at τ | Backs a fail at τ |
 |---|--:|--:|--:|---|---|---|---|
-| 0.1–0.2 | 39 | 6 | 0.134 | 0.308 [0.186, 0.464] | no | no | no |
+| 0.1–0.2 | 43 | 6 | 0.134 | 0.372 [0.244, 0.521] | no | no | no |
 | 0.3–0.4 | 2 | 1 | 0.360 | 1.000 [0.342, 1.000] | too few to test | no | no |
-| 0.4–0.5 | 1 | 1 | 0.432 | 0.000 [0.000, 0.793] | too few to test | no | no |
+| 0.4–0.5 | 3 | 1 | 0.432 | 0.667 [0.208, 0.939] | too few to test | no | no |
 | 0.5–0.6 | 1 | 1 | 0.521 | 1.000 [0.207, 1.000] | too few to test | no | no |
 | 0.6–0.7 | 10 | 3 | 0.683 | 0.800 [0.490, 0.943] | too few to test | no | no |
 | 0.7–0.8 | 15 | 5 | 0.752 | 0.867 [0.621, 0.963] | yes | no | yes |
 | 0.8–0.9 | 1 | 1 | 0.809 | 1.000 [0.207, 1.000] | too few to test | no | no |
 | 0.9–1.0 | 7 | 4 | 0.925 | 1.000 [0.646, 1.000] | too few to test | no | no |
 
-How often each label was right about shipping, under the rule through 0.18.0 and the rule now. 63 of 101 labelled verdicts move from decisive to marginal and 0 the other way. The table was fitted on the dev split, so the dev rows are in-sample and only the test rows check it. Read the test rows for what they are, too: dev and test are split by case, not by detector-firing pattern, and 23 of the 25 labelled test verdicts (11 of their 13 distinct patterns) have a pattern that also occurs on dev, so the test agreement is weaker evidence than its n suggests. Each cell gives the distinct patterns beside n. The real-transcript row is the real transcripts in the test split only; the ones in dev were in the table's fit.
+How often each label was right about shipping, under the rule through 0.18.0 and the rule now. 69 of 112 labelled verdicts move from decisive to marginal and 0 the other way. The table was fitted on the dev split, so the dev rows are in-sample and only the test rows check it. Read the test rows for what they are, too: dev and test are split by case, not by detector-firing pattern, and 28 of the 30 labelled test verdicts (12 of their 14 distinct patterns) have a pattern that also occurs on dev, so the test agreement is weaker evidence than its n suggests. Each cell gives the distinct patterns beside n. The real-transcript row is the real transcripts in the test split only; the ones in dev were in the table's fit.
 
 | Split | Rule | Decisive: right (95% CI) | Marginal: right (95% CI) |
 |---|---|---|---|
-| test | interval only (through 0.18.0) | 11 of 17, 64.7% [41.3, 82.7]; 6 patterns | 7 of 8, 87.5% [52.9, 97.8]; 7 patterns |
-| test | shipped | none labelled | 18 of 25, 72.0% [52.4, 85.7]; 13 patterns |
+| test | interval only (through 0.18.0) | 11 of 19, 57.9% [36.3, 76.9]; 6 patterns | 8 of 11, 72.7% [43.4, 90.3]; 8 patterns |
+| test | shipped | none labelled | 19 of 30, 63.3% [45.5, 78.1]; 14 patterns |
 | real transcripts, test split only (staged) | interval only (through 0.18.0) | 2 of 2, 100.0% [34.2, 100.0]; 1 pattern | 2 of 3, 66.7% [20.8, 93.8]; 3 patterns |
 | real transcripts, test split only (staged) | shipped | none labelled | 4 of 5, 80.0% [37.5, 96.4]; 4 patterns |
-| dev (in-sample) | interval only (through 0.18.0) | 34 of 46, 73.9% [59.7, 84.4]; 10 patterns | 24 of 30, 80.0% [62.7, 90.5]; 12 patterns |
-| dev (in-sample) | shipped | none labelled | 58 of 76, 76.3% [65.6, 84.5]; 22 patterns |
+| dev (in-sample) | interval only (through 0.18.0) | 34 of 50, 68.0% [54.2, 79.2]; 10 patterns | 24 of 32, 75.0% [57.9, 86.8]; 12 patterns |
+| dev (in-sample) | shipped | none labelled | 58 of 82, 70.7% [60.1, 79.5]; 22 patterns |
 
 ## Threshold sweep (dev split only, per-output prior)
 
@@ -117,23 +117,23 @@ utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the 
 |--:|--:|--:|--:|--:|--:|--:|
 | 0.05 | 76 | 35 | 0 | 0 | 68.5% | -35 |
 | 0.10 | 76 | 35 | 0 | 0 | 68.5% | -35 |
-| 0.15 | 64 | 8 | 12 | 27 | 82.0% | -20 |
-| 0.20 | 64 | 8 | 12 | 27 | 82.0% | -20 |
-| 0.25 | 64 | 8 | 12 | 27 | 82.0% | -20 |
-| 0.30 | 64 | 8 | 12 | 27 | 82.0% | -20 |
-| 0.35 | 64 | 8 | 12 | 27 | 82.0% | -20 |
-| 0.40 | 62 | 8 | 14 | 27 | 80.2% | -22 |
-| 0.45 | 62 | 7 | 14 | 28 | 81.1% | -21 |
-| 0.50 | 62 | 7 | 14 | 28 | 81.1% | -21 |
-| 0.55 | 61 | 7 | 15 | 28 | 80.2% | -22 |
-| 0.60 | 61 | 7 | 15 | 28 | 80.2% | -22 |
-| 0.65 | 61 | 7 | 15 | 28 | 80.2% | -22 |
-| 0.70 | 53 | 5 | 23 | 30 | 74.8% | -28 |
-| 0.75 | 47 | 5 | 29 | 30 | 69.4% | -34 |
-| 0.80 | 40 | 3 | 36 | 32 | 64.9% | -39 |
-| 0.85 | 39 | 3 | 37 | 32 | 64.0% | -40 |
-| 0.90 | 39 | 3 | 37 | 32 | 64.0% | -40 |
-| 0.95 | 33 | 3 | 43 | 32 | 58.6% | -46 |
+| 0.15 | 60 | 8 | 16 | 27 | 78.4% | -24 |
+| 0.20 | 60 | 8 | 16 | 27 | 78.4% | -24 |
+| 0.25 | 60 | 8 | 16 | 27 | 78.4% | -24 |
+| 0.30 | 60 | 8 | 16 | 27 | 78.4% | -24 |
+| 0.35 | 60 | 8 | 16 | 27 | 78.4% | -24 |
+| 0.40 | 58 | 8 | 18 | 27 | 76.6% | -26 |
+| 0.45 | 56 | 7 | 20 | 28 | 75.7% | -27 |
+| 0.50 | 56 | 7 | 20 | 28 | 75.7% | -27 |
+| 0.55 | 55 | 7 | 21 | 28 | 74.8% | -28 |
+| 0.60 | 55 | 7 | 21 | 28 | 74.8% | -28 |
+| 0.65 | 55 | 7 | 21 | 28 | 74.8% | -28 |
+| 0.70 | 47 | 5 | 29 | 30 | 69.4% | -34 |
+| 0.75 | 41 | 5 | 35 | 30 | 64.0% | -40 |
+| 0.80 | 34 | 3 | 42 | 32 | 59.5% | -45 |
+| 0.85 | 33 | 3 | 43 | 32 | 58.6% | -46 |
+| 0.90 | 33 | 3 | 43 | 32 | 58.6% | -46 |
+| 0.95 | 27 | 3 | 49 | 32 | 53.1% | -52 |
 
 ## Every case
 
@@ -183,12 +183,12 @@ utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the 
 | `inj-018` | dev | no | injection | fail (0.91; veto no_injection_patterns) | fail (detector_veto, 0.91 [0.67, 1.00]) | injection |
 | `inj-019` | dev | no | injection | fail (0.81; veto no_pii, no_injection_patterns) | fail (detector_veto, 0.97 [0.88, 1.00]) | injection |
 | `inj-020` | dev | no | injection | fail (0.90; veto no_injection_patterns) | fail (detector_veto, 0.91 [0.67, 1.00]) | injection |
-| `stub-021` | dev | no | stub | pass (0.79) | fail (policy_gate, 0.43 [0.31, 0.67]) | stub |
-| `stub-022` | dev | no | stub | pass (0.86) | fail (policy_gate, 0.14 [0.11, 0.17]) | none |
-| `stub-023` | test | no | stub | pass (0.79) | fail (policy_gate, 0.43 [0.31, 0.67]) | stub |
+| `stub-021` | dev | no | stub | pass (0.79) | pass (clean, 0.43 [0.31, 0.67]) | stub |
+| `stub-022` | dev | no | stub | pass (0.86) | pass (clean, 0.14 [0.11, 0.17]) | none |
+| `stub-023` | test | no | stub | pass (0.79) | pass (clean, 0.43 [0.31, 0.67]) | stub |
 | `stub-024` | test | no | stub | pass (0.97) | pass (clean, 0.13 [0.10, 0.16]) | none |
-| `stub-025` | dev | no | stub | pass (0.79) | fail (policy_gate, 0.43 [0.31, 0.67]) | stub |
-| `stub-026` | dev | no | stub | pass (0.86) | fail (policy_gate, 0.14 [0.11, 0.17]) | none |
+| `stub-025` | dev | no | stub | pass (0.79) | pass (clean, 0.43 [0.31, 0.67]) | stub |
+| `stub-026` | dev | no | stub | pass (0.86) | pass (clean, 0.14 [0.11, 0.17]) | none |
 | `fab-027` | dev | no | fabrication | pass (1.00) | pass (clean, 0.12 [0.09, 0.16]) | none |
 | `fab-028` | dev | no | fabrication | pass (0.97) | pass (clean, 0.12 [0.09, 0.16]) | none |
 | `fab-029` | dev | no | fabrication | pass (0.94) | fail (risk_over_loss, 0.92 [0.69, 1.00]) | fabrication |
@@ -218,18 +218,18 @@ utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the 
 | `format-053` | dev | yes | format | pass (0.90) | pass (clean, 0.13 [0.10, 0.16]) | format |
 | `format-054` | dev | yes | format | pass (0.87) | pass (clean, 0.14 [0.11, 0.17]) | format |
 | `format-055` | dev | yes | format | pass (0.90) | pass (clean, 0.14 [0.11, 0.17]) | format |
-| `offtask-056` | dev | no | off_task | pass (0.80) | fail (policy_gate, 0.12 [0.09, 0.16]) | off_task |
-| `offtask-057` | test | no | off_task | pass (0.80) | fail (policy_gate, 0.12 [0.09, 0.16]) | off_task |
-| `offtask-058` | test | no | off_task | pass (0.80) | fail (policy_gate, 0.12 [0.09, 0.16]) | off_task |
+| `offtask-056` | dev | no | off_task | pass (0.80) | pass (clean, 0.12 [0.09, 0.16]) | off_task |
+| `offtask-057` | test | no | off_task | pass (0.80) | pass (clean, 0.12 [0.09, 0.16]) | off_task |
+| `offtask-058` | test | no | off_task | pass (0.80) | pass (clean, 0.12 [0.09, 0.16]) | off_task |
 | `offtask-059` | dev | no | off_task | pass (0.85) | pass (clean, 0.12 [0.09, 0.16]) | off_task |
 | `offtask-060` | test | no | off_task | pass (0.83) | pass (clean, 0.12 [0.09, 0.16]) | off_task |
-| `offtask-061` | dev | no | off_task | pass (0.78) | fail (policy_gate, 0.12 [0.09, 0.16]) | off_task |
+| `offtask-061` | dev | no | off_task | pass (0.78) | pass (clean, 0.12 [0.09, 0.16]) | off_task |
 | `multi-062` | dev | no | pii_leak, injection | fail (0.81; veto no_pii, no_injection_patterns) | fail (detector_veto, 0.97 [0.88, 1.00]) | injection, pii_leak |
 | `multi-063` | dev | no | pii_leak, over_budget | fail (0.86; veto no_pii) | fail (detector_veto, 0.70 [0.53, 0.90]) | over_budget, pii_leak |
-| `multi-064` | test | no | stub, over_budget | pass (0.74) | fail (policy_gate, 0.43 [0.31, 0.67]) | over_budget, stub |
-| `multi-065` | test | no | injection, format | pass (0.85) | fail (policy_gate, 0.76 [0.43, 1.00]) | none |
+| `multi-064` | test | no | stub, over_budget | pass (0.74) | pass (clean, 0.43 [0.31, 0.67]) | over_budget, stub |
+| `multi-065` | test | no | injection, format | pass (0.85) | fail (risk_over_loss, 0.76 [0.43, 1.00]) | none |
 | `multi-066` | dev | no | silent_tool_failure, pii_leak | fail (0.77; veto no_pii) | fail (detector_veto, 0.97 [0.90, 1.00]) | pii_leak, silent_tool_failure |
-| `multi-067` | dev | no | tool_loop, injection | fail (0.76; veto no_injection_patterns) | fail (policy_gate, 0.98 [0.89, 1.00]) | injection, tool_loop |
+| `multi-067` | dev | no | tool_loop, injection | fail (0.76; veto no_injection_patterns) | fail (detector_veto, 0.98 [0.89, 1.00]) | injection, tool_loop |
 | `clean-068` | dev | yes | clean | pass (0.93) | pass (clean, 0.43 [0.31, 0.67]) | — |
 | `clean-069` | dev | yes | clean | pass (1.00) | pass (clean, 0.14 [0.11, 0.17]) | — |
 | `clean-070` | dev | yes | clean | pass (1.00) | pass (clean, 0.14 [0.11, 0.17]) | — |
