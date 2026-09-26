@@ -1,12 +1,20 @@
 import type { EvalRule, EvalContext, EvalRuleResult, Evidence } from '../../types/eval.js';
 import { MAX_EVIDENCE_ITEMS } from '../../types/eval.js';
 import { countSentences } from '../text/sentences.js';
+import { thresholdSourceOf } from '../thresholds.js';
 import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
 import { catalogueIndex } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 import { toolSequence } from './expected-trajectory.js';
+
+/** The length floor reads min_output_length, then its alias min_length: its provenance is the key that supplied the number. */
+function minLengthSource(context: EvalContext): 'default' | 'config' {
+  if (context.customConfig?.min_output_length !== undefined) return thresholdSourceOf(context, 'min_output_length');
+  if (context.customConfig?.min_length !== undefined) return thresholdSourceOf(context, 'min_length');
+  return 'default';
+}
 
 export const minOutputLength: EvalRule = {
   name: 'min_output_length',
@@ -30,7 +38,7 @@ export const minOutputLength: EvalRule = {
       passed,
       score: passed ? 1 : Math.min(len / minLen, 0.99),
       value: { stat: 'length', unit: 'chars', value: len },
-      evidence: [{ type: 'count', stat: 'length', unit: 'chars', value: len, threshold: minLen, thresholdSource: minLen === 50 ? 'default' : 'config' }],
+      evidence: [{ type: 'count', stat: 'length', unit: 'chars', value: len, threshold: minLen, thresholdSource: minLengthSource(context) }],
       message: passed ? `Output length (${len}) meets minimum (${minLen})` : `Output length (${len}) below minimum (${minLen})`,
     };
   },
@@ -82,7 +90,7 @@ export const sentenceCount: EvalRule = {
       passed,
       score: passed ? 1 : Math.min(sentences / minSentences, 0.99),
       value: { stat: 'sentences', unit: 'sentences', value: sentences },
-      evidence: [{ type: 'count', stat: 'sentences', unit: 'sentences', value: sentences, threshold: minSentences, thresholdSource: minSentences === 2 ? 'default' : 'config' }],
+      evidence: [{ type: 'count', stat: 'sentences', unit: 'sentences', value: sentences, threshold: minSentences, thresholdSource: thresholdSourceOf(context, 'min_sentences') }],
       message: passed ? `Sentence count (${sentences}) meets minimum (${minSentences})` : `Sentence count (${sentences}) below minimum (${minSentences})`,
     };
   },

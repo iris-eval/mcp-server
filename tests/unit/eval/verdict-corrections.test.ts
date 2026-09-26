@@ -32,7 +32,8 @@ describe('answers_the_ask advises at the shipped thresholds', () => {
   });
 
   it('gates once the deployment sets a relevance threshold of its own', async () => {
-    const tuned = new EvalEngine(undefined, { keyword_overlap: 0.3 });
+    // What loadConfig records for a config file that sets it; an engine handed thresholds with no provenance runs the shipped defaults.
+    const tuned = new EvalEngine(undefined, { keyword_overlap: 0.3 }, { configuredThresholdKeys: ['keyword_overlap'] });
     const { result, rule } = await ata('Our office is open nine to five on weekdays and the parking lot is behind the building near the loading dock.', tuned);
     expect(rule.passed).toBe(false);
     expect(result.passed).toBe(false);

@@ -31,6 +31,7 @@ import type { ToolDescriptor } from '../../types/trace.js';
 import { catalogueIndex } from '../catalogue.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { contentTerms } from '../terms.js';
+import { thresholdSourceOf } from '../thresholds.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 
 export const DEFAULT_TOOL_CHOICE_MARGIN = 0.34;
@@ -116,8 +117,8 @@ export const toolChoice: EvalRule = {
     const scope = stepScopeNote(context);
     const calledList = [...called].join(', ');
     const evidence: Evidence[] = [
-      { type: 'count', stat: 'ask_fit_called_tools', unit: 'ratio', value: calledFit, threshold: best === null ? undefined : Math.max(0, best.fit - margin), thresholdSource: margin === DEFAULT_TOOL_CHOICE_MARGIN ? 'default' : 'config' },
-      ...(best !== null ? [{ type: 'count', stat: 'ask_fit_best_uncalled_tool', unit: 'ratio', value: best.fit, threshold: minFit, thresholdSource: minFit === DEFAULT_TOOL_CHOICE_MIN_FIT ? 'default' : 'config' } as Evidence] : []),
+      { type: 'count', stat: 'ask_fit_called_tools', unit: 'ratio', value: calledFit, threshold: best === null ? undefined : Math.max(0, best.fit - margin), thresholdSource: thresholdSourceOf(context, 'tool_choice_margin') },
+      ...(best !== null ? [{ type: 'count', stat: 'ask_fit_best_uncalled_tool', unit: 'ratio', value: best.fit, threshold: minFit, thresholdSource: thresholdSourceOf(context, 'tool_choice_min_fit') } as Evidence] : []),
       ...(fired ? steps.slice(0, MAX_EVIDENCE_ITEMS - 2).map((s): Evidence => ({ type: 'toolCall', index: s.index, toolName: s.name, label: `called; ${best!.tool.name} fits the ask better` })) : []),
     ];
     return {
