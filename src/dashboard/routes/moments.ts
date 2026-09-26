@@ -35,10 +35,11 @@ const momentQuerySchema = strictQuery({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   /*
-   * `timestamp` (the default, and every caller before 0.20.0) pages through
-   * traces newest first. `significance` ranks the moments of the most
-   * recent `window` matching traces by significance.score, newest first
-   * among equals, and pages within that ranking (#409).
+   * `timestamp` (the default) orders by time, newest first unless
+   * sort_order=asc. `significance` ranks the moments of the most recent
+   * `window` matching traces by significance.score, newest first among
+   * equals (#409). Either order reads a window when a verdict or
+   * significance filter is set (#657).
    */
   sort_by: z.enum(['timestamp', 'significance']).default('timestamp'),
   sort_order: z.enum(['asc', 'desc']).optional(),
@@ -46,8 +47,12 @@ const momentQuerySchema = strictQuery({
 }).superRefine((q, ctx) => {
   // Refused rather than ignored: a parameter that silently does nothing
   // reads as though it had been applied.
-  if (q.sort_by === 'timestamp' && q.window !== undefined) {
-    ctx.addIssue({ code: 'custom', path: ['window'], message: 'window applies only to sort_by=significance' });
+  if (q.sort_by === 'timestamp' && q.window !== undefined && !hasFilter(q)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['window'],
+      message: 'window applies to sort_by=significance, or with a verdict, min_significance or significance_kind filter',
+    });
   }
   if (q.sort_by === 'significance' && q.sort_order === 'asc') {
     ctx.addIssue({
@@ -59,6 +64,11 @@ const momentQuerySchema = strictQuery({
 });
 
 type MomentQuery = z.infer<typeof momentQuerySchema>;
+
+/** A filter on what the derived moment is, as opposed to which traces are read. */
+function hasFilter(q: Pick<MomentQuery, 'verdict' | 'min_significance' | 'significance_kind'>): boolean {
+  return q.verdict !== undefined || q.min_significance !== undefined || q.significance_kind !== undefined;
+}
 
 /** The verdict and significance filters, applied the same way by both orders. */
 function keeps(moment: DecisionMoment, query: MomentQuery): boolean {
@@ -105,51 +115,57 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
       const query = momentQuerySchema.parse(req.query);
 
       /*
-       * Ranked by significance within a stated window (#409).
+       * Two ways to read moments.
        *
-       * Every moment in the window is derived, filtered and ranked before
-       * a page is cut, so `total` is exact within the window and page two
-       * starts where page one ended. The window is the newest `window`
-       * traces that match agent/since/until: bounded work on every read,
-       * and stated in the response so a reader knows how far back the
-       * ranking reaches. To page over a live stream without new traces
-       * shifting the window, pass `until` = window.newest from the first page.
+       * Unfiltered and newest first (or oldest first), a page of moments is
+       * a page of traces: `offset` counts traces and `total` counts them.
+       *
+       * Ranked by significance (#409), or with a verdict or significance
+       * filter (#657), the route reads a stated window instead: the first
+       * `window` traces that match agent/since/until, in the order asked
+       * for (the newest when ranking). Every moment in it is derived and
+       * filtered before a page is cut, so a page holds `limit` moments
+       * whenever that many match, page two starts where page one ended, and
+       * `total` is exact within the window. Until 0.20.0 a filtered page was
+       * cut from `limit` traces (4 × limit with a significance filter), so
+       * `?verdict=fail&limit=50` could return 3 moments with hundreds of
+       * failures further back, `offset` skipped or repeated moments, and
+       * `total` counted traces. The window is bounded work on every read
+       * and stated in the response, so a reader knows how far it reaches.
+       * To page newest first while traces arrive, pin `until` to the
+       * first page's window.newest.
        */
-      if (query.sort_by === 'significance') {
+      const filtered = hasFilter(query);
+      if (query.sort_by === 'significance' || filtered) {
         const size = query.window ?? MOMENT_RANK_WINDOW_DEFAULT;
+        const order = query.sort_by === 'significance' ? 'desc' : (query.sort_order ?? 'desc');
         const traceResult = await storage.queryTraces(tenantId, {
           filter: { agent_name: query.agent_name, since: query.since, until: query.until },
           limit: size,
           offset: 0,
           sort_by: 'timestamp',
-          sort_order: 'desc',
+          sort_order: order,
         });
         const traces = traceResult.traces;
-        const ranked = rankBySignificance((await momentsOf(tenantId, traces)).filter((m) => keeps(m, query)));
-        const ranking: MomentQueryResult = {
-          moments: ranked.slice(query.offset, query.offset + query.limit),
-          total: ranked.length,
+        const kept = (await momentsOf(tenantId, traces)).filter((m) => keeps(m, query));
+        const ordered = query.sort_by === 'significance' ? rankBySignificance(kept) : kept;
+        const stamps = traces.map((t) => t.timestamp).sort();
+        const windowed: MomentQueryResult = {
+          moments: ordered.slice(query.offset, query.offset + query.limit),
+          total: ordered.length,
           limit: query.limit,
           offset: query.offset,
-          sortBy: 'significance',
+          ...(query.sort_by === 'significance' ? { sortBy: 'significance' as const } : {}),
           window: {
             size,
             scanned: traces.length,
             tracesInRange: traceResult.total,
-            ...(traces.length > 0 ? { newest: traces[0].timestamp, oldest: traces[traces.length - 1].timestamp } : {}),
+            ...(stamps.length > 0 ? { newest: stamps[stamps.length - 1], oldest: stamps[0] } : {}),
           },
         };
-        res.json(ranking);
+        res.json(windowed);
         return;
       }
-
-      // Pull the underlying traces. We over-fetch when post-filtering by
-      // significance to give the moment classifier headroom, then trim.
-      const wantsSignificanceFilter =
-        query.min_significance !== undefined || query.significance_kind !== undefined;
-      const fetchLimit = wantsSignificanceFilter
-        ? Math.min(query.limit * 4, 200)
-        : query.limit;
 
       const traceResult = await storage.queryTraces(tenantId, {
         filter: {
@@ -157,24 +173,15 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
           since: query.since,
           until: query.until,
         },
-        limit: fetchLimit,
+        limit: query.limit,
         offset: query.offset,
         sort_by: 'timestamp',
         sort_order: query.sort_order ?? 'desc',
       });
 
-      const moments: DecisionMoment[] = [];
-      for (const moment of await momentsOf(tenantId, traceResult.traces)) {
-        if (!keeps(moment, query)) continue;
-        moments.push(moment);
-        if (moments.length >= query.limit) break;
-      }
-
       const result: MomentQueryResult = {
-        moments,
-        // total reflects the underlying trace count (pre-filter) — significance-
-        // filtered totals would require materializing the full set, which we
-        // avoid for now. Clients should treat this as "at least this many."
+        moments: await momentsOf(tenantId, traceResult.traces),
+        // Unfiltered, one trace is one moment, so this is exact.
         total: traceResult.total,
         limit: query.limit,
         offset: query.offset,

@@ -522,13 +522,13 @@ export interface DecisionMomentDetail extends DecisionMoment {
 
 export interface MomentQueryResult {
   moments: DecisionMoment[];
-  /** Newest first: matching traces before filters ("at least"). Ranked by significance: moments in the window after filters, exact. */
+  /** Exact. Unfiltered by time: matching traces. Ranked, or with a verdict or significance filter: moments in the window after filters. */
   total: number;
   limit: number;
   offset: number;
   /** Present when the server ranked by significance (sort_by=significance). */
   sortBy?: 'significance';
-  /** How far back a significance ranking reached. Present with sortBy. */
+  /** How far a ranking or a filtered read reached. Present whenever the server read a window. */
   window?: {
     size: number;
     scanned: number;

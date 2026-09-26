@@ -51,7 +51,9 @@ const PERIOD_LIVE = '24h';
 
 export function StreamView() {
   const { data: stats, loading: statsLoading, error: statsError } = useEvalStats(PERIOD_LIVE);
-  const { data: significantMoments } = useMoments({ limit: '50', min_significance: '0.4' });
+  // A filtered read covers a window of recent traces (#657); 200 keeps this
+  // live view to the work it has always done on each poll.
+  const { data: significantMoments } = useMoments({ limit: '50', min_significance: '0.4', window: '200' });
 
   if (statsLoading && !stats) return <LoadingSpinner />;
   if (statsError) return <EmptyState message={`Could not load live stats: ${statsError}`} />;

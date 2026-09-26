@@ -81,6 +81,19 @@ describe('MomentsTimelinePage order', () => {
     expect((screen.getByLabelText('Order moments') as HTMLSelectElement).value).toBe('significance');
   });
 
+  it('newest first with a kind filter states the window the server filtered within', () => {
+    useMomentsMock.mockReturnValue(
+      result({ moments: [moment('t231', 'normal-fail', 0.5)], total: 20, limit: 50, offset: 0, window: { size: 500, scanned: 500, tracesInRange: 900 } }),
+    );
+    renderAt('/moments?sort=newest&kind=normal-fail');
+    const [params] = useMomentsMock.mock.calls[0] as [Record<string, string>];
+    expect(params).toMatchObject({ significance_kind: 'normal-fail' });
+    expect(params.sort_by).toBeUndefined();
+    expect(screen.getByTestId('ranking-note').textContent).toBe(
+      'Filtered within the last 500 traces of 900. Older matches are not shown: narrow the agent or time range to reach them.',
+    );
+  });
+
   it('?sort=newest asks for the plain stream at the live cadence and shows no ranking note', () => {
     useMomentsMock.mockReturnValue(result({ moments: [moment('t239', 'normal-pass', 0.05)], total: 240, limit: 50, offset: 0 }));
     renderAt('/moments?sort=newest');
@@ -116,5 +129,12 @@ describe('momentOrder', () => {
     );
     expect(rankingNote({ sortBy: 'significance', window: { size: 500, scanned: 0, tracesInRange: 0 } })).toBeNull();
     expect(rankingNote({})).toBeNull();
+  });
+
+  it('rankingNote: a filtered newest-first read states its window too (#657)', () => {
+    expect(rankingNote({ window: { size: 500, scanned: 500, tracesInRange: 1200 } })).toBe(
+      'Filtered within the last 500 traces of 1,200. Older matches are not shown: narrow the agent or time range to reach them.',
+    );
+    expect(rankingNote({ window: { size: 500, scanned: 240, tracesInRange: 240 } })).toBe('Filtered across all 240 traces in range.');
   });
 });
