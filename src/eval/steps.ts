@@ -63,6 +63,37 @@ export const SPAN_ATTRIBUTE_PRECEDENCE = {
   truncated: ['iris.output.truncated'],
 } as const;
 
+/**
+ * The keys whose value is, by their convention, a JSON document written as a
+ * string: an OpenTelemetry SDK that cannot set a structured attribute (the
+ * Python one) sends `gen_ai.tool.call.arguments` as `'{"city":"Paris"}'`.
+ * Read as the string, every such call failed its tool's input schema
+ * ("(root) type") in valid_tool_arguments.
+ */
+const JSON_STRING_ARGUMENT_KEYS = new Set(['gen_ai.tool.call.arguments', 'tool_call.function.arguments', 'ai.toolCall.args']);
+
+/** A span's call arguments: the first key that carries them, a JSON-string key read as the object it encodes. */
+function argumentsOf(span: Span): unknown {
+  const bag = span.attributes;
+  if (!bag) return undefined;
+  for (const key of SPAN_ATTRIBUTE_PRECEDENCE.input) {
+    const value = bag[key];
+    if (value === undefined) continue;
+    if (typeof value === 'string' && JSON_STRING_ARGUMENT_KEYS.has(key)) {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+          return JSON.parse(trimmed) as unknown;
+        } catch {
+          return value;
+        }
+      }
+    }
+    return value;
+  }
+  return undefined;
+}
+
 function attr(span: Span, keys: readonly string[]): unknown {
   const bag = span.attributes;
   if (!bag) return undefined;
@@ -101,7 +132,7 @@ function stepFromSpan(span: Span, index: number): Step {
     source: 'span',
     status: span.status_code === 'ERROR' ? 'error' : span.status_code === 'OK' ? 'ok' : 'unset',
   };
-  const input = attr(span, SPAN_ATTRIBUTE_PRECEDENCE.input);
+  const input = argumentsOf(span);
   const output = attr(span, SPAN_ATTRIBUTE_PRECEDENCE.output);
   const callId = attr(span, SPAN_ATTRIBUTE_PRECEDENCE.callId);
   if (input !== undefined) step.input = input;

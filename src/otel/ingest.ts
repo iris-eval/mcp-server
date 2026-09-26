@@ -95,10 +95,128 @@ export function fromAnyValue(v: unknown): unknown {
     return Number.isSafeInteger(n) ? n : String(o.intValue);
   }
   if ('doubleValue' in o) return o.doubleValue;
-  if ('bytesValue' in o) return o.bytesValue;
+  if ('bytesValue' in o) return bytesText(o.bytesValue);
   if ('arrayValue' in o) return (((o.arrayValue as { values?: unknown[] } | undefined)?.values) ?? []).map(fromAnyValue);
   if ('kvlistValue' in o) return attributesToRecord((o.kvlistValue as { values?: Array<{ key: string; value?: unknown }> } | undefined)?.values);
   return undefined;
+}
+
+/** Base64 without its `=` padding; a loop, so a long run of `=` costs linear time. */
+function unpadded(b64: string): string {
+  let end = b64.length;
+  while (end > 0 && b64.charCodeAt(end - 1) === 61) end -= 1;
+  return b64.slice(0, end);
+}
+
+/**
+ * An OTLP `bytesValue` as the text it carries. OTLP/JSON writes bytes as
+ * base64 (the protobuf decoder here does the same), and LangSmith's export
+ * sends `gen_ai.prompt` / `gen_ai.completion` as bytes holding UTF-8 JSON, so
+ * read as-is the trace's input was base64. Bytes that are valid UTF-8 text
+ * are that text; anything else (binary, or not base64 at all) stays as sent.
+ */
+export function bytesText(value: unknown): unknown {
+  if (typeof value !== 'string' || value.length === 0) return value;
+  const bytes = Buffer.from(value, 'base64');
+  // Buffer.from skips what is not base64; a round trip that does not match means it was not base64.
+  if (unpadded(bytes.toString('base64')) !== unpadded(value)) return value;
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return value;
+  }
+  // Control characters other than tab, newline and carriage return mean binary, not text.
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i);
+    if (c < 32 && c !== 9 && c !== 10 && c !== 13) return value;
+  }
+  return text;
+}
+
+type Side = 'input' | 'output';
+
+const USER_ROLES = new Set(['user', 'human', 'HumanMessage', 'HumanMessageChunk']);
+const ASSISTANT_ROLES = new Set(['assistant', 'ai', 'model', 'AIMessage', 'AIMessageChunk']);
+
+/** The words of one message's content: a string, or the text parts of a list. */
+function contentWords(content: unknown): string | undefined {
+  if (typeof content === 'string') return content.length > 0 ? content : undefined;
+  if (!Array.isArray(content)) return undefined;
+  const texts = content
+    .map((p) => (typeof p === 'string' ? p : p && typeof p === 'object' && typeof (p as Record<string, unknown>).text === 'string' ? ((p as Record<string, unknown>).text as string) : undefined))
+    .filter((t): t is string => t !== undefined && t.length > 0);
+  return texts.length > 0 ? texts.join('\n') : undefined;
+}
+
+/**
+ * One message in any of the shapes an export writes: `{ role, content }`
+ * (OpenAI, the GenAI conventions' `parts` too), `{ type: 'human', content }`
+ * (LangChain's dict), or LangChain's serialized constructor
+ * `{ lc: 1, type: 'constructor', id: [..., 'HumanMessage'], kwargs: { content } }`.
+ */
+function roleAndWords(m: unknown): { role: string; words?: string } | undefined {
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return undefined;
+  const o = m as Record<string, unknown>;
+  if (o.lc === 1 && o.type === 'constructor' && Array.isArray(o.id) && o.kwargs && typeof o.kwargs === 'object') {
+    const kwargs = o.kwargs as Record<string, unknown>;
+    return { role: String(o.id[o.id.length - 1]), words: contentWords(kwargs.content) };
+  }
+  const role = typeof o.role === 'string' ? o.role : typeof o.type === 'string' ? o.type : undefined;
+  if (role === undefined) return undefined;
+  const words = contentWords(o.content) ?? (Array.isArray(o.parts) ? contentWords((o.parts as unknown[]).map((p) => (p && typeof p === 'object' && (p as Record<string, unknown>).type === 'text' ? { text: (p as Record<string, unknown>).content } : p))) : undefined);
+  return { role, words };
+}
+
+/**
+ * The message list a LangChain envelope carries: a run's `{ messages: [...] }`
+ * (a model's `[[...]]` flattened one level), or a model result's first
+ * generation. A bare array of messages (`gen_ai.input.messages`) is not an
+ * envelope and is left as it came.
+ */
+function messagesIn(value: unknown): unknown[] | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const o = value as Record<string, unknown>;
+  if (Array.isArray(o.messages)) {
+    const flat = (o.messages as unknown[]).flatMap((m) => (Array.isArray(m) ? m : [m]));
+    return flat.some((m) => roleAndWords(m) !== undefined) ? flat : undefined;
+  }
+  if (Array.isArray(o.generations)) {
+    const first = (o.generations as unknown[]).flat()[0] as Record<string, unknown> | undefined;
+    if (first && typeof first === 'object') {
+      if (first.message !== undefined && roleAndWords(first.message) !== undefined) return [first.message];
+      if (typeof first.text === 'string' && first.text.length > 0) return [{ role: 'assistant', content: first.text }];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A LangChain message envelope read down to its words: for the input, the
+ * last user message; for the output, the last assistant message with text.
+ * LangSmith's export writes a run's whole state as JSON in `gen_ai.prompt` /
+ * `gen_ai.completion` (`{"messages": [...]}` for a graph, `{"generations":
+ * ...}` for a model), which otherwise hands the rules a JSON document where
+ * they expect what was asked and what was answered. Anything that is not
+ * such an envelope is returned as it came.
+ */
+export function wordsOf(text: string, side: Side): string {
+  const trimmed = text.trimStart();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return text;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return text;
+  }
+  const messages = messagesIn(parsed);
+  if (!messages) return text;
+  const wanted = side === 'input' ? USER_ROLES : ASSISTANT_ROLES;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = roleAndWords(messages[i]);
+    if (m && wanted.has(m.role) && m.words !== undefined) return m.words;
+  }
+  return text;
 }
 
 /** An OTLP attribute list to a record; a later duplicate key wins. */
@@ -213,6 +331,12 @@ function indexedText(attrs: Record<string, unknown>, prefix: string): string | u
 }
 
 function firstText(spans: readonly MappedSpan[], keys: readonly string[], eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
+  const side = keys === INPUT_KEYS ? 'input' : 'output';
+  const found = rawFirstText(spans, keys, eventName, eventKey, indexedPrefix);
+  return found === undefined ? undefined : wordsOf(found, side);
+}
+
+function rawFirstText(spans: readonly MappedSpan[], keys: readonly string[], eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
   for (const s of spans) for (const k of keys) if (s.attrs[k] !== undefined) return asText(s.attrs[k]);
   if (indexedPrefix !== undefined) for (const s of spans) { const t = indexedText(s.attrs, indexedPrefix); if (t !== undefined) return t; }
   for (const s of spans) for (const e of s.events) if (e.name === eventName && e.attrs[eventKey] !== undefined) return asText(e.attrs[eventKey]);
