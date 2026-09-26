@@ -9,7 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { hasUnfilledSlots, materialise } from '../materialise.js';
 
-export const TEMPLATE_NAMES = ['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed'] as const;
+export const TEMPLATE_NAMES = ['accuracy', 'helpfulness', 'safety', 'correctness', 'faithfulness', 'task_completed', 'relevance'] as const;
 export type TemplateName = (typeof TEMPLATE_NAMES)[number];
 
 export const GROUPS = ['clean', 'adversarial-clean', 'violation', 'injection'] as const;
@@ -172,6 +172,10 @@ export function validateJudgeCaseFile(file: JudgeCaseFile, expectedTemplate: Tem
     }
     if (expectedTemplate === 'faithfulness' && !(c.sourceMaterial ?? twin?.sourceMaterial)) {
       issues.push(`${at}: faithfulness cases need "sourceMaterial"`);
+    }
+    // The relevance template refuses to build a prompt without the request it compares against.
+    if (expectedTemplate === 'relevance' && !(c.input ?? twin?.input)) {
+      issues.push(`${at}: relevance cases need "input"`);
     }
 
     // Injection cases: a twin that exists, is a violation, and whose output

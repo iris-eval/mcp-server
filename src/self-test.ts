@@ -51,6 +51,7 @@ import { EvalEngine } from './eval/engine.js';
 import { generateTraceId } from './utils/ids.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { judgeState, judgeStateLine } from './judge-enablement.js';
+import { relevanceJudgeFromEnv, relevanceJudgeState, relevanceJudgeStateLine } from './eval/llm-judge/relevance-judge.js';
 import type { IrisConfig, Trace } from './types/index.js';
 import type { IStorageAdapter } from './types/query.js';
 import type { EvalResult } from './types/eval.js';
@@ -284,7 +285,8 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
    */
   await step(SELF_TEST_STEPS.judge, () => {
     const state = judgeState();
-    return `${judgeStateLine(state)}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;
+    const relevance = relevanceJudgeStateLine(relevanceJudgeState(relevanceJudgeFromEnv()));
+    return `${judgeStateLine(state)}; relevance judge ${relevance}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;
   }, { independent: true });
 
   /*

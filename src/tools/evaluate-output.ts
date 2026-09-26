@@ -103,7 +103,7 @@ export function registerEvaluateOutputTool(
         summary:
           'Score an agent output with the deterministic rules: a ship verdict with its basis, per-rule evidence, and what was not judged.',
         does:
-          'Local, no key. eval_type picks a bundle or all (the default). A rule missing its input SKIPS, never passes: input is REQUIRED when eval_type="relevance"; tool_calls and tools (or a trace_id), cost_usd and expected feed the rest.',
+          'Local by default. eval_type picks a bundle or all (the default). A rule missing its input SKIPS, never passes: input is REQUIRED when eval_type="relevance"; tool_calls and tools (or a trace_id), cost_usd and expected feed the rest.',
         whenNot:
           'For semantic judgment (evaluate_with_llm_judge). As an input firewall: the rules read the output.',
         returns: evaluateOutputResponseSchema,
@@ -119,8 +119,8 @@ export function registerEvaluateOutputTool(
       annotations: {
         readOnlyHint: false,     // Writes an eval_result row
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete
-        idempotentHint: true,    // Deterministic: same inputs → same score (each call writes a distinct result row, but the SCORE is stable)
-        openWorldHint: false,    // No external network in heuristic mode; LLM-as-judge has its own tool with openWorldHint:true
+        idempotentHint: true,    // Deterministic: same inputs → same score (each call writes a distinct result row, but the SCORE is stable). A deployment that set IRIS_RELEVANCE_JUDGE_MODEL adds one judge call, which a model answers
+        openWorldHint: false,    // No external network by default. A deployment that set IRIS_RELEVANCE_JUDGE_MODEL makes one provider call per evaluation that carries input (answers_the_ask); the tool that is only a judge call has openWorldHint:true
       },
     },
     guarded(async (args, extra) => {
@@ -183,6 +183,8 @@ export function registerEvaluateOutputTool(
         toolCalls,
         spans,
         tools,
+        // The agent's model, when the trace recorded it: the relevance judge's same-family note reads it.
+        ...(trace?.metadata ? { metadata: trace.metadata } : {}),
       };
       const customRules = args.custom_rules as CustomRuleDefinition[] | undefined;
 

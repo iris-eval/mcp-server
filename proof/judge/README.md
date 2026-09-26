@@ -7,9 +7,10 @@ being "calibrated" is a number on a page or nothing at all.
 
 ## What is measured
 
-**The judge (`src/eval/llm-judge`), per template.** Each of the five templates
-— accuracy, helpfulness, safety, correctness, faithfulness — has a case file in
-`cases/<template>.json` holding 30–40 labelled outputs in four groups:
+**The judge (`src/eval/llm-judge`), per template.** Each of the seven templates
+— accuracy, helpfulness, safety, correctness, faithfulness, task_completed,
+relevance — has a case file in `cases/<template>.json` holding 30–40 labelled
+outputs in four groups:
 
 - **clean** — outputs the template must pass.
 - **adversarial-clean** — outputs that superficially look bad but are correct:
@@ -40,6 +41,23 @@ The positive class is **fail** — the judge flagging a problem. So:
 Every proportion carries a **Wilson 95% interval** (`lib/wilson.ts`), because
 the sets are small and the observed rates sit near 0 and 1 where the textbook
 normal interval misbehaves.
+
+**Rules a judge decides.** `answers_the_ask` gates on the `relevance` template
+when a deployment sets `IRIS_RELEVANCE_JUDGE_MODEL`. The runner installs the
+same judge on a real `EvalEngine` and runs the rule's own corpus family,
+`proof/corpus/answers_the_ask.json` (45 cases labelled by reading), through it,
+beside the lexical rule on the same cases, so the two rows differ by the judge
+alone. A case the judge could not answer is counted under skip, never as the
+lexical rule's verdict. The results carry each reading's false positives and
+misses by id.
+
+**The composite verdict with the judge.** The composite corpus runs through an
+engine built from the shipped config with the same judge installed, beside
+the same corpus without it: accuracy about shipping, false and missed blocks
+per split, and the ids of the verdicts the judge moved. Judge calls are
+charged to the run-wide cap; a call refused or failed marks the result
+incomplete. `tests/unit/proof/composite-with-judge.test.ts` runs the
+comparison on a stand-in judge without a key.
 
 **The citation verifier (`src/eval/citation-verify`).** `citations/cases.json`
 holds outputs whose citations resolve to stable public pages (RFC pages, MDN,
@@ -104,7 +122,8 @@ never a fake or partial file.
 
 ## Outputs
 
-- `proof/judge-results.json` — machine-readable, `status: "measured"`. A
+- `proof/judge-results.json` — machine-readable, `status: "measured"`, with
+  `templates`, `citations` and `rules` (the judged rules above). A
   committed placeholder carries `status: "pending"` so the truthbase generator
   and the website render "pending" honestly until a keyed run replaces it. **The
   lead commits the measured file** produced by the workflow.

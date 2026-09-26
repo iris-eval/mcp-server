@@ -26,6 +26,13 @@ export { publishedAccuracyFor, publishedRuleNames, publishedProvenance, ppvInter
 export { toEvaluationResponse } from './eval/response.js';
 export { LOCAL_LABEL_MIN, localPrecision, estimatedPrior } from './eval/labels.js';
 export { defaultConfig, PKG_VERSION } from './config/defaults.js';
+/*
+ * The relevance judge is opt-in here as on the server: an engine calls no
+ * model until an embedder installs one with engine.setRelevanceJudge(
+ * createRelevanceJudge({ model, apiKey })), after which answers_the_ask
+ * gates on its verdict whenever the call carries an input.
+ */
+export { createRelevanceJudge, RELEVANCE_JUDGE_MODEL_VAR, type RelevanceJudge, type RelevanceJudgeOptions } from './eval/llm-judge/relevance-judge.js';
 export { PUBLIC_ID } from './identity.js';
 export type {
   EvalContext,
@@ -49,5 +56,6 @@ export type {
   Coverage,
   Interpretation,
   CustomRuleDefinition,
+  JudgeRecord,
 } from './types/eval.js';
 export type { Trace, Span, ToolCallRecord, TokenUsage, ToolDescriptor } from './types/trace.js';

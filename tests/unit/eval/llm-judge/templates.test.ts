@@ -21,6 +21,7 @@ import {
   SAFETY_TEMPLATE,
   CORRECTNESS_TEMPLATE,
   FAITHFULNESS_TEMPLATE,
+  RELEVANCE_TEMPLATE,
   ALL_TEMPLATES,
   getTemplate,
 } from '../../../../src/eval/llm-judge/templates/index.js';
@@ -31,7 +32,7 @@ import {
 const OPEN_RE = /<untrusted_([a-z]+) id="([0-9a-f]{8,})">/;
 
 describe('LLM-judge templates — snapshot guard', () => {
-  it('ALL_TEMPLATES enumerates exactly 6 named templates in stable order', () => {
+  it('ALL_TEMPLATES enumerates exactly 7 named templates in stable order', () => {
     // The order is the discovery order surfaced in tools/list and in the
     // dashboard's template picker. Reordering shifts UX (defaults change)
     // and may surprise downstream callers iterating ALL_TEMPLATES.
@@ -42,6 +43,7 @@ describe('LLM-judge templates — snapshot guard', () => {
       'correctness',
       'faithfulness',
       'task_completed',
+      'relevance',
     ]);
   });
 
@@ -65,6 +67,7 @@ describe('LLM-judge templates — snapshot guard', () => {
     expect(getTemplate('safety')).toBe(SAFETY_TEMPLATE);
     expect(getTemplate('correctness')).toBe(CORRECTNESS_TEMPLATE);
     expect(getTemplate('faithfulness')).toBe(FAITHFULNESS_TEMPLATE);
+    expect(getTemplate('relevance')).toBe(RELEVANCE_TEMPLATE);
   });
 
   it('every template requires the JSON contract to mention the score/passed/rationale shape', () => {
@@ -119,6 +122,10 @@ describe('LLM-judge templates — snapshot guard', () => {
     expect(FAITHFULNESS_TEMPLATE.buildSystem()).toMatchSnapshot('faithfulness-system');
   });
 
+  it('RELEVANCE system prompt is unchanged (snapshot)', () => {
+    expect(RELEVANCE_TEMPLATE.buildSystem()).toMatchSnapshot('relevance-system');
+  });
+
   // --- User-prompt rendering --------------------------------------------------
 
   it('ACCURACY user prompt wraps `output` in an untrusted block + tail reinforcement', () => {
@@ -155,6 +162,19 @@ describe('LLM-judge templates — snapshot guard', () => {
     expect(built).toMatch(/<untrusted_expected id="[0-9a-f]+">\nB\n<\/untrusted_expected id="[0-9a-f]+">/);
     expect(built).toMatch(/<untrusted_output id="[0-9a-f]+">\nA\n<\/untrusted_output id="[0-9a-f]+">/);
     expect(() => CORRECTNESS_TEMPLATE.buildUser({ output: 'A' })).toThrow(/expected/i);
+  });
+
+  it('RELEVANCE user prompt wraps the request and the output under one nonce, requires input, and ends on the reminder', () => {
+    const built = RELEVANCE_TEMPLATE.buildUser({ output: 'Canberra.', input: 'What is the capital of Australia?' });
+    const input = built.match(/<untrusted_input id="([0-9a-f]+)">\nWhat is the capital of Australia\?\n<\/untrusted_input id="([0-9a-f]+)">/);
+    const output = built.match(/<untrusted_output id="([0-9a-f]+)">\nCanberra\.\n<\/untrusted_output id="([0-9a-f]+)">/);
+    expect(input, 'the request is wrapped').toBeTruthy();
+    expect(output, 'the output is wrapped').toBeTruthy();
+    expect(new Set([input![1], input![2], output![1], output![2]]).size).toBe(1);
+    // The request comes first and the reminder last: the candidate is never the final thing the judge reads.
+    expect(built.indexOf('<untrusted_input')).toBeLessThan(built.indexOf('<untrusted_output'));
+    expect(built.trimEnd().endsWith('Produce only the JSON object specified in your system prompt — nothing else.')).toBe(true);
+    expect(() => RELEVANCE_TEMPLATE.buildUser({ output: 'Canberra.' })).toThrow(/input/i);
   });
 
   it('FAITHFULNESS user prompt wraps `output` and `sourceMaterial` + requires sourceMaterial', () => {

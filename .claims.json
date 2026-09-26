@@ -442,6 +442,10 @@
           {
             "kind": "template",
             "name": "helpfulness"
+          },
+          {
+            "kind": "template",
+            "name": "relevance"
           }
         ],
         "id": "Q4xS2",
@@ -452,7 +456,7 @@
         "question": "Q4",
         "status": "has",
         "subject": "S2",
-        "summary": "Lexical, three rules: the share of the input's content terms the output carries (keyword_overlap) and continuity of topic across sentences (topic_consistency) are measurements that score; answers_the_ask is the pair as a policy — when both fail at their thresholds, and on a bare refusal or the ask handed back, the output answers something else. At the shipped thresholds it advises, because comparing words fails correct paraphrases; it gates on policy_gate once the deployment sets either measurement's threshold. It skips whenever either measurement skips and on a one-term ask, so a one-word right answer is never a fire. Measured on 45 reader-labelled cases. A keyed helpfulness judge template exists and is unmeasured."
+        "summary": "Lexical by default, semantic when the deployment sets a relevance judge. keyword_overlap (the share of the input's content terms the output carries) and topic_consistency (continuity of topic across sentences) are measurements that score; answers_the_ask is the question itself. Without a judge it reads the pair lexically and advises at the shipped thresholds, because comparing words fails correct paraphrases: it fires when both measurements fail and on a bare refusal or the ask handed back, and gates once the deployment sets either measurement's threshold. With IRIS_RELEVANCE_JUDGE_MODEL and a provider key, the relevance judge template decides and the rule gates: an off-topic answer fails on policy_gate, a paraphrase, a one-word answer and a one-term ask are judged rather than skipped, and a judge that cannot answer is named while the lexical reading advises. The lexical rule is measured on 45 reader-labelled cases; the judged rule and the relevance template are measured by the keyed proof:judge run and are pending until one is published."
       },
       {
         "evidence": [
@@ -1963,7 +1967,7 @@
           "measuredThreeOrMore": 9
         },
         "judge": {
-          "evaluators": 6,
+          "evaluators": 7,
           "measuredThreeOrMore": 0
         },
         "rules": {
@@ -1972,13 +1976,13 @@
         }
       },
       "byStatus": {
-        "measurable": 197,
+        "measurable": 209,
         "measured": 141,
         "n/a": 102,
         "partial": 21,
-        "stated": 85
+        "stated": 86
       },
-      "evaluators": 42,
+      "evaluators": 43,
       "measuredThreeOrMore": 35,
       "questions": 13
     },
@@ -4288,7 +4292,7 @@
       {
         "cells": {
           "q1": {
-            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (36 for accuracy)",
             "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
           },
@@ -4361,7 +4365,7 @@
       {
         "cells": {
           "q1": {
-            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (35 for helpfulness)",
             "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
           },
@@ -4434,7 +4438,7 @@
       {
         "cells": {
           "q1": {
-            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (32 for safety)",
             "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
           },
@@ -4507,7 +4511,7 @@
       {
         "cells": {
           "q1": {
-            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (32 for correctness)",
             "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
           },
@@ -4580,7 +4584,7 @@
       {
         "cells": {
           "q1": {
-            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (30 for faithfulness)",
             "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
           },
@@ -4653,7 +4657,7 @@
       {
         "cells": {
           "q1": {
-            "evidence": "npm run proof:judge — 165 cases across the five templates under a cost cap",
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (32 for task_completed)",
             "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
             "status": "measurable"
           },
@@ -4722,6 +4726,79 @@
         "id": "judge:task_completed",
         "measured": 0,
         "name": "task_completed"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "npm run proof:judge — 233 cases across the 7 templates under a cost cap (36 for relevance)",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q10": {
+            "evidence": "the self-reported pass against the score on the same run",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q11": {
+            "evidence": "human agreement on the judged cases (the blind label instrument)",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q12": {
+            "evidence": "pair each template's dimensions with the rules that map to them",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "the judge over the rule corpus, the rules over the judge corpus",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "the same run names the misses by id",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q3": {
+            "evidence": "src/eval/llm-judge/templates → dimensions and passThreshold",
+            "note": "the template names its dimensions and the threshold a score is read against",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "compare the model's self-reported pass with the threshold verdict on the same run",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q5": {
+            "evidence": "reliability bins, Brier and ECE per template with intervals",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q6": {
+            "evidence": "three committed paraphrases per template, pairwise agreement and score correlation",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q7": {
+            "evidence": "both default providers on the same cases; agreement and the disagreement list",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q8": {
+            "evidence": "repeat the judge run k times over the same cases; flip rate per template with an interval",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          },
+          "q9": {
+            "evidence": "injection twins per template; length, confidence and forged-close-tag axes",
+            "note": "needs a judge key that a maintainer or a user supplies; proof/judge-results.json is pending",
+            "status": "measurable"
+          }
+        },
+        "group": "judge",
+        "id": "judge:relevance",
+        "measured": 0,
+        "name": "relevance"
       },
       {
         "cells": {
@@ -4972,18 +5049,19 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-09-26T15:15:23.509Z",
-  "generatedFromCommit": "19bbb4b",
+  "generatedAt": "2026-09-26T16:03:36.860Z",
+  "generatedFromCommit": "03ecd77",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
-    "count": 6,
+    "count": 7,
     "enable": {
       "steps": [
         "Get an API key from Anthropic or OpenAI.",
         "Put it in the environment of the process that runs Iris, not only your shell. Claude Code, Claude Desktop, Cursor and most MCP clients: the \"env\" block of the iris-eval entry in your MCP config — \"iris-eval\": { \"command\": \"npx\", \"args\": [\"-y\", \"@iris-eval/mcp-server\"], \"env\": { \"IRIS_ANTHROPIC_API_KEY\": \"sk-ant-...\" } } (IRIS_OPENAI_API_KEY for an OpenAI key). Docker: -e IRIS_ANTHROPIC_API_KEY=... on the run command. HTTP or CI: export it before starting iris-eval.",
         "Restart the MCP session. A running process never sees a variable set after it started.",
         "Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. A key exported in your shell is not passed to the process your client spawns unless its config lists it. On a machine, `npx @iris-eval/mcp-server --self-test` prints the judge line for that shell, and GET /api/v1/health reports judge.enabled on a running dashboard.",
-        "Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it."
+        "Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it.",
+        "Optional: set IRIS_RELEVANCE_JUDGE_MODEL to a priced model id (claude-haiku-4-5, for example) to have answers_the_ask ask the judge whether each answer addresses its ask, and fail an off-topic one. That is one judge call per evaluation that carries an input, on your key and under the cap above; the key alone never turns it on."
       ],
       "title": "Enable the LLM judge (optional; the deterministic rules never need it)"
     },
@@ -4993,7 +5071,8 @@
       "safety",
       "correctness",
       "faithfulness",
-      "task_completed"
+      "task_completed",
+      "relevance"
     ],
     "supportedModels": [
       "claude-fable-5-1",
@@ -9187,7 +9266,7 @@
       "passed": null,
       "total": 40
     },
-    "totalCombined": 3732,
+    "totalCombined": 3767,
     "vitestDashboard": {
       "failed": 0,
       "passed": 350,
@@ -9195,8 +9274,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 3342,
-      "total": 3342
+      "passed": 3377,
+      "total": 3377
     }
   },
   "version": {

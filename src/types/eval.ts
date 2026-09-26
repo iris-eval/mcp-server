@@ -215,6 +215,15 @@ export interface EvalContext {
    */
 
   allowPaid?: boolean;
+
+  /**
+   * The relevance judge's answer for this evaluation, installed by the
+   * engine (never by callers) before any rule runs, when the deployment
+   * installed a relevance judge and the call carries an input. The rule
+   * that reads it (answers_the_ask) stays synchronous: the network call is
+   * the engine's, made once, on the one path every evaluation takes.
+   */
+  relevanceJudgment?: JudgeRecord;
 }
 
 /**
@@ -546,6 +555,49 @@ export interface EvalRuleResult {
    * instead of a clean bill of health.
    */
   evidenceIncomplete?: boolean;
+
+  /**
+   * The LLM judge this result consulted, when the deployment configured one
+   * for it: which model, what it scored against which pass line, what it
+   * said, what it cost, and — when it could not answer — why. Present only
+   * on answers_the_ask, and only when IRIS_RELEVANCE_JUDGE_MODEL (or an
+   * embedder's setRelevanceJudge) installed a judge and the call carried
+   * an input. A result that carries it without `error` was decided by the
+   * judge; one with `error` fell back to the lexical reading.
+   */
+  judge?: JudgeRecord;
+}
+
+/**
+ * One judge consultation, recorded on the rule result it decided (or tried
+ * to). `score`, `passThreshold`, `passed` and `rationale` are present when
+ * the judge answered; `error` when it did not. `costUsd` is 0 when nothing
+ * was called (a misconfiguration, a cost-cap refusal) and null when a
+ * provider call failed after it may have been billed.
+ */
+export interface JudgeRecord {
+  template: 'relevance';
+  provider: 'anthropic' | 'openai' | null;
+  model: string;
+  score?: number;
+  passThreshold?: number;
+  passed?: boolean;
+  /** What the model said about passing. Recorded, never obeyed: the threshold decides. */
+  selfReportedPass?: boolean;
+  /** The model's boolean disagrees with the threshold's verdict. */
+  disagreement?: boolean;
+  rationale?: string;
+  dimensions?: Record<string, number>;
+  costUsd: number | null;
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+  /** The model that produced the output, when the call recorded it (trace metadata or a span). */
+  agentModel?: string;
+  /** The judge shares a model family with that agent: its verdict stands, and is read as a same-family opinion. */
+  sameFamily?: boolean;
+  /** Why the judge gave no answer. */
+  error?: string;
 }
 
 /**

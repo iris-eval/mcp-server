@@ -239,6 +239,8 @@ Environment variables (CLI flags take precedence):
   IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
   IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)
   IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25)
+  IRIS_RELEVANCE_JUDGE_MODEL           A priced model id: answers_the_ask then asks this judge on every
+                                       evaluation that carries input, and gates on its verdict (off by default)
   IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default)
   IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match)
   IRIS_OTEL_ENDPOINT                   Enable best-effort OTLP/HTTP JSON trace export to this collector URL

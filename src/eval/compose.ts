@@ -42,6 +42,8 @@ import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_F
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
+import { RELEVANCE_JUDGE_MODEL_VAR } from './llm-judge/relevance-judge.js';
+import { sameFamilyWarning } from './llm-judge/family.js';
 
 // The gating predicate lives in gate.ts so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
 export { decides };
@@ -374,9 +376,48 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
           : 'Nothing was judged: no rule is configured for this eval type. Deploy a rule for it, or ask for an eval type that has one.',
     });
   }
+  /*
+   * The relevance judge (#649), in the two cases a reader must be told about
+   * whether or not the rule fired: it did not answer, so the verdict rests on
+   * the lexical reading a deployment that installed a judge did not expect;
+   * or it shares a model family with the agent, so its verdict is a
+   * same-family opinion. Both are read off the stored rule result, so a row
+   * read back says what the caller was told.
+   */
+  for (const r of result.rule_results) {
+    const j = r.judge;
+    if (!j) continue;
+    if (j.error !== undefined) {
+      const outcome = r.skipped ? 'which could not judge this output either' : fired(r) ? 'which failed it but only advises at the shipped thresholds' : 'which passed it';
+      out.push({
+        severity: 'warn',
+        addressee: 'operator',
+        rule: r.ruleName,
+        text: `The relevance judge (${j.provider ?? 'unknown provider'}/${j.model}) did not answer, so ${r.ruleName} fell back to its lexical reading, ${outcome}: ${j.error}.`,
+        configKey: RELEVANCE_JUDGE_MODEL_VAR,
+      });
+    } else if (j.sameFamily && j.agentModel) {
+      out.push({ severity: 'warn', addressee: 'operator', rule: r.ruleName, text: sameFamilyWarning(j.model, j.agentModel).message, configKey: RELEVANCE_JUDGE_MODEL_VAR });
+    }
+  }
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
     if (verdict.by.includes(r.ruleName)) continue;
+    if (r.ruleName === 'answers_the_ask' && r.kind === 'policy' && r.judge === undefined && !decides(r, cfg.defaultsGate)) {
+      /*
+       * Without a judge the rule advises, and says why (#649): the generic
+       * sentence below names only the thresholds, and the setting that turns
+       * this rule into a gate a reader can trust is the judge.
+       */
+      out.push({
+        severity: 'warn',
+        addressee: 'operator',
+        rule: r.ruleName,
+        text: `${r.ruleName} failed on its lexical reading, against thresholds Iris ships rather than ones you set, so it did not decide this verdict: comparing words fails some correct paraphrases, so without a judge the rule only advises. Set ${RELEVANCE_JUDGE_MODEL_VAR} to a priced model (with its provider's key) to have an LLM judge decide off-topic answers, or set a keyword_overlap or topic_consistency threshold to gate on the lexical reading.`,
+        configKey: RELEVANCE_JUDGE_MODEL_VAR,
+      });
+      continue;
+    }
     if (r.kind === 'policy' && r.origin === 'custom' && !decides(r, cfg.defaultsGate)) {
       // The deployment's own rule: nothing Iris ships was involved, so the
       // threshold note below would blame the wrong party (2026-09-23 review).

@@ -20,6 +20,7 @@ import { QUESTIONS, type EvaluationQuestion } from './eval/questions.js';
 import { publishedAccuracyFor, publishedProvenance, ppvAt, type PublishedRuleAccuracy } from './eval/accuracy.js';
 import { REGEX_MATCH_BUDGET_MS } from './eval/rules/regex-sandbox.js';
 import { JUDGE_ENABLE_STEPS, judgeState, type JudgeProvider } from './judge-enablement.js';
+import { relevanceJudgeState, type RelevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { TOOL_NAMES } from './tools/index.js';
 import { toolGuide, type ServedToolGuide } from './tools/guide.js';
@@ -52,6 +53,8 @@ export interface Capabilities {
     providers: JudgeProvider[];
     costCapUsd: number;
     howToEnable: readonly string[];
+    /** The relevance judge answers_the_ask gates on (#649): installed only when IRIS_RELEVANCE_JUDGE_MODEL names a model. */
+    relevance: RelevanceJudgeState;
   };
   citations: { fetchAllowed: boolean; domainsRestricted: boolean };
   dashboard: { enabled: boolean; url: string | null; mode: 'real' | 'demo' };
@@ -110,6 +113,7 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
       providers: judge.providers,
       costCapUsd: judge.costCapUsd,
       howToEnable: JUDGE_ENABLE_STEPS,
+      relevance: relevanceJudgeState(ctx.evalEngine?.relevanceJudgeInForce() ?? null),
     },
     citations: {
       fetchAllowed: process.env.IRIS_CITATION_ALLOW_FETCH === '1',

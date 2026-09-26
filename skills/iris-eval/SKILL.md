@@ -71,7 +71,7 @@ you report.
    `tool_calls` (or the stored trace) let the trajectory rules judge what the
    agent did.
 3. **Judge** semantically when heuristics aren't enough:
-   `evaluate_with_llm_judge` (6 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed).
+   `evaluate_with_llm_judge` (7 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed, relevance).
    Requires the user's own API key — see "LLM judge setup" below. Without a
    key the tool returns `IRIS_JUDGE_NOT_ENABLED` with the steps in its
    `recovery`; the deterministic rules never need one.
@@ -91,7 +91,7 @@ you report.
 | `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |
 | `delete_rule` | Remove a deployed custom rule, or disable / re-enable it. |
 | `delete_trace` | Remove a single stored trace by ID. |
-| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 6 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed. Cost-capped, bring your own key — Iris never proxies. |
+| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 7 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed, relevance. Cost-capped, bring your own key — Iris never proxies. |
 | `verify_citations` | Extract citations, fetch sources behind an SSRF-guarded resolver, judge whether each source supports the claim. |
 
 ## How to Read a Result
@@ -241,6 +241,7 @@ result, including a passing one.
 3. Restart the MCP session. A running process never sees a variable set after it started.
 4. Confirm from inside your client: read iris://capabilities — judge.enabled must be true there. A key exported in your shell is not passed to the process your client spawns unless its config lists it. On a machine, `npx @iris-eval/mcp-server --self-test` prints the judge line for that shell, and GET /api/v1/health reports judge.enabled on a running dashboard.
 5. Spend guard: each call is capped by IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL (default 0.25 USD) and refused before any spend if the worst case would exceed it. Iris calls the provider directly with your key and never proxies it.
+6. Optional: set IRIS_RELEVANCE_JUDGE_MODEL to a priced model id (claude-haiku-4-5, for example) to have answers_the_ask ask the judge whether each answer addresses its ask, and fail an off-topic one. That is one judge call per evaluation that carries an input, on your key and under the cap above; the key alone never turns it on.
 
 ## Example Workflows
 

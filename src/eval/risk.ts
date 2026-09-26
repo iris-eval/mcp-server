@@ -282,9 +282,12 @@ export function riskVerdict(
    * policy only when critical, so the composite measured a composer the
    * product does not run: no_stub_output blocked in the product and was a
    * "missed block" here. No deployment config in the harness, so
-   * defaultsGate is false.
+   * defaultsGate is false. A judgment gates too, as in compose.ts: a judge
+   * the deployment installed (answers_the_ask with a relevance judge) is a
+   * decision already made, and a harness that dropped it would measure a
+   * composer the product does not run.
    */
-  const gates = rows.filter((r) => r.kind === 'policy' && !r.skipped && r.passed === false && (isEffectivelyCritical(r) || decides(r, false)));
+  const gates = rows.filter((r) => !r.skipped && r.passed === false && (r.kind === 'judgment' || (r.kind === 'policy' && (isEffectivelyCritical(r) || decides(r, false)))));
   if (gates.length > 0) return { state: 'fail', basis: 'policy_gate', by: gates.map((r) => r.ruleName), risk: riskEstimate(result, prior, mode), confidence: null };
   const vetoes = rows.filter((r) => (r.kind === 'detection' || r.kind === 'inference') && !r.skipped && r.passed === false && isEffectivelyCritical(r));
   if (vetoes.length > 0) return { state: 'fail', basis: 'detector_veto', by: vetoes.map((r) => r.ruleName), risk: riskEstimate(result, prior, mode), confidence: null };
