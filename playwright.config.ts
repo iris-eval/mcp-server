@@ -13,8 +13,11 @@
  * user's real ~/.iris/iris.db. CI starts from a clean checkout so
  * pollution isn't a concern there; the same temp path still works.
  *
- * Port: 6921 (not the default 6920) so local iris-mcp dev servers can
- * run alongside tests without colliding.
+ * Port: chosen at run time (tests/e2e/_constants.ts, #665). CI uses 6921,
+ * as it always has; a local run takes E2E_PORT when set and otherwise a
+ * port the OS says is free, so a dashboard already running on 6921 (or
+ * anywhere) is never the one tested. globalSetup then checks that the
+ * server answering is the dashboard this checkout built.
  */
 import { defineConfig, devices } from '@playwright/test';
 import { E2E_PORT, E2E_DB_DIR, E2E_DB_PATH, E2E_BASE_URL } from './tests/e2e/_constants.js';
@@ -53,13 +56,15 @@ export default defineConfig({
      * tests/unit/middleware/rate-limit.test.ts, not here.
      */
     /*
-     * Outside CI a server already on the port is reused — and it serves the
-     * bundle IT was started with. A dashboard left running from an earlier
-     * session made two local runs test an old build (2026-09-07) before the
-     * cause was found. If a spec fails on code you just built, check the
-     * port first: `netstat -ano | findstr :6921` (Windows) / `lsof -i :6921`.
+     * A server already on the port is reused only when asked for with
+     * E2E_REUSE_SERVER=1 (never in CI). Reuse was the default outside CI,
+     * and a reused server serves the bundle IT was started with: a
+     * dashboard left running from an earlier session made two local runs
+     * test an old build (2026-09-07), and a stray `npx` server on 6921 did
+     * it again during #662. Even when reuse is asked for, globalSetup
+     * refuses a server that is not this checkout's build.
      */
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && process.env.E2E_REUSE_SERVER === '1',
     timeout: 30_000,
     env: {
       /*
