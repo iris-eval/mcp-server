@@ -103,7 +103,7 @@ function kindTally(kinds: readonly string[]): string {
 /**
  * What the stored row says about the citations that got no verdict, split
  * by the stage that failed: the source (not resolved) or the judge (resolved,
- * then no ruling). Empty when every citation was judged. The stored row
+ * then no verdict). Empty when every citation was judged. The stored row
  * carries no per-citation list, so this sentence is how a reader of the
  * evaluation — on the dashboard or at iris://evaluations/{id} — tells a
  * judge outage from a dead link (#407).
