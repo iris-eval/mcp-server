@@ -18,6 +18,7 @@ import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
+import { foldText } from '../../../src/storage/search.js';
 
 // File-backed stores, several opens per test, as in trace-search.test.ts.
 vi.setConfig({ testTimeout: 30_000 });
@@ -112,6 +113,17 @@ describe('CJK words are found inside a run', () => {
       expect(await ids(s, 'approved')).toEqual(['mix5', 'en6']);
       expect(await ids(s, 'cafe')).toEqual(['en6']);
       expect(await ids(s, 'approved 退款')).toEqual(['mix5']);
+    });
+
+    it(`never reads a phrase across words left out of the CJK stream, ${how}`, async () => {
+      const s = await adapter(':memory:', { fts5 });
+      // alpha and delta sit next to CJK words and are carried into the stream; beta and gamma are not.
+      await s.insertTraces(LOCAL_TENANT, [trace('g1', '退款 alpha beta gamma delta 批准')]);
+      expect(await ids(s, '"退款 alpha"')).toEqual(['g1']);
+      expect(await ids(s, '"delta 批准"')).toEqual(['g1']);
+      expect(await ids(s, '"alpha delta"')).toEqual([]);
+      expect(await ids(s, '"退款 批准"')).toEqual([]);
+      expect(await ids(s, '"beta gamma"')).toEqual(['g1']);
     });
 
     it(`marks the matched characters inside the run, ${how}`, async () => {
@@ -215,5 +227,13 @@ describe('the CJK stream stays exact', () => {
     expect(await ids(next, 'approved')).toEqual(['mix5', 'en6']);
     expect(cjkRows(next)).toEqual({ docs: 5, pending: 0 });
     assertIndexHealthy(next);
+  });
+});
+
+describe('folding ASCII', () => {
+  it('is lower-casing: foldText takes that shortcut for ASCII text, and the table agrees for every ASCII character', () => {
+    const all = Array.from({ length: 127 }, (_, i) => String.fromCharCode(i + 1)).join('');
+    // With one character past ASCII, foldText walks the table instead of taking the shortcut.
+    expect(foldText(`${all}é`).slice(0, all.length)).toBe(all.toLowerCase());
   });
 });

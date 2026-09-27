@@ -75,6 +75,8 @@ interface Token {
   end: number;
 }
 
+const ASCII_ONLY_RE = /^[\x00-\x7f]*$/;
+
 /** What unicode61 does with an ASCII code point: -1 splits a word, else the code point it becomes. */
 const ASCII = new Int32Array(128);
 const DROPPED = new Set(UNICODE61.dropped);
@@ -109,6 +111,8 @@ function foldChar(cp: number): string {
 
 /** Text as unicode61 would store its words, separators left in place: for a substring test against a query word. */
 export function foldText(text: string): string {
+  // ASCII folds by case alone (the table's ASCII folds are A-Z; a test holds it to that).
+  if (ASCII_ONLY_RE.test(text)) return text.toLowerCase();
   let out = '';
   for (let i = 0; i < text.length; ) {
     const cp = text.codePointAt(i)!;
@@ -254,8 +258,10 @@ function termHits(tokens: Token[], term: SearchTerm): number[] {
  *     separate `uni` stream;
  *   - Latin letters or digits written against CJK as a word of their own
  *     (`iPhone充电器` → `iphone 充电 电器`);
- *   - every other word of the field as it is, so a phrase that mixes CJK
- *     and other words still reads in order.
+ *   - the words either side of a word with CJK in it, as they are, so a
+ *     phrase that mixes CJK and other words still reads in order; where
+ *     other words are left out, a gap mark, so a phrase cannot read across
+ *     them. The rest of the field is in the main index already.
  *
  * A query word with CJK in it is cut the same way and searched as the phrase
  * of its pieces, so `批准` finds the bigram `批准` inside any run and
@@ -333,12 +339,25 @@ export function cjkStream(text: string, tokens: Token[] = tokenize(text)): CjkSt
   if (!hasCjk(text)) return undefined;
   const bi: StreamToken[] = [];
   const uni: StreamToken[] = [];
-  for (const token of tokens) {
-    if (hasCjk(token.norm)) piecesOf(wordChars(text, token), bi, uni);
+  const cjk = tokens.map((t) => hasCjk(t.norm));
+  let skipped = false;
+  tokens.forEach((token, i) => {
+    const carried = cjk[i] || cjk[i - 1] === true || cjk[i + 1] === true;
+    if (!carried) {
+      skipped = true;
+      return;
+    }
+    // Words were left out since the last piece: mark the gap, so a phrase cannot read across it.
+    if (skipped && bi.length > 0) bi.push({ norm: STREAM_GAP, start: token.start, end: token.start, firstEnd: token.start });
+    skipped = false;
+    if (cjk[i]) piecesOf(wordChars(text, token), bi, uni);
     else bi.push({ ...token, firstEnd: token.end });
-  }
+  });
   return { bi, uni };
 }
+
+/** Stands in the stream for words left out of it: a private-use character, which no query word holds. */
+const STREAM_GAP = '\uE000';
 
 /** A stream as the index column holds it. */
 export function streamText(tokens: StreamToken[]): string {
@@ -385,11 +404,11 @@ export function toCjkFtsQuery(term: SearchTerm): string {
   return `${CJK_STREAM_COLUMNS} : "${q.pieces.join(' ')}"${q.prefix ? '*' : ''}`;
 }
 
-/** Whether a stored string could hold CJK: past ASCII, or a \u escape (a JSON string inside it may spell CJK that way). Cheap; the stream decides. */
+/** Whether a stored string could hold CJK: it does, or it has a \u escape (a JSON string inside it may spell CJK that way). */
 export function mayHoldCjk(text: string | null | undefined): boolean {
-  return typeof text === 'string' && (NON_ASCII_RE.test(text) || text.includes('\\u'));
+  return typeof text === 'string' && (hasCjk(text) || text.includes('\\u'));
 }
-const NON_ASCII_RE = /[^\x00-\x7f]/;
+
 
 /** Every stretch of the field's text where `term` matches in its CJK stream, as [start, end] offsets. */
 function cjkHits(stream: CjkStream, term: SearchTerm): Array<[number, number]> {

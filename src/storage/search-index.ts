@@ -116,7 +116,7 @@
  * way on the first start with FTS5.
  */
 import type { Driver } from './driver.js';
-import { cjkStream, hasCjk, searchableText, streamText, SEARCH_FIELDS } from './search.js';
+import { cjkStream, hasCjk, mayHoldCjk as textMayHoldCjk, searchableText, streamText, SEARCH_FIELDS } from './search.js';
 
 export const SEARCH_TABLE = 'trace_search';
 export const SEARCH_DOCS_TABLE = 'trace_search_docs';
@@ -268,8 +268,9 @@ const CJK_UNINDEX = (traceRef: string) =>
 /**
  * Whether a stored value could hold CJK: any character past ASCII, or a \u
  * escape (a JSON string inside a span attribute, written by a client that
- * escapes, spells CJK that way). Cheap and never wrong the other way; the
- * stream itself decides.
+ * escapes, spells CJK that way). A cheap test, never wrong the other way:
+ * indexCjk then tests the text itself before it does any real work. (A GLOB
+ * over the CJK ranges was exact, but cost about 70 µs a KB on every value.)
  */
 const mayHoldCjk = (e: string) => `(length(${e}) <> length(CAST(${e} AS BLOB)) OR instr(${e}, '\\u') > 0)`;
 const traceMayHoldCjk = (traceRef: string) =>
@@ -436,6 +437,7 @@ export function indexCjk(db: Driver, docIds: readonly number[]): void {
   const store = db.prepare(`INSERT INTO ${CJK_DOCS_TABLE} (doc_id, ${CJK_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?)`);
   const add = db.prepare(`INSERT INTO ${CJK_TABLE} (rowid, ${CJK_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?)`);
   const done = db.prepare(`DELETE FROM ${CJK_PENDING_TABLE} WHERE doc_id = ?`);
+  const readRawSpans = db.prepare(`SELECT group_concat(COALESCE(attributes, '') || char(10) || COALESCE(events, ''), char(10)) AS raw FROM spans WHERE trace_id = ?`);
   const parse = (v: unknown): unknown => {
     if (typeof v !== 'string') return undefined;
     try {
@@ -448,8 +450,11 @@ export function indexCjk(db: Driver, docIds: readonly number[]): void {
     unindex.run(docId);
     forget.run(docId);
     done.run(docId);
-    const row = readTrace.get(docId) as { trace_id: string; input: unknown; output: unknown; tool_calls: unknown; metadata: unknown } | undefined;
+    const row = readTrace.get(docId) as { trace_id: string; input: string | null; output: string | null; tool_calls: string | null; metadata: string | null } | undefined;
     if (!row) continue;
+    // The stored text first, as it is: most traces queued here only had a character past ASCII, and hold no CJK.
+    const rawSpans = (readRawSpans.get(row.trace_id) as { raw: string | null } | undefined)?.raw ?? null;
+    if (![row.input, row.output, row.tool_calls, row.metadata, rawSpans].some((v) => textMayHoldCjk(v))) continue;
     const spans = readSpanText(db, [row.trace_id]).get(row.trace_id)?.text ?? '';
     const fields = searchableText({ input: row.input, output: row.output, tool_calls: parse(row.tool_calls), metadata: parse(row.metadata) }, spans);
     if (!SEARCH_FIELDS.some((f) => hasCjk(fields[f]))) continue;
