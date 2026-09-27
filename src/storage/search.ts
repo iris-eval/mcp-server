@@ -7,9 +7,9 @@
  * (`input:` would scope the search to a column the caller did not choose)
  * and a crash (`"`, `(`, `NEAR(` are syntax errors). The query is parsed
  * here into terms instead, each term is reduced to the tokens the index
- * holds, and every term goes to MATCH as a double-quoted string of plain
- * letters and digits. Nothing the caller typed reaches the FTS5 parser as
- * syntax, so no input can error it or widen it.
+ * holds, and every term goes to MATCH as a double-quoted string of those
+ * tokens, which never hold a quote. Nothing the caller typed reaches the
+ * FTS5 parser as syntax, so no input can error it or widen it.
  *
  * The language is three rules, the ones a search box already implies:
  *   - every word must appear (in any of the searched fields), in any order;

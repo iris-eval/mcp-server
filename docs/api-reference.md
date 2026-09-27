@@ -353,6 +353,7 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 - `word*` matches any word it starts: `refund*` finds refunded and refunds.
 - Case and accents are ignored: `cafe` finds Café.
 - Punctuation separates words and is not searchable itself: `order-5521` is searched as the phrase `"order 5521"`, which is how it was indexed.
+- Chinese, Japanese and Korean are found inside a run of characters, since those languages put no spaces between words: `批准` finds `退款已经批准了`, `承認` finds `カードの支払いが承認されました`, and one character finds every run it is in. The characters must be in that order and inside one run: `批准了请` does not match across the comma in `批准了，请`. Latin written against CJK is a word of its own: `iphone` finds `iPhone充电器`.
 
 `spans` is what a trace sent over OTLP (`POST /v1/traces`) carries beyond its first model call: the later model calls of an agent loop, tool arguments and results, and exception messages. It is the string values of each span's attributes and of its events' attributes, in span start order:
 

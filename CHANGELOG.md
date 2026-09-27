@@ -55,6 +55,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     | Without FTS5, a word only in spans | not found | 1,406 ms | not found | 36.0 s |
 
     Without FTS5 (and while the index is being built) a search reads the traces, and now reads span text too, for the traces whose own fields lack a word and whose stored spans could hold it: two to four times as long. Traces without spans cost the same as before: at 100,000, 211 MB either way, 317 µs per insert against 308, and `delete_trace` 14.7 ms against 15.2.
+- **A word inside Chinese, Japanese or Korean text is found (#682).** Those languages put no spaces between words, and the index kept a run of CJK characters as one word, so `批准` ("approved") did not find `退款已经批准了`; only the whole run did. A field that holds CJK is now also indexed as the overlapping two-character pieces of each run, and a CJK search word is cut the same way and searched as those pieces in order. A word of one, two or more characters is found anywhere inside a run, in order and within one run (`批准了请` does not match across the comma in `批准了，请`), with the index and without FTS5, and the snippet marks the matched characters inside the run. Latin written against CJK is a word of its own there (`iphone` finds `iPhone充电器`).
+  - Search now splits text exactly as the index does. It used to approximate SQLite's tokenizer, which split Korean syllables into letters: a Korean word searched with the index found nothing, while the same search without FTS5 found it. The split is now read from a table of what SQLite's `unicode61` tokenizer does with each of the 1,112,063 code points, generated from SQLite by `npm run unicode61:render`; a CI job regenerates it and fails when it differs, and a test checks 2,000 random strings drawn from Latin, Greek, Cyrillic, Hangul, kana, Han, emoji, private-use characters and combining marks against FTS5 itself.
+  - Traces without CJK cost the same as before, measured with the code before this change and after it run side by side in one process, each step alternated, on traces that are each an agent loop of three model calls and two tool calls. At 10,000 traces: 1,410 µs per insert against 1,388, 102 MB either way, and a search for a word in 1% of traces 3.3 ms against 6.6 (the snippet's word split is faster now). At 100,000: 1,955 µs per insert against 1,986, 993 MB either way, `delete_trace` 226 ms against 255, a 3% retention sweep 16.3 s against 18.4. With accented Latin text: 1,968 µs per insert against 1,877, and 130 MB either way. Their words never enter the CJK tables.
+  - What CJK text costs, on the same agent loops written in Chinese, at 10,000 traces:
+
+    | | Before | After |
+    |---|---|---|
+    | File | 128 MB | 251 MB |
+    | Insert, per trace | 1,936 µs | 6,622 µs |
+    | `delete_trace`, median of 20 | 24.5 ms | 244.9 ms |
+    | Retention sweep of 3% | 1.96 s | 4.89 s |
+    | Search, a CJK word inside a run (1% of traces) | not found | 28.5 ms |
+    | Search, a Latin word in every trace | 54.6 ms | 86.6 ms |
+    | Without FTS5, a Latin word in 1% of traces | 4.2 s | 6.9 s |
+    | Index built after upgrading from 0.19.0 | 7.4 s | 50.8 s |
+
+    Every CJK character is a word of the index twice over (in two pieces), and each is erased from the index when its trace is deleted, which is where the file size and the delete time go. The pieces are kept apart from the rest of the index, with the exact text each trace was given, so deletes stay exact and a store without CJK pays nothing for them.
 
 ### Changed
 
