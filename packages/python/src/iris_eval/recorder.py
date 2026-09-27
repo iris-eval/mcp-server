@@ -206,6 +206,8 @@ class IrisRecorder:
         self._cond = threading.Condition()
         self._busy = False
         self._closed = False
+        # Callers waiting in flush(); while there are any, the sender does not wait out its batching interval.
+        self._flushing = 0
         self._thread: threading.Thread | None = None
         self._warned: set[str] = set()
         self._http: httpx.Client | None = None
@@ -260,14 +262,18 @@ class IrisRecorder:
         """Send everything queued. True when it was all delivered (or dropped) within ``timeout`` seconds."""
         deadline = time.monotonic() + timeout
         with self._cond:
-            self._cond.notify_all()
-            while self._queue or self._busy:
-                left = deadline - time.monotonic()
-                if left <= 0:
-                    return False
-                self._ensure_thread()
+            self._flushing += 1
+            try:
                 self._cond.notify_all()
-                self._cond.wait(min(left, 0.05))
+                while self._queue or self._busy:
+                    left = deadline - time.monotonic()
+                    if left <= 0:
+                        return False
+                    self._ensure_thread()
+                    self._cond.notify_all()
+                    self._cond.wait(min(left, 0.05))
+            finally:
+                self._flushing -= 1
         return True
 
     def close(self, timeout: float = 10.0) -> None:
@@ -296,9 +302,15 @@ class IrisRecorder:
                     self._cond.wait()
                 if not self._queue and self._closed:
                     return
-                # Let a burst gather into one request, unless someone is waiting on a flush.
-                if self._interval > 0:
-                    self._cond.wait(self._interval)
+                # Let a burst gather into one request, unless someone is waiting on a flush or the
+                # recorder is closing. record() wakes this wait too, so it is a deadline, not one wait:
+                # otherwise every new trace cut the interval short and the queue was sent one at a time.
+                gather_until = time.monotonic() + self._interval
+                while not self._flushing and not self._closed:
+                    left = gather_until - time.monotonic()
+                    if left <= 0:
+                        break
+                    self._cond.wait(left)
                 taken = list(self._queue)
                 self._queue.clear()
                 self._busy = True

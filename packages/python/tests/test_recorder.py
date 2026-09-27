@@ -87,7 +87,10 @@ def test_the_queue_is_bounded_and_drops_the_oldest() -> None:
     recorder = IrisRecorder("http://127.0.0.1:9", max_queue=2, flush_interval=60, on_error=errors.append, transport=httpx.MockTransport(lambda r: httpx.Response(200, json={})))
     for text in ("1", "2", "3"):
         recorder.record(trace(text))
-    assert recorder.stats["dropped"] >= 1
+        time.sleep(0.2)  # time for the sender thread to run between records, as it would on a busy machine
+    # The sender waits out its minute-long interval (a new trace does not cut it short), so the third trace
+    # finds the queue full and the first is dropped: exactly one, every run.
+    assert recorder.stats["dropped"] == 1
     assert any("queue is full" in str(e) for e in errors)
     recorder.close(timeout=2)
 
