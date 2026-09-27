@@ -1,0 +1,1221 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "weather-graph"
+            }
+          },
+          {
+            "key": "langsmith.internal_provider",
+            "value": {
+              "boolValue": true
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "langsmith"
+          },
+          "spans": [
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "b4a6068d3c8a11b9",
+              "name": "LangGraph",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092518644992",
+              "endTimeUnixNano": "1790410092661894912",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "LangGraph"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn1dfQ=="
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn0seyJjb250ZW50IjoiIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJtb2RlbF9uYW1lIjoic2NyaXB0ZWQtbW9kZWwiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDFhMGRjYzEtZjA2ZS03ZGIwLTk2OTYtMThkMmE0ZjVlMDhmLTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdzIjp7ImNpdHkiOiJQYXJpcyJ9LCJpZCI6ImNhbGxfd2VhdGhlcl8xIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxMCwib3V0cHV0X3Rva2VucyI6MTIsInRvdGFsX3Rva2VucyI6MjJ9fSx7ImNvbnRlbnQiOiIxOEMsIHN1bm55IGluIFBhcmlzIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJ0b29sIiwibmFtZSI6ImdldF93ZWF0aGVyIiwiaWQiOiI2MjJjNjMyMC1kN2UxLTQxNmUtODkwNC0xN2ZmZTM4YWM0NTkiLCJ0b29sX2NhbGxfaWQiOiJjYWxsX3dlYXRoZXJfMSIsInN0YXR1cyI6InN1Y2Nlc3MifSx7ImNvbnRlbnQiOiJJdCBpcyAxOCBkZWdyZWVzIGFuZCBzdW5ueSBpbiBQYXJpcy4iLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNlX21ldGFkYXRhIjp7Im1vZGVsX25hbWUiOiJzY3JpcHRlZC1tb2RlbCIsImZpbmlzaF9yZWFzb24iOiJzdG9wIn0sInR5cGUiOiJhaSIsImlkIjoibGNfcnVuLS0wMWEwZGNjMS1mMDc0LTc4YzAtODBmYy1iZWQ4ZGExZDlmMDAtMCIsInRvb2xfY2FsbHMiOltdLCJpbnZhbGlkX3Rvb2xfY2FsbHMiOltdLCJ1c2FnZV9tZXRhZGF0YSI6eyJpbnB1dF90b2tlbnMiOjMwLCJvdXRwdXRfdG9rZW5zIjo4LCJ0b3RhbF90b2tlbnMiOjM4fX1dfQ=="
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "2329ef11f33d0314",
+              "parentSpanId": "b4a6068d3c8a11b9",
+              "name": "agent",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092652962048",
+              "endTimeUnixNano": "1790410092656713984",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:f6b0aeea-dcac-ef95-d993-08c0469ab901"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "graph:step:1"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn1dfQ=="
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7fSwicmVzcG9uc2VfbWV0YWRhdGEiOnsibW9kZWxfbmFtZSI6InNjcmlwdGVkLW1vZGVsIiwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifSwidHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxYTBkY2MxLWYwNmUtN2RiMC05Njk2LTE4ZDJhNGY1ZTA4Zi0wIiwidG9vbF9jYWxscyI6W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJjaXR5IjoiUGFyaXMifSwiaWQiOiJjYWxsX3dlYXRoZXJfMSIsInR5cGUiOiJ0b29sX2NhbGwifV0sImludmFsaWRfdG9vbF9jYWxscyI6W10sInVzYWdlX21ldGFkYXRhIjp7ImlucHV0X3Rva2VucyI6MTAsIm91dHB1dF90b2tlbnMiOjEyLCJ0b3RhbF90b2tlbnMiOjIyfX1dfQ=="
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "76f960e08029957c",
+              "parentSpanId": "2329ef11f33d0314",
+              "name": "ScriptedChatModel",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092654673152",
+              "endTimeUnixNano": "1790410092655972096",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "llm"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "ScriptedChatModel"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "scripted-model"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.definitions",
+                  "value": {
+                    "stringValue": "[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"The weather in a city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langchain_chat_model"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:f6b0aeea-dcac-ef95-d993-08c0469ab901"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:f6b0aeea-dcac-ef95-d993-08c0469ab901"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_provider",
+                  "value": {
+                    "stringValue": "scripted"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_model_type",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_model_name",
+                  "value": {
+                    "stringValue": "scripted-model"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.lc_versions",
+                  "value": {
+                    "stringValue": "{\"langchain-core\":\"1.6.5\"}"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata._type",
+                  "value": {
+                    "stringValue": "scripted"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.usage_metadata",
+                  "value": {
+                    "stringValue": "{\"input_tokens\":10,\"output_tokens\":12,\"total_tokens\":22}"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "seq:step:1"
+                  }
+                },
+                {
+                  "key": "gen_ai.serialized.name",
+                  "value": {
+                    "stringValue": "ScriptedChatModel"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W1t7ImxjIjoxLCJ0eXBlIjoiY29uc3RydWN0b3IiLCJpZCI6WyJsYW5nY2hhaW4iLCJzY2hlbWEiLCJtZXNzYWdlcyIsIkh1bWFuTWVzc2FnZSJdLCJrd2FyZ3MiOnsiY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwidHlwZSI6Imh1bWFuIiwiaWQiOiIzM2M0ZTJjOS1lN2I1LTRmZDctOGU2NC1kZjg4YWI5MmNhODIifX1dXX0="
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "10"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "12"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.total_tokens",
+                  "value": {
+                    "intValue": "22"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJnZW5lcmF0aW9ucyI6W1t7InRleHQiOiIiLCJnZW5lcmF0aW9uX2luZm8iOm51bGwsInR5cGUiOiJDaGF0R2VuZXJhdGlvbiIsIm1lc3NhZ2UiOnsibGMiOjEsInR5cGUiOiJjb25zdHJ1Y3RvciIsImlkIjpbImxhbmdjaGFpbiIsInNjaGVtYSIsIm1lc3NhZ2VzIiwiQUlNZXNzYWdlIl0sImt3YXJncyI6eyJjb250ZW50IjoiIiwicmVzcG9uc2VfbWV0YWRhdGEiOnsibW9kZWxfbmFtZSI6InNjcmlwdGVkLW1vZGVsIiwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifSwidHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxYTBkY2MxLWYwNmUtN2RiMC05Njk2LTE4ZDJhNGY1ZTA4Zi0wIiwidG9vbF9jYWxscyI6W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJjaXR5IjoiUGFyaXMifSwiaWQiOiJjYWxsX3dlYXRoZXJfMSIsInR5cGUiOiJ0b29sX2NhbGwifV0sInVzYWdlX21ldGFkYXRhIjp7ImlucHV0X3Rva2VucyI6MTAsIm91dHB1dF90b2tlbnMiOjEyLCJ0b3RhbF90b2tlbnMiOjIyfSwiaW52YWxpZF90b29sX2NhbGxzIjpbXX19fV1dLCJsbG1fb3V0cHV0IjpudWxsLCJydW4iOm51bGwsInR5cGUiOiJMTE1SZXN1bHQifQ=="
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "c54c09ccbc3a3073",
+              "parentSpanId": "2329ef11f33d0314",
+              "name": "tools_condition",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092656300032",
+              "endTimeUnixNano": "1790410092656576000",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "tools_condition"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:f6b0aeea-dcac-ef95-d993-08c0469ab901"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "seq:step:3"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn0seyJjb250ZW50IjoiIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJtb2RlbF9uYW1lIjoic2NyaXB0ZWQtbW9kZWwiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDFhMGRjYzEtZjA2ZS03ZGIwLTk2OTYtMThkMmE0ZjVlMDhmLTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdzIjp7ImNpdHkiOiJQYXJpcyJ9LCJpZCI6ImNhbGxfd2VhdGhlcl8xIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxMCwib3V0cHV0X3Rva2VucyI6MTIsInRvdGFsX3Rva2VucyI6MjJ9fV19"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJvdXRwdXQiOiJ0b29scyJ9"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "c0012c8ffbab2ff9",
+              "parentSpanId": "b4a6068d3c8a11b9",
+              "name": "tools",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092657308160",
+              "endTimeUnixNano": "1790410092659482880",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "tools"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "2"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "tools"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:tools\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"tools\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "tools:511e55ca-718c-f5e5-c6bf-eca48e319653"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "graph:step:2"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn0seyJjb250ZW50IjoiIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJtb2RlbF9uYW1lIjoic2NyaXB0ZWQtbW9kZWwiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDFhMGRjYzEtZjA2ZS03ZGIwLTk2OTYtMThkMmE0ZjVlMDhmLTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdzIjp7ImNpdHkiOiJQYXJpcyJ9LCJpZCI6ImNhbGxfd2VhdGhlcl8xIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxMCwib3V0cHV0X3Rva2VucyI6MTIsInRvdGFsX3Rva2VucyI6MjJ9fV19"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IjE4Qywgc3VubnkgaW4gUGFyaXMiLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNlX21ldGFkYXRhIjp7fSwidHlwZSI6InRvb2wiLCJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJ0b29sX2NhbGxfaWQiOiJjYWxsX3dlYXRoZXJfMSIsInN0YXR1cyI6InN1Y2Nlc3MifV19"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "42c35a5f7becf2cc",
+              "parentSpanId": "c0012c8ffbab2ff9",
+              "name": "get_weather",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092658230016",
+              "endTimeUnixNano": "1790410092658875904",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "tool"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.id",
+                  "value": {
+                    "stringValue": "call_weather_1"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "2"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "tools"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:tools\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"tools\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "tools:511e55ca-718c-f5e5-c6bf-eca48e319653"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.checkpoint_ns",
+                  "value": {
+                    "stringValue": "tools:511e55ca-718c-f5e5-c6bf-eca48e319653"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "seq:step:1"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJjaXR5IjoiUGFyaXMifQ=="
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJvdXRwdXQiOnsiY29udGVudCI6IjE4Qywgc3VubnkgaW4gUGFyaXMiLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNlX21ldGFkYXRhIjp7fSwidHlwZSI6InRvb2wiLCJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJ0b29sX2NhbGxfaWQiOiJjYWxsX3dlYXRoZXJfMSIsInN0YXR1cyI6InN1Y2Nlc3MifX0="
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "72a4458904fa4ac4",
+              "parentSpanId": "b4a6068d3c8a11b9",
+              "name": "agent",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092659951872",
+              "endTimeUnixNano": "1790410092661645056",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "3"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:4245ae48-034b-26ea-349b-7107fa9f9468"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "graph:step:3"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn0seyJjb250ZW50IjoiIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJtb2RlbF9uYW1lIjoic2NyaXB0ZWQtbW9kZWwiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDFhMGRjYzEtZjA2ZS03ZGIwLTk2OTYtMThkMmE0ZjVlMDhmLTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdzIjp7ImNpdHkiOiJQYXJpcyJ9LCJpZCI6ImNhbGxfd2VhdGhlcl8xIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxMCwib3V0cHV0X3Rva2VucyI6MTIsInRvdGFsX3Rva2VucyI6MjJ9fSx7ImNvbnRlbnQiOiIxOEMsIHN1bm55IGluIFBhcmlzIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJ0b29sIiwibmFtZSI6ImdldF93ZWF0aGVyIiwiaWQiOiI2MjJjNjMyMC1kN2UxLTQxNmUtODkwNC0xN2ZmZTM4YWM0NTkiLCJ0b29sX2NhbGxfaWQiOiJjYWxsX3dlYXRoZXJfMSIsInN0YXR1cyI6InN1Y2Nlc3MifV19"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6Ikl0IGlzIDE4IGRlZ3JlZXMgYW5kIHN1bm55IGluIFBhcmlzLiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7fSwicmVzcG9uc2VfbWV0YWRhdGEiOnsibW9kZWxfbmFtZSI6InNjcmlwdGVkLW1vZGVsIiwiZmluaXNoX3JlYXNvbiI6InN0b3AifSwidHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxYTBkY2MxLWYwNzQtNzhjMC04MGZjLWJlZDhkYTFkOWYwMC0wIiwidG9vbF9jYWxscyI6W10sImludmFsaWRfdG9vbF9jYWxscyI6W10sInVzYWdlX21ldGFkYXRhIjp7ImlucHV0X3Rva2VucyI6MzAsIm91dHB1dF90b2tlbnMiOjgsInRvdGFsX3Rva2VucyI6Mzh9fV19"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "c8efb5ec670b49ad",
+              "parentSpanId": "72a4458904fa4ac4",
+              "name": "ScriptedChatModel",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092660409856",
+              "endTimeUnixNano": "1790410092660995072",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "llm"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "ScriptedChatModel"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "scripted-model"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.definitions",
+                  "value": {
+                    "stringValue": "[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"The weather in a city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langchain_chat_model"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "3"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:4245ae48-034b-26ea-349b-7107fa9f9468"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:4245ae48-034b-26ea-349b-7107fa9f9468"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_provider",
+                  "value": {
+                    "stringValue": "scripted"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_model_type",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_model_name",
+                  "value": {
+                    "stringValue": "scripted-model"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.lc_versions",
+                  "value": {
+                    "stringValue": "{\"langchain-core\":\"1.6.5\"}"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata._type",
+                  "value": {
+                    "stringValue": "scripted"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.usage_metadata",
+                  "value": {
+                    "stringValue": "{\"input_tokens\":30,\"output_tokens\":8,\"total_tokens\":38}"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "seq:step:1"
+                  }
+                },
+                {
+                  "key": "gen_ai.serialized.name",
+                  "value": {
+                    "stringValue": "ScriptedChatModel"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W1t7ImxjIjoxLCJ0eXBlIjoiY29uc3RydWN0b3IiLCJpZCI6WyJsYW5nY2hhaW4iLCJzY2hlbWEiLCJtZXNzYWdlcyIsIkh1bWFuTWVzc2FnZSJdLCJrd2FyZ3MiOnsiY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwidHlwZSI6Imh1bWFuIiwiaWQiOiIzM2M0ZTJjOS1lN2I1LTRmZDctOGU2NC1kZjg4YWI5MmNhODIifX0seyJsYyI6MSwidHlwZSI6ImNvbnN0cnVjdG9yIiwiaWQiOlsibGFuZ2NoYWluIiwic2NoZW1hIiwibWVzc2FnZXMiLCJBSU1lc3NhZ2UiXSwia3dhcmdzIjp7ImNvbnRlbnQiOiIiLCJyZXNwb25zZV9tZXRhZGF0YSI6eyJtb2RlbF9uYW1lIjoic2NyaXB0ZWQtbW9kZWwiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDFhMGRjYzEtZjA2ZS03ZGIwLTk2OTYtMThkMmE0ZjVlMDhmLTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdzIjp7ImNpdHkiOiJQYXJpcyJ9LCJpZCI6ImNhbGxfd2VhdGhlcl8xIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxMCwib3V0cHV0X3Rva2VucyI6MTIsInRvdGFsX3Rva2VucyI6MjJ9LCJpbnZhbGlkX3Rvb2xfY2FsbHMiOltdfX0seyJsYyI6MSwidHlwZSI6ImNvbnN0cnVjdG9yIiwiaWQiOlsibGFuZ2NoYWluIiwic2NoZW1hIiwibWVzc2FnZXMiLCJUb29sTWVzc2FnZSJdLCJrd2FyZ3MiOnsiY29udGVudCI6IjE4Qywgc3VubnkgaW4gUGFyaXMiLCJ0eXBlIjoidG9vbCIsIm5hbWUiOiJnZXRfd2VhdGhlciIsImlkIjoiNjIyYzYzMjAtZDdlMS00MTZlLTg5MDQtMTdmZmUzOGFjNDU5IiwidG9vbF9jYWxsX2lkIjoiY2FsbF93ZWF0aGVyXzEiLCJzdGF0dXMiOiJzdWNjZXNzIn19XV19"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "30"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "8"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.total_tokens",
+                  "value": {
+                    "intValue": "38"
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJnZW5lcmF0aW9ucyI6W1t7InRleHQiOiJJdCBpcyAxOCBkZWdyZWVzIGFuZCBzdW5ueSBpbiBQYXJpcy4iLCJnZW5lcmF0aW9uX2luZm8iOm51bGwsInR5cGUiOiJDaGF0R2VuZXJhdGlvbiIsIm1lc3NhZ2UiOnsibGMiOjEsInR5cGUiOiJjb25zdHJ1Y3RvciIsImlkIjpbImxhbmdjaGFpbiIsInNjaGVtYSIsIm1lc3NhZ2VzIiwiQUlNZXNzYWdlIl0sImt3YXJncyI6eyJjb250ZW50IjoiSXQgaXMgMTggZGVncmVlcyBhbmQgc3VubnkgaW4gUGFyaXMuIiwicmVzcG9uc2VfbWV0YWRhdGEiOnsibW9kZWxfbmFtZSI6InNjcmlwdGVkLW1vZGVsIiwiZmluaXNoX3JlYXNvbiI6InN0b3AifSwidHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxYTBkY2MxLWYwNzQtNzhjMC04MGZjLWJlZDhkYTFkOWYwMC0wIiwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjozMCwib3V0cHV0X3Rva2VucyI6OCwidG90YWxfdG9rZW5zIjozOH0sInRvb2xfY2FsbHMiOltdLCJpbnZhbGlkX3Rvb2xfY2FsbHMiOltdfX19XV0sImxsbV9vdXRwdXQiOm51bGwsInJ1biI6bnVsbCwidHlwZSI6IkxMTVJlc3VsdCJ9"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "c203d1b223db1abc7bd6a51452b8012a",
+              "spanId": "0181845bf333af3d",
+              "parentSpanId": "72a4458904fa4ac4",
+              "name": "tools_condition",
+              "kind": 1,
+              "startTimeUnixNano": "1790410092661266944",
+              "endTimeUnixNano": "1790410092661554176",
+              "attributes": [
+                {
+                  "key": "langsmith.span.kind",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.name",
+                  "value": {
+                    "stringValue": "tools_condition"
+                  }
+                },
+                {
+                  "key": "langsmith.trace.session_name",
+                  "value": {
+                    "stringValue": "default"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chain"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "langchain"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.ls_integration",
+                  "value": {
+                    "stringValue": "langgraph"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_step",
+                  "value": {
+                    "intValue": "3"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_node",
+                  "value": {
+                    "stringValue": "agent"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_triggers",
+                  "value": {
+                    "stringValue": "[\"branch:to:agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_path",
+                  "value": {
+                    "stringValue": "[\"__pregel_pull\",\"agent\"]"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.langgraph_checkpoint_ns",
+                  "value": {
+                    "stringValue": "agent:4245ae48-034b-26ea-349b-7107fa9f9468"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ENABLED",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_OTEL_ONLY",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.metadata.LANGSMITH_TRACING",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "langsmith.span.tags",
+                  "value": {
+                    "stringValue": "seq:step:3"
+                  }
+                },
+                {
+                  "key": "gen_ai.prompt",
+                  "value": {
+                    "bytesValue": "eyJtZXNzYWdlcyI6W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gUGFyaXM/IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiMzNjNGUyYzktZTdiNS00ZmQ3LThlNjQtZGY4OGFiOTJjYTgyIn0seyJjb250ZW50IjoiIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJtb2RlbF9uYW1lIjoic2NyaXB0ZWQtbW9kZWwiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDFhMGRjYzEtZjA2ZS03ZGIwLTk2OTYtMThkMmE0ZjVlMDhmLTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdzIjp7ImNpdHkiOiJQYXJpcyJ9LCJpZCI6ImNhbGxfd2VhdGhlcl8xIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxMCwib3V0cHV0X3Rva2VucyI6MTIsInRvdGFsX3Rva2VucyI6MjJ9fSx7ImNvbnRlbnQiOiIxOEMsIHN1bm55IGluIFBhcmlzIiwiYWRkaXRpb25hbF9rd2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJ0b29sIiwibmFtZSI6ImdldF93ZWF0aGVyIiwiaWQiOiI2MjJjNjMyMC1kN2UxLTQxNmUtODkwNC0xN2ZmZTM4YWM0NTkiLCJ0b29sX2NhbGxfaWQiOiJjYWxsX3dlYXRoZXJfMSIsInN0YXR1cyI6InN1Y2Nlc3MifSx7ImNvbnRlbnQiOiJJdCBpcyAxOCBkZWdyZWVzIGFuZCBzdW5ueSBpbiBQYXJpcy4iLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNlX21ldGFkYXRhIjp7Im1vZGVsX25hbWUiOiJzY3JpcHRlZC1tb2RlbCIsImZpbmlzaF9yZWFzb24iOiJzdG9wIn0sInR5cGUiOiJhaSIsImlkIjoibGNfcnVuLS0wMWEwZGNjMS1mMDc0LTc4YzAtODBmYy1iZWQ4ZGExZDlmMDAtMCIsInRvb2xfY2FsbHMiOltdLCJpbnZhbGlkX3Rvb2xfY2FsbHMiOltdLCJ1c2FnZV9tZXRhZGF0YSI6eyJpbnB1dF90b2tlbnMiOjMwLCJvdXRwdXRfdG9rZW5zIjo4LCJ0b3RhbF90b2tlbnMiOjM4fX1dfQ=="
+                  }
+                },
+                {
+                  "key": "gen_ai.completion",
+                  "value": {
+                    "bytesValue": "eyJvdXRwdXQiOiJfX2VuZF9fIn0="
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

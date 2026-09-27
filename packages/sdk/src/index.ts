@@ -11,13 +11,14 @@
  * Each call becomes an OpenTelemetry GenAI span sent to Iris's OTLP ingest
  * (`POST /v1/traces`). See the README for what is recorded and how.
  */
-export { wrapOpenAI, wrapAnthropic, recordingFetch, type WrapOptions } from './wrap.js';
+export { wrapOpenAI, wrapAnthropic, recordingFetch, resourceFor, type WrapOptions } from './wrap.js';
 export { irisMiddleware, type IrisMiddlewareOptions, type IrisLanguageModelMiddleware } from './ai-sdk.js';
 export {
   IrisRecorder,
   defaultRecorder,
   exportRequest,
   findServer,
+  programName,
   newSpanId,
   newTraceId,
   nowNanos,
@@ -28,5 +29,5 @@ export {
   type StoredTrace,
   type TraceRecord,
 } from './recorder.js';
-export { genAiSpan, inputMessages, outputMessages, inputText, outputText, assemblerFor, type Api, type AttributeValue, type Attributes, type CallRecord, type Message, type Part } from './genai.js';
+export { MAX_PART_CHARS, genAiSpan, inputMessages, outputMessages, inputText, outputText, assemblerFor, type Api, type AttributeValue, type Attributes, type CallRecord, type Message, type Part } from './genai.js';
 export { SDK_NAME, SDK_VERSION } from './version.js';
