@@ -18,20 +18,28 @@ describe('Tooltip', () => {
   });
 
   it('shows tooltip after delay on hover', async () => {
-    const user = userEvent.setup();
+    // The delay on a fake clock: waiting for a real 50 ms timer inside a
+    // 500 ms window failed when a loaded machine ran the timer late.
+    vi.useFakeTimers();
     render(
       <Tooltip content="Helpful explanation" delayMs={50}>
         <button>Trigger</button>
       </Tooltip>,
     );
-    await user.hover(screen.getByRole('button'));
-    await waitFor(
-      () => {
-        const tt = screen.getByRole('tooltip');
-        expect(tt).toHaveTextContent('Helpful explanation');
-      },
-      { timeout: 500 },
-    );
+    const btn = screen.getByRole('button');
+    fireEvent.mouseEnter(btn);
+    // Open is the trigger pointing at the tooltip; the tooltip element is
+    // always in the DOM and only shown by style.
+    act(() => {
+      vi.advanceTimersByTime(49);
+    });
+    expect(btn.getAttribute('aria-describedby')).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(btn.getAttribute('aria-describedby')).toBe(screen.getByRole('tooltip').id);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Helpful explanation');
+    vi.useRealTimers();
   });
 
   it('shows tooltip on focus immediately when reduced motion preferred', () => {
