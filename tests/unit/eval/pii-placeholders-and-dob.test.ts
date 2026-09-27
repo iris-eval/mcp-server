@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { noPii, PII_PATTERNS, describeSuppressedPlaceholders } from '../../../src/eval/rules/safety.js';
 import { regexBacktrackingBudgetExceeded } from '../../../src/eval/rules/regex-budget.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 /*
  * Two no_pii contract fixes from the acceptance pass.
@@ -112,8 +113,6 @@ describe('no_pii — DOB catches ISO dates after a label', () => {
 
   it('stays linear on a hostile payload built from its own anchor', () => {
     const payload = 'DOB' + ' '.repeat(200_000) + '!';
-    const started = Date.now();
-    dobPattern().test(payload);
-    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(cpuMs(() => dobPattern().test(payload))).toBeLessThan(1_000);
   });
 });

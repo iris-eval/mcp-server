@@ -33,7 +33,8 @@
  * < 70 is dev, the rest test. Every headline number is the test split; the
  * threshold sweep runs on dev only.
  */
-import { readdir, readFile } from 'node:fs/promises';
+import { readdirSync, readFileSync } from 'node:fs';
+// Synchronous reads, deliberately: see the note in ./corpus.ts.
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { EvalContext, EvalType, FailureClass } from '../../src/types/eval.js';
@@ -133,10 +134,10 @@ export function splitOf(id: string): Split {
 /** The 24 real transcripts, keyed `t-NN`, answer keys stripped. */
 export async function loadRealTranscripts(root: string): Promise<Map<string, RealTranscript>> {
   const dir = resolve(root, REAL_TRANSCRIPTS_DIR);
-  const names = (await readdir(dir)).filter((n) => /^t-\d\d-.*\.json$/.test(n)).sort();
+  const names = (readdirSync(dir)).filter((n) => /^t-\d\d-.*\.json$/.test(n)).sort();
   const out = new Map<string, RealTranscript>();
   for (const name of names) {
-    const raw = JSON.parse((await readFile(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n')) as Record<string, unknown>;
+    const raw = JSON.parse((readFileSync(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n')) as Record<string, unknown>;
     const id = name.slice(0, 4);
     out.set(id, {
       id,
@@ -153,11 +154,11 @@ export async function loadRealTranscripts(root: string): Promise<Map<string, Rea
 
 export async function loadComposite(root: string): Promise<LoadedComposite> {
   const dir = resolve(root, COMPOSITE_DIR);
-  const names = (await readdir(dir)).filter((n) => n.endsWith('.json')).sort();
+  const names = (readdirSync(dir)).filter((n) => n.endsWith('.json')).sort();
   const hash = createHash('sha256');
   const files: CompositeFile[] = [];
   for (const name of names) {
-    const raw = (await readFile(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n');
+    const raw = (readFileSync(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n');
     hash.update(`${name}\n${raw}\n`);
     files.push(JSON.parse(raw) as CompositeFile);
   }

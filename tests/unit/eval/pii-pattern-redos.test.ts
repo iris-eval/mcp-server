@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PII_PATTERNS } from '../../../src/eval/rules/safety.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 /*
  * PII patterns run against ATTACKER-CONTROLLED text. Agent output is
@@ -23,14 +24,14 @@ import { PII_PATTERNS } from '../../../src/eval/rules/safety.js';
  * They are not benchmarks — they are a tripwire. Quadratic behaviour on
  * these payload sizes takes minutes, so anything under a second means the
  * pattern is still linear-ish; anything over means a quantifier regressed.
+ * The budget is CPU time, not wall time: a busy machine delays a linear
+ * match without making it any less linear (tests/helpers/cpu-time.ts).
  */
 
 const BUDGET_MS = 1_000;
 
 function timeMatch(pattern: RegExp, text: string): number {
-  const started = Date.now();
-  pattern.test(text);
-  return Date.now() - started;
+  return cpuMs(() => pattern.test(text));
 }
 
 function patternNamed(name: string): RegExp {

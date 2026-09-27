@@ -11,7 +11,19 @@
  * ever turns it into a number.
  */
 
-import { readdir, readFile } from 'node:fs/promises';
+import { readdirSync, readFileSync } from 'node:fs';
+/*
+ * The corpus loaders read with readFileSync and readdirSync, and stay
+ * async only so no caller changes. They read a few dozen small local
+ * files, and the test suite calls them from many tests at once. Under the
+ * full suite, which runs a fork per core with several CPU-bound for
+ * 10-40 s, every async fs call (open, stat, read, close, each a round trip
+ * through libuv's thread pool) waited to be scheduled. One load measured
+ * 0.5-1.7 s instead of 20 ms. Tests that load two or three times then
+ * crossed vitest's 5 s timeout now and then: proof tests failed that way
+ * in 2 of 10 local runs of the root suite. Read synchronously, the same 25
+ * files take 7-39 ms in the same suite.
+ */
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { EvalType } from '../../src/types/eval.js';
@@ -69,11 +81,11 @@ export interface LoadedCorpus {
 /** Reads every family file in name order and hashes them together. */
 export async function loadCorpus(root: string): Promise<LoadedCorpus> {
   const dir = resolve(root, CORPUS_DIR);
-  const names = (await readdir(dir)).filter((n) => n.endsWith('.json')).sort();
+  const names = (readdirSync(dir)).filter((n) => n.endsWith('.json')).sort();
   const hash = createHash('sha256');
   const files: CorpusFile[] = [];
   for (const name of names) {
-    const raw = (await readFile(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n');
+    const raw = (readFileSync(resolve(dir, name), 'utf-8')).replace(/\r\n/g, '\n');
     hash.update(`${name}\n${raw}\n`);
     files.push(JSON.parse(raw) as CorpusFile);
   }

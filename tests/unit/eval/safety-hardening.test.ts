@@ -8,6 +8,7 @@ import {
 } from '../../../src/eval/rules/safety.js';
 import { regexBacktrackingBudgetExceeded } from '../../../src/eval/rules/regex-budget.js';
 import type { EvalRule } from '../../../src/types/eval.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 /*
  * Accuracy hardening for the three safety-family rules, measured against a
@@ -564,9 +565,7 @@ describe('every safety pattern is linear-time', () => {
       const payloads = [noMatch, quotedPhraseFlood, quotedStubFlood];
       const rules = [noPii, noInjectionPatterns, noStubOutput];
       for (const [payload, rule] of payloads.flatMap((p) => rules.map((r) => [p, r] as const))) {
-        const started = Date.now();
-        rule.evaluate({ output: payload });
-        expect(Date.now() - started, `${rule.name} exceeded the budget`).toBeLessThan(2_000);
+        expect(cpuMs(() => rule.evaluate({ output: payload })), `${rule.name} exceeded the budget`).toBeLessThan(2_000);
       }
     },
     30_000,

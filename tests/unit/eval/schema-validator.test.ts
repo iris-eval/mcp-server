@@ -28,6 +28,7 @@ import {
 } from '../../../src/eval/schema-validator.js';
 import { createCustomRule } from '../../../src/eval/rules/custom.js';
 import type { EvalContext } from '../../../src/types/eval.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 const root = resolve(__dirname, '..', '..', '..');
 const readJson = (rel: string): Record<string, unknown> => JSON.parse(readFileSync(resolve(root, rel), 'utf-8')) as Record<string, unknown>;
@@ -137,16 +138,17 @@ describe('the schema guard ladder', () => {
     expect(second).toBe(first);
   });
 
-  it('a hostile catalogue costs bounded wall time even when every schema is refused', () => {
-    const started = Date.now();
-    for (let i = 0; i < 40; i++) {
-      compileToolSchema({ type: 'object', properties: { s: { type: 'string', pattern: `^(a+)+${i}$` } } });
-    }
+  it('a hostile catalogue costs bounded time even when every schema is refused', () => {
+    const cpu = cpuMs(() => {
+      for (let i = 0; i < 40; i++) {
+        compileToolSchema({ type: 'object', properties: { s: { type: 'string', pattern: `^(a+)+${i}$` } } });
+      }
+    });
     // Forty distinct exponential patterns. Star height rejects each one
     // statically, so none reaches the probe — which is the difference
     // between forty seconds and a few hundred milliseconds, and the reason
     // that rung exists ahead of the expensive one.
-    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(cpu).toBeLessThan(5_000);
   });
 
   it('every schema that passes the static caps compiles and validates inside the budget', () => {
@@ -166,10 +168,12 @@ describe('the schema guard ladder', () => {
 
     fc.assert(
       fc.property(schema, (s) => {
-        const started = Date.now();
-        const compiled = compileToolSchema(s as Record<string, unknown>);
-        if (compiled.ok) checkArguments(compiled, { a: 1, b: 'x' });
-        return Date.now() - started < 1_000;
+        return (
+          cpuMs(() => {
+            const compiled = compileToolSchema(s as Record<string, unknown>);
+            if (compiled.ok) checkArguments(compiled, { a: 1, b: 'x' });
+          }) < 1_000
+        );
       }),
       { numRuns: 60 },
     );

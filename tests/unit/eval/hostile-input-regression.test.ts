@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import type { EvalRule } from '../../../src/types/eval.js';
+import { cpuMsAsync } from '../../helpers/cpu-time.js';
 
 const engine = new EvalEngine();
 const SIZE = 200_000;
@@ -28,9 +29,8 @@ describe('hostile input: every shape that was super-linear now evaluates in line
   for (const shape of SHAPES) {
     it(`${JSON.stringify(shape)} × ${SIZE.toLocaleString('en-US')} characters, in the output and the ask`, async () => {
       const text = shape.repeat(Math.ceil(SIZE / shape.length));
-      const started = performance.now();
-      await engine.evaluateAll({ output: text, input: `How do I do this (a) and ${text}` });
-      expect(performance.now() - started).toBeLessThan(CEILING_MS);
+      const cpu = await cpuMsAsync(() => engine.evaluateAll({ output: text, input: `How do I do this (a) and ${text}` }));
+      expect(cpu).toBeLessThan(CEILING_MS);
     }, 30_000);
   }
 });

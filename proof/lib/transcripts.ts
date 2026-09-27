@@ -32,7 +32,8 @@
  * one the record leads with.
  */
 import { createHash } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
+import { readdirSync, readFileSync } from 'node:fs';
+// Synchronous reads, deliberately: see the note in ./corpus.ts.
 import { resolve } from 'node:path';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { EvalEngine } from '../../src/eval/engine.js';
@@ -124,10 +125,10 @@ interface RawTranscript {
  */
 export async function loadTranscriptsWithKeys(root: string): Promise<RawTranscript[]> {
   const dir = resolve(root, REAL_TRANSCRIPTS_DIR);
-  const names = (await readdir(dir)).filter((n) => /^t-\d\d-.*\.json$/.test(n)).sort();
+  const names = (readdirSync(dir)).filter((n) => /^t-\d\d-.*\.json$/.test(n)).sort();
   const out: RawTranscript[] = [];
   for (const file of names) {
-    const raw = JSON.parse((await readFile(resolve(dir, file), 'utf-8')).replace(/\r\n/g, '\n')) as Omit<RawTranscript, 'id' | 'file'>;
+    const raw = JSON.parse((readFileSync(resolve(dir, file), 'utf-8')).replace(/\r\n/g, '\n')) as Omit<RawTranscript, 'id' | 'file'>;
     out.push({ ...raw, id: file.slice(0, 4), file });
   }
   return out;
@@ -143,7 +144,7 @@ export async function loadTranscriptsWithKeys(root: string): Promise<RawTranscri
  * that every transcript is promoted exactly once.
  */
 export async function transcriptClasses(root: string): Promise<Map<string, FailureClass[]>> {
-  const file = JSON.parse(await readFile(resolve(root, 'proof/composite/cases.json'), 'utf-8')) as {
+  const file = JSON.parse(readFileSync(resolve(root, 'proof/composite/cases.json'), 'utf-8')) as {
     cases: Array<{ id: string; provenance: string; base: string; expected: { classes: FailureClass[] } }>;
   };
   const out = new Map<string, FailureClass[]>();

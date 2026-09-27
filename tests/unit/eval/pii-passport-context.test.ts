@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { noPii, PII_PATTERNS } from '../../../src/eval/rules/safety.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 /*
  * The Passport pattern, both directions.
@@ -89,8 +90,6 @@ describe('no_pii — Passport is context-anchored', () => {
 
   it('stays linear on a hostile payload built from its own anchor', () => {
     const payload = 'passport' + ' '.repeat(200_000) + '!';
-    const started = Date.now();
-    passportPattern().test(payload);
-    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(cpuMs(() => passportPattern().test(payload))).toBeLessThan(1_000);
   });
 });
