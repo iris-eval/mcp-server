@@ -658,12 +658,14 @@ export class SqliteAdapter implements IStorageAdapter {
         const perTerm = parsed.terms.map((t) => ({ main: toFtsQuery({ terms: [t] }), cjk: toCjkFtsQuery(t) }));
         const inMain = `SELECT rowid FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ?`;
         const inCjk = `SELECT rowid FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?`;
-        matched =
-          `SELECT d.trace_id AS matched_id, d.doc_id AS doc, COALESCE(mr.r, 0) + COALESCE(cr.r, 0) AS relevance FROM ${SEARCH_DOCS_TABLE} d ` +
-          `LEFT JOIN (SELECT rowid, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS r FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ?) mr ON mr.rowid = d.doc_id ` +
-          `LEFT JOIN (SELECT rowid, bm25(${CJK_TABLE}, ${CJK_BM25_WEIGHTS}) AS r FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?) cr ON cr.rowid = d.doc_id ` +
-          `WHERE d.tenant_id = ? AND ${perTerm.map(() => `(d.doc_id IN (${inMain}) OR d.doc_id IN (${inCjk}))`).join(' AND ')}`;
-        matchedParams = [perTerm.map((p) => p.main).join(' OR '), perTerm.map((p) => `(${p.cjk})`).join(' OR '), tenantId, ...perTerm.flatMap((p) => [p.main, p.cjk])];
+        // Every trace either table matches for any term, with its two scores added; then each term must match in one of them.
+        const scored =
+          `SELECT doc, SUM(r) AS relevance FROM (` +
+          `SELECT rowid AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS r FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ? ` +
+          `UNION ALL SELECT rowid AS doc, bm25(${CJK_TABLE}, ${CJK_BM25_WEIGHTS}) AS r FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?) GROUP BY doc`;
+        const everyTerm = perTerm.length > 1 ? ` AND ${perTerm.map(() => `(d.doc_id IN (${inMain}) OR d.doc_id IN (${inCjk}))`).join(' AND ')}` : '';
+        matched = `SELECT d.trace_id AS matched_id, d.doc_id AS doc, x.relevance AS relevance FROM (${scored}) x JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = x.doc WHERE d.tenant_id = ?${everyTerm}`;
+        matchedParams = [perTerm.map((p) => p.main).join(' OR '), perTerm.map((p) => `(${p.cjk})`).join(' OR '), tenantId, ...(perTerm.length > 1 ? perTerm.flatMap((p) => [p.main, p.cjk]) : [])];
       }
       const from = joinTraces ? `FROM (${matched}) m JOIN traces ON traces.trace_id = m.matched_id ${q.whereClause}` : `FROM (${matched}) m`;
       const params = joinTraces ? [...matchedParams, ...q.params] : matchedParams;

@@ -406,8 +406,15 @@ export function toCjkFtsQuery(term: SearchTerm): string {
 
 /** Whether a stored string could hold CJK: it does, or it has a \u escape (a JSON string inside it may spell CJK that way). */
 export function mayHoldCjk(text: string | null | undefined): boolean {
-  return typeof text === 'string' && (hasCjk(text) || text.includes('\\u'));
+  return typeof text === 'string' && ((CJK_BLOCKS_RE.test(text) && hasCjk(text)) || text.includes('\\u'));
 }
+/**
+ * The blocks CJK lives in (Hangul Jamo; radicals through Hangul syllables;
+ * compatibility ideographs through half-width forms; any character past the
+ * BMP), as plain ranges: about a tenth of hasCjk's cost on text with accents,
+ * which the insert path tests every trace for. hasCjk then decides.
+ */
+const CJK_BLOCKS_RE = /[ᄀ-ᇿ⺀-퟿豈-￯\ud800-\udbff]/;
 
 
 /** Every stretch of the field's text where `term` matches in its CJK stream, as [start, end] offsets. */
@@ -502,14 +509,18 @@ export function spansMayMatch(fields: Record<SearchField, string>, parsed: Parse
  */
 export function matchesTrace(fields: Record<SearchField, string>, parsed: ParsedSearch): { matched: boolean; hits: number } {
   if (parsed.terms.length === 0) return { matched: false, hits: 0 };
-  const byField = SEARCH_FIELDS.map((f) => {
-    const tokens = tokenize(fields[f]);
-    return { text: fields[f], tokens, stream: cjkStream(fields[f], tokens) };
-  });
+  const byField = SEARCH_FIELDS.map((f) => ({ text: fields[f], tokens: tokenize(fields[f]), stream: undefined as CjkStream | undefined | null }));
+  // A field's CJK stream is built only when a term needs it: one with CJK in it, or one its words alone do not hold.
+  const streamOf = (f: (typeof byField)[number]) => {
+    if (f.stream === undefined) f.stream = cjkStream(f.text, f.tokens) ?? null;
+    return f.stream ?? undefined;
+  };
   let hits = 0;
   for (const term of parsed.terms) {
     let found = 0;
-    for (const f of byField) found += fieldHits(f.text, f.tokens, f.stream, term).length;
+    const needsStream = term.tokens.some(hasCjk);
+    for (const f of byField) found += needsStream ? fieldHits(f.text, f.tokens, streamOf(f), term).length : termHits(f.tokens, term).length;
+    if (found === 0 && !needsStream) for (const f of byField) found += fieldHits(f.text, f.tokens, streamOf(f), term).length;
     if (found === 0) return { matched: false, hits: 0 };
     hits += found;
   }

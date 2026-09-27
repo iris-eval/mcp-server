@@ -18,7 +18,7 @@ import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
-import { foldText } from '../../../src/storage/search.js';
+import { foldText, hasCjk, mayHoldCjk } from '../../../src/storage/search.js';
 
 // File-backed stores, several opens per test, as in trace-search.test.ts.
 vi.setConfig({ testTimeout: 30_000 });
@@ -235,5 +235,17 @@ describe('folding ASCII', () => {
     const all = Array.from({ length: 127 }, (_, i) => String.fromCharCode(i + 1)).join('');
     // With one character past ASCII, foldText walks the table instead of taking the shortcut.
     expect(foldText(`${all}é`).slice(0, all.length)).toBe(all.toLowerCase());
+  });
+});
+
+describe('the insert path’s test for CJK', () => {
+  it('lets through every character JavaScript counts as CJK', () => {
+    const missed: string[] = [];
+    for (let cp = 0; cp <= 0x10ffff; cp += 1) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const ch = String.fromCodePoint(cp);
+      if (hasCjk(ch) && !mayHoldCjk(ch)) missed.push(cp.toString(16));
+    }
+    expect(missed).toEqual([]);
   });
 });
