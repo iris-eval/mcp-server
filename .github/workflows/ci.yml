@@ -162,6 +162,22 @@ jobs:
       - run: npm ci
       - run: npm run test:integration
 
+  # The regression watcher reads its alarm lines from a generated table
+  # (src/eval/cusum-thresholds.generated.ts) instead of simulating them on
+  # a server's first request. This regenerates every row from its seed and
+  # fails when the committed table differs from the simulation.
+  cusum-thresholds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run cusum:check
+
   # The website previously had NO CI gate at all — Vercel builds it without
   # linting, and 26 lint errors accumulated invisibly (found 2026-07-07).
   # This job makes website lint + typecheck a first-class check.

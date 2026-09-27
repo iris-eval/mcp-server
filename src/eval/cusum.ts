@@ -25,8 +25,11 @@
  * stream false-alarms once per 500 evaluations lets an agent with 25 rules
  * false-alarm about once per 20. So the target is per agent: about one
  * false alarm per 500 of its evaluations, however many streams it has.
- * Two corrections get there, both found by seeded simulation when first
- * needed and memoised:
+ * Two corrections get there, both found by seeded simulation. The
+ * simulation for every baseline a stream can first settle at, up to 2,000
+ * evaluations, is generated ahead of time into cusum-thresholds.generated.ts
+ * (CI regenerates it and fails on any difference); a later baseline is
+ * simulated when first needed and memoised:
  *
  *   1. Baseline error. p̂₀ is an estimate; a baseline that came out low
  *      makes an in-control stream look like drift. The per-stream line is
@@ -48,6 +51,7 @@
  * are different rows. This is the "self-calibrating eval" made honest: it
  * detects, it does not adjust.
  */
+import { CUSUM_THRESHOLD_TABLE } from './cusum-thresholds.generated.js';
 import { beta, fnv1a, mulberry32 } from './stats.js';
 
 /** The shift in fail rate worth a sentence. */
@@ -182,19 +186,63 @@ export function simulateEstimatedRate(fails: number, n: number, delta: number, h
   return alarms / (streams * length);
 }
 
+/**
+ * The baselines a stream can first settle at: every (fails, n) that is
+ * settled while the state one evaluation earlier, a pass or a fail back, was
+ * not, by the same test stepWatch applies. These are the only baselines a
+ * watcher ever derives a line for.
+ * Above n = 400 only fails = 10 remains (a stream's tenth fail settles it
+ * once n ≥ 130, however rare its fails), so the list is cut at `maxN`.
+ */
+export function settlingBaselines(maxN: number): Array<[fails: number, n: number]> {
+  const out: Array<[number, number]> = [];
+  for (let n = 1; n <= maxN; n += 1) {
+    for (let fails = 0; fails <= n; fails += 1) {
+      if (!baselineSettled(fails, n)) continue;
+      const afterPass = fails <= n - 1 && !baselineSettled(fails, n - 1);
+      const afterFail = fails >= 1 && !baselineSettled(fails - 1, n - 1);
+      if (afterPass || afterFail) out.push([fails, n]);
+    }
+  }
+  return out;
+}
+
+/** The generated table's entry for a baseline, when it was derived at these parameters. */
+function tabled(fails: number, n: number, delta: number, targetArl0: number): readonly [number, number] | undefined {
+  if (delta !== CUSUM_THRESHOLD_TABLE.delta || targetArl0 !== CUSUM_THRESHOLD_TABLE.targetArl0) return undefined;
+  return CUSUM_THRESHOLD_TABLE.lines[`${fails}:${n}`];
+}
+
 const H_EST_MEMO = new Map<string, number>();
 
 /**
  * The alarm line for a baseline of `fails` in `n`, allowing for the error in
  * the baseline: the h at which the false-alarm rate AVERAGED over what the
- * true rate could be, given that baseline, is 1 / targetArl0. Found by
- * bisection over a seeded simulation and memoised; deterministic on every
- * machine. Higher than cusumThreshold(p̂₀), which assumes p̂₀ is exact.
+ * true rate could be, given that baseline, is 1 / targetArl0. Read from the
+ * generated table (src/eval/cusum-thresholds.generated.ts) when the baseline
+ * is in it, else simulated and memoised: the table holds exactly what
+ * simulateEstimatedBaselineThreshold returns, so the line is the same either
+ * way. Higher than cusumThreshold(p̂₀), which assumes p̂₀ is exact.
  */
 export function estimatedBaselineThreshold(fails: number, n: number, delta: number = CUSUM_DELTA, targetArl0: number = CUSUM_TARGET_ARL0): number {
+  const row = tabled(fails, n, delta, targetArl0);
+  if (row) return row[0];
   const key = `${fails}:${n}:${delta}:${targetArl0}`;
   const hit = H_EST_MEMO.get(key);
   if (hit !== undefined) return hit;
+  const h = simulateEstimatedBaselineThreshold(fails, n, delta, targetArl0);
+  H_EST_MEMO.set(key, h);
+  return h;
+}
+
+/**
+ * estimatedBaselineThreshold by simulation alone: bisection over a seeded
+ * simulation, deterministic on every machine because the seed is a function
+ * of the baseline and the parameters, never the clock. The generator of the
+ * table calls this; nothing on a request path needs to.
+ */
+export function simulateEstimatedBaselineThreshold(fails: number, n: number, delta: number = CUSUM_DELTA, targetArl0: number = CUSUM_TARGET_ARL0): number {
+  const key = `${fails}:${n}:${delta}:${targetArl0}`;
   const seed = fnv1a(`cusum-est:${key}`);
   let lo = 0.25;
   let hi = 16;
@@ -203,9 +251,7 @@ export function estimatedBaselineThreshold(fails: number, n: number, delta: numb
     if (simulateEstimatedRate(fails, n, delta, mid, seed) > 1 / targetArl0) lo = mid;
     else hi = mid;
   }
-  const h = (lo + hi) / 2;
-  H_EST_MEMO.set(key, h);
-  return h;
+  return (lo + hi) / 2;
 }
 
 const SLOPE_MEMO = new Map<string, number>();
@@ -220,17 +266,28 @@ const SLOPE_MEMO = new Map<string, number>();
  * past any use.
  */
 export function alarmRateSlope(fails: number, n: number, delta: number = CUSUM_DELTA): number {
+  const row = tabled(fails, n, delta, CUSUM_TARGET_ARL0);
+  if (row) return row[1];
   const key = `${fails}:${n}:${delta}`;
   const hit = SLOPE_MEMO.get(key);
   if (hit !== undefined) return hit;
-  const h1 = estimatedBaselineThreshold(fails, n, delta);
+  const theta = simulateAlarmRateSlope(fails, n, delta);
+  SLOPE_MEMO.set(key, theta);
+  return theta;
+}
+
+/**
+ * alarmRateSlope by simulation alone, from the same seed; what the table
+ * holds. `h1` is the estimated-baseline line; the generator passes the one it
+ * has just simulated, so a stale table never feeds its own regeneration.
+ */
+export function simulateAlarmRateSlope(fails: number, n: number, delta: number = CUSUM_DELTA, h1: number = estimatedBaselineThreshold(fails, n, delta)): number {
+  const key = `${fails}:${n}:${delta}`;
   const step = 1.5;
   const seed = fnv1a(`cusum-slope:${key}`);
   const r1 = simulateEstimatedRate(fails, n, delta, h1, seed, 200, CUSUM_TARGET_ARL0 * 8);
   const r2 = simulateEstimatedRate(fails, n, delta, h1 + step, seed, 200, CUSUM_TARGET_ARL0 * 24);
-  const theta = r1 > 0 && r2 > 0 ? Math.min(1, Math.max(0.2, Math.log(r1 / r2) / step)) : 1;
-  SLOPE_MEMO.set(key, theta);
-  return theta;
+  return r1 > 0 && r2 > 0 ? Math.min(1, Math.max(0.2, Math.log(r1 / r2) / step)) : 1;
 }
 
 /**
