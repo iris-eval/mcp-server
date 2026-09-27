@@ -16,12 +16,12 @@ describe('cpuMs', () => {
 
   it('counts time spent computing', () => {
     const cpu = cpuMs(() => {
-      const end = process.cpuUsage().user + 200_000;
+      const end = process.cpuUsage().user + 50_000;
       while (process.cpuUsage().user < end) {
-        // spin for 200 ms of user CPU
+        // spin for 50 ms of user CPU
       }
     });
-    expect(cpu).toBeGreaterThanOrEqual(200);
+    expect(cpu).toBeGreaterThanOrEqual(50);
   });
 
   it('cpuMsAsync does not count an await on a timer', async () => {
