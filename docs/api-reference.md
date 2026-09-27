@@ -359,7 +359,7 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 - never keys, numbers or booleans, and not the `otel.span_id` and `otel.parent_span_id` attributes Iris adds to keep the sender's ids;
 - a string that holds JSON, such as `gen_ai.input.messages`, by the strings inside it;
 - each distinct string once per trace, so the conversation history every model call re-sends is indexed once;
-- each value up to 4,096 characters, and at most 32,768 characters of span text per trace.
+- each value up to 4,096 characters, and at most 32,768 characters of span text per trace; words past either cap are not searchable.
 
 Whatever `q` contains is read as words, never as query syntax: `AND`, `OR`, `NOT`, `NEAR(`, parentheses, column prefixes like `input:` and unbalanced quotes are searched as the words they contain, so no input can fail the query or widen it. A `q` with no letter or digit in it (`*`, `()`) is refused with a message saying so, rather than answered with an empty page. A blank `q` is no search.
 
