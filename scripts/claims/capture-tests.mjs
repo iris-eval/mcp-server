@@ -9,11 +9,19 @@
 // Run by:
 //   - CI in the test workflow after vitest passes
 //   - Local opt-in: `npm run claims:capture-tests`
+//
+// A report that must not become counts is refused, not recorded: a test file
+// that failed to load (its tests would be missing from the total with
+// nothing failed), a run that failed outside any test, or a skipped test.
+// The rules live in capture-report.mjs. `--report <scope>=<file>` reads an
+// existing vitest JSON report for a scope (root or dashboard) instead of
+// running vitest, to check a report or to capture from one already made.
 
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { CaptureRefused, checkReport } from './capture-report.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -47,47 +55,36 @@ async function runVitestToFile(cwd, outFile) {
   });
 }
 
-function summarizeFromReport(report) {
-  if (!report || typeof report !== 'object') {
-    return { total: null, passed: null, failed: null };
+/** `--report root=<file>` / `--report dashboard=<file>`: reports to read instead of running vitest. */
+function givenReports(argv) {
+  const out = new Map();
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] !== '--report') continue;
+    const [scope, ...rest] = String(argv[i + 1] ?? '').split('=');
+    if (!rest.length) throw new Error('[claims:capture-tests] --report takes <scope>=<file>, e.g. --report root=report.json');
+    out.set(scope === 'root' ? '' : scope, resolve(process.cwd(), rest.join('=')));
+    i += 1;
   }
-  return {
-    total: typeof report.numTotalTests === 'number' ? report.numTotalTests : null,
-    passed: typeof report.numPassedTests === 'number' ? report.numPassedTests : null,
-    failed: typeof report.numFailedTests === 'number' ? report.numFailedTests : null,
-  };
+  return out;
 }
+const GIVEN = givenReports(process.argv.slice(2));
 
 async function captureScope(scope) {
   const cwd = scope ? resolve(root, scope) : root;
-  const outFile = resolve(root, `.claims-cache/vitest-report-${scope || 'root'}.json`);
-  const { exitCode, stderrTail } = await runVitestToFile(cwd, outFile);
-  const report = await readJsonOrNull(outFile);
-  const summary = summarizeFromReport(report);
-  if (summary.total === null) {
-    console.warn(`[claims:capture-tests] WARN — could not parse vitest report for scope "${scope || 'root'}" (exit ${exitCode}). stderr tail:`);
-    console.warn(stderrTail);
-  }
-  /*
-   * A skipped test makes the captured counts depend on WHERE capture ran.
-   * .claims.json is derived truth: captured on a developer's machine, then
-   * re-derived by the truthbase CI job on Linux and compared. A suite with
-   * `describe.skip(process.platform === 'win32' ? ... )` captures 630/634 on
-   * Windows and 634/634 in CI — the gate goes red on main for a reason that
-   * lives in nobody's diff. Fail loudly at capture time instead: make the
-   * test run on every platform and branch its assertions.
-   */
-  if (summary.total !== null && summary.passed !== null && summary.failed === 0) {
-    const skipped = summary.total - summary.passed;
-    if (skipped > 0) {
-      throw new Error(
-        `[claims:capture-tests] ${skipped} test(s) skipped in scope "${scope || 'root'}" ` +
-          `(${summary.passed} passed of ${summary.total}). Captured counts must be ` +
-          `platform-invariant — .claims.json is re-derived in CI on Linux and compared. ` +
-          `Make the test run everywhere and branch its assertions instead of skipping it.`,
-      );
+  let report;
+  if (GIVEN.has(scope)) {
+    report = await readJsonOrNull(GIVEN.get(scope));
+    if (report === null) throw new CaptureRefused(`[claims:capture-tests] --report for "${scope || 'root'}" is not a readable JSON report: ${GIVEN.get(scope)}`);
+  } else {
+    const outFile = resolve(root, `.claims-cache/vitest-report-${scope || 'root'}.json`);
+    const { exitCode, stderrTail } = await runVitestToFile(cwd, outFile);
+    report = await readJsonOrNull(outFile);
+    if (report === null) {
+      console.warn(`[claims:capture-tests] WARN — could not parse vitest report for scope "${scope || 'root'}" (exit ${exitCode}). stderr tail:`);
+      console.warn(stderrTail);
     }
   }
+  const summary = checkReport(report, { scope: scope || 'root', root: cwd });
   return summary;
 }
 
@@ -122,6 +119,8 @@ async function captureScopeWithFallback(scope, fallback) {
     }
     return summary;
   } catch (err) {
+    // A refused report is an answer, not an unavailable runner: never covered by the committed counts.
+    if (err instanceof CaptureRefused) throw err;
     console.warn(`[claims:capture-tests] WARN — capture failed for "${scope || 'root'}":`, err.message);
     if (fallback?.total != null) return fallback;
     return { total: null, passed: null, failed: null };
@@ -179,6 +178,7 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[claims:capture-tests] error:', err);
+  if (err instanceof CaptureRefused) console.error(err.message);
+  else console.error('[claims:capture-tests] error:', err);
   process.exit(1);
 });
