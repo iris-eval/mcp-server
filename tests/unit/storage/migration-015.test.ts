@@ -80,7 +80,7 @@ describe('migration 015 — the trace search index', () => {
     expect(KNOWN_MIGRATION_IDS[13]).toBe('014-trace-session');
   });
 
-  it('creates the index, its id table, its covering index and two triggers on a cold file, once', async () => {
+  it('creates the index, its id table, its covering index and its triggers on a cold file, once', async () => {
     const path = tempDb();
     const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await store.initialize();
@@ -91,7 +91,7 @@ describe('migration 015 — the trace search index', () => {
 
     const db = new Database(path, { readonly: true });
     const objects = db.prepare(SEARCH_OBJECTS).all() as Array<{ type: string; name: string }>;
-    expect(objects.filter((o) => o.type === 'trigger').map((o) => o.name)).toEqual(['trace_search_ad', 'trace_search_au']);
+    expect(objects.filter((o) => o.type === 'trigger').map((o) => o.name)).toEqual(['trace_search_au', 'trace_search_bd', 'trace_search_spans_ad', 'trace_search_spans_ai', 'trace_search_spans_au', 'trace_search_spans_bd', 'trace_search_spans_bi', 'trace_search_spans_bu']);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_traces_search_filter'").get()).toBeDefined();
     expect(objects.filter((o) => o.type === 'table').map((o) => o.name)).toEqual(
       expect.arrayContaining(['trace_search', 'trace_search_docs', 'trace_search_data', 'trace_search_idx']),
@@ -115,8 +115,8 @@ describe('migration 015 — the trace search index', () => {
 
     // Put the file back the way a 0.19 build left it: no search objects, and 015 not applied.
     const raw = new Database(path);
+    for (const { name } of raw.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%'").all() as Array<{ name: string }>) raw.exec(`DROP TRIGGER ${name}`);
     raw.exec(`
-      DROP TRIGGER trace_search_au; DROP TRIGGER trace_search_ad;
       DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter;
       DELETE FROM _iris_migrations WHERE id = '015-trace-search';
     `);

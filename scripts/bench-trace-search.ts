@@ -4,6 +4,8 @@
  *   npx tsx scripts/bench-trace-search.ts                 # 10k and 100k traces
  *   npx tsx scripts/bench-trace-search.ts --sizes 10000   # one size
  *   IRIS_SQLITE_DRIVER=node npx tsx scripts/bench-trace-search.ts
+ *   npx tsx scripts/bench-trace-search.ts --spans         # each trace also an OTLP agent loop (#683)
+ *   npx tsx scripts/bench-trace-search.ts --scan-up-to 10000  # the no-FTS5 scan only up to that size
  *
  * Builds a file-backed store per size with synthetic traces shaped like
  * agent traffic — a question, a longer answer, two tool calls, metadata —
@@ -12,6 +14,11 @@
  * page of 50, the total counted), with the index and, at the sizes where it
  * finishes in reasonable time, the no-FTS5 scan. Prints the machine it ran
  * on, because a number without its machine is not a measurement.
+ *
+ * With --spans, each trace also carries the spans an instrumented agent loop
+ * sends over OTLP: three model calls, each re-sending the conversation so
+ * far, and two tool calls with arguments and results, every span with the
+ * OTLP ids the door keeps and one trace in ten with an exception event.
  */
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { cpus, platform, release, tmpdir, totalmem } from 'node:os';
@@ -27,7 +34,9 @@ const SIZES = sizeArg >= 0 ? args[sizeArg + 1].split(',').map(Number) : [10_000,
 const RUNS = 15;
 /** The scan reads every trace per query; fewer runs keep the 100k pass to minutes. */
 const SCAN_RUNS = 3;
-const SCAN_UP_TO = 100_000;
+const scanArg = args.indexOf('--scan-up-to');
+const SCAN_UP_TO = scanArg >= 0 ? Number(args[scanArg + 1]) : 100_000;
+const SPANS = args.includes('--spans');
 
 // Deterministic, so two runs build the same store.
 let seed = 0x9e3779b9;
@@ -68,7 +77,58 @@ function trace(i: number): Trace {
     metadata: { region: ['eu-west', 'us-east', 'ap-south'][i % 3], tier: i % 10 === 0 ? 'platinum' : 'standard' },
     // One a minute, the newest a minute ago, so a retention window cuts off a known share.
     timestamp: new Date(START - (SIZE_NOW - i) * 60_000).toISOString(),
+    ...(SPANS ? { spans: agentLoop(i) } : {}),
   };
+}
+
+const hex = (n: number) => Array.from({ length: n }, () => Math.floor(rand() * 16).toString(16)).join('');
+const turn = (role: string, content: string) => ({ role, parts: [{ type: 'text', content }] });
+
+/** The spans of one instrumented agent loop, as fromOtlp stores them. */
+function agentLoop(i: number): NonNullable<Trace['spans']> {
+  const at = (ms: number) => new Date(START - (SIZE_NOW - i) * 60_000 + ms).toISOString();
+  const history = [turn('user', `order ${filler(20)}?`)];
+  const spans: NonNullable<Trace['spans']> = [];
+  for (let call = 0; call < 3; call += 1) {
+    const answer = turn('assistant', filler(40));
+    spans.push({
+      span_id: `bench-${i}-llm-${call}`,
+      trace_id: `bench-${i}`,
+      name: 'chat gpt-5',
+      kind: 'LLM',
+      status_code: 'OK',
+      start_time: at(call * 1000),
+      attributes: {
+        'gen_ai.request.model': 'gpt-5',
+        'gen_ai.input.messages': JSON.stringify(history),
+        'gen_ai.output.messages': JSON.stringify([answer]),
+        'gen_ai.usage.input_tokens': 200 + call * 150,
+        'gen_ai.usage.output_tokens': 60,
+        'otel.span_id': hex(16),
+      },
+    });
+    history.push(answer);
+    if (call === 2) break;
+    const result = `${filler(60)} ${call === 0 && i % 100 === 11 ? 'wombat' : ''}`;
+    spans.push({
+      span_id: `bench-${i}-tool-${call}`,
+      trace_id: `bench-${i}`,
+      name: 'execute_tool lookup_order',
+      kind: 'TOOL',
+      status_code: i % 10 === 5 && call === 1 ? 'ERROR' : 'OK',
+      start_time: at(call * 1000 + 500),
+      attributes: {
+        'gen_ai.tool.name': 'lookup_order',
+        'gen_ai.tool.call.id': `call_${hex(24)}`,
+        'gen_ai.tool.call.arguments': JSON.stringify({ order_id: `A-${i}`, note: filler(8) }),
+        'gen_ai.tool.call.result': JSON.stringify({ status: 'ok', body: result }),
+        'otel.span_id': hex(16),
+      },
+      ...(i % 10 === 5 && call === 1 ? { events: [{ name: 'exception', timestamp: at(call * 1000 + 600), attributes: { 'exception.type': 'TimeoutError', 'exception.message': `upstream timed out ${filler(10)}` } }] } : {}),
+    });
+    history.push(turn('tool', result));
+  }
+  return spans;
 }
 
 const QUERIES: Array<{ label: string; q: string; sort?: 'timestamp'; agent?: string }> = [
@@ -82,6 +142,7 @@ const QUERIES: Array<{ label: string; q: string; sort?: 'timestamp'; agent?: str
   { label: 'two words (1% and 100%)', q: 'kestrel refund' },
   { label: 'phrase in 50%', q: '"refund approved"' },
   { label: 'prefix', q: 'kestr*' },
+  ...(SPANS ? [{ label: 'word in 1% (a tool result in a span)', q: 'wombat' }, { label: 'word in 10% (an exception message)', q: 'upstream' }] : []),
 ];
 
 function median(xs: number[]): number {
@@ -145,6 +206,12 @@ for (const size of SIZES) {
     const indexedMs = await fill(store, size);
     console.log(`  insert without the index: ${perTrace(plainMs, size)} µs per trace, file ${mb(plainPath)} MB`);
     console.log(`  insert with the index:    ${perTrace(indexedMs, size)} µs per trace, file ${mb(path)} MB`);
+    if (SPANS) {
+      // Where the index's bytes are: the FTS5 tables, the id table (which holds the span text the index was given), and the covering index.
+      const db = (store as unknown as { db: { prepare(s: string): { all(): unknown[] } } }).db;
+      const rows = db.prepare("SELECT CASE WHEN name LIKE 'trace_search_%' AND name <> 'trace_search_docs' THEN 'trace_search (FTS5)' ELSE name END AS part, SUM(pgsize) AS bytes FROM dbstat WHERE name LIKE 'trace_search%' OR name IN ('idx_traces_search_filter', 'spans', 'traces') GROUP BY part ORDER BY bytes DESC").all() as Array<{ part: string; bytes: number }>;
+      console.log(`  bytes by table: ${rows.map((r) => `${r.part} ${(r.bytes / 2 ** 20).toFixed(0)} MB`).join(', ')}`);
+    }
 
     // A second connection that behaves as a SQLite without FTS5, for the scan column. Its start drops the triggers on the file; the reopen below restores them.
     const scan = size <= SCAN_UP_TO ? new SqliteAdapter(path, { fts5: false }) : undefined;
@@ -178,6 +245,52 @@ for (const size of SIZES) {
       `  the upgrade, ${size.toLocaleString('en-US')} stored traces: start ${startedMs.toFixed(0)} ms; index built in the background in ${((performance.now() - t2) / 1000).toFixed(1)} s; longest event-loop stall during it ${(loop.max / 1e6).toFixed(0)} ms`,
     );
     store = reopened;
+
+    if (SPANS) {
+      /*
+       * The upgrade a user with an index from before the span column meets:
+       * the file as main left it (four columns, its two triggers), opened by
+       * this build, which drops that index at the start and builds the new
+       * one in the background.
+       */
+      await store.close();
+      const raw = new SqliteAdapter(path, { fts5: false });
+      await raw.initialize();
+      (raw as unknown as { db: { exec(s: string): void } }).db.exec(`
+        DELETE FROM trace_search_docs;
+        CREATE VIRTUAL TABLE trace_search_old USING fts5(input, output, tool_calls, metadata, content = '', tokenize = 'unicode61 remove_diacritics 2');
+        INSERT INTO trace_search_docs (tenant_id, trace_id) SELECT tenant_id, trace_id FROM traces ORDER BY rowid;
+        INSERT INTO trace_search_old (rowid, input, output, tool_calls, metadata)
+          SELECT d.doc_id, t.input, t.output, (SELECT group_concat(value, ' ') FROM json_tree(t.tool_calls) WHERE type IN ('text', 'integer', 'real')), (SELECT group_concat(value, ' ') FROM json_tree(t.metadata) WHERE type IN ('text', 'integer', 'real'))
+          FROM trace_search_docs d JOIN traces t ON t.trace_id = d.trace_id;
+      `);
+      await raw.close();
+      // Swap the four-column index in under the name the build looks for (a start without FTS5 left no triggers; the old pair is recreated).
+      const fts = new SqliteAdapter(path);
+      await fts.initialize();
+      await fts.whenSearchIndexReady();
+      (fts as unknown as { db: { exec(s: string): void } }).db.exec(`
+        ${['trace_search_au', 'trace_search_bd', 'trace_search_spans_bi', 'trace_search_spans_ai', 'trace_search_spans_bd', 'trace_search_spans_ad', 'trace_search_spans_bu', 'trace_search_spans_au'].map((t) => `DROP TRIGGER IF EXISTS ${t};`).join(' ')}
+        DROP TABLE trace_search;
+        ALTER TABLE trace_search_old RENAME TO trace_search;
+        CREATE TRIGGER trace_search_ad AFTER DELETE ON traces BEGIN DELETE FROM trace_search_docs WHERE trace_id = OLD.trace_id; END;
+        CREATE TRIGGER trace_search_au AFTER UPDATE OF metadata ON traces BEGIN SELECT 1; END;
+      `);
+      await fts.close();
+      await (await import('node:fs/promises')).stat(path);
+      const t3 = performance.now();
+      const loop2 = monitorEventLoopDelay({ resolution: 5 });
+      loop2.enable();
+      const upgraded = new SqliteAdapter(path);
+      await upgraded.initialize();
+      const upStart = performance.now() - t3;
+      await upgraded.whenSearchIndexReady();
+      loop2.disable();
+      console.log(
+        `  the upgrade from the four-column index: start ${upStart.toFixed(0)} ms; span index built in the background in ${((performance.now() - t3) / 1000).toFixed(1)} s; longest event-loop stall during it ${(loop2.max / 1e6).toFixed(0)} ms; file ${mb(path)} MB`,
+      );
+      store = upgraded;
+    }
 
     // Deletes: one trace at a time (delete_trace, erased row by row), then a retention sweep of the oldest 3%.
     const one: number[] = [];

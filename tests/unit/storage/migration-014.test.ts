@@ -69,8 +69,9 @@ describe('migration 014 — the trace session', () => {
     await store.close();
     // Roll the file back to the 013 shape: undo 015 (the search index, which reads session_id), then drop the index, the column and the rows that say 014 and 015 ran.
     const db = new Database(path);
+    for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%'").all() as Array<{ name: string }>) db.exec(`DROP TRIGGER ${name}`);
     db.exec(
-      'DROP TRIGGER trace_search_au; DROP TRIGGER trace_search_ad; DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter; ' +
+      'DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter; ' +
         "DROP INDEX idx_traces_tenant_session; ALTER TABLE traces DROP COLUMN session_id; DELETE FROM _iris_migrations WHERE id IN ('014-trace-session', '015-trace-search')",
     );
     db.close();

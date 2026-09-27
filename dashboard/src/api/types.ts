@@ -47,11 +47,13 @@ export interface Trace {
 
 /** Where a searched trace matched: the field, and an excerpt split at the matched words. */
 export interface TraceMatch {
-  field: 'input' | 'output' | 'tool_calls' | 'metadata';
+  field: 'input' | 'output' | 'tool_calls' | 'metadata' | 'spans';
   /** Plain text; an ellipsis marks a cut. */
   snippet: string;
   /** The snippet in order; `hit` marks the matched words. Rendered as text, never as HTML. */
   fragments: Array<{ text: string; hit: boolean }>;
+  /** With field `spans`: the span the excerpt comes from. */
+  span?: { span_id: string; name: string };
 }
 
 export interface EvalRuleResult {

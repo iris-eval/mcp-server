@@ -21,9 +21,9 @@ export interface TraceFilter {
 export interface TraceQueryOptions {
   filter?: TraceFilter;
   /**
-   * Full-text search over input, output, tool-call values and metadata
-   * values (#7): every word must appear, "a phrase" in order, `word*` as a
-   * prefix. Blank means no search. See src/storage/search.ts.
+   * Full-text search over input, output, tool-call values, metadata values
+   * (#7) and span text (#683): every word must appear, "a phrase" in order,
+   * `word*` as a prefix. Blank means no search. See src/storage/search.ts.
    */
   search?: string;
   limit?: number;

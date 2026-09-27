@@ -102,6 +102,14 @@ describe('TraceListPage search', () => {
               },
             }),
             trace('t-2', { match: { field: 'tool_calls', snippet: 'issue_refund · approved', fragments: [{ text: 'issue_refund · ', hit: false }, { text: 'approved', hit: true }] } }),
+            trace('t-3', {
+              match: {
+                field: 'spans',
+                snippet: 'refund approved by the payments tool',
+                fragments: [{ text: 'refund approved', hit: true }, { text: ' by the payments tool', hit: false }],
+                span: { span_id: 'sp-9', name: 'execute_tool issue_refund' },
+              },
+            }),
           ],
           { terms: ['refund', 'approved'], index: 'fts5' },
         ),
@@ -112,11 +120,13 @@ describe('TraceListPage search', () => {
     expect((screen.getByRole('searchbox', { name: 'Search traces' }) as HTMLInputElement).value).toBe('refund approved');
     expect(screen.getByRole('columnheader', { name: 'Match' })).toBeTruthy();
     const marks = [...container.querySelectorAll('mark')].map((m) => m.textContent);
-    expect(marks).toEqual(['refund', 'approved', 'approved']);
+    expect(marks).toEqual(['refund', 'approved', 'approved', 'refund approved']);
     const snippets = container.querySelectorAll('[data-testid="match-snippet"]');
     expect(snippets[0].textContent).toBe('OutputYour refund was approved today.');
     expect(snippets[1].textContent).toBe('Tool callissue_refund · approved');
-    expect(screen.getByRole('status').textContent).toBe('2 traces match “refund approved”, best match first.');
+    // A match in span text names the span.
+    expect(snippets[2].textContent).toBe('Spanexecute_tool issue_refundrefund approved by the payments tool');
+    expect(screen.getByRole('status').textContent).toBe('3 traces match “refund approved”, best match first.');
     expect((await axe(container)).violations).toEqual([]);
   });
 

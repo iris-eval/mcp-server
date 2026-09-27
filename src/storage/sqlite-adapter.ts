@@ -54,8 +54,8 @@ import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, unindexedRemain, searchIndexWriter, bulkIndexDelete, BM25_WEIGHTS, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
-import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, type ParsedSearch } from './search.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, readSpanText, BM25_WEIGHTS, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, type ParsedSearch } from './search.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 
@@ -364,9 +364,10 @@ export class SqliteAdapter implements IStorageAdapter {
   /**
    * Fill the search index from the traces already stored, after the start
    * rather than during it (search-index.ts, installSearchIndex, says why).
-   * One step of BUILD_BATCH traces at a time, each under its own write lock,
-   * yielding to the event loop between steps so requests are answered while
-   * it runs. Another process writing the same file only makes a step wait
+   * One step at a time, each under its own write lock and sized to about
+   * BUILD_STEP_MS of work from the last step's time, yielding to the event
+   * loop between steps so requests are answered while it runs. An index
+   * retired at the start is dropped first, in a step of its own. Another process writing the same file only makes a step wait
    * (busy_timeout); a step that still fails leaves the index building and
    * searches on the scan, and the next start tries again.
    */
@@ -374,9 +375,14 @@ export class SqliteAdapter implements IStorageAdapter {
     const yieldToRequests = () => new Promise<void>((resolve) => setImmediate(resolve));
     await yieldToRequests();
     try {
+      // An index retired at the start is dropped first (search-index.ts, retiring an index).
+      if (dropRetiredIndex(this.db)) await yieldToRequests();
       let after = 0;
+      let batch = BUILD_BATCH;
       while (!this.closing) {
-        const last = indexNextBatch(this.db, after);
+        const started = performance.now();
+        const last = indexNextBatch(this.db, after, batch);
+        batch = nextBuildBatch(batch, performance.now() - started);
         if (last === null) {
           // Past the end. A purge's VACUUM may have renumbered rowids behind the walk: check, and walk again if so.
           if (!unindexedRemain(this.db)) {
@@ -412,8 +418,6 @@ export class SqliteAdapter implements IStorageAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // The search index is written here, in the same transaction, not by a trigger (search-index.ts says why).
-    const indexTrace = this.searchIndex !== 'unavailable' ? searchIndexWriter(this.db) : undefined;
 
     const insertOne = (t: Trace) => {
       const toolCalls = t.tool_calls ? JSON.stringify(t.tool_calls) : null;
@@ -446,7 +450,6 @@ export class SqliteAdapter implements IStorageAdapter {
         t.source ?? null,
         t.session_id ?? null,
       );
-      indexTrace?.(tenantId, { traceId: t.trace_id, input: t.input ?? null, output: t.output ?? null, toolCalls, metadata });
 
       if (t.spans) {
         for (const span of t.spans) {
@@ -470,6 +473,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const insertAll = this.db.transaction((batch: Trace[]) => {
       for (const t of batch) insertOne(t);
+      // The search index is written here, in the same transaction, not by a trigger, and after the batch's spans (search-index.ts says why).
+      if (this.searchIndex !== 'unavailable') indexInsertedTraces(this.db, tenantId, batch.map((t) => t.trace_id));
     });
     insertAll(traces);
   }
@@ -647,10 +652,14 @@ export class SqliteAdapter implements IStorageAdapter {
         .all(tenantId, ...pageIds) as Array<Record<string, unknown>>;
       for (const row of rows) byId.set(row.trace_id as string, this.rowToTrace(row));
     }
+    // Span text is read only for the traces whose own fields do not hold every term: the snippet comes from those fields otherwise.
+    const needSpans = [...byId.values()].filter((t) => !matchesTrace(searchableText(t), parsed).matched).map((t) => t.trace_id);
+    const spanText = readSpanText(this.db, needSpans);
     const traces = pageIds.flatMap((id) => {
       const trace = byId.get(id);
       if (!trace) return [];
-      const match = buildMatch(searchableText(trace), parsed);
+      const spans = spanText.get(id);
+      const match = buildMatch(searchableText(trace, spans?.text), parsed, undefined, spans?.parts);
       return [match ? { ...trace, match } : trace];
     });
     return { traces, total, limit: q.limit, offset: q.offset, search: info };
@@ -659,7 +668,8 @@ export class SqliteAdapter implements IStorageAdapter {
   /**
    * Search without FTS5: read the traces the filters admit, in batches by
    * rowid so memory stays flat, and test each with the tokenizer the index
-   * would have used. Relevance is how many times the terms occur.
+   * would have used. Relevance is how many times the terms occur (in the
+   * trace's own fields, or with its spans when those alone do not match).
    */
   private scanForSearch(parsed: ParsedSearch, q: SearchPlan): { total: number; pageIds: string[] } {
     const BATCH = 500;
@@ -678,9 +688,32 @@ export class SqliteAdapter implements IStorageAdapter {
     let after = 0;
     for (;;) {
       const rows = read.all(...q.params, after) as Array<Record<string, unknown>>;
-      for (const row of rows) {
+      /*
+       * A trace's own fields first; its span text (a JSON walk in SQL, the
+       * costly part) only for the traces those fields do not match and whose
+       * stored span JSON could hold the missing words (spansMayMatch). A
+       * trace matched by its own fields is ranked by the hits in them.
+       */
+      const own = rows.map((row) => {
         const fields = searchableText({ input: row.input, output: row.output, tool_calls: parse(row.tool_calls), metadata: parse(row.metadata) });
-        const { matched, hits } = matchesTrace(fields, parsed);
+        return { row, fields, result: matchesTrace(fields, parsed) };
+      });
+      const unmatched = own.filter((o) => !o.result.matched);
+      const raw = new Map<string, string>();
+      if (unmatched.length > 0) {
+        const ids = unmatched.map((o) => o.row.trace_id as string);
+        const rawRows = this.db
+          .prepare(`SELECT trace_id, group_concat(COALESCE(attributes, '') || char(10) || COALESCE(events, ''), char(10)) AS raw FROM spans WHERE trace_id IN (${ids.map(() => '?').join(', ')}) GROUP BY trace_id`)
+          .all(...ids) as Array<{ trace_id: string; raw: string }>;
+        for (const r of rawRows) raw.set(r.trace_id, r.raw);
+      }
+      const spanText = readSpanText(
+        this.db,
+        unmatched.filter((o) => raw.has(o.row.trace_id as string) && spansMayMatch(o.fields, parsed, raw.get(o.row.trace_id as string)!)).map((o) => o.row.trace_id as string),
+      );
+      for (const { row, fields, result } of own) {
+        const spans = spanText.get(row.trace_id as string);
+        const { matched, hits } = result.matched || !spans ? result : matchesTrace({ ...fields, spans: spans.text }, parsed);
         if (!matched) continue;
         found.push({
           id: row.trace_id as string,
@@ -710,6 +743,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
     assertTenant(tenantId);
+    // A span added to a trace already in the search index re-indexes it, by trigger (search-index.ts).
     this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
