@@ -520,7 +520,14 @@ export function matchesTrace(fields: Record<SearchField, string>, parsed: Parsed
     let found = 0;
     const needsStream = term.tokens.some(hasCjk);
     for (const f of byField) found += needsStream ? fieldHits(f.text, f.tokens, streamOf(f), term).length : termHits(f.tokens, term).length;
-    if (found === 0 && !needsStream) for (const f of byField) found += fieldHits(f.text, f.tokens, streamOf(f), term).length;
+    // A word without CJK is in a stream only as it is in the text: build the stream only for a field whose text holds each of its words.
+    if (found === 0 && !needsStream) {
+      for (const f of byField) {
+        if (!hasCjk(f.text)) continue;
+        const folded = foldText(f.text);
+        if (term.tokens.every((t) => folded.includes(t))) found += fieldHits(f.text, f.tokens, streamOf(f), term).length;
+      }
+    }
     if (found === 0) return { matched: false, hits: 0 };
     hits += found;
   }
