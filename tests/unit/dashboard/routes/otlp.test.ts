@@ -181,6 +181,40 @@ describe('POST /v1/traces', () => {
     expect(await storage.getEvalsByTraceId(LOCAL_TENANT, unknown['iris-eval'].stored[0].trace_id)).toHaveLength(0);
   });
 
+  it('GenAI message arrays arrive as words: stored, searched and judged as what was asked and answered, the span keeping the JSON', async () => {
+    const { base, storage } = await boot({ evaluateOnIngest: true });
+    const input = JSON.stringify([{ role: 'system', parts: [{ type: 'text', content: 'You are a clerk.' }] }, { role: 'user', parts: [{ type: 'text', content: 'What is the policyholder number?' }] }]);
+    const output = JSON.stringify([{ role: 'assistant', parts: [{ type: 'text', content: 'Her SSN is 123-45-6789.' }], finish_reason: 'stop' }]);
+    const body = {
+      resourceSpans: [
+        {
+          resource: { attributes: [kv('service.name', str('clerk-bot'))] },
+          scopeSpans: [{ spans: [{ traceId: '00000000000000000000000000000021', spanId: '0000000000000021', name: 'chat gpt-4o', startTimeUnixNano: nanos(T0), endTimeUnixNano: nanos(T0 + 50), attributes: [kv('gen_ai.request.model', str('gpt-4o')), kv('gen_ai.input.messages', str(input)), kv('gen_ai.output.messages', str(output))] }] }],
+        },
+      ],
+    };
+    const answer = (await (await post(base, body)).json()) as { 'iris-eval': { stored: Array<{ trace_id: string; evaluation: { output_text?: string; rule_results: Array<{ ruleName: string; passed: boolean }> } }> } };
+    const { trace_id, evaluation } = answer['iris-eval'].stored[0];
+
+    const stored = await storage.getTrace(LOCAL_TENANT, trace_id);
+    expect(stored?.input).toBe('What is the policyholder number?');
+    expect(stored?.output).toBe('Her SSN is 123-45-6789.');
+    const [span] = await storage.getSpansByTraceId(LOCAL_TENANT, trace_id);
+    expect(span.attributes?.['gen_ai.input.messages']).toBe(input);
+
+    // The rules read the answer's words: the SSN is caught, and the judged text is the words, not the envelope.
+    expect(evaluation.rule_results.some((r) => r.ruleName === 'no_pii' && r.passed === false)).toBe(true);
+    const [row] = await storage.getEvalsByTraceId(LOCAL_TENANT, trace_id);
+    expect(row.output_text).toBe('Her SSN is 123-45-6789.');
+
+    // Search finds the words, and no longer the envelope's keys: "role" was in every GenAI trace's stored input.
+    const search = async (q: string) => (await (await fetch(`${base}/api/v1/traces?q=${encodeURIComponent(q)}`)).json()) as { traces: Array<{ trace_id: string; match: { field: string; snippet: string } }> };
+    const hit = await search('policyholder');
+    expect(hit.traces.map((t) => [t.trace_id, t.match.field, t.match.snippet])).toEqual([[trace_id, 'input', 'What is the policyholder number?']]);
+    expect((await search('role')).traces).toEqual([]);
+    expect((await search('parts')).traces).toEqual([]);
+  });
+
   it('refuses a non-JSON content type with 415, a non-OTLP body with 400, and reports dropped spans as partialSuccess', async () => {
     const { base } = await boot();
     const text = await post(base, 'hello', { 'content-type': 'text/plain' });

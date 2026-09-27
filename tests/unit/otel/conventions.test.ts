@@ -40,8 +40,9 @@ interface Expected {
 const TABLE: Record<string, Expected> = {
   'pydantic-ai.otlp.json': {
     agent: 'weather-agent',
-    input: /^\[\{"role":"user".*Lisbon tomorrow/,
-    output: /Lisbon tomorrow: 24 °C/,
+    // gen_ai.input.messages / gen_ai.output.messages, read down to the words asked and answered (0.20.0).
+    input: 'What is the weather in Lisbon tomorrow?',
+    output: 'Lisbon tomorrow: 24 °C, clear skies, a light wind from the northwest.',
     // The aggregate (812) wins over the leaf sum (402 + 390 = 792); cache_read tokens are not usage.
     tokens: { prompt_tokens: 812, completion_tokens: 133, total_tokens: 945 },
     model: 'gpt-4o',
@@ -61,8 +62,8 @@ const TABLE: Record<string, Expected> = {
   },
   'langsmith.otlp.json': {
     agent: 'support-graph',
-    input: '[{"role":"user","content":"Where is my order 4471?"}]',
-    output: /Order 4471 shipped on 19 September/,
+    input: 'Where is my order 4471?',
+    output: 'Order 4471 shipped on 19 September and arrives tomorrow.',
     tokens: { prompt_tokens: 210, completion_tokens: 27, total_tokens: 237 },
     model: 'gpt-4o-mini',
     steps: ['lookup_order'],
@@ -99,8 +100,9 @@ const TABLE: Record<string, Expected> = {
   },
   'semantic-kernel.otlp.json': {
     agent: 'sk-console',
-    input: '[{"role": "user", "content": "Why is the sky blue in one sentence?"}]',
-    output: /scattered by the atmosphere/,
+    // The gen_ai.content.* events carry OpenAI-shaped message arrays, read down to their words.
+    input: 'Why is the sky blue in one sentence?',
+    output: 'The sky appears blue because shorter blue wavelengths of sunlight are scattered by the atmosphere more than other colors.',
     tokens: { prompt_tokens: 16, completion_tokens: 29, total_tokens: 45 },
     model: 'gpt-4o',
     steps: [],
