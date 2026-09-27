@@ -215,6 +215,21 @@ describe('POST /v1/traces', () => {
     expect((await search('parts')).traces).toEqual([]);
   });
 
+  it('what the drawer is served: an agent span is INTERNAL, only the model calls are LLM, and the usage totals are unchanged', async () => {
+    const { base } = await boot();
+    const fixture = JSON.parse(readFileSync(resolve(__dirname, '../../../fixtures/otlp/conventions/agent-framework.otlp.json'), 'utf8')) as { resourceSpans: Array<{ scopeSpans: Array<{ spans: Array<{ traceId: string; attributes: unknown[] }> }> }> };
+    // create_agent, the other agent operation, as its own span in the same trace.
+    const spans = fixture.resourceSpans[0].scopeSpans[0].spans;
+    spans.push({ ...spans[0], spanId: 'ffffffffffffff01', parentSpanId: undefined, name: 'create_agent Writer', attributes: [kv('gen_ai.operation.name', str('create_agent')), kv('gen_ai.agent.name', str('Writer')), kv('gen_ai.request.model', str('gpt-4o-mini'))] } as never);
+    const answer = (await (await post(base, fixture)).json()) as { 'iris-eval': { stored: Array<{ trace_id: string }> } };
+    const detail = (await (await fetch(`${base}/api/v1/traces/${answer['iris-eval'].stored[0].trace_id}`)).json()) as { trace: { token_usage: unknown }; spans: Array<{ name: string; kind: string }> };
+    const count = (kind: string) => detail.spans.filter((s) => s.kind === kind).length;
+    expect(detail.spans.filter((s) => /^(invoke|create)_agent /.test(s.name)).map((s) => s.kind)).toEqual(['INTERNAL', 'INTERNAL']);
+    expect([count('LLM'), count('TOOL'), count('INTERNAL')]).toEqual([2, 1, 2]);
+    // invoke_agent carries the run's totals beside chat children carrying their own: counted once, as before.
+    expect(detail.trace.token_usage).toEqual({ prompt_tokens: 1742, completion_tokens: 136, total_tokens: 1878 });
+  });
+
   it('refuses a non-JSON content type with 415, a non-OTLP body with 400, and reports dropped spans as partialSuccess', async () => {
     const { base } = await boot();
     const text = await post(base, 'hello', { 'content-type': 'text/plain' });
