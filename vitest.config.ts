@@ -15,6 +15,17 @@ export default defineConfig({
      * audit.log on every run. See tests/setup/iris-home.ts.
      */
     setupFiles: ['./tests/setup/iris-home.ts'],
+    /*
+     * Half the cores, not vitest's default of all but one: each worker is a
+     * process with its own V8 garbage-collector and compiler threads, and at
+     * 19 workers on a 20-core machine the CPU-heavy tests starved each other.
+     * Measured there, the root suite took 78 s at the default and 61-62 s at
+     * half; the composite measurement 33 s against 15 s, the judge composite
+     * 44 s against 26 s; 53 tests ran over 2 s against 33-34. CI keeps the
+     * default: on its 4-core runners half is 2 workers instead of 3, and the
+     * Linux test jobs ran 10-30 s slower.
+     */
+    maxWorkers: process.env.CI ? undefined : '50%',
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

@@ -6,8 +6,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import { VerdictPanel, type VerdictPanelProps } from '../../../src/components/evals/VerdictPanel';
 import { NO_VERDICT_TEXT } from '../../../src/components/evals/verdictText';
@@ -104,8 +103,17 @@ describe('VerdictPanel: the verdict with its basis, coverage and reasons', () =>
   it("the question's full text comes from the server when the page has it", async () => {
     const { container } = panel({ questionText: new Map([['within_budget', 'Did the run cost what the deployment allows?']]) });
     const label = container.querySelector('[data-question="within_budget"] span[tabindex="0"]') as HTMLElement;
-    await userEvent.hover(label);
-    expect(await screen.findByText('Did the run cost what the deployment allows?', {}, { timeout: 2500 })).toBeTruthy();
+    // The tooltip's show delay on a fake clock, not a real-timer wait.
+    vi.useFakeTimers();
+    try {
+      fireEvent.mouseEnter(label);
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+      expect(screen.getByText('Did the run cost what the deployment allows?')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('the counts: passed, failed, skipped', () => {

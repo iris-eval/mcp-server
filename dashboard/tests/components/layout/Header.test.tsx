@@ -5,7 +5,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { axe } from 'jest-axe';
 import { reportConnection, resetConnection } from '../../../src/api/connection';
@@ -180,8 +179,17 @@ describe('Header: the pill is the server, not a constant', () => {
   it("the judge chip, off, lists the server's own enable steps on hover", async () => {
     renderHeader();
     const judge = document.querySelector('header [data-judge]') as HTMLElement;
-    await userEvent.hover(judge);
-    expect(await screen.findByText(capabilities.judge!.howToEnable![0], {}, { timeout: 2500 })).toBeTruthy();
+    // The tooltip's show delay on a fake clock, not a real-timer wait.
+    vi.useFakeTimers();
+    try {
+      fireEvent.mouseEnter(judge);
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+      expect(screen.getByText(capabilities.judge!.howToEnable![0])).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('a demo server wears the DEMO chip', () => {
