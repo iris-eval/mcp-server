@@ -1,7 +1,11 @@
 // Eval rules generator — counts `export const X: EvalRule = {` across rule files
 // + extracts pattern array sizes for the safety / relevance subcategories.
 
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+// Synchronous reads, deliberately: tests call this generator, and under the
+// full test suite each async fs call waited to be scheduled (#678 measured
+// the same cause in the proof loaders). A few local files; nothing to gain
+// from yielding.
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -85,7 +89,7 @@ export async function generate() {
   const allNames = [];
   const sources = {};
   for (const rel of RULE_FILES) {
-    const src = await readFile(resolve(root, rel), 'utf-8');
+    const src = readFileSync(resolve(root, rel), 'utf-8');
     sources[rel] = src;
     const matches = [...src.matchAll(RULE_DEF_RE)];
     for (const m of matches) allNames.push(m[1]);
@@ -102,12 +106,12 @@ export async function generate() {
   const hallucinationMarkers = countArrayElements(sources, /(?:const|let|var)\s+HALLUCINATION_MARKERS[^=]*=\s*\[([\s\S]*?)\];/);
   const stubMarkers = extractStubMarkers(sources);
 
-  const engineSrc = await readFile(resolve(root, ENGINE_FILE), 'utf-8');
+  const engineSrc = readFileSync(resolve(root, ENGINE_FILE), 'utf-8');
   const dm = engineSrc.match(DEFAULT_EVAL_TYPE_RE);
   if (!dm) throw new Error(`eval-rules generator: DEFAULT_EVAL_TYPE not found in ${ENGINE_FILE}`);
   const defaultEvalType = dm[1];
 
-  const typesSrc = await readFile(resolve(root, TYPES_FILE), 'utf-8');
+  const typesSrc = readFileSync(resolve(root, TYPES_FILE), 'utf-8');
   const tm = typesSrc.match(CUSTOM_RULE_TYPE_RE);
   if (!tm) throw new Error(`eval-rules generator: CustomRuleType union not found in ${TYPES_FILE}`);
   const customRuleTypes = [...tm[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
@@ -116,7 +120,7 @@ export async function generate() {
   const roster = rosterFrom(sources);
   const missing = roster.filter((r) => !r.name || !r.kind || !r.mechanism || !r.needs || !r.question || !r.classes || r.version === null);
   if (missing.length > 0) throw new Error(`eval-rules generator: rule metadata missing on ${missing.map((r) => r.name ?? '?').join(', ')}`);
-  const questions = questionsFrom(await readFile(resolve(root, QUESTIONS_FILE), 'utf-8'));
+  const questions = questionsFrom(readFileSync(resolve(root, QUESTIONS_FILE), 'utf-8'));
   if (questions.length === 0) throw new Error(`eval-rules generator: no questions found in ${QUESTIONS_FILE}`);
 
   return {

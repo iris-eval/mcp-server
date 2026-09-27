@@ -174,11 +174,16 @@ describe('capability map — needs are real', () => {
 
   it('for every cell need beyond output, each cited rule that declares that need skips when the engine is called without it', async () => {
     let checked = 0;
+    // One evaluation per withheld input, however many cells name it: the
+    // result depends only on the input withheld, and evaluating it again
+    // for every cell cost 1.3 s here and over 5 s on a loaded machine.
+    const byNeed = new Map<string, Awaited<ReturnType<typeof engine.evaluateAll>>>();
     for (const c of answering) {
       const rules = c.evidence.filter((e) => e.kind === 'rule').map((e) => RULE_BY_NAME.get(e.name)!);
       for (const need of c.needs.filter((n) => n !== 'output')) {
         expect(need === 'tool_outputs' || NEED_TO_CONTEXT[need] !== undefined, `${c.id}: need "${need}" is not an input the engine takes`).toBe(true);
-        const result = await engine.evaluateAll(withhold(need) as typeof FULL);
+        if (!byNeed.has(need)) byNeed.set(need, await engine.evaluateAll(withhold(need) as typeof FULL));
+        const result = byNeed.get(need)!;
         for (const rule of rules.filter((r) => (r.needs as readonly Need[]).includes(need as Need))) {
           const row = result.rule_results.find((x) => x.ruleName === rule.name);
           // Either the rule skipped, or it ran on less and its `saw` says it

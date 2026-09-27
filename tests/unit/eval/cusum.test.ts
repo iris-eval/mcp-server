@@ -225,7 +225,7 @@ describe('the false-alarm budget is per agent', () => {
     expect(family, `${family} false alarms over ${evaluations} evaluations; the budget is ${budget}`).toBeLessThanOrEqual(budget);
     // Without the family control the same agents alarm several times over budget.
     expect(perStream).toBeGreaterThan(3 * budget);
-  }, 180_000);
+  });
 
   it('the family line is the per-stream line raised, and rises with the number of streams', () => {
     const one = familyThreshold(10, 200, 1);

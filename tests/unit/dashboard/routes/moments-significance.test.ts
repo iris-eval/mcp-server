@@ -151,9 +151,12 @@ describe('Decision Moments ranked by significance', () => {
 
   it('pages consistently: page after page is one ranking, cut, with no repeats and no gaps', async () => {
     const whole = (await get('sort_by=significance&limit=200')).body.moments.map((m) => m.id);
+    // Two pages whose boundary falls inside a run of equal scores, where only
+    // the tie-break keeps the cut stable. Each request ranks the whole
+    // window, so fewer, larger pages keep the test's own cost down.
     const paged: string[] = [];
-    for (let offset = 0; offset < 200; offset += 25) {
-      paged.push(...(await get(`sort_by=significance&limit=25&offset=${offset}`)).body.moments.map((m) => m.id));
+    for (let offset = 0; offset < 200; offset += 100) {
+      paged.push(...(await get(`sort_by=significance&limit=100&offset=${offset}`)).body.moments.map((m) => m.id));
     }
     expect(paged).toEqual(whole);
     expect(new Set(paged).size).toBe(200);

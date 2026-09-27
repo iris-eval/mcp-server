@@ -270,17 +270,24 @@ describe('POST /v1/traces — bounded batches', () => {
   it('stores at most MAX_OTLP_TRACES_PER_REQUEST traces and reports the rest as rejected spans, promptly', async () => {
     const { MAX_OTLP_TRACES_PER_REQUEST } = await import('../../../../src/dashboard/routes/otlp.js');
     const { base, storage } = await boot();
-    const started = performance.now();
+    const batch = vi.spyOn(storage, 'insertTraces');
+    const single = vi.spyOn(storage, 'insertTrace');
     const res = await post(base, manyTraces(MAX_OTLP_TRACES_PER_REQUEST + 5));
-    const elapsed = performance.now() - started;
     expect(res.status).toBe(200);
     const body = (await res.json()) as { partialSuccess?: { rejectedSpans: number; errorMessage: string }; 'iris-eval': { count: number } };
     expect(body['iris-eval'].count).toBe(MAX_OTLP_TRACES_PER_REQUEST);
     expect(body.partialSuccess?.rejectedSpans).toBe(5);
     expect(body.partialSuccess?.errorMessage).toContain('limit per request');
     expect((await storage.queryTraces(LOCAL_TENANT, { limit: 1 })).total).toBe(MAX_OTLP_TRACES_PER_REQUEST);
-    // One transaction for the batch: well under the 11 s the per-trace commits took.
-    expect(elapsed).toBeLessThan(10_000);
+    /*
+     * One transaction for the batch: one insertTraces call carrying every
+     * accepted trace, and no per-trace insert. The per-trace commits took
+     * 11 s; this used to be held under 10 s of wall time, which a loaded
+     * machine could exceed with the fix in place.
+     */
+    expect(batch).toHaveBeenCalledTimes(1);
+    expect(batch.mock.calls[0][1]).toHaveLength(MAX_OTLP_TRACES_PER_REQUEST);
+    expect(single).not.toHaveBeenCalled();
   });
 
   it('stores nothing and answers 400 when a span repeats inside the batch (all or nothing)', async () => {

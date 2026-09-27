@@ -9,13 +9,15 @@
  */
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { loadComposite, splitOf, validateComposite, compositeContext, SPLIT_SALT } from '../../proof/lib/composite.js';
 import { measureComposite, normaliseCompositeForCheck, renderCompositeMarkdown, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from '../../proof/lib/composite-report.js';
 import { fnv1a } from '../../proof/lib/materialise.js';
 import { repoRoot, stableJson } from '../../proof/run.js';
 import { rulesByType } from '../../src/eval/rules/index.js';
 import type { FailureClass } from '../../src/types/eval.js';
+
+const MEASURE_BUDGET_MS = 180_000;
 
 const DETECTED_CLASSES = new Set<FailureClass>(
   (['completeness', 'relevance', 'safety', 'cost'] as const).flatMap((t) => rulesByType[t]).flatMap((r) => [...(r.classes ?? [])] as FailureClass[]),
@@ -55,8 +57,21 @@ describe('composite corpus', () => {
 });
 
 describe('composite results', () => {
+  /*
+   * The corpus is measured once for these four tests. Each used to measure
+   * it again, and the result is a pure function of the files on disk. One
+   * measurement costs 12-16 s in the full suite and from 43 s to over 60 s with 20
+   * busy-loop processes on a 20-core machine (the old per-test 60 s timeout
+   * failed in 10 of 10 such runs). The budget is about three times the
+   * loaded maximum seen.
+   */
+  let measured: Awaited<ReturnType<typeof measureComposite>>;
+  beforeAll(async () => {
+    measured = await measureComposite(repoRoot);
+  }, MEASURE_BUDGET_MS);
+
   it('the committed results equal what this code produces', async () => {
-    const { results } = await measureComposite(repoRoot);
+    const { results } = measured;
     const version = (JSON.parse(await readFile(resolve(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
     const full: CompositeResults = { ...results, generatedAt: 'x', commit: 'x', version };
     const fresh = normaliseCompositeForCheck(stableJson(full), renderCompositeMarkdown(full));
@@ -66,10 +81,10 @@ describe('composite results', () => {
     );
     expect(fresh.json).toBe(committed.json);
     expect(fresh.md).toBe(committed.md);
-  }, 60_000);
+  });
 
   it('all three composers are scored on the test split with intervals, and each difference carries the Newcombe interval', async () => {
-    const { results } = await measureComposite(repoRoot);
+    const { results } = measured;
     for (const comp of ['legacy', 'risk', 'riskPerClass'] as const) {
       expect(results[comp].test.accuracy.n).toBeGreaterThan(20);
       expect(results[comp].test.accuracy.ci95).not.toBeNull();
@@ -84,17 +99,17 @@ describe('composite results', () => {
       }
     }
     expect(results.method.priorMode).toBe('per-output');
-  }, 60_000);
+  });
 
   it('the per-class prior is the degenerate reading: it blocks nearly every clean case, and the per-output prior does not', async () => {
-    const { results } = await measureComposite(repoRoot);
+    const { results } = measured;
     // Ten examined classes at a 0.5 prior each leave (1 − 0.5)^10 as the prior that nothing is wrong.
     expect(results.riskPerClass.dev.falseBlock.rate!).toBeGreaterThan(0.9);
     expect(results.risk.dev.falseBlock.rate!).toBeLessThan(results.riskPerClass.dev.falseBlock.rate!);
-  }, 60_000);
+  });
 
   it('the risk composer fails every case the legacy composer vetoed, and the sweep never touches the test split', async () => {
-    const { rows, results } = await measureComposite(repoRoot);
+    const { rows, results } = measured;
     for (const r of rows) {
       for (const cell of [r.risk, r.riskPerClass]) {
         if (r.legacy.criticalFailures.length > 0) expect(cell.state, r.id).toBe('fail');
@@ -109,5 +124,5 @@ describe('composite results', () => {
     const devLabelled = rows.filter((r) => r.split === 'dev' && r.shouldShip !== null).length;
     for (const s of results.sweep.rows) expect(s.tp + s.fp + s.fn + s.tn).toBe(devLabelled);
     expect(results.sweep.shippedTau).toBe(0.5);
-  }, 60_000);
+  });
 });

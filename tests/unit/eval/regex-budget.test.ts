@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { regexBacktrackingBudgetExceeded } from '../../../src/eval/rules/regex-budget.js';
 import { createCustomRuleStore } from '../../../src/custom-rule-store.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
+import { cpuMs } from '../../helpers/cpu-time.js';
 
 /*
  * safe-regex2 is a star-height heuristic: it catches EXPONENTIAL blowup and
@@ -52,9 +53,8 @@ describe('regexBacktrackingBudgetExceeded', () => {
   });
 
   it('is itself fast — it never runs a candidate against a large input', () => {
-    const started = Date.now();
-    regexBacktrackingBudgetExceeded('a*a*a*a*a*b');
-    expect(Date.now() - started).toBeLessThan(2_000);
+    // CPU time, not the wall clock, which also counts a busy machine's waits.
+    expect(cpuMs(() => regexBacktrackingBudgetExceeded('a*a*a*a*a*b'))).toBeLessThan(2_000);
   });
 });
 

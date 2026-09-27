@@ -11,7 +11,7 @@
  * header name, so fetch silently drops the override and the guard would
  * pass for the wrong reason (see http-transport.test.ts).
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { request as httpRequest } from 'node:http';
 import { createServer } from 'node:net';
@@ -101,18 +101,40 @@ function get(port: number, path: string, hostHeader: string): Promise<{ status: 
   });
 }
 
-describe('--demo', () => {
-  it('seeds the demo db and serves the dashboard against it, real store untouched', async () => {
-    const dashboardPort = await freePort();
-    const proc = spawnCli(['--demo', '--dashboard-port', String(dashboardPort)]);
+/*
+ * One demo server for the tests that need one running. Each used to spawn
+ * and seed its own, and the seed judges ~225 traces with the real engine.
+ * Started once, in beforeAll, and ready when it says so on stderr, never
+ * after a fixed sleep.
+ *
+ * The start measured 5.8-8.7 s with this file alone and 26-33 s with 20
+ * busy-loop processes on a 20-core machine; inside the full suite under the
+ * same load the old 50 s deadline was missed in 3 of 10 runs. The budget is
+ * a little under four times the isolated loaded maximum.
+ */
+const DEMO_START_BUDGET_MS = 120_000;
 
-    let stderr = '';
-    const port = await new Promise<number>((resolvePromise, rejectPromise) => {
+describe('--demo, against one running demo server', () => {
+  let demoHome = '';
+  let proc: ChildProcess | undefined;
+  let port = 0;
+  let stderr = '';
+
+  beforeAll(async () => {
+    demoHome = mkdtempSync(join(tmpdir(), 'iris-demo-cli-test-'));
+    const dashboardPort = await freePort();
+    proc = spawn(process.execPath, ['--import', 'tsx', entryPoint, '--demo', '--dashboard-port', String(dashboardPort)], {
+      cwd: repoRoot,
+      env: { ...process.env, IRIS_HOME: demoHome, IRIS_NO_AUTO_LAUNCH: '1' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const started = Date.now();
+    port = await new Promise<number>((resolvePromise, rejectPromise) => {
       const timer = setTimeout(
-        () => rejectPromise(new Error(`Dashboard never came up. stderr so far:\n${stderr}`)),
-        50_000,
+        () => rejectPromise(new Error(`Dashboard never came up within ${DEMO_START_BUDGET_MS} ms. stderr so far:\n${stderr}`)),
+        DEMO_START_BUDGET_MS,
       );
-      proc.stderr!.on('data', (chunk: Buffer) => {
+      proc!.stderr!.on('data', (chunk: Buffer) => {
         stderr += chunk.toString();
         const m = stderr.match(/Dashboard available at http:\/\/localhost:(\d+)/);
         if (m) {
@@ -120,12 +142,27 @@ describe('--demo', () => {
           resolvePromise(Number(m[1]));
         }
       });
-      proc.on('exit', (code) => {
+      proc!.on('exit', (code) => {
         clearTimeout(timer);
-        rejectPromise(new Error(`CLI exited early with code ${code}. stderr:\n${stderr}`));
+        rejectPromise(new Error(`CLI exited early with code ${code} after ${Date.now() - started} ms. stderr:\n${stderr}`));
       });
     });
+    // The banner is printed right after the line matched above.
+    await new Promise<void>((resolvePromise) => {
+      const check = () => (stderr.includes('--demo-clear') ? resolvePromise() : setTimeout(check, 100));
+      check();
+    });
+  }, DEMO_START_BUDGET_MS + 10_000);
 
+  afterAll(async () => {
+    if (proc && proc.exitCode === null) {
+      proc.kill();
+      await new Promise((r) => proc!.once('exit', r));
+    }
+    rmSync(demoHome, { recursive: true, force: true });
+  });
+
+  it('seeds the demo db and serves the dashboard against it, real store untouched', async () => {
     // The seeded data is served — this is the "first value moment".
     const summary = await get(port, '/api/v1/summary?hours=720', `127.0.0.1:${port}`);
     expect(summary.status).toBe(200);
@@ -147,51 +184,19 @@ describe('--demo', () => {
     };
     expect(capabilities.dashboard?.mode).toBe('demo');
 
-    // Wait for the banner (printed right after the log line we matched).
-    await new Promise<void>((resolvePromise) => {
-      const check = () => {
-        if (stderr.includes('--demo-clear')) resolvePromise();
-        else setTimeout(check, 100);
-      };
-      check();
-    });
-
     // The banner says what this is and how to remove it.
     expect(stderr).toContain('IRIS DEMO MODE');
     expect(stderr).toContain('npx @iris-eval/mcp-server --demo-clear');
     // The demo db path is printed quoted — an unquoted Windows path pasted
     // into bash mangles into a stray "C:Users..." file.
-    expect(stderr).toContain(`"${join(home, 'demo.db')}"`);
+    expect(stderr).toContain(`"${join(demoHome, 'demo.db')}"`);
 
     // Demo data landed in demo.db; no real store was created or touched.
-    expect(existsSync(join(home, 'demo.db'))).toBe(true);
-    expect(existsSync(join(home, 'iris.db'))).toBe(false);
-  }, 60_000);
+    expect(existsSync(join(demoHome, 'demo.db'))).toBe(true);
+    expect(existsSync(join(demoHome, 'iris.db'))).toBe(false);
+  });
 
   it('refuses trace ingest into demo.db with a clear 403 — --demo-clear would have deleted it (#372 / backlog)', async () => {
-    const dashboardPort = await freePort();
-    const proc = spawnCli(['--demo', '--dashboard-port', String(dashboardPort)]);
-
-    let stderr = '';
-    const port = await new Promise<number>((resolvePromise, rejectPromise) => {
-      const timer = setTimeout(
-        () => rejectPromise(new Error(`Dashboard never came up. stderr so far:\n${stderr}`)),
-        50_000,
-      );
-      proc.stderr!.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-        const m = stderr.match(/Dashboard available at http:\/\/localhost:(\d+)/);
-        if (m) {
-          clearTimeout(timer);
-          resolvePromise(Number(m[1]));
-        }
-      });
-      proc.on('exit', (code) => {
-        clearTimeout(timer);
-        rejectPromise(new Error(`CLI exited early with code ${code}. stderr:\n${stderr}`));
-      });
-    });
-
     const before = JSON.parse((await get(port, '/api/v1/summary?hours=720', `127.0.0.1:${port}`)).body) as { total_traces: number };
     expect(before.total_traces).toBeGreaterThan(0);
 
@@ -213,13 +218,11 @@ describe('--demo', () => {
     expect(listed.total).toBe(0);
 
     // The banner says so up front.
-    await new Promise<void>((resolvePromise) => {
-      const check = () => (stderr.includes('--demo-clear') ? resolvePromise() : setTimeout(check, 100));
-      check();
-    });
     expect(stderr).toContain('Trace ingest (POST /api/v1/traces) is refused in demo mode');
-  }, 60_000);
+  });
+});
 
+describe('--demo', () => {
   it('refuses --demo combined with --db-path', async () => {
     const proc = spawnCli(['--demo', '--db-path', join(home, 'other.db')]);
     const { code, stderr } = await collectUntilExit(proc);
