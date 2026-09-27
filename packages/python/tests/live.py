@@ -23,6 +23,8 @@ from typing import Any, Iterator
 import httpx
 import pytest
 
+from tied import spawn, stop
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SERVER = REPO_ROOT / "dist" / "index.js"
 PROVIDER = REPO_ROOT / "tests" / "fixtures" / "scripted-provider" / "server.mjs"
@@ -82,7 +84,8 @@ def _launch(node: str, home: str, api_key: str) -> tuple[subprocess.Popen[bytes]
     env.pop("IRIS_API_KEY", None)
     log = open(Path(home) / "server.log", "a", encoding="utf-8")  # noqa: SIM115 - closed by the caller
     # stdin stays open: the MCP transport is stdio, and it ends the process when stdin closes.
-    proc = subprocess.Popen([node, str(SERVER), "--dashboard", "--dashboard-port", str(port), "--api-key", api_key], env=env, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=log)
+    # Tied to this process (tied.py): it cannot outlive the test run, however the run ends.
+    proc = spawn([node, str(SERVER), "--dashboard", "--dashboard-port", str(port), "--api-key", api_key], env=env, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=log)
     url = f"http://127.0.0.1:{port}"
     deadline = time.monotonic() + 45
     while True:
@@ -92,8 +95,7 @@ def _launch(node: str, home: str, api_key: str) -> tuple[subprocess.Popen[bytes]
         except Exception:  # not listening yet: refused, or on Windows a connect that times out
             pass
         if proc.poll() is not None or time.monotonic() > deadline:
-            proc.kill()
-            proc.wait(timeout=10)
+            stop(proc)
             log.close()
             raise RuntimeError(f"Iris did not start on {url}")
         time.sleep(0.15)
@@ -117,24 +119,22 @@ def start_iris(config: dict[str, Any] | None = None) -> Iterator[Iris]:
     try:
         yield Iris(url, api_key)
     finally:
-        proc.kill()
-        proc.wait(timeout=10)
+        stop(proc)
         log.close()
         shutil.rmtree(home, ignore_errors=True)
 
 
 def start_provider() -> Iterator[Provider]:
     node = require_prerequisites()
-    proc = subprocess.Popen([node, str(PROVIDER)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    proc = spawn([node, str(PROVIDER)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert proc.stdout is not None
     line = proc.stdout.readline()
     try:
         port = json.loads(line)["port"]
     except (ValueError, KeyError):
-        proc.kill()
+        stop(proc)
         raise RuntimeError(f"the scripted provider did not start: {line!r} {proc.stderr.read() if proc.stderr else ''}")
     try:
         yield Provider(f"http://127.0.0.1:{port}")
     finally:
-        proc.kill()
-        proc.wait(timeout=10)
+        stop(proc)
