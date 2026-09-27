@@ -21,9 +21,11 @@ export default defineConfig({
      * 19 workers on a 20-core machine the CPU-heavy tests starved each other.
      * Measured there, the root suite took 78 s at the default and 61-62 s at
      * half; the composite measurement 33 s against 15 s, the judge composite
-     * 44 s against 26 s; 53 tests ran over 2 s against 33-34.
+     * 44 s against 26 s; 53 tests ran over 2 s against 33-34. CI keeps the
+     * default: on its 4-core runners half is 2 workers instead of 3, and the
+     * Linux test jobs ran 10-30 s slower.
      */
-    maxWorkers: '50%',
+    maxWorkers: process.env.CI ? undefined : '50%',
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

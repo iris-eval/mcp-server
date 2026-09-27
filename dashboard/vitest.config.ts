@@ -26,9 +26,10 @@ export default defineConfig({
      * suite took 25-27 s, its slowest test 4.8-5.5 s against the 5 s
      * timeout (it failed 2 of 3 plain runs), and 18-22 tests passed 2 s. At
      * half the cores the same suite took 23 s and its slowest test 2.6-2.9 s,
-     * with 3-4 tests over 2 s.
+     * with 3-4 tests over 2 s. CI keeps the default, which on its 4-core
+     * runners is 3 workers.
      */
-    maxWorkers: '50%',
+    maxWorkers: process.env.CI ? undefined : '50%',
     /*
      * Every test here renders React into jsdom, and half the files then run
      * axe over the result; that work is the test. With 20 busy-loop
