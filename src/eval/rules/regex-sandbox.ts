@@ -37,10 +37,24 @@ export const REGEX_MATCH_BUDGET_MS = 100;
 /** How long a fresh worker may take to boot before we give up on it. */
 const WORKER_BOOT_TIMEOUT_MS = 5000;
 
+/**
+ * How long a posted match may wait for the worker thread to pick it up.
+ * This is the host's scheduling, not the pattern's work, so it is not the
+ * match budget (#677); a worker that has not started by then is treated as
+ * a sandbox failure, never as backtracking.
+ */
+const WORKER_START_TIMEOUT_MS = 5000;
+
 const WORKER_SOURCE = `
 const { parentPort, workerData } = require('worker_threads');
-parentPort.on('message', ({ flag, pattern, flags, input }) => {
+parentPort.on('message', ({ flag, pattern, flags, input, startDelayMs }) => {
   const view = new Int32Array(flag);
+  // Test hook only: stands in for a host too busy to schedule this thread.
+  if (startDelayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, startDelayMs);
+  // Slot 2: the match has started. The caller's budget clock starts here,
+  // not when it posted the message (#677).
+  Atomics.store(view, 2, 1);
+  Atomics.notify(view, 2);
   let status;
   const started = performance.now();
   try {
@@ -55,6 +69,19 @@ parentPort.on('message', ({ flag, pattern, flags, input }) => {
   Atomics.store(view, 0, status);
   Atomics.notify(view, 0);
 });
+// Warm the path a match takes before signalling ready, so a fresh worker's
+// first match does not pay inside the caller's budget for code the isolate
+// has not run yet. On a loaded host, first matches on fresh workers were
+// still killed after the start signal alone; with the warm-up, none were
+// (#677).
+{
+  const warm = new Int32Array(new SharedArrayBuffer(12));
+  const t = performance.now();
+  for (let i = 0; i < 50; i++) new RegExp('(?:a|b)+c[0-9]{1,3}', 'i').test('ababab c12 ' + i);
+  Atomics.store(warm, 1, Math.ceil(performance.now() - t));
+  Atomics.store(warm, 0, 1);
+  Atomics.notify(warm, 0);
+}
 // Ready handshake LAST: by the time the spawner unblocks, the message
 // listener above is installed and the first real match can be processed.
 {
@@ -70,6 +97,9 @@ export type SandboxedRegexResult =
   | { kind: 'error' };
 
 let worker: Worker | null = null;
+
+/** Test hook: how long the worker waits before starting each match. */
+let startDelayMs = 0;
 
 function getWorker(): Worker {
   if (worker === null) {
@@ -100,12 +130,21 @@ function getWorker(): Worker {
 
 /**
  * Runs `new RegExp(pattern, flags).test(input)` in the sandbox worker,
- * blocking the calling thread for at most `budgetMs`.
+ * blocking the calling thread for at most `budgetMs` of matching.
  *
- * `timeout` means the match was still backtracking at the deadline and the
- * worker was killed mid-match — the pattern is superlinear on this input.
- * `error` means the pattern failed to compile in the worker (callers
- * pre-validate syntax, so this is unexpected).
+ * The budget is counted from the moment the worker STARTS the match, not
+ * from the moment the match was posted. Until 0.20.0 it ran from the post,
+ * so on a busy host the wait for the worker thread to be scheduled was
+ * charged to the pattern: a trivial `forbidden` on a 40-character output
+ * was killed as backtracking, a critical custom rule came back skipped,
+ * and the verdict became unknown exactly when the server was busiest.
+ *
+ * `timeout` means the match was still running `budgetMs` after it started,
+ * and the worker was killed mid-match: the pattern is superlinear on this
+ * input. `error` means the sandbox could not run the match: the pattern
+ * failed to compile in the worker (callers pre-validate syntax, so this is
+ * unexpected), or the worker had not started it within
+ * WORKER_START_TIMEOUT_MS.
  */
 export function sandboxedRegexTest(
   pattern: string,
@@ -114,13 +153,23 @@ export function sandboxedRegexTest(
   budgetMs: number = REGEX_MATCH_BUDGET_MS,
 ): SandboxedRegexResult {
   // Fresh signal cells per call (slot 0 = status, slot 1 = worker-measured
-  // duration): a terminated worker can never write into a later call's cells.
-  const flag = new SharedArrayBuffer(8);
+  // duration, slot 2 = started): a terminated worker can never write into a
+  // later call's cells.
+  const flag = new SharedArrayBuffer(12);
   const view = new Int32Array(flag);
 
   const w = getWorker();
-  w.postMessage({ flag, pattern, flags, input });
+  w.postMessage({ flag, pattern, flags, input, startDelayMs });
 
+  // Phase 1: the worker picks the match up. Scheduling, not matching.
+  if (Atomics.wait(view, 2, 0, WORKER_START_TIMEOUT_MS) === 'timed-out') {
+    void w.terminate();
+    worker = null;
+    return { kind: 'error' };
+  }
+
+  // Phase 2: the match itself, held to the budget. 'not-equal' means it
+  // already finished; the checks below read the result either way.
   const outcome = Atomics.wait(view, 0, 0, budgetMs);
   if (outcome === 'timed-out') {
     // Still 0 → the worker is wedged inside .test(). Kill it mid-backtrack;
@@ -136,6 +185,14 @@ export function sandboxedRegexTest(
   if (status === 1) return { kind: 'match', matched: true, durationMs };
   if (status === 2) return { kind: 'match', matched: false, durationMs };
   return { kind: 'error' };
+}
+
+/**
+ * Test hook: makes the worker wait `ms` before it starts each match, the way
+ * a thread waits on a host too busy to schedule it. 0 turns it off.
+ */
+export function __setSandboxStartDelayForTests(ms: number): void {
+  startDelayMs = ms;
 }
 
 /** Test hook: kills the singleton so suites can assert respawn behavior and

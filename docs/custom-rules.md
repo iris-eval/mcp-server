@@ -437,7 +437,7 @@ The default weight is `1` when omitted.
 
 ## ReDoS Protection
 
-Protection has two layers. The static checks below reject obviously dangerous patterns up front with a clear message — but static analysis of backtracking is undecidable in general, and some superlinear patterns pass every static check. So the layer that actually holds is at runtime: **every match of a user-supplied pattern executes in a sandbox worker thread with a hard 100ms deadline**. A match still backtracking at the deadline is terminated mid-execution — a hostile pattern (or a hostile output crafted to stall a legitimate pattern) cannot hang the server, no matter what the static checks missed.
+Protection has two layers. The static checks below reject obviously dangerous patterns up front with a clear message — but static analysis of backtracking is undecidable in general, and some superlinear patterns pass every static check. So the layer that actually holds is at runtime: **every match of a user-supplied pattern executes in a sandbox worker thread with a hard 100ms deadline, counted from the moment the match starts**. Time the match spends waiting for a busy host to schedule the worker is not charged to the pattern, so an ordinary pattern is not killed because the machine is loaded; a worker that has not started the match within 5 s is reported as a sandbox error, not as backtracking. A match still backtracking at the deadline is terminated mid-execution — a hostile pattern (or a hostile output crafted to stall a legitimate pattern) cannot hang the server, no matter what the static checks missed.
 
 ### Layer 1 — static checks (fast rejection with a clear message)
 
