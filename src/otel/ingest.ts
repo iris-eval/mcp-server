@@ -169,13 +169,19 @@ function roleAndWords(m: unknown): { role: string; words?: string } | undefined 
 }
 
 /**
- * The message list a LangChain envelope carries: a run's `{ messages: [...] }`
- * (a model's `[[...]]` flattened one level), or a model result's first
- * generation. A bare array of messages (`gen_ai.input.messages`) is not an
- * envelope and is left as it came.
+ * The message list a value carries: a bare array of messages (the GenAI
+ * conventions' `gen_ai.input.messages` / `gen_ai.output.messages`, OpenAI's
+ * `[{ role, content }]`, Semantic Kernel's content events), a LangChain run's
+ * `{ messages: [...] }` (a model's `[[...]]` flattened one level), or a model
+ * result's first generation. An array counts only when every element is a
+ * message with a role, so a list of anything else is left as it came.
  */
 function messagesIn(value: unknown): unknown[] | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (Array.isArray(value)) {
+    const flat = value.flatMap((m) => (Array.isArray(m) ? m : [m]));
+    return flat.length > 0 && flat.every((m) => roleAndWords(m) !== undefined) ? flat : undefined;
+  }
+  if (!value || typeof value !== 'object') return undefined;
   const o = value as Record<string, unknown>;
   if (Array.isArray(o.messages)) {
     const flat = (o.messages as unknown[]).flatMap((m) => (Array.isArray(m) ? m : [m]));
@@ -192,13 +198,16 @@ function messagesIn(value: unknown): unknown[] | undefined {
 }
 
 /**
- * A LangChain message envelope read down to its words: for the input, the
- * last user message; for the output, the last assistant message with text.
- * LangSmith's export writes a run's whole state as JSON in `gen_ai.prompt` /
- * `gen_ai.completion` (`{"messages": [...]}` for a graph, `{"generations":
- * ...}` for a model), which otherwise hands the rules a JSON document where
- * they expect what was asked and what was answered. Anything that is not
- * such an envelope is returned as it came.
+ * Messages read down to their words: for the input, the last user message;
+ * for the output, the last assistant message with text. The GenAI
+ * conventions carry a call's messages as a JSON array (`gen_ai.input.messages`,
+ * `gen_ai.output.messages`), and LangSmith's export writes a run's whole
+ * state as JSON (`{"messages": [...]}` for a graph, `{"generations": ...}` for
+ * a model); read as they came, the rules got a JSON document where they
+ * expect what was asked and what was answered, and so did search. The span
+ * keeps the attribute as sent. Anything that is not messages, or has no
+ * words for that side (an answer that is only tool calls), is returned as it
+ * came.
  */
 export function wordsOf(text: string, side: Side): string {
   const trimmed = text.trimStart();

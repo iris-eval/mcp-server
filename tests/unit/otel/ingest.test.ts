@@ -85,8 +85,9 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
     expect(trace).toMatchObject({
       trace_id: 'iris0000000000000000000000000001',
       agent_name: 'support-bot',
-      input: '[{"role":"user","content":"Refund order 42"}]',
-      output: '[{"role":"assistant","content":"Refunded order 42 in full."}]',
+      // gen_ai.input.messages / output.messages read down to their words; the span keeps the JSON as sent.
+      input: 'Refund order 42',
+      output: 'Refunded order 42 in full.',
       latency_ms: 1500,
       token_usage: { prompt_tokens: 120, completion_tokens: 30, total_tokens: 150 },
       cost_usd: 0.0042,

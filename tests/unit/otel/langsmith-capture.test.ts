@@ -71,9 +71,11 @@ describe('the readers the capture needed', () => {
     expect(wordsOf(constructor, 'input')).toBe('Weather?');
     const generations = JSON.stringify({ generations: [[{ text: 'Sunny.', message: { lc: 1, type: 'constructor', id: ['langchain', 'schema', 'messages', 'AIMessage'], kwargs: { content: 'Sunny.' } } }]] });
     expect(wordsOf(generations, 'output')).toBe('Sunny.');
-    // A bare message array (gen_ai.input.messages) and other JSON are left alone.
-    const bare = JSON.stringify([{ role: 'user', content: 'Hi' }]);
-    expect(wordsOf(bare, 'input')).toBe(bare);
+    // A bare message array (gen_ai.input.messages) is read the same way (0.20.0); other JSON is left alone.
+    expect(wordsOf(JSON.stringify([{ role: 'user', content: 'Hi' }]), 'input')).toBe('Hi');
+    const blocks = JSON.stringify([{ type: 'text', text: 'Hi' }]);
+    expect(wordsOf(blocks, 'input')).toBe(blocks);
+    expect(wordsOf('[1, 2, 3]', 'input')).toBe('[1, 2, 3]');
     expect(wordsOf('{"topic":"Q4"}', 'input')).toBe('{"topic":"Q4"}');
     expect(wordsOf('{"messages": [', 'input')).toBe('{"messages": [');
     expect(wordsOf('plain words', 'output')).toBe('plain words');
