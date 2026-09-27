@@ -124,11 +124,21 @@ describe('when Iris is not there', () => {
         return new Response(JSON.stringify({ 'iris-eval': { stored: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
       },
     });
-    const started = process.hrtime.bigint();
-    recorder.record(trace('x'.repeat(1_000_000)));
-    // record() only queues: the million-character trace is not serialized on the caller's path.
-    assert.ok(Number(process.hrtime.bigint() - started) / 1e6 < 5);
-    recorder.record(trace('fits'));
+    // record() only queues: nothing is serialized on the caller's path. Counted, not timed — a wall-clock
+    // bound measured the runner's load as much as the code, and failed on a busy one.
+    const stringify = JSON.stringify;
+    let serialized = 0;
+    JSON.stringify = ((...args: Parameters<typeof JSON.stringify>) => {
+      serialized += 1;
+      return stringify(...args);
+    }) as typeof JSON.stringify;
+    try {
+      recorder.record(trace('x'.repeat(1_000_000)));
+      recorder.record(trace('fits'));
+    } finally {
+      JSON.stringify = stringify;
+    }
+    assert.equal(serialized, 0);
     await recorder.flush();
     assert.equal(recorder.stats.dropped, 1);
     assert.match(errors[0], /over the 900000-byte request budget/);
