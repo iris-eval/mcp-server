@@ -54,8 +54,8 @@ import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, readSpanText, BM25_WEIGHTS, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
-import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, type ParsedSearch } from './search.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, readSpanText, indexCjk, indexCjkPending, cjkIndexed, BM25_WEIGHTS, CJK_BM25_WEIGHTS, CJK_TABLE, CJK_PENDING_TABLE, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, hasCjk, mayHoldCjk, toCjkFtsQuery, type ParsedSearch } from './search.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 
@@ -384,6 +384,15 @@ export class SqliteAdapter implements IStorageAdapter {
         const last = indexNextBatch(this.db, after, batch);
         batch = nextBuildBatch(batch, performance.now() - started);
         if (last === null) {
+          // Every trace is in the index: stream the ones queued for CJK, in steps of the same size rule.
+          let queued = BUILD_BATCH;
+          while (!this.closing) {
+            const began = performance.now();
+            if (indexCjkPending(this.db, queued) === null) break;
+            queued = nextBuildBatch(queued, performance.now() - began);
+            await yieldToRequests();
+          }
+          if (this.closing) break;
           // Past the end. A purge's VACUUM may have renumbered rowids behind the walk: check, and walk again if so.
           if (!unindexedRemain(this.db)) {
             this.searchIndex = 'ready';
@@ -419,9 +428,11 @@ export class SqliteAdapter implements IStorageAdapter {
     `);
 
 
-    const insertOne = (t: Trace) => {
+    /** Inserts the trace and its spans; whether any of its text could hold CJK (search-index.ts, the CJK stream). */
+    const insertOne = (t: Trace): boolean => {
       const toolCalls = t.tool_calls ? JSON.stringify(t.tool_calls) : null;
       const metadata = t.metadata ? JSON.stringify(t.metadata) : null;
+      let cjk = mayHoldCjk(t.input) || mayHoldCjk(t.output) || mayHoldCjk(toolCalls) || mayHoldCjk(metadata);
       insertTraceStmt.run(
         tenantId,
         t.trace_id,
@@ -453,6 +464,9 @@ export class SqliteAdapter implements IStorageAdapter {
 
       if (t.spans) {
         for (const span of t.spans) {
+          const attributes = span.attributes ? JSON.stringify(span.attributes) : null;
+          const events = span.events ? JSON.stringify(span.events) : null;
+          cjk ||= mayHoldCjk(attributes) || mayHoldCjk(events);
           insertSpanStmt.run(
             tenantId,
             span.span_id,
@@ -464,17 +478,22 @@ export class SqliteAdapter implements IStorageAdapter {
             span.status_message ?? null,
             span.start_time,
             span.end_time ?? null,
-            span.attributes ? JSON.stringify(span.attributes) : null,
-            span.events ? JSON.stringify(span.events) : null,
+            attributes,
+            events,
           );
         }
       }
+      return cjk;
     };
 
     const insertAll = this.db.transaction((batch: Trace[]) => {
-      for (const t of batch) insertOne(t);
+      const mayBeCjk = batch.filter((t) => insertOne(t)).map((t) => t.trace_id);
       // The search index is written here, in the same transaction, not by a trigger, and after the batch's spans (search-index.ts says why).
-      if (this.searchIndex !== 'unavailable') indexInsertedTraces(this.db, tenantId, batch.map((t) => t.trace_id));
+      if (this.searchIndex !== 'unavailable') {
+        indexInsertedTraces(this.db, tenantId, batch.map((t) => t.trace_id));
+        // Only traces whose text could hold CJK are read back and streamed; the rest cost that one check.
+        if (mayBeCjk.length > 0) indexCjk(this.db, this.docIds(mayBeCjk));
+      }
     });
     insertAll(traces);
   }
@@ -496,6 +515,7 @@ export class SqliteAdapter implements IStorageAdapter {
       if (!row) return false;
       const current = row.metadata ? (JSON.parse(row.metadata) as Record<string, unknown>) : {};
       this.db.prepare('UPDATE traces SET metadata = ? WHERE tenant_id = ? AND trace_id = ?').run(JSON.stringify({ ...current, ...patch }), tenantId, traceId);
+      this.streamCjkQueued(traceId);
       return true;
     });
     return write.immediate();
@@ -620,12 +640,33 @@ export class SqliteAdapter implements IStorageAdapter {
        * count only when the page is empty because the offset ran past it.
        */
       const joinTraces = q.filtered || q.sortBy !== 'relevance';
-      const matched =
-        `SELECT d.trace_id AS matched_id, d.doc_id AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS relevance ` +
-        `FROM ${SEARCH_TABLE} JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = ${SEARCH_TABLE}.rowid ` +
-        `WHERE ${SEARCH_TABLE} MATCH ? AND d.tenant_id = ?`;
+      let matched: string;
+      let matchedParams: unknown[];
+      if (!parsed.terms.some((t) => t.tokens.some(hasCjk)) && !cjkIndexed(this.db)) {
+        matched =
+          `SELECT d.trace_id AS matched_id, d.doc_id AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS relevance ` +
+          `FROM ${SEARCH_TABLE} JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = ${SEARCH_TABLE}.rowid ` +
+          `WHERE ${SEARCH_TABLE} MATCH ? AND d.tenant_id = ?`;
+        matchedParams = [match, tenantId];
+      } else {
+        /*
+         * The query holds CJK, or some trace has a CJK stream (search-index.ts):
+         * each term must match in the index or in the CJK stream, and the
+         * relevance is the two bm25 scores added. A store and a query
+         * without CJK never take this path.
+         */
+        const perTerm = parsed.terms.map((t) => ({ main: toFtsQuery({ terms: [t] }), cjk: toCjkFtsQuery(t) }));
+        const inMain = `SELECT rowid FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ?`;
+        const inCjk = `SELECT rowid FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?`;
+        matched =
+          `SELECT d.trace_id AS matched_id, d.doc_id AS doc, COALESCE(mr.r, 0) + COALESCE(cr.r, 0) AS relevance FROM ${SEARCH_DOCS_TABLE} d ` +
+          `LEFT JOIN (SELECT rowid, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS r FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ?) mr ON mr.rowid = d.doc_id ` +
+          `LEFT JOIN (SELECT rowid, bm25(${CJK_TABLE}, ${CJK_BM25_WEIGHTS}) AS r FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?) cr ON cr.rowid = d.doc_id ` +
+          `WHERE d.tenant_id = ? AND ${perTerm.map(() => `(d.doc_id IN (${inMain}) OR d.doc_id IN (${inCjk}))`).join(' AND ')}`;
+        matchedParams = [perTerm.map((p) => p.main).join(' OR '), perTerm.map((p) => `(${p.cjk})`).join(' OR '), tenantId, ...perTerm.flatMap((p) => [p.main, p.cjk])];
+      }
       const from = joinTraces ? `FROM (${matched}) m JOIN traces ON traces.trace_id = m.matched_id ${q.whereClause}` : `FROM (${matched}) m`;
-      const params = joinTraces ? [match, tenantId, ...q.params] : [match, tenantId];
+      const params = joinTraces ? [...matchedParams, ...q.params] : matchedParams;
       // bm25 is lower for a better match, so "desc" (the default) is best first; the newest indexed wins a tie.
       const order =
         q.sortBy === 'relevance'
@@ -743,24 +784,46 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
     assertTenant(tenantId);
-    // A span added to a trace already in the search index re-indexes it, by trigger (search-index.ts).
-    this.db.prepare(`
+    const insert = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      tenantId,
-      span.span_id,
-      span.trace_id,
-      span.parent_span_id ?? null,
-      span.name,
-      span.kind,
-      span.status_code,
-      span.status_message ?? null,
-      span.start_time,
-      span.end_time ?? null,
-      span.attributes ? JSON.stringify(span.attributes) : null,
-      span.events ? JSON.stringify(span.events) : null,
-    );
+    `);
+    this.db.transaction(() => {
+      // A span added to a trace already in the search index re-indexes it, by trigger (search-index.ts).
+      insert.run(
+        tenantId,
+        span.span_id,
+        span.trace_id,
+        span.parent_span_id ?? null,
+        span.name,
+        span.kind,
+        span.status_code,
+        span.status_message ?? null,
+        span.start_time,
+        span.end_time ?? null,
+        span.attributes ? JSON.stringify(span.attributes) : null,
+        span.events ? JSON.stringify(span.events) : null,
+      );
+      this.streamCjkQueued(span.trace_id);
+    })();
+  }
+
+  /** The search index's doc ids of these traces. */
+  private docIds(traceIds: readonly string[]): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < traceIds.length; i += 500) {
+      const chunk = traceIds.slice(i, i + 500);
+      const rows = this.db.prepare(`SELECT doc_id FROM ${SEARCH_DOCS_TABLE} WHERE trace_id IN (${chunk.map(() => '?').join(', ')})`).all(...chunk) as Array<{ doc_id: number }>;
+      for (const r of rows) out.push(Number(r.doc_id));
+    }
+    return out;
+  }
+
+  /** A write of the adapter's own queued the trace for its CJK stream (by trigger): stream it now, in the caller's transaction. */
+  private streamCjkQueued(traceId: string): void {
+    if (this.searchIndex === 'unavailable') return;
+    const queued = this.db.prepare(`SELECT p.doc_id FROM ${CJK_PENDING_TABLE} p JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = p.doc_id WHERE d.trace_id = ?`).get(traceId) as { doc_id: number } | undefined;
+    if (queued) indexCjk(this.db, [Number(queued.doc_id)]);
   }
 
   async getSpansByTraceId(tenantId: TenantId, traceId: string): Promise<Span[]> {

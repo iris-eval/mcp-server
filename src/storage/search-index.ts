@@ -116,6 +116,7 @@
  * way on the first start with FTS5.
  */
 import type { Driver } from './driver.js';
+import { cjkStream, hasCjk, searchableText, streamText, SEARCH_FIELDS } from './search.js';
 
 export const SEARCH_TABLE = 'trace_search';
 export const SEARCH_DOCS_TABLE = 'trace_search_docs';
@@ -129,6 +130,28 @@ const TRIGGERS = [
   'trace_search_spans_bu',
   'trace_search_spans_au',
 ] as const;
+
+/*
+ * The CJK stream (#682; search.ts, cjkStream, says what it holds). It is
+ * built in JavaScript, and a trigger cannot run JavaScript, so it is kept
+ * the way the spans text is not: its own contentless FTS5 table, filled
+ * only for traces that hold CJK text, and beside it the exact text each row
+ * was given (CJK_DOCS_TABLE), which every delete hands back. A trace whose
+ * text changes after it was indexed (the metadata patch, a span added or
+ * edited, by the adapter or by hand) has its CJK row taken out at once, by
+ * trigger and exactly, and is queued (CJK_PENDING_TABLE) to be streamed
+ * again: by the adapter straight after its own writes, and by the build at
+ * the next start for anything else. Traces with no CJK never enter any of
+ * the three tables.
+ */
+export const CJK_TABLE = 'trace_search_cjk';
+export const CJK_DOCS_TABLE = 'trace_search_cjk_docs';
+export const CJK_PENDING_TABLE = 'trace_search_cjk_pending';
+const CJK_COLUMNS = 'input, output, tool_calls, metadata, spans, uni';
+/** bm25 weights of the CJK stream's columns, as the main index weighs its fields; `uni` like the rest of the side fields. */
+export const CJK_BM25_WEIGHTS = '1.0, 1.0, 0.5, 0.5, 0.5, 0.5';
+const RETIRED_CJK_TABLE = 'trace_search_cjk_retired';
+const RETIRED_CJK_DOCS_TABLE = 'trace_search_cjk_docs_retired';
 /** Triggers an earlier release created: dropped wherever the current ones are. */
 const RETIRED_TRIGGERS = ['trace_search_ad'] as const;
 const ALL_TRIGGERS = [...TRIGGERS, ...RETIRED_TRIGGERS];
@@ -236,6 +259,38 @@ const UNINDEX = (traceRef: string) =>
 /** Put it back, with the values it holds now. */
 const REINDEX = (traceRef: string) => INDEX_WHERE(`d.trace_id = ${traceRef}`);
 
+/** The doc id of the trace `traceRef` names. */
+const docOf = (traceRef: string) => `(SELECT doc_id FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = ${traceRef})`;
+/** Take the trace's CJK row out with the text it was given, and forget that text. */
+const CJK_UNINDEX = (traceRef: string) =>
+  `INSERT INTO ${CJK_TABLE} (${CJK_TABLE}, rowid, ${CJK_COLUMNS}) SELECT 'delete', doc_id, ${CJK_COLUMNS} FROM ${CJK_DOCS_TABLE} WHERE doc_id = ${docOf(traceRef)};
+    DELETE FROM ${CJK_DOCS_TABLE} WHERE doc_id = ${docOf(traceRef)}`;
+/**
+ * Whether a stored value could hold CJK: any character past ASCII, or a \u
+ * escape (a JSON string inside a span attribute, written by a client that
+ * escapes, spells CJK that way). Cheap and never wrong the other way; the
+ * stream itself decides.
+ */
+const mayHoldCjk = (e: string) => `(length(${e}) <> length(CAST(${e} AS BLOB)) OR instr(${e}, '\\u') > 0)`;
+const traceMayHoldCjk = (traceRef: string) =>
+  `(EXISTS (SELECT 1 FROM traces t WHERE t.trace_id = ${traceRef} AND (${mayHoldCjk('t.input')} OR ${mayHoldCjk('t.output')} OR ${mayHoldCjk('t.tool_calls')} OR ${mayHoldCjk('t.metadata')}))
+    OR EXISTS (SELECT 1 FROM spans s WHERE s.trace_id = ${traceRef} AND (${mayHoldCjk('s.attributes')} OR ${mayHoldCjk('s.events')})))`;
+/** Queue the trace to be streamed again when its text could hold CJK. */
+const CJK_PEND = (traceRef: string) => `INSERT OR IGNORE INTO ${CJK_PENDING_TABLE} (doc_id) SELECT doc_id FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = ${traceRef} AND ${traceMayHoldCjk(traceRef)}`;
+
+const CREATE_CJK_TABLES = `
+  CREATE TABLE IF NOT EXISTS ${CJK_DOCS_TABLE} (
+    doc_id INTEGER PRIMARY KEY,
+    input TEXT NOT NULL, output TEXT NOT NULL, tool_calls TEXT NOT NULL, metadata TEXT NOT NULL, spans TEXT NOT NULL, uni TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS ${CJK_PENDING_TABLE} (doc_id INTEGER PRIMARY KEY);
+  CREATE VIRTUAL TABLE IF NOT EXISTS ${CJK_TABLE} USING fts5(
+    ${CJK_COLUMNS},
+    content = '',
+    tokenize = 'unicode61 remove_diacritics 2'
+  );
+`;
+
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS ${SEARCH_DOCS_TABLE} (
     doc_id INTEGER PRIMARY KEY,
@@ -263,32 +318,45 @@ const SPAN_COLUMNS = 'trace_id, span_id, name, start_time, attributes, events';
 const CREATE_TRIGGERS = `
   CREATE TRIGGER IF NOT EXISTS trace_search_au AFTER UPDATE OF input, output, tool_calls, metadata, trace_id, tenant_id ON traces BEGIN
     ${DELETE_OLD};
+    ${CJK_UNINDEX('OLD.trace_id')};
     UPDATE ${SEARCH_DOCS_TABLE} SET tenant_id = NEW.tenant_id, trace_id = NEW.trace_id WHERE trace_id = OLD.trace_id;
     INSERT INTO ${SEARCH_TABLE} (rowid, ${COLUMNS}) SELECT doc_id, ${indexRow('NEW')} FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = NEW.trace_id;
+    ${CJK_PEND('NEW.trace_id')};
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_bd BEFORE DELETE ON traces BEGIN
     ${DELETE_OLD};
+    ${CJK_UNINDEX('OLD.trace_id')};
+    DELETE FROM ${CJK_PENDING_TABLE} WHERE doc_id = ${docOf('OLD.trace_id')};
     DELETE FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = OLD.trace_id;
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_spans_bi BEFORE INSERT ON spans WHEN ${indexed('NEW.trace_id')} BEGIN
     ${UNINDEX('NEW.trace_id')};
+    ${CJK_UNINDEX('NEW.trace_id')};
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_spans_ai AFTER INSERT ON spans WHEN ${indexed('NEW.trace_id')} BEGIN
     ${REINDEX('NEW.trace_id')};
+    ${CJK_PEND('NEW.trace_id')};
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_spans_bd BEFORE DELETE ON spans WHEN ${indexed('OLD.trace_id')} BEGIN
     ${UNINDEX('OLD.trace_id')};
+    ${CJK_UNINDEX('OLD.trace_id')};
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_spans_ad AFTER DELETE ON spans WHEN ${indexed('OLD.trace_id')} BEGIN
     ${REINDEX('OLD.trace_id')};
+    ${CJK_PEND('OLD.trace_id')};
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_spans_bu BEFORE UPDATE OF ${SPAN_COLUMNS} ON spans BEGIN
     ${UNINDEX('OLD.trace_id')};
+    ${CJK_UNINDEX('OLD.trace_id')};
     ${UNINDEX('NEW.trace_id')} AND NEW.trace_id IS NOT OLD.trace_id;
+    INSERT INTO ${CJK_TABLE} (${CJK_TABLE}, rowid, ${CJK_COLUMNS}) SELECT 'delete', doc_id, ${CJK_COLUMNS} FROM ${CJK_DOCS_TABLE} WHERE doc_id = ${docOf('NEW.trace_id')} AND NEW.trace_id IS NOT OLD.trace_id;
+    DELETE FROM ${CJK_DOCS_TABLE} WHERE doc_id = ${docOf('NEW.trace_id')} AND NEW.trace_id IS NOT OLD.trace_id;
   END;
   CREATE TRIGGER IF NOT EXISTS trace_search_spans_au AFTER UPDATE OF ${SPAN_COLUMNS} ON spans BEGIN
     ${REINDEX('OLD.trace_id')};
     ${REINDEX('NEW.trace_id')} AND NEW.trace_id IS NOT OLD.trace_id;
+    ${CJK_PEND('OLD.trace_id')};
+    ${CJK_PEND('NEW.trace_id')};
   END;
 `;
 
@@ -330,15 +398,84 @@ export function indexNextBatch(db: Driver, after: number, max = BUILD_BATCH): nu
           `INSERT INTO ${SEARCH_DOCS_TABLE} (tenant_id, trace_id) SELECT tenant_id, trace_id FROM traces WHERE rowid > ? AND rowid <= ? AND trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) ORDER BY rowid`,
         )
         .run(after, upTo).changes;
-      if (added > 0) db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
+      if (added > 0) {
+        db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
+        db.prepare(`INSERT OR IGNORE INTO ${CJK_PENDING_TABLE} (doc_id) SELECT d.doc_id FROM ${SEARCH_DOCS_TABLE} d WHERE d.doc_id > ? AND ${traceMayHoldCjk('d.trace_id')}`).run(before);
+      }
       return Number(upTo);
     })
     .immediate();
 }
 
-/** Whether any trace is not in the index yet. */
+/** Whether any trace is not in the index yet, or waits to have its CJK streamed. */
 export function unindexedRemain(db: Driver): boolean {
-  return db.prepare(`SELECT 1 FROM traces WHERE trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) LIMIT 1`).get() !== undefined;
+  return (
+    db.prepare(`SELECT 1 FROM traces WHERE trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) LIMIT 1`).get() !== undefined ||
+    db.prepare(`SELECT 1 FROM ${CJK_PENDING_TABLE} LIMIT 1`).get() !== undefined
+  );
+}
+
+/** Whether any trace has a CJK stream: searches consult the CJK table only then (and when the query holds CJK). */
+export function cjkIndexed(db: Driver): boolean {
+  return db.prepare(`SELECT 1 FROM ${CJK_DOCS_TABLE} LIMIT 1`).get() !== undefined;
+}
+
+/**
+ * Stream the CJK of these indexed traces into the CJK table, in the
+ * caller's transaction: each trace's row is replaced (taken out with the
+ * text it was given, if it had one) and the text stored beside it, when its
+ * fields hold CJK; a trace whose fields hold none is left with no row. The
+ * fields are read back as the search reads them (searchableText, and the
+ * span text from SQL), so the stream is of exactly the indexed text.
+ */
+export function indexCjk(db: Driver, docIds: readonly number[]): void {
+  if (docIds.length === 0) return;
+  const readTrace = db.prepare(`SELECT t.trace_id, t.input, t.output, t.tool_calls, t.metadata FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE d.doc_id = ?`);
+  const unindex = db.prepare(`INSERT INTO ${CJK_TABLE} (${CJK_TABLE}, rowid, ${CJK_COLUMNS}) SELECT 'delete', doc_id, ${CJK_COLUMNS} FROM ${CJK_DOCS_TABLE} WHERE doc_id = ?`);
+  const forget = db.prepare(`DELETE FROM ${CJK_DOCS_TABLE} WHERE doc_id = ?`);
+  const store = db.prepare(`INSERT INTO ${CJK_DOCS_TABLE} (doc_id, ${CJK_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const add = db.prepare(`INSERT INTO ${CJK_TABLE} (rowid, ${CJK_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const done = db.prepare(`DELETE FROM ${CJK_PENDING_TABLE} WHERE doc_id = ?`);
+  const parse = (v: unknown): unknown => {
+    if (typeof v !== 'string') return undefined;
+    try {
+      return JSON.parse(v);
+    } catch {
+      return v;
+    }
+  };
+  for (const docId of docIds) {
+    unindex.run(docId);
+    forget.run(docId);
+    done.run(docId);
+    const row = readTrace.get(docId) as { trace_id: string; input: unknown; output: unknown; tool_calls: unknown; metadata: unknown } | undefined;
+    if (!row) continue;
+    const spans = readSpanText(db, [row.trace_id]).get(row.trace_id)?.text ?? '';
+    const fields = searchableText({ input: row.input, output: row.output, tool_calls: parse(row.tool_calls), metadata: parse(row.metadata) }, spans);
+    if (!SEARCH_FIELDS.some((f) => hasCjk(fields[f]))) continue;
+    const columns: Record<string, string> = {};
+    const uni: string[] = [];
+    for (const f of ['input', 'output', 'tool_calls', 'metadata', 'spans'] as const) {
+      const stream = cjkStream(fields[f]);
+      columns[f] = stream ? streamText(stream.bi) : '';
+      if (stream && stream.uni.length > 0) uni.push(streamText(stream.uni));
+    }
+    const values = [columns.input, columns.output, columns.tool_calls, columns.metadata, columns.spans, uni.join(' ')];
+    store.run(docId, ...values);
+    add.run(docId, ...values);
+  }
+}
+
+/** One step of streaming the queued traces: up to `max` of them, under one write lock. Returns how many, or null when none wait. */
+export function indexCjkPending(db: Driver, max: number): number | null {
+  return db
+    .transaction((): number | null => {
+      const ids = (db.prepare(`SELECT doc_id FROM ${CJK_PENDING_TABLE} ORDER BY doc_id LIMIT ?`).all(max) as Array<{ doc_id: number }>).map((r) => Number(r.doc_id));
+      if (ids.length === 0) return null;
+      indexCjk(db, ids);
+      return ids.length;
+    })
+    .immediate();
 }
 
 const cache = new WeakMap<Driver, boolean>();
@@ -401,8 +538,11 @@ export const RETIRED_TABLE = 'trace_search_retired';
 function retireIndex(db: Driver): void {
   for (const t of ALL_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
   // One retired index at a time: a second retirement before the first was erased drops that one now.
-  if (objectExists(db, 'table', RETIRED_TABLE)) db.exec(`DROP TABLE ${RETIRED_TABLE}`);
+  for (const t of [RETIRED_TABLE, RETIRED_CJK_TABLE, RETIRED_CJK_DOCS_TABLE]) if (objectExists(db, 'table', t)) db.exec(`DROP TABLE ${t}`);
   db.exec(`ALTER TABLE ${SEARCH_TABLE} RENAME TO ${RETIRED_TABLE}`);
+  if (objectExists(db, 'table', CJK_TABLE)) db.exec(`ALTER TABLE ${CJK_TABLE} RENAME TO ${RETIRED_CJK_TABLE}`);
+  if (objectExists(db, 'table', CJK_DOCS_TABLE)) db.exec(`ALTER TABLE ${CJK_DOCS_TABLE} RENAME TO ${RETIRED_CJK_DOCS_TABLE}`);
+  db.exec(`DROP TABLE IF EXISTS ${CJK_PENDING_TABLE}`);
   db.exec(`DELETE FROM ${SEARCH_DOCS_TABLE}`);
 }
 
@@ -410,9 +550,9 @@ function retireIndex(db: Driver): void {
 export function dropRetiredIndex(db: Driver): boolean {
   return db
     .transaction((): boolean => {
-      if (!objectExists(db, 'table', RETIRED_TABLE)) return false;
-      db.exec(`DROP TABLE ${RETIRED_TABLE}`);
-      return true;
+      const retired = [RETIRED_TABLE, RETIRED_CJK_TABLE, RETIRED_CJK_DOCS_TABLE].filter((t) => objectExists(db, 'table', t));
+      for (const t of retired) db.exec(`DROP TABLE ${t}`);
+      return retired.length > 0;
     })
     .immediate();
 }
@@ -481,7 +621,9 @@ export function readSpanText(db: Driver, traceIds: readonly string[]): Map<strin
  */
 export function installSearchIndex(db: Driver): void {
   db.exec(CREATE_TABLES);
+  db.exec(CREATE_CJK_TABLES);
   db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rank) VALUES ('secure-delete', 1)`);
+  db.exec(`INSERT INTO ${CJK_TABLE} (${CJK_TABLE}, rank) VALUES ('secure-delete', 1)`);
   db.exec(CREATE_TRIGGERS);
 }
 
@@ -526,6 +668,12 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
       state = 'building';
       return;
     }
+    if (hasTable && !objectExists(db, 'table', CJK_TABLE)) {
+      // Built before the CJK stream: the index stays; its triggers are replaced by ones that keep the stream, and every trace that could hold CJK is queued.
+      for (const t of ALL_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+      installSearchIndex(db);
+      db.exec(`INSERT OR IGNORE INTO ${CJK_PENDING_TABLE} (doc_id) SELECT d.doc_id FROM ${SEARCH_DOCS_TABLE} d WHERE ${traceMayHoldCjk('d.trace_id')}`);
+    }
     if (!hasTable) installSearchIndex(db);
     const counts = db
       .prepare(`SELECT (SELECT COUNT(*) FROM traces) AS traces, (SELECT COUNT(*) FROM ${SEARCH_DOCS_TABLE}) AS docs`)
@@ -538,7 +686,8 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
       state = 'building';
       return;
     }
-    state = docs < traces || objectExists(db, 'table', RETIRED_TABLE) ? 'building' : 'ready';
+    const pending = db.prepare(`SELECT 1 FROM ${CJK_PENDING_TABLE} LIMIT 1`).get() !== undefined;
+    state = docs < traces || pending || objectExists(db, 'table', RETIRED_TABLE) ? 'building' : 'ready';
   }).immediate();
   return state;
 }
@@ -582,18 +731,20 @@ export function bulkIndexDelete<T>(db: Driver, going: number, remove: () => T): 
   if (going === 0 || !objectExists(db, 'table', SEARCH_TABLE)) return remove();
   const indexed = Number((db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE}`).get() as { n: number }).n);
   if (indexed === 0) return remove();
+  const tables = objectExists(db, 'table', CJK_TABLE) ? [SEARCH_TABLE, CJK_TABLE] : [SEARCH_TABLE];
   if (going >= indexed) {
-    db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}) VALUES ('delete-all')`);
+    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}) VALUES ('delete-all')`);
+    if (tables.length > 1) db.exec(`DELETE FROM ${CJK_DOCS_TABLE}; DELETE FROM ${CJK_PENDING_TABLE};`);
     db.exec(`DELETE FROM ${SEARCH_DOCS_TABLE}`);
     return remove();
   }
   if (going * PER_ROW_LIMIT <= indexed) return remove();
-  db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rank) VALUES ('secure-delete', 0)`);
+  for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 0)`);
   try {
     const out = remove();
-    db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}) VALUES ('optimize')`);
+    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}) VALUES ('optimize')`);
     return out;
   } finally {
-    db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rank) VALUES ('secure-delete', 1)`);
+    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 1)`);
   }
 }
