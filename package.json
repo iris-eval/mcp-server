@@ -65,6 +65,8 @@
     "changelog:check": "node website/scripts/render-changelog.mjs --check",
     "mcp-json:render": "tsx scripts/claims/render-mcp-json.ts",
     "mcp-json:check": "tsx scripts/claims/render-mcp-json.ts --check",
+    "cusum:render": "tsx scripts/cusum/render-thresholds.ts",
+    "cusum:check": "tsx scripts/cusum/render-thresholds.ts --check",
     "proof:judge": "tsx proof/judge/run.ts",
     "proof:judge:typecheck": "tsc -p proof/judge/tsconfig.json",
     "clean": "rm -rf dist coverage",
