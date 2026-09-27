@@ -19,17 +19,26 @@ export function orderOf(searchParams: URLSearchParams): MomentOrder {
 const traces = (n: number): string => `${n.toLocaleString('en-US')} trace${n === 1 ? '' : 's'}`;
 
 /**
- * The sentence that says how far back the ranking reached. A ranking over
- * part of the history reads as the whole of it unless it says otherwise,
- * so the window is always stated. Null when the list is newest first or
- * the window read nothing.
+ * The sentence that says how far back the list reached. The server reads a
+ * window of recent traces when it ranks (#409) and when a filter is set
+ * (#657); a list over part of the history reads as the whole of it unless
+ * it says otherwise, so the window is always stated. Null when no window
+ * was read, or it read nothing.
  */
 export function rankingNote(data: Pick<MomentQueryResult, 'sortBy' | 'window'>): string | null {
-  if (data.sortBy !== 'significance' || !data.window || data.window.scanned === 0) return null;
+  if (!data.window || data.window.scanned === 0) return null;
   const { scanned, tracesInRange } = data.window;
-  if (scanned >= tracesInRange) return `Ranked by significance across ${scanned === 1 ? 'the' : 'all'} ${traces(scanned)} in range.`;
+  const all = scanned >= tracesInRange;
+  if (data.sortBy === 'significance') {
+    if (all) return `Ranked by significance across ${scanned === 1 ? 'the' : 'all'} ${traces(scanned)} in range.`;
+    return (
+      `Ranked by significance within the last ${traces(scanned)} of ${tracesInRange.toLocaleString('en-US')}. ` +
+      'Older moments are not in this ranking: narrow the agent or time range to reach them, or switch to newest first.'
+    );
+  }
+  if (all) return `Filtered across ${scanned === 1 ? 'the' : 'all'} ${traces(scanned)} in range.`;
   return (
-    `Ranked by significance within the last ${traces(scanned)} of ${tracesInRange.toLocaleString('en-US')}. ` +
-    'Older moments are not in this ranking: narrow the agent or time range to reach them, or switch to newest first.'
+    `Filtered within the last ${traces(scanned)} of ${tracesInRange.toLocaleString('en-US')}. ` +
+    'Older matches are not shown: narrow the agent or time range to reach them.'
   );
 }

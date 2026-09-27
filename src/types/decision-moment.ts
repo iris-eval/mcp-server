@@ -185,23 +185,24 @@ export interface MomentQueryOptions {
 export interface MomentQueryResult {
   moments: DecisionMoment[];
   /**
-   * Newest first (the default): matching traces, counted before the
-   * verdict and significance filters, so "at least this many". Ranked by
-   * significance: the moments in the window after every filter, exact.
+   * Exact. Unfiltered and ordered by time: the matching traces, one moment
+   * each. Ranked by significance, or with a verdict or significance
+   * filter: the moments in the window that pass every filter.
    */
   total: number;
   limit: number;
   offset: number;
   /** Present when the moments were ranked by significance (sort_by=significance). */
   sortBy?: 'significance';
-  /** The traces a significance ranking read. Present with sortBy. */
+  /** The traces a ranking or a filtered read covered. Present whenever a window was read. */
   window?: MomentRankWindow;
 }
 
 /**
- * How far back a significance ranking reaches: the newest `size` traces
- * that match agent/since/until. A moment older than `oldest` is not in the
- * ranking at all, which is why the window is stated rather than implied.
+ * How far a windowed read reaches: the first `size` traces that match
+ * agent/since/until in the order asked for (the newest, when ranking or
+ * newest first). A moment outside [oldest, newest] is not in the result
+ * at all, which is why the window is stated rather than implied.
  */
 export interface MomentRankWindow {
   /** Traces asked for: the `window` parameter, or its default. */
@@ -210,7 +211,7 @@ export interface MomentRankWindow {
   scanned: number;
   /** Every trace matching agent/since/until. Above `scanned` when the ranking did not reach the oldest. */
   tracesInRange: number;
-  /** Timestamp of the newest trace read. Pass it as `until` to page without new traces shifting the window. */
+  /** Timestamp of the newest trace read. Newest first, pass it as `until` to page without new traces shifting the window. */
   newest?: string;
   /** Timestamp of the oldest trace read. */
   oldest?: string;
