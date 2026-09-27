@@ -86,7 +86,7 @@ export function TraceSearch({ value, onCommit }: { value: string; onCommit: (q: 
         style={styles.input}
         value={draft}
         maxLength={SEARCH_MAX_LENGTH}
-        placeholder="Search input, output, tool calls, metadata…"
+        placeholder="Search input, output, tool calls, metadata, spans…"
         aria-label="Search traces"
         aria-describedby={hintId}
         onChange={(e) => setDraft(e.target.value)}

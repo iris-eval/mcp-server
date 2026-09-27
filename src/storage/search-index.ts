@@ -25,9 +25,37 @@
  * What is indexed. input and output as they are; tool_calls and metadata
  * by their string and number leaves, extracted by SQLite's json_tree, never
  * their keys — searching "output" must not match every trace that has a
- * tool call. The extraction is one SQL expression (indexRow below) used by
- * every write, so the values a delete hands FTS5 are the values the insert
- * gave it.
+ * tool call; and the text of the trace's spans (#683, below). The
+ * extraction is one SQL expression (indexRow below) used by every write,
+ * so the values a delete hands FTS5 are the values the insert gave it.
+ *
+ * Span text. A trace sent over OTLP keeps its first model call's input and
+ * output on the trace row; the later model calls of an agent loop, tool
+ * arguments and results, and exception messages are only in its spans. The
+ * fifth column is the string values of each span's attributes and of its
+ * events' attributes:
+ *   - never keys, numbers or booleans (token counts and latencies are
+ *     noise to a search), and not the span ids the OTLP door keeps
+ *     (otel.span_id, otel.parent_span_id: random hex). Resource attributes
+ *     are not stored on spans, so the service name that repeats on every
+ *     trace is not in it;
+ *   - a string that holds a JSON object or array (`gen_ai.input.messages`
+ *     is one) by its string leaves, so the keys inside it are not words of
+ *     every trace;
+ *   - each distinct string once per trace. A model call re-sends the whole
+ *     conversation so far, so an agent loop's later calls repeat every
+ *     earlier message; indexed once, the history costs nothing more;
+ *   - in span start order (then span id, then attribute order), so the
+ *     text is the same however the spans were written;
+ *   - each value cut to SPAN_VALUE_MAX_CHARS, and the trace's span text to
+ *     SPAN_TEXT_MAX_CHARS, so one large payload cannot dominate the index.
+ * It is computed in SQL (spanValuesSql below) from the spans table, like the
+ * other columns from the trace row, so every write and every trigger
+ * derives it the same way and no copy of it is stored. A trace's words are
+ * taken out of the index BEFORE its row is deleted, because the cascade
+ * removes its spans with it, and the triggers on spans re-index a trace
+ * whose spans change after it was indexed (insertSpan, or a hand-run
+ * statement), so a delete always hands FTS5 the text it was given.
  *
  * Staying in sync: inserts are written by the adapter, updates and deletes
  * by triggers.
@@ -35,7 +63,9 @@
  *     several routes — delete_trace, the retention sweep, --purge, a
  *     hand-run DELETE by an operator — and changes by one (the metadata
  *     patch). A trigger runs on every route, in the same transaction,
- *     including routes written after this file.
+ *     including routes written after this file. The same holds for spans:
+ *     a span inserted, updated or deleted on a trace already in the index
+ *     re-indexes that trace.
  *   - Inserts are not, because they cannot be fast from a trigger: SQLite
  *     runs each trigger statement inside a statement savepoint, and FTS5
  *     flushes its pending terms to a new segment at every savepoint. A batch
@@ -43,9 +73,12 @@
  *     255 µs per trace from a trigger against 76 µs from the same statement
  *     run by the adapter (measured on the machine in the changelog). There
  *     is one insert route (insertTraces), and it writes the index in the
- *     transaction that writes the trace. A trace inserted any other way has
- *     no docs row, so the delete trigger leaves the index alone for it, and
- *     the next start indexes it (reconcileSearchIndex, then the build).
+ *     transaction that writes the trace, after the batch's traces and
+ *     spans, in one statement: a span trigger's savepoint then never
+ *     follows FTS5 terms still pending in the batch. A trace inserted any
+ *     other way has no docs row, so the delete trigger leaves the index
+ *     alone for it, and the next start indexes it (reconcileSearchIndex,
+ *     then the build).
  *
  * Building. The migration creates the index empty. The traces already
  * stored are indexed after the start, BUILD_BATCH at a time, each step its
@@ -78,13 +111,27 @@
  * matches), and on the first start with FTS5 the index is built. A file whose
  * index exists but whose SQLite cannot load FTS5 has its triggers dropped at
  * start — otherwise every delete would fail on "no such module" — and the
- * index is rebuilt from scratch on the next start that can.
+ * index is rebuilt from scratch on the next start that can. An index built
+ * before the span column (four columns) is dropped and rebuilt the same
+ * way on the first start with FTS5.
  */
 import type { Driver } from './driver.js';
 
 export const SEARCH_TABLE = 'trace_search';
 export const SEARCH_DOCS_TABLE = 'trace_search_docs';
-const TRIGGERS = ['trace_search_au', 'trace_search_ad'] as const;
+const TRIGGERS = [
+  'trace_search_au',
+  'trace_search_bd',
+  'trace_search_spans_bi',
+  'trace_search_spans_ai',
+  'trace_search_spans_bd',
+  'trace_search_spans_ad',
+  'trace_search_spans_bu',
+  'trace_search_spans_au',
+] as const;
+/** Triggers an earlier release created: dropped wherever the current ones are. */
+const RETIRED_TRIGGERS = ['trace_search_ad'] as const;
+const ALL_TRIGGERS = [...TRIGGERS, ...RETIRED_TRIGGERS];
 
 /**
  * Every column a trace filter or sort reads, keyed by trace_id. A search
@@ -98,42 +145,82 @@ const TRIGGERS = ['trace_search_au', 'trace_search_ad'] as const;
 export const SEARCH_FILTER_INDEX = 'idx_traces_search_filter';
 
 /**
- * bm25 column weights, in column order: input, output, tool_calls, metadata.
- * A word in what the agent was asked or said counts twice a word in a tool
- * argument or a metadata value, which carry ids and boilerplate.
+ * bm25 column weights, in column order: input, output, tool_calls, metadata,
+ * spans. A word in what the agent was asked or said counts twice a word in
+ * a tool argument, a metadata value or a span attribute, which carry ids
+ * and boilerplate as well as text.
  */
-export const BM25_WEIGHTS = '1.0, 1.0, 0.5, 0.5';
+export const BM25_WEIGHTS = '1.0, 1.0, 0.5, 0.5, 0.5';
 
 /** String and number leaves of a JSON column; text that is not JSON is indexed as it is. */
 function jsonText(col: string): string {
   return `CASE WHEN json_valid(${col}) THEN (SELECT group_concat(value, ' ') FROM json_tree(${col}) WHERE type IN ('text', 'integer', 'real')) ELSE ${col} END`;
 }
 
+/** Longest single span value indexed, in characters. */
+export const SPAN_VALUE_MAX_CHARS = 4_096;
+/** Most span text one trace indexes, in characters. */
+export const SPAN_TEXT_MAX_CHARS = 32_768;
+/** Between two span values, as between the leaves of the other JSON columns in a snippet. */
+export const SPAN_TEXT_SEPARATOR = ' · ';
+
+/** Attributes the OTLP door adds to every span to keep the sender's ids (src/otel/ingest.ts). */
+const DOOR_SPAN_KEYS = "'otel.span_id', 'otel.parent_span_id'";
+
+/** json_tree's input for one attribute value: an object or array as it is, text that holds one parsed, any other value quoted so its one leaf is itself. */
+function leafSource(value: string, type: string): string {
+  return `CASE WHEN ${type} IN ('object', 'array') THEN ${value} WHEN ${type} = 'text' AND substr(ltrim(${value}), 1, 1) IN ('{', '[') AND json_valid(${value}) THEN ${value} ELSE json_quote(${value}) END`;
+}
+
 /**
- * The four indexed values of a trace, in column order: the one expression
- * every write uses. `ref` names a row (t, OLD, NEW); with `?`, the values are
- * bound instead — each JSON column three times, once per mention in
- * jsonText, in the order boundIndexValues gives them.
+ * Every string leaf of the spans matching `where` (over s, the spans row):
+ * attributes, then each event's attributes, with the order they sort by.
+ */
+function spanLeaves(where: string): string {
+  return `SELECT s.trace_id, s.span_id, s.name, s.start_time, 0 AS src, a.id AS a_ord, t.id AS t_ord, t.value AS leaf
+      FROM spans s, json_each(CASE WHEN json_valid(s.attributes) THEN s.attributes ELSE '{}' END) a, json_tree(${leafSource('a.value', 'a.type')}) t
+      WHERE ${where} AND a.key NOT IN (${DOOR_SPAN_KEYS}) AND t.type = 'text'
+    UNION ALL
+    SELECT s.trace_id, s.span_id, s.name, s.start_time, 1 + e.key, ea.id, t.id, t.value
+      FROM spans s, json_each(CASE WHEN json_valid(s.events) THEN s.events ELSE '[]' END) e,
+        json_each(CASE WHEN e.type = 'object' AND json_type(e.value, '$.attributes') = 'object' THEN json_extract(e.value, '$.attributes') ELSE '{}' END) ea,
+        json_tree(${leafSource('ea.value', 'ea.type')}) t
+      WHERE ${where} AND t.type = 'text'`;
+}
+
+/** A span leaf's place in the text: start time, span id, then where in the span; compared as a string, it sorts as that tuple. */
+const LEAF_ORDER = `printf('%s%s%s%s%08d%08d%08d', start_time, char(1), span_id, char(1), src, a_ord, t_ord)`;
+
+/**
+ * The distinct span values of the traces whose spans match `where`, one
+ * row each (trace_id, span_id, name, v, k), each cut to
+ * SPAN_VALUE_MAX_CHARS and placed by `k`, the first place it occurs. The
+ * one definition of span text: the index column is these values joined by
+ * SPAN_TEXT_SEPARATOR in `k` order and cut to SPAN_TEXT_MAX_CHARS
+ * (spanTextSql), and the snippet and the search without FTS5 join the same
+ * rows the same way (readSpanText).
+ */
+export function spanValuesSql(where: string): string {
+  return `SELECT trace_id, span_id, name, v, MIN(k) AS k FROM (
+      SELECT trace_id, span_id, name, substr(trim(leaf), 1, ${SPAN_VALUE_MAX_CHARS}) AS v, ${LEAF_ORDER} AS k FROM (${spanLeaves(where)})
+    ) WHERE v <> '' GROUP BY trace_id, v`;
+}
+
+/** The span text of the trace `traceRef` names, as the index column holds it. */
+export function spanTextSql(traceRef: string): string {
+  return `(SELECT substr(COALESCE(group_concat(v, '${SPAN_TEXT_SEPARATOR}' ORDER BY k), ''), 1, ${SPAN_TEXT_MAX_CHARS}) FROM (${spanValuesSql(`s.trace_id = ${traceRef}`)}))`;
+}
+
+/**
+ * The five indexed values of a trace, in column order: the one expression
+ * every write uses. `ref` names a trace row (t, OLD, NEW); the span text is
+ * read from the spans table by its trace id.
  */
 function indexRow(ref: string): string {
-  if (ref === '?') return `?, ?, ${jsonText('?')}, ${jsonText('?')}`;
-  return `${ref}.input, ${ref}.output, ${jsonText(`${ref}.tool_calls`)}, ${jsonText(`${ref}.metadata`)}`;
+  return `${ref}.input, ${ref}.output, ${jsonText(`${ref}.tool_calls`)}, ${jsonText(`${ref}.metadata`)}, ${spanTextSql(`${ref}.trace_id`)}`;
 }
 
-/** The stored values of a trace, as insertTraces binds them, for indexRow('?'). */
-export interface StoredTraceText {
-  traceId: string;
-  input: string | null;
-  output: string | null;
-  toolCalls: string | null;
-  metadata: string | null;
-}
-
-function boundIndexValues(t: StoredTraceText): unknown[] {
-  return [t.input, t.output, t.toolCalls, t.toolCalls, t.toolCalls, t.metadata, t.metadata, t.metadata];
-}
-
-const COLUMNS = 'input, output, tool_calls, metadata';
+const COLUMNS = 'input, output, tool_calls, metadata, spans';
 
 /** Index the traces whose docs rows match `where` (over d, the docs row, and t, the trace). */
 const INDEX_WHERE = (where: string) =>
@@ -142,6 +229,12 @@ const INDEX_WHERE = (where: string) =>
 /** The 'delete' command: FTS5 needs the values the row was indexed with, recomputed from OLD. Nothing when the trace was never indexed. */
 const DELETE_OLD = `INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rowid, ${COLUMNS})
       SELECT 'delete', doc_id, ${indexRow('OLD')} FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = OLD.trace_id`;
+
+/** Take the indexed trace `traceRef` names out of the index, with the values it holds now. */
+const UNINDEX = (traceRef: string) =>
+  `INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rowid, ${COLUMNS}) SELECT 'delete', d.doc_id, ${indexRow('t')} FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE d.trace_id = ${traceRef}`;
+/** Put it back, with the values it holds now. */
+const REINDEX = (traceRef: string) => INDEX_WHERE(`d.trace_id = ${traceRef}`);
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS ${SEARCH_DOCS_TABLE} (
@@ -157,20 +250,66 @@ const CREATE_TABLES = `
   CREATE INDEX IF NOT EXISTS ${SEARCH_FILTER_INDEX} ON traces (trace_id, tenant_id, timestamp, agent_name, framework, session_id, latency_ms, cost_usd);
 `;
 
+/*
+ * The delete trigger runs BEFORE the row goes: the foreign key's cascade
+ * deletes the trace's spans with it, and an AFTER trigger would find none
+ * left to recompute the span text from. The span triggers' WHEN clause is
+ * a lookup in the docs table's unique index; during insertTraces the docs
+ * rows are written after the spans, so it is false there and they cost
+ * that lookup alone.
+ */
+const indexed = (traceRef: string) => `EXISTS (SELECT 1 FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = ${traceRef})`;
+const SPAN_COLUMNS = 'trace_id, span_id, name, start_time, attributes, events';
 const CREATE_TRIGGERS = `
   CREATE TRIGGER IF NOT EXISTS trace_search_au AFTER UPDATE OF input, output, tool_calls, metadata, trace_id, tenant_id ON traces BEGIN
     ${DELETE_OLD};
     UPDATE ${SEARCH_DOCS_TABLE} SET tenant_id = NEW.tenant_id, trace_id = NEW.trace_id WHERE trace_id = OLD.trace_id;
     INSERT INTO ${SEARCH_TABLE} (rowid, ${COLUMNS}) SELECT doc_id, ${indexRow('NEW')} FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = NEW.trace_id;
   END;
-  CREATE TRIGGER IF NOT EXISTS trace_search_ad AFTER DELETE ON traces BEGIN
+  CREATE TRIGGER IF NOT EXISTS trace_search_bd BEFORE DELETE ON traces BEGIN
     ${DELETE_OLD};
     DELETE FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = OLD.trace_id;
   END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_spans_bi BEFORE INSERT ON spans WHEN ${indexed('NEW.trace_id')} BEGIN
+    ${UNINDEX('NEW.trace_id')};
+  END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_spans_ai AFTER INSERT ON spans WHEN ${indexed('NEW.trace_id')} BEGIN
+    ${REINDEX('NEW.trace_id')};
+  END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_spans_bd BEFORE DELETE ON spans WHEN ${indexed('OLD.trace_id')} BEGIN
+    ${UNINDEX('OLD.trace_id')};
+  END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_spans_ad AFTER DELETE ON spans WHEN ${indexed('OLD.trace_id')} BEGIN
+    ${REINDEX('OLD.trace_id')};
+  END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_spans_bu BEFORE UPDATE OF ${SPAN_COLUMNS} ON spans BEGIN
+    ${UNINDEX('OLD.trace_id')};
+    ${UNINDEX('NEW.trace_id')} AND NEW.trace_id IS NOT OLD.trace_id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_spans_au AFTER UPDATE OF ${SPAN_COLUMNS} ON spans BEGIN
+    ${REINDEX('OLD.trace_id')};
+    ${REINDEX('NEW.trace_id')} AND NEW.trace_id IS NOT OLD.trace_id;
+  END;
 `;
 
-/** Traces per step of the background build: about 50 ms of work at the measured rate, so a request never waits longer than that. */
-export const BUILD_BATCH = 256;
+/**
+ * The background build's step, in milliseconds of work: a request waits at
+ * most about this long behind it. What a trace costs to index depends on
+ * its text (a trace with an agent loop's spans takes several times one
+ * without), so the adapter sizes each step from how long the last one took,
+ * starting at BUILD_BATCH traces and kept within BUILD_BATCH_RANGE.
+ */
+export const BUILD_STEP_MS = 50;
+export const BUILD_BATCH = 32;
+export const BUILD_BATCH_RANGE = [8, 1024] as const;
+
+/** The next step's size, from the last one's size and the milliseconds it took. */
+export function nextBuildBatch(size: number, tookMs: number): number {
+  const [min, max] = BUILD_BATCH_RANGE;
+  const scaled = tookMs > 0 ? Math.round((size * BUILD_STEP_MS) / tookMs) : max;
+  // At most double per step, so one fast step on small traces cannot size the next to many large ones.
+  return Math.max(min, Math.min(max, size * 2, scaled));
+}
 
 /**
  * One step of the build: the next `max` traces after `after` (a traces
@@ -206,7 +345,8 @@ const cache = new WeakMap<Driver, boolean>();
 
 /**
  * Whether this connection's SQLite can build the index: FTS5 compiled in,
- * and new enough for secure-delete (3.42). Probed by creating the real shape
+ * new enough for secure-delete (3.42) and for an ordered group_concat
+ * (3.44). Probed by creating the real shape
  * in the connection's temp schema, so the answer is about this build, not a
  * version number.
  */
@@ -217,6 +357,8 @@ export function fts5Available(db: Driver): boolean {
   try {
     db.exec(`CREATE VIRTUAL TABLE temp.iris_fts5_probe USING fts5(x, content = '')`);
     db.exec(`INSERT INTO temp.iris_fts5_probe (iris_fts5_probe, rank) VALUES ('secure-delete', 1)`);
+    // The span column joins its values with an ordered group_concat (3.44).
+    db.prepare(`SELECT group_concat(x, ',' ORDER BY x) AS g FROM (SELECT 1 AS x)`).get();
     ok = true;
   } catch {
     ok = false;
@@ -238,6 +380,96 @@ export function assumeFts5(db: Driver, available: boolean): void {
 
 function objectExists(db: Driver, type: 'table' | 'trigger', name: string): boolean {
   return db.prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?').get(type, name) !== undefined;
+}
+
+/*
+ * Retiring an index. Rebuilding from scratch (an index built before the
+ * span column, or one whose triggers a start without FTS5 dropped) used to
+ * empty or drop the old index at the start, and dropping it is a rewrite of
+ * every one of its pages, zeroed by secure_delete: 1.2 s for 72 MB, measured
+ * on the machine in the changelog, while the server was not yet answering.
+ * Instead the start renames it, which is instant, and the background build
+ * drops it first (dropRetiredIndex), before it indexes a trace: one
+ * statement, because FTS5's own tables cannot be emptied a row at a time
+ * from outside it, so it is the build's one long step. Until then, the
+ * words of a trace deleted in that moment are still in the retired index's
+ * pages; the drop zeroes them with the rest.
+ */
+export const RETIRED_TABLE = 'trace_search_retired';
+
+/** Take the index out of use: its triggers dropped, renamed for the build to erase, its docs rows gone. In the caller's transaction. */
+function retireIndex(db: Driver): void {
+  for (const t of ALL_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+  // One retired index at a time: a second retirement before the first was erased drops that one now.
+  if (objectExists(db, 'table', RETIRED_TABLE)) db.exec(`DROP TABLE ${RETIRED_TABLE}`);
+  db.exec(`ALTER TABLE ${SEARCH_TABLE} RENAME TO ${RETIRED_TABLE}`);
+  db.exec(`DELETE FROM ${SEARCH_DOCS_TABLE}`);
+}
+
+/** Drop the index retired at the start, if there is one; whether there was. */
+export function dropRetiredIndex(db: Driver): boolean {
+  return db
+    .transaction((): boolean => {
+      if (!objectExists(db, 'table', RETIRED_TABLE)) return false;
+      db.exec(`DROP TABLE ${RETIRED_TABLE}`);
+      return true;
+    })
+    .immediate();
+}
+
+/** Whether the index has the span column: false for one built before #683. Read from its declaration, which needs no FTS5. */
+function hasSpanColumn(db: Driver): boolean {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(SEARCH_TABLE) as { sql: string } | undefined;
+  return row !== undefined && /\bspans\b/.test(row.sql);
+}
+
+/** Where one span's values sit in a trace's span text. */
+export interface SpanTextPart {
+  span_id: string;
+  name: string;
+  start: number;
+  end: number;
+}
+
+export interface SpanText {
+  text: string;
+  parts: SpanTextPart[];
+}
+
+/**
+ * The span text of these traces, keyed by trace id, with which span each
+ * stretch came from: spanValuesSql's rows joined as the index column joins
+ * them, so the snippet and the search without FTS5 read the same text the
+ * index holds. Needs no FTS5.
+ */
+export function readSpanText(db: Driver, traceIds: readonly string[]): Map<string, SpanText> {
+  const out = new Map<string, SpanText>();
+  if (traceIds.length === 0) return out;
+  // One trace per run of one prepared statement: 138 µs a trace against 246 for one statement over 500 (its GROUP BY sorts them all together).
+  const read = db.prepare(`${spanValuesSql('s.trace_id = ?')} ORDER BY k`);
+  // The id appears once in each half of spanLeaves' UNION.
+  const rows = traceIds.flatMap((id) => read.all(id, id) as Array<{ trace_id: string; span_id: string; name: string; v: string }>);
+  for (const r of rows) {
+    let entry = out.get(r.trace_id);
+    if (!entry) {
+      entry = { text: '', parts: [] };
+      out.set(r.trace_id, entry);
+    }
+    if (entry.text.length > 0) entry.text += SPAN_TEXT_SEPARATOR;
+    const start = entry.text.length;
+    entry.text += r.v;
+    const last = entry.parts[entry.parts.length - 1];
+    if (last && last.span_id === r.span_id) last.end = entry.text.length;
+    else entry.parts.push({ span_id: r.span_id, name: r.name, start, end: entry.text.length });
+  }
+  // SQLite's substr counts characters, not UTF-16 units: cut the same way.
+  for (const entry of out.values()) {
+    const chars = Array.from(entry.text);
+    if (chars.length <= SPAN_TEXT_MAX_CHARS) continue;
+    entry.text = chars.slice(0, SPAN_TEXT_MAX_CHARS).join('');
+    entry.parts = entry.parts.filter((p) => p.start < entry.text.length).map((p) => ({ ...p, end: Math.min(p.end, entry.text.length) }));
+  }
+  return out;
 }
 
 /**
@@ -284,7 +516,14 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
     const hasTable = objectExists(db, 'table', SEARCH_TABLE);
     const triggersPresent = TRIGGERS.filter((t) => objectExists(db, 'trigger', t)).length;
     if (!available) {
-      for (const t of TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+      for (const t of ALL_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+      return;
+    }
+    if (hasTable && !hasSpanColumn(db)) {
+      // Built before the span column: FTS5 cannot add one, so retire the index and build a new one.
+      retireIndex(db);
+      installSearchIndex(db);
+      state = 'building';
       return;
     }
     if (!hasTable) installSearchIndex(db);
@@ -294,31 +533,29 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
     const traces = Number(counts.traces);
     const docs = Number(counts.docs);
     if (hasTable && (triggersPresent < TRIGGERS.length || docs > traces)) {
-      for (const t of TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
-      db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}) VALUES ('delete-all')`);
-      db.exec(`DELETE FROM ${SEARCH_DOCS_TABLE}`);
+      retireIndex(db);
       installSearchIndex(db);
-      state = traces > 0 ? 'building' : 'ready';
+      state = 'building';
       return;
     }
-    state = docs < traces ? 'building' : 'ready';
+    state = docs < traces || objectExists(db, 'table', RETIRED_TABLE) ? 'building' : 'ready';
   }).immediate();
   return state;
 }
 
 /**
- * Index a trace the adapter has just inserted, in the caller's transaction:
- * its docs row, then its words. The values are the ones just written to the
- * row, run through the same SQL expression a delete later recomputes them
- * with — bound rather than read back, which saves a join per trace.
+ * Index traces the adapter has just inserted, with their spans, in the
+ * caller's transaction: their docs rows, then their words in one statement,
+ * through the same SQL expression a delete later recomputes them with. Run
+ * after the batch's spans are written: a docs row written before a span
+ * would make the span triggers re-index the trace once per span.
  */
-export function searchIndexWriter(db: Driver): (tenantId: string, trace: StoredTraceText) => void {
+export function indexInsertedTraces(db: Driver, tenantId: string, traceIds: readonly string[]): void {
+  if (traceIds.length === 0) return;
+  const before = Number((db.prepare(`SELECT COALESCE(MAX(doc_id), 0) AS m FROM ${SEARCH_DOCS_TABLE}`).get() as { m: number }).m);
   const addDoc = db.prepare(`INSERT INTO ${SEARCH_DOCS_TABLE} (tenant_id, trace_id) VALUES (?, ?)`);
-  const addWords = db.prepare(`INSERT INTO ${SEARCH_TABLE} (rowid, ${COLUMNS}) VALUES (?, ${indexRow('?')})`);
-  return (tenantId, trace) => {
-    const { lastInsertRowid } = addDoc.run(tenantId, trace.traceId);
-    addWords.run(Number(lastInsertRowid), ...boundIndexValues(trace));
-  };
+  for (const id of traceIds) addDoc.run(tenantId, id);
+  db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
 }
 
 /**

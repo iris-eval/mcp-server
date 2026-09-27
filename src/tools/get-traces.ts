@@ -102,7 +102,7 @@ const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards)'),
   framework: z.string().optional().describe('Filter by agent framework — exact match (e.g., langchain, autogen)'),
   session: z.string().optional().describe('Filter by session id — the turns of one conversation, as logged with session_id'),
-  q: traceSearchText.optional().describe('Full-text search over input, output, tool-call values and metadata values. Every word must appear; "quoted phrase"; word* for a prefix. Case and accents ignored'),
+  q: traceSearchText.optional().describe('Full-text search over input, output, tool-call values, metadata values and span attribute and event values. Every word must appear; "quoted phrase"; word* for a prefix. Case and accents ignored'),
   since: isoTimestamp.optional().describe('Inclusive lower bound, an ISO 8601 timestamp or date; anything else is rejected'),
   until: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) upper bound — return traces with timestamp <= this; must not be earlier than `since`'),
   min_score: z.number().min(0).max(1).optional().describe('Minimum score (0..1) of each trace\'s latest evaluation; at most max_score'),
@@ -121,7 +121,7 @@ const inputSchema = {
 const inputSchemaWithRanges = strictInput(inputSchema).superRefine(addTraceRangeIssues);
 
 export const getTracesOutputSchema = z.looseObject({
-  traces: z.array(z.looseObject({ trace_id: z.string() })).describe('the page of traces: trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp; with q, match { field, snippet, fragments } too'),
+  traces: z.array(z.looseObject({ trace_id: z.string() })).describe('the page of traces: trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp; with q, match { field, snippet, fragments, span } too'),
   total: z.number().int().describe('how many traces match the filters, across every page'),
   limit: z.number().int().describe('the page size applied'),
   offset: z.number().int().describe('the offset applied'),

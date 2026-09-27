@@ -72,12 +72,18 @@ class MatchFragment(TypedDict):
     hit: bool
 
 
+class MatchSpan(TypedDict):
+    span_id: str
+    name: str
+
+
 class TraceMatch(TypedDict, total=False):
     """Where a searched trace matched: the field, an excerpt, and the excerpt split at the matched words."""
 
-    field: Literal["input", "output", "tool_calls", "metadata"]
+    field: Literal["input", "output", "tool_calls", "metadata", "spans"]
     snippet: str
     fragments: list[MatchFragment]
+    span: MatchSpan
 
 
 class SearchInfo(TypedDict, total=False):

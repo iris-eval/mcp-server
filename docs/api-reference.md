@@ -333,7 +333,7 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 | `agent_name` | `string` | No | -- | Filter by agent name (exact match) |
 | `framework` | `string` | No | -- | Filter by framework (exact match) |
 | `session` | `string` | No | -- | The turns of one conversation, as logged with `session_id` |
-| `q` | `string` | No | -- | Full-text search over input, output, tool-call values and metadata values; at most 500 characters. See [Searching traces](#searching-traces) |
+| `q` | `string` | No | -- | Full-text search over input, output, tool-call values, metadata values and span text; at most 500 characters. See [Searching traces](#searching-traces) |
 | `since` | `string` | No | -- | ISO 8601 timestamp lower bound |
 | `until` | `string` | No | -- | ISO 8601 timestamp upper bound |
 | `min_score` | `number` | No | -- | Minimum eval score filter |
@@ -346,17 +346,24 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 
 #### Searching traces
 
-`q` finds the run where the agent said something. It searches four fields of every trace: `input`, `output`, and the values inside `tool_calls` and `metadata` (strings and numbers, never the keys, so `status` does not match every tool call that has a status).
+`q` finds the run where the agent said something. It searches five fields of every trace: `input`, `output`, the values inside `tool_calls` and `metadata` (strings and numbers, never the keys, so `status` does not match every tool call that has a status), and `spans`, the text of the trace's spans.
 
-- Every word must appear, in any of the four fields and in any order: `refund approved`.
+- Every word must appear, in any of the five fields and in any order: `refund approved`.
 - `"a quoted phrase"` must appear as those words in that order.
 - `word*` matches any word it starts: `refund*` finds refunded and refunds.
 - Case and accents are ignored: `cafe` finds Café.
 - Punctuation separates words and is not searchable itself: `order-5521` is searched as the phrase `"order 5521"`, which is how it was indexed.
 
+`spans` is what a trace sent over OTLP (`POST /v1/traces`) carries beyond its first model call: the later model calls of an agent loop, tool arguments and results, and exception messages. It is the string values of each span's attributes and of its events' attributes, in span start order:
+
+- never keys, numbers or booleans, and not the `otel.span_id` and `otel.parent_span_id` attributes Iris adds to keep the sender's ids;
+- a string that holds JSON, such as `gen_ai.input.messages`, by the strings inside it;
+- each distinct string once per trace, so the conversation history every model call re-sends is indexed once;
+- each value up to 4,096 characters, and at most 32,768 characters of span text per trace; words past either cap are not searchable.
+
 Whatever `q` contains is read as words, never as query syntax: `AND`, `OR`, `NOT`, `NEAR(`, parentheses, column prefixes like `input:` and unbalanced quotes are searched as the words they contain, so no input can fail the query or widen it. A `q` with no letter or digit in it (`*`, `()`) is refused with a message saying so, rather than answered with an empty page. A blank `q` is no search.
 
-Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call or metadata value) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in, a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur).
+Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call value, a metadata value or span text) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in (and, for `spans`, the `span` it matched in, by `span_id` and `name`), a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur).
 
 ```json
 {
@@ -386,7 +393,7 @@ Results are ranked by relevance (BM25, with a word in `input` or `output` weight
 }
 ```
 
-The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`, the same results, slower). At 100,000 traces the build took 8.5 s. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
+The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). Span text costs more where there is some: at 100,000 traces that are each an agent loop sent over OTLP, the file is 993 MB where it would be 841 MB without span text, and an insert takes about three times as long. On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`, the same results, slower). At 100,000 traces the build took 33.4 s, and 158.8 s when every trace carried an agent loop's spans. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
 
 #### Example Request
 

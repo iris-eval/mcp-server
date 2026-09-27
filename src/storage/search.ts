@@ -25,8 +25,10 @@
  * snippet highlights, and — when SQLite has no FTS5 — which traces match.
  */
 
-/** The four fields a search reads, in the order a snippet prefers them on a tie. */
-export const SEARCH_FIELDS = ['output', 'input', 'tool_calls', 'metadata'] as const;
+import type { SpanTextPart } from './search-index.js';
+
+/** The five fields a search reads, in the order a snippet prefers them on a tie. */
+export const SEARCH_FIELDS = ['output', 'input', 'tool_calls', 'spans', 'metadata'] as const;
 export type SearchField = (typeof SEARCH_FIELDS)[number];
 
 /** Longest query accepted, in characters. */
@@ -57,6 +59,8 @@ export interface TraceMatch {
   snippet: string;
   /** The same snippet split at the matched words, for highlighting without offsets. */
   fragments: MatchFragment[];
+  /** With field `spans`: the span the excerpt comes from. */
+  span?: { span_id: string; name: string };
 }
 
 interface Token {
@@ -69,6 +73,7 @@ interface Token {
 // points; marks travel inside a word and are stripped with the accents.
 const TOKEN_RE = /[\p{L}\p{N}\p{Co}][\p{L}\p{N}\p{Co}\p{M}]*/gu;
 const MARKS_RE = /\p{M}+/gu;
+const ASCII_RE = /^[\x00-\x7f]*$/;
 
 function normalise(word: string): string {
   return word.normalize('NFD').replace(MARKS_RE, '').toLowerCase();
@@ -165,12 +170,17 @@ function termHits(tokens: Token[], term: SearchTerm): number[] {
   return hits;
 }
 
-/** The text a search reads from each field of a trace: tool calls and metadata by their values, not their keys. */
-export function searchableText(trace: { input?: unknown; output?: unknown; tool_calls?: unknown; metadata?: unknown }): Record<SearchField, string> {
+/**
+ * The text a search reads from each field of a trace: tool calls and
+ * metadata by their values, not their keys; `spans` is the trace's span
+ * text as the index holds it (readSpanText, search-index.ts).
+ */
+export function searchableText(trace: { input?: unknown; output?: unknown; tool_calls?: unknown; metadata?: unknown }, spans = ''): Record<SearchField, string> {
   return {
     input: typeof trace.input === 'string' ? trace.input : '',
     output: typeof trace.output === 'string' ? trace.output : '',
     tool_calls: leafValues(trace.tool_calls).join(' · '),
+    spans,
     metadata: leafValues(trace.metadata).join(' · '),
   };
 }
@@ -182,6 +192,29 @@ function leafValues(value: unknown, out: string[] = []): string[] {
   else if (Array.isArray(value)) for (const v of value) leafValues(v, out);
   else if (value !== null && typeof value === 'object') for (const v of Object.values(value)) leafValues(v, out);
   return out;
+}
+
+/**
+ * Whether a trace's span text could hold the terms its own fields lack,
+ * judged from the JSON its spans are stored as, before the costly walk that
+ * extracts the text (the search without FTS5 runs this on every trace its
+ * own fields do not match). A word of the span text is a stretch of the
+ * stored JSON once accents and case are removed, so a term whose words are
+ * not all in it cannot be there: false only when that is certain. JSON can
+ * spell a letter as a \u escape, so raw JSON holding one always may; and Σ
+ * lower-cases to σ or ς by what follows it, so both are compared as σ.
+ */
+export function spansMayMatch(fields: Record<SearchField, string>, parsed: ParsedSearch, rawSpans: string): boolean {
+  if (rawSpans.includes('\\u')) return true;
+  const fold = (s: string) => s.replace(/ς/gu, 'σ');
+  // Stored JSON is nearly always ASCII, which has no accents to remove: lower-casing is the whole normalisation.
+  const raw = ASCII_RE.test(rawSpans) ? rawSpans.toLowerCase() : fold(normalise(rawSpans));
+  const own = SEARCH_FIELDS.filter((f) => f !== 'spans').map((f) => tokenize(fields[f]));
+  for (const term of parsed.terms) {
+    if (own.some((tokens) => termHits(tokens, term).length > 0)) continue;
+    if (!term.tokens.every((t) => raw.includes(fold(t)))) return false;
+  }
+  return true;
 }
 
 /**
@@ -212,9 +245,11 @@ const ELLIPSIS = '…';
  * The excerpt shown with a result: the field with the most distinct terms
  * matched (output first on a tie — "the run where the agent said X"), the
  * window of words that covers the most of them, and the matched words
- * marked. Returns undefined when no field holds a term.
+ * marked. Returns undefined when no field holds a term. With `spanParts`
+ * (readSpanText's), an excerpt from `spans` names the span its first
+ * matched word is in.
  */
-export function buildMatch(fields: Record<SearchField, string>, parsed: ParsedSearch, windowWords = SNIPPET_WORDS): TraceMatch | undefined {
+export function buildMatch(fields: Record<SearchField, string>, parsed: ParsedSearch, windowWords = SNIPPET_WORDS, spanParts: readonly SpanTextPart[] = []): TraceMatch | undefined {
   let best: { field: SearchField; tokens: Token[]; spans: Array<[number, number, number]>; distinct: number } | undefined;
   for (const field of SEARCH_FIELDS) {
     const tokens = tokenize(fields[field]);
@@ -286,5 +321,12 @@ export function buildMatch(fields: Record<SearchField, string>, parsed: ParsedSe
     last.text = last.text.replace(/\s+$/u, '');
   }
   const kept = fragments.filter((f) => f.text.length > 0);
-  return { field, snippet: kept.map((f) => f.text).join(''), fragments: kept };
+  const match: TraceMatch = { field, snippet: kept.map((f) => f.text).join(''), fragments: kept };
+  if (field === 'spans') {
+    const firstHit = spans.find(([first, last]) => first >= start && last <= end);
+    const at = firstHit ? tokens[firstHit[0]].start : tokens[start].start;
+    const part = spanParts.find((p) => at >= p.start && at < p.end);
+    if (part) match.span = { span_id: part.span_id, name: part.name };
+  }
+  return match;
 }

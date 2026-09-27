@@ -26,6 +26,7 @@ import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
+import { BUILD_BATCH, nextBuildBatch } from '../../../src/storage/search-index.js';
 
 // File-backed stores, several opens per test: 70-90 ms on a Windows laptop, up to 8 s on a hosted Windows runner (CI, 2026-09-26).
 vi.setConfig({ testTimeout: 30_000 });
@@ -364,8 +365,14 @@ describe('trace search — building the index after the start', () => {
     setImmediate(tick);
     await s.whenSearchIndexReady();
     stop = true;
-    // 3,000 traces is twelve steps of 256; the event loop turned between them.
-    expect(turns).toBeGreaterThanOrEqual(Math.floor(3000 / 256));
+    // The fewest steps 3,000 traces can take: every step instant, so each doubles (32, 64, … 1,024). The event loop turned between them.
+    let fewest = 0;
+    for (let done = 0, size = BUILD_BATCH; done < 3000; size = nextBuildBatch(size, 0)) {
+      done += size;
+      fewest += 1;
+    }
+    expect(fewest).toBe(7);
+    expect(turns).toBeGreaterThanOrEqual(fewest - 1);
   });
 
   it('close() stops the build at its next step, and the next start carries on to a whole index', async () => {
@@ -431,7 +438,7 @@ describe('trace search — a SQLite without FTS5', () => {
     expect(await ids(restored, 'zurich')).toEqual([]);
     expect(await ids(restored, 'escalated')).toEqual(['refund']);
     const triggersBack = dbOf(restored).prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%' ORDER BY name").all() as Array<{ name: string }>;
-    expect(triggersBack.map((t) => t.name)).toEqual(['trace_search_ad', 'trace_search_au']);
+    expect(triggersBack.map((t) => t.name)).toEqual(['trace_search_au', 'trace_search_bd', 'trace_search_spans_ad', 'trace_search_spans_ai', 'trace_search_spans_au', 'trace_search_spans_bd', 'trace_search_spans_bi', 'trace_search_spans_bu']);
   });
 });
 
