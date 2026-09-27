@@ -28,8 +28,10 @@
  *                as `evaluate: true` does on POST /api/v1/traces
  *   spans        every span: kind from `iris.span_kind`, else TOOL when it
  *                carries a tool attribute or `gen_ai.operation.name` is
- *                execute_tool, else LLM when it carries a GenAI request
- *                attribute, else the OTel kind; status from status.code
+ *                execute_tool, else INTERNAL for an agent operation
+ *                (invoke_agent, create_agent), else LLM when it carries a
+ *                GenAI request attribute, else the OTel kind; status from
+ *                status.code
  *
  * A trace with no GenAI attributes at all is still stored — with what it
  * carries — and the answer lists what it lacked, so the reader knows why
@@ -259,6 +261,8 @@ const OTEL_KIND: Record<string, SpanKind> = {
   SPAN_KIND_CONSUMER: 'CONSUMER',
 };
 
+/** The GenAI conventions' agent operations: the agent's own span, which wraps its model and tool calls. */
+const AGENT_OPERATIONS = new Set(['invoke_agent', 'create_agent']);
 const TOOL_MARKERS = ['gen_ai.tool.name', 'gen_ai.tool.call.id', 'tool.name', 'tool_name', 'tool_call.function.name', 'ai.toolCall.name'];
 const LLM_MARKERS = ['gen_ai.request.model', 'gen_ai.response.model', 'gen_ai.system', 'gen_ai.provider.name', 'llm.request.model', 'llm.model_name', 'ai.model.id', 'llm.request.type'];
 
@@ -276,6 +280,14 @@ function spanKindOf(attrs: Record<string, unknown>, otelKind: string | number | 
   if (attrs['traceloop.span.kind'] === 'tool') return 'TOOL';
   const op = attrs['gen_ai.operation.name'];
   if (op === 'execute_tool' || TOOL_MARKERS.some((k) => attrs[k] !== undefined)) return 'TOOL';
+  /*
+   * An agent operation is the run around the model calls, not a model call,
+   * even when it carries the model's name or the run's usage (the Agent
+   * Framework puts both on invoke_agent). Filed under LLM it doubled the
+   * model calls a reader counted in the drawer. Usage is summed over the
+   * leaf carriers whatever their kind, so the totals do not move.
+   */
+  if (typeof op === 'string' && AGENT_OPERATIONS.has(op)) return 'INTERNAL';
   if (LLM_MARKERS.some((k) => attrs[k] !== undefined) || (typeof op === 'string' && op.length > 0)) return 'LLM';
   return OTEL_KIND[String(otelKind ?? 0)] ?? 'INTERNAL';
 }

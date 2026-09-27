@@ -169,4 +169,16 @@ describe('the OTLP door — one fixture per convention', () => {
     expect(kinds('crewai-openinference.otlp.json')).toEqual(['Crew.kickoff:INTERNAL', 'Task._execute_core:INTERNAL', 'web_search:TOOL', 'ChatOpenAI.chat:LLM']);
     expect(kinds('vercel-ai-sdk.otlp.json')).toEqual(['ai.generateText:LLM', 'ai.generateText.doGenerate:LLM', 'ai.toolCall:TOOL']);
   });
+
+  it('an agent operation (invoke_agent, create_agent) is INTERNAL, never a model call, and the usage totals do not move', () => {
+    const kinds = (file: string) => load(file).trace.spans?.map((s) => `${s.name}:${s.kind}`);
+    // The Agent Framework's invoke_agent carries the model's name and the run's usage; it is still the agent, not a call.
+    expect(kinds('agent-framework.otlp.json')).toEqual(['invoke_agent Writer:INTERNAL', 'chat gpt-4o-mini:LLM', 'execute_tool get_release_facts:TOOL', 'chat gpt-4o-mini:LLM']);
+    expect(kinds('google-adk.otlp.json')).toEqual(['invoke_agent weather_agent:INTERNAL', 'generate_content gemini-2.5-flash:LLM', 'execute_tool get_weather:TOOL']);
+    expect(kinds('pydantic-ai.otlp.json')).toEqual(['agent run:INTERNAL', 'chat gpt-4o:LLM', 'running tool get_weather:TOOL', 'chat gpt-4o:LLM']);
+    // Usage is summed over the leaf carriers whatever their kind: the totals are the ones asserted above, unchanged.
+    expect(load('agent-framework.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 1742, completion_tokens: 136, total_tokens: 1878 });
+    expect(load('google-adk.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 318, completion_tokens: 44, total_tokens: 362 });
+    expect(load('pydantic-ai.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 812, completion_tokens: 133, total_tokens: 945 });
+  });
 });
