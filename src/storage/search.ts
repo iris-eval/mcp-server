@@ -20,12 +20,18 @@
  * separates words and is not itself searchable: `get_weather` is the
  * phrase "get weather", which is how the index stored it.
  *
- * The tokenizer below mirrors the index's (`unicode61 remove_diacritics 2`):
- * the same function decides what a query term is, which stored words a
- * snippet highlights, and — when SQLite has no FTS5 — which traces match.
+ * The tokenizer below is the index's (`unicode61 remove_diacritics 2`),
+ * code point for code point: it reads a table generated from SQLite's own
+ * tokenizer (unicode61.generated.ts), so the same function decides what a
+ * query term is, which stored words a snippet highlights, and — when SQLite
+ * has no FTS5 — which traces match, and none of them can disagree with the
+ * index. (It used to approximate unicode61 with Unicode categories and NFD,
+ * which split Korean syllables into letters: a Korean word searched with
+ * the index found nothing.)
  */
 
 import type { SpanTextPart } from './search-index.js';
+import { UNICODE61 } from './unicode61.generated.js';
 
 /** The five fields a search reads, in the order a snippet prefers them on a tie. */
 export const SEARCH_FIELDS = ['output', 'input', 'tool_calls', 'spans', 'metadata'] as const;
@@ -69,24 +75,85 @@ interface Token {
   end: number;
 }
 
-// unicode61's token characters are letters, numbers and private-use code
-// points; marks travel inside a word and are stripped with the accents.
-const TOKEN_RE = /[\p{L}\p{N}\p{Co}][\p{L}\p{N}\p{Co}\p{M}]*/gu;
-const MARKS_RE = /\p{M}+/gu;
-const ASCII_RE = /^[\x00-\x7f]*$/;
+/** What unicode61 does with an ASCII code point: -1 splits a word, else the code point it becomes. */
+const ASCII = new Int32Array(128);
+const DROPPED = new Set(UNICODE61.dropped);
+const FOLDS = new Map(UNICODE61.folds.map(([from, to]) => [from, String.fromCodePoint(to)]));
+for (let cp = 0; cp < 128; cp += 1) ASCII[cp] = isSeparatorSlow(cp) ? -1 : FOLDS.has(cp) ? FOLDS.get(cp)!.codePointAt(0)! : cp;
 
-function normalise(word: string): string {
-  return word.normalize('NFD').replace(MARKS_RE, '').toLowerCase();
+function isSeparatorSlow(cp: number): boolean {
+  if (cp === 0) return true;
+  const ranges = UNICODE61.separators;
+  let lo = 0;
+  let hi = ranges.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (cp < ranges[mid][0]) hi = mid - 1;
+    else if (cp > ranges[mid][1]) lo = mid + 1;
+    else return true;
+  }
+  return false;
+}
+
+/** Whether unicode61 splits words at this code point. */
+export function isSeparator(cp: number): boolean {
+  return cp < 128 ? ASCII[cp] === -1 : isSeparatorSlow(cp);
+}
+
+/** A word character as unicode61 stores it: folded, or '' for one it drops. */
+function foldChar(cp: number): string {
+  if (cp < 128) return String.fromCharCode(ASCII[cp]);
+  if (DROPPED.has(cp)) return '';
+  return FOLDS.get(cp) ?? String.fromCodePoint(cp);
+}
+
+/** Text as unicode61 would store its words, separators left in place: for a substring test against a query word. */
+export function foldText(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length; ) {
+    const cp = text.codePointAt(i)!;
+    const width = cp > 0xffff ? 2 : 1;
+    out += isSeparator(cp) ? text.slice(i, i + width) : foldChar(cp);
+    i += width;
+  }
+  return out;
 }
 
 /** The words of a text as the index sees them, with their offsets in the original string. */
 export function tokenize(text: string): Token[] {
   const out: Token[] = [];
-  for (const m of text.matchAll(TOKEN_RE)) {
-    const norm = normalise(m[0]);
-    if (norm.length === 0) continue;
-    out.push({ norm, start: m.index, end: m.index + m[0].length });
+  let norm = '';
+  let start = -1;
+  let end = -1;
+  const flush = () => {
+    if (norm.length > 0) out.push({ norm, start, end });
+    norm = '';
+    start = -1;
+  };
+  for (let i = 0; i < text.length; ) {
+    const code = text.charCodeAt(i);
+    if (code < 128) {
+      const to = ASCII[code];
+      if (to === -1) flush();
+      else {
+        if (start < 0) start = i;
+        norm += String.fromCharCode(to);
+        end = i + 1;
+      }
+      i += 1;
+      continue;
+    }
+    const cp = text.codePointAt(i)!;
+    const width = cp > 0xffff ? 2 : 1;
+    if (isSeparatorSlow(cp)) flush();
+    else {
+      if (start < 0) start = i;
+      norm += foldChar(cp);
+      end = i + width;
+    }
+    i += width;
   }
+  flush();
   return out;
 }
 
@@ -125,7 +192,10 @@ export function parseSearch(raw: string): ParsedSearch {
     const tokens = tokenize(chunk).map((t) => t.norm);
     if (tokens.length === 0) continue;
     // A prefix only when the star sits right after the last word, not after punctuation that follows it.
-    const prefix = /[\p{L}\p{N}\p{Co}\p{M}]\*+$/u.test(chunk.trimEnd());
+    const bare = chunk.trimEnd();
+    const beforeStars = bare.replace(/\*+$/u, '');
+    const lastCp = beforeStars.length < bare.length && beforeStars.length > 0 ? beforeStars.codePointAt(beforeStars.length - (/[\uDC00-\uDFFF]$/u.test(beforeStars) ? 2 : 1))! : -1;
+    const prefix = lastCp >= 0 && !isSeparator(lastCp);
     terms.push({ tokens, prefix });
   }
   return { terms };
@@ -139,9 +209,10 @@ export function describeTerm(term: SearchTerm): string {
 }
 
 /**
- * The MATCH expression for parsed terms. Every token is letters and digits
- * only (the tokenizer guarantees it), so the quoted strings below cannot
- * carry a quote, an operator or a column filter.
+ * The MATCH expression for parsed terms. A token never holds a double quote
+ * (unicode61 splits words at it, which the table's generator checks), so
+ * each quoted string below is one FTS5 string: whatever else it holds —
+ * operators, column names, `*` — is text inside it, never syntax.
  */
 export function toFtsQuery(parsed: ParsedSearch): string {
   return parsed.terms.map((t) => `"${t.tokens.join(' ')}"${t.prefix ? '*' : ''}`).join(' AND ');
@@ -201,18 +272,15 @@ function leafValues(value: unknown, out: string[] = []): string[] {
  * own fields do not match). A word of the span text is a stretch of the
  * stored JSON once accents and case are removed, so a term whose words are
  * not all in it cannot be there: false only when that is certain. JSON can
- * spell a letter as a \u escape, so raw JSON holding one always may; and Σ
- * lower-cases to σ or ς by what follows it, so both are compared as σ.
+ * spell a letter as a \u escape, so raw JSON holding one always may.
  */
 export function spansMayMatch(fields: Record<SearchField, string>, parsed: ParsedSearch, rawSpans: string): boolean {
   if (rawSpans.includes('\\u')) return true;
-  const fold = (s: string) => s.replace(/ς/gu, 'σ');
-  // Stored JSON is nearly always ASCII, which has no accents to remove: lower-casing is the whole normalisation.
-  const raw = ASCII_RE.test(rawSpans) ? rawSpans.toLowerCase() : fold(normalise(rawSpans));
+  const raw = foldText(rawSpans);
   const own = SEARCH_FIELDS.filter((f) => f !== 'spans').map((f) => tokenize(fields[f]));
   for (const term of parsed.terms) {
     if (own.some((tokens) => termHits(tokens, term).length > 0)) continue;
-    if (!term.tokens.every((t) => raw.includes(fold(t)))) return false;
+    if (!term.tokens.every((t) => raw.includes(t))) return false;
   }
   return true;
 }
