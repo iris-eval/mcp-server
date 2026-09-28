@@ -19,7 +19,7 @@
  * refused or answered within a CPU-time bound (tests/helpers/cpu-time.ts
  * says why CPU time, not the wall clock).
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -324,34 +324,38 @@ describe('the time budget', () => {
     });
   }
 
-  it('holds the scan, the slowest path, to its budget: a fraction of the CPU the whole read takes', async () => {
-    // Long traces without FTS5, so reading them all costs many times a 50 ms budget on any machine.
+  it('holds the scan, the slowest path, to its budget: it stops at the first batch that ends past the deadline', async () => {
     const path = join(dir, 'scan.db');
     const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false });
     await s.initialize();
-    const long = reviewStore().map((t) => ({ ...t, output: Array(10).fill(t.output).join(' ') }));
-    await s.insertTraces(LOCAL_TENANT, long);
+    await s.insertTraces(LOCAL_TENANT, reviewStore());
     await s.close();
     const read = async (searchBudgetMs: number) => {
-      // On this thread: what is measured is the scan's own work, not a search thread starting.
       const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false, searchBudgetMs, searchWorker: false });
       await store.initialize();
-      let r: Awaited<ReturnType<SqliteAdapter['queryTraces']>> | undefined;
-      const cpu = await cpuMsAsync(async () => {
-        // `q` starts every input, so each batch read has matches in it.
-        r = await store.queryTraces(LOCAL_TENANT, { search: 'q', limit: 50 });
-      });
-      await store.close();
-      return { r: r!, cpu };
+      /*
+       * A clock the test drives, so the proof does not depend on how fast
+       * this machine reads: every look at it moves it on 20 ms. The search
+       * looks once to set its deadline and once after each batch of 100
+       * traces, so with a 50 ms budget the batches end at 20, 40 and 60 ms
+       * and the third is the first past the deadline.
+       */
+      let now = 0;
+      const clock = vi.spyOn(performance, 'now').mockImplementation(() => (now += 20) - 20);
+      try {
+        // `q` starts every input, so every trace read matches and `total` counts the traces read.
+        return await store.queryTraces(LOCAL_TENANT, { search: 'q', limit: 50 });
+      } finally {
+        clock.mockRestore();
+        await store.close();
+      }
     };
     const all = await read(60_000);
+    expect(all.search?.complete).toBe(true);
+    expect(all.total).toBe(REVIEW_TRACES);
     const cut = await read(50);
-    expect(all.r.search?.complete).toBe(true);
-    expect(cut.r.search).toMatchObject({ complete: false, budget_ms: 50 });
-    expect(cut.r.total).toBeGreaterThan(0);
-    expect(cut.r.total).toBeLessThan(all.r.total);
-    // The budget, one batch of 100 traces past it, and the page: a fraction of the whole read.
-    expect(all.cpu, `the whole read took ${all.cpu.toFixed(0)} ms of CPU`).toBeGreaterThan(300);
-    expect(cut.cpu, `${cut.cpu.toFixed(0)} ms of CPU against ${all.cpu.toFixed(0)} for the whole read`).toBeLessThan(all.cpu / 3);
-  }, 60_000);
+    expect(cut.search).toMatchObject({ complete: false, budget_ms: 50 });
+    expect(cut.total).toBe(300);
+    expect(cut.traces).toHaveLength(50);
+  });
 });
