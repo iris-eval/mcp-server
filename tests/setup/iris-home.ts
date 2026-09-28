@@ -26,6 +26,9 @@ import { afterAll } from 'vitest';
 
 const scratchHome = mkdtempSync(join(tmpdir(), 'iris-vitest-home-'));
 process.env.IRIS_HOME = scratchHome;
+// An IRIS_DB_PATH exported in the caller's shell would take the database out
+// of the scratch home and onto theirs; a test that needs one sets its own.
+delete process.env.IRIS_DB_PATH;
 
 afterAll(() => {
   rmSync(scratchHome, { recursive: true, force: true });

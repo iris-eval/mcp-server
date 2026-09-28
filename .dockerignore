@@ -10,4 +10,6 @@ dist
 docs
 examples
 scripts
+# The build runs this one (package.json build:dashboard).
+!scripts/build-dashboard.mjs
 dashboard/node_modules
