@@ -18,6 +18,8 @@ import express from 'express';
 import type { Server } from 'node:http';
 import { createSessionAuth, SESSION_COOKIE } from '../../../src/dashboard/session-auth.js';
 import type { KeyRing } from '../../../src/security/keys.js';
+import { createAuthGateRateLimiter } from '../../../src/middleware/rate-limit.js';
+import { defaultConfig } from '../../../src/config/defaults.js';
 
 const HTML = { accept: 'text/html,application/xhtml+xml' };
 const opened: Server[] = [];
@@ -57,6 +59,8 @@ async function boot(ring: KeyRing): Promise<string> {
     if (token !== undefined && ring.match(token) !== null) return next();
     res.status(401).json({ error: 'unauthorized' });
   };
+  // The same per-address limiter the dashboard mounts ahead of every authorization decision.
+  app.use(createAuthGateRateLimiter(defaultConfig));
   app.use(createSessionAuth({ keys: ring, bearerAuth }));
   app.get('/', (_req, res) => res.type('html').send('<h1>dashboard</h1>'));
   app.get('/api/v1/traces', (_req, res) => res.json({ ok: true }));
