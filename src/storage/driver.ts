@@ -75,6 +75,8 @@ export interface OpenOptions {
   timeout?: number;
   /** Refuse to create the file (the self-test's read of an existing database). */
   fileMustExist?: boolean;
+  /** Open for reading only (the search worker's connection): no statement on it can write the file. */
+  readOnly?: boolean;
   /** Force a driver; unset reads IRIS_SQLITE_DRIVER, then defaults to native with the fallback. */
   driver?: 'native' | 'node';
   /** Whether a native load failure may fall back to the built-in (default true; a test turns it off). */
@@ -102,7 +104,7 @@ type NativeDatabase = {
   transaction<F extends (...args: never[]) => unknown>(fn: F): F & { immediate: F };
   close(): void;
 };
-type NativeModule = new (path: string, options?: { timeout?: number; fileMustExist?: boolean }) => NativeDatabase;
+type NativeModule = new (path: string, options?: { timeout?: number; fileMustExist?: boolean; readonly?: boolean }) => NativeDatabase;
 
 const require = createRequire(import.meta.url);
 
@@ -114,7 +116,11 @@ function defaultLoadNative(): NativeModule {
 }
 
 function nativeDriver(Database: NativeModule, path: string, options: OpenOptions, reason: string): Driver {
-  const db = new Database(path, { ...(options.timeout !== undefined ? { timeout: options.timeout } : {}), ...(options.fileMustExist ? { fileMustExist: true } : {}) });
+  const db = new Database(path, {
+    ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
+    ...(options.fileMustExist ? { fileMustExist: true } : {}),
+    ...(options.readOnly ? { readonly: true } : {}),
+  });
   return {
     name: 'better-sqlite3',
     reason,
@@ -160,7 +166,7 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
     throw new Error(`SQLite database file does not exist: ${path}`);
   }
   // No extension loading — a plugin-shaped .so is not something a trace store should ever load.
-  const db = new mod.DatabaseSync(path, { allowExtension: false });
+  const db = new mod.DatabaseSync(path, { allowExtension: false, ...(options.readOnly ? { readOnly: true } : {}) });
   if (options.timeout !== undefined) db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(options.timeout))}`);
   // The hardening the built-in exposes: schema text is never trusted to run functions or virtual tables.
   db.exec('PRAGMA trusted_schema = OFF');
