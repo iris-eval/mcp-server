@@ -36,7 +36,29 @@ export const WORKER_GRACE_MS = 10_000;
 const CLOSE_TIMEOUT_MS = 5_000;
 
 /** The thread failed before it could search: the caller may search on its own connection instead. */
-export class SearchWorkerUnavailable extends Error {}
+export class SearchWorkerUnavailable extends Error {
+  constructor(readonly reason: string) {
+    super(`the search thread could not start: ${reason}`);
+  }
+}
+
+let warned = false;
+/**
+ * Say once per process that searches run on the server's thread because
+ * the worker could not start, and why: the searches still work, and
+ * nothing else would tell an operator they now hold other requests while
+ * they run. The health contract and --self-test report the same.
+ */
+export function warnSearchWorkerUnavailable(reason: string, write: (line: string) => void = (line) => process.stderr.write(`${line}\n`)): void {
+  if (warned) return;
+  warned = true;
+  write(`[iris.storage] The search worker could not start (${reason}); searches run on the main thread, where a slow one holds other requests while it runs.`);
+}
+
+/** Tests only: let the next warnSearchWorkerUnavailable write again. */
+export function resetSearchWorkerWarning(): void {
+  warned = false;
+}
 
 interface Pending {
   resolve: (r: MatchResult) => void;
@@ -53,7 +75,17 @@ export class SearchWorkerClient {
   /** Threads started, for tests and the health of the pool. */
   started = 0;
 
-  constructor(private readonly data: SearchWorkerData, private readonly graceMs = WORKER_GRACE_MS) {}
+  /** `entry`: tests only, a module to run as the thread instead of search-worker's. */
+  constructor(
+    private readonly data: SearchWorkerData,
+    private readonly graceMs = WORKER_GRACE_MS,
+    private readonly entry?: URL,
+  ) {}
+
+  /** Whether a thread is running and has opened its connection. */
+  isReady(): boolean {
+    return this.worker !== undefined && this.ready;
+  }
 
   /** Match one search on the thread. */
   search(request: MatchRequest): Promise<MatchResult> {
@@ -78,9 +110,10 @@ export class SearchWorkerClient {
     const source = import.meta.url.endsWith('.ts');
     const entry = new URL(source ? './search-worker.ts' : './search-worker.js', import.meta.url);
     // A thread does not take --import, so from the sources it registers tsx's loader itself, then loads the entry.
-    const w = source
-      ? new Worker(`import('tsx/esm/api').then((tsx) => { tsx.register(); return import(${JSON.stringify(entry.href)}); })`, { eval: true, workerData: this.data })
-      : new Worker(entry, { workerData: this.data });
+    let w: Worker;
+    if (this.entry) w = new Worker(this.entry, { workerData: this.data });
+    else if (source) w = new Worker(`import('tsx/esm/api').then((tsx) => { tsx.register(); return import(${JSON.stringify(entry.href)}); })`, { eval: true, workerData: this.data });
+    else w = new Worker(entry, { workerData: this.data });
     this.worker = w;
     this.ready = false;
     this.started += 1;
@@ -115,7 +148,7 @@ export class SearchWorkerClient {
     this.worker = undefined;
     for (const [id, p] of [...this.pending]) {
       this.settle(id);
-      p.reject(beforeReady ? new SearchWorkerUnavailable(`the search thread could not start: ${reason}`) : new Error(`the search thread stopped: ${reason}`));
+      p.reject(beforeReady ? new SearchWorkerUnavailable(reason) : new Error(`the search thread stopped: ${reason}`));
     }
   }
 

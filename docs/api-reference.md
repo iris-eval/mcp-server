@@ -1432,6 +1432,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
   "version": "0.15.0",
   "uptime_seconds": 3600,
   "driver": "better-sqlite3",
+  "search_worker": { "status": "ready", "detail": "ready: searches run on their own thread" },
   "checks": {
     "storage": "ok",
     "rules_store": "ok",
@@ -1444,6 +1445,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
 ```
 
 - `driver` — the SQLite driver behind the store: `better-sqlite3` (the native addon, the default) or `node` (Node's built-in `node:sqlite`, chosen with `IRIS_SQLITE_DRIVER=node` or fallen back to when the native module cannot load); `null` on a transport started without storage.
+- `search_worker` — where searches run: `ready` (on their own thread, so a slow search never holds other requests), `not_started` (the thread starts with the first search), `unavailable` (it could not start on this machine, so searches run on the main thread; `detail` gives the reason, and the server also logs it once), or `not_used` (a store in memory, which searches on the main thread by design); `null` without storage. It is informational: search works in every case, so it never makes `status` `degraded`. `--self-test` prints the same line.
 - `checks.storage` — the database answered a count. The count itself is not reported: this endpoint answers without a key, so it says whether the store works, not how much it holds (the number is `total` on the authenticated `GET /api/v1/traces`); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
 - `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
 - `version` is read from `package.json` at runtime; `judge` is the provider name when a key is present, never the key; `mode` is `demo` when serving the disposable demo database.
@@ -1456,6 +1458,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
   "version": "0.15.0",
   "uptime_seconds": 3600,
   "driver": "better-sqlite3",
+  "search_worker": { "status": "ready", "detail": "ready: searches run on their own thread" },
   "checks": {
     "storage": "fail",
     "rules_store": "ok",

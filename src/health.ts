@@ -17,6 +17,8 @@
  *                before a query fails on a missing column
  *   driver       which SQLite driver opened the file (0.15.0 added the
  *                Node built-in as a fallback; the word is the seam)
+ *   search_worker where searches run: their own thread, or the server's
+ *                when the worker could not start (and why); informational
  *
  * `status` is `ok` only when every check that could run is `ok`; anything
  * else is `degraded` with HTTP 503, so a probe that only reads the status
@@ -28,7 +30,7 @@
  * which told any unauthenticated caller how much data the server held. The
  * count is on the authenticated surface: `total` on GET /api/v1/traces.
  */
-import type { IStorageAdapter } from './types/query.js';
+import type { IStorageAdapter, SearchWorkerStatus } from './types/query.js';
 import type { CustomRuleStore } from './custom-rule-store.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { judgeState } from './judge-enablement.js';
@@ -43,6 +45,8 @@ export interface HealthReport {
   uptime_seconds: number;
   /** The SQLite driver behind `storage`, or null when no storage is attached. */
   driver: string | null;
+  /** Where searches run (#703), or null when no storage is attached or it does not say. Informational: an unavailable worker leaves searches working, so it never degrades `status`. */
+  search_worker: SearchWorkerStatus | null;
   checks: {
     storage: CheckState;
     rules_store: CheckState;
@@ -76,6 +80,7 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
     version: deps.version ?? 'unknown',
     uptime_seconds,
     driver: deps.storage?.driver ?? null,
+    search_worker: deps.storage?.searchWorkerStatus?.() ?? null,
     checks: {
       storage: 'absent',
       rules_store: 'absent',

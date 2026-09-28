@@ -33,6 +33,7 @@ import type {
   TraceQueryOptions,
   TraceQueryResult,
   TraceSearchInfo,
+  SearchWorkerStatus,
   EvalStatsPeriod,
   EvalStats,
   AgentFailureLogEntry,
@@ -58,7 +59,7 @@ import { runMigrations, migrationState, type MigrationState } from './migrations
 import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
-import { SearchWorkerClient, SearchWorkerUnavailable } from './search-worker-client.js';
+import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
@@ -118,6 +119,8 @@ export interface SqliteAdapterOptions {
   searchBudgetMs?: number;
   /** false runs every search on this connection, on the caller's thread (the benchmark's comparison); default: on a worker thread, for a store in a file. */
   searchWorker?: boolean;
+  /** Tests only: the module the search worker runs, to make it fail to start. */
+  searchWorkerEntry?: URL;
 }
 
 /**
@@ -262,6 +265,9 @@ export class SqliteAdapter implements IStorageAdapter {
   /** Whether searches run on a worker thread (SqliteAdapterOptions.searchWorker); the client once one has started. */
   private readonly searchOnWorker: boolean;
   private searchWorker: SearchWorkerClient | undefined;
+  private readonly searchWorkerEntry: URL | undefined;
+  /** Why the search worker could not start, once it has not: searches then stay on this thread. */
+  private searchWorkerFailure: string | undefined;
   /** A delete's checkpoint waiting for a reader (eraseFromFile). */
   private eraseRetry: NodeJS.Timeout | undefined;
 
@@ -284,6 +290,7 @@ export class SqliteAdapter implements IStorageAdapter {
     installSearchFunctions(this.db);
     // A store in memory has no file a second connection could open: it searches on this one.
     this.searchOnWorker = (options?.searchWorker ?? true) && dbPath !== ':memory:';
+    this.searchWorkerEntry = options?.searchWorkerEntry;
   }
 
   /** Applied against known — the health contract's `checks.migrations`. */
@@ -387,14 +394,29 @@ export class SqliteAdapter implements IStorageAdapter {
    * a worker again.
    */
   private async match(request: MatchRequest): Promise<MatchResult> {
-    if (!this.searchOnWorker || this.closing) return matchSearch(this.db, request);
-    this.searchWorker ??= new SearchWorkerClient({ path: this.dbPath, driver: this.db.name === 'node' ? 'node' : 'native', busyTimeoutMs: BUSY_TIMEOUT_MS });
+    if (!this.searchOnWorker || this.closing || this.searchWorkerFailure !== undefined) return matchSearch(this.db, request);
+    // The driver this connection ended up with, never the one asked for: a machine that fell back to node:sqlite here would fail to open the native one there.
+    this.searchWorker ??= new SearchWorkerClient({ path: this.dbPath, driver: this.db.name === 'node' ? 'node' : 'native', busyTimeoutMs: BUSY_TIMEOUT_MS }, undefined, this.searchWorkerEntry);
     try {
       return await this.searchWorker.search(request);
     } catch (err) {
-      if (err instanceof SearchWorkerUnavailable) return matchSearch(this.db, request);
-      throw err;
+      if (!(err instanceof SearchWorkerUnavailable)) throw err;
+      // It will not start on this machine: say so once, and search here from now on.
+      this.searchWorkerFailure = err.reason;
+      const client = this.searchWorker;
+      this.searchWorker = undefined;
+      void client.close();
+      warnSearchWorkerUnavailable(err.reason);
+      return matchSearch(this.db, request);
     }
+  }
+
+  /** Where this store's searches run (SearchWorkerStatus): for the health contract and the self-test. */
+  searchWorkerStatus(): SearchWorkerStatus {
+    if (!this.searchOnWorker) return { status: 'not_used', detail: 'not used: a store in memory searches on the main thread' };
+    if (this.searchWorkerFailure !== undefined) return { status: 'unavailable', detail: `unavailable (${this.searchWorkerFailure}), searches run on the main thread` };
+    if (this.searchWorker?.isReady()) return { status: 'ready', detail: 'ready: searches run on their own thread' };
+    return { status: 'not_started', detail: 'not started: it starts with the first search' };
   }
 
   /**

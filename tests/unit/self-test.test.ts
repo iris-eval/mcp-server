@@ -75,6 +75,8 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
       expect(out).toContain(`✓ ${label}`);
     }
     expect(out).toContain(SELF_TEST_PASS_VERDICT);
+    // The storage step searches once, so it reports whether the search worker runs on this machine (#703).
+    expect(lines.find((l) => l.startsWith(`✓ ${SELF_TEST_STEPS.storage} — `))).toMatch(/; search worker: ready: searches run on their own thread\)$/);
     expect(out).toContain(`Iris self-test v${PKG_VERSION}`);
     expect(out).toContain(`version   ${PKG_VERSION}`);
     // The home + storage lines report where a NORMAL run of this install

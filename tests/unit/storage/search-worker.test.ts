@@ -10,12 +10,14 @@
  * life: started on the first search, replaced after a failure or when it
  * stops answering, and closed with the store, leaving no handle on the file.
  */
-import { afterEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
-import { SearchWorkerClient, SearchWorkerUnavailable } from '../../../src/storage/search-worker-client.js';
+import { SearchWorkerClient, SearchWorkerUnavailable, resetSearchWorkerWarning } from '../../../src/storage/search-worker-client.js';
+import { buildHealth } from '../../../src/health.js';
 import { parseSearch } from '../../../src/storage/search.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
@@ -218,6 +220,71 @@ describe('search on a worker thread', () => {
     // Windows refuses to delete a file any connection still holds.
     rmSync(join(path, '..'), { recursive: true, force: false });
     dirs.splice(dirs.indexOf(join(path, '..')), 1);
+  });
+});
+
+describe('a search worker that cannot start', () => {
+  afterEach(() => resetSearchWorkerWarning());
+
+  /** A thread that fails as it loads, as one refused its driver would, before it can say it is ready. */
+  function failingEntry(): URL {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-entry-'));
+    dirs.push(dir);
+    const file = join(dir, 'refuses.mjs');
+    writeFileSync(file, "throw new Error('the driver was refused on this machine');\n");
+    return pathToFileURL(file);
+  }
+
+  it('searches on the main thread, warns once per process with the reason, and says so in /health', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: string | Uint8Array) => {
+      lines.push(String(chunk));
+      return true;
+    });
+    try {
+      const entry = failingEntry();
+      const a = await adapter(tempDb(), { searchWorkerEntry: entry });
+      await a.insertTraces(LOCAL_TENANT, corpus);
+      expect(a.searchWorkerStatus()).toEqual({ status: 'not_started', detail: 'not started: it starts with the first search' });
+      const here = await adapter(tempDb(), { searchWorker: false });
+      await here.insertTraces(LOCAL_TENANT, corpus);
+      // The fallback keeps the answer the same.
+      expect(await a.queryTraces(LOCAL_TENANT, { search: 'refund approved' })).toEqual(await here.queryTraces(LOCAL_TENANT, { search: 'refund approved' }));
+      const unavailable = {
+        status: 'unavailable',
+        detail: 'unavailable (the driver was refused on this machine), searches run on the main thread',
+      };
+      expect(a.searchWorkerStatus()).toEqual(unavailable);
+      // No new thread per search once one could not start.
+      await a.queryTraces(LOCAL_TENANT, { search: 'refund' });
+      expect(workerOf(a)).toBeUndefined();
+
+      // A second store in the same process that cannot start one either: the warning is not repeated.
+      const b = await adapter(tempDb(), { searchWorkerEntry: entry });
+      await b.queryTraces(LOCAL_TENANT, { search: 'refund' });
+      expect(b.searchWorkerStatus().status).toBe('unavailable');
+      const warnings = lines.filter((l) => l.includes('search worker could not start'));
+      expect(warnings).toEqual([
+        '[iris.storage] The search worker could not start (the driver was refused on this machine); searches run on the main thread, where a slow one holds other requests while it runs.\n',
+      ]);
+
+      const health = await buildHealth({ storage: a, version: 'test' });
+      expect(health.status).toBe(200);
+      expect(health.body.status).toBe('ok');
+      expect(health.body.search_worker).toEqual(unavailable);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('health reports a ready worker, one not started yet, and a store in memory', async () => {
+    const s = await adapter(tempDb());
+    expect((await buildHealth({ storage: s })).body.search_worker).toEqual({ status: 'not_started', detail: 'not started: it starts with the first search' });
+    await s.queryTraces(LOCAL_TENANT, { search: 'refund' });
+    expect((await buildHealth({ storage: s })).body.search_worker).toEqual({ status: 'ready', detail: 'ready: searches run on their own thread' });
+    const mem = await adapter(':memory:');
+    expect((await buildHealth({ storage: mem })).body.search_worker).toEqual({ status: 'not_used', detail: 'not used: a store in memory searches on the main thread' });
+    expect((await buildHealth({})).body.search_worker).toBeNull();
   });
 });
 
