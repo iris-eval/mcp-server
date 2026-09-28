@@ -310,3 +310,29 @@ describe('the real-clients job installs its MCP clients from a lockfile', () => 
     }
   });
 });
+
+/*
+ * publish-python.yml reached main unparseable: a plain YAML scalar holding
+ * `:all: -r` read as a mapping, and no pull-request check read the file,
+ * because it ran only on a tag. Every workflow is now linted on every pull
+ * request, and the Python build runs on every pull request too.
+ */
+describe('every workflow is linted, and the Python build runs before a tag', () => {
+  const ci = workflow('.github/workflows/ci.yml');
+  const py = workflow('.github/workflows/publish-python.yml');
+
+  it('ci.yml runs actionlint over the workflows, from an image pinned by digest', () => {
+    const job = ci.slice(ci.indexOf('\n  actionlint:\n'), ci.indexOf('\n  lint-and-typecheck:\n'));
+    expect(job).toMatch(/docker run --rm -v "\$GITHUB_WORKSPACE:\/repo" -w \/repo rhysd\/actionlint@sha256:[0-9a-f]{64} /);
+    expect(job).not.toMatch(/rhysd\/actionlint:[^@\s]/);
+  });
+
+  it('publish-python.yml builds on every pull request and publishes only for a py-v* tag', () => {
+    expect(py).toMatch(/\n {2}pull_request:\n {4}branches: \[main\]\n/);
+    const publish = py.slice(py.indexOf('\n  publish:\n'));
+    expect(publish).toContain("if: startsWith(github.ref, 'refs/tags/py-v')");
+    expect(publish).toContain('id-token: write');
+    const build = py.slice(py.indexOf('\n  build:\n'), py.indexOf('\n  publish:\n'));
+    expect(build).not.toContain('id-token');
+  });
+});
