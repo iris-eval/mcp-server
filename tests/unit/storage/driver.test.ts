@@ -10,6 +10,7 @@
  * transactions on the built-in roll back and nest as the native ones do.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createRequire } from 'node:module';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -258,5 +259,55 @@ describe('the seam', () => {
 
   it('fileMustExist refuses a missing file on the native driver, as the self-test relies on', () => {
     expect(() => openDriver(join(tempDb(), '..', 'nope.db'), { fileMustExist: true, driver: 'native' })).toThrow();
+  });
+});
+
+/*
+ * Driver.writeShadowTables: SQLite's defensive mode off for the work it is
+ * given (erasing a retired search index, search-index.ts), and on again
+ * after, including when that work throws. Defensive mode is what keeps a
+ * statement from writing FTS5's own tables; a connection left without it
+ * would let any later statement corrupt the index.
+ */
+describe('writeShadowTables', () => {
+  const shadowDelete = (d: Driver) => d.prepare('DELETE FROM f_data WHERE rowid IN (SELECT rowid FROM f_data LIMIT 1)').run();
+  const withIndex = (d: Driver) => {
+    d.exec("CREATE VIRTUAL TABLE f USING fts5(x, content = ''); INSERT INTO f (rowid, x) VALUES (1, 'alpha'), (2, 'beta')");
+    return d;
+  };
+
+  it('on better-sqlite3: a shadow table is read-only outside it, writable inside it, and read-only again after work that throws', () => {
+    const d = withIndex(openDriver(tempDb(), { driver: 'native' }));
+    drivers.push(d);
+    expect(() => shadowDelete(d)).toThrow(/may not be modified/);
+    expect(d.writeShadowTables(() => shadowDelete(d).changes)).toBe(1);
+    expect(() =>
+      d.writeShadowTables(() => {
+        throw new Error('a step failed');
+      }),
+    ).toThrow('a step failed');
+    // Restored by the finally: the next statement is refused again.
+    expect(() => shadowDelete(d)).toThrow(/may not be modified/);
+  });
+
+  it('on the built-in: turns defensive mode off and back on where the Node has the switch, also when the work throws', () => {
+    if (!builtIn) return withoutBuiltIn(tempDb());
+    const real = createRequire(import.meta.url)('node:sqlite') as { DatabaseSync: new (path: string, options?: Record<string, unknown>) => { exec(sql: string): void } };
+    const calls: boolean[] = [];
+    // A Node whose built-in has enableDefensive (newer lines do); the one this runs on may not.
+    class Defensive extends real.DatabaseSync {
+      enableDefensive(on: boolean): void {
+        calls.push(on);
+      }
+    }
+    const d = openDriver(tempDb(), { driver: 'node', loadNode: () => ({ DatabaseSync: Defensive }) as never });
+    drivers.push(d);
+    expect(d.writeShadowTables(() => 7)).toBe(7);
+    expect(() =>
+      d.writeShadowTables(() => {
+        throw new Error('a step failed');
+      }),
+    ).toThrow('a step failed');
+    expect(calls).toEqual([false, true, false, true]);
   });
 });

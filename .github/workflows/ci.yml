@@ -165,7 +165,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts tests/unit/storage/stepped-maintenance.test.ts tests/unit/storage/checkpointer.test.ts
+      - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts tests/unit/storage/stepped-maintenance.test.ts tests/unit/storage/checkpointer.test.ts tests/unit/storage/driver.test.ts
 
   # The retention sweep, the merge it owes, the erasure of a retired search
   # index and the index build run in steps of about 50 ms with the event loop

@@ -75,8 +75,10 @@ function traces(n: number, old: number, word: string): Trace[] {
   }));
 }
 
+/** FTS5's own integrity-check on both indexes (the words, and the CJK stream), and the id table against the traces. */
 function integrity(s: SqliteAdapter): void {
   dbOf(s).exec("INSERT INTO trace_search (trace_search, rank) VALUES ('integrity-check', 0)");
+  dbOf(s).exec("INSERT INTO trace_search_cjk (trace_search_cjk, rank) VALUES ('integrity-check', 0)");
   const row = dbOf(s).prepare('SELECT (SELECT COUNT(*) FROM traces) AS traces, (SELECT COUNT(*) FROM trace_search_docs) AS docs').get() as { traces: number; docs: number };
   expect(Number(row.docs)).toBe(Number(row.traces));
 }
@@ -212,7 +214,12 @@ describe('an index retired at the start is erased in steps (#695)', () => {
   async function retiredFile(word: string): Promise<string> {
     const path = tempDb();
     const s = await started(path);
-    await s.insertTraces(LOCAL_TENANT, [...traces(800, 0, word), { trace_id: 'gone', agent_name: 'a', output: `the only trace with ${word}`, timestamp: recent() }]);
+    await s.insertTraces(LOCAL_TENANT, [
+      ...traces(800, 0, word),
+      { trace_id: 'gone', agent_name: 'a', output: `the only trace with ${word}`, timestamp: recent() },
+      // One trace in the CJK stream, so both indexes are retired and rebuilt.
+      { trace_id: 'cjk', agent_name: 'a', output: '退款已经批准了', timestamp: recent() },
+    ]);
     await closed(s);
     const degraded = await started(path, { fts5: false });
     expect(await degraded.deleteTrace(LOCAL_TENANT, 'gone')).toBe(true);
@@ -257,13 +264,16 @@ describe('an index retired at the start is erased in steps (#695)', () => {
     expect(onDisk(path, word)).toBe(false);
   });
 
-  it('the rebuild erases it before indexing, and a trace deleted while it was retired leaves none of its words', async () => {
+  it('the rebuild erases it before indexing, a trace deleted while it was retired leaves none of its words, and FTS5’s integrity-check passes on both indexes', async () => {
     const word = 'edcrfvtgbyhnujmikolpqazwsx';
     const path = await retiredFile(word);
     const log: Log = [];
     const s = store(path, { log });
     await s.initialize();
     expect(retiredRemain(dbOf(s))).toBe(true);
+    // Both indexes were retired: the words and the CJK stream.
+    const retired = (dbOf(s).prepare("SELECT name FROM sqlite_master WHERE name IN ('trace_search_retired', 'trace_search_cjk_retired')").all() as Array<{ name: string }>).map((r) => r.name).sort();
+    expect(retired).toEqual(['trace_search_cjk_retired', 'trace_search_retired']);
     const { value, turns } = await turnsDuring(s.whenSearchIndexReady());
     expect(value).toBe('ready');
     expect(turns).toBeGreaterThan(3);
@@ -272,11 +282,12 @@ describe('an index retired at the start is erased in steps (#695)', () => {
     expect(onDisk(path, word)).toBe(false);
     integrity(s);
     expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(800);
-    expect(log[0]).toEqual(['info', expect.stringMatching(/^Search index: erasing the previous index, then indexing 800 of 800 stored trace\(s\) in the background/)]);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: '批准' })).traces.map((t) => t.trace_id)).toEqual(['cjk']);
+    expect(log[0]).toEqual(['info', expect.stringMatching(/^Search index: erasing the previous index, then indexing 801 of 801 stored trace\(s\) in the background/)]);
     expect(log.filter(([level]) => level === 'warn')).toEqual([]);
   });
 
-  it('a connection that refuses writes to the shadow tables drops it in one statement, and says so', async () => {
+  it('a connection that refuses writes to the shadow tables drops it in one statement, and says so; FTS5’s integrity-check passes on both indexes', async () => {
     const word = 'rfvtgbyhnujmikolpqazwsxedc';
     const path = await retiredFile(word);
     const log: Log = [];
