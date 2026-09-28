@@ -15,7 +15,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
+import type { Worker } from 'node:worker_threads';
+import { SqliteAdapter, BUSY_TIMEOUT_MS } from '../../../src/storage/sqlite-adapter.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, resetSearchWorkerWarning } from '../../../src/storage/search-worker-client.js';
 import { buildHealth } from '../../../src/health.js';
 import { parseSearch } from '../../../src/storage/search.js';
@@ -77,6 +78,56 @@ function slowCorpus(n: number): Trace[] {
   }));
 }
 
+/*
+ * A search that is held open until the test lets it go (#703). Timing a
+ * slow search against something else made these tests depend on how busy
+ * the machine was. Instead, a stand-in thread (the adapter's tests-only
+ * searchWorkerEntry) opens the store read-only with node:sqlite, and on a
+ * search begins a read transaction, reads, says `held`, and stays in it:
+ * SQLite sees a reader holding the file exactly as it would during a long
+ * search. `release` ends the transaction and answers the search with an
+ * empty page.
+ */
+function heldSearchEntry(): URL {
+  const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-held-'));
+  dirs.push(dir);
+  const file = join(dir, 'held.mjs');
+  writeFileSync(
+    file,
+    [
+      "import { parentPort, workerData } from 'node:worker_threads';",
+      "import { DatabaseSync } from 'node:sqlite';",
+      'const db = new DatabaseSync(workerData.path, { readOnly: true });',
+      'let held;',
+      "parentPort.postMessage({ type: 'ready' });",
+      "parentPort.on('message', (msg) => {",
+      "  if (msg.type === 'close') { db.close(); parentPort.close(); return; }",
+      "  if (msg.type === 'release') { db.exec('COMMIT'); parentPort.postMessage({ id: held, result: { total: 0, pageIds: [], matches: [], complete: true } }); return; }",
+      '  held = msg.id;',
+      "  db.exec('BEGIN');",
+      "  db.prepare('SELECT count(*) AS n FROM traces').get();",
+      "  parentPort.postMessage({ type: 'held' });",
+      '});',
+    ].join('\n'),
+  );
+  return pathToFileURL(file);
+}
+
+/** Start a search on a store whose thread is heldSearchEntry's, and resolve once the thread holds it; `release` lets it answer. */
+async function holdSearch(s: SqliteAdapter): Promise<{ search: Promise<unknown>; release: () => void; thread: Worker }> {
+  const search = s.queryTraces(LOCAL_TENANT, { search: 'anything' });
+  const thread = threadOf(workerOf(s)!) as unknown as Worker;
+  await new Promise<void>((resolve) => {
+    const onMessage = (msg: { type?: string }) => {
+      if (msg.type !== 'held') return;
+      thread.off('message', onMessage);
+      resolve();
+    };
+    thread.on('message', onMessage);
+  });
+  return { search, release: () => thread.postMessage({ type: 'release' }), thread };
+}
+
 describe('search on a worker thread', () => {
   for (const fts5 of [true, false]) {
     const how = fts5 ? 'with the index' : 'without FTS5';
@@ -127,85 +178,91 @@ describe('search on a worker thread', () => {
     }
   });
 
-  it('keeps the event loop free while a slow search runs', async () => {
+  it('keeps the event loop free while a search runs on the worker, where on the adapter\'s thread it holds it throughout', async () => {
     const path = tempDb();
-    const seed = await adapter(path, { fts5: false });
-    await seed.insertTraces(LOCAL_TENANT, slowCorpus(600));
-    const onWorker = await adapter(path, { fts5: false, searchBudgetMs: 60_000 });
-    const onThread = await adapter(path, { fts5: false, searchBudgetMs: 60_000, searchWorker: false });
-    // Start the thread first: a thread starting is not what is measured.
-    await onWorker.queryTraces(LOCAL_TENANT, { search: 'w0x', filter: { agent_name: 'nobody' } });
+    const seed = await adapter(path);
+    await seed.insertTraces(LOCAL_TENANT, corpus);
 
-    /** The longest the event loop went without running a 1 ms timer while `run` was awaited. */
-    async function longestStall(run: () => Promise<unknown>): Promise<{ stall: number; took: number }> {
-      let last = performance.now();
-      let stall = 0;
-      const tick = setInterval(() => {
-        const now = performance.now();
-        stall = Math.max(stall, now - last);
-        last = now;
-      }, 1);
-      const t0 = performance.now();
-      await run();
-      const took = performance.now() - t0;
-      await new Promise((r) => setTimeout(r, 5));
-      clearInterval(tick);
-      stall = Math.max(stall, performance.now() - last);
-      return { stall, took };
-    }
-    const thread = await longestStall(() => onThread.queryTraces(LOCAL_TENANT, { search: 'w1x w2x' }));
-    const worker = await longestStall(() => onWorker.queryTraces(LOCAL_TENANT, { search: 'w1x w2x' }));
-    // On the adapter's thread the loop is held for the whole search; on the worker, for a small part of it.
-    expect(thread.stall, `the search on this thread took ${thread.took.toFixed(0)} ms`).toBeGreaterThan(thread.took * 0.8);
-    expect(worker.stall, `the worker's search took ${worker.took.toFixed(0)} ms and held the loop ${worker.stall.toFixed(0)} ms`).toBeLessThan(worker.took / 4);
-  }, 60_000);
+    // On the adapter's thread: not one turn of the event loop passes between asking and the answer.
+    const onThread = await adapter(path, { searchWorker: false });
+    let turns = 0;
+    const count = setInterval(() => (turns += 1), 0);
+    await onThread.queryTraces(LOCAL_TENANT, { search: 'refund approved' });
+    clearInterval(count);
+    expect(turns).toBe(0);
 
+    // On the worker, held open: timers fire and another request is answered while the search is still unanswered.
+    const onWorker = await adapter(path, { searchWorkerEntry: heldSearchEntry() });
+    const held = await holdSearch(onWorker);
+    let answered = false;
+    void held.search.then(() => (answered = true));
+    await new Promise((r) => setTimeout(r, 0));
+    expect((await onWorker.queryTraces(LOCAL_TENANT, { limit: 5 })).total).toBe(corpus.length);
+    expect(answered).toBe(false);
+    held.release();
+    await held.search;
+    expect(answered).toBe(true);
+  });
   it('starts a new thread after one fails, and fails only the search it was running', async () => {
     const path = tempDb();
-    const seed = await adapter(path, { fts5: false });
-    await seed.insertTraces(LOCAL_TENANT, slowCorpus(300));
-    const s = await adapter(path, { fts5: false, searchBudgetMs: 60_000 });
-    await s.queryTraces(LOCAL_TENANT, { search: 'w0x', filter: { agent_name: 'nobody' } });
+    const seed = await adapter(path);
+    await seed.insertTraces(LOCAL_TENANT, corpus);
+    const s = await adapter(path);
+    await s.queryTraces(LOCAL_TENANT, { search: 'refund' });
     const client = workerOf(s)!;
     // Idle and gone: the next search starts another.
     await threadOf(client)!.terminate();
-    expect((await s.queryTraces(LOCAL_TENANT, { search: 'w0x' })).search?.complete).toBe(true);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'refund' })).search?.complete).toBe(true);
     expect(client.started).toBe(2);
-    // Gone in the middle of a search: that search fails, naming why; the next one works.
-    const running = s.queryTraces(LOCAL_TENANT, { search: 'w1x w2x' });
-    await new Promise((r) => setTimeout(r, 20));
-    await threadOf(client)!.terminate();
-    await expect(running).rejects.toThrow(/the search thread stopped/);
-    expect((await s.queryTraces(LOCAL_TENANT, { search: 'w0x' })).total).toBeGreaterThan(0);
-    expect(client.started).toBe(3);
-  }, 60_000);
 
+    // Gone while it holds a search: that search fails, naming why; the next one works on a new thread.
+    const heldStore = await adapter(path, { searchWorkerEntry: heldSearchEntry() });
+    const held = await holdSearch(heldStore);
+    const outcome = held.search.then(
+      () => undefined,
+      (err: Error) => err,
+    );
+    await held.thread.terminate();
+    expect((await outcome)?.message).toMatch(/the search thread stopped/);
+    const again = await holdSearch(heldStore);
+    expect(workerOf(heldStore)!.started).toBe(2);
+    again.release();
+    expect(await again.search).toMatchObject({ total: 0, search: { complete: true } });
+  });
   it('a delete during a search does not wait for it, and its text still leaves the file once the search ends', async () => {
     const path = tempDb();
-    const s = await adapter(path, { fts5: false, searchBudgetMs: 60_000 });
-    await s.insertTraces(LOCAL_TENANT, slowCorpus(600));
+    const s = await adapter(path, { searchWorkerEntry: heldSearchEntry() });
+    await s.insertTraces(LOCAL_TENANT, corpus);
     const secret = 'DELETEDURINGSEARCH99';
     await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'secret', agent_name: 'a', output: `the key is ${secret}`, timestamp: '2026-09-28T00:00:00.000Z' }]);
     await s.checkpoint();
-    await s.queryTraces(LOCAL_TENANT, { search: 'w0x', filter: { agent_name: 'nobody' } });
     const holds = (file: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(secret));
     expect(holds(path)).toBe(true);
 
-    const t0 = performance.now();
-    const search = s.queryTraces(LOCAL_TENANT, { search: 'w1x w2x' });
-    await new Promise((r) => setTimeout(r, 30));
+    const held = await holdSearch(s);
+    let answered = false;
+    void held.search.then(() => (answered = true));
     const d0 = performance.now();
     expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
     const deleteMs = performance.now() - d0;
-    await search;
-    const searchMs = performance.now() - t0;
-    // The delete returned while the search was still reading: it did not wait for the reader to let go.
-    expect(deleteMs, `delete took ${deleteMs.toFixed(0)} ms, the search ${searchMs.toFixed(0)} ms`).toBeLessThan(searchMs / 2);
-    for (let i = 0; i < 100 && (holds(path) || holds(`${path}-wal`)); i += 1) await new Promise((r) => setTimeout(r, 20));
+    /*
+     * The delete returned while the search was still held open, and the
+     * search cannot finish until this test releases it. A checkpoint that
+     * waited for that reader could not have ended before its busy timeout
+     * (BUSY_TIMEOUT_MS, 5 s): nothing would release the reader while it
+     * waited. So the bound below is not a race between two timings; any
+     * delete that did not wait is far inside it.
+     */
+    expect(answered).toBe(false);
+    expect(deleteMs, `delete_trace took ${deleteMs.toFixed(0)} ms while a reader held the file`).toBeLessThan(BUSY_TIMEOUT_MS / 2);
+    // The reader holds the old pages in place: the text is still in the file, and leaves it once the reader does.
+    expect(holds(path)).toBe(true);
+    held.release();
+    await held.search;
+    for (let i = 0; i < 250 && (holds(path) || holds(`${path}-wal`)); i += 1) await new Promise((r) => setTimeout(r, 20));
     expect(holds(path)).toBe(false);
     expect(holds(`${path}-wal`)).toBe(false);
-  }, 60_000);
-
+  });
   it('closes its connection with the store: the file can be removed at once, and no thread is left', async () => {
     const path = tempDb();
     const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
@@ -307,8 +364,8 @@ describe('SearchWorkerClient', () => {
     }
   }, 60_000);
 
-  it('closes in bounded time while the thread is inside one long SQLite statement, which terminate() cannot stop', async () => {
-    // A thread that, asked to search, runs a single statement of about 3 s in C and so cannot hear the close message.
+  it('closes without waiting for a thread inside one long SQLite statement, which terminate() cannot stop', async () => {
+    // A thread that, asked to search, says it has started and runs one long statement in C, so it cannot hear the close message.
     const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-slow-'));
     dirs.push(dir);
     const file = join(dir, 'slow.mjs');
@@ -321,8 +378,10 @@ describe('SearchWorkerClient', () => {
         "parentPort.postMessage({ type: 'ready' });",
         "parentPort.on('message', (msg) => {",
         "  if (msg.type === 'close') { db.close(); parentPort.close(); return; }",
-        "  const end = Date.now() + 3000;",
-        "  db.prepare('WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE unixepoch(\\'subsec\\') * 1000 < ?) SELECT count(*) FROM n').get(end);",
+        "  parentPort.postMessage({ type: 'started' });",
+        // 20 million rows counted in one statement: 3.6 s on the machine in the changelog, and many times the 200 ms close timeout anywhere.
+        // (SQLite fixes 'now' for the length of a statement, so a statement that waits on the clock never ends.)
+        "  db.prepare('WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 20000000) SELECT count(*) FROM n').get();",
         "  parentPort.postMessage({ id: msg.id, result: { total: 0, pageIds: [], matches: [], complete: true } });",
         '});',
       ].join('\n'),
@@ -333,15 +392,25 @@ describe('SearchWorkerClient', () => {
       () => undefined,
       (err: Error) => err,
     );
-    await new Promise((r) => setTimeout(r, 300));
-    const t0 = performance.now();
+    const thread = threadOf(client) as unknown as Worker;
+    let exited = false;
+    thread.once('exit', () => (exited = true));
+    await new Promise<void>((resolve) => {
+      const onMessage = (msg: { type?: string }) => {
+        if (msg.type !== 'started') return;
+        thread.off('message', onMessage);
+        resolve();
+      };
+      thread.on('message', onMessage);
+    });
     await client.close();
-    const closeMs = performance.now() - t0;
+    // close() returned while the thread was still inside its statement: it did not wait for the statement to end.
+    expect(exited).toBe(false);
     expect((await running)?.message).toBe('the store is closed');
-    // The close timeout (200 ms here), not the 3 s the statement still has to run.
-    expect(closeMs, `close() took ${closeMs.toFixed(0)} ms`).toBeLessThan(1500);
+    // The thread still ends, when its statement does.
+    await new Promise<void>((resolve) => (exited ? resolve() : thread.once('exit', () => resolve())));
+    expect(exited).toBe(true);
   }, 30_000);
-
   it('reports a thread that cannot open the file as unavailable, so the caller can search itself', async () => {
     const client = new SearchWorkerClient({ path: join(tmpdir(), 'iris-no-such-dir', 'missing.db'), driver, busyTimeoutMs: 5000 });
     try {
