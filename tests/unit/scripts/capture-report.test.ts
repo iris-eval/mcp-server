@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-ignore — plain .mjs module
-import { CaptureRefused, checkReport, fileLevelFailures } from '../../../scripts/claims/capture-report.mjs';
+import { CaptureRefused, checkReport, failedTests, fileLevelFailures } from '../../../scripts/claims/capture-report.mjs';
 
 const ROOT = resolve(__dirname, '..', '..', '..');
 const fixturePath = join(ROOT, 'tests', 'fixtures', 'capture', 'vitest-report-load-errors.json');
@@ -44,16 +44,50 @@ describe('what a report may not become', () => {
     expect(() => checkReport(loadErrors, { scope: 'root', root: '<root>' })).toThrow(/2 test file\(s\) in scope "root" failed to load[\s\S]*tests\/zz\/broken\.test\.ts: Transform failed[\s\S]*tests\/zz\/throws\.test\.ts: boom at import/);
   });
 
-  it('an ordinary failed assertion is a counted failure, not a load error', () => {
+  /*
+   * On main at 969719e one test failed during the CI capture (3,729 of
+   * 3,730). The capture recorded it, and the next step said only that
+   * claims.json "drifted", with no test named. A failing test is now a
+   * refusal that names it.
+   */
+  it('a failed assertion is not a load error, and it refuses the capture, naming the file, the test and the reason', () => {
     const report = {
       numTotalTests: 2,
       numPassedTests: 1,
       numFailedTests: 1,
       success: false,
-      testResults: [{ name: '<root>/tests/a.test.ts', status: 'failed', message: '', assertionResults: [{ status: 'passed' }, { status: 'failed' }] }],
+      testResults: [
+        {
+          name: '<root>/tests/unit/storage/search-worker.test.ts',
+          status: 'failed',
+          message: '',
+          assertionResults: [
+            { status: 'passed', fullName: 'search on a worker thread > answers' },
+            {
+              status: 'failed',
+              fullName: 'search on a worker thread > a delete during a search does not wait for it',
+              failureMessages: ['\u001b[31mAssertionError: delete took 68 ms, the search 132 ms\u001b[39m\n    at file.ts:1:1'],
+            },
+          ],
+        },
+      ],
     };
     expect(fileLevelFailures(report)).toEqual([]);
-    expect(checkReport(report)).toEqual({ total: 2, passed: 1, failed: 1 });
+    expect(failedTests(report, '<root>')).toEqual([
+      {
+        file: 'tests/unit/storage/search-worker.test.ts',
+        test: 'search on a worker thread > a delete during a search does not wait for it',
+        reason: 'AssertionError: delete took 68 ms, the search 132 ms',
+      },
+    ]);
+    expect(() => checkReport(report, { scope: 'root', root: '<root>' })).toThrow(CaptureRefused);
+    expect(() => checkReport(report, { scope: 'root', root: '<root>' })).toThrow(
+      /1 test\(s\) failed in scope "root"[\s\S]*tests\/unit\/storage\/search-worker\.test\.ts > search on a worker thread > a delete during a search does not wait for it\n\s+AssertionError: delete took 68 ms/,
+    );
+  });
+
+  it('a failure count with no failed assertion listed is refused too', () => {
+    expect(() => checkReport({ ...clean(3), numPassedTests: 2, numFailedTests: 1 })).toThrow(/1 test\(s\) failed in scope "root"/);
   });
 
   it('a run that failed with no failing test and no failing file (an unhandled error) is refused', () => {

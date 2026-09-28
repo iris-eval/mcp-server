@@ -32,6 +32,7 @@ import { generate as security } from './generators/security.mjs';
 import { generate as maintenance } from './generators/issues.mjs';
 import { generate as proof } from './generators/proof.mjs';
 import { generate as evaluators } from './generators/evaluators.mjs';
+import { diffPaths } from './diff-paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
@@ -134,6 +135,10 @@ async function main() {
       process.exit(0);
     } else {
       console.error('[claims:check] FAIL — claims.json drifted from generator output');
+      // Name each field that differs, so the reader knows what moved before reading any advice.
+      const diffs = diffPaths(normalize(JSON.parse(existing ?? '{}')), normalize(claims));
+      for (const d of diffs.slice(0, 20)) console.error(`  ${d.path}: committed ${d.committed}, generated ${d.generated}`);
+      if (diffs.length > 20) console.error(`  … and ${diffs.length - 20} more`);
       /*
        * Name BOTH commands, in order. The test totals in this file come
        * from capture-tests, not from generate, so a PR that adds a test
