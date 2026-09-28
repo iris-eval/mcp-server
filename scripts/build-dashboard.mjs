@@ -16,8 +16,12 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dashboard = join(root, 'dashboard');
 
+// On Windows npm is npm.cmd, which only a shell runs; the shell gets one
+// command string (every argument here is a fixed literal), since passing an
+// argument array with `shell` is deprecated (DEP0190).
 function run(args) {
-  const r = spawnSync('npm', args, { cwd: dashboard, stdio: 'inherit', shell: process.platform === 'win32' });
+  const opts = { cwd: dashboard, stdio: 'inherit' };
+  const r = process.platform === 'win32' ? spawnSync(`npm ${args.join(' ')}`, { ...opts, shell: true }) : spawnSync('npm', args, opts);
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
