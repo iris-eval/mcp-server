@@ -5,6 +5,7 @@
  *   npx tsx scripts/bench-trace-search.ts --sizes 10000   # one size
  *   IRIS_SQLITE_DRIVER=node npx tsx scripts/bench-trace-search.ts
  *   npx tsx scripts/bench-trace-search.ts --spans         # each trace also an OTLP agent loop (#683)
+ *   npx tsx scripts/bench-trace-search.ts --cjk           # Chinese text, words run together (#682)
  *   npx tsx scripts/bench-trace-search.ts --scan-up-to 10000  # the no-FTS5 scan only up to that size
  *
  * Builds a file-backed store per size with synthetic traces shaped like
@@ -37,6 +38,8 @@ const SCAN_RUNS = 3;
 const scanArg = args.indexOf('--scan-up-to');
 const SCAN_UP_TO = scanArg >= 0 ? Number(args[scanArg + 1]) : 100_000;
 const SPANS = args.includes('--spans');
+/** Chinese text instead of Latin: two-character words run together, a comma every eighth (#682). */
+const CJK = args.includes('--cjk');
 
 // Deterministic, so two runs build the same store.
 let seed = 0x9e3779b9;
@@ -51,8 +54,13 @@ const START = Date.now();
 let SIZE_NOW = 0;
 
 // Filler: a 20,000-word vocabulary drawn with a steep skew, so a few words are in most traces and most words in few.
-const VOCAB = Array.from({ length: 20_000 }, (_, i) => `w${i.toString(36)}`);
-const filler = (n: number) => Array.from({ length: n }, () => VOCAB[Math.floor(Math.pow(rand(), 3) * VOCAB.length)]).join(' ');
+const VOCAB = Array.from({ length: 20_000 }, (_, i) =>
+  CJK ? String.fromCodePoint(0x4e00 + ((i * 7) % 20_000)) + String.fromCodePoint(0x4e00 + ((i * 13 + 5) % 20_000)) : `w${i.toString(36)}`,
+);
+const filler = (n: number) =>
+  CJK
+    ? Array.from({ length: n }, (_, k) => VOCAB[Math.floor(Math.pow(rand(), 3) * VOCAB.length)] + (k % 8 === 7 ? '，' : '')).join('')
+    : Array.from({ length: n }, () => VOCAB[Math.floor(Math.pow(rand(), 3) * VOCAB.length)]).join(' ');
 
 /*
  * Planted words with a known share of traces, so each query below has a
@@ -63,6 +71,7 @@ function trace(i: number): Trace {
     i % 1000 === 7 ? 'quokka' : '', // 0.1%
     i % 100 === 3 ? 'kestrel' : '', // 1%
     i % 2 === 0 ? 'refund approved' : 'refund', // "refund" in every trace, the phrase in half
+    CJK && i % 100 === 9 ? '退款已经批准了' : '', // with --cjk, 批准 inside a run in 1%
   ].join(' ');
   return {
     trace_id: `bench-${i}`,
@@ -143,6 +152,7 @@ const QUERIES: Array<{ label: string; q: string; sort?: 'timestamp'; agent?: str
   { label: 'phrase in 50%', q: '"refund approved"' },
   { label: 'prefix', q: 'kestr*' },
   ...(SPANS ? [{ label: 'word in 1% (a tool result in a span)', q: 'wombat' }, { label: 'word in 10% (an exception message)', q: 'upstream' }] : []),
+  ...(CJK ? [{ label: 'CJK word inside a run, 1%', q: '批准' }] : []),
 ];
 
 function median(xs: number[]): number {
@@ -206,10 +216,14 @@ for (const size of SIZES) {
     const indexedMs = await fill(store, size);
     console.log(`  insert without the index: ${perTrace(plainMs, size)} µs per trace, file ${mb(plainPath)} MB`);
     console.log(`  insert with the index:    ${perTrace(indexedMs, size)} µs per trace, file ${mb(path)} MB`);
-    if (SPANS) {
-      // Where the index's bytes are: the FTS5 tables, the id table (which holds the span text the index was given), and the covering index.
+    if (SPANS || CJK) {
+      // Where the index's bytes are: the FTS5 index, the CJK stream (its FTS5 table and the text each row was given), the id table and the covering index.
       const db = (store as unknown as { db: { prepare(s: string): { all(): unknown[] } } }).db;
-      const rows = db.prepare("SELECT CASE WHEN name LIKE 'trace_search_%' AND name <> 'trace_search_docs' THEN 'trace_search (FTS5)' ELSE name END AS part, SUM(pgsize) AS bytes FROM dbstat WHERE name LIKE 'trace_search%' OR name IN ('idx_traces_search_filter', 'spans', 'traces') GROUP BY part ORDER BY bytes DESC").all() as Array<{ part: string; bytes: number }>;
+      const rows = db
+        .prepare(
+          "SELECT CASE WHEN name LIKE 'trace_search_cjk%' THEN 'CJK stream' WHEN name LIKE 'trace_search_%' AND name <> 'trace_search_docs' THEN 'trace_search (FTS5)' ELSE name END AS part, SUM(pgsize) AS bytes FROM dbstat WHERE name LIKE 'trace_search%' OR name IN ('idx_traces_search_filter', 'spans', 'traces') GROUP BY part ORDER BY bytes DESC",
+        )
+        .all() as Array<{ part: string; bytes: number }>;
       console.log(`  bytes by table: ${rows.map((r) => `${r.part} ${(r.bytes / 2 ** 20).toFixed(0)} MB`).join(', ')}`);
     }
 

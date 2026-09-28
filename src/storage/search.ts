@@ -7,9 +7,9 @@
  * (`input:` would scope the search to a column the caller did not choose)
  * and a crash (`"`, `(`, `NEAR(` are syntax errors). The query is parsed
  * here into terms instead, each term is reduced to the tokens the index
- * holds, and every term goes to MATCH as a double-quoted string of plain
- * letters and digits. Nothing the caller typed reaches the FTS5 parser as
- * syntax, so no input can error it or widen it.
+ * holds, and every term goes to MATCH as a double-quoted string of those
+ * tokens, which never hold a quote. Nothing the caller typed reaches the
+ * FTS5 parser as syntax, so no input can error it or widen it.
  *
  * The language is three rules, the ones a search box already implies:
  *   - every word must appear (in any of the searched fields), in any order;
@@ -20,12 +20,18 @@
  * separates words and is not itself searchable: `get_weather` is the
  * phrase "get weather", which is how the index stored it.
  *
- * The tokenizer below mirrors the index's (`unicode61 remove_diacritics 2`):
- * the same function decides what a query term is, which stored words a
- * snippet highlights, and — when SQLite has no FTS5 — which traces match.
+ * The tokenizer below is the index's (`unicode61 remove_diacritics 2`),
+ * code point for code point: it reads a table generated from SQLite's own
+ * tokenizer (unicode61.generated.ts), so the same function decides what a
+ * query term is, which stored words a snippet highlights, and — when SQLite
+ * has no FTS5 — which traces match, and none of them can disagree with the
+ * index. (It used to approximate unicode61 with Unicode categories and NFD,
+ * which split Korean syllables into letters: a Korean word searched with
+ * the index found nothing.)
  */
 
 import type { SpanTextPart } from './search-index.js';
+import { UNICODE61 } from './unicode61.generated.js';
 
 /** The five fields a search reads, in the order a snippet prefers them on a tie. */
 export const SEARCH_FIELDS = ['output', 'input', 'tool_calls', 'spans', 'metadata'] as const;
@@ -69,24 +75,89 @@ interface Token {
   end: number;
 }
 
-// unicode61's token characters are letters, numbers and private-use code
-// points; marks travel inside a word and are stripped with the accents.
-const TOKEN_RE = /[\p{L}\p{N}\p{Co}][\p{L}\p{N}\p{Co}\p{M}]*/gu;
-const MARKS_RE = /\p{M}+/gu;
-const ASCII_RE = /^[\x00-\x7f]*$/;
+const ASCII_ONLY_RE = /^[\x00-\x7f]*$/;
 
-function normalise(word: string): string {
-  return word.normalize('NFD').replace(MARKS_RE, '').toLowerCase();
+/** What unicode61 does with an ASCII code point: -1 splits a word, else the code point it becomes. */
+const ASCII = new Int32Array(128);
+const DROPPED = new Set(UNICODE61.dropped);
+const FOLDS = new Map(UNICODE61.folds.map(([from, to]) => [from, String.fromCodePoint(to)]));
+for (let cp = 0; cp < 128; cp += 1) ASCII[cp] = isSeparatorSlow(cp) ? -1 : FOLDS.has(cp) ? FOLDS.get(cp)!.codePointAt(0)! : cp;
+
+function isSeparatorSlow(cp: number): boolean {
+  if (cp === 0) return true;
+  const ranges = UNICODE61.separators;
+  let lo = 0;
+  let hi = ranges.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (cp < ranges[mid][0]) hi = mid - 1;
+    else if (cp > ranges[mid][1]) lo = mid + 1;
+    else return true;
+  }
+  return false;
+}
+
+/** Whether unicode61 splits words at this code point. */
+export function isSeparator(cp: number): boolean {
+  return cp < 128 ? ASCII[cp] === -1 : isSeparatorSlow(cp);
+}
+
+/** A word character as unicode61 stores it: folded, or '' for one it drops. */
+function foldChar(cp: number): string {
+  if (cp < 128) return String.fromCharCode(ASCII[cp]);
+  if (DROPPED.has(cp)) return '';
+  return FOLDS.get(cp) ?? String.fromCodePoint(cp);
+}
+
+/** Text as unicode61 would store its words, separators left in place: for a substring test against a query word. */
+export function foldText(text: string): string {
+  // ASCII folds by case alone (the table's ASCII folds are A-Z; a test holds it to that).
+  if (ASCII_ONLY_RE.test(text)) return text.toLowerCase();
+  let out = '';
+  for (let i = 0; i < text.length; ) {
+    const cp = text.codePointAt(i)!;
+    const width = cp > 0xffff ? 2 : 1;
+    out += isSeparator(cp) ? text.slice(i, i + width) : foldChar(cp);
+    i += width;
+  }
+  return out;
 }
 
 /** The words of a text as the index sees them, with their offsets in the original string. */
 export function tokenize(text: string): Token[] {
   const out: Token[] = [];
-  for (const m of text.matchAll(TOKEN_RE)) {
-    const norm = normalise(m[0]);
-    if (norm.length === 0) continue;
-    out.push({ norm, start: m.index, end: m.index + m[0].length });
+  let norm = '';
+  let start = -1;
+  let end = -1;
+  const flush = () => {
+    if (norm.length > 0) out.push({ norm, start, end });
+    norm = '';
+    start = -1;
+  };
+  for (let i = 0; i < text.length; ) {
+    const code = text.charCodeAt(i);
+    if (code < 128) {
+      const to = ASCII[code];
+      if (to === -1) flush();
+      else {
+        if (start < 0) start = i;
+        norm += String.fromCharCode(to);
+        end = i + 1;
+      }
+      i += 1;
+      continue;
+    }
+    const cp = text.codePointAt(i)!;
+    const width = cp > 0xffff ? 2 : 1;
+    if (isSeparatorSlow(cp)) flush();
+    else {
+      if (start < 0) start = i;
+      norm += foldChar(cp);
+      end = i + width;
+    }
+    i += width;
   }
+  flush();
   return out;
 }
 
@@ -125,7 +196,10 @@ export function parseSearch(raw: string): ParsedSearch {
     const tokens = tokenize(chunk).map((t) => t.norm);
     if (tokens.length === 0) continue;
     // A prefix only when the star sits right after the last word, not after punctuation that follows it.
-    const prefix = /[\p{L}\p{N}\p{Co}\p{M}]\*+$/u.test(chunk.trimEnd());
+    const bare = chunk.trimEnd();
+    const beforeStars = bare.replace(/\*+$/u, '');
+    const lastCp = beforeStars.length < bare.length && beforeStars.length > 0 ? beforeStars.codePointAt(beforeStars.length - (/[\uDC00-\uDFFF]$/u.test(beforeStars) ? 2 : 1))! : -1;
+    const prefix = lastCp >= 0 && !isSeparator(lastCp);
     terms.push({ tokens, prefix });
   }
   return { terms };
@@ -139,9 +213,10 @@ export function describeTerm(term: SearchTerm): string {
 }
 
 /**
- * The MATCH expression for parsed terms. Every token is letters and digits
- * only (the tokenizer guarantees it), so the quoted strings below cannot
- * carry a quote, an operator or a column filter.
+ * The MATCH expression for parsed terms. A token never holds a double quote
+ * (unicode61 splits words at it, which the table's generator checks), so
+ * each quoted string below is one FTS5 string: whatever else it holds —
+ * operators, column names, `*` — is text inside it, never syntax.
  */
 export function toFtsQuery(parsed: ParsedSearch): string {
   return parsed.terms.map((t) => `"${t.tokens.join(' ')}"${t.prefix ? '*' : ''}`).join(' AND ');
@@ -166,6 +241,219 @@ function termHits(tokens: Token[], term: SearchTerm): number[] {
       }
     }
     if (ok) hits.push(i);
+  }
+  return hits;
+}
+
+/*
+ * Chinese, Japanese and Korean (#682). unicode61 keeps a run of CJK
+ * characters as one word, and Chinese and Japanese put no spaces between
+ * words, so `退款已经批准了` is a single word and `批准` inside it matched
+ * nothing. A field that holds CJK text is also indexed as a stream (the
+ * trace_search_cjk table, search-index.ts) where every word with CJK in it
+ * becomes its pieces:
+ *
+ *   - each run of CJK characters as its overlapping two-character bigrams
+ *     (`退款已经` → `退款 款已 已经`), and the run's last character in a
+ *     separate `uni` stream;
+ *   - Latin letters or digits written against CJK as a word of their own
+ *     (`iPhone充电器` → `iphone 充电 电器`);
+ *   - the words either side of a word with CJK in it, as they are, so a
+ *     phrase that mixes CJK and other words still reads in order; where
+ *     other words are left out, a gap mark, so a phrase cannot read across
+ *     them. The rest of the field is in the main index already.
+ *
+ * A query word with CJK in it is cut the same way and searched as the phrase
+ * of its pieces, so `批准` finds the bigram `批准` inside any run and
+ * `退款已经` the three bigrams in a row: a match anywhere in a run, in
+ * order. A single CJK character matches a bigram it starts or a run's last
+ * character (`uni`), so it is found wherever it stands. One function
+ * (cjkStream) makes the stream for the index, the search without FTS5 and
+ * the snippet, and cjkPhrase the query side, so they agree by construction.
+ * A field without CJK has no stream and costs nothing.
+ */
+
+// Han, kana and Hangul, and the two marks that live inside Japanese words: 々 (repetition) and ー (long vowel).
+const CJK_RE = /[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Hangul}\u3005\u30fc]/u;
+
+/** Whether a text holds any CJK character. */
+export function hasCjk(text: string): boolean {
+  return CJK_RE.test(text);
+}
+
+/** One piece of a CJK stream, with where it is in the field's text; `firstEnd` is the end of its first character. */
+export interface StreamToken {
+  norm: string;
+  start: number;
+  end: number;
+  firstEnd: number;
+}
+
+export interface CjkStream {
+  bi: StreamToken[];
+  uni: StreamToken[];
+}
+
+interface Char {
+  ch: string;
+  start: number;
+  end: number;
+}
+
+/** A word's characters as the index stores them, each with where it is in the text. */
+function wordChars(text: string, token: Token): Char[] {
+  const out: Char[] = [];
+  for (let i = token.start; i < token.end; ) {
+    const cp = text.codePointAt(i)!;
+    const width = cp > 0xffff ? 2 : 1;
+    const ch = foldChar(cp);
+    if (ch.length > 0) out.push({ ch, start: i, end: i + width });
+    i += width;
+  }
+  return out;
+}
+
+/** The pieces of one word with CJK in it: runs of CJK as bigrams (their last character to `uni`), other runs as words. */
+function piecesOf(chars: Char[], bi: StreamToken[], uni: StreamToken[]): void {
+  let i = 0;
+  while (i < chars.length) {
+    const cjk = CJK_RE.test(chars[i].ch);
+    let j = i;
+    while (j < chars.length && CJK_RE.test(chars[j].ch) === cjk) j += 1;
+    const run = chars.slice(i, j);
+    if (!cjk || run.length === 1) {
+      bi.push({ norm: run.map((c) => c.ch).join(''), start: run[0].start, end: run[run.length - 1].end, firstEnd: run[0].end });
+    } else {
+      for (let k = 0; k + 1 < run.length; k += 1) bi.push({ norm: run[k].ch + run[k + 1].ch, start: run[k].start, end: run[k + 1].end, firstEnd: run[k].end });
+    }
+    if (cjk) {
+      const last = run[run.length - 1];
+      uni.push({ norm: last.ch, start: last.start, end: last.end, firstEnd: last.end });
+    }
+    i = j;
+  }
+}
+
+/** The CJK stream of a field's text, or undefined when it holds no CJK. */
+export function cjkStream(text: string, tokens: Token[] = tokenize(text)): CjkStream | undefined {
+  if (!hasCjk(text)) return undefined;
+  const bi: StreamToken[] = [];
+  const uni: StreamToken[] = [];
+  const cjk = tokens.map((t) => hasCjk(t.norm));
+  let skipped = false;
+  tokens.forEach((token, i) => {
+    const carried = cjk[i] || cjk[i - 1] === true || cjk[i + 1] === true;
+    if (!carried) {
+      skipped = true;
+      return;
+    }
+    // Words were left out since the last piece: mark the gap, so a phrase cannot read across it.
+    if (skipped && bi.length > 0) bi.push({ norm: STREAM_GAP, start: token.start, end: token.start, firstEnd: token.start });
+    skipped = false;
+    if (cjk[i]) piecesOf(wordChars(text, token), bi, uni);
+    else bi.push({ ...token, firstEnd: token.end });
+  });
+  return { bi, uni };
+}
+
+/** Stands in the stream for words left out of it: a private-use character, which no query word holds. */
+const STREAM_GAP = '\uE000';
+
+/** A stream as the index column holds it. */
+export function streamText(tokens: StreamToken[]): string {
+  return tokens.map((t) => t.norm).join(' ');
+}
+
+/** How a term reads in the CJK stream: one CJK character, or a phrase of pieces (the last a prefix when the term is). */
+export type CjkQuery = { char: string } | { pieces: string[]; prefix: boolean };
+
+export function cjkQuery(term: SearchTerm): CjkQuery {
+  if (term.tokens.length === 1) {
+    const chars = Array.from(term.tokens[0]);
+    if (chars.length === 1 && CJK_RE.test(chars[0])) return { char: chars[0] };
+  }
+  const pieces: string[] = [];
+  for (const word of term.tokens) {
+    if (!hasCjk(word)) {
+      pieces.push(word);
+      continue;
+    }
+    const bi: StreamToken[] = [];
+    piecesOf(
+      Array.from(word).map((ch) => ({ ch, start: 0, end: 0 })),
+      bi,
+      [],
+    );
+    pieces.push(...bi.map((t) => t.norm));
+  }
+  return { pieces, prefix: term.prefix };
+}
+
+/** The CJK stream's columns, the ones a term's pieces are searched in (`uni` apart). */
+const CJK_STREAM_COLUMNS = '{input output tool_calls metadata spans}';
+
+/**
+ * The MATCH expression for one term in the CJK table: its pieces as a
+ * phrase in the stream columns, or a single CJK character as a bigram it
+ * starts or a run's last character. As in toFtsQuery, every piece is a
+ * quoted string, so nothing in it is syntax.
+ */
+export function toCjkFtsQuery(term: SearchTerm): string {
+  const q = cjkQuery(term);
+  if ('char' in q) return `(${CJK_STREAM_COLUMNS} : "${q.char}"*) OR (uni : "${q.char}")`;
+  return `${CJK_STREAM_COLUMNS} : "${q.pieces.join(' ')}"${q.prefix ? '*' : ''}`;
+}
+
+/** Whether a stored string could hold CJK: it does, or it has a \u escape (a JSON string inside it may spell CJK that way). */
+export function mayHoldCjk(text: string | null | undefined): boolean {
+  return typeof text === 'string' && ((CJK_BLOCKS_RE.test(text) && hasCjk(text)) || text.includes('\\u'));
+}
+/**
+ * The blocks CJK lives in (Hangul Jamo; radicals through Hangul syllables;
+ * compatibility ideographs through half-width forms; any character past the
+ * BMP), as plain ranges: about a tenth of hasCjk's cost on text with accents,
+ * which the insert path tests every trace for. hasCjk then decides.
+ */
+const CJK_BLOCKS_RE = /[ᄀ-ᇿ⺀-퟿豈-￯\ud800-\udbff]/;
+
+
+/** Every stretch of the field's text where `term` matches in its CJK stream, as [start, end] offsets. */
+function cjkHits(stream: CjkStream, term: SearchTerm): Array<[number, number]> {
+  const q = cjkQuery(term);
+  const out: Array<[number, number]> = [];
+  if ('char' in q) {
+    for (const t of stream.bi) if (t.norm.startsWith(q.char)) out.push([t.start, t.firstEnd]);
+    for (const t of stream.uni) if (t.norm === q.char) out.push([t.start, t.end]);
+    return out;
+  }
+  const n = q.pieces.length;
+  for (let i = 0; i + n <= stream.bi.length; i += 1) {
+    let ok = true;
+    for (let j = 0; j < n && ok; j += 1) {
+      const have = stream.bi[i + j].norm;
+      ok = j === n - 1 && q.prefix ? have.startsWith(q.pieces[j]) : have === q.pieces[j];
+    }
+    if (ok) out.push([stream.bi[i].start, stream.bi[i + n - 1].end]);
+  }
+  return out;
+}
+
+/**
+ * Every stretch of a field where `term` matches, as [start, end] offsets:
+ * its words in order, and in the field's CJK stream when it has one. The
+ * same stretch found both ways counts once.
+ */
+function fieldHits(tokens: Token[], stream: CjkStream | undefined, term: SearchTerm): Array<[number, number]> {
+  const n = term.tokens.length;
+  const hits = termHits(tokens, term).map((at): [number, number] => [tokens[at].start, tokens[at + n - 1].end]);
+  if (!stream) return hits;
+  const seen = new Set(hits.map(([a, b]) => `${a}:${b}`));
+  for (const hit of cjkHits(stream, term)) {
+    const key = `${hit[0]}:${hit[1]}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      hits.push(hit);
+    }
   }
   return hits;
 }
@@ -201,18 +489,15 @@ function leafValues(value: unknown, out: string[] = []): string[] {
  * own fields do not match). A word of the span text is a stretch of the
  * stored JSON once accents and case are removed, so a term whose words are
  * not all in it cannot be there: false only when that is certain. JSON can
- * spell a letter as a \u escape, so raw JSON holding one always may; and Σ
- * lower-cases to σ or ς by what follows it, so both are compared as σ.
+ * spell a letter as a \u escape, so raw JSON holding one always may.
  */
 export function spansMayMatch(fields: Record<SearchField, string>, parsed: ParsedSearch, rawSpans: string): boolean {
   if (rawSpans.includes('\\u')) return true;
-  const fold = (s: string) => s.replace(/ς/gu, 'σ');
-  // Stored JSON is nearly always ASCII, which has no accents to remove: lower-casing is the whole normalisation.
-  const raw = ASCII_RE.test(rawSpans) ? rawSpans.toLowerCase() : fold(normalise(rawSpans));
+  const raw = foldText(rawSpans);
   const own = SEARCH_FIELDS.filter((f) => f !== 'spans').map((f) => tokenize(fields[f]));
   for (const term of parsed.terms) {
     if (own.some((tokens) => termHits(tokens, term).length > 0)) continue;
-    if (!term.tokens.every((t) => raw.includes(fold(t)))) return false;
+    if (!term.tokens.every((t) => raw.includes(t))) return false;
   }
   return true;
 }
@@ -224,11 +509,25 @@ export function spansMayMatch(fields: Record<SearchField, string>, parsed: Parse
  */
 export function matchesTrace(fields: Record<SearchField, string>, parsed: ParsedSearch): { matched: boolean; hits: number } {
   if (parsed.terms.length === 0) return { matched: false, hits: 0 };
-  const tokensByField = SEARCH_FIELDS.map((f) => tokenize(fields[f]));
+  const byField = SEARCH_FIELDS.map((f) => ({ text: fields[f], tokens: tokenize(fields[f]), stream: undefined as CjkStream | undefined | null }));
+  // A field's CJK stream is built only when a term needs it: one with CJK in it, or one its words alone do not hold.
+  const streamOf = (f: (typeof byField)[number]) => {
+    if (f.stream === undefined) f.stream = cjkStream(f.text, f.tokens) ?? null;
+    return f.stream ?? undefined;
+  };
   let hits = 0;
   for (const term of parsed.terms) {
     let found = 0;
-    for (const tokens of tokensByField) found += termHits(tokens, term).length;
+    const needsStream = term.tokens.some(hasCjk);
+    for (const f of byField) found += needsStream ? fieldHits(f.tokens, streamOf(f), term).length : termHits(f.tokens, term).length;
+    // A word without CJK is in a stream only as it is in the text: build the stream only for a field whose text holds each of its words.
+    if (found === 0 && !needsStream) {
+      for (const f of byField) {
+        if (!hasCjk(f.text)) continue;
+        const folded = foldText(f.text);
+        if (term.tokens.every((t) => folded.includes(t))) found += fieldHits(f.tokens, streamOf(f), term).length;
+      }
+    }
     if (found === 0) return { matched: false, hits: 0 };
     hits += found;
   }
@@ -250,49 +549,60 @@ const ELLIPSIS = '…';
  * matched word is in.
  */
 export function buildMatch(fields: Record<SearchField, string>, parsed: ParsedSearch, windowWords = SNIPPET_WORDS, spanParts: readonly SpanTextPart[] = []): TraceMatch | undefined {
-  let best: { field: SearchField; tokens: Token[]; spans: Array<[number, number, number]>; distinct: number } | undefined;
+  // [start offset, end offset, term index] for every hit: a stretch of words, or of characters inside a CJK word.
+  let best: { field: SearchField; tokens: Token[]; hits: Array<[number, number, number]>; distinct: number } | undefined;
   for (const field of SEARCH_FIELDS) {
-    const tokens = tokenize(fields[field]);
+    const text = fields[field];
+    const tokens = tokenize(text);
     if (tokens.length === 0) continue;
-    // [first token, last token, term index] for every hit.
-    const spans: Array<[number, number, number]> = [];
+    const stream = cjkStream(text, tokens);
+    const hits: Array<[number, number, number]> = [];
     parsed.terms.forEach((term, ti) => {
-      for (const at of termHits(tokens, term)) spans.push([at, at + term.tokens.length - 1, ti]);
+      for (const [a, b] of fieldHits(tokens, stream, term)) hits.push([a, b, ti]);
     });
-    if (spans.length === 0) continue;
-    const distinct = new Set(spans.map((s) => s[2])).size;
-    if (!best || distinct > best.distinct) best = { field, tokens, spans, distinct };
+    if (hits.length === 0) continue;
+    const distinct = new Set(hits.map((h) => h[2])).size;
+    if (!best || distinct > best.distinct) best = { field, tokens, hits, distinct };
   }
   if (!best) return undefined;
 
-  const { field, tokens, spans } = best;
+  const { field, tokens, hits } = best;
   const text = fields[field];
-  spans.sort((a, b) => a[0] - b[0]);
+  // The word each hit starts and ends in.
+  const wordAt = (offset: number): number => {
+    let lo = 0;
+    let hi = tokens.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (tokens[mid].start <= offset) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  };
+  const spans = hits.map(([a, b, ti]) => ({ a, b, ti, first: wordAt(a), last: wordAt(b - 1) })).sort((x, y) => x.a - y.a || x.b - y.b);
 
   // The window start that covers the most distinct terms, then the most hits; the earliest wins a tie.
   let start = 0;
   let bestScore = -1;
   // Three words of lead-in: a reader shown only the start of the excerpt (the dashboard clamps it to two lines) still sees the match.
-  for (const [first] of spans) {
+  for (const { first } of spans) {
     const from = Math.max(0, first - SNIPPET_LEAD);
     const to = from + windowWords - 1;
-    const inside = spans.filter((s) => s[0] >= from && s[1] <= to);
-    const score = new Set(inside.map((s) => s[2])).size * 1000 + inside.length;
+    const inside = spans.filter((h) => h.first >= from && h.last <= to);
+    const score = new Set(inside.map((h) => h.ti)).size * 1000 + inside.length;
     if (score > bestScore) {
       bestScore = score;
       start = from;
     }
   }
   const end = Math.min(tokens.length - 1, start + windowWords - 1);
-  // Matched tokens, and the tokens whose gap before them is inside a phrase (so "agent said" is one mark, not two).
-  const marked = new Set<number>();
-  const joined = new Set<number>();
-  for (const [first, last] of spans) {
-    if (first < start || last > end) continue;
-    for (let k = first; k <= last; k += 1) {
-      marked.add(k);
-      if (k > first) joined.add(k);
-    }
+  // The marked stretches inside the window, overlapping ones merged (a phrase is one mark, and so are overlapping CJK hits).
+  const marks: Array<[number, number]> = [];
+  for (const h of spans) {
+    if (h.first < start || h.last > end) continue;
+    const prev = marks[marks.length - 1];
+    if (prev && h.a <= prev[1]) prev[1] = Math.max(prev[1], h.b);
+    else marks.push([h.a, h.b]);
   }
 
   const fragments: MatchFragment[] = [];
@@ -303,16 +613,17 @@ export function buildMatch(fields: Record<SearchField, string>, parsed: ParsedSe
     else fragments.push({ text: value, hit });
   };
   const clean = (s: string) => s.replace(/\s+/gu, ' ');
+  const from = start > 0 ? tokens[start].start : 0;
+  const to = end < tokens.length - 1 ? tokens[end].end : text.length;
   if (start > 0) push(ELLIPSIS, false);
-  let cursor = start > 0 ? tokens[start].start : 0;
-  for (let k = start; k <= end; k += 1) {
-    const tok = tokens[k];
-    push(clean(text.slice(cursor, tok.start)), joined.has(k));
-    push(text.slice(tok.start, tok.end), marked.has(k));
-    cursor = tok.end;
+  let cursor = from;
+  for (const [a, b] of marks) {
+    push(clean(text.slice(cursor, a)), false);
+    push(clean(text.slice(a, b)), true);
+    cursor = b;
   }
+  push(clean(text.slice(cursor, to)), false);
   if (end < tokens.length - 1) push(ELLIPSIS, false);
-  else push(clean(text.slice(cursor)), false);
 
   // Trim the outer whitespace the cut left behind.
   if (fragments.length > 0) {
@@ -323,8 +634,7 @@ export function buildMatch(fields: Record<SearchField, string>, parsed: ParsedSe
   const kept = fragments.filter((f) => f.text.length > 0);
   const match: TraceMatch = { field, snippet: kept.map((f) => f.text).join(''), fragments: kept };
   if (field === 'spans') {
-    const firstHit = spans.find(([first, last]) => first >= start && last <= end);
-    const at = firstHit ? tokens[firstHit[0]].start : tokens[start].start;
+    const at = marks.length > 0 ? marks[0][0] : tokens[start].start;
     const part = spanParts.find((p) => at >= p.start && at < p.end);
     if (part) match.span = { span_id: part.span_id, name: part.name };
   }

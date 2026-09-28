@@ -71,7 +71,7 @@ describe('migration 014 — the trace session', () => {
     const db = new Database(path);
     for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%'").all() as Array<{ name: string }>) db.exec(`DROP TRIGGER ${name}`);
     db.exec(
-      'DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter; ' +
+      'DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP TABLE trace_search_cjk; DROP TABLE trace_search_cjk_docs; DROP TABLE trace_search_cjk_pending; DROP INDEX idx_traces_search_filter; ' +
         "DROP INDEX idx_traces_tenant_session; ALTER TABLE traces DROP COLUMN session_id; DELETE FROM _iris_migrations WHERE id IN ('014-trace-session', '015-trace-search')",
     );
     db.close();

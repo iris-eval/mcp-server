@@ -67,6 +67,8 @@
     "mcp-json:check": "tsx scripts/claims/render-mcp-json.ts --check",
     "cusum:render": "tsx scripts/cusum/render-thresholds.ts",
     "cusum:check": "tsx scripts/cusum/render-thresholds.ts --check",
+    "unicode61:render": "tsx scripts/search/render-unicode61.ts",
+    "unicode61:check": "tsx scripts/search/render-unicode61.ts --check",
     "proof:judge": "tsx proof/judge/run.ts",
     "proof:judge:typecheck": "tsc -p proof/judge/tsconfig.json",
     "clean": "rm -rf dist coverage",

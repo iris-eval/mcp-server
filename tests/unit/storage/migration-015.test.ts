@@ -118,6 +118,7 @@ describe('migration 015 — the trace search index', () => {
     for (const { name } of raw.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%'").all() as Array<{ name: string }>) raw.exec(`DROP TRIGGER ${name}`);
     raw.exec(`
       DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter;
+      DROP TABLE trace_search_cjk; DROP TABLE trace_search_cjk_docs; DROP TABLE trace_search_cjk_pending;
       DELETE FROM _iris_migrations WHERE id = '015-trace-search';
     `);
     expect(raw.prepare(SEARCH_OBJECTS).all()).toEqual([]);
