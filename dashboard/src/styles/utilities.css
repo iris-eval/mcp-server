@@ -83,7 +83,7 @@
 .iris-btn--primary {
   background: var(--iris-600);
   border-color: var(--iris-600);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 

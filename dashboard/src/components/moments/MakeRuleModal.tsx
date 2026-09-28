@@ -194,7 +194,7 @@ const styles = {
   } as const,
   btnPrimary: {
     background: 'var(--accent-primary)',
-    color: 'var(--bg-primary)',
+    color: 'var(--text-on-accent)',
     borderColor: 'var(--accent-primary)',
     fontWeight: 600,
   } as const,

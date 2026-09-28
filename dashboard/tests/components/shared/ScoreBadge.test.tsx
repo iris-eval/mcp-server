@@ -12,6 +12,6 @@ describe('ScoreBadge', () => {
   it('renders failing styling when score < 0.7', () => {
     render(<ScoreBadge score={0.42} />);
     const el = screen.getByText('42%');
-    expect(el).toHaveStyle({ background: '#450a0a', color: '#ef4444' });
+    expect(el).toHaveStyle({ background: '#450a0a', color: '#f44948' });
   });
 });
