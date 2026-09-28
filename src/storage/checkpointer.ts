@@ -26,6 +26,14 @@
  * adapter's connection checkpoints by itself as before (the default 1,000
  * pages), so the file never goes without. A database in memory has no WAL
  * and no worker.
+ *
+ * Lifecycle, the search worker's (search-worker-client.ts): started on the
+ * store's first write, not at open, so a store that is only read never
+ * starts a thread; unref'd while idle; a thread that stops after it was
+ * ready is replaced on the next write, and one that could not start is not
+ * tried again by that store; close() asks the thread to close its
+ * connection itself and waits for it to end, and terminates it only if it
+ * has not ended in CLOSE_TIMEOUT_MS.
  */
 import { Worker } from 'node:worker_threads';
 import { createRequire } from 'node:module';
@@ -35,6 +43,8 @@ import type { DriverName } from './driver.js';
 export const CHECKPOINT_INTERVAL_MS = 250;
 /** What the adapter's own connection falls back to: SQLite's default. */
 export const AUTOCHECKPOINT_PAGES = 1000;
+/** How long close() waits for the thread to close its connection and end. */
+const CLOSE_TIMEOUT_MS = 5_000;
 
 /*
  * The worker's code, run as a CommonJS script. It opens the file with the
@@ -102,6 +112,7 @@ export class Checkpointer {
   private settle: (active: boolean) => void = () => undefined;
   /** Resolves true once the worker checkpoints, false if it failed first. */
   readonly started: Promise<boolean> = new Promise((resolve) => (this.settle = resolve));
+  private readonly exited: Promise<void>;
 
   constructor(private readonly options: CheckpointerOptions) {
     const require = createRequire(import.meta.url);
@@ -124,6 +135,7 @@ export class Checkpointer {
       }
     });
     this.worker.on('error', (err) => this.fail(err instanceof Error ? err.message : String(err)));
+    this.exited = new Promise((resolve) => this.worker.once('exit', () => resolve()));
     this.worker.on('exit', (code) => {
       if (!this.failed) this.fail(`the checkpoint worker exited (code ${code})`);
     });
@@ -134,6 +146,11 @@ export class Checkpointer {
   /** Whether the worker is checkpointing: false before it is ready and after it failed. */
   get active(): boolean {
     return this.ready && !this.failed;
+  }
+
+  /** Whether it has stopped, and whether it had been ready first (a crash, worth a new thread) or never was (it cannot start here). */
+  get stopped(): 'no' | 'after-ready' | 'before-ready' {
+    return !this.failed ? 'no' : this.ready ? 'after-ready' : 'before-ready';
   }
 
   private fail(reason: string): void {
@@ -168,20 +185,23 @@ export class Checkpointer {
     return !reply.busy;
   }
 
-  /** Close the worker's connection and stop it. */
+  /**
+   * Ask the thread to close its connection, and wait for it to end on its
+   * own; terminate it only if it has not in CLOSE_TIMEOUT_MS, without
+   * waiting for that (terminate cannot stop a SQLite statement; the thread
+   * ends when its statement does).
+   */
   async close(): Promise<void> {
     this.settle(false);
-    if (!this.failed) {
-      this.failed = true;
-      const id = this.nextId++;
-      this.worker.ref();
-      const closed = new Promise<void>((resolve) => {
-        this.waiting.set(id, () => resolve());
-        this.worker.postMessage({ type: 'close', id });
-      });
-      // A worker that does not answer within a second is stopped anyway.
-      await Promise.race([closed, new Promise((resolve) => setTimeout(resolve, 1000).unref())]);
-    }
-    await this.worker.terminate();
+    if (this.failed) return;
+    this.failed = true;
+    this.worker.ref();
+    this.worker.postMessage({ type: 'close', id: this.nextId++ });
+    let timer: NodeJS.Timeout | undefined;
+    const late = new Promise<'late'>((resolve) => {
+      timer = setTimeout(() => resolve('late'), CLOSE_TIMEOUT_MS);
+    });
+    if ((await Promise.race([this.exited, late])) === 'late') void this.worker.terminate();
+    clearTimeout(timer);
   }
 }

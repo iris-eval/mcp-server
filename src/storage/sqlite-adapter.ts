@@ -395,11 +395,18 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
     // A merge a sweep owed when the last server closed: carried on after the start, too.
     if (this.searchIndex !== 'unavailable' && mergeOwed(this.db)) void this.settleOwedMerge();
-    if (this.dbPath !== ':memory:') this.startCheckpointer();
   }
 
-  /** Move WAL checkpoints to a worker thread; until it is ready, and if it fails, this connection checkpoints as before. */
-  private startCheckpointer(): void {
+  /**
+   * Move WAL checkpoints to a worker thread, at the store's first write
+   * (checkpointer.ts); until it is ready, and if it fails, this connection
+   * checkpoints as before. A thread that stopped after it was ready is
+   * replaced; one that could not start is not tried again.
+   */
+  private ensureCheckpointer(): void {
+    if (this.dbPath === ':memory:' || this.closing) return;
+    const stopped = this.checkpointer?.stopped;
+    if (stopped === 'no' || stopped === 'before-ready') return;
     try {
       this.checkpointer = new Checkpointer({
         path: this.dbPath,
@@ -508,6 +515,7 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   private async buildSearchIndex(): Promise<SearchIndexState> {
     await yieldToRequests();
+    this.ensureCheckpointer();
     const began = performance.now();
     try {
       const at = searchIndexProgress(this.db, 'building');
@@ -583,6 +591,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private settleOwedMerge(): Promise<void> {
     this.merging ??= (async () => {
       await yieldToRequests();
+      this.ensureCheckpointer();
       try {
         let pages = MERGE_PAGES;
         while (!this.closing) {
@@ -607,6 +616,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     const insertTraceStmt = this.db.prepare(`
       INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -706,6 +716,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     // Read-then-write under IMMEDIATE, so a concurrent writer waits instead of failing the snapshot.
     const write = this.db.transaction((): boolean => {
       const row = this.db.prepare('SELECT metadata FROM traces WHERE tenant_id = ? AND trace_id = ?').get(tenantId, traceId) as { metadata?: string | null } | undefined;
@@ -861,6 +872,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     const insert = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -913,6 +925,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     /*
      * created_at is written EXPLICITLY as ISO-8601. Leaving it to the
      * column DEFAULT (datetime('now')) stored "2026-08-09 15:00:00", which
@@ -1976,6 +1989,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   private async sweepTraces(tid: TenantId, cut: string): Promise<number> {
     if (this.closing) return 0;
+    this.ensureCheckpointer();
     const indexing = this.searchIndex !== 'unavailable';
     const mode = indexing
       ? sweepEraseMode(
