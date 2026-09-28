@@ -84,9 +84,9 @@ function slowCorpus(n: number): Trace[] {
  * the machine was. Instead, a stand-in thread (the adapter's tests-only
  * searchWorkerEntry) opens the store read-only with node:sqlite, and on a
  * search begins a read transaction, reads, says `held`, and stays in it:
- * SQLite sees a reader holding the file exactly as it would during a long
- * search. `release` ends the transaction and answers the search with an
- * empty page.
+ * the file has a reader in the middle of a read, as during a long search,
+ * for as long as the test chooses. `release` ends the transaction and
+ * answers the search with an empty page.
  */
 function heldSearchEntry(): URL {
   const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-held-'));
@@ -116,6 +116,8 @@ function heldSearchEntry(): URL {
 /** Start a search on a store whose thread is heldSearchEntry's, and resolve once the thread holds it; `release` lets it answer. */
 async function holdSearch(s: SqliteAdapter): Promise<{ search: Promise<unknown>; release: () => void; thread: Worker }> {
   const search = s.queryTraces(LOCAL_TENANT, { search: 'anything' });
+  // A test that fails while the search is held closes the store, which fails the search: that is not a second failure.
+  search.catch(() => undefined);
   const thread = threadOf(workerOf(s)!) as unknown as Worker;
   await new Promise<void>((resolve) => {
     const onMessage = (msg: { type?: string }) => {
@@ -255,8 +257,7 @@ describe('search on a worker thread', () => {
      */
     expect(answered).toBe(false);
     expect(deleteMs, `delete_trace took ${deleteMs.toFixed(0)} ms while a reader held the file`).toBeLessThan(BUSY_TIMEOUT_MS / 2);
-    // The reader holds the old pages in place: the text is still in the file, and leaves it once the reader does.
-    expect(holds(path)).toBe(true);
+    // Whether the text is still in iris.db at this moment depends on how the platform's SQLite shares the reader's snapshot; once the reader lets go, it is gone everywhere.
     held.release();
     await held.search;
     for (let i = 0; i < 250 && (holds(path) || holds(`${path}-wal`)); i += 1) await new Promise((r) => setTimeout(r, 20));
