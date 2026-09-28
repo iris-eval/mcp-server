@@ -349,8 +349,11 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     await storage.initialize();
     // One engine for all three evals, exactly as createIrisServer builds it.
     evalEngine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
+    // A search starts the search worker, so the report says whether it can run on this machine (#703).
+    await storage.queryTraces(LOCAL_TENANT, { search: 'self-test probe', limit: 1 });
+    const worker = storage.searchWorkerStatus?.();
     // Which driver holds the file: the native addon, or the built-in it fell back to.
-    return `${config.storage.path} (driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'})`;
+    return `${config.storage.path} (driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'}; search worker: ${worker?.detail ?? 'not reported'})`;
   });
 
   await step(SELF_TEST_STEPS.trace, async () => {

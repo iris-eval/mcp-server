@@ -45,6 +45,19 @@ export interface TraceQueryResult {
   search?: TraceSearchInfo;
 }
 
+/**
+ * Where a store's searches run. `ready`: on the search worker, a thread of
+ * their own. `not_started`: the worker starts with the first search.
+ * `unavailable`: it could not start, so searches run on the server's
+ * thread, and `detail` says why. `not_used`: a store in memory, which
+ * searches on the server's thread by design.
+ */
+export interface SearchWorkerStatus {
+  status: 'ready' | 'not_started' | 'unavailable' | 'not_used';
+  /** One line for a person: the status, and for `unavailable` the reason. */
+  detail: string;
+}
+
 export interface TraceSearchInfo {
   /** Each term as it was searched: `refund`, `"agent said"`, `refund*`. */
   terms: string[];
@@ -300,6 +313,8 @@ export interface IStorageAdapter {
   readonly driver: string;
   /** Why that driver was chosen, for the self-test and the startup log. */
   readonly driverReason?: string;
+  /** Where searches run, for the health contract and the self-test (#703). */
+  searchWorkerStatus?(): SearchWorkerStatus;
   initialize(): Promise<void>;
   close(): Promise<void>;
   /** Applied migrations against the ones this build knows; the health contract's `checks.migrations`. */

@@ -379,7 +379,7 @@ Whatever `q` contains is read as words, never as query syntax: `AND`, `OR`, `NOT
 
 A query over a limit is refused before anything is read, with a message that names the term and the limit: `get_traces` answers with an error, and `GET /api/v1/traces` with a 400. The dashboard's search box shows the prefix rule as a hint instead of sending the query.
 
-A search then reads matches, newest trace first, for at most `storage.searchBudgetMs` in `config.json` (or `IRIS_SEARCH_BUDGET_MS`), 1,000 ms by default. If it reaches the budget before it has read every match, it stops and answers with the best matches among the traces it read. `search.complete` is then `false` and `search.budget_ms` gives the budget, and `total` counts only the matches found, so it is a lower bound. A narrower search (more words, a phrase, or a filter such as `since` or `agent_name`) reads less and can complete. Some work comes before the first match and cannot be stopped: expanding a prefix into the words it starts, and counting the traces each term is in for the ranking. When the query or the store holds Chinese, Japanese or Korean text, ranking every match also comes first. The limits above bound that work: at 100,000 traces on the benchmark machine, the costliest query they allow (four of the broadest three-letter prefixes) took 0.6 s, and a word in every trace 0.2 s.
+A search then reads matches, newest trace first, for at most `storage.searchBudgetMs` in `config.json` (or `IRIS_SEARCH_BUDGET_MS`), 1,000 ms by default. If it reaches the budget before it has read every match, it stops and answers with the best matches among the traces it read. `search.complete` is then `false` and `search.budget_ms` gives the budget, and `total` counts only the matches found, so it is a lower bound. A narrower search (more words, a phrase, or a filter such as `since` or `agent_name`) reads less and can complete. Some work comes before the first match and cannot be stopped: expanding a prefix into the words it starts, and counting the traces each term is in for the ranking. When the query or the store holds Chinese, Japanese or Korean text, ranking every match also comes first. The limits above bound that work: at 100,000 traces on the benchmark machine, the costliest query they allow (four of the broadest three-letter prefixes) took 0.6 s, and a word in every trace 0.2 s. It runs on a worker thread with its own read-only connection, so it never holds other requests: the server's thread only reads the page's rows. (A store in memory, which a second connection cannot open, searches on its own connection.)
 
 Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call value, a metadata value or span text) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in (and, for `spans`, the `span` it matched in, by `span_id` and `name`), a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur); `complete`, `false` when the search stopped at its time budget (above); and `ignored` when terms were left out.
 
@@ -1432,6 +1432,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
   "version": "0.15.0",
   "uptime_seconds": 3600,
   "driver": "better-sqlite3",
+  "search_worker": { "status": "ready", "detail": "ready: searches run on their own thread" },
   "checks": {
     "storage": "ok",
     "rules_store": "ok",
@@ -1444,6 +1445,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
 ```
 
 - `driver` — the SQLite driver behind the store: `better-sqlite3` (the native addon, the default) or `node` (Node's built-in `node:sqlite`, chosen with `IRIS_SQLITE_DRIVER=node` or fallen back to when the native module cannot load); `null` on a transport started without storage.
+- `search_worker` — where searches run: `ready` (on their own thread, so a slow search never holds other requests), `not_started` (the thread starts with the first search), `unavailable` (it could not start on this machine, so searches run on the main thread; `detail` gives the reason, and the server also logs it once), or `not_used` (a store in memory, which searches on the main thread by design); `null` without storage. It is informational: search works in every case, so it never makes `status` `degraded`. `--self-test` prints the same line.
 - `checks.storage` — the database answered a count. The count itself is not reported: this endpoint answers without a key, so it says whether the store works, not how much it holds (the number is `total` on the authenticated `GET /api/v1/traces`); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
 - `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
 - `version` is read from `package.json` at runtime; `judge` is the provider name when a key is present, never the key; `mode` is `demo` when serving the disposable demo database.
@@ -1456,6 +1458,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
   "version": "0.15.0",
   "uptime_seconds": 3600,
   "driver": "better-sqlite3",
+  "search_worker": { "status": "ready", "detail": "ready: searches run on their own thread" },
   "checks": {
     "storage": "fail",
     "rules_store": "ok",

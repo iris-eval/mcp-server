@@ -132,7 +132,8 @@ describe('iris-eval --self-test (CLI)', () => {
       expect(code).toBe(0);
       expect(stdout).toContain(SELF_TEST_PASS_VERDICT);
       // The driver and why: the addon is present and failed to load, which is a different fix from an absent one.
-      expect(stdout).toMatch(/\(driver node: better-sqlite3 could not load \(.+\), so Iris uses Node's built-in SQLite\)/);
+      // The search worker opens the driver the store ended up with, not the one it asked for, so it starts too (#703).
+      expect(stdout).toMatch(/\(driver node: better-sqlite3 could not load \(.+\), so Iris uses Node's built-in SQLite; search worker: ready: searches run on their own thread\)/);
       expect(stderr).toContain('could not load');
       expect(stderr).toContain("using Node's built-in SQLite");
       expect(stderr).toContain('npm rebuild better-sqlite3');

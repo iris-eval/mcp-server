@@ -24,7 +24,8 @@ import fc from 'fast-check';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SqliteAdapter, SEARCH_BUDGET_MS, pageOf } from '../../../src/storage/sqlite-adapter.js';
+import { SqliteAdapter, SEARCH_BUDGET_MS } from '../../../src/storage/sqlite-adapter.js';
+import { pageOf } from '../../../src/storage/search-match.js';
 import {
   describeTerm,
   matchesTrace,
@@ -193,6 +194,8 @@ describe('adversarial queries, on the review’s store', () => {
     // The same file read without FTS5: the scan every search uses while the index is built.
     scan = new SqliteAdapter(join(dir, 'iris.db'), { driver: SEARCH_DRIVER, fts5: false });
     await scan.initialize();
+    // Start each store's search thread before anything is timed: starting one is not a search's cost.
+    for (const s of [store, scan]) await s.queryTraces(LOCAL_TENANT, { search: 'w0x', filter: { agent_name: 'nobody' } });
   }, 60_000);
 
   afterAll(async () => {
@@ -330,7 +333,8 @@ describe('the time budget', () => {
     await s.insertTraces(LOCAL_TENANT, long);
     await s.close();
     const read = async (searchBudgetMs: number) => {
-      const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false, searchBudgetMs });
+      // On this thread: what is measured is the scan's own work, not a search thread starting.
+      const store = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false, searchBudgetMs, searchWorker: false });
       await store.initialize();
       let r: Awaited<ReturnType<SqliteAdapter['queryTraces']>> | undefined;
       const cpu = await cpuMsAsync(async () => {
