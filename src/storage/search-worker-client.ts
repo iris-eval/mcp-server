@@ -24,7 +24,12 @@
  *     starts a new one;
  *   - close() asks the thread to close its connection itself and waits for
  *     it to end, and terminates it only if it has not ended in
- *     CLOSE_TIMEOUT_MS.
+ *     CLOSE_TIMEOUT_MS. It does not wait for that: terminate() cannot stop
+ *     a SQLite statement, and resolves only when the statement returns
+ *     (measured on Node 24.21 with both better-sqlite3 builds and
+ *     node:sqlite: a 6 s statement ended the thread after 6.3 to 6.6 s, and
+ *     no terminate aborted the process, mid-statement included). The
+ *     thread ends when its statement does.
  */
 import { Worker } from 'node:worker_threads';
 import type { MatchRequest, MatchResult } from './search-match.js';
@@ -75,11 +80,12 @@ export class SearchWorkerClient {
   /** Threads started, for tests and the health of the pool. */
   started = 0;
 
-  /** `entry`: tests only, a module to run as the thread instead of search-worker's. */
+  /** `entry` and `closeTimeoutMs`: tests only, a module to run as the thread instead of search-worker's, and how long close() waits. */
   constructor(
     private readonly data: SearchWorkerData,
     private readonly graceMs = WORKER_GRACE_MS,
     private readonly entry?: URL,
+    private readonly closeTimeoutMs = CLOSE_TIMEOUT_MS,
   ) {}
 
   /** Whether a thread is running and has opened its connection. */
@@ -177,9 +183,9 @@ export class SearchWorkerClient {
     w.postMessage({ type: 'close' });
     let timer: NodeJS.Timeout | undefined;
     const late = new Promise<'late'>((resolve) => {
-      timer = setTimeout(() => resolve('late'), CLOSE_TIMEOUT_MS);
+      timer = setTimeout(() => resolve('late'), this.closeTimeoutMs);
     });
-    if ((await Promise.race([exited, late])) === 'late') await w.terminate();
+    if ((await Promise.race([exited, late])) === 'late') void w.terminate();
     clearTimeout(timer);
   }
 }

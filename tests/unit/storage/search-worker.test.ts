@@ -307,6 +307,41 @@ describe('SearchWorkerClient', () => {
     }
   }, 60_000);
 
+  it('closes in bounded time while the thread is inside one long SQLite statement, which terminate() cannot stop', async () => {
+    // A thread that, asked to search, runs a single statement of about 3 s in C and so cannot hear the close message.
+    const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-slow-'));
+    dirs.push(dir);
+    const file = join(dir, 'slow.mjs');
+    writeFileSync(
+      file,
+      [
+        "import { parentPort } from 'node:worker_threads';",
+        "import { DatabaseSync } from 'node:sqlite';",
+        "const db = new DatabaseSync(':memory:');",
+        "parentPort.postMessage({ type: 'ready' });",
+        "parentPort.on('message', (msg) => {",
+        "  if (msg.type === 'close') { db.close(); parentPort.close(); return; }",
+        "  const end = Date.now() + 3000;",
+        "  db.prepare('WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE unixepoch(\\'subsec\\') * 1000 < ?) SELECT count(*) FROM n').get(end);",
+        "  parentPort.postMessage({ id: msg.id, result: { total: 0, pageIds: [], matches: [], complete: true } });",
+        '});',
+      ].join('\n'),
+    );
+    const client = new SearchWorkerClient({ path: 'unused', driver, busyTimeoutMs: 5000 }, 60_000, pathToFileURL(file), 200);
+    // Settled into a value at once, so the rejection close() causes is never unhandled.
+    const running = client.search({ tenantId: 'local', parsed: parseSearch('refund'), plan, index: 'scan', budgetMs: 60_000 }).then(
+      () => undefined,
+      (err: Error) => err,
+    );
+    await new Promise((r) => setTimeout(r, 300));
+    const t0 = performance.now();
+    await client.close();
+    const closeMs = performance.now() - t0;
+    expect((await running)?.message).toBe('the store is closed');
+    // The close timeout (200 ms here), not the 3 s the statement still has to run.
+    expect(closeMs, `close() took ${closeMs.toFixed(0)} ms`).toBeLessThan(1500);
+  }, 30_000);
+
   it('reports a thread that cannot open the file as unavailable, so the caller can search itself', async () => {
     const client = new SearchWorkerClient({ path: join(tmpdir(), 'iris-no-such-dir', 'missing.db'), driver, busyTimeoutMs: 5000 });
     try {
