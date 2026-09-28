@@ -5,7 +5,8 @@
  * (not node_modules, and not website/, dashboard/ or examples/,
  * which ship nothing on a registry of their own) and classifies each from its
  * own manifest: the server release.yml publishes to npm, the Python client
- * publish-python.yml publishes to PyPI, a "private": true package, or the
+ * publish-python.yml publishes to PyPI, an npm library release.yml's
+ * publish-packages job publishes, a "private": true package, or the
  * `iris-eval` launcher. This suite fails on anything else, and
  * checks the workflows really do what the classification says — two in-repo
  * packages once had install commands on public surfaces, CI jobs building
@@ -16,7 +17,9 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-ignore — plain .mjs module
-import { LAUNCHER_DIR, LAUNCHER_SERVER_RANGE, LAUNCHER_VERSION, PYPI_DIR, findManifests, inventory } from '../scripts/claims/packages.mjs';
+import { LAUNCHER_DIR, LAUNCHER_SERVER_RANGE, LAUNCHER_VERSION, NPM_PACKAGE_DIRS, PYPI_DIR, findManifests, inventory } from '../scripts/claims/packages.mjs';
+// @ts-ignore — plain .mjs module
+import { PUBLISH_ORDER, packageProblems } from '../scripts/check-npm-packages.mjs';
 
 const ROOT = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
@@ -26,7 +29,7 @@ const packages = inventory() as Entry[];
 const workflows = readdirSync(join(ROOT, '.github', 'workflows')).filter((f) => /\.ya?ml$/.test(f));
 
 describe('the package inventory', () => {
-  it('classifies every manifest in the repository as release, pypi, private or launcher', () => {
+  it('classifies every manifest in the repository as release, pypi, npm, private or launcher', () => {
     const unclassified = packages.filter((p) => p.kind === 'unclassified').map((p) => `${p.manifest}: ${p.reason}`);
     expect(unclassified).toEqual([]);
   });
@@ -43,6 +46,12 @@ describe('the package inventory', () => {
     expect(packages.filter((p) => p.kind === 'release').map((p) => p.dir)).toEqual(['.']);
     expect(packages.filter((p) => p.kind === 'pypi').map((p) => p.dir)).toEqual([PYPI_DIR]);
     expect(packages.filter((p) => p.kind === 'launcher').map((p) => p.dir)).toEqual([LAUNCHER_DIR]);
+    expect(packages.filter((p) => p.kind === 'npm').map((p) => p.dir).sort()).toEqual([...NPM_PACKAGE_DIRS].sort());
+  });
+
+  it('the npm libraries and the launcher can be published as they stand, in an order where each comes after what it depends on', () => {
+    expect(PUBLISH_ORDER).toEqual([...NPM_PACKAGE_DIRS, LAUNCHER_DIR]);
+    expect(packageProblems()).toEqual([]);
   });
 
   it('the launcher depends on the server alone, at the open-ended range, and has the frozen version', () => {
@@ -54,14 +63,17 @@ describe('the package inventory', () => {
 });
 
 describe('the workflows do what the classification says', () => {
-  it('release.yml packs the root package and publishes that tarball — nothing from packages/', () => {
+  it('release.yml packs the root package and publishes that tarball — the server\'s jobs touch nothing in packages/', () => {
     const release = read('.github/workflows/release.yml');
     const name = JSON.parse(read('package.json')).name as string;
     const tarball = `${name.replace(/^@/, '').replace('/', '-')}-*.tgz`;
     expect(release).toContain(`ls -1 ${tarball}`);
     expect(release).toMatch(/npm publish "\.\/\$TARBALL"/);
     expect(release).not.toMatch(/working-directory:\s*packages\//);
-    expect(release).not.toMatch(/cd packages\//);
+    // Only build-packages builds anything under packages/ (the libraries and the launcher, below).
+    const withoutPackagesJob = release.replace(/\n {2}build-packages:\n[\s\S]*?(?=\n {2}[a-z][a-z0-9-]*:\n)/, '\n');
+    expect(withoutPackagesJob).not.toMatch(/cd packages\//);
+    expect(release.match(/cd packages\/[a-z-]+/g)?.sort()).toEqual(['cd packages/langchain', 'cd packages/sdk']);
   });
 
   it('release.yml builds the MCPB bundle from that same tarball and attaches it to the release, not to a package registry', () => {
@@ -76,9 +88,73 @@ describe('the workflows do what the classification says', () => {
 
   it('publish-python.yml builds and publishes the Python client from its directory', () => {
     const py = read('.github/workflows/publish-python.yml');
-    expect(py).toContain(`python -m build ${PYPI_DIR}`);
+    expect(py).toContain(`python -m build --no-isolation ${PYPI_DIR}`);
     expect(py).toContain(`${PYPI_DIR}/pyproject.toml`);
     expect(py).toMatch(/pypa\/gh-action-pypi-publish@/);
+  });
+
+  /*
+   * 2026-09 release review: publish-python.yml published from any py-v* tag,
+   * wherever it pointed, and built with an unpinned `build` that fetched an
+   * unpinned backend. The PyPI path now matches release.yml's rules.
+   */
+  it('publish-python.yml publishes only a tag on main, built with hash-pinned tools and no second download', () => {
+    const py = read('.github/workflows/publish-python.yml');
+    expect(py).toContain('git merge-base --is-ancestor "$GITHUB_SHA" origin/main');
+    expect(py).toContain('fetch-depth: 0');
+    expect(py).toContain('python -m pip install --require-hashes --only-binary :all: -r .github/requirements/build.txt');
+    expect(py).not.toMatch(/pip install (--upgrade )?build\b/);
+    // Every requirement carries a hash, and the backend pyproject.toml names is among them.
+    const reqs = read('.github/requirements/build.txt');
+    const pins = reqs.match(/^[a-z0-9._-]+==[^\s]+/gim) ?? [];
+    expect(pins.length).toBeGreaterThan(0);
+    for (const pin of pins) {
+      const block = reqs.slice(reqs.indexOf(pin)).split(/\n(?=[a-z0-9])/i)[0];
+      expect(block, pin).toMatch(/--hash=sha256:[0-9a-f]{64}/);
+    }
+    const backend = /requires = \["([a-z0-9_-]+)/i.exec(read(`${PYPI_DIR}/pyproject.toml`))![1];
+    expect(pins.map((p) => p.split('==')[0].toLowerCase())).toEqual(expect.arrayContaining(['build', backend]));
+  });
+
+  /*
+   * The libraries and the launcher (S5 of the 2026-09 release review): their
+   * first versions would otherwise have gone out by hand, without provenance,
+   * the way iris-eval@1.0.0 did.
+   */
+  it('release.yml packs the libraries and the launcher without an identity and publishes those tarballs with provenance', () => {
+    const release = read('.github/workflows/release.yml');
+    const job = (name: string): string => {
+      const start = release.indexOf(`\n  ${name}:\n`);
+      expect(start, name).toBeGreaterThan(-1);
+      const next = release.slice(start + 1).search(/\n {2}[a-z][a-z0-9-]*:\n/);
+      return (next < 0 ? release.slice(start) : release.slice(start, start + 1 + next))
+        .split('\n')
+        .filter((l) => !/^\s*#/.test(l))
+        .join('\n');
+    };
+    const build = job('build-packages');
+    expect(build).not.toContain('id-token');
+    expect(build).toContain('node scripts/check-npm-packages.mjs');
+    expect(build).toContain('$(node scripts/check-npm-packages.mjs --order)');
+    expect(build).toContain("if: ${{ !contains(github.ref_name, '-') }}");
+    const publish = job('publish-packages');
+    expect(publish).toContain('id-token: write');
+    expect(publish).toMatch(/needs: \[build-packages, publish-npm\]/);
+    expect(publish).not.toMatch(/npm (ci|install|run)\b/);
+    expect(publish).not.toContain('actions/checkout');
+    expect(publish).toMatch(/npm publish "\.\/\$tarball" --provenance --access public --ignore-scripts/);
+    expect(publish).toContain('done < order.txt');
+    const verify = job('verify-release');
+    expect(verify).toMatch(/needs: \[[^\]]*publish-packages[^\]]*\]/);
+    expect(verify).toContain("needs.publish-packages.result == 'success' || needs.publish-packages.result == 'skipped'");
+    expect(verify).toContain('.dist.attestations.provenance.predicateType');
+    expect(verify).toContain('https://slsa.dev/provenance/v1');
+  });
+
+  it('SECURITY.md\'s scope names everything this repository publishes', () => {
+    const scope = read('SECURITY.md').split('## Scope')[1].split('\n## ')[0];
+    for (const p of packages.filter((x) => x.kind !== 'private')) expect(scope, p.manifest).toContain(`\`${p.name}\``);
+    for (const artifact of ['`ghcr.io/iris-eval/mcp-server`', '`iris-eval.mcpb`', '.github/actions/gate']) expect(scope).toContain(artifact);
   });
 
   it('no other workflow publishes a package to any registry', () => {

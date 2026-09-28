@@ -12,9 +12,15 @@ We aim to acknowledge receipt within 48 hours and provide a detailed response wi
 
 ## Scope
 
-This security policy applies to:
-- The Iris MCP server (`@iris-eval/mcp-server`)
-- The Iris web dashboard
+This security policy applies to everything this repository builds and releases:
+- The Iris MCP server (`@iris-eval/mcp-server` on npm)
+- The Iris web dashboard, which the server serves
+- The container image (`ghcr.io/iris-eval/mcp-server`)
+- The MCPB bundle (`iris-eval.mcpb`, attached to each GitHub release)
+- The `iris-eval` launcher package on npm
+- The JavaScript SDK (`@iris-eval/sdk`) and the LangChain.js handler (`@iris-eval/langchain`)
+- The Python client (`iris-eval` on PyPI)
+- The GitHub Action in `.github/actions/gate`
 - The Iris website (`iris-eval.com`)
 
 ## Open Advisory Posture

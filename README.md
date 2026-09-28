@@ -307,6 +307,7 @@ iris-eval --dashboard
 # Docker — two servers, two ports: 3000 = MCP HTTP transport,
 # 6920 = dashboard (which also serves the POST /api/v1/traces ingest endpoint).
 # The image binds 0.0.0.0 inside the container, so a key is required (see Production).
+# The volume is the Iris home: the database, deployed rules and audit log persist in it.
 docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
   -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server
 ```

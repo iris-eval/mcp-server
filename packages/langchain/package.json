@@ -1,7 +1,6 @@
 {
   "name": "@iris-eval/langchain",
   "version": "0.1.0",
-  "private": true,
   "description": "A LangChain.js and LangGraph.js callback handler that sends each run to Iris as one OpenTelemetry trace and gets its verdict.",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -57,6 +56,10 @@
   "homepage": "https://iris-eval.com",
   "bugs": {
     "url": "https://github.com/iris-eval/mcp-server/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=22"

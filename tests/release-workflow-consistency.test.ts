@@ -261,3 +261,52 @@ describe('release.yml — the MCPB bundle', () => {
     expect(verify).toContain('select(.registryType == "mcpb") | .fileSha256');
   });
 });
+
+/*
+ * 2026-09 release review. The image kept only the database in /data, so a
+ * recreated container lost the deployed rules and the audit log (S18); and
+ * the real-clients job installed its MCP clients with `npm install -g`,
+ * outside any lockfile.
+ */
+describe('the image keeps the whole Iris home in its volume', () => {
+  const dockerfile = workflow('Dockerfile');
+  const compose = workflow('docker-compose.yml');
+  const ci = workflow('.github/workflows/ci.yml');
+
+  it('the Dockerfile and the compose file both set IRIS_HOME to the /data volume, owner-only', () => {
+    expect(dockerfile).toContain('    IRIS_HOME=/data \\\n    IRIS_DB_PATH=/data/iris.db');
+    expect(dockerfile).toContain('VOLUME ["/data"]');
+    expect(dockerfile).toContain('chown iris:iris /data && chmod 700 /data');
+    expect(compose).toContain('- IRIS_HOME=/data');
+  });
+
+  it('CI deploys a rule, recreates the container on the same volume, and requires the rule and its audit row', () => {
+    const step = ci.slice(ci.indexOf('name: The volume holds the Iris home'));
+    expect(step).toContain('-v iris-ci-home:/data');
+    expect(step).toContain('/api/v1/rules/custom');
+    expect(step).toContain('start iris-home-b');
+    expect(step).toContain('/api/v1/audit');
+  });
+});
+
+describe('the real-clients job installs its MCP clients from a lockfile', () => {
+  const ci = workflow('.github/workflows/ci.yml');
+  const dir = '.github/real-clients';
+
+  it('uses npm ci in its own directory, and nothing in ci.yml installs globally with npm', () => {
+    expect(ci).toContain(`cd ${dir}\n          npm ci --no-audit --no-fund`);
+    expect(ci).not.toMatch(/npm install -g @anthropic-ai\/claude-code|npm install -g @google\/gemini-cli/);
+  });
+
+  it('the lockfile pins every client at the exact version package.json names, with an integrity hash', () => {
+    const pkg = JSON.parse(workflow(`${dir}/package.json`));
+    const lock = JSON.parse(workflow(`${dir}/package-lock.json`));
+    expect(pkg.private).toBe(true);
+    for (const [name, version] of Object.entries(pkg.dependencies as Record<string, string>)) {
+      expect(version, name).toMatch(/^\d+\.\d+\.\d+$/);
+      const entry = lock.packages[`node_modules/${name}`];
+      expect(entry?.version, name).toBe(version);
+      expect(entry?.integrity, name).toMatch(/^sha512-/);
+    }
+  });
+});

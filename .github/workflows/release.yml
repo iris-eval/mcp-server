@@ -28,7 +28,9 @@ on:
 # validate → publish-docker; those three → github-release (which attaches
 # the signed MCPB bundle); publish-npm + github-release → publish-registry
 # (production tags only, after the bundle its server.json names is
-# attached); everything →
+# attached); validate → build-packages → publish-packages (after
+# publish-npm; production tags only: the SDK, the LangChain.js handler and
+# the launcher, each when its version is new); everything →
 # verify-release, which reads npm, GHCR, the release page and the MCP
 # Registry back from outside and is the only job whose green means
 # "the release happened".
@@ -331,6 +333,121 @@ jobs:
         with:
           subject-path: iris-npm-sbom.spdx.json
 
+  # The npm libraries (@iris-eval/sdk, @iris-eval/langchain) and the
+  # `iris-eval` launcher ship from the same release as the server, with the
+  # same guarantees: built and packed here with no identity, published by a
+  # job that runs nothing but npm, with provenance. A package is published
+  # when its version is not on npm yet and skipped when it is, so a release
+  # carries a library only when the library's own version moved, and the
+  # packages it publishes are the ones this tag's commit describes.
+  # scripts/check-npm-packages.mjs refuses a set of packages that disagree
+  # (a handler whose SDK range excludes the SDK beside it) before anything is
+  # packed. Production tags only, like the registry: a release candidate
+  # never publishes a library.
+  build-packages:
+    needs: validate
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read         # checkout
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            packages/sdk/package-lock.json
+            packages/langchain/package-lock.json
+      - name: The packages can be published, and agree with each other
+        run: node scripts/check-npm-packages.mjs
+      # The handler builds against the SDK beside it (a file: devDependency),
+      # so the SDK builds first.
+      - name: Build and typecheck the SDK, then the LangChain.js handler
+        run: |
+          (cd packages/sdk && npm ci --no-audit --no-fund && npm run build && npm run typecheck)
+          (cd packages/langchain && npm ci --no-audit --no-fund && npm run build && npm run typecheck)
+      - name: Pack each package, in publish order
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/npm-packages"
+          mkdir -p "$out"
+          : > "$out/order.txt"
+          for dir in $(node scripts/check-npm-packages.mjs --order); do
+            file=$(cd "$dir" && npm pack --pack-destination "$out" --json | jq -r '.[0].filename')
+            want=$(jq -r '"\(.name)@\(.version)"' "$dir/package.json")
+            got=$(tar -xOzf "$out/$file" package/package.json | jq -r '"\(.name)@\(.version)"')
+            [ "$got" = "$want" ] || { echo "FATAL: $dir packed $got, its package.json says $want" && exit 1; }
+            echo "$file" >> "$out/order.txt"
+            echo "Packed $want as $file"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: npm-packages
+          path: ${{ runner.temp }}/npm-packages/
+          if-no-files-found: error
+          retention-days: 90
+
+  # Publishes what build-packages packed, in its order, after the server.
+  # Authentication is npm Trusted Publishing, as in publish-npm: each
+  # package names this repository and release.yml as its trusted publisher
+  # on npmjs.com. npm lets a trusted publisher be added only to a package
+  # that already exists, so a package's FIRST version cannot use it. For
+  # that one publish, a short-lived granular token may be stored as the
+  # NPM_FIRST_PUBLISH_TOKEN secret: this job uses it only when it is set,
+  # and still publishes with --provenance (the provenance statement is
+  # signed with this run's OIDC identity whichever credential authorised the
+  # upload). Once each package exists, its trusted publisher is added and
+  # the secret deleted, and every later version goes through OIDC alone.
+  publish-packages:
+    needs: [build-packages, publish-npm]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write        # npm Trusted Publishing + --provenance
+    steps:
+      # No checkout and no npm ci: only npm, on the tarballs build-packages packed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: npm-packages
+          path: npm-packages
+      # Same failure rules as publish-npm: a version already on npm is an
+      # idempotent re-run, anything else fails loudly.
+      - name: Publish each new version (Trusted Publishing / OIDC, provenance)
+        env:
+          FIRST_PUBLISH_TOKEN: ${{ secrets.NPM_FIRST_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "$FIRST_PUBLISH_TOKEN" ]; then
+            export NODE_AUTH_TOKEN="$FIRST_PUBLISH_TOKEN"
+            echo "::warning::NPM_FIRST_PUBLISH_TOKEN is set. Delete it once every package has its trusted publisher."
+          fi
+          cd npm-packages
+          while read -r tarball; do
+            test -f "$tarball" || { echo "FATAL: $tarball was not handed over by build-packages" && exit 1; }
+            name=$(tar -xOzf "$tarball" package/package.json | jq -r '.name')
+            version=$(tar -xOzf "$tarball" package/package.json | jq -r '.version')
+            if [ "$(npm view "$name@$version" version 2>/dev/null || true)" = "$version" ]; then
+              echo "✓ $name@$version is already on npm — skipped"
+              continue
+            fi
+            case "$version" in *-*) tag=next ;; *) tag=latest ;; esac
+            publish_log=$(mktemp)
+            if npm publish "./$tarball" --provenance --access public --ignore-scripts --tag "$tag" 2>&1 | tee "$publish_log"; then
+              echo "✓ published $name@$version ($tag)"
+            elif grep -qE "EPUBLISHCONFLICT|cannot publish over the previously published" "$publish_log"; then
+              echo "✓ $name@$version is already on npm — idempotent re-run"
+            else
+              echo "✗ npm publish $name@$version failed."
+              echo "  A package's first version: set NPM_FIRST_PUBLISH_TOKEN (see the comment above this job)."
+              echo "  A later version: check its trusted publisher on npmjs.com (this repository, release.yml)."
+              exit 1
+            fi
+          done < order.txt
+
   publish-docker:
     needs: validate
     runs-on: ubuntu-latest
@@ -572,7 +689,7 @@ jobs:
               --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
               iris-npm-sbom.spdx.json
             ```
-          - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page).
+          - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page). The same holds for `@iris-eval/sdk`, `@iris-eval/langchain` and the `iris-eval` launcher, which this workflow publishes whenever their version is new.
           - **Docker signature**: image signed with cosign keyless (Sigstore). Verify with:
             ```
             cosign verify ghcr.io/__REPO__:__TAG__ \
@@ -770,12 +887,13 @@ jobs:
     # two versions stale (0.4.6, 0.5.0) and a `:latest` image that exited
     # on start (0.5.0). A red verify-release is a release that did not
     # happen, whatever the earlier jobs said.
-    needs: [publish-npm, publish-docker, github-release, publish-registry]
-    # publish-registry is skipped on pre-release tags, which under the
-    # default success() rule would skip this job too — so the condition is
-    # spelled out: run unless cancelled, and only when every publishing
-    # job succeeded or (registry, pre-release only) was skipped.
-    if: ${{ !cancelled() && needs.publish-npm.result == 'success' && needs.publish-docker.result == 'success' && needs.github-release.result == 'success' && (needs.publish-registry.result == 'success' || needs.publish-registry.result == 'skipped') }}
+    needs: [publish-npm, publish-docker, github-release, publish-registry, publish-packages]
+    # publish-registry and publish-packages are skipped on pre-release tags,
+    # which under the default success() rule would skip this job too — so the
+    # condition is spelled out: run unless cancelled, and only when every
+    # publishing job succeeded or (registry and packages, pre-release only)
+    # was skipped.
+    if: ${{ !cancelled() && needs.publish-npm.result == 'success' && needs.publish-docker.result == 'success' && needs.github-release.result == 'success' && (needs.publish-registry.result == 'success' || needs.publish-registry.result == 'skipped') && (needs.publish-packages.result == 'success' || needs.publish-packages.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read         # checkout (server.json) + gh release view
@@ -809,6 +927,30 @@ jobs:
             echo "npm dist-tag '$TAG' = '${got:-?}' ($i/12) — waiting 10s" && sleep 10
           done
           echo "✗ FATAL: npm dist-tag '$TAG' is not $WANT" && exit 1
+
+      # Each library and the launcher, at the version this commit carries, is
+      # on npm with an SLSA provenance statement: new versions were published
+      # by publish-packages, and a version skipped there as already published
+      # must carry provenance too, or it went out some other way.
+      - name: npm — the SDK, the LangChain.js handler and the launcher, at this commit's versions, with provenance
+        if: steps.rt.outputs.prerelease == 'false'
+        run: |
+          for dir in $(node scripts/check-npm-packages.mjs --order); do
+            name=$(jq -r '.name' "$dir/package.json")
+            version=$(jq -r '.version' "$dir/package.json")
+            encoded=$(jq -rn --arg s "$name" '$s | @uri')
+            got=""
+            for i in $(seq 1 12); do
+              got=$(curl -fsSL "https://registry.npmjs.org/${encoded}/${version}" 2>/dev/null | jq -r '.dist.attestations.provenance.predicateType // empty' || true)
+              [ -n "$got" ] && break
+              echo "$name@$version: no provenance yet ($i/12) — waiting 10s" && sleep 10
+            done
+            if [ "$got" = "https://slsa.dev/provenance/v1" ]; then
+              echo "✓ $name@$version on npm with provenance ($got)"
+            else
+              echo "✗ FATAL: $name@$version is not on npm with SLSA provenance (predicateType '${got:-none}')" && exit 1
+            fi
+          done
 
       # Anonymous pull token + a HEAD on the manifest: no docker daemon, no
       # login. The digest must be the one publish-docker pushed, for the

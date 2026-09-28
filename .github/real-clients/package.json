@@ -1,0 +1,10 @@
+{
+  "name": "iris-real-clients",
+  "private": true,
+  "description": "The MCP clients .github/workflows/ci.yml (real-clients) installs from this lockfile with npm ci, at exact versions.",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.282",
+    "@google/gemini-cli": "0.61.0"
+  }
+}
