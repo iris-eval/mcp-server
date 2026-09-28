@@ -134,6 +134,24 @@ describe('CommandPalette', () => {
     const input = screen.getByPlaceholderText(PLACEHOLDER);
     await user.type(input, 'asdfqwerty');
     expect(await screen.findByText(/Nothing matches/)).toBeInTheDocument();
+    // The empty state and its Clear button sit outside the listbox, which holds only options.
+    const listbox = document.getElementById('command-palette-list')!;
+    expect(listbox.hidden).toBe(true);
+    expect(listbox.querySelector('button')).toBeNull();
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('is a combobox that controls a named listbox of grouped options, with focus in the input', async () => {
+    renderPalette(true);
+    const input = screen.getByRole('combobox', { name: 'Command query' });
+    await vi.waitFor(() => expect(input).toHaveFocus());
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    const listbox = screen.getByRole('listbox', { name: 'Commands and results' });
+    expect(input).toHaveAttribute('aria-controls', listbox.id);
+    const active = input.getAttribute('aria-activedescendant');
+    expect(active && document.getElementById(active)?.getAttribute('role')).toBe('option');
+    // Each section is a group named by its visible title.
+    expect(screen.getByRole('group', { name: 'Navigate' })).toBeInTheDocument();
   });
 
   it('closes on Escape', async () => {

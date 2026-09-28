@@ -19,11 +19,13 @@
  *   - Enter: run selected command
  *   - / or letters: type to filter
  *
- * Accessibility:
- *   - role="dialog" + aria-modal="true"
- *   - aria-activedescendant tracks selection
- *   - Each item has role="option" with stable id
- *   - Focus restored to trigger on close
+ * Accessibility (the ARIA combobox pattern, in a modal dialog):
+ *   - role="dialog" + aria-modal="true"; focus is trapped inside and goes
+ *     back to where it was on close (useFocusTrap)
+ *   - the input is a combobox that controls the listbox; focus stays in
+ *     it, and aria-activedescendant tracks the selection
+ *   - Each item has role="option" with stable id, grouped by section, and
+ *     the selected option is scrolled into view as the arrows move it
  *
  * Static styling lives in utilities.css (.cmdk block). No entrance
  * animation by design — high-frequency surfaces open instantly.
@@ -31,6 +33,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTheme } from '../layout/ThemeProvider';
+import { useFocusTrap } from '../shared/useFocusTrap';
 import {
   buildCommands,
   pushRecentCommand,
@@ -73,6 +76,7 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
 
   const allCommands = useMemo(
     () => buildCommands({ navigate, setTheme, toggleTheme, openShortcuts: onOpenShortcuts, openTour: onOpenTour }),
@@ -129,16 +133,19 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
 
   const flatList = useMemo(() => grouped.flatMap((g) => g.items), [grouped]);
 
-  // Reset state on open + auto-focus the input
+  // Reset state on open. The focus trap focuses the input, the dialog's first control.
   useEffect(() => {
     if (open) {
       setQuery('');
       setActiveIndex(0);
-      // Defer focus until after the panel mounts
-      const id = window.setTimeout(() => inputRef.current?.focus(), 10);
-      return () => window.clearTimeout(id);
     }
   }, [open]);
+
+  // Keep the selected option in view as the arrow keys move it through a long list.
+  const activeId = flatList[activeIndex] ? `cmd-${flatList[activeIndex].id}` : undefined;
+  useEffect(() => {
+    if (activeId) document.getElementById(activeId)?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeId]);
 
   // Clamp active index when filter changes
   useEffect(() => {
@@ -190,6 +197,7 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
 
   return (
     <div
+      ref={dialogRef}
       className="iris-backdrop cmdk-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -210,34 +218,43 @@ export function CommandPalette({ open, onClose, onOpenShortcuts, onOpenTour }: P
               setQuery(e.target.value);
               setActiveIndex(0);
             }}
+            role="combobox"
             aria-label="Command query"
+            aria-expanded={flatList.length > 0}
             aria-autocomplete="list"
             aria-controls="command-palette-list"
-            aria-activedescendant={
-              flatList[activeIndex] ? `cmd-${flatList[activeIndex].id}` : undefined
-            }
+            aria-activedescendant={activeId}
           />
           <span className="iris-kbd">esc</span>
         </div>
 
-        <div className="cmdk__list" id="command-palette-list" role="listbox">
-          {flatList.length === 0 && (
-            <div className="cmdk__empty">
-              {searching ? (
-                <>Searching your data…</>
-              ) : (
-                <>
-                  Nothing matches "{query}".{' '}
-                  <button type="button" onClick={() => setQuery('')} className="cmdk__empty-clear">
-                    Clear
-                  </button>
-                </>
-              )}
-            </div>
-          )}
+        {/* Outside the listbox: a listbox holds only options, and this one holds a button. */}
+        {flatList.length === 0 && (
+          <div className="cmdk__empty">
+            {searching ? (
+              <>Searching your data…</>
+            ) : (
+              <>
+                Nothing matches "{query}".{' '}
+                <button type="button" onClick={() => setQuery('')} className="cmdk__empty-clear">
+                  Clear
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        <div
+          className="cmdk__list"
+          id="command-palette-list"
+          role="listbox"
+          aria-label="Commands and results"
+          hidden={flatList.length === 0}
+        >
           {grouped.map(({ section, items }) => (
-            <div key={section}>
-              <div className="cmdk__section-title">{section}</div>
+            <div key={section} role="group" aria-labelledby={`cmd-section-${section}`}>
+              <div className="cmdk__section-title" id={`cmd-section-${section}`}>
+                {section}
+              </div>
               {items.map((cmd) => {
                 const isActive = flatList[activeIndex]?.id === cmd.id;
                 return (

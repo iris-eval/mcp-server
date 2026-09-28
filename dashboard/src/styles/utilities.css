@@ -448,6 +448,14 @@
   margin-bottom: var(--space-5);
 }
 
+/* The tablist holds only the tabs; the period selector sits beside it. */
+.view-tabs__list {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--space-1);
+}
+
 .view-tabs__tab {
   display: inline-flex;
   align-items: center;

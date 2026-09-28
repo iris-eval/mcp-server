@@ -19,10 +19,11 @@
  * sidebar nav is a rail, the tabs are a thin underline. Two restrained
  * navigations don't fight each other.
  */
-import type { ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import type { KeyboardEvent, ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Activity, AlertTriangle, Heart, Waves } from 'lucide-react';
 import { Icon } from '../shared/Icon';
+import { onRovingKeyDown } from '../../utils/roving';
 
 export type DashboardView = 'failures' | 'health' | 'drift' | 'stream';
 
@@ -58,8 +59,14 @@ export interface ViewTabsProps {
   trailing?: ReactNode;
 }
 
+/** The id of a view's tab; each view's panel names it in aria-labelledby. */
+export const tabId = (view: DashboardView): string => `${view}-tab`;
+/** The id of a view's panel. Only the active view's panel is rendered. */
+export const panelId = (view: DashboardView): string => `view-panel-${view}`;
+
 export function ViewTabs({ trailing }: ViewTabsProps) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const active = resolveView(searchParams);
 
   /**
@@ -77,25 +84,46 @@ export function ViewTabs({ trailing }: ViewTabsProps) {
     return qs ? `/?${qs}` : '/';
   };
 
+  /*
+   * The ARIA tabs pattern (utils/roving.ts): one Tab stop for the strip,
+   * the selected tab; Left, Right, Home and End move between tabs and
+   * select the one they land on. The strip stays mounted across views, so
+   * focus stays on that tab.
+   */
+  const ids = VIEW_OPTIONS.map((o) => o.id);
+  const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>): void =>
+    onRovingKeyDown(event, ids, active, 'horizontal', (view) => navigate(buildHref(view)));
+
+  /*
+   * The period selector sits beside the tablist, not inside it: a tablist
+   * may own only tabs, and a radiogroup inside one hides the radios from
+   * screen readers that walk the tablist.
+   */
   return (
-    <div className="view-tabs" role="tablist" aria-label="Dashboard view">
-      {VIEW_OPTIONS.map((opt) => {
-        const isActive = opt.id === active;
-        return (
-          <Link
-            key={opt.id}
-            to={buildHref(opt.id)}
-            role="tab"
-            aria-selected={isActive}
-            aria-controls={`view-panel-${opt.id}`}
-            title={opt.description}
-            className="view-tabs__tab"
-          >
-            <Icon as={opt.icon} size={16} />
-            {opt.label}
-          </Link>
-        );
-      })}
+    <div className="view-tabs">
+      <div className="view-tabs__list" role="tablist" aria-label="Dashboard view">
+        {VIEW_OPTIONS.map((opt) => {
+          const isActive = opt.id === active;
+          return (
+            <Link
+              key={opt.id}
+              id={tabId(opt.id)}
+              to={buildHref(opt.id)}
+              role="tab"
+              aria-selected={isActive}
+              // Only the active view's panel exists, so only its tab names one.
+              aria-controls={isActive ? panelId(opt.id) : undefined}
+              tabIndex={isActive ? 0 : -1}
+              onKeyDown={onKeyDown}
+              title={opt.description}
+              className="view-tabs__tab"
+            >
+              <Icon as={opt.icon} size={16} />
+              {opt.label}
+            </Link>
+          );
+        })}
+      </div>
       {trailing && <div className="view-tabs__hint">{trailing}</div>}
     </div>
   );

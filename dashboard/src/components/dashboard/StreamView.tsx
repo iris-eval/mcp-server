@@ -29,6 +29,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { EmptyState } from '../shared/EmptyState';
 import { StatTile } from './StatTile';
 import { SectionHeader } from './SectionHeader';
+import { panelId, tabId } from './ViewTabs';
 import { RecentMomentsRow } from './RecentMomentsRow';
 import { LOW_SIGNAL_KINDS } from '../moments/significance';
 import { RecentAuditRow } from './RecentAuditRow';
@@ -72,7 +73,7 @@ export function StreamView() {
     significantCount === 0 ? 'pass' : safetyCount > 0 ? 'fail' : 'warn';
 
   return (
-    <div style={styles.view} role="tabpanel" id="view-panel-stream" aria-labelledby="stream-tab">
+    <div style={styles.view} role="tabpanel" id={panelId('stream')} aria-labelledby={tabId('stream')}>
       {/* §1 LIVE NOW — heartbeat */}
       <SectionHeader
         title="Live now"

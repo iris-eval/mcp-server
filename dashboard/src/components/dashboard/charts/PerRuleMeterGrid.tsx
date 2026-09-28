@@ -302,7 +302,7 @@ export function PerRuleMeterGrid({
                         </div>
                       </div>
                       <span style={styles.spark}>
-                        {stat.series.length > 1 && <Sparkline values={stat.series} height={20} />}
+                        {stat.series.length > 1 && <Sparkline values={stat.series} height={20} label={`${r.name} pass rate over the period`} />}
                       </span>
                       <span style={{ ...styles.driftBadge, color: driftColor }}>
                         {driftPct === undefined ? '—' : `${driftSign}${driftPct}%`}

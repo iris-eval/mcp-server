@@ -10,7 +10,7 @@
  * surface, not an event bus: the audit log IS the source of truth, and
  * we never write "notification objects" separately.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Bell, Sparkles, Trash2, ToggleRight, PencilLine } from 'lucide-react';
 import { Icon } from '../shared/Icon';
@@ -18,6 +18,7 @@ import { useAuditLog } from '../../api/hooks';
 import { usePreferences } from '../../hooks/usePreferences';
 import type { AuditLogEntry } from '../../api/types';
 import { formatTimeAgo } from '../../utils/formatters';
+import { usePopover } from '../shared/usePopover';
 
 const styles = {
   triggerWrap: {
@@ -170,8 +171,8 @@ const ACTION_ICON: Record<AuditLogEntry['action'], typeof Sparkles> = {
 
 export function NotificationsPopover() {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
+  // Opening focuses the first link inside; Escape closes and returns to the bell; Tab out closes.
+  const { triggerRef, popoverRef } = usePopover<HTMLButtonElement, HTMLDivElement>(open, setOpen);
 
   const { data } = useAuditLog({ limit: '10' });
   const entries = useMemo(() => data?.entries ?? [], [data]);
@@ -192,28 +193,6 @@ export function NotificationsPopover() {
     patch({ notificationsLastSeen: mostRecent }).catch(() => undefined);
   }, [open, entries, lastSeen, patch]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!popoverRef.current || !triggerRef.current) return;
-      if (
-        popoverRef.current.contains(e.target as Node) ||
-        triggerRef.current.contains(e.target as Node)
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
 
   return (
     <div style={styles.triggerWrap}>
@@ -228,7 +207,7 @@ export function NotificationsPopover() {
         }
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
       >
         <Icon as={Bell} size={16} />
         {unreadCount > 0 && (

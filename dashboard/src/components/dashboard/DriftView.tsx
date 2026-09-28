@@ -29,6 +29,7 @@ import {
 } from './PeriodSelector';
 import { drillToMoments, isoDaysAgo } from '../../utils/drillThrough';
 import { SectionHeader } from './SectionHeader';
+import { panelId, tabId } from './ViewTabs';
 import { ChangeBanner } from './charts/ChangeBanner';
 import { CohortSelector, resolveCohort } from './CohortSelector';
 import { CohortPanels } from './CohortPanels';
@@ -112,7 +113,7 @@ export function DriftView() {
   }, [currentMoments, periodStartIso]);
 
   return (
-    <div style={styles.view} role="tabpanel" id="view-panel-drift" aria-labelledby="drift-tab">
+    <div style={styles.view} role="tabpanel" id={panelId('drift')} aria-labelledby={tabId('drift')}>
       {/* §1 WHAT CHANGED — narrative summary */}
       <SectionHeader
         title="What changed"

@@ -44,6 +44,40 @@ test.describe('keyboard only', () => {
     await expect(page).toHaveURL(/\/rules$/);
   });
 
+  test('the view tabs and the period are one Tab stop each, and the arrow keys move within them', async ({ page }) => {
+    await page.goto('/?view=health');
+    const health = page.getByRole('tab', { name: 'Health' });
+    await health.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page).toHaveURL(/view=drift/);
+    await expect(page.getByRole('tab', { name: 'Drift' })).toBeFocused();
+    await expect(page.getByRole('tab', { name: 'Drift' })).toHaveAttribute('aria-selected', 'true');
+    // Tab leaves the tablist for the period group, whose one stop is the checked period.
+    // The Drift view brings its own period group; wait for it before pressing Tab.
+    await expect(page.getByRole('radio', { name: '7d' })).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('radio', { name: '7d' })).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page).toHaveURL(/period=30d/);
+    await expect(page.getByRole('radio', { name: '30d' })).toBeFocused();
+    await expect(page.getByRole('radio', { name: '30d' })).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByRole('tab', { name: 'Drift' })).toBeFocused();
+  });
+
+  test('the account menu opens from the keyboard, moves with the arrows, and Escape returns to its button', async ({ page }) => {
+    await page.goto('/');
+    const button = page.getByRole('button', { name: 'Account menu' });
+    await button.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitemradio', { name: 'Dark' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitemradio', { name: 'Light' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(button).toBeFocused();
+  });
+
   test('a fired rule can be labelled from the keyboard', async ({ page }) => {
     await page.goto('/traces/e2e-trace-0019');
     const right = page.locator('[data-label-control="cost_under_threshold"]').getByRole('button', { name: 'right' });

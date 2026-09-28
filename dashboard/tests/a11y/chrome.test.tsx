@@ -149,6 +149,54 @@ describe('a11y · AccountMenu', () => {
     expect(container.querySelector('[role="menu"]')).toBeNull();
     expect(btn.getAttribute('aria-expanded')).toBe('false');
   });
+
+  it('opening moves focus to the first item; Up and Down move between items and wrap', () => {
+    const container = wrap(<AccountMenu />);
+    fireEvent.click(container.querySelector('[aria-label="Account menu"]')!);
+    const items = Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]'));
+    expect(items.map((i) => i.textContent?.trim())).toEqual(['Dark', 'Light', 'Compact', 'Comfortable', 'Security', 'Architecture docs', 'Release notes']);
+    // The menu is one Tab stop: its items are reached with the arrows.
+    for (const item of items) expect(item.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(items[0]);
+    const menu = container.querySelector('[role="menu"]')!;
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(document.activeElement).toBe(items[6]);
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[6]);
+  });
+
+  it('Down arrow on the button opens the menu, and Escape puts focus back on the button', () => {
+    const container = wrap(<AccountMenu />);
+    const btn = container.querySelector('[aria-label="Account menu"]') as HTMLButtonElement;
+    btn.focus();
+    fireEvent.keyDown(btn, { key: 'ArrowDown' });
+    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    expect(document.activeElement?.textContent?.trim()).toBe('Dark');
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(btn);
+  });
+
+  it('focus leaving the menu closes it', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <AccountMenu />
+        <button type="button" data-elsewhere>
+          elsewhere
+        </button>
+      </MemoryRouter>,
+    );
+    fireEvent.click(container.querySelector('[aria-label="Account menu"]')!);
+    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    act(() => {
+      (container.querySelector('[data-elsewhere]') as HTMLButtonElement).focus();
+    });
+    expect(container.querySelector('[role="menu"]')).toBeNull();
+  });
 });
 
 describe('a11y · NotificationsPopover', () => {
@@ -218,6 +266,25 @@ describe('a11y · NotificationsPopover', () => {
     expect(container.querySelector('[role="dialog"]')).not.toBeNull();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('opening moves focus into the popover, and Escape puts it back on the bell', () => {
+    useAuditLogMock.mockReturnValue({
+      data: { entries: auditFixture, total: 2, limit: 10, offset: 0, path: '' },
+      loading: false,
+      error: null,
+      rateLimitedUntil: null,
+      refetch: vi.fn(),
+    });
+    const container = wrap(<NotificationsPopover />);
+    const bell = container.querySelector('[aria-label*="Notifications"]') as HTMLButtonElement;
+    fireEvent.click(bell);
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.textContent).toMatch(/View all/);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(bell);
   });
 
   it('empty state renders explanatory text + no violations', async () => {

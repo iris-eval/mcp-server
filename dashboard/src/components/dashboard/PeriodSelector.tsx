@@ -11,6 +11,7 @@
  * resolves the right default per view and passes it in.
  */
 import { useSearchParams } from 'react-router';
+import { onRovingKeyDown } from '../../utils/roving';
 
 export type Period = '24h' | '7d' | '30d' | '90d';
 
@@ -84,6 +85,9 @@ export function PeriodSelector({ defaultPeriod }: PeriodSelectorProps) {
     setSearchParams(next);
   };
 
+  // A radio group is one Tab stop; the arrow keys move and select (utils/roving.ts).
+  const ids = PERIOD_OPTIONS.map((o) => o.id);
+
   return (
     <div style={styles.group} role="radiogroup" aria-label="Time period">
       {PERIOD_OPTIONS.map((opt) => {
@@ -94,7 +98,9 @@ export function PeriodSelector({ defaultPeriod }: PeriodSelectorProps) {
             type="button"
             role="radio"
             aria-checked={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onPick(opt.id)}
+            onKeyDown={(e) => onRovingKeyDown(e, ids, active, 'both', onPick)}
             style={{ ...styles.btn, ...(isActive ? styles.btnActive : {}) }}
           >
             {opt.label}
