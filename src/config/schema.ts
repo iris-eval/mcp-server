@@ -61,6 +61,7 @@ export const configFileSchema = z.strictObject({
       path: name.optional(),
       redact: z.enum(['none', 'critical_spans']).optional(),
       searchBudgetMs: z.number().int().min(SEARCH_BUDGET_RANGE_MS[0]).max(SEARCH_BUDGET_RANGE_MS[1]).optional(),
+      synchronous: z.enum(['normal', 'full']).optional(),
     })
     .optional(),
   server: z.strictObject({ name: name.optional(), version: name.optional() }).optional(),

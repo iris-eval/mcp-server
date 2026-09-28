@@ -130,7 +130,10 @@ export interface SqliteAdapterOptions {
   searchWorker?: boolean;
   /** Tests only: the module the search worker runs, to make it fail to start. */
   searchWorkerEntry?: URL;
+  /** storage.synchronous — when a commit reaches the disk; see initialize(). Default `normal`. */
+  synchronous?: SynchronousMode;
 }
+export type SynchronousMode = 'normal' | 'full';
 
 /**
  * How long one search may read matches, in milliseconds, before it stops
@@ -244,6 +247,15 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
+/** One row of an agent's evaluated history, as agentLogRows reads it. */
+interface AgentLogRow {
+  rule_results: string | null;
+  run_id: string | null;
+  trace_id: string;
+  timestamp: string;
+  cost_usd: number | null;
+}
+
 /** The native driver's name — the default, and what the proof was measured on. */
 export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
@@ -305,6 +317,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** storage.redact — see SqliteAdapterOptions. */
   private readonly redact: RedactMode;
+  /** storage.synchronous — see SqliteAdapterOptions. */
+  private readonly synchronous: SynchronousMode;
 
   /** Whether searches use the FTS5 index or read the traces; settled in initialize(). */
   private searchIndex: SearchIndexState = 'unavailable';
@@ -334,6 +348,7 @@ export class SqliteAdapter implements IStorageAdapter {
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
     this.redact = options?.redact ?? 'none';
+    this.synchronous = options?.synchronous ?? 'normal';
     this.fts5Override = options?.fts5;
     this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
     this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
@@ -404,6 +419,24 @@ export class SqliteAdapter implements IStorageAdapter {
       throw err;
     }
     this.db.pragma('foreign_keys = ON');
+    /*
+     * When a commit reaches the disk (storage.synchronous, #711). FULL
+     * syncs the write-ahead log on every commit: about 1.5 ms a write,
+     * most of what a stored trace costs. NORMAL, SQLite's own guidance for
+     * a write-ahead log, syncs it at each checkpoint instead. Neither can
+     * corrupt the file, and a crash of Iris loses nothing under either;
+     * what NORMAL gives up is the writes since the last sync on a power cut
+     * or an operating-system crash, which roll back. `full` keeps every
+     * commit through both.
+     *
+     * Until 0.20.0 nothing here set it, and what a store got depended on
+     * the driver and the start: better-sqlite3's SQLite is built with
+     * SQLITE_DEFAULT_WAL_SYNCHRONOUS=1, so it opened a file that was
+     * already WAL at NORMAL (every start but the one that created the
+     * file), while node:sqlite ran FULL throughout. Now both run what the
+     * config says, NORMAL unless it says `full`.
+     */
+    this.db.pragma(`synchronous = ${this.synchronous === 'full' ? 'FULL' : 'NORMAL'}`);
     /*
      * secure_delete overwrites freed content with zeros instead of leaving
      * it in place until the page is reused. Without it, a DELETE — the
@@ -722,11 +755,13 @@ export class SqliteAdapter implements IStorageAdapter {
       INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const insertSpanStmt = this.db.prepare(`
+    // Compiling this insert compiles the six span triggers of the search index: a batch without spans never asks for it.
+    const insertSpanStmt = traces.some((t) => t.spans?.length)
+      ? this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
+    `)
+      : undefined;
 
     /** Inserts the trace and its spans; whether any of its text could hold CJK (search-index.ts, the CJK stream). */
     const insertOne = (raw: Trace): boolean => {
@@ -770,7 +805,7 @@ export class SqliteAdapter implements IStorageAdapter {
         t.cost_estimate ? JSON.stringify(t.cost_estimate) : null,
       );
 
-      if (t.spans) {
+      if (t.spans && insertSpanStmt) {
         for (const span of t.spans) {
           const attributes = span.attributes ? JSON.stringify(span.attributes) : null;
           const events = span.events ? JSON.stringify(span.events) : null;
@@ -865,6 +900,11 @@ export class SqliteAdapter implements IStorageAdapter {
        * 0.05 matched min_score=0.4 + max_score=0.6: each bound was
        * satisfied by a different eval even though no single eval — let
        * alone the latest — was in range (#332).
+       *
+       * The latest eval is found through the (tenant, trace) index, named
+       * (#711): left to the planner, it walked the tenant's evaluations by
+       * time for every trace, to skip a sort of the one or two a trace has
+       * — more than 20 s for one page at 100,000 evaluated traces.
        */
       const scoreBounds: string[] = [];
       if (filter.min_score !== undefined) {
@@ -875,7 +915,7 @@ export class SqliteAdapter implements IStorageAdapter {
       }
       conditions.push(
         'EXISTS (SELECT 1 FROM eval_results e WHERE e.rowid = ' +
-          '(SELECT e2.rowid FROM eval_results e2 WHERE e2.tenant_id = traces.tenant_id AND e2.trace_id = traces.trace_id ' +
+          '(SELECT e2.rowid FROM eval_results e2 INDEXED BY idx_eval_results_tenant_trace WHERE e2.tenant_id = traces.tenant_id AND e2.trace_id = traces.trace_id ' +
           'ORDER BY e2.created_at DESC, e2.rowid DESC LIMIT 1) ' +
           `AND ${scoreBounds.join(' AND ')})`,
       );
@@ -909,12 +949,23 @@ export class SqliteAdapter implements IStorageAdapter {
       return await this.searchTraces(tenantId, search, { whereClause, params, filtered: conditions.length > 1, sortBy, sortOrder, limit, offset });
     }
 
+    /*
+     * Both reads name their index (#711). A session or an agent is the
+     * narrowest range, and each index is in time order; otherwise the page
+     * walks the covering time index, which also holds latency and cost, so
+     * a page sorted by either sorts index entries and reads 50 rows rather
+     * than every row (0.37 s at 100,000 traces when the planner took another
+     * index). The count takes the smallest index that answers its filters.
+     */
+    const narrowest = filter?.session_id !== undefined ? 'idx_traces_tenant_session' : filter?.agent_name ? 'idx_traces_tenant_agent_timestamp' : undefined;
+    const countIndex = narrowest ?? (filter?.since || filter?.until ? 'idx_traces_tenant_timestamp_cover' : 'idx_traces_tenant_framework');
+    const pageIndex = narrowest ?? 'idx_traces_tenant_timestamp_cover';
     const countRow = this.db
-      .prepare(`SELECT COUNT(*) as count FROM traces ${whereClause}`)
+      .prepare(`SELECT COUNT(*) as count FROM traces INDEXED BY ${countIndex} ${whereClause}`)
       .get(...params) as { count: number };
 
     const rows = this.db
-      .prepare(`SELECT * FROM traces ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM traces INDEXED BY ${pageIndex} ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`)
       .all(...params, limit, offset) as Array<Record<string, unknown>>;
 
     return {
@@ -1443,8 +1494,23 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   async getCaseResults(tenantId: TenantId, filter: { run?: string; caseKey?: string; question?: QuestionId; session?: string; groupBy?: 'case_key' | 'session' } = {}): Promise<CaseResultRow[]> {
     assertTenant(tenantId);
+    /*
+     * The join order is pinned (#711). A case key or a session names its
+     * traces, so the read starts from that index range; anything else reads
+     * every evaluation of the tenant, and starts there. Left to the planner,
+     * a read by case key walked every evaluation (290 ms at 100,000
+     * evaluated traces, against 0.1 ms from the case index) — and it is the
+     * read a webhook makes for each evaluation.
+     */
+    const fromTraces = filter.caseKey !== undefined ? 'idx_traces_tenant_case' : filter.session !== undefined ? 'idx_traces_tenant_session' : undefined;
+    const from =
+      fromTraces !== undefined
+        ? `FROM traces t INDEXED BY ${fromTraces} CROSS JOIN eval_results e INDEXED BY idx_eval_results_tenant_trace ON e.trace_id = t.trace_id AND e.tenant_id = t.tenant_id`
+        : 'FROM eval_results e INDEXED BY idx_eval_results_tenant_created CROSS JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id';
     // Grouped by session, a turn without a case key still counts; grouped by case, a turn without one never did.
-    const where: string[] = ['e.tenant_id = ?', filter.groupBy === 'session' ? 't.session_id IS NOT NULL' : 't.case_key IS NOT NULL'];
+    // Read from the evaluations, each trace is found by its id: the `+` keeps that test from becoming a range scan of an index per evaluation.
+    const grouped = filter.groupBy === 'session' ? 'session_id IS NOT NULL' : 'case_key IS NOT NULL';
+    const where: string[] = fromTraces !== undefined ? ['t.tenant_id = ?', `t.${grouped}`] : ['e.tenant_id = ?', `+t.${grouped}`];
     const params: unknown[] = [tenantId];
     if (filter.session !== undefined) {
       where.push('t.session_id = ?');
@@ -1461,8 +1527,7 @@ export class SqliteAdapter implements IStorageAdapter {
     const rows = this.db
       .prepare(
         `SELECT e.id, e.trace_id, e.passed, e.created_at, e.rule_results, t.case_key, t.session_id, COALESCE(e.run_id, t.run_id) AS run_id
-           FROM eval_results e
-           JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+           ${from}
           WHERE ${where.join(' AND ')}
           ORDER BY e.created_at ASC, e.id ASC`,
       )
@@ -1552,38 +1617,48 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000).toISOString();
 
+    /*
+     * Every trace read here comes from idx_traces_tenant_timestamp_cover,
+     * named, which holds the window's agent, latency, cost and cost source: no trace row
+     * is read (#711). Until 0.20.0 the window's rows were read three times
+     * over, and with statistics the planner walked every trace of the
+     * tenant for the top agents; a 30-day summary at 100,000 traces took
+     * 0.3 to 0.8 s. The error rate reads the traces with a failed span once
+     * from their own index, which holds nothing else, and counts the ones
+     * in the window.
+     */
     const stats = this.db.prepare(`
       SELECT
         COUNT(*) as total_traces,
         COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
         COALESCE(SUM(cost_usd), 0) as total_cost_usd,
         COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) as estimated_cost_usd
-      FROM traces WHERE tenant_id = ? AND timestamp >= ?
+      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number; estimated_cost_usd: number };
 
     const errorCount = this.db.prepare(`
-      SELECT COUNT(DISTINCT t.trace_id) as count
-      FROM traces t
-      JOIN spans s ON s.tenant_id = t.tenant_id AND s.trace_id = t.trace_id
-      WHERE t.tenant_id = ? AND t.timestamp >= ? AND s.status_code = 'ERROR'
-    `).get(tenantId, since) as { count: number };
+      SELECT COUNT(*) as count
+      FROM traces t INDEXED BY idx_traces_tenant_timestamp_cover
+      WHERE t.tenant_id = ? AND t.timestamp >= ?
+        AND t.trace_id IN (SELECT s.trace_id FROM spans s INDEXED BY idx_spans_tenant_error WHERE s.tenant_id = ? AND s.status_code = 'ERROR')
+    `).get(tenantId, since, tenantId) as { count: number };
 
     const evalStats = this.db.prepare(`
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) as passed_count
-      FROM eval_results WHERE tenant_id = ? AND created_at >= ?
+      FROM eval_results INDEXED BY idx_eval_results_tenant_created WHERE tenant_id = ? AND created_at >= ?
     `).get(tenantId, since) as { total: number; passed_count: number };
 
     const tracesPerHour = this.db.prepare(`
       SELECT strftime('%Y-%m-%dT%H:00:00', timestamp) as hour, COUNT(*) as count
-      FROM traces WHERE tenant_id = ? AND timestamp >= ?
+      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover WHERE tenant_id = ? AND timestamp >= ?
       GROUP BY hour ORDER BY hour
     `).all(tenantId, since) as Array<{ hour: string; count: number }>;
 
     const topAgents = this.db.prepare(`
       SELECT agent_name, COUNT(*) as count
-      FROM traces WHERE tenant_id = ? AND timestamp >= ?
+      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover WHERE tenant_id = ? AND timestamp >= ?
       GROUP BY agent_name ORDER BY count DESC LIMIT 10
     `).all(tenantId, since) as Array<{ agent_name: string; count: number }>;
 
@@ -1637,26 +1712,32 @@ export class SqliteAdapter implements IStorageAdapter {
      * because eval_results.trace_id is ON DELETE SET NULL — deleting a
      * trace retroactively shrank the headline while the trend kept the
      * eval. One population everywhere: every eval in the window.
+     *
+     * Every read of an evaluation window names the (tenant, created) index
+     * (#711): with statistics that said the window held most of the store,
+     * SQLite read the whole table instead, and statistics from another day
+     * would have done the same for a window of an hour.
      */
     const agg = this.db.prepare(`
       SELECT
         COUNT(*)                                     AS total_evals,
         COALESCE(AVG(score), 0)                      AS avg_score,
         SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
-      FROM eval_results
+      FROM eval_results INDEXED BY idx_eval_results_tenant_created
       WHERE tenant_id = ? AND created_at >= ?
     `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
 
+    // The window's cost and agents come from the covering time index, named so statistics cannot trade it for a walk of every trace (#711).
     const cost = this.db.prepare(`
       SELECT COALESCE(SUM(cost_usd), 0) AS total_cost,
              COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) AS estimated_cost
-      FROM traces
+      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover
       WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { total_cost: number; estimated_cost: number };
 
     const agents = this.db.prepare(`
       SELECT COUNT(DISTINCT agent_name) AS agent_count
-      FROM traces
+      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover
       WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { agent_count: number };
 
@@ -1686,7 +1767,7 @@ export class SqliteAdapter implements IStorageAdapter {
      */
     const safetyRows = this.db.prepare(`
       SELECT rule_results
-      FROM eval_results
+      FROM eval_results INDEXED BY idx_eval_results_tenant_created
       WHERE tenant_id = ? AND created_at >= ?
         AND eval_type IN ('safety', 'all')
     `).all(tenantId, since) as Array<{ rule_results: string }>;
@@ -1799,16 +1880,7 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   async getAgentFailureLog(tenantId: TenantId, agentName: string, limit = 500): Promise<AgentFailureLogEntry[]> {
     assertTenant(tenantId);
-    const rows = this.db
-      .prepare(
-        `SELECT e.rule_results AS rule_results, e.run_id AS run_id, t.trace_id AS trace_id, t.timestamp AS timestamp, t.cost_usd AS cost_usd
-           FROM eval_results e
-           JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
-          WHERE e.tenant_id = ? AND t.agent_name = ?
-          ORDER BY t.timestamp DESC, e.created_at DESC
-          LIMIT ?`,
-      )
-      .all(tenantId, agentName, limit) as Array<{ rule_results: string | null; run_id: string | null; trace_id: string; timestamp: string; cost_usd: number | null }>;
+    const rows = this.agentLogRows(tenantId, agentName, limit);
 
     // A trace evaluated more than once contributes ONE entry, its newest —
     // the same collapse every run read performs, for the same reason: a
@@ -1829,6 +1901,89 @@ export class SqliteAdapter implements IStorageAdapter {
       });
     }
     return out;
+  }
+
+  /**
+   * The rows behind getAgentFailureLog: the newest `limit` evaluations of
+   * this agent's traces, by trace time.
+   *
+   * There are two ways to find them, and which one is cheap depends on
+   * what the store holds, not on its schema:
+   *
+   *   by evaluation  read every evaluation of the tenant, keep this agent's,
+   *                  sort. Costs the tenant's evaluation count.
+   *   by trace       walk this agent's traces newest first and look up each
+   *                  one's evaluations, stopping at `limit`. Costs how far
+   *                  back the limit-th evaluated trace lies, at most the
+   *                  agent's trace count.
+   *
+   * At 100,000 traces the first takes 160 ms when every trace is evaluated
+   * and the second 240 ms when few are; the other way round, each takes
+   * under 3 ms. Left to SQLite, the choice followed the indexes instead:
+   * 0.19.0 always read by evaluation, and the covering search index of
+   * 0.20.0 (#658) flipped it to always walking the traces (#711). The
+   * planner has no statistics here, and with them it walked the store where
+   * every trace is evaluated (177 ms). So neither is left to the planner:
+   * both queries pin their join order and index, and this chooses between
+   * them from counts, which read index entries only (about a twentieth of a
+   * step of either walk).
+   *
+   * It walks a window of the agent's newest traces, first four times the
+   * limit. A window that holds `limit` evaluations is the answer. One that
+   * does not says how dense they are, and the next window is sized to
+   * reach `limit` at that density, at least four times the last. As soon
+   * as the tenant's evaluations or the agent's traces fit in the window,
+   * the smaller of the two is read whole instead. Every step costs about
+   * its window, so the whole costs a small multiple of the cheaper way.
+   *
+   * Reading by evaluation, each evaluation's trace is found by its id:
+   * the `+` keeps SQLite from answering `agent_name = ?` from the agent
+   * index instead, which scans the agent's traces once per evaluation
+   * (20 s at 14,000 of each).
+   *
+   * The window is cut at a timestamp, not a count, so traces tied at its
+   * edge are all in it: every row outside it is older than every row in
+   * it, and a window that yields `limit` rows yields the same rows as the
+   * whole walk.
+   */
+  private agentLogRows(tenantId: TenantId, agentName: string, limit: number): AgentLogRow[] {
+    const byEvaluation = this.db.prepare(
+      `SELECT e.rule_results AS rule_results, e.run_id AS run_id, t.trace_id AS trace_id, t.timestamp AS timestamp, t.cost_usd AS cost_usd
+         FROM eval_results e INDEXED BY idx_eval_results_tenant_trace
+         CROSS JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+        WHERE e.tenant_id = ? AND +t.agent_name = ?
+        ORDER BY t.timestamp DESC, e.created_at DESC
+        LIMIT ?`,
+    );
+    const byTrace = this.db.prepare(
+      `SELECT e.rule_results AS rule_results, e.run_id AS run_id, t.trace_id AS trace_id, t.timestamp AS timestamp, t.cost_usd AS cost_usd
+         FROM traces t INDEXED BY idx_traces_tenant_agent_timestamp
+         CROSS JOIN eval_results e INDEXED BY idx_eval_results_tenant_trace ON e.tenant_id = t.tenant_id AND e.trace_id = t.trace_id
+        WHERE t.tenant_id = ? AND t.agent_name = ? AND t.timestamp >= ?
+        ORDER BY t.timestamp DESC, e.created_at DESC
+        LIMIT ?`,
+    );
+    const evaluations = this.db.prepare('SELECT COUNT(*) AS n FROM (SELECT 1 FROM eval_results INDEXED BY idx_eval_results_tenant_trace WHERE tenant_id = ? LIMIT ?)');
+    const windowEdge = this.db.prepare(
+      'SELECT timestamp FROM traces INDEXED BY idx_traces_tenant_agent_timestamp WHERE tenant_id = ? AND agent_name = ? ORDER BY timestamp DESC LIMIT 1 OFFSET ?',
+    );
+    const agentTraces = this.db.prepare(
+      'SELECT COUNT(*) AS n FROM (SELECT 1 FROM traces INDEXED BY idx_traces_tenant_agent_timestamp WHERE tenant_id = ? AND agent_name = ? LIMIT ?)',
+    );
+    let window = 4 * Math.max(limit, 1);
+    for (;;) {
+      const evaluated = Number((evaluations.get(tenantId, window) as { n: number }).n);
+      const traced = Number((agentTraces.get(tenantId, agentName, window) as { n: number }).n);
+      if (evaluated < window || traced < window) {
+        // One side fits in the window whole: read the smaller side (the walk by trace may stop sooner still).
+        return traced <= evaluated ? (byTrace.all(tenantId, agentName, '', limit) as AgentLogRow[]) : (byEvaluation.all(tenantId, agentName, limit) as AgentLogRow[]);
+      }
+      const edge = windowEdge.get(tenantId, agentName, window - 1) as { timestamp: string };
+      const rows = byTrace.all(tenantId, agentName, edge.timestamp, limit) as AgentLogRow[];
+      if (rows.length >= limit) return rows;
+      // At the rate this window held evaluations, `limit` of them lie about limit × window ÷ found traces back.
+      window = Math.max(4 * window, Math.ceil((limit * window) / Math.max(rows.length, 1)));
+    }
   }
 
   /*
@@ -1988,7 +2143,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const rows = this.db.prepare(`
       SELECT rule_results
-      FROM eval_results
+      FROM eval_results INDEXED BY idx_eval_results_tenant_created
       WHERE tenant_id = ? AND created_at >= ?
     `).all(tenantId, since) as Array<{ rule_results: string }>;
 
@@ -2352,18 +2507,33 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async getDistinctValues(tenantId: TenantId, column: string): Promise<string[]> {
     assertTenant(tenantId);
-    const queries: Record<string, string> = {
-      agent_name:
-        'SELECT DISTINCT agent_name FROM traces WHERE tenant_id = ? AND agent_name IS NOT NULL ORDER BY agent_name',
-      framework:
-        'SELECT DISTINCT framework FROM traces WHERE tenant_id = ? AND framework IS NOT NULL ORDER BY framework',
+    /*
+     * A skip scan of the (tenant, column) index: seek the smallest value,
+     * then the smallest value above it, and so on — one index seek per
+     * distinct value, however many traces carry each (#711). SELECT
+     * DISTINCT read every trace of the tenant instead: 0.2 to 0.4 s at
+     * 100,000 traces for seven agents and two frameworks, on every
+     * dashboard load.
+     */
+    const indexes: Record<string, string> = {
+      agent_name: 'idx_traces_tenant_agent_timestamp',
+      framework: 'idx_traces_tenant_framework',
     };
-    const query = queries[column];
-    if (!query) {
-      throw new Error(`Column '${column}' is not queryable (allowed: ${Object.keys(queries).join(', ')})`);
+    const index = indexes[column];
+    if (!index) {
+      throw new Error(`Column '${column}' is not queryable (allowed: ${Object.keys(indexes).join(', ')})`);
     }
-    const rows = this.db.prepare(query).all(tenantId) as Array<Record<string, string>>;
-    return rows.map((row) => row[column]);
+    const rows = this.db
+      .prepare(
+        `WITH RECURSIVE v(value) AS (
+           SELECT MIN(${column}) FROM traces INDEXED BY ${index} WHERE tenant_id = ? AND ${column} IS NOT NULL
+           UNION ALL
+           SELECT (SELECT MIN(${column}) FROM traces INDEXED BY ${index} WHERE tenant_id = ? AND ${column} > v.value) FROM v WHERE v.value IS NOT NULL
+         )
+         SELECT value FROM v WHERE value IS NOT NULL ORDER BY value`,
+      )
+      .all(tenantId, tenantId) as Array<{ value: string }>;
+    return rows.map((row) => row.value);
   }
 
   private rowToTrace(row: Record<string, unknown>): Trace {

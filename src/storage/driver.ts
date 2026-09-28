@@ -38,6 +38,13 @@
  * `{ changes }`, `get()` one row or undefined, `all()` rows; positional `?`
  * parameters; `transaction(fn)` returns a callable with `.immediate()`
  * (nested calls become savepoints, as the native driver does).
+ *
+ * Both keep the statements they prepare (statementCache, below): SQLite
+ * compiles a statement once and runs it many times, and until 0.20.0 every
+ * call here compiled it again. That was most of the cost of a write once
+ * the search index existed — the insert into spans compiles the six span
+ * triggers, and the index statement is 2 KB of SQL — 1.8 of 3.2 ms per
+ * stored trace, before any row was written.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -109,6 +116,79 @@ export interface OpenOptions {
 export const DRIVER_VAR = 'IRIS_SQLITE_DRIVER';
 export const NODE_SQLITE_MIN = '22.13.0';
 
+/**
+ * How many prepared statements one connection keeps. The store's working
+ * set is a few dozen fixed statements; the rest is SQL built per call (an
+ * `IN (?, ?, …)` list is one statement per length), so the bound is a
+ * least-recently-used list rather than a guess at the set, and a burst of
+ * one-off statements pushes out other one-off statements first.
+ */
+export const STATEMENT_CACHE_SIZE = 256;
+
+/**
+ * SQLITE_SCHEMA as each driver throws it: better-sqlite3 sets `code:
+ * 'SQLITE_SCHEMA'`; node:sqlite sets `errcode: 17`.
+ */
+export function isSchemaError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: unknown; errcode?: unknown };
+  return e.code === 'SQLITE_SCHEMA' || (typeof e.errcode === 'number' && (e.errcode & 0xff) === 17);
+}
+
+/**
+ * Prepare each SQL text once per connection and hand back the same
+ * statement after that.
+ *
+ * A kept statement stays correct when the schema changes under it — a
+ * migration, the search index built or retired, another process upgrading
+ * the file. Both drivers prepare with sqlite3_prepare_v2 or v3, so SQLite
+ * recompiles an expired statement on its next step by itself. It gives up
+ * with SQLITE_SCHEMA only when the schema keeps changing through its own
+ * retries; then the statement here is prepared again from its text and the
+ * call made once more, and a second failure is thrown as it came.
+ *
+ * Safe to share because every caller here runs a statement to completion
+ * inside one synchronous call (run, get or all; nothing iterates), so a
+ * kept statement is never mid-step when the next caller takes it.
+ */
+export function statementCache(prepare: (sql: string) => Statement, size: number = STATEMENT_CACHE_SIZE): { prepare: (sql: string) => Statement; clear: () => void; readonly size: number } {
+  const kept = new Map<string, Statement>();
+  const fresh = (sql: string): Statement => {
+    let inner = prepare(sql);
+    const call =
+      <M extends keyof Statement>(method: M) =>
+      (...params: unknown[]): ReturnType<Statement[M]> => {
+        try {
+          return inner[method](...params) as ReturnType<Statement[M]>;
+        } catch (err) {
+          if (!isSchemaError(err)) throw err;
+          inner = prepare(sql);
+          return inner[method](...params) as ReturnType<Statement[M]>;
+        }
+      };
+    return { run: call('run'), get: call('get'), all: call('all') };
+  };
+  return {
+    prepare: (sql) => {
+      const hit = kept.get(sql);
+      if (hit !== undefined) {
+        // Most recently used goes to the back; the front is the next to go.
+        kept.delete(sql);
+        kept.set(sql, hit);
+        return hit;
+      }
+      const st = fresh(sql);
+      kept.set(sql, st);
+      if (kept.size > size) kept.delete(kept.keys().next().value as string);
+      return st;
+    },
+    clear: () => kept.clear(),
+    get size() {
+      return kept.size;
+    },
+  };
+}
+
 /* ---- The native driver: better-sqlite3 ---- */
 
 type NativeStatement = { run(...p: unknown[]): { changes: number; lastInsertRowid: number | bigint }; get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[] };
@@ -140,10 +220,11 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
     ...(options.fileMustExist ? { fileMustExist: true } : {}),
     ...(options.readOnly ? { readonly: true } : {}),
   });
+  const statements = statementCache((sql) => db.prepare(sql));
   return {
     name: 'better-sqlite3',
     reason,
-    prepare: (sql) => db.prepare(sql),
+    prepare: statements.prepare,
     exec: (sql) => {
       db.exec(sql);
     },
@@ -160,7 +241,10 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
     fn: (name, impl) => {
       db.function(name, { deterministic: false, directOnly: true }, impl);
     },
-    close: () => db.close(),
+    close: () => {
+      statements.clear();
+      db.close();
+    },
   };
 }
 
@@ -304,20 +388,56 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
       depth -= 1;
     }
   };
+  /*
+   * node:sqlite reads a statement's column count before its first step, and
+   * SQLite recompiles an expired statement inside that step: so the first
+   * read after the schema changed builds its rows with the old count — a
+   * column added is missing, a table rebuilt with fewer columns throws
+   * "Cannot get name of column". A statement prepared fresh is no cure when
+   * another connection made the change: this connection compiles against
+   * the schema it last loaded until a step notices. (better-sqlite3 has
+   * neither gap; the statement-cache tests hold both drivers.) So a read
+   * checks the schema version first, one pragma; when it moved, one step
+   * over sqlite_schema makes the connection load the new schema, and the
+   * statement is prepared again against it.
+   */
+  const schemaVersion = db.prepare('PRAGMA schema_version');
+  const loadSchema = db.prepare('SELECT 1 FROM sqlite_schema LIMIT 1');
+  const version = (): unknown => (schemaVersion.get() as { schema_version: unknown }).schema_version;
+  let loaded: unknown;
+  const currentSchema = (): unknown => {
+    const now = version();
+    if (now !== loaded) {
+      loadSchema.get();
+      loaded = now;
+    }
+    return now;
+  };
+  const statements = statementCache((sql) => {
+    const preparedAgainst = currentSchema();
+    let st = db.prepare(sql);
+    let preparedAt = preparedAgainst;
+    const current = (): NodeStatement => {
+      const now = currentSchema();
+      if (now !== preparedAt) {
+        st = db.prepare(sql);
+        preparedAt = now;
+      }
+      return st;
+    };
+    return {
+      run: (...p) => {
+        const r = st.run(...p);
+        return { changes: Number(r.changes), lastInsertRowid: r.lastInsertRowid };
+      },
+      get: (...p) => current().get(...p),
+      all: (...p) => current().all(...p),
+    };
+  });
   return {
     name: 'node',
     reason,
-    prepare: (sql) => {
-      const st = db.prepare(sql);
-      return {
-        run: (...p) => {
-          const r = st.run(...p);
-          return { changes: Number(r.changes), lastInsertRowid: r.lastInsertRowid };
-        },
-        get: (...p) => st.get(...p),
-        all: (...p) => st.all(...p),
-      };
-    },
+    prepare: statements.prepare,
     exec: (sql) => db.exec(sql),
     pragma: (text) => db.prepare(`PRAGMA ${text}`).get(),
     transaction: <A extends unknown[], R>(fn: (...args: A) => R) => {
@@ -339,7 +459,10 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
       // Every built-in with FTS5 (22.16+) has it; one without never runs the statements that call it (the search reads the traces instead).
       if (typeof db.function === 'function') db.function(name, { deterministic: false, directOnly: true }, impl);
     },
-    close: () => db.close(),
+    close: () => {
+      statements.clear();
+      db.close();
+    },
   };
 }
 

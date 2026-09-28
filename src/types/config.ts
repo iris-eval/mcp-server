@@ -56,6 +56,16 @@ export interface IrisConfig {
      * IRIS_SEARCH_BUDGET_MS sets it from the environment.
      */
     searchBudgetMs?: number;
+    /**
+     * When a committed write reaches the disk. `normal` (the default since
+     * 0.20.0): at each checkpoint of the write-ahead log. A crash of Iris
+     * loses nothing and the file cannot be corrupted, but a power cut or an
+     * operating-system crash can roll back the writes since the last sync.
+     * `full`: every commit waits for the disk (about 1.5 ms more a write),
+     * and a committed write survives a power cut. SQLite's own guidance for
+     * a write-ahead log is `normal`.
+     */
+    synchronous?: 'normal' | 'full';
   };
   server: {
     name: string;
