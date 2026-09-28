@@ -3,7 +3,7 @@
 import type { Server } from 'node:http';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import { loadConfig } from './config/index.js';
+import { loadConfig, loadSecurityConfig, configFilePath, fixedApiKey, type CliArgs } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
 import { COMMAND } from './identity.js';
 import { createStorage } from './storage/index.js';
@@ -24,7 +24,7 @@ import { refreshLocalLabels } from './eval/local-labels.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { validatePortConfig } from './utils/validate-port-config.js';
 import { validateBindPolicy } from './utils/bind-policy.js';
-import { buildKeyRing } from './security/keys.js';
+import { createLiveKeyRing } from './security/live-key-ring.js';
 import { registerPlugins } from './eval/plugins.js';
 import { irisHome } from './utils/iris-home.js';
 import { requestSizeLimitBytes } from './utils/size-limit.js';
@@ -369,7 +369,7 @@ if (values['demo-clear']) {
   process.exit(0);
 }
 
-const config = loadConfig({
+const cliArgs: CliArgs = {
   transport: values.transport,
   port: values.port,
   config: values.config,
@@ -380,7 +380,8 @@ const config = loadConfig({
   dashboard: values.demo ? true : values.dashboard,
   dashboardPort: values['dashboard-port'],
   dashboardHost: values['dashboard-host'],
-});
+};
+const config = loadConfig(cliArgs);
 
 const logger = createLogger(config);
 
@@ -430,8 +431,22 @@ async function main(): Promise<void> {
   validatePortConfig(config);
   // Every configured key, read now: an unreadable key file, a
   // malformed hash or a duplicate id is one sentence here, before any port
-  // is bound, rather than a 403 later.
-  const keyRing = buildKeyRing(config.security);
+  // is bound, rather than a 403 later. The ring is live: removing a key
+  // from config.json, or deleting its key file, revokes it on the next
+  // request, with no restart (security/live-key-ring.ts).
+  const keyRing = createLiveKeyRing(config.security, {
+    load: () => loadSecurityConfig(cliArgs),
+    configPath: configFilePath(cliArgs),
+    fixedApiKey: fixedApiKey(cliArgs),
+    onReload: (event) => {
+      if (event.ok) {
+        logger.info(`API keys reloaded: ${event.ids.length} key(s) (${event.ids.join(', ') || 'none'})`);
+        for (const id of event.dropped) logger.warn(`API key "${id}" is revoked: its key file no longer exists`);
+      } else {
+        logger.error(`API keys could not be reloaded, so only a key from IRIS_API_KEY or --api-key is accepted until the files are fixed: ${event.error}`);
+      }
+    },
+  });
   // Refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
   validateBindPolicy(config);
 
@@ -480,7 +495,7 @@ async function main(): Promise<void> {
   const httpServers: Server[] = [];
 
   if (config.transport.type === 'http') {
-    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore, relevanceJudge: () => evalEngine.relevanceJudgeInForce() });
+    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore, relevanceJudge: () => evalEngine.relevanceJudgeInForce() }, keyRing);
     httpServers.push(httpServer);
     await mcpServer.connect(transport);
     const addr = httpServer.address();
@@ -525,6 +540,7 @@ async function main(): Promise<void> {
   if (config.dashboard.enabled) {
     const preferenceStore = createPreferenceStore();
     const dashboardServer = createDashboardServer(storage, config, logger, {
+      keyRing,
       customRuleStore,
       evalEngine,
       preferenceStore,

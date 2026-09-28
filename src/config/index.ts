@@ -226,11 +226,37 @@ function cliArgsToConfig(args: CliArgs): Partial<IrisConfig> {
   return config as Partial<IrisConfig>;
 }
 
+/** The config file loadConfig reads: `--config`, else `config.json` in the Iris home. */
+export function configFilePath(cliArgs?: CliArgs): string {
+  return cliArgs?.config ?? join(irisHome(), 'config.json');
+}
+
+/**
+ * The `security` block exactly as loadConfig would build it now: defaults,
+ * then the config file, then the environment, then the CLI, with the same
+ * validation (a malformed or unknown key throws). It creates nothing on
+ * disk, so the live key ring (security/live-key-ring.ts) can call it on a
+ * running server whenever the config file or a key file changes.
+ */
+export function loadSecurityConfig(cliArgs?: CliArgs): IrisConfig['security'] {
+  const layers = [loadConfigFile(configFilePath(cliArgs)), loadEnvVars(), cliArgs ? cliArgsToConfig(cliArgs) : {}];
+  return layers.reduce<IrisConfig>((config, layer) => deepMerge(config, layer), defaultConfig).security;
+}
+
+/**
+ * The key from the environment or the command line (IRIS_API_KEY,
+ * --api-key): the one key no file governs, so a key-ring reload that fails
+ * keeps only this one.
+ */
+export function fixedApiKey(cliArgs?: CliArgs): string | undefined {
+  return cliArgs?.apiKey || process.env.IRIS_API_KEY || undefined;
+}
+
 export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   const home = irisHome();
   ensureIrisDirectory(home, 'IRIS_HOME');
 
-  const configPath = cliArgs?.config ?? join(home, 'config.json');
+  const configPath = configFilePath(cliArgs);
   const fileConfig = loadConfigFile(configPath);
   const envConfig = loadEnvVars();
   const argsConfig = cliArgs ? cliArgsToConfig(cliArgs) : {};
