@@ -2066,11 +2066,13 @@ export class SqliteAdapter implements IStorageAdapter {
   /**
    * Copy the WAL into iris.db and empty it, so deleted rows survive in
    * neither (the retention sweep and --purge call this after they delete).
-   * The same route as delete_trace's: tried now, and while a reader holds
-   * it off, again until nothing is reading (eraseFromFile).
+   * The same route as delete_trace's, tried now and, while a reader holds
+   * it off, again until nothing is reading (eraseFromFile); on the
+   * checkpoint worker's connection when it runs, since after a sweep the
+   * log can be large and copying it is not a delete's few pages.
    */
   async checkpoint(): Promise<void> {
-    await this.eraseFromFile();
+    await this.eraseFromFile(true);
   }
 
   async deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean> {
@@ -2114,13 +2116,13 @@ export class SqliteAdapter implements IStorageAdapter {
    * reader holds it off, tried again every ERASE_RETRY_MS, off the event
    * loop's back; close() makes the last try, after the worker has closed.
    */
-  private async eraseFromFile(): Promise<void> {
-    if (this.dbPath === ':memory:' || this.closing || (await this.truncateCheckpointNow())) return;
+  private async eraseFromFile(onWorker = false): Promise<void> {
+    if (this.dbPath === ':memory:' || this.closing || (await this.truncateCheckpointNow(onWorker))) return;
     let trying = false;
     this.eraseRetry ??= setInterval(() => {
       if (trying) return;
       trying = true;
-      void this.truncateCheckpointNow().then((done) => {
+      void this.truncateCheckpointNow(onWorker).then((done) => {
         trying = false;
         if (!done && !this.closing) return;
         clearInterval(this.eraseRetry);
@@ -2131,12 +2133,14 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /**
    * A TRUNCATE checkpoint that gives up at once rather than wait for a
-   * reader; whether it emptied the WAL. On the checkpoint worker's
-   * connection when it runs (checkpointer.ts), so the copy and the sync
-   * never hold the event loop; else on this connection.
+   * reader; whether it emptied the WAL. `onWorker`: on the checkpoint
+   * worker's connection when it runs (checkpointer.ts), so copying a large
+   * log never holds the event loop. A delete's own erasure stays on this
+   * connection: its log is a few pages, and it must not wait behind the
+   * worker's periodic checkpoint for its answer.
    */
-  private async truncateCheckpointNow(): Promise<boolean> {
-    if (this.checkpointer?.active) {
+  private async truncateCheckpointNow(onWorker = false): Promise<boolean> {
+    if (onWorker && this.checkpointer?.active) {
       try {
         return await this.checkpointer.truncate();
       } catch {
