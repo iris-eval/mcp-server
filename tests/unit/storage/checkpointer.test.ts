@@ -62,8 +62,8 @@ describe('WAL checkpoints on a worker thread', () => {
     expect(await worker(s)!.started).toBe(true);
     expect(autocheckpoint(s)).toBe(0);
     const before = size(path);
-    // Far more than 1,000 pages: a connection checkpointing by itself would have copied some of it inside a commit.
-    for (let i = 0; i < 4; i += 1) await s.insertTraces(LOCAL_TENANT, traces(500, i * 500));
+    // Well past 1,000 pages (4 MB) with or without FTS5: a connection checkpointing by itself would have copied some of it inside a commit.
+    for (let i = 0; i < 8; i += 1) await s.insertTraces(LOCAL_TENANT, traces(500, i * 500));
     expect(size(`${path}-wal`)).toBeGreaterThan(4 * 1024 * 1024);
     const deadline = Date.now() + 10_000;
     while (size(path) <= before + 2 * 1024 * 1024 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));

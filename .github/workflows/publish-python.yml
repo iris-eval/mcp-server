@@ -8,11 +8,18 @@
 #
 # Tag `py-vX.Y.Z` where X.Y.Z is packages/python/pyproject.toml's version,
 # at a commit that is on main.
+#
+# Every pull request runs the build job too: the hash-pinned install, the
+# build and the fresh-environment import are what a tag will run, so they are
+# proven before one is pushed rather than on release day. The publish job
+# runs only for a py-v* tag, so a pull request builds and publishes nothing.
 name: Publish the Python client
 
 on:
   push:
     tags: ['py-v*']
+  pull_request:
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -52,7 +59,8 @@ jobs:
       # .github/requirements/build.txt. --no-isolation builds with exactly
       # those: an isolated build would download the backend again, unpinned.
       - name: Install the build tools, hash-pinned
-        run: python -m pip install --require-hashes --only-binary :all: -r .github/requirements/build.txt
+        run: |
+          python -m pip install --require-hashes --only-binary :all: -r .github/requirements/build.txt
       - run: python -m build --no-isolation packages/python --outdir dist
       - name: The wheel installs into a fresh environment and imports
         run: |

@@ -47,7 +47,7 @@ jobs:
           IRIS_NO_AUTO_LAUNCH=1 node dist/index.js --dashboard --dashboard-port 6922 &
           echo $! > /tmp/iris.pid
           # Poll health until ready
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl -sf http://localhost:6922/api/v1/health > /dev/null; then
               echo "iris-mcp ready"
               break
@@ -68,7 +68,7 @@ jobs:
         if: always()
         run: |
           if [ -f /tmp/iris.pid ]; then
-            kill $(cat /tmp/iris.pid) || true
+            kill "$(cat /tmp/iris.pid)" || true
           fi
 
       - name: Upload Lighthouse report
