@@ -16,6 +16,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { resourceTextOf } from '../../helpers/mcp-results.js';
 
 const callLLMJudge = vi.fn();
 vi.mock('../../../src/eval/llm-judge/client.js', () => ({
@@ -109,7 +110,7 @@ describe('the relevance judge over MCP', () => {
     expect(callLLMJudge).toHaveBeenCalledTimes(1);
     expect(callLLMJudge.mock.calls[0][0]).toMatchObject({ model: 'claude-haiku-4-5', provider: 'anthropic', temperature: 0 });
 
-    const stored = JSON.parse((await client.readResource({ uri: `iris://evaluations/${e.id}` })).contents[0].text as string) as Evaluation;
+    const stored = JSON.parse(resourceTextOf(await client.readResource({ uri: `iris://evaluations/${e.id}` }))) as Evaluation;
     expect(stored.passed).toBe(false);
     expect(stored.verdict).toMatchObject({ state: 'fail', basis: 'policy_gate', by: ['answers_the_ask'] });
     expect(answers(stored).judge).toMatchObject({ score: 0.03, rationale: 'A weather bulletin, not a summary of the report.' });
@@ -138,7 +139,7 @@ describe('the relevance judge over MCP', () => {
 
   it('iris://capabilities says whether a relevance judge is installed, and whether it can be called', async () => {
     await boot({ IRIS_ANTHROPIC_API_KEY: 'sk-ant-dummy-key-for-tests-0123456789' });
-    const read = async () => (JSON.parse((await client.readResource({ uri: 'iris://capabilities' })).contents[0].text as string) as { judge: { relevance: Record<string, unknown> } }).judge.relevance;
+    const read = async () => (JSON.parse(resourceTextOf(await client.readResource({ uri: 'iris://capabilities' }))) as { judge: { relevance: Record<string, unknown> } }).judge.relevance;
     expect(await read()).toMatchObject({ configured: false, ready: false, model: null, passThreshold: 0.6 });
     await client.close();
     await storage.close();

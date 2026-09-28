@@ -11,6 +11,7 @@ import {
   __setDnsLookupForTests,
 } from '../../src/eval/citation-verify/resolve.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
+import { resourceTextOf } from '../helpers/mcp-results.js';
 
 describe('MCP Protocol Integration', () => {
   let client: Client;
@@ -452,7 +453,7 @@ describe('MCP Protocol Integration', () => {
     const originalKey = process.env.IRIS_ANTHROPIC_API_KEY;
     process.env.IRIS_ANTHROPIC_API_KEY = 'integration-test-key';
     __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+    global.fetch = vi.fn(async (input: string | URL | Request) => {
       const url = typeof input === 'string' ? input : input.toString();
       const hostname = new URL(url).hostname;
       if (hostname === 'api.anthropic.com') {
@@ -812,9 +813,7 @@ describe('MCP Protocol Integration', () => {
   });
 
   it('should read dashboard summary resource', async () => {
-    const result = await client.readResource({ uri: 'iris://dashboard/summary' });
-    const content = result.contents[0];
-    const parsed = JSON.parse(content.text as string);
+    const parsed = JSON.parse(resourceTextOf(await client.readResource({ uri: 'iris://dashboard/summary' })));
     expect(parsed.total_traces).toBeDefined();
   });
 

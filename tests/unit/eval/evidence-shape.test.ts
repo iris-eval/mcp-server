@@ -30,10 +30,11 @@ import { defaultConfig } from '../../../src/config/defaults.js';
 import { rulesByType } from '../../../src/eval/rules/index.js';
 import { PII_PATTERNS } from '../../../src/eval/rules/safety.js';
 import { evaluateOutputResponseSchema, type EvaluateOutputResponse } from '../../../src/eval/response-schema.js';
-import type { EvalRule, Evidence } from '../../../src/types/eval.js';
+import type { EvalRule } from '../../../src/types/eval.js';
 import { loadCorpus } from '../../../proof/lib/corpus.js';
 import { materialiseCase } from '../../../proof/lib/materialise.js';
 import { contextFor } from '../../../proof/run.js';
+import { textOf } from '../../helpers/mcp-results.js';
 
 const root = resolve(__dirname, '..', '..', '..');
 const FIXTURES = resolve(root, 'tests', 'fixtures', 'real-transcripts');
@@ -51,8 +52,10 @@ const t13 = load('t-13-grep-no-match.json');
 const t16 = load('t-16-ls-loop.json');
 const t24 = load('t-24-hidden-html-comment.json');
 
-const spans = (r: { evidence?: Evidence[] } | undefined): Array<Extract<Evidence, { type: 'span' }>> =>
-  (r?.evidence ?? []).filter((e): e is Extract<Evidence, { type: 'span' }> => e.type === 'span');
+/** The evidence items of one type, narrowed: works on the engine's Evidence and on the response schema's, whose items are loose objects. */
+const ofType = <E extends { type: string }, T extends E['type']>(list: readonly E[] | undefined, type: T): Array<Extract<E, { type: T }>> =>
+  (list ?? []).filter((e): e is Extract<E, { type: T }> => e.type === type);
+const spans = <E extends { type: string }>(r: { evidence?: readonly E[] } | undefined) => ofType(r?.evidence, 'span');
 
 describe('evidence — real transcripts through the real handler', () => {
   let client: Client;
@@ -77,8 +80,7 @@ describe('evidence — real transcripts through the real handler', () => {
       name: 'evaluate_output',
       arguments: { output: t.output, input: t.input, tool_calls: t.tool_calls, cost_usd: t.cost_usd, token_usage: t.token_usage, eval_type: 'all' },
     });
-    const text = (res.content as Array<{ type: string; text: string }>)[0].text;
-    return evaluateOutputResponseSchema.parse(JSON.parse(text));
+    return evaluateOutputResponseSchema.parse(JSON.parse(textOf(res)));
   }
 
   it('the SSN transcript: no_pii fires with spans that slice to what it matched, and no evidence repeats the text', async () => {
@@ -114,7 +116,7 @@ describe('evidence — real transcripts through the real handler', () => {
     const r = await evaluate(t16);
     const loop = r.rule_results.find((x) => x.ruleName === 'no_tool_loop')!;
     expect(loop.passed).toBe(false);
-    const count = (loop.evidence ?? []).find((e) => e.type === 'count') as Extract<Evidence, { type: 'count' }> | undefined;
+    const count = ofType(loop.evidence, 'count')[0];
     expect(count).toBeDefined();
     expect(count!.value).toBeGreaterThan(count!.threshold!);
     expect(count!.thresholdSource).toBe('default');
@@ -143,7 +145,7 @@ describe('evidence — real transcripts through the real handler', () => {
       expect(x.skipped, name).toBeFalsy();
       expect(x.value, `${name}.value`).toBeDefined();
       expect(x.value!.unit.length).toBeGreaterThan(0);
-      const count = (x.evidence ?? []).find((e) => e.type === 'count') as Extract<Evidence, { type: 'count' }> | undefined;
+      const count = ofType(x.evidence, 'count')[0];
       expect(count, `${name} count evidence`).toBeDefined();
       expect(count!.threshold, `${name} threshold`).toBeDefined();
       expect(['default', 'config', 'rule']).toContain(count!.thresholdSource);

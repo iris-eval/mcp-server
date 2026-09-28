@@ -21,6 +21,7 @@ import { createCustomRuleStore } from '../../src/custom-rule-store.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { toolGuide } from '../../src/tools/guide.js';
+import { textOf, type ToolResult } from '../helpers/mcp-results.js';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -45,9 +46,8 @@ vi.mock('../../src/eval/citation-verify/verifier.js', () => ({
   })),
 }));
 
-type Content = Array<{ type: string; text: string }>;
-const text = (r: { content?: unknown }) => (r.content as Content)[0].text;
-const parse = (r: { content?: unknown }) => JSON.parse(text(r));
+const text = (r: ToolResult) => textOf(r);
+const parse = (r: ToolResult) => JSON.parse(textOf(r));
 
 const CLEAN_OUTPUT =
   'The quarterly report is attached. Revenue grew in every region, and the outlook remains stable for next year.';

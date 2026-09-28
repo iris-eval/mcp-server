@@ -51,7 +51,7 @@ const supportedVerdict = () =>
  */
 function network(sources: Record<string, () => Response>, judge: Array<() => Response | Promise<Response>>) {
   let judgeCall = 0;
-  return vi.fn(async (input: RequestInfo | URL) => {
+  return vi.fn(async (input: string | URL | Request) => {
     const { hostname } = new URL(input instanceof Request ? input.url : String(input));
     if (hostname === 'api.anthropic.com') {
       const reply = judge[judgeCall] ?? judge[judge.length - 1];

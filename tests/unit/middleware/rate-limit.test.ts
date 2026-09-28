@@ -12,6 +12,7 @@ function makeConfig(apiLimit: number, mcpLimit = 20): Pick<IrisConfig, 'security
   return {
     security: {
       apiKey: undefined,
+      allowUnauthenticated: false,
       allowedOrigins: ['*'],
       rateLimit: { api: apiLimit, mcp: mcpLimit },
       requestSizeLimit: '1mb',

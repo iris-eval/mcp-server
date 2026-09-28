@@ -18,6 +18,7 @@ import type { AgentFailureLogEntry, IStorageAdapter } from '../../../../src/type
 import type { Trace } from '../../../../src/types/trace.js';
 import type { EvalResult } from '../../../../src/types/eval.js';
 import type { RankedFailure } from '../../../../src/types/decision-moment.js';
+import { recordOf } from '../../../helpers/json.js';
 
 function makeTrace(id: string, overrides: Partial<Trace> = {}): Trace {
   return {
@@ -114,16 +115,35 @@ function makeApp(storage: IStorageAdapter, { withTenant = true } = {}) {
   return app;
 }
 
-async function request(
-  app: express.Express,
-  path: string,
-): Promise<{ status: number; body: { failures: RankedFailure[]; scanned: number; total: number; limit: number } }> {
+interface FailuresBody {
+  failures: RankedFailure[];
+  scanned: number;
+  total: number;
+  limit: number;
+}
+
+/** A 200 body of GET /failures, checked; throws naming the field that is off. */
+function failuresBodyOf(value: unknown): FailuresBody {
+  const body = recordOf(value);
+  const { failures, scanned, total, limit } = body;
+  if (!Array.isArray(failures)) throw new Error(`failures is not an array: ${JSON.stringify(body).slice(0, 200)}`);
+  if (typeof scanned !== 'number' || typeof total !== 'number' || typeof limit !== 'number') throw new Error(`scanned, total and limit must be numbers: ${JSON.stringify({ scanned, total, limit })}`);
+  return { failures, scanned, total, limit };
+}
+
+async function request(app: express.Express, path: string): Promise<{ status: number; readonly body: FailuresBody }> {
   const server = app.listen(0);
   const addr = server.address() as { port: number };
   try {
     const res = await fetch(`http://localhost:${addr.port}${path}`);
-    const body = res.status === 200 ? await res.json() : await res.json().catch(() => ({}));
-    return { status: res.status, body };
+    const json: unknown = res.status === 200 ? await res.json() : await res.json().catch(() => ({}));
+    // Checked when a test reads it: the refusal cases read only the status.
+    return {
+      status: res.status,
+      get body() {
+        return failuresBodyOf(json);
+      },
+    };
   } finally {
     server.close();
   }

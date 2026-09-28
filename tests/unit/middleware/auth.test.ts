@@ -8,6 +8,7 @@ function makeConfig(apiKey?: string): Pick<IrisConfig, 'security'> {
   return {
     security: {
       apiKey,
+      allowUnauthenticated: false,
       allowedOrigins: ['http://localhost:*'],
       rateLimit: { api: 100, mcp: 20 },
       requestSizeLimit: '1mb',

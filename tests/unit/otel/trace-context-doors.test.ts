@@ -20,11 +20,11 @@ import { defaultConfig } from '../../../src/config/defaults.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { IrisConfig } from '../../../src/types/config.js';
+import { textOf, type ToolResult } from '../../helpers/mcp-results.js';
 
 const TP = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 const mockLogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
-type Content = Array<{ type: string; text: string }>;
-const parse = (r: { content?: unknown }) => JSON.parse((r.content as Content)[0].text) as Record<string, unknown>;
+const parse = (r: ToolResult): Record<string, unknown> => JSON.parse(textOf(r));
 
 describe('log_trace reads _meta (SEP-414)', () => {
   let client: Client;

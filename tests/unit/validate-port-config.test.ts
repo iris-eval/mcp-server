@@ -12,10 +12,12 @@ import { validatePortConfig } from '../../src/utils/validate-port-config.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import type { IrisConfig } from '../../src/types/index.js';
 
-function cfg(overrides: Partial<IrisConfig>): IrisConfig {
+/** The shipped config with the transport and dashboard fields a case sets; the rest keep their defaults. */
+type Overrides = { transport?: Partial<IrisConfig['transport']>; dashboard?: Partial<IrisConfig['dashboard']> };
+
+function cfg(overrides: Overrides): IrisConfig {
   return {
     ...defaultConfig,
-    ...overrides,
     transport: { ...defaultConfig.transport, ...(overrides.transport ?? {}) },
     dashboard: { ...defaultConfig.dashboard, ...(overrides.dashboard ?? {}) },
   };
