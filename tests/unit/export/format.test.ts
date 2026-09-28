@@ -53,6 +53,7 @@ const record: TraceRecord = {
     latency_ms: 120,
     token_usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
     cost_usd: 0.002,
+    cost_source: 'estimated',
     metadata: { channel: 'web' },
     timestamp: '2026-09-28T10:00:00.000Z',
     session_id: 's1',
@@ -89,6 +90,7 @@ describe('trace export', () => {
     expect(cell('trace_id')).toBe('t1');
     expect(cell('input'), 'the formula is neutralised').toBe(`'=cmd|"/c calc"!A1`);
     expect(cell('output'), 'non-ASCII and newlines survive').toBe(record.trace.output);
+    expect(cell('cost_source')).toBe('estimated');
     expect(cell('tool_call_count')).toBe('2');
     expect(cell('tool_names')).toBe('lookup; refund');
     expect(cell('span_count')).toBe('1');

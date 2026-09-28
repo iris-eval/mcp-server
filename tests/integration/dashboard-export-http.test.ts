@@ -98,6 +98,28 @@ describe('GET /api/v1/traces/export', () => {
     expect(records.find((r) => r.trace.trace_id === ids[1])!.evals).toHaveLength(1);
   });
 
+  it('says whether each cost was reported or estimated from the tokens: a cost_source column, and cost_source with cost_estimate in JSON Lines', async () => {
+    const { base } = await boot();
+    const tokens = { prompt_tokens: 150_000, completion_tokens: 10_000, total_tokens: 160_000 };
+    const reported = await post(base, { agent_name: 'bot', output: 'a', cost_usd: 0.5, timestamp: '2026-09-28T10:00:00.000Z' });
+    const estimated = await post(base, { agent_name: 'bot', output: 'b', token_usage: tokens, metadata: { model: 'gpt-4o-mini' }, timestamp: '2026-09-28T10:01:00.000Z' });
+    const none = await post(base, { agent_name: 'bot', output: 'c', timestamp: '2026-09-28T10:02:00.000Z' });
+
+    const [header, ...rows] = parseCsv((await body(await fetch(exportUrl(base, 'traces', { format: 'csv' })))).slice(CSV_BOM.length));
+    const byId = new Map(rows.map((r) => [r[header.indexOf('trace_id')], r]));
+    const cell = (id: string, name: string) => byId.get(id)![header.indexOf(name)];
+    expect(header.indexOf('cost_source'), 'right after cost_usd').toBe(header.indexOf('cost_usd') + 1);
+    expect([cell(reported, 'cost_usd'), cell(reported, 'cost_source')]).toEqual(['0.5', 'reported']);
+    expect(Number(cell(estimated, 'cost_usd'))).toBeGreaterThan(0);
+    expect(cell(estimated, 'cost_source')).toBe('estimated');
+    expect([cell(none, 'cost_usd'), cell(none, 'cost_source')]).toEqual(['', '']);
+
+    const records = new Map(jsonl(await (await fetch(exportUrl(base, 'traces', { format: 'jsonl' }))).text()).map((r) => [r.trace.trace_id, r.trace]));
+    expect(records.get(reported)).toMatchObject({ cost_usd: 0.5, cost_source: 'reported' });
+    expect(records.get(estimated)).toMatchObject({ cost_source: 'estimated', cost_estimate: { status: 'estimated', basis: 'token_usage', calls: [{ priced_as: 'gpt-4o-mini' }] } });
+    expect(records.get(none)!.cost_source).toBeUndefined();
+  });
+
   it('never exports another tenant’s rows', async () => {
     const { base, storage } = await boot();
     const mine = await post(base, { agent_name: 'bot', output: 'shared words here' });

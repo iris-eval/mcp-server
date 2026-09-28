@@ -81,6 +81,8 @@ export const TRACE_COLUMNS: ReadonlyArray<Column<TraceRecord>> = [
   { name: 'completion_tokens', value: (r) => r.trace.token_usage?.completion_tokens },
   { name: 'total_tokens', value: (r) => r.trace.token_usage?.total_tokens },
   { name: 'cost_usd', value: (r) => r.trace.cost_usd },
+  // `reported` or `estimated` (from the tokens at list price); empty when the trace has no cost. The JSON Lines record carries cost_estimate as well: the calls, tokens and prices behind an estimate.
+  { name: 'cost_source', value: (r) => r.trace.cost_source },
   { name: 'input', value: (r) => r.trace.input },
   { name: 'output', value: (r) => r.trace.output },
   { name: 'tool_call_count', value: (r) => r.trace.tool_calls?.length ?? 0 },

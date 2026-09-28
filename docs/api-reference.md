@@ -1115,6 +1115,7 @@ A failure before the first row is an ordinary JSON error with its status. A fail
 |--------|-------|
 | `trace_id`, `timestamp`, `agent_name`, `framework`, `source`, `session_id`, `run_id`, `case_key` | The trace's own fields; empty when absent |
 | `latency_ms`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd` | Numbers; empty when not recorded |
+| `cost_source` | `reported` when the trace carried its cost, `estimated` when Iris priced its tokens at list price; empty when the trace has no cost. The JSON Lines record also carries `cost_estimate`: the calls, tokens and prices behind an estimate, or why there is no cost |
 | `input`, `output` | The stored text |
 | `tool_call_count`, `tool_names` | How many tool calls, and their names joined by `; ` |
 | `span_count`, `eval_count` | How many spans and evaluations the trace has |
