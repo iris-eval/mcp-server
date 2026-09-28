@@ -39,8 +39,31 @@ export type SearchField = (typeof SEARCH_FIELDS)[number];
 
 /** Longest query accepted, in characters. */
 export const SEARCH_MAX_LENGTH = 500;
-/** Most terms one query may carry; words past it are refused rather than dropped. */
-export const SEARCH_MAX_TERMS = 32;
+
+/*
+ * What one query may cost (#703). A term costs a read of every place its
+ * word occurs; a prefix term costs that for every word it starts, merged
+ * before the first result, and nothing can interrupt that merge. `w*` in a
+ * store where most words start with w merged nearly the whole index, and
+ * the same term repeated 32 times did it 32 times: 47 s on 10,000 traces,
+ * with every other request waiting. So a query is normalised first
+ * (normaliseTerms: a repeat, or a prefix another term implies, is searched
+ * once and reported as ignored), and then refused if it is still over one of
+ * the limits below (searchRefusal). Whatever passes also runs under a time
+ * budget (the adapter's searchBudgetMs).
+ */
+/** Most terms one query may carry, after repeats are merged; a query with more is refused, never cut. */
+export const SEARCH_MAX_TERMS = 16;
+/** Most prefix terms (`word*`) one query may carry. */
+export const SEARCH_MAX_PREFIXES = 4;
+/**
+ * Fewest characters before a `*`. A one- or two-letter prefix starts most
+ * of the words in a store (measured in the changelog), so it narrows
+ * nothing and costs a merge of all of them. A word with Chinese, Japanese or
+ * Korean in it needs one character: one CJK character is a word, and it is
+ * already searched as the pieces it starts (cjkQuery).
+ */
+export const SEARCH_MIN_PREFIX_CHARS = 3;
 
 export interface SearchTerm {
   /** Normalised tokens, in order; one for a word, several for a phrase. */
@@ -49,8 +72,18 @@ export interface SearchTerm {
   prefix: boolean;
 }
 
+/** A term the query carried that is not searched, because the terms kept already find exactly what it would. */
+export interface IgnoredTerm {
+  term: string;
+  reason: string;
+}
+
 export interface ParsedSearch {
   terms: SearchTerm[];
+  /** Terms left out by normaliseTerms, each once. */
+  ignored?: IgnoredTerm[];
+  /** Prefix terms typed with too few characters (searchRefusal refuses them), each once, including any normaliseTerms left out. */
+  shortPrefixes?: string[];
 }
 
 export interface MatchFragment {
@@ -167,6 +200,11 @@ export function tokenize(text: string): Token[] {
  * and a chunk with no letter or digit in it is not a term.
  */
 export function parseSearch(raw: string): ParsedSearch {
+  return normaliseTerms(splitTerms(raw));
+}
+
+/** The terms as typed, before normaliseTerms: exported for the test that holds normalising to finding the same traces. */
+export function splitTerms(raw: string): SearchTerm[] {
   const terms: SearchTerm[] = [];
   const text = raw.slice(0, SEARCH_MAX_LENGTH);
   let i = 0;
@@ -202,7 +240,7 @@ export function parseSearch(raw: string): ParsedSearch {
     const prefix = lastCp >= 0 && !isSeparator(lastCp);
     terms.push({ tokens, prefix });
   }
-  return { terms };
+  return terms;
 }
 
 /** How a term reads back to the caller: `refund`, `"agent said"`, `refund*`. */
@@ -210,6 +248,74 @@ export function describeTerm(term: SearchTerm): string {
   const words = term.tokens.join(' ');
   const shown = term.tokens.length > 1 ? `"${words}"` : words;
   return term.prefix ? `${shown}*` : shown;
+}
+
+/**
+ * Leave out the terms that cannot change which traces match, so each costs
+ * nothing: a repeat of an earlier term, and a one-word prefix that another
+ * one-word term implies (`refund` or `refunded*` finds only traces `ref*`
+ * finds, so `ref*` adds nothing). Terms with CJK in them are only merged
+ * when repeated: a CJK word is searched as its pieces (cjkQuery), and a
+ * shorter one is not always a prefix of those. The ranking can change,
+ * since each term kept is scored once; the traces matched do not.
+ */
+export function normaliseTerms(all: SearchTerm[]): ParsedSearch {
+  const ignored = new Map<string, string>();
+  const seen = new Set<string>();
+  const unique: SearchTerm[] = [];
+  for (const term of all) {
+    const key = describeTerm(term);
+    if (seen.has(key)) {
+      ignored.set(key, 'repeats an earlier term');
+      continue;
+    }
+    seen.add(key);
+    unique.push(term);
+  }
+  const single = (t: SearchTerm) => t.tokens.length === 1 && !hasCjk(t.tokens[0]);
+  const terms = unique.filter((term) => {
+    if (!term.prefix || !single(term)) return true;
+    const by = unique.find((other) => other !== term && single(other) && other.tokens[0].startsWith(term.tokens[0]) && (other.tokens[0] !== term.tokens[0] || !other.prefix));
+    if (by === undefined) return true;
+    ignored.set(describeTerm(term), `implied by ${describeTerm(by)}`);
+    return false;
+  });
+  // Judged on what was typed, so the rule reads the same whether or not another term implies the prefix (the dashboard checks it as typed).
+  const short = unique.filter(isShortPrefix).map(describeTerm);
+  return {
+    terms,
+    ...(ignored.size > 0 ? { ignored: [...ignored].map(([term, reason]) => ({ term, reason })) } : {}),
+    ...(short.length > 0 ? { shortPrefixes: short } : {}),
+  };
+}
+
+/** A prefix term with fewer than SEARCH_MIN_PREFIX_CHARS characters before its `*`, and no CJK in its last word. */
+function isShortPrefix(t: SearchTerm): boolean {
+  const last = t.tokens[t.tokens.length - 1];
+  return t.prefix && !hasCjk(last) && Array.from(last).length < SEARCH_MIN_PREFIX_CHARS;
+}
+
+/**
+ * Why this query is refused, or undefined when it may run: a prefix too
+ * short to narrow anything, or more terms or prefix terms than one query
+ * may carry. Read by both request paths before they search (get_traces,
+ * GET /api/v1/traces) and by the adapter itself, so nothing reaches the
+ * index over the limits.
+ */
+export function searchRefusal(parsed: ParsedSearch): string | undefined {
+  const short = parsed.shortPrefixes ?? parsed.terms.filter(isShortPrefix).map(describeTerm);
+  if (short.length > 0) {
+    const shown = short.join(', ');
+    return `${shown}: a prefix needs at least ${SEARCH_MIN_PREFIX_CHARS} letters or digits before the * (one is enough for Chinese, Japanese or Korean). A shorter prefix starts most words, so it narrows nothing and makes the search slow: write more of the word, or drop the *`;
+  }
+  const prefixes = parsed.terms.filter((t) => t.prefix).length;
+  if (prefixes > SEARCH_MAX_PREFIXES) {
+    return `${prefixes} prefix terms (word*): a search takes at most ${SEARCH_MAX_PREFIXES}, because each one reads every word it starts. Write some of them out in full`;
+  }
+  if (parsed.terms.length > SEARCH_MAX_TERMS) {
+    return `${parsed.terms.length} terms: a search takes at most ${SEARCH_MAX_TERMS} (a "quoted phrase" is one term). Every word must match, so the first few already narrow it`;
+  }
+  return undefined;
 }
 
 /**

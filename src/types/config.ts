@@ -48,6 +48,14 @@ export interface IrisConfig {
      * trace to erase it.
      */
     redact?: 'none' | 'critical_spans';
+    /**
+     * How long one trace search may read before it answers with the matches
+     * it found so far (`search.complete: false`), in milliseconds (50 to
+     * 60,000; default 1,000). A search holds every other request while it
+     * reads, so this is also the longest it can make them wait.
+     * IRIS_SEARCH_BUDGET_MS sets it from the environment.
+     */
+    searchBudgetMs?: number;
   };
   server: {
     name: string;

@@ -25,6 +25,12 @@ import { WEBHOOK_EVENTS, WEBHOOK_FORMATS } from '../notify/event-names.js';
 import type { IrisConfig } from '../types/config.js';
 import { parseSizeLimit } from '../utils/size-limit.js';
 
+/**
+ * storage.searchBudgetMs and IRIS_SEARCH_BUDGET_MS, in milliseconds: long
+ * enough for a search to read something, short enough that the requests
+ * waiting behind it are not left for minutes (#703).
+ */
+export const SEARCH_BUDGET_RANGE_MS = [50, 60_000] as const;
 const port = z.number().int().min(1).max(65535);
 const nonNegativeInt = z.number().int().min(0);
 const nonNegative = z.number().min(0);
@@ -54,6 +60,7 @@ export const configFileSchema = z.strictObject({
       type: z.literal('sqlite').optional(),
       path: name.optional(),
       redact: z.enum(['none', 'critical_spans']).optional(),
+      searchBudgetMs: z.number().int().min(SEARCH_BUDGET_RANGE_MS[0]).max(SEARCH_BUDGET_RANGE_MS[1]).optional(),
     })
     .optional(),
   server: z.strictObject({ name: name.optional(), version: name.optional() }).optional(),

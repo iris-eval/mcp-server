@@ -217,6 +217,8 @@ Environment variables (CLI flags take precedence):
   IRIS_DB_PATH                         SQLite database path (overrides IRIS_HOME for the DB only)
   IRIS_SQLITE_DRIVER                   native (better-sqlite3, default) | node (Node's built-in node:sqlite, 22.13+).
                                        Unset: native, falling back to node when the native module cannot load
+  IRIS_SEARCH_BUDGET_MS                How long one trace search may read before it answers with what it found
+                                       (50-60000 ms, default 1000; storage.searchBudgetMs in config.json)
   IRIS_LOG_LEVEL                       debug | info | warn | error
   IRIS_DASHBOARD                       true/1/yes/on enables the web dashboard; false/0/no/off disables it (overrides config.json)
   IRIS_DASHBOARD_PORT                  Dashboard port (1-65535, default: 6920)

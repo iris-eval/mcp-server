@@ -10,8 +10,8 @@
  * addon's own classes.
  *
  * This file is the seam. Everything above it — the adapter, the twelve
- * migrations, the self-test — talks to a `Driver` with five verbs:
- * prepare, exec, pragma, transaction, close. Two drivers implement it:
+ * migrations, the self-test — talks to a `Driver` with six verbs:
+ * prepare, exec, pragma, transaction, fn, close. Two drivers implement it:
  *
  *   native   better-sqlite3, the default — fastest, and what every number
  *            in the proof was measured on.
@@ -59,6 +59,14 @@ export interface Driver {
   /** `PRAGMA <text>` — reads and assignments alike; returns the first row when the pragma answers with one. */
   pragma(text: string): unknown;
   transaction<A extends unknown[], R>(fn: (...args: A) => R): Transaction<A, R>;
+  /**
+   * Define a SQL function on this connection, callable from statements
+   * only (never from a trigger or view the file carries), and not
+   * deterministic. An error it throws ends the statement and reaches the
+   * caller as it was thrown: the search reads its matches through one, so
+   * it can stop at its time budget and keep what it read (sqlite-adapter).
+   */
+  fn(name: string, impl: (...args: unknown[]) => unknown): void;
   close(): void;
 }
 
@@ -85,10 +93,12 @@ export const NODE_SQLITE_MIN = '22.13.0';
 /* ---- The native driver: better-sqlite3 ---- */
 
 type NativeStatement = { run(...p: unknown[]): { changes: number; lastInsertRowid: number | bigint }; get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[] };
+type FunctionOptions = { deterministic: boolean; directOnly: boolean };
 type NativeDatabase = {
   prepare(sql: string): NativeStatement;
   exec(sql: string): unknown;
   pragma(text: string): unknown;
+  function(name: string, options: FunctionOptions, impl: (...args: unknown[]) => unknown): unknown;
   transaction<F extends (...args: never[]) => unknown>(fn: F): F & { immediate: F };
   close(): void;
 };
@@ -114,6 +124,9 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
     },
     pragma: (text) => db.pragma(text),
     transaction: <A extends unknown[], R>(fn: (...args: A) => R) => db.transaction(fn as (...args: never[]) => unknown) as unknown as Transaction<A, R>,
+    fn: (name, impl) => {
+      db.function(name, { deterministic: false, directOnly: true }, impl);
+    },
     close: () => db.close(),
   };
 }
@@ -121,7 +134,12 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
 /* ---- The built-in driver: node:sqlite ---- */
 
 type NodeStatement = { run(...p: unknown[]): { changes: number | bigint; lastInsertRowid: number | bigint }; get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[] };
-type NodeDatabase = { prepare(sql: string): NodeStatement; exec(sql: string): void; close(): void };
+type NodeDatabase = {
+  prepare(sql: string): NodeStatement;
+  exec(sql: string): void;
+  function(name: string, options: FunctionOptions, impl: (...args: unknown[]) => unknown): void;
+  close(): void;
+};
 type NodeSqliteModule = { DatabaseSync: new (path: string, options?: Record<string, unknown>) => NodeDatabase };
 
 function defaultLoadNode(): NodeSqliteModule {
@@ -198,6 +216,10 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
       const tx = ((...args: A) => runIn('DEFERRED', fn, args)) as Transaction<A, R>;
       tx.immediate = (...args: A) => runIn('IMMEDIATE', fn, args);
       return tx;
+    },
+    fn: (name, impl) => {
+      // Every built-in with FTS5 (22.16+) has it; one without never runs the statements that call it (the search reads the traces instead).
+      if (typeof db.function === 'function') db.function(name, { deterministic: false, directOnly: true }, impl);
     },
     close: () => db.close(),
   };

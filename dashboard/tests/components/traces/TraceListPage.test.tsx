@@ -111,7 +111,7 @@ describe('TraceListPage search', () => {
               },
             }),
           ],
-          { terms: ['refund', 'approved'], index: 'fts5' },
+          { terms: ['refund', 'approved'], index: 'fts5', complete: true },
         ),
       ),
     );
@@ -132,7 +132,7 @@ describe('TraceListPage search', () => {
 
   it('renders the trace’s text as text: markup in a snippet never becomes an element', () => {
     useTracesMock.mockReturnValue(
-      ready(page([trace('t-x', { match: { field: 'output', snippet: '<img src=x onerror=alert(1)> script', fragments: [{ text: '<img src=x onerror=alert(1)> ', hit: false }, { text: 'script', hit: true }] } })], { terms: ['script'], index: 'fts5' })),
+      ready(page([trace('t-x', { match: { field: 'output', snippet: '<img src=x onerror=alert(1)> script', fragments: [{ text: '<img src=x onerror=alert(1)> ', hit: false }, { text: 'script', hit: true }] } })], { terms: ['script'], index: 'fts5', complete: true })),
     );
     const { container } = renderAt('/traces?q=script');
     expect(container.querySelector('img')).toBeNull();
@@ -147,15 +147,38 @@ describe('TraceListPage search', () => {
   });
 
   it('says so when nothing matches, and when the server searched without the full-text index', () => {
-    useTracesMock.mockReturnValue(ready(page([], { terms: ['zebra'], index: 'fts5' })));
+    useTracesMock.mockReturnValue(ready(page([], { terms: ['zebra'], index: 'fts5', complete: true })));
     const empty = renderAt('/traces?q=zebra');
     expect(screen.getByRole('status').textContent).toBe('No traces match “zebra”.');
     expect(empty.container.textContent).toContain('No traces match “zebra”');
     empty.unmount();
 
-    useTracesMock.mockReturnValue(ready(page([trace('t-1', { match: { field: 'input', snippet: 'zebra', fragments: [{ text: 'zebra', hit: true }] } })], { terms: ['zebra'], index: 'scan' })));
+    useTracesMock.mockReturnValue(ready(page([trace('t-1', { match: { field: 'input', snippet: 'zebra', fragments: [{ text: 'zebra', hit: true }] } })], { terms: ['zebra'], index: 'scan', complete: true })));
     renderAt('/traces?q=zebra');
     expect(screen.getByRole('status').textContent).toMatch(/^1 trace matches “zebra”.*without the full-text index/);
+  });
+
+  it('a prefix too short to search shows a hint and sends no q (#703)', () => {
+    renderAt('/traces?q=re*');
+    expect(lastParams().q).toBeUndefined();
+    expect(screen.getByRole('status').textContent).toBe('A prefix needs at least 3 letters before the * (re* starts too many words to narrow the search): type more of the word, or drop the *.');
+    expect(screen.queryByRole('columnheader', { name: 'Match' })).toBeNull();
+  });
+
+  it('says when a search stopped at its time limit, and that the count is of the newest traces it read', () => {
+    const cut = { ...page([trace('t-1', { match: { field: 'output', snippet: 'refund', fragments: [{ text: 'refund', hit: true }] } })], { terms: ['refund'], index: 'fts5', complete: false, budget_ms: 1000 }), total: 1234 };
+    useTracesMock.mockReturnValue(ready(cut));
+    const one = renderAt('/traces?q=refund');
+    expect(screen.getByRole('status').textContent).toBe(
+      'At least 1,234 traces match “refund”: the search stopped at its limit of 1 second, so these are the best matches among the newest traces it read. Add a word or a filter to narrow it.',
+    );
+    one.unmount();
+
+    useTracesMock.mockReturnValue(ready(page([], { terms: ['zebra'], index: 'scan', complete: false, budget_ms: 2500 })));
+    renderAt('/traces?q=zebra');
+    expect(screen.getByRole('status').textContent).toBe(
+      'No match for “zebra” in the newest traces read before the search stopped at its limit of 2.5 seconds. Add a word or a filter to narrow it. (Searched without the full-text index, so larger stores search slowly.)',
+    );
   });
 
   it('Escape clears the search and the URL', async () => {

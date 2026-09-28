@@ -32,6 +32,7 @@ import type {
   DashboardSummary,
   TraceQueryOptions,
   TraceQueryResult,
+  TraceSearchInfo,
   EvalStatsPeriod,
   EvalStats,
   AgentFailureLogEntry,
@@ -55,7 +56,7 @@ import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, readSpanText, indexCjk, indexCjkPending, cjkIndexed, BM25_WEIGHTS, CJK_BM25_WEIGHTS, CJK_TABLE, CJK_PENDING_TABLE, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
-import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, hasCjk, mayHoldCjk, toCjkFtsQuery, type ParsedSearch } from './search.js';
+import { parseSearch, searchRefusal, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, hasCjk, mayHoldCjk, toCjkFtsQuery, type ParsedSearch } from './search.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
@@ -111,7 +112,19 @@ export interface SqliteAdapterOptions {
   driver?: 'native' | 'node';
   /** Tests only: false behaves as a SQLite built without FTS5, so the search fallback can be exercised on a build that has it. */
   fts5?: boolean;
+  /** storage.searchBudgetMs — how long one search may read before it answers with what it found (default SEARCH_BUDGET_MS). */
+  searchBudgetMs?: number;
 }
+
+/**
+ * How long one search may read matches, in milliseconds, before it stops
+ * and answers with what it found (`search.complete: false`). A search runs
+ * on the event loop, and every MCP and HTTP request waits while it does, so
+ * this is also the longest a search can hold them (#703). At 100,000
+ * traces on the machine in the changelog, a word in every trace takes about
+ * a quarter of it, and the costliest query the limits allow about 600 ms.
+ */
+export const SEARCH_BUDGET_MS = 1000;
 /** What every text field of an erased evaluation reads afterwards. */
 export const ERASED_MESSAGE = 'erased with the trace';
 
@@ -203,6 +216,91 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
+/** The SQL function readHits reads an index search's matches through. */
+const SEARCH_HIT_FN = 'iris_search_hit';
+
+/** The matches an index search read, by column: each one's doc id, bm25 score, and the sort column's value when the sort is by one. */
+interface SearchHits {
+  doc: number[];
+  relevance: number[];
+  key: Array<number | string | null>;
+}
+
+/** SQLite's order for the values a sort column holds: NULL before any value. */
+function sqliteCompare(a: number | string | null, b: number | string | null): number {
+  if (a === b) return 0;
+  if (a === null) return -1;
+  if (b === null) return 1;
+  return a < b ? -1 : 1;
+}
+
+/**
+ * The order a search's page is cut from, over the matches' positions in
+ * `hits`, as the SQL that used to cut it ordered them. bm25 is lower for a
+ * better match, so `desc` by relevance (the default) is best first; by a
+ * column, the better match first among equal values; the newest indexed
+ * wins any tie left, so every page is cut from one fixed ranking.
+ */
+function searchOrder(q: SearchPlan, hits: SearchHits): (i: number, j: number) => number {
+  const { doc, relevance, key } = hits;
+  if (q.sortBy === 'relevance') {
+    const dir = q.sortOrder === 'desc' ? 1 : -1;
+    return (i, j) => dir * (relevance[i] - relevance[j]) || doc[j] - doc[i];
+  }
+  const dir = q.sortOrder === 'desc' ? -1 : 1;
+  return (i, j) => dir * sqliteCompare(key[i], key[j]) || relevance[i] - relevance[j] || doc[j] - doc[i];
+}
+
+/**
+ * Positions `offset` to `offset + limit` of 0..n-1 in `order`, without
+ * sorting all n when the page is near the top: the best offset + limit are
+ * kept in a heap, O(n log k) (a page of 50 from 100,000 matches is the
+ * common case). `order` must be total, as searchOrder's is.
+ */
+export function pageOf(n: number, order: (i: number, j: number) => number, offset: number, limit: number): number[] {
+  const k = Math.min(n, offset + limit);
+  if (k <= offset) return [];
+  if (k * 4 > n) {
+    const all = Array.from({ length: n }, (_, i) => i).sort(order);
+    return all.slice(offset, k);
+  }
+  // A max-heap of the best k seen so far: the worst of them at the top, replaced by anything better.
+  const heap: number[] = [];
+  const worse = (a: number, b: number) => order(heap[a], heap[b]) > 0;
+  const swap = (a: number, b: number) => {
+    const t = heap[a];
+    heap[a] = heap[b];
+    heap[b] = t;
+  };
+  const down = (at: number) => {
+    for (;;) {
+      const l = 2 * at + 1;
+      const r = l + 1;
+      let top = at;
+      if (l < heap.length && worse(l, top)) top = l;
+      if (r < heap.length && worse(r, top)) top = r;
+      if (top === at) return;
+      swap(at, top);
+      at = top;
+    }
+  };
+  for (let i = 0; i < n; i += 1) {
+    if (heap.length < k) {
+      heap.push(i);
+      for (let at = heap.length - 1; at > 0; ) {
+        const parent = (at - 1) >> 1;
+        if (!worse(at, parent)) break;
+        swap(at, parent);
+        at = parent;
+      }
+    } else if (order(i, heap[0]) < 0) {
+      heap[0] = i;
+      down(0);
+    }
+  }
+  return heap.sort(order).slice(offset, k);
+}
+
 /** What queryTraces hands its search half: the filters as SQL, and the page wanted. */
 interface SearchPlan {
   whereClause: string;
@@ -250,11 +348,16 @@ export class SqliteAdapter implements IStorageAdapter {
   private searchBuild: Promise<SearchIndexState> | undefined;
   private closing = false;
   private readonly fts5Override: boolean | undefined;
+  /** storage.searchBudgetMs — see SEARCH_BUDGET_MS. */
+  private readonly searchBudgetMs: number;
+  /** Where SEARCH_HIT_FN puts each row while readHits runs; undefined otherwise. */
+  private searchSink: ((doc: unknown, relevance: unknown, key: unknown) => number) | undefined;
 
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
     this.redact = options?.redact ?? 'none';
     this.fts5Override = options?.fts5;
+    this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
     /*
      * The busy wait belongs to the CONNECTION, not to a pragma run after
      * the first statement. `PRAGMA journal_mode = WAL` on a cold file takes
@@ -266,6 +369,10 @@ export class SqliteAdapter implements IStorageAdapter {
      * BEGIN IMMEDIATE; the statement before it was never covered.
      */
     this.db = openDriver(dbPath, { timeout: BUSY_TIMEOUT_MS, ...(options?.driver ? { driver: options.driver } : {}) });
+    this.db.fn(SEARCH_HIT_FN, (doc, relevance, key) => {
+      if (!this.searchSink) throw new Error(`${SEARCH_HIT_FN} is only for the adapter's search`);
+      return this.searchSink(doc, relevance, key);
+    });
   }
 
   /** Applied against known — the health contract's `checks.migrations`. */
@@ -585,6 +692,9 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
     const search = options.search !== undefined && options.search.trim() !== '' ? parseSearch(options.search) : undefined;
+    // Both request paths refuse these first, with the same words; this keeps any other caller to the same limits.
+    const refused = search ? searchRefusal(search) : undefined;
+    if (refused !== undefined) throw new Error(`Invalid search: ${refused}`);
     // A search is ranked by relevance unless the caller chose an order.
     const sortBy = options.sort_by ?? (search ? 'relevance' : 'timestamp');
     const sortOrder = options.sort_order ?? 'desc';
@@ -632,8 +742,17 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   private searchTraces(tenantId: TenantId, parsed: ParsedSearch, q: SearchPlan): TraceQueryResult {
     const index: 'fts5' | 'scan' = this.searchIndex === 'ready' ? 'fts5' : 'scan';
-    const info = { terms: parsed.terms.map(describeTerm), index };
-    if (parsed.terms.length === 0) return { traces: [], total: 0, limit: q.limit, offset: q.offset, search: info };
+    // Read from here: the time budget covers every row either path reads (SEARCH_BUDGET_MS).
+    const deadline = performance.now() + this.searchBudgetMs;
+    let complete = true;
+    const info = (): TraceSearchInfo => ({
+      terms: parsed.terms.map(describeTerm),
+      index,
+      complete,
+      ...(complete ? {} : { budget_ms: this.searchBudgetMs }),
+      ...(parsed.ignored ? { ignored: parsed.ignored } : {}),
+    });
+    if (parsed.terms.length === 0) return { traces: [], total: 0, limit: q.limit, offset: q.offset, search: info() };
 
     let total: number;
     let pageIds: string[];
@@ -644,16 +763,27 @@ export class SqliteAdapter implements IStorageAdapter {
        * column of it; a plain ranked search is answered from the index and
        * the id table alone. When it is joined, idx_traces_search_filter
        * covers every column the filters read, so the join never reads a
-       * trace row (search-index.ts has the measurement). The total comes
-       * from the same pass as the page (COUNT(*) OVER ()), and from a second
-       * count only when the page is empty because the offset ran past it.
+       * trace row (search-index.ts has the measurement).
+       *
+       * The matches are read newest first, straight off the index (FTS5
+       * walks its rowids in either order, and the doc id is the order traces
+       * were indexed in), and ranked and paged here rather than by SQL, so
+       * the read can stop at the time budget: SQL sorting would read every
+       * match before the first row came back, and nothing can interrupt a
+       * statement while it runs (readHits says how it stops one). Stopped
+       * early, the page is the best of the newest matches read, and the
+       * total counts those. What the index does before the first row comes
+       * back, expanding a prefix term and bm25's count of the traces each
+       * term is in, cannot be stopped: the query limits in search.ts are
+       * what bound it.
        */
       const joinTraces = q.filtered || q.sortBy !== 'relevance';
       let matched: string;
       let matchedParams: unknown[];
       if (!parsed.terms.some((t) => t.tokens.some(hasCjk)) && !cjkIndexed(this.db)) {
+        // The doc id as the index's own rowid, so the newest-first order below is the index's and needs no sort.
         matched =
-          `SELECT d.trace_id AS matched_id, d.doc_id AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS relevance ` +
+          `SELECT d.trace_id AS matched_id, ${SEARCH_TABLE}.rowid AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS relevance ` +
           `FROM ${SEARCH_TABLE} JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = ${SEARCH_TABLE}.rowid ` +
           `WHERE ${SEARCH_TABLE} MATCH ? AND d.tenant_id = ?`;
         matchedParams = [match, tenantId];
@@ -673,28 +803,35 @@ export class SqliteAdapter implements IStorageAdapter {
           `SELECT rowid AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS r FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ? ` +
           `UNION ALL SELECT rowid AS doc, bm25(${CJK_TABLE}, ${CJK_BM25_WEIGHTS}) AS r FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?) GROUP BY doc`;
         const everyTerm = perTerm.length > 1 ? ` AND ${perTerm.map(() => `(d.doc_id IN (${inMain}) OR d.doc_id IN (${inCjk}))`).join(' AND ')}` : '';
-        matched = `SELECT d.trace_id AS matched_id, d.doc_id AS doc, x.relevance AS relevance FROM (${scored}) x JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = x.doc WHERE d.tenant_id = ?${everyTerm}`;
+        /*
+         * The GROUP BY reads and scores every match before the first row, so
+         * the budget cannot stop this path early; the query limits bound it
+         * (search.ts). LIMIT -1 keeps SQLite planning it on its own, driven
+         * by the per-term lists: merged into the newest-first read below, it
+         * picked a plan 2.6 times slower (75 ms against 28 for 16 CJK
+         * characters at 10,000 traces).
+         */
+        matched = `SELECT d.trace_id AS matched_id, d.doc_id AS doc, x.relevance AS relevance FROM (${scored}) x JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = x.doc WHERE d.tenant_id = ?${everyTerm} LIMIT -1`;
         matchedParams = [perTerm.map((p) => p.main).join(' OR '), perTerm.map((p) => `(${p.cjk})`).join(' OR '), tenantId, ...(perTerm.length > 1 ? perTerm.flatMap((p) => [p.main, p.cjk]) : [])];
       }
-      const from = joinTraces ? `FROM (${matched}) m JOIN traces ON traces.trace_id = m.matched_id ${q.whereClause}` : `FROM (${matched}) m`;
+      // CROSS JOIN keeps the matches the outer loop, so they arrive in the index's order and no filter makes SQLite sort them first.
+      const from = joinTraces ? `FROM (${matched}) m CROSS JOIN traces ON traces.trace_id = m.matched_id ${q.whereClause}` : `FROM (${matched}) m`;
       const params = joinTraces ? [...matchedParams, ...q.params] : matchedParams;
-      // bm25 is lower for a better match, so "desc" (the default) is best first; the newest indexed wins a tie.
-      const order =
-        q.sortBy === 'relevance'
-          ? `m.relevance ${q.sortOrder === 'desc' ? 'ASC' : 'DESC'}, m.doc DESC`
-          : `traces.${q.sortBy} ${q.sortOrder}, m.relevance ASC, m.doc DESC`;
-      const rows = this.db
-        .prepare(`SELECT m.matched_id AS trace_id, COUNT(*) OVER () AS total ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)
-        .all(...params, q.limit, q.offset) as Array<{ trace_id: string; total: number }>;
-      pageIds = rows.map((r) => r.trace_id);
-      total =
-        rows.length > 0
-          ? Number(rows[0].total)
-          : q.offset === 0
-            ? 0
-            : Number((this.db.prepare(`SELECT COUNT(*) AS count ${from}`).get(...params) as { count: number }).count);
+      // Numbers only (and the sort column's value): the page's trace ids are looked up once it is chosen.
+      const key = q.sortBy === 'relevance' ? 'NULL' : `traces.${q.sortBy}`;
+      const hits = this.readHits(`SELECT m.doc AS doc, m.relevance AS relevance, ${key} AS k ${from} ORDER BY m.doc DESC`, params, deadline);
+      complete = hits.complete;
+      total = hits.doc.length;
+      const pageDocs = pageOf(total, searchOrder(q, hits), q.offset, q.limit).map((i) => hits.doc[i]);
+      const idOf = new Map<number, string>();
+      if (pageDocs.length > 0) {
+        const idRows = this.db.prepare(`SELECT doc_id, trace_id FROM ${SEARCH_DOCS_TABLE} WHERE doc_id IN (${pageDocs.map(() => '?').join(', ')})`).all(...pageDocs) as Array<{ doc_id: number; trace_id: string }>;
+        for (const r of idRows) idOf.set(Number(r.doc_id), r.trace_id);
+      }
+      pageIds = pageDocs.flatMap((doc) => idOf.get(doc) ?? []);
     } else {
-      ({ total, pageIds } = this.scanForSearch(parsed, q));
+      const scanned = this.scanForSearch(parsed, q, deadline);
+      ({ total, pageIds, complete } = scanned);
     }
 
     const byId = new Map<string, Trace>();
@@ -714,19 +851,65 @@ export class SqliteAdapter implements IStorageAdapter {
       const match = buildMatch(searchableText(trace, spans?.text), parsed, undefined, spans?.parts);
       return [match ? { ...trace, match } : trace];
     });
-    return { traces, total, limit: q.limit, offset: q.offset, search: info };
+    return { traces, total, limit: q.limit, offset: q.offset, search: info() };
   }
 
   /**
-   * Search without FTS5: read the traces the filters admit, in batches by
-   * rowid so memory stays flat, and test each with the tokenizer the index
-   * would have used. Relevance is how many times the terms occur (in the
-   * trace's own fields, or with its spans when those alone do not match).
+   * Read an index search's matches, newest first, until they run out or
+   * the deadline passes. The rows go through a SQL function (SEARCH_HIT_FN)
+   * that keeps each one, rather than back to JavaScript one step at a time:
+   * that is as fast as SQL sorting them (about 310 ms against 325 for
+   * 100,000 matches, measured on the machine in the changelog; a row
+   * iterator took 400 to 430), and a statement can be stopped from inside
+   * it, which nothing else can do while it runs. Every 64 rows it checks the clock, and past the
+   * deadline it throws, which ends the statement; what it kept so far is
+   * the answer, marked incomplete.
    */
-  private scanForSearch(parsed: ParsedSearch, q: SearchPlan): { total: number; pageIds: string[] } {
-    const BATCH = 500;
+  private readHits(select: string, params: unknown[], deadline: number): SearchHits & { complete: boolean } {
+    const hits: SearchHits = { doc: [], relevance: [], key: [] };
+    let stopped = false;
+    this.searchSink = (doc, relevance, key) => {
+      hits.doc.push(doc as number);
+      hits.relevance.push(relevance as number);
+      hits.key.push(key as number | string | null);
+      if ((hits.doc.length & 63) === 0 && performance.now() > deadline) {
+        stopped = true;
+        throw new Error('search time budget reached');
+      }
+      return 1;
+    };
+    try {
+      // LIMIT -1 keeps the query a subquery SQLite reads row by row, rather than one it merges into the count (where bm25 cannot run).
+      this.db.prepare(`SELECT count(${SEARCH_HIT_FN}(doc, relevance, k)) FROM (${select} LIMIT -1)`).get(...params);
+    } catch (err) {
+      if (!stopped) throw err;
+    } finally {
+      this.searchSink = undefined;
+    }
+    return { ...hits, complete: !stopped };
+  }
+
+  /**
+   * Search without FTS5: read the traces the filters admit, newest first
+   * (by rowid, the order they were stored in), in batches so memory stays
+   * flat, and test each with the tokenizer the index would have used.
+   * Relevance is how many times the terms occur (in the trace's own fields,
+   * or with its spans when those alone do not match). The read stops after
+   * the first batch that ends past `deadline`, and `complete` says whether
+   * it reached the oldest trace; a batch is small enough that the stop comes
+   * within tens of milliseconds of the deadline, spans included.
+   */
+  private scanForSearch(parsed: ParsedSearch, q: SearchPlan, deadline: number): { total: number; pageIds: string[]; complete: boolean } {
+    const BATCH = 100;
+    /*
+     * NOT INDEXED walks the table itself by rowid, where each batch is a
+     * seek. Left to choose, SQLite read the tenant's rows through a
+     * (tenant_id, …) index and sorted them all by rowid for every batch:
+     * 336 ms a batch at 100,000 traces, where the walk takes 0.4 ms. The
+     * filters still apply, row by row as the walk reads them.
+     */
     const read = this.db.prepare(
-      `SELECT rowid AS rid, trace_id, input, output, tool_calls, metadata, timestamp, latency_ms, cost_usd FROM traces ${q.whereClause} AND rowid > ? ORDER BY rowid LIMIT ${BATCH}`,
+      `SELECT rowid AS rid, trace_id, input, output, tool_calls, metadata, timestamp, latency_ms, cost_usd FROM traces NOT INDEXED ${q.whereClause} AND rowid < ? ORDER BY rowid DESC LIMIT ${BATCH}`,
     );
     const parse = (v: unknown): unknown => {
       if (typeof v !== 'string') return undefined;
@@ -737,9 +920,10 @@ export class SqliteAdapter implements IStorageAdapter {
       }
     };
     const found: Array<{ id: string; hits: number; timestamp: string; key: number | string | null }> = [];
-    let after = 0;
+    let before = Number.MAX_SAFE_INTEGER;
+    let complete = true;
     for (;;) {
-      const rows = read.all(...q.params, after) as Array<Record<string, unknown>>;
+      const rows = read.all(...q.params, before) as Array<Record<string, unknown>>;
       /*
        * A trace's own fields first; its span text (a JSON walk in SQL, the
        * costly part) only for the traces those fields do not match and whose
@@ -775,22 +959,21 @@ export class SqliteAdapter implements IStorageAdapter {
         });
       }
       if (rows.length < BATCH) break;
-      after = Number(rows[rows.length - 1].rid);
+      before = Number(rows[rows.length - 1].rid);
+      if (performance.now() > deadline) {
+        complete = false;
+        break;
+      }
     }
     // SQLite's order, so the fallback pages exactly as the indexed path would: NULL before any value.
-    const cmp = (a: number | string | null, b: number | string | null): number => {
-      if (a === b) return 0;
-      if (a === null) return -1;
-      if (b === null) return 1;
-      return a < b ? -1 : 1;
-    };
+    const cmp = sqliteCompare;
     const dir = q.sortOrder === 'desc' ? -1 : 1;
     found.sort((a, b) =>
       q.sortBy === 'relevance'
         ? dir * (a.hits - b.hits) || cmp(b.timestamp, a.timestamp) || cmp(a.id, b.id)
         : dir * cmp(a.key, b.key) || b.hits - a.hits || cmp(a.id, b.id),
     );
-    return { total: found.length, pageIds: found.slice(q.offset, q.offset + q.limit).map((f) => f.id) };
+    return { total: found.length, pageIds: found.slice(q.offset, q.offset + q.limit).map((f) => f.id), complete };
   }
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
@@ -1969,7 +2152,18 @@ export class SqliteAdapter implements IStorageAdapter {
       this.eraseEvaluationsOfTraces(tid, [id]);
       return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?').run(tid, id).changes;
     });
-    return run(tenantId, traceId) > 0;
+    const deleted = run(tenantId, traceId) > 0;
+    /*
+     * secure_delete zeroes the freed pages, but in WAL mode the zeroed
+     * pages go to the WAL and iris.db keeps the old ones, with the trace's
+     * text on them, until a checkpoint copies them back (#703). The
+     * retention sweep and --purge checkpoint after they delete; so does
+     * this, so the text is gone from the file when the call returns, not at
+     * some later checkpoint. TRUNCATE also empties the WAL, which held the
+     * text again if the trace was written since the last checkpoint.
+     */
+    if (deleted) await this.checkpoint();
+    return deleted;
   }
 
   /**

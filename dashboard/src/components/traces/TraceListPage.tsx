@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTraces } from '../../api/hooks';
 import { TraceFilters } from './TraceFilters';
-import { TraceSearch, hasSearchableWord } from './TraceSearch';
+import { TraceSearch, hasSearchableWord, shortPrefixes, SEARCH_MIN_PREFIX_CHARS } from './TraceSearch';
+import type { TraceQueryResult } from '../../api/types';
 import { TraceTable } from './TraceTable';
 import { Pagination } from '../shared/Pagination';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
@@ -23,20 +24,35 @@ const styles = {
 };
 
 /** The line under the toolbar that says what a search found; announced to screen readers as it changes. */
-function searchStatus(q: string, searchable: boolean, total: number | undefined, index: 'fts5' | 'scan' | undefined): string {
+function searchStatus(q: string, searchable: boolean, short: string[], total: number | undefined, search: TraceQueryResult['search']): string {
   if (q.trim() === '') return '';
   if (!searchable) return 'Search matches words and numbers — punctuation on its own is not searchable.';
-  if (total === undefined) return 'Searching…';
-  const counted = total === 0 ? `No traces match “${q.trim()}”.` : `${total.toLocaleString()} ${total === 1 ? 'trace matches' : 'traces match'} “${q.trim()}”, best match first.`;
+  if (short.length > 0) return `A prefix needs at least ${SEARCH_MIN_PREFIX_CHARS} letters before the * (${short.join(', ')} starts too many words to narrow the search): type more of the word, or drop the *.`;
+  if (total === undefined || search === undefined) return 'Searching…';
+  const shown = q.trim();
+  let counted: string;
+  if (search.complete === false) {
+    // Stopped at the time budget: the count and the page are of the newest traces it read, not of them all.
+    const seconds = (search.budget_ms ?? 1000) / 1000;
+    const budget = `${seconds.toLocaleString()} ${seconds === 1 ? 'second' : 'seconds'}`;
+    counted =
+      total === 0
+        ? `No match for “${shown}” in the newest traces read before the search stopped at its limit of ${budget}. Add a word or a filter to narrow it.`
+        : `At least ${total.toLocaleString()} ${total === 1 ? 'trace matches' : 'traces match'} “${shown}”: the search stopped at its limit of ${budget}, so these are the best matches among the newest traces it read. Add a word or a filter to narrow it.`;
+  } else {
+    counted = total === 0 ? `No traces match “${shown}”.` : `${total.toLocaleString()} ${total === 1 ? 'trace matches' : 'traces match'} “${shown}”, best match first.`;
+  }
   // Honest about the slower path: this SQLite has no full-text index, so the traces were read one by one.
-  return index === 'scan' ? `${counted} (Searched without the full-text index, so larger stores search slowly.)` : counted;
+  return search.index === 'scan' ? `${counted} (Searched without the full-text index, so larger stores search slowly.)` : counted;
 }
 
 export function TraceListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get('q') ?? '';
-  const searchable = hasSearchableWord(q);
+  const short = shortPrefixes(q);
+  // A prefix the server would refuse is not sent: the status line says why instead.
+  const searchable = hasSearchableWord(q) && short.length === 0;
   const [filters, setFilters] = useState({
     agent_name: '',
     framework: '',
@@ -74,7 +90,7 @@ export function TraceListPage() {
         <TraceFilters values={filters} onChange={(v) => { setFilters(v); setOffset(0); }} />
       </div>
       <div role="status" aria-live="polite" style={styles.status}>
-        {searchStatus(q, searchable, searchable && data?.search ? data.total : undefined, data?.search?.index)}
+        {searchStatus(q, hasSearchableWord(q), short, searchable && data?.search ? data.total : undefined, data?.search)}
       </div>
       {error && <QueryError error={error} what="traces" onRetry={refetch} rateLimitedUntil={rateLimitedUntil} />}
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>

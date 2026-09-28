@@ -53,7 +53,7 @@ describe('get_traces q over MCP', () => {
 
     const page = parse(await search({ q: 'refund escalated', agent_name: 'support-bot' }));
     expect(page.total).toBe(2);
-    expect(page.search).toEqual({ terms: ['refund', 'escalated'], index: 'fts5' });
+    expect(page.search).toEqual({ terms: ['refund', 'escalated'], index: 'fts5', complete: true });
     const traces = page.traces as Array<{ trace_id: string; match: { field: string; snippet: string; fragments: Array<{ text: string; hit: boolean }> } }>;
     expect(traces.map((t) => t.trace_id)).toEqual([twice.trace_id, said.trace_id]);
     expect(traces[1].match.field).toBe('output');
@@ -84,6 +84,34 @@ describe('get_traces q over MCP', () => {
     const long = await search({ q: 'x'.repeat(501) });
     expect((long as { isError?: boolean }).isError).toBe(true);
     expect(body(long)).toMatch(/at most 500 characters/);
+  });
+
+  it('refuses a query over what one search may cost, naming why, and reports the repeats it merged (#703)', async () => {
+    parse(await log({ output: 'The refund was refunded to the card.' }));
+    const short = await search({ q: 'w* w* w* w*' });
+    expect((short as { isError?: boolean }).isError).toBe(true);
+    expect(body(short)).toMatch(/w\*: a prefix needs at least 3 letters or digits before the \*/);
+    const prefixes = await search({ q: 'refu* card* tran* bill* ship*' });
+    expect((prefixes as { isError?: boolean }).isError).toBe(true);
+    expect(body(prefixes)).toMatch(/5 prefix terms \(word\*\): a search takes at most 4/);
+    const many = await search({ q: Array.from({ length: 17 }, (_, i) => `word${i}`).join(' ') });
+    expect((many as { isError?: boolean }).isError).toBe(true);
+    expect(body(many)).toMatch(/17 terms: a search takes at most 16/);
+
+    const merged = parse(await search({ q: 'refund refund ref* refund*' }));
+    expect(merged.total).toBe(1);
+    expect(merged.search).toEqual({
+      terms: ['refund'],
+      index: 'fts5',
+      complete: true,
+      ignored: [
+        { term: 'refund', reason: 'repeats an earlier term' },
+        { term: 'ref*', reason: 'implied by refund' },
+        { term: 'refund*', reason: 'implied by refund' },
+      ],
+    });
+    // One CJK character before a star is enough: it is a word of its own.
+    expect((await search({ q: '批*' }) as { isError?: boolean }).isError).toBeFalsy();
   });
 
   it('a blank q is no search: every trace, newest first, no match and no search block', async () => {

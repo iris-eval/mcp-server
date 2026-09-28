@@ -151,6 +151,9 @@ const QUERIES: Array<{ label: string; q: string; sort?: 'timestamp'; agent?: str
   { label: 'two words (1% and 100%)', q: 'kestrel refund' },
   { label: 'phrase in 50%', q: '"refund approved"' },
   { label: 'prefix', q: 'kestr*' },
+  // The costliest the query limits allow (#703): four broad three-letter prefixes, and sixteen common words.
+  { label: 'four 3-letter prefixes', q: 'w10* w11* w12* w13*' },
+  { label: 'sixteen common words', q: 'w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 wa wb wc wd we wf' },
   ...(SPANS ? [{ label: 'word in 1% (a tool result in a span)', q: 'wombat' }, { label: 'word in 10% (an exception message)', q: 'upstream' }] : []),
   ...(CJK ? [{ label: 'CJK word inside a run, 1%', q: '批准' }] : []),
 ];
@@ -162,8 +165,9 @@ function median(xs: number[]): number {
 
 type Query = (typeof QUERIES)[number];
 
-async function time(store: SqliteAdapter, query: Query, runs: number): Promise<{ ms: number; total: number }> {
+async function time(store: SqliteAdapter, query: Query, runs: number): Promise<{ ms: number; total: number; complete: boolean }> {
   let total = 0;
+  let complete = true;
   const samples: number[] = [];
   for (let r = 0; r < runs; r += 1) {
     const t0 = performance.now();
@@ -175,8 +179,9 @@ async function time(store: SqliteAdapter, query: Query, runs: number): Promise<{
     });
     samples.push(performance.now() - t0);
     total = page.total;
+    complete = page.search?.complete !== false;
   }
-  return { ms: median(samples), total };
+  return { ms: median(samples), total, complete };
 }
 
 /** Fill a store with `size` traces in batches of 1,000, from the same seed every time; returns the milliseconds taken. */
@@ -228,7 +233,8 @@ for (const size of SIZES) {
     }
 
     // A second connection that behaves as a SQLite without FTS5, for the scan column. Its start drops the triggers on the file; the reopen below restores them.
-    const scan = size <= SCAN_UP_TO ? new SqliteAdapter(path, { fts5: false }) : undefined;
+    // With the longest budget there is, so the column times the whole read; a server stops it at storage.searchBudgetMs (default 1 s, #703).
+    const scan = size <= SCAN_UP_TO ? new SqliteAdapter(path, { fts5: false, searchBudgetMs: 60_000 }) : undefined;
     await scan?.initialize();
     console.log(`  ${'query'.padEnd(36)} matches   fts5 ms${scan ? '   scan ms' : ''}`);
     for (const query of QUERIES) {
@@ -239,7 +245,8 @@ for (const size of SIZES) {
         if (s.total !== indexed.total) throw new Error(`scan and index disagree on ${JSON.stringify(query.q)}: ${s.total} vs ${indexed.total}`);
         scanned = s.ms.toFixed(0).padStart(10);
       }
-      console.log(`  ${query.label.padEnd(36)} ${String(indexed.total).padStart(7)} ${indexed.ms.toFixed(1).padStart(9)}${scanned}`);
+      // A search stopped at its time budget (search.complete false) counts only what it read: marked, since its total is not comparable.
+      console.log(`  ${query.label.padEnd(36)} ${String(indexed.total).padStart(7)} ${indexed.ms.toFixed(1).padStart(9)}${scanned}${indexed.complete ? '' : '  (stopped at the time budget)'}`);
     }
     await scan?.close();
 

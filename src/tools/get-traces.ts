@@ -6,7 +6,7 @@ import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
-import { parseSearch, SEARCH_MAX_LENGTH } from '../storage/search.js';
+import { parseSearch, searchRefusal, SEARCH_MAX_LENGTH, SEARCH_MAX_PREFIXES, SEARCH_MAX_TERMS, SEARCH_MIN_PREFIX_CHARS } from '../storage/search.js';
 
 /*
  * An ISO-8601 instant (2026-08-01T00:00:00Z, offsets allowed) or calendar
@@ -45,8 +45,10 @@ export interface TraceRangeArgs {
 /**
  * The search text (#7), shared by both read paths. Any string is safe to
  * send — it is parsed into terms, never passed to SQLite as query syntax
- * (src/storage/search.ts) — so the only refusals are length and a query
- * with no word in it at all, which would otherwise read as "no matches".
+ * (src/storage/search.ts) — so the only refusals are length, a query
+ * with no word in it at all, which would otherwise read as "no matches",
+ * and a query over what one search may cost (searchRefusal: a prefix too
+ * short to narrow anything, too many terms or prefixes; #703).
  */
 export const traceSearchText = z.string().max(SEARCH_MAX_LENGTH, { error: `q is at most ${SEARCH_MAX_LENGTH} characters` });
 
@@ -82,12 +84,18 @@ export function addTraceRangeIssues(args: TraceRangeArgs, ctx: z.RefinementCtx):
     });
   }
   const q = searchOf(args.q);
-  if (q !== undefined && parseSearch(q).terms.length === 0) {
+  const parsed = q !== undefined ? parseSearch(q) : undefined;
+  if (q !== undefined && parsed?.terms.length === 0) {
     ctx.addIssue({
       code: 'custom',
       path: ['q'],
       message: `q (${JSON.stringify(q)}) has no word to search for — search matches words and numbers; punctuation and a bare * are not searchable`,
     });
+  }
+  // What one search may cost (#703): the adapter holds the same limits, so no route reaches the index past them.
+  const refused = parsed !== undefined ? searchRefusal(parsed) : undefined;
+  if (refused !== undefined) {
+    ctx.addIssue({ code: 'custom', path: ['q'], message: `q is refused: ${refused}` });
   }
   if (args.sort_by === 'relevance' && q === undefined) {
     ctx.addIssue({
@@ -102,7 +110,7 @@ const inputSchema = {
   agent_name: z.string().optional().describe('Filter by agent name — exact match (no wildcards)'),
   framework: z.string().optional().describe('Filter by agent framework — exact match (e.g., langchain, autogen)'),
   session: z.string().optional().describe('Filter by session id — the turns of one conversation, as logged with session_id'),
-  q: traceSearchText.optional().describe('Full-text search over input, output, tool-call values, metadata values and span attribute and event values. Every word must appear; "quoted phrase"; word* for a prefix. Case and accents ignored'),
+  q: traceSearchText.optional().describe(`Full-text search over input, output, tool-call values, metadata values and span attribute and event values. Every word must appear; "quoted phrase"; word* for a prefix of ${SEARCH_MIN_PREFIX_CHARS}+ characters (1 for CJK). Case and accents ignored. At most ${SEARCH_MAX_TERMS} terms, ${SEARCH_MAX_PREFIXES} of them prefixes`),
   since: isoTimestamp.optional().describe('Inclusive lower bound, an ISO 8601 timestamp or date; anything else is rejected'),
   until: isoTimestamp.optional().describe('ISO 8601 timestamp (or date) upper bound — return traces with timestamp <= this; must not be earlier than `since`'),
   min_score: z.number().min(0).max(1).optional().describe('Minimum score (0..1) of each trace\'s latest evaluation; at most max_score'),
@@ -127,9 +135,15 @@ export const getTracesOutputSchema = z.looseObject({
   offset: z.number().int().describe('the offset applied'),
   summary: z.looseObject({}).optional().describe('the dashboard aggregates for the last hour, when include_summary was true'),
   search: z
-    .looseObject({ terms: z.array(z.string()), index: z.enum(['fts5', 'scan']) })
+    .looseObject({
+      terms: z.array(z.string()),
+      index: z.enum(['fts5', 'scan']),
+      complete: z.boolean(),
+      budget_ms: z.number().int().optional(),
+      ignored: z.array(z.looseObject({ term: z.string(), reason: z.string() })).optional(),
+    })
     .optional()
-    .describe('with q: the terms searched, and whether the full-text index or a scan answered'),
+    .describe('with q: the terms searched, whether the full-text index or a scan answered, and complete: false when the search stopped at its time budget (budget_ms) — then traces and total cover only the newest traces it read. ignored lists repeated or implied terms not searched'),
 });
 
 export function registerGetTracesTool(server: McpServer, storage: IStorageAdapter): void {
