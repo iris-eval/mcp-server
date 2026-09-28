@@ -21,6 +21,9 @@ services:
       # failure is one sentence and not a restart loop. Generate one with
       # `openssl rand -hex 32` and export it (or put it in a .env file).
       - IRIS_API_KEY=${IRIS_API_KEY:?set IRIS_API_KEY before docker compose up (openssl rand -hex 32)}
+      # The Iris home is the volume: deployed rules, audit.log and
+      # config.json persist with the database.
+      - IRIS_HOME=/data
       - IRIS_DB_PATH=/data/iris.db
       - IRIS_DASHBOARD=true
       - IRIS_DASHBOARD_PORT=6920

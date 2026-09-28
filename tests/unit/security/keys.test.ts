@@ -106,6 +106,14 @@ describe('buildKeyRing', () => {
     expect(() => buildKeyRing({ ...base, apiKeys: [{ id: 'bad', keyHash: sha256Hex('b'), expiresAt: 'next tuesday' }] })).toThrow(/expiresAt "next tuesday", which is not a date/);
   });
 
+  it('expiryOf names when each key stops matching: a date, null for no expiry, undefined for a key the ring does not hold', () => {
+    const soon = new Date(Date.now() + 60_000).toISOString();
+    const ring = buildKeyRing({ apiKey: 'p', apiKeys: [{ id: 'temp', keyHash: sha256Hex('t'), expiresAt: soon }] });
+    expect(ring.expiryOf(PRIMARY_KEY_ID)).toBeNull();
+    expect(ring.expiryOf('temp')).toBe(Date.parse(soon));
+    expect(ring.expiryOf('removed')).toBeUndefined();
+  });
+
   it('a malformed entry is refused by index and id: bad hash, both or neither source, empty id, duplicate id', () => {
     expect(() => buildKeyRing({ ...base, apiKeys: [{ id: 'x', keyHash: 'abc' }] })).toThrow(/security\.apiKeys\[0\] \("x"\): keyHash must be the sha256 of the key as 64 hex characters/);
     expect(() => buildKeyRing({ ...base, apiKeys: [{ id: 'x', keyHash: sha256Hex('a'), keyFile: '/k' }] })).toThrow(/set exactly one of keyFile .* or keyHash/);

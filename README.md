@@ -307,6 +307,7 @@ iris-eval --dashboard
 # Docker — two servers, two ports: 3000 = MCP HTTP transport,
 # 6920 = dashboard (which also serves the POST /api/v1/traces ingest endpoint).
 # The image binds 0.0.0.0 inside the container, so a key is required (see Production).
+# The volume is the Iris home: the database, deployed rules and audit log persist in it.
 docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
   -e IRIS_API_KEY="$(openssl rand -hex 32)" ghcr.io/iris-eval/mcp-server
 ```
@@ -534,6 +535,8 @@ A webhook fires on a moment (0.16.0): `notify.webhook` in `config.json` (or `IRI
 ### Your data on disk
 
 Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact unless you ask it to: `storage.redact: "critical_spans"` in `config.json` stores each evaluation's output with the spans a critical detector flagged replaced by `[REDACTED:<pattern>]` (off by default; the evidence offsets still index the text the caller saw). At startup, and every `retention.sweepIntervalHours` (default `24`, `0` disables the timer) after that, traces and evaluations older than `retention.days` (default `30`, `0` disables, set in `config.json`) are deleted and the write-ahead log is checkpointed. Deleting a trace — by `delete_trace` or by the sweep — erases the text of every evaluation linked to it (the output, the expected text, and the rule messages) and stamps `erased_at`; the verdict, the scores and the evidence offsets stay. To remove everything now, stop the server and run `--purge`: it deletes every stored trace, span and evaluation, compacts the database and truncates the write-ahead log so the text is gone from disk, and keeps your deployed rules, audit log and preferences.
+
+Iris does not encrypt its data at rest. `iris.db` and its write-ahead-log files are created owner-only (mode 600), and the Iris home directory is created mode 700 (on Windows, file ACLs govern instead). The database stores no LLM provider keys: `IRIS_ANTHROPIC_API_KEY` and `IRIS_OPENAI_API_KEY` are read from the environment and never written to disk. It does store trace inputs and outputs verbatim, so put the Iris home on an encrypted disk or volume (FileVault, BitLocker, LUKS, or an encrypted cloud volume for the Docker image's `/data` mount).
 
 </details>
 

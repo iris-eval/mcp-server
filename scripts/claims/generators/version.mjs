@@ -5,12 +5,13 @@
 //
 // The packages come from ../packages.mjs, which enumerates every package.json
 // and pyproject.toml and classifies each from its own manifest (released by
-// release.yml, released by publish-python.yml, "private": true, or the
-// `iris-eval` launcher) — never from a hand list, so a package added later
-// is covered the moment it exists. `published` says, per package, whether it
-// is on its registry: true for the two that a workflow publishes, false for a
-// private package, and the recorded fact for the launcher (the generator
-// runs offline and must not probe a registry). No public surface may present
+// release.yml, released by publish-python.yml, an npm library release.yml's
+// publish-packages job releases, "private": true, or the `iris-eval`
+// launcher) — never from a hand list, so a package added later is covered
+// the moment it exists. `published` says, per package, whether it is on its
+// registry: true for the server and the Python client, false for a private
+// package, and the recorded fact for the npm libraries and the launcher (the
+// generator runs offline and must not probe a registry). No public surface may present
 // a package with `published: false` as installable;
 // tests/unpublished-packages-not-cited.test.ts walks every surface for each.
 

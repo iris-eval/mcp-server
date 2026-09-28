@@ -10,7 +10,7 @@
  * Every test drives the REAL dashboard server over a REAL socket so the
  * request passes the same middleware stack production traffic does.
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import type { Server } from 'node:http';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
@@ -30,6 +30,7 @@ interface BootedServer {
 const booted: BootedServer[] = [];
 
 afterEach(async () => {
+  vi.useRealTimers();
   for (const b of booted.splice(0)) {
     b.server.closeAllConnections?.();
     await new Promise<void>((resolve) => b.server.close(() => resolve()));
@@ -277,5 +278,45 @@ describe('session auth — every configured key signs in', () => {
     }
     expect((await fetch(`${base}/api/v1/summary`, { headers: { authorization: 'Bearer expired-key' } })).status).toBe(403);
     expect((await fetch(`${base}/api/v1/health`)).status).toBe(200);
+  });
+
+  /*
+   * A browser signed in with a key that has an expiresAt is signed out at
+   * that instant, the same instant the Bearer path refuses the key. Until
+   * 0.20.0 the session kept full access for up to 30 days after its key
+   * expired. A session from a key with no expiry is untouched.
+   */
+  it('a browser session ends when the key it was opened with expires; the cookie asks for no longer than the key lives', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const HOUR = 60 * 60 * 1000;
+    const { base } = await bootWithKeys({
+      apiKey: 'lasting-key',
+      apiKeys: [{ id: 'temp', keyHash: sha256Hex('temp-key'), expiresAt: new Date(Date.now() + HOUR).toISOString() }],
+    });
+    const page = (cookie: string) => fetch(`${base}/`, { headers: { ...HTML, cookie }, redirect: 'manual' });
+    const api = (cookie: string) => fetch(`${base}/api/v1/summary`, { headers: { cookie } });
+
+    const tempRes = await signIn(base, 'temp-key');
+    expect(tempRes.status).toBe(303);
+    const maxAge = Number(/Max-Age=(\d+)/.exec(tempRes.headers.get('set-cookie') ?? '')?.[1]);
+    expect(maxAge).toBeGreaterThan(HOUR / 1000 - 5);
+    expect(maxAge).toBeLessThanOrEqual(HOUR / 1000);
+    const temp = cookiePair(tempRes);
+
+    const lastingRes = await signIn(base, 'lasting-key');
+    expect(Number(/Max-Age=(\d+)/.exec(lastingRes.headers.get('set-cookie') ?? '')?.[1])).toBe(30 * 24 * 60 * 60);
+    const lasting = cookiePair(lastingRes);
+
+    expect((await page(temp)).status).not.toBe(401); // signed in (the test build may have no SPA to serve)
+    expect((await api(temp)).status).toBe(200);
+
+    vi.setSystemTime(Date.now() + HOUR + 1000);
+
+    expect((await page(temp)).status).toBe(401);
+    expect((await api(temp)).status).toBe(401);
+    expect((await fetch(`${base}/api/v1/summary`, { headers: { authorization: 'Bearer temp-key' } })).status).toBe(403);
+    // The key with no expiry, and its session, are unaffected.
+    expect((await page(lasting)).status).not.toBe(401);
+    expect((await api(lasting)).status).toBe(200);
   });
 });

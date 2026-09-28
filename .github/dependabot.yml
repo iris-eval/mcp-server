@@ -123,6 +123,35 @@ updates:
         patterns:
           - "@langchain/*"
 
+  # The MCP clients the real-clients CI job drives (Claude Code, Gemini CLI),
+  # installed with `npm ci` from this lockfile. A bump is a re-verification:
+  # the job proves the new client still connects to the packed server.
+  - package-ecosystem: "npm"
+    directory: "/.github/real-clients"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "ci(real-clients)"
+
+  # The hash-pinned tools publish-python.yml builds the Python client with
+  # (build.in -> build.txt, pip-compile --generate-hashes).
+  - package-ecosystem: "pip"
+    directory: "/.github/requirements"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "ci(python-build)"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

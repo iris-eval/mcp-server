@@ -1,7 +1,6 @@
 {
   "name": "@iris-eval/sdk",
   "version": "0.1.0",
-  "private": true,
   "description": "Record every OpenAI, Anthropic and Vercel AI SDK call as an OpenTelemetry GenAI span, sent to Iris for a verdict.",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -57,6 +56,10 @@
   "homepage": "https://iris-eval.com",
   "bugs": {
     "url": "https://github.com/iris-eval/mcp-server/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=22"
