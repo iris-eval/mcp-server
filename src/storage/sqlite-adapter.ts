@@ -56,7 +56,8 @@ import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { Checkpointer, AUTOCHECKPOINT_PAGES } from './checkpointer.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
@@ -115,6 +116,12 @@ export interface SqliteAdapterOptions {
   driver?: 'native' | 'node';
   /** Tests only: false behaves as a SQLite built without FTS5, so the search fallback can be exercised on a build that has it. */
   fts5?: boolean;
+  /**
+   * Where the store's own lines go: the search index build starting and
+   * finishing, and anything that stopped it. The server passes its logger;
+   * unset, `info` lines are dropped and `warn` lines go to stderr.
+   */
+  log?: (level: 'info' | 'warn', line: string) => void;
   /** storage.searchBudgetMs — how long one search may read before it answers with what it found (default SEARCH_BUDGET_MS). */
   searchBudgetMs?: number;
   /** false runs every search on this connection, on the caller's thread (the benchmark's comparison); default: on a worker thread, for a store in a file. */
@@ -134,6 +141,16 @@ export interface SqliteAdapterOptions {
 export const SEARCH_BUDGET_MS = 1000;
 /** How often a delete's checkpoint is tried again while a reader holds it off (eraseFromFile). */
 const ERASE_RETRY_MS = 20;
+
+/** The retention sweep's step, in traces: from one, because erasing one trace row by row can take 120 ms by itself. */
+const SWEEP_BATCH = 1;
+const SWEEP_BATCH_RANGE = [1, 1024] as const;
+/** The evaluation sweep's step, in rows. */
+const EVAL_SWEEP_BATCH = 256;
+const EVAL_SWEEP_BATCH_RANGE = [64, 16_384] as const;
+
+/** Give the event loop a turn: requests that arrived during a step are answered before the next. */
+const yieldToRequests = () => new Promise<void>((resolve) => setImmediate(resolve));
 /** What every text field of an erased evaluation reads afterwards. */
 export const ERASED_MESSAGE = 'erased with the trace';
 
@@ -258,8 +275,15 @@ export class SqliteAdapter implements IStorageAdapter {
   private searchIndex: SearchIndexState = 'unavailable';
   /** The background build of the search index, while one runs; see buildSearchIndex. */
   private searchBuild: Promise<SearchIndexState> | undefined;
+  /** The merge a sweep owes, while one runs; see settleOwedMerge. */
+  private merging: Promise<void> | undefined;
+  /** Retention sweeps in progress: close() waits for each to stop at its next step. */
+  private readonly sweeps = new Set<Promise<unknown>>();
+  /** The worker thread that checkpoints the WAL off the event loop (checkpointer.ts); none for a database in memory. */
+  private checkpointer: Checkpointer | undefined;
   private closing = false;
   private readonly fts5Override: boolean | undefined;
+  private readonly log: (level: 'info' | 'warn', line: string) => void;
   /** storage.searchBudgetMs — see SEARCH_BUDGET_MS. */
   private readonly searchBudgetMs: number;
   /** Whether searches run on a worker thread (SqliteAdapterOptions.searchWorker); the client once one has started. */
@@ -275,6 +299,7 @@ export class SqliteAdapter implements IStorageAdapter {
     this.dbPath = dbPath;
     this.redact = options?.redact ?? 'none';
     this.fts5Override = options?.fts5;
+    this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
     this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
     /*
      * The busy wait belongs to the CONNECTION, not to a pragma run after
@@ -368,12 +393,43 @@ export class SqliteAdapter implements IStorageAdapter {
     }
     // Traces stored before the index existed are indexed after the start, not during it.
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
+    // A merge a sweep owed when the last server closed: carried on after the start, too.
+    if (this.searchIndex !== 'unavailable' && mergeOwed(this.db)) void this.settleOwedMerge();
+  }
+
+  /**
+   * Move WAL checkpoints to a worker thread, at the store's first write
+   * (checkpointer.ts); until it is ready, and if it fails, this connection
+   * checkpoints as before. A thread that stopped after it was ready is
+   * replaced; one that could not start is not tried again.
+   */
+  private ensureCheckpointer(): void {
+    if (this.dbPath === ':memory:' || this.closing) return;
+    const stopped = this.checkpointer?.stopped;
+    if (stopped === 'no' || stopped === 'before-ready') return;
+    try {
+      this.checkpointer = new Checkpointer({
+        path: this.dbPath,
+        driver: this.db.name,
+        busyMs: BUSY_TIMEOUT_MS,
+        onReady: () => {
+          if (!this.closing) this.db.pragma('wal_autocheckpoint = 0');
+        },
+        onFailed: (reason) => {
+          if (this.closing) return;
+          this.db.pragma(`wal_autocheckpoint = ${AUTOCHECKPOINT_PAGES}`);
+          this.log('warn', `WAL checkpoints run on the server's own connection again (${reason}); a write that triggers one waits for it.`);
+        },
+      });
+    } catch (err) {
+      this.log('warn', `WAL checkpoints stay on the server's own connection (the checkpoint worker did not start: ${err instanceof Error ? err.message : String(err)}).`);
+    }
   }
 
   async close(): Promise<void> {
-    // A build in progress stops at its next step; the index keeps what it had, and the next start carries on.
+    // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
-    await this.searchBuild;
+    await Promise.all([this.searchBuild, this.merging, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
     this.searchWorker = undefined;
@@ -381,8 +437,9 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.eraseRetry) {
       clearInterval(this.eraseRetry);
       this.eraseRetry = undefined;
-      await this.checkpoint();
+      await this.truncateCheckpointNow();
     }
+    await this.checkpointer?.close();
     this.db.close();
   }
 
@@ -429,22 +486,47 @@ export class SqliteAdapter implements IStorageAdapter {
     return this.searchBuild ?? Promise.resolve(this.searchIndex);
   }
 
+  /** Resolves when no background work runs: the build, a merge a sweep owes, a sweep. For tests and the benchmark. */
+  async whenIdle(): Promise<void> {
+    while (this.searchBuild || this.merging || this.sweeps.size > 0) await Promise.all([this.searchBuild, this.merging, ...this.sweeps]);
+  }
+
+  /**
+   * Where the search index is, for health and the self-test: its state,
+   * what a search reads now, and how many of the stored traces it holds.
+   * The traces are counted only while it is being built; ready, it holds
+   * them all.
+   */
+  async searchStatus(): Promise<SearchIndexStatus> {
+    return searchIndexProgress(this.db, this.searchIndex);
+  }
+
   /**
    * Fill the search index from the traces already stored, after the start
    * rather than during it (search-index.ts, installSearchIndex, says why).
    * One step at a time, each under its own write lock and sized to about
    * BUILD_STEP_MS of work from the last step's time, yielding to the event
    * loop between steps so requests are answered while it runs. An index
-   * retired at the start is dropped first, in a step of its own. Another process writing the same file only makes a step wait
+   * retired at the start is erased first, in steps of the same size rule.
+   * Another process writing the same file only makes a step wait
    * (busy_timeout); a step that still fails leaves the index building and
-   * searches on the scan, and the next start tries again.
+   * searches on the scan, and the next start tries again. It says when it
+   * starts and when it is done, with the counts and the time.
    */
   private async buildSearchIndex(): Promise<SearchIndexState> {
-    const yieldToRequests = () => new Promise<void>((resolve) => setImmediate(resolve));
     await yieldToRequests();
+    this.ensureCheckpointer();
+    const began = performance.now();
     try {
-      // An index retired at the start is dropped first (search-index.ts, retiring an index).
-      if (dropRetiredIndex(this.db)) await yieldToRequests();
+      const at = searchIndexProgress(this.db, 'building');
+      const [total, indexed] = [at.total ?? 0, at.indexed ?? 0];
+      const what =
+        indexed < total
+          ? `indexing ${(total - indexed).toLocaleString('en-US')} of ${total.toLocaleString('en-US')} stored trace(s)`
+          : `indexing the Chinese, Japanese and Korean text of ${at.cjk_pending.toLocaleString('en-US')} trace(s)`;
+      this.log('info', `Search index: ${at.retired ? 'erasing the previous index, then ' : ''}${what} in the background; until it is done, a search reads the traces (the same results, slower)`);
+      // An index retired at the start is erased first (search-index.ts, retiring an index).
+      await this.eraseRetiredIndex();
       let after = 0;
       let batch = BUILD_BATCH;
       while (!this.closing) {
@@ -464,6 +546,8 @@ export class SqliteAdapter implements IStorageAdapter {
           // Past the end. A purge's VACUUM may have renumbered rowids behind the walk: check, and walk again if so.
           if (!unindexedRemain(this.db)) {
             this.searchIndex = 'ready';
+            const { total } = searchIndexProgress(this.db, 'building');
+            this.log('info', `Search index ready: ${(total ?? 0).toLocaleString('en-US')} trace(s) indexed in ${((performance.now() - began) / 1000).toFixed(1)} s`);
             break;
           }
           after = 0;
@@ -473,11 +557,57 @@ export class SqliteAdapter implements IStorageAdapter {
         await yieldToRequests();
       }
     } catch (err) {
-      process.stderr.write(`[iris.storage] Building the trace search index stopped (${err instanceof Error ? err.message : String(err)}); search reads the traces until the next start finishes it.\n`);
+      this.log('warn', `Building the trace search index stopped (${err instanceof Error ? err.message : String(err)}); search reads the traces until the next start finishes it.`);
     } finally {
       this.searchBuild = undefined;
     }
     return this.searchIndex;
+  }
+
+  /** Erase the index retired at the start, if there is one, in steps (search-index.ts, retiring an index). */
+  private async eraseRetiredIndex(): Promise<void> {
+    let rows = ERASE_ROWS;
+    let oneStatement = false;
+    while (!this.closing && retiredRemain(this.db)) {
+      const started = performance.now();
+      try {
+        if (!eraseRetiredStep(this.db, rows, oneStatement)) return;
+      } catch (err) {
+        if (oneStatement || !isShadowWriteRefused(err)) throw err;
+        this.log('warn', "This SQLite connection refuses writes to the search index's own tables, so the previous index is dropped in one statement; requests wait for it.");
+        oneStatement = true;
+        continue;
+      }
+      rows = nextStepSize(rows, performance.now() - started, ERASE_ROWS_RANGE);
+      await yieldToRequests();
+    }
+  }
+
+  /**
+   * Run the merge a sweep owes to its end, in steps (search-index.ts, the
+   * retention sweep). One at a time: a second caller waits for the one in
+   * progress, which merges whatever is owed when each step runs.
+   */
+  private settleOwedMerge(): Promise<void> {
+    this.merging ??= (async () => {
+      await yieldToRequests();
+      this.ensureCheckpointer();
+      try {
+        let pages = MERGE_PAGES;
+        while (!this.closing) {
+          const started = performance.now();
+          const owed = mergeOwedStep(this.db, pages);
+          pages = nextStepSize(pages, performance.now() - started, MERGE_PAGES_RANGE);
+          if (!owed) break;
+          await yieldToRequests();
+        }
+      } catch (err) {
+        this.log('warn', `Merging the search index after a retention sweep stopped (${err instanceof Error ? err.message : String(err)}); the next start carries it on. Until then the swept traces' words are still in the index's pages, though no search finds them.`);
+      } finally {
+        this.merging = undefined;
+      }
+    })();
+    return this.merging;
   }
 
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
@@ -486,6 +616,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     const insertTraceStmt = this.db.prepare(`
       INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -585,6 +716,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     // Read-then-write under IMMEDIATE, so a concurrent writer waits instead of failing the snapshot.
     const write = this.db.transaction((): boolean => {
       const row = this.db.prepare('SELECT metadata FROM traces WHERE tenant_id = ? AND trace_id = ?').get(tenantId, traceId) as { metadata?: string | null } | undefined;
@@ -740,6 +872,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     const insert = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -792,6 +925,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void> {
     assertTenant(tenantId);
+    this.ensureCheckpointer();
     /*
      * created_at is written EXPLICITLY as ISO-8601. Leaving it to the
      * column DEFAULT (datetime('now')) stored "2026-08-09 15:00:00", which
@@ -1827,27 +1961,75 @@ export class SqliteAdapter implements IStorageAdapter {
     });
   }
 
+  /** Run a sweep so close() can wait for it to stop at its next step. */
+  private async tracked<T>(sweep: Promise<T>): Promise<T> {
+    this.sweeps.add(sweep);
+    try {
+      return await sweep;
+    } finally {
+      this.sweeps.delete(sweep);
+    }
+  }
+
+  /**
+   * The retention sweep of traces, in steps: a few traces per transaction,
+   * sized to about BUILD_STEP_MS of work from the last step's time, with the
+   * event loop free between steps, so the server answers while it runs. It
+   * was one transaction, and at 100,000 agent-loop traces a sweep of 3% held
+   * the event loop for seconds (search-index.ts, the retention sweep, says
+   * how each step erases the index). Resumable: a closing server stops it at
+   * its next step, and the next sweep deletes what is still past the window.
+   * Resolves when the swept traces are erased from the index too.
+   */
   async deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number> {
     assertTenant(tenantId);
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    // Same erasure as deleteTrace: an evaluation younger than the window
-    // whose trace is swept keeps its verdict and loses its text.
-    const run = this.db.transaction((tid: TenantId, cut: string): number => {
-      const ids = (this.db.prepare('SELECT trace_id FROM traces WHERE tenant_id = ? AND timestamp < ?').all(tid, cut) as Array<{ trace_id: string }>).map((r) => r.trace_id);
-      this.eraseEvaluationsOfTraces(tid, ids);
-      const remove = () => this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND timestamp < ?').run(tid, cut).changes;
-      if (this.searchIndex === 'unavailable') return remove();
-      const indexed = this.db
-        .prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ?`)
-        .get(tid, cut) as { n: number };
-      return bulkIndexDelete(this.db, Number(indexed.n), remove);
+    return this.tracked(this.sweepTraces(tenantId, cutoff));
+  }
+
+  private async sweepTraces(tid: TenantId, cut: string): Promise<number> {
+    if (this.closing) return 0;
+    this.ensureCheckpointer();
+    const indexing = this.searchIndex !== 'unavailable';
+    const mode = indexing
+      ? sweepEraseMode(
+          Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ?`).get(tid, cut) as { n: number }).n),
+          Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE}`).get() as { n: number }).n),
+        )
+      : 'rows';
+    const pick = this.db.prepare('SELECT rowid AS r, trace_id FROM traces WHERE tenant_id = ? AND timestamp < ? LIMIT ?');
+    const remove = this.db.prepare('DELETE FROM traces WHERE rowid IN (SELECT value FROM json_each(?))');
+    const step = this.db.transaction((max: number): number => {
+      const rows = pick.all(tid, cut, max) as Array<{ r: number; trace_id: string }>;
+      if (rows.length === 0) return 0;
+      // Same erasure as deleteTrace: an evaluation younger than the window
+      // whose trace is swept keeps its verdict and loses its text.
+      this.eraseEvaluationsOfTraces(tid, rows.map((r) => r.trace_id));
+      const run = () => remove.run(JSON.stringify(rows.map((r) => Number(r.r)))).changes;
+      return indexing && mode === 'merge' ? deleteOwingMerge(this.db, run) : run();
     });
-    return run(tenantId, cutoff);
+    let deleted = 0;
+    let batch = SWEEP_BATCH;
+    while (!this.closing) {
+      const started = performance.now();
+      const n = step.immediate(batch);
+      if (n === 0) break;
+      deleted += n;
+      batch = nextStepSize(batch, performance.now() - started, SWEEP_BATCH_RANGE);
+      await yieldToRequests();
+    }
+    if (indexing && mergeOwed(this.db)) await this.settleOwedMerge();
+    return deleted;
   }
 
   async deleteEvalResultsOlderThan(tenantId: TenantId, days: number): Promise<number> {
     assertTenant(tenantId);
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    return this.tracked(this.sweepEvalResults(tenantId, cutoff));
+  }
+
+  /** The evaluation sweep, in steps like the trace sweep. */
+  private async sweepEvalResults(tid: TenantId, cut: string): Promise<number> {
     /*
      * created_at, not the linked trace's timestamp: an unlinked eval has
      * no trace, and a linked one whose trace was already swept has a NULL
@@ -1855,10 +2037,18 @@ export class SqliteAdapter implements IStorageAdapter {
      * Rows are ISO-8601 here (write path + migration 005), so the string
      * comparison against an ISO cutoff is exact.
      */
-    const result = this.db
-      .prepare('DELETE FROM eval_results WHERE tenant_id = ? AND created_at < ?')
-      .run(tenantId, cutoff);
-    return result.changes;
+    const remove = this.db.prepare('DELETE FROM eval_results WHERE rowid IN (SELECT rowid FROM eval_results WHERE tenant_id = ? AND created_at < ? LIMIT ?)');
+    let deleted = 0;
+    let batch = EVAL_SWEEP_BATCH;
+    while (!this.closing) {
+      const started = performance.now();
+      const n = remove.run(tid, cut, batch).changes;
+      if (n === 0) break;
+      deleted += n;
+      batch = nextStepSize(batch, performance.now() - started, EVAL_SWEEP_BATCH_RANGE);
+      await yieldToRequests();
+    }
+    return deleted;
   }
 
   async purge(tenantId: TenantId): Promise<{ traces: number; evalResults: number }> {
@@ -1887,14 +2077,16 @@ export class SqliteAdapter implements IStorageAdapter {
     return counts;
   }
 
+  /**
+   * Copy the WAL into iris.db and empty it, so deleted rows survive in
+   * neither (the retention sweep and --purge call this after they delete).
+   * The same route as delete_trace's, tried now and, while a reader holds
+   * it off, again until nothing is reading (eraseFromFile); on the
+   * checkpoint worker's connection when it runs, since after a sweep the
+   * log can be large and copying it is not a delete's few pages.
+   */
   async checkpoint(): Promise<void> {
-    if (this.dbPath === ':memory:') return;
-    try {
-      this.db.pragma('wal_checkpoint(TRUNCATE)');
-    } catch {
-      // Best effort: a checkpoint can be refused while another connection
-      // holds a read transaction. The next one will pick the pages up.
-    }
+    await this.eraseFromFile(true);
   }
 
   async deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean> {
@@ -1924,7 +2116,7 @@ export class SqliteAdapter implements IStorageAdapter {
      * some later checkpoint. TRUNCATE also empties the WAL, which held the
      * text again if the trace was written since the last checkpoint.
      */
-    if (deleted) this.eraseFromFile();
+    if (deleted) await this.eraseFromFile();
     return deleted;
   }
 
@@ -1938,17 +2130,41 @@ export class SqliteAdapter implements IStorageAdapter {
    * reader holds it off, tried again every ERASE_RETRY_MS, off the event
    * loop's back; close() makes the last try, after the worker has closed.
    */
-  private eraseFromFile(): void {
-    if (this.dbPath === ':memory:' || this.truncateCheckpointNow()) return;
+  private async eraseFromFile(onWorker = false): Promise<void> {
+    if (this.dbPath === ':memory:' || this.closing || (await this.truncateCheckpointNow(onWorker))) return;
+    let trying = false;
     this.eraseRetry ??= setInterval(() => {
-      if (!this.closing && !this.truncateCheckpointNow()) return;
-      clearInterval(this.eraseRetry);
-      this.eraseRetry = undefined;
+      if (trying) return;
+      trying = true;
+      void this.truncateCheckpointNow(onWorker).then((done) => {
+        trying = false;
+        if (!done && !this.closing) return;
+        clearInterval(this.eraseRetry);
+        this.eraseRetry = undefined;
+      });
     }, ERASE_RETRY_MS).unref();
   }
 
-  /** A TRUNCATE checkpoint that gives up at once rather than wait for a reader; whether it emptied the WAL. */
-  private truncateCheckpointNow(): boolean {
+  /**
+   * A TRUNCATE checkpoint that gives up at once rather than wait for a
+   * reader; whether it emptied the WAL. `onWorker`: on the checkpoint
+   * worker's connection when it runs (checkpointer.ts), so copying a large
+   * log never holds the event loop. A delete's own erasure stays on this
+   * connection: its log is a few pages, and it must not wait behind the
+   * worker's periodic checkpoint for its answer.
+   */
+  private async truncateCheckpointNow(onWorker = false): Promise<boolean> {
+    if (onWorker && this.checkpointer?.active) {
+      try {
+        return await this.checkpointer.truncate();
+      } catch {
+        // The worker stopped mid-request: this connection takes over, below.
+      }
+    }
+    return this.truncateCheckpointHere();
+  }
+
+  private truncateCheckpointHere(): boolean {
     this.db.pragma('busy_timeout = 0');
     try {
       const out = this.db.pragma('wal_checkpoint(TRUNCATE)') as { busy: number } | Array<{ busy: number }> | undefined;

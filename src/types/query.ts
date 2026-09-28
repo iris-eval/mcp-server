@@ -5,6 +5,7 @@ import type { TenantId } from './tenant.js';
 import type { RegressionAlarm } from '../eval/cusum.js';
 import type { MigrationState } from '../storage/migrations/index.js';
 import type { TraceMatch } from '../storage/search.js';
+import type { SearchIndexStatus } from '../storage/search-index.js';
 
 export interface TraceFilter {
   agent_name?: string;
@@ -319,6 +320,8 @@ export interface IStorageAdapter {
   close(): Promise<void>;
   /** Applied migrations against the ones this build knows; the health contract's `checks.migrations`. */
   migrations(): Promise<MigrationState>;
+  /** Where the trace search index is: health's `search` and the self-test read it. Optional: a store without an index has none. */
+  searchStatus?(): Promise<SearchIndexStatus>;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
   /**
    * Store several traces in ONE transaction: all of them or none. The OTLP
@@ -392,6 +395,11 @@ export interface IStorageAdapter {
     },
   ): Promise<{ results: EvalResult[]; total: number }>;
   getDashboardSummary(tenantId: TenantId, sinceHours?: number): Promise<DashboardSummary>;
+  /**
+   * The retention sweep. It runs while the server serves, so it works in
+   * short steps with the event loop free between them, and resolves when
+   * the swept traces are erased (the search index included).
+   */
   deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number>;
   /**
    * Retention twin of deleteTracesOlderThan for eval_results (#372).

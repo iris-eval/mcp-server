@@ -63,6 +63,14 @@ export interface Driver {
   pragma(text: string): unknown;
   transaction<A extends unknown[], R>(fn: (...args: A) => R): Transaction<A, R>;
   /**
+   * Run `fn` with SQLite's DEFENSIVE flag off, so it may delete rows from a
+   * virtual table's shadow tables, and turn it back on after. Used for one
+   * thing: erasing a retired search index a page at a time (search-index.ts,
+   * retiring an index). better-sqlite3 opens every connection defensive;
+   * node:sqlite does not, and turns it off only where it can.
+   */
+  writeShadowTables<R>(fn: () => R): R;
+  /**
    * Define a SQL function on this connection, callable from statements
    * only (never from a trigger or view the file carries), and not
    * deterministic. An error it throws ends the statement and reaches the
@@ -111,6 +119,8 @@ type NativeDatabase = {
   pragma(text: string): unknown;
   function(name: string, options: FunctionOptions, impl: (...args: unknown[]) => unknown): unknown;
   transaction<F extends (...args: never[]) => unknown>(fn: F): F & { immediate: F };
+  /** Also switches SQLITE_DBCONFIG_DEFENSIVE: off in unsafe mode, on outside it. */
+  unsafeMode(on: boolean): unknown;
   close(): void;
 };
 type NativeModule = new (path: string, options?: { timeout?: number; fileMustExist?: boolean; readonly?: boolean }) => NativeDatabase;
@@ -139,6 +149,14 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
     },
     pragma: (text) => db.pragma(text),
     transaction: <A extends unknown[], R>(fn: (...args: A) => R) => db.transaction(fn as (...args: never[]) => unknown) as unknown as Transaction<A, R>,
+    writeShadowTables: (fn) => {
+      db.unsafeMode(true);
+      try {
+        return fn();
+      } finally {
+        db.unsafeMode(false);
+      }
+    },
     fn: (name, impl) => {
       db.function(name, { deterministic: false, directOnly: true }, impl);
     },
@@ -228,6 +246,7 @@ type NodeDatabase = {
   exec(sql: string): void;
   function(name: string, options: FunctionOptions, impl: (...args: unknown[]) => unknown): void;
   close(): void;
+  enableDefensive?(on: boolean): void;
 };
 type NodeSqliteModule = { DatabaseSync: new (path: string, options?: Record<string, unknown>) => NodeDatabase };
 
@@ -305,6 +324,16 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
       const tx = ((...args: A) => runIn('DEFERRED', fn, args)) as Transaction<A, R>;
       tx.immediate = (...args: A) => runIn('IMMEDIATE', fn, args);
       return tx;
+    },
+    writeShadowTables: (fn) => {
+      // A Node that opens connections defensive has the switch to turn it off; one without the switch never turned it on.
+      if (typeof db.enableDefensive !== 'function') return fn();
+      db.enableDefensive(false);
+      try {
+        return fn();
+      } finally {
+        db.enableDefensive(true);
+      }
     },
     fn: (name, impl) => {
       // Every built-in with FTS5 (22.16+) has it; one without never runs the statements that call it (the search reads the traces instead).

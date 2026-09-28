@@ -103,8 +103,21 @@
  * the segment, where `strings iris.db` finds them (the erasure test in
  * tests/unit/storage/trace-search.test.ts caught exactly that).
  * secure-delete costs about 2.6 ms a row, which a sweep of thousands cannot
- * pay; bulkIndexDelete below erases a large delete by rewriting the index
- * once instead, with the same result on disk.
+ * pay; a large sweep deletes with it off and then merges the index into one
+ * segment, which drops every deleted entry, with the same result on disk
+ * (sweepEraseMode and mergeOwedStep below; bulkIndexDelete does the same in
+ * one statement for --purge).
+ *
+ * Never holding the event loop. A stdio MCP client waits on the server, and
+ * a Node process answers nothing while a SQLite statement runs. So nothing
+ * that grows with the store runs as one statement once the server is up:
+ * the build, the retention sweep, the merge a sweep owes and the erasure of
+ * a retired index each run in steps sized to about BUILD_STEP_MS of work
+ * (nextStepSize), each step its own transaction, with the event loop free
+ * between them. Each is resumable: the build walks by rowid and skips what
+ * is indexed, the sweep deletes what is still past the window, a merge owed
+ * is recorded in ERASE_OWED_TABLE in the transaction that owes it, and a
+ * retired index is erased until nothing of it is left.
  *
  * Without FTS5. better-sqlite3's bundled SQLite has FTS5. Node's built-in
  * node:sqlite has it from Node 22.16.0; on 22.13.0 to 22.15.0 it does not
@@ -367,22 +380,27 @@ const CREATE_TRIGGERS = `
 `;
 
 /**
- * The background build's step, in milliseconds of work: a request waits at
- * most about this long behind it. What a trace costs to index depends on
- * its text (a trace with an agent loop's spans takes several times one
- * without), so the adapter sizes each step from how long the last one took,
- * starting at BUILD_BATCH traces and kept within BUILD_BATCH_RANGE.
+ * A background step, in milliseconds of work: a request waits at most about
+ * this long behind it. What a trace costs to index or delete depends on its
+ * text (a trace with an agent loop's spans takes several times one without),
+ * so each step is sized from how long the last one took: the build from
+ * BUILD_BATCH traces within BUILD_BATCH_RANGE, the others from their own
+ * start and range.
  */
 export const BUILD_STEP_MS = 50;
 export const BUILD_BATCH = 32;
 export const BUILD_BATCH_RANGE = [8, 1024] as const;
 
 /** The next step's size, from the last one's size and the milliseconds it took. */
-export function nextBuildBatch(size: number, tookMs: number): number {
-  const [min, max] = BUILD_BATCH_RANGE;
+export function nextStepSize(size: number, tookMs: number, [min, max]: readonly [number, number]): number {
   const scaled = tookMs > 0 ? Math.round((size * BUILD_STEP_MS) / tookMs) : max;
   // At most double per step, so one fast step on small traces cannot size the next to many large ones.
   return Math.max(min, Math.min(max, size * 2, scaled));
+}
+
+/** The build's next step size. */
+export function nextBuildBatch(size: number, tookMs: number): number {
+  return nextStepSize(size, tookMs, BUILD_BATCH_RANGE);
 }
 
 /**
@@ -531,41 +549,97 @@ function objectExists(db: Driver, type: 'table' | 'trigger', name: string): bool
 
 /*
  * Retiring an index. Rebuilding from scratch (an index built before the
- * span column, or one whose triggers a start without FTS5 dropped) used to
- * empty or drop the old index at the start, and dropping it is a rewrite of
- * every one of its pages, zeroed by secure_delete: 1.2 s for 72 MB, measured
- * on the machine in the changelog, while the server was not yet answering.
- * Instead the start renames it, which is instant, and the background build
- * drops it first (dropRetiredIndex), before it indexes a trace: one
- * statement, because FTS5's own tables cannot be emptied a row at a time
- * from outside it, so it is the build's one long step. Until then, the
- * words of a trace deleted in that moment are still in the retired index's
- * pages; the drop zeroes them with the rest.
+ * span column, or one whose triggers a start without FTS5 dropped) needs the
+ * old index gone, and gone means zeroed: its pages hold the words of traces
+ * that still exist, and a trace deleted later would leave its words in
+ * those pages. Dropping it rewrites every one of its pages, zeroed by
+ * secure_delete, and as one statement it held the event loop for 5.2 s at
+ * 100,000 agent-loop traces (a 225 MB index, #695).
+ *
+ * So the start renames it (instant), with its docs table, and the
+ * background build erases it before it indexes a trace, in steps
+ * (eraseRetiredStep): some hundreds of rows of its shadow tables deleted per
+ * step, each page zeroed as it is freed, and the emptied tables dropped at
+ * the end. FTS5's shadow tables are read-only to SQL on a connection in
+ * SQLite's defensive mode, which better-sqlite3 turns on; each step turns it
+ * off for its own DELETE statements and back on (Driver.writeShadowTables).
+ * The retired index is never read again, so what those deletes leave of its
+ * structure does not matter; only its bytes do. A connection that still
+ * refuses the write drops the rest in one statement, as before. Until the
+ * erasure finishes, the words of a trace deleted in that moment are still in
+ * the retired index's pages; the erasure zeroes them with the rest.
  */
 export const RETIRED_TABLE = 'trace_search_retired';
+const RETIRED_DOCS_TABLE = 'trace_search_docs_retired';
+/** Everything a retirement leaves: the FTS5 tables, erased by their shadow tables, then the plain ones. */
+const RETIRED_FTS = [RETIRED_TABLE, RETIRED_CJK_TABLE] as const;
+const RETIRED_PLAIN = [RETIRED_CJK_DOCS_TABLE, RETIRED_DOCS_TABLE] as const;
+/** The shadow tables of a contentless FTS5 table that grow with it, each with the key a step deletes by (`idx` is WITHOUT ROWID). */
+const SHADOWS = [
+  ['data', 'rowid'],
+  ['docsize', 'rowid'],
+  ['idx', 'segid, term'],
+] as const;
 
-/** Take the index out of use: its triggers dropped, renamed for the build to erase, its docs rows gone. In the caller's transaction. */
+/** Take the index out of use: its triggers dropped, it and its docs table renamed for the build to erase. In the caller's transaction. */
 function retireIndex(db: Driver): void {
   for (const t of ALL_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
-  // One retired index at a time: a second retirement before the first was erased drops that one now.
-  for (const t of [RETIRED_TABLE, RETIRED_CJK_TABLE, RETIRED_CJK_DOCS_TABLE]) if (objectExists(db, 'table', t)) db.exec(`DROP TABLE ${t}`);
+  // One retired index at a time: a second retirement before the first was erased drops what is left of that one now.
+  for (const t of [...RETIRED_FTS, ...RETIRED_PLAIN]) if (objectExists(db, 'table', t)) db.exec(`DROP TABLE ${t}`);
   db.exec(`ALTER TABLE ${SEARCH_TABLE} RENAME TO ${RETIRED_TABLE}`);
   if (objectExists(db, 'table', CJK_TABLE)) db.exec(`ALTER TABLE ${CJK_TABLE} RENAME TO ${RETIRED_CJK_TABLE}`);
   if (objectExists(db, 'table', CJK_DOCS_TABLE)) db.exec(`ALTER TABLE ${CJK_DOCS_TABLE} RENAME TO ${RETIRED_CJK_DOCS_TABLE}`);
   db.exec(`DROP TABLE IF EXISTS ${CJK_PENDING_TABLE}`);
-  db.exec(`DELETE FROM ${SEARCH_DOCS_TABLE}`);
+  // Renamed, not emptied: a DELETE of every docs row is itself a long statement, and the erasure takes it in steps.
+  db.exec(`ALTER TABLE ${SEARCH_DOCS_TABLE} RENAME TO ${RETIRED_DOCS_TABLE}`);
+  // A merge the old index owed is moot: all of it is erased.
+  if (objectExists(db, 'table', ERASE_OWED_TABLE)) db.exec(`DELETE FROM ${ERASE_OWED_TABLE}`);
 }
 
-/** Drop the index retired at the start, if there is one; whether there was. */
-export function dropRetiredIndex(db: Driver): boolean {
+/** Whether anything of a retired index is left to erase. */
+export function retiredRemain(db: Driver): boolean {
+  return [...RETIRED_FTS, ...RETIRED_PLAIN].some((t) => objectExists(db, 'table', t));
+}
+
+/** Delete up to `rows` rows of `table`, chosen by `key`; how many went. */
+function deleteSome(db: Driver, table: string, key: string, rows: number): number {
+  return db.prepare(`DELETE FROM ${table} WHERE (${key}) IN (SELECT ${key} FROM ${table} LIMIT ?)`).run(rows).changes;
+}
+
+/**
+ * One step of erasing a retired index, under one write lock: up to `rows`
+ * rows of the first of its tables that has any, deleted with each freed
+ * page zeroed; once all are empty, the tables themselves are dropped (a few
+ * pages each by then). Returns whether anything is left for another step.
+ * `oneStatement` drops what is left at once: the fallback for a connection
+ * that refuses to write shadow tables.
+ */
+export function eraseRetiredStep(db: Driver, rows: number, oneStatement = false): boolean {
   return db
     .transaction((): boolean => {
-      const retired = [RETIRED_TABLE, RETIRED_CJK_TABLE, RETIRED_CJK_DOCS_TABLE].filter((t) => objectExists(db, 'table', t));
-      for (const t of retired) db.exec(`DROP TABLE ${t}`);
-      return retired.length > 0;
+      if (!oneStatement) {
+        for (const fts of RETIRED_FTS) {
+          for (const [shadow, key] of SHADOWS) {
+            const table = `${fts}_${shadow}`;
+            if (objectExists(db, 'table', table) && db.writeShadowTables(() => deleteSome(db, table, key, rows)) > 0) return true;
+          }
+        }
+        for (const table of RETIRED_PLAIN) if (objectExists(db, 'table', table) && deleteSome(db, table, 'rowid', rows) > 0) return true;
+      }
+      for (const t of [...RETIRED_FTS, ...RETIRED_PLAIN]) if (objectExists(db, 'table', t)) db.exec(`DROP TABLE ${t}`);
+      return false;
     })
     .immediate();
 }
+
+/** Whether an error is SQLite refusing a write to a shadow table (defensive mode). */
+export function isShadowWriteRefused(err: unknown): boolean {
+  return err instanceof Error && /may not be modified/.test(err.message);
+}
+
+/** The erasure step's size in rows (an FTS5 data row is about one page). */
+export const ERASE_ROWS = 64;
+export const ERASE_ROWS_RANGE = [16, 16_384] as const;
 
 /** Whether the index has the span column: false for one built before #683. Read from its declaration, which needs no FTS5. */
 function hasSpanColumn(db: Driver): boolean {
@@ -632,6 +706,7 @@ export function readSpanText(db: Driver, traceIds: readonly string[]): Map<strin
 export function installSearchIndex(db: Driver): void {
   db.exec(CREATE_TABLES);
   db.exec(CREATE_CJK_TABLES);
+  db.exec(CREATE_OWED);
   db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rank) VALUES ('secure-delete', 1)`);
   db.exec(`INSERT INTO ${CJK_TABLE} (${CJK_TABLE}, rank) VALUES ('secure-delete', 1)`);
   db.exec(CREATE_TRIGGERS);
@@ -643,6 +718,39 @@ export function installSearchIndex(db: Driver): void {
  * done, so they are slower but never miss a trace. `unavailable`: no FTS5.
  */
 export type SearchIndexState = 'ready' | 'building' | 'unavailable';
+
+/** Where the index is: health, the self-test and the build's own log lines read it. */
+export interface SearchIndexStatus {
+  state: SearchIndexState;
+  /** What a search reads now: the index, or the traces themselves. */
+  index: 'fts5' | 'scan';
+  /** Traces stored, and how many of them the index holds; counted while it is being built, and equal when it is ready. Null without FTS5. */
+  total: number | null;
+  indexed: number | null;
+  /** Traces whose Chinese, Japanese or Korean text waits to be indexed. */
+  cjk_pending: number;
+  /** Whether a retired index waits to be erased before the build (retiring an index, below). */
+  retired: boolean;
+}
+
+/**
+ * The index's status on this connection. `state` is the adapter's when it
+ * has one; a caller reading a file it did not start (the self-test) passes
+ * none, and it is worked out from the file as the next start would find it.
+ */
+export function searchIndexProgress(db: Driver, state?: SearchIndexState): SearchIndexStatus {
+  const has = (t: string) => objectExists(db, 'table', t);
+  const count = (sql: string) => Number((db.prepare(sql).get() as { n: number }).n);
+  const settled = state ?? (fts5Available(db) ? undefined : 'unavailable');
+  if (settled === 'unavailable') return { state: 'unavailable', index: 'scan', total: null, indexed: null, cjk_pending: 0, retired: false };
+  const retired = retiredRemain(db);
+  const cjk_pending = has(CJK_PENDING_TABLE) ? count(`SELECT COUNT(*) AS n FROM ${CJK_PENDING_TABLE}`) : 0;
+  if (settled === 'ready') return { state: 'ready', index: 'fts5', total: null, indexed: null, cjk_pending, retired };
+  const total = count('SELECT COUNT(*) AS n FROM traces');
+  const indexed = has(SEARCH_TABLE) && has(SEARCH_DOCS_TABLE) ? count(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE}`) : 0;
+  const building = settled === 'building' || indexed < total || cjk_pending > 0 || retired || !has(SEARCH_TABLE);
+  return building ? { state: 'building', index: 'scan', total, indexed, cjk_pending, retired } : { state: 'ready', index: 'fts5', total, indexed, cjk_pending, retired };
+}
 
 /**
  * Run at every start, after the migrations. Brings the index to a state the
@@ -685,6 +793,7 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
       db.exec(`INSERT OR IGNORE INTO ${CJK_PENDING_TABLE} (doc_id) SELECT d.doc_id FROM ${SEARCH_DOCS_TABLE} d WHERE ${traceMayHoldCjk('d.trace_id')}`);
     }
     if (!hasTable) installSearchIndex(db);
+    db.exec(CREATE_OWED);
     const counts = db
       .prepare(`SELECT (SELECT COUNT(*) FROM traces) AS traces, (SELECT COUNT(*) FROM ${SEARCH_DOCS_TABLE}) AS docs`)
       .get() as { traces: number; docs: number };
@@ -697,7 +806,7 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
       return;
     }
     const pending = db.prepare(`SELECT 1 FROM ${CJK_PENDING_TABLE} LIMIT 1`).get() !== undefined;
-    state = docs < traces || pending || objectExists(db, 'table', RETIRED_TABLE) ? 'building' : 'ready';
+    state = docs < traces || pending || retiredRemain(db) ? 'building' : 'ready';
   }).immediate();
   return state;
 }
@@ -717,8 +826,98 @@ export function indexInsertedTraces(db: Driver, tenantId: string, traceIds: read
   db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
 }
 
+/*
+ * The retention sweep (sqlite-adapter.ts, deleteTracesOlderThan) deletes in
+ * steps, and chooses once, for the whole sweep, how the index is erased:
+ *
+ *   - 'rows': fewer than 1 in PER_ROW_LIMIT of the indexed traces are going.
+ *     Each is erased as it is deleted (secure-delete on). A step may be a
+ *     single trace, which at 100,000 agent-loop traces costs about 120 ms.
+ *   - 'merge': more are going. Each step deletes with secure-delete off
+ *     (deleteOwingMerge), which leaves the deleted words in older segments
+ *     and records in ERASE_OWED_TABLE, in the same transaction, that the
+ *     index owes a merge. mergeOwedStep then merges the index some pages at
+ *     a time until it is one segment. Merging into the oldest segment drops
+ *     every deleted entry: the same result on disk as 'optimize' (a test
+ *     compares the file's bytes), each freed page zeroed by the database's
+ *     secure_delete. The sweep returns when the merge is done; a merge that
+ *     a closing server left unfinished is carried on by the next start.
+ *
+ * Other writes go on between the steps with secure-delete on: a step turns
+ * it off and back on inside its own transaction. It turns FTS5's automerge
+ * off the same way, so no merge of older segments lands inside a delete
+ * step; the merge owed does that work, in steps of its own.
+ */
+export const ERASE_OWED_TABLE = 'trace_search_erase_owed';
+/** FTS5's default automerge: a sweep step turns it off for its own deletes and back to this, so no merge lands inside a step. */
+const AUTOMERGE = 4;
+const CREATE_OWED = `CREATE TABLE IF NOT EXISTS ${ERASE_OWED_TABLE} (fts TEXT PRIMARY KEY)`;
+
+export type SweepEraseMode = 'rows' | 'merge';
+
+/** How a sweep of `going` indexed traces erases them from an index of `indexed`. */
+export function sweepEraseMode(going: number, indexed: number): SweepEraseMode {
+  return going * PER_ROW_LIMIT <= indexed ? 'rows' : 'merge';
+}
+
+/** The FTS5 tables a delete writes to: the index, and the CJK stream where it exists. */
+function ftsTables(db: Driver): string[] {
+  return objectExists(db, 'table', CJK_TABLE) ? [SEARCH_TABLE, CJK_TABLE] : [SEARCH_TABLE];
+}
+
+/** Run `remove` (a DELETE whose trigger takes each trace out of the index) with secure-delete off, and record the merge that erases what it leaves. In the caller's transaction. */
+export function deleteOwingMerge<T>(db: Driver, remove: () => T): T {
+  if (!objectExists(db, 'table', SEARCH_TABLE)) return remove();
+  const tables = ftsTables(db);
+  for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 0); INSERT INTO ${t} (${t}, rank) VALUES ('automerge', 0)`);
+  try {
+    const out = remove();
+    const owe = db.prepare(`INSERT OR IGNORE INTO ${ERASE_OWED_TABLE} (fts) VALUES (?)`);
+    for (const t of tables) owe.run(t);
+    return out;
+  } finally {
+    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 1); INSERT INTO ${t} (${t}, rank) VALUES ('automerge', ${AUTOMERGE})`);
+  }
+}
+
+/** Whether a merge is owed. */
+export function mergeOwed(db: Driver): boolean {
+  return objectExists(db, 'table', ERASE_OWED_TABLE) && db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined;
+}
+
+/** The merge step's size in pages, like the build's in traces. */
+export const MERGE_PAGES = 64;
+export const MERGE_PAGES_RANGE = [16, 16_384] as const;
+
 /**
- * Deleting many traces at once — the retention sweep, --purge. Run `remove`
+ * One step of the merge owed, under one write lock: about `pages` pages of
+ * each owing index merged ('merge' with a negative count merges whatever
+ * segments there are, down to one). An index with nothing left to merge is
+ * one segment and owes nothing more. Returns whether a merge is still owed.
+ */
+export function mergeOwedStep(db: Driver, pages: number): boolean {
+  return db
+    .transaction((): boolean => {
+      const changes = () => Number((db.prepare('SELECT total_changes() AS n').get() as { n: number }).n);
+      const paid = db.prepare(`DELETE FROM ${ERASE_OWED_TABLE} WHERE fts = ?`);
+      for (const { fts } of db.prepare(`SELECT fts FROM ${ERASE_OWED_TABLE}`).all() as Array<{ fts: string }>) {
+        if (!objectExists(db, 'table', fts)) {
+          paid.run(fts);
+          continue;
+        }
+        const before = changes();
+        db.exec(`INSERT INTO ${fts} (${fts}, rank) VALUES ('merge', ${-Math.max(1, Math.floor(pages))})`);
+        // FTS5's own test for a merge that found nothing to do: it changes fewer than two rows.
+        if (changes() - before < 2) paid.run(fts);
+      }
+      return db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined;
+    })
+    .immediate();
+}
+
+/**
+ * Deleting every trace of a tenant at once: --purge, which serves nothing
+ * and exits when it is done, so it may hold the event loop. Run `remove`
  * (the DELETE, whose trigger takes each trace out of the index) inside the
  * caller's transaction, choosing how the words are erased:
  *

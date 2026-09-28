@@ -17,6 +17,11 @@
  *                before a query fails on a missing column
  *   driver       which SQLite driver opened the file (0.15.0 added the
  *                Node built-in as a fallback; the word is the seam)
+ *   search       the trace search index: `ready`, `building` (a search
+ *                reads the traces until it is done; `progress` says how
+ *                far along the build is) or `unavailable` (a SQLite without
+ *                FTS5). Not a check: a search answers in every state, so it
+ *                never makes the status degraded.
  *   search_worker where searches run: their own thread, or the server's
  *                when the worker could not start (and why); informational
  *
@@ -26,11 +31,13 @@
  * stay: the dashboard header and the UAT read them.
  *
  * The endpoint answers without a key, so it reports whether the store can
- * be counted, never the count. Until this change it carried `trace_count`,
+ * be counted, never the count; the index build's progress is a share of
+ * the traces for the same reason. Until this change it carried `trace_count`,
  * which told any unauthenticated caller how much data the server held. The
  * count is on the authenticated surface: `total` on GET /api/v1/traces.
  */
 import type { IStorageAdapter, SearchWorkerStatus } from './types/query.js';
+import type { SearchIndexStatus } from './storage/search-index.js';
 import type { CustomRuleStore } from './custom-rule-store.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { judgeState } from './judge-enablement.js';
@@ -52,6 +59,13 @@ export interface HealthReport {
     rules_store: CheckState;
     migrations: { status: CheckState; applied: number; known: number };
   };
+  /**
+   * The trace search index: its state, what a search reads now, and while
+   * it is being built the share of stored traces it holds, 0 to 0.99
+   * (1 when ready, null without FTS5). Null when there is no storage or it
+   * reports nothing.
+   */
+  search: { state: SearchIndexStatus['state']; index: SearchIndexStatus['index']; progress: number | null } | null;
   /** The word the pre-0.15.0 contract used; kept for readers of it. */
   storage?: 'connected' | 'disconnected';
   judge: { enabled: boolean; provider: string | null };
@@ -64,6 +78,14 @@ export interface HealthDeps {
   version?: string;
   /** `demo` when serving the disposable demo database. */
   mode?: 'real' | 'demo';
+}
+
+/** The share of stored traces the index holds: 1 when ready; while building, rounded down and never 1, so it reads as done only when it is. */
+function searchProgress(s: SearchIndexStatus): number | null {
+  if (s.state === 'unavailable') return null;
+  if (s.state === 'ready') return 1;
+  if (!s.total) return 0.99;
+  return Math.min(0.99, Math.floor(((s.indexed ?? 0) / s.total) * 100) / 100);
 }
 
 /** The report and the HTTP status it should travel with (200 ok, 503 degraded). */
@@ -86,6 +108,7 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
       rules_store: 'absent',
       migrations: { status: 'absent', applied: 0, known: 0 },
     },
+    search: null,
     judge: { enabled: judge.enabled, provider: judge.provider },
     mode: deps.mode ?? 'real',
   };
@@ -114,6 +137,12 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
       body.checks.migrations = { status: m.pending.length === 0 ? 'ok' : 'fail', applied: m.applied, known: m.known };
     } catch {
       body.checks.migrations = { status: 'fail', applied: 0, known: 0 };
+    }
+    try {
+      const s = await deps.storage.searchStatus?.();
+      if (s) body.search = { state: s.state, index: s.index, progress: searchProgress(s) };
+    } catch {
+      // A store that cannot say where its index is still answers searches; the storage check reports the store.
     }
   }
 

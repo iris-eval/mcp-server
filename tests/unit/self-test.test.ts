@@ -3,12 +3,16 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  describeConfiguredSearchIndex,
   runSelfTest,
   SELF_TEST_STEPS,
   SELF_TEST_PASS_VERDICT,
   SELF_TEST_FAIL_VERDICT,
 } from '../../src/self-test.js';
 import { PKG_VERSION } from '../../src/config/defaults.js';
+import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
+import { LOCAL_TENANT } from '../../src/types/tenant.js';
+import { CELL_DRIVER, SEARCH_DRIVER, driverHasFts5 } from './storage/fts5-here.js';
 
 /*
  * In-process exercise of the self-test sequence. The CLI-level contract
@@ -200,3 +204,57 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     expect(cross).toContain('IRIS_DB_PATH');
   });
 });
+
+/*
+ * The configured database's search index, read and never changed: after an
+ * upgrade the server builds the index in the background, and this line is
+ * where to see how far along it is.
+ */
+describe('the self-test line for the configured search index', { timeout: 60_000 }, () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'iris-selftest-index-'));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const traces = (n: number) => Array.from({ length: n }, (_, i) => ({ trace_id: `t-${i}`, agent_name: 'a', output: `answer ${i}`, timestamp: new Date().toISOString() }));
+
+  it('says there is nothing yet when there is no database, or no traces table', async () => {
+    expect(describeConfiguredSearchIndex(join(dir, 'none.db'))).toBe('no database yet; the index is created with it');
+    const empty = join(dir, 'empty.db');
+    writeFileSync(empty, '');
+    expect(describeConfiguredSearchIndex(empty)).toBe('no traces stored yet; the index is created at the first start');
+    expect(statSync(empty).size).toBe(0);
+  });
+
+  it('reports a store the next start will index, and one whose index is whole, without changing either', async () => {
+    const path = join(dir, 'iris.db');
+    const before = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false });
+    await before.initialize();
+    await before.insertTraces(LOCAL_TENANT, traces(1234));
+    await before.close();
+    const size = statSync(path).size;
+    // Read with this cell's driver, as the server would open it.
+    expect(describeConfiguredSearchIndex(path)).toBe(
+      driverHasFts5(CELL_DRIVER)
+        ? '0 of 1,234 trace(s) indexed; the server finishes it in the background after it starts, and until then a search reads the traces (the same results, slower)'
+        : `this SQLite (driver ${CELL_DRIVER === 'node' ? 'node' : 'better-sqlite3'}) has no FTS5, so a search reads the traces (the same results, slower)`,
+    );
+    expect(statSync(path).size).toBe(size);
+
+    const after = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await after.initialize();
+    await after.whenIdle();
+    await after.close();
+    if (driverHasFts5(CELL_DRIVER)) expect(describeConfiguredSearchIndex(path)).toBe('ready: 1,234 trace(s) indexed');
+  });
+
+  it('does not count a database that does not open twice: the configured-home line says so', () => {
+    const bad = join(dir, 'bad.db');
+    writeFileSync(bad, 'this is not an sqlite file, just enough bytes to be rejected as one\n'.repeat(4));
+    expect(describeConfiguredSearchIndex(bad)).toMatch(/^not read: the database does not open/);
+  });
+});
+
