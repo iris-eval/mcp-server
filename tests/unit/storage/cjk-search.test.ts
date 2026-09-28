@@ -236,7 +236,7 @@ describe('the CJK stream stays exact', () => {
   });
 
   it('erases it with a retention sweep large enough to rewrite both indexes', async () => {
-    // The secret and two more are old; more than 1 in 125 of the index goes, so the sweep rewrites the index once (search-index.ts, bulkIndexDelete).
+    // The secret and two more are old; more than 1 in 125 of the index goes, so the sweep merges both indexes into one segment afterwards (search-index.ts, the retention sweep).
     const { s, path } = await withSecret({ timestamp: '2020-01-01T00:00:00.000Z' });
     await s.insertTraces(LOCAL_TENANT, [trace('old1', '旧的记录一', { timestamp: '2020-01-02T00:00:00.000Z' }), trace('old2', '旧的记录二', { timestamp: '2020-01-03T00:00:00.000Z' })]);
     await s.checkpoint();

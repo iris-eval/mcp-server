@@ -179,7 +179,8 @@ Options:
   --demo-clear             Delete the demo database (and its sidecar files), then exit.
                            Your real traces are not touched.
   --self-test              Run the offline install diagnostic and exit: the configured IRIS_HOME
-                           is created and probed for writability, then storage round-trip,
+                           is created and probed for writability, its database's search index
+                           is reported (read only), then storage round-trip,
                            deterministic evals, dashboard + rebinding guard run inside an
                            isolated temp home. Exit code 0 = healthy, 1 = a check failed.
   --purge                  Delete EVERY stored trace, span and evaluation from the configured
@@ -417,7 +418,7 @@ async function main(): Promise<void> {
   // Refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
   validateBindPolicy(config);
 
-  const storage = createStorage(config);
+  const storage = createStorage(config, { log: (level, line) => logger[level](line) });
   await storage.initialize();
   logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path}; driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'})`);
 
@@ -460,11 +461,6 @@ async function main(): Promise<void> {
 
   const httpServers: Server[] = [];
 
-  // Retention: one sweep at boot and the same sweep on a timer that never
-  // holds the process open (src/retention.ts).
-  await runRetentionSweep(storage, config, logger);
-  scheduleRetentionSweep(storage, config, logger);
-
   if (config.transport.type === 'http') {
     const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore });
     httpServers.push(httpServer);
@@ -484,6 +480,18 @@ async function main(): Promise<void> {
       logger.info(`Tip: run with --dashboard to open the web dashboard on port ${config.dashboard.port}`);
     }
   }
+
+  /*
+   * Retention: one sweep at boot and the same sweep on a timer that never
+   * holds the process open (src/retention.ts). The boot sweep starts after
+   * the transport is connected and is not awaited: it deletes in short
+   * steps with the event loop free between them, so the client's
+   * `initialize` is answered at once however much is due. It used to run
+   * before the connection opened, as one transaction, and a stdio client
+   * waited for all of it. close() waits for a sweep to stop at its next step.
+   */
+  void runRetentionSweep(storage, config, logger);
+  scheduleRetentionSweep(storage, config, logger);
 
   /*
    * The dashboard starts ONLY when explicitly enabled (--dashboard,
@@ -642,7 +650,7 @@ async function runDemo(): Promise<void> {
    * demo dashboard's port would have its real traces silently stored next
    * to the fake ones and later destroyed (storage/demo-guard.ts).
    */
-  const storage = withDemoIngestGuard(createStorage(config));
+  const storage = withDemoIngestGuard(createStorage(config, { log: (level, line) => logger[level](line) }));
   await storage.initialize();
 
   for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {

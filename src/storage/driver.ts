@@ -59,6 +59,14 @@ export interface Driver {
   /** `PRAGMA <text>` — reads and assignments alike; returns the first row when the pragma answers with one. */
   pragma(text: string): unknown;
   transaction<A extends unknown[], R>(fn: (...args: A) => R): Transaction<A, R>;
+  /**
+   * Run `fn` with SQLite's DEFENSIVE flag off, so it may delete rows from a
+   * virtual table's shadow tables, and turn it back on after. Used for one
+   * thing: erasing a retired search index a page at a time (search-index.ts,
+   * retiring an index). better-sqlite3 opens every connection defensive;
+   * node:sqlite does not, and turns it off only where it can.
+   */
+  writeShadowTables<R>(fn: () => R): R;
   close(): void;
 }
 
@@ -90,6 +98,8 @@ type NativeDatabase = {
   exec(sql: string): unknown;
   pragma(text: string): unknown;
   transaction<F extends (...args: never[]) => unknown>(fn: F): F & { immediate: F };
+  /** Also switches SQLITE_DBCONFIG_DEFENSIVE: off in unsafe mode, on outside it. */
+  unsafeMode(on: boolean): unknown;
   close(): void;
 };
 type NativeModule = new (path: string, options?: { timeout?: number; fileMustExist?: boolean }) => NativeDatabase;
@@ -114,6 +124,14 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
     },
     pragma: (text) => db.pragma(text),
     transaction: <A extends unknown[], R>(fn: (...args: A) => R) => db.transaction(fn as (...args: never[]) => unknown) as unknown as Transaction<A, R>,
+    writeShadowTables: (fn) => {
+      db.unsafeMode(true);
+      try {
+        return fn();
+      } finally {
+        db.unsafeMode(false);
+      }
+    },
     close: () => db.close(),
   };
 }
@@ -121,7 +139,7 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
 /* ---- The built-in driver: node:sqlite ---- */
 
 type NodeStatement = { run(...p: unknown[]): { changes: number | bigint; lastInsertRowid: number | bigint }; get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[] };
-type NodeDatabase = { prepare(sql: string): NodeStatement; exec(sql: string): void; close(): void };
+type NodeDatabase = { prepare(sql: string): NodeStatement; exec(sql: string): void; close(): void; enableDefensive?(on: boolean): void };
 type NodeSqliteModule = { DatabaseSync: new (path: string, options?: Record<string, unknown>) => NodeDatabase };
 
 function defaultLoadNode(): NodeSqliteModule {
@@ -198,6 +216,16 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
       const tx = ((...args: A) => runIn('DEFERRED', fn, args)) as Transaction<A, R>;
       tx.immediate = (...args: A) => runIn('IMMEDIATE', fn, args);
       return tx;
+    },
+    writeShadowTables: (fn) => {
+      // A Node that opens connections defensive has the switch to turn it off; one without the switch never turned it on.
+      if (typeof db.enableDefensive !== 'function') return fn();
+      db.enableDefensive(false);
+      try {
+        return fn();
+      } finally {
+        db.enableDefensive(true);
+      }
     },
     close: () => db.close(),
   };

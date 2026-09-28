@@ -795,6 +795,8 @@ export interface HealthResponse {
     rules_store: 'ok' | 'fail' | 'absent';
     migrations: { status: 'ok' | 'fail' | 'absent'; applied: number; known: number };
   };
+  /** The trace search index (0.20.0): its state, what a search reads now, and while it is built the share of traces it holds. */
+  search?: { state: 'ready' | 'building' | 'unavailable'; index: 'fts5' | 'scan'; progress: number | null } | null;
   storage?: 'connected' | 'disconnected';
   judge: { enabled: boolean; provider?: string | null };
   mode?: 'real' | 'demo';

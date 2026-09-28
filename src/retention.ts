@@ -8,6 +8,11 @@
  * never keeps the process alive on its own (`unref`), and both paths are
  * one function so they cannot drift.
  *
+ * The server starts the boot sweep after its transport is connected and
+ * does not wait for it: the store deletes in short steps with the event
+ * loop free between them (SqliteAdapter.deleteTracesOlderThan), so a
+ * client is answered while a large sweep runs.
+ *
  * The sweep deletes traces (spans cascade) and evaluations by their own
  * age; an evaluation younger than the window whose trace is swept keeps
  * its scores and loses its text (see SqliteAdapter.deleteTracesOlderThan).

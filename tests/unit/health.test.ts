@@ -3,8 +3,8 @@
  *
  * Both ports call this function, so its shape is asserted once, here: the
  * driver word, the checks block (storage, the deployed-rules file, the
- * migrations applied against known), the all-time trace count, and the
- * verdict — `ok` only when every check that could run is ok, `degraded`
+ * migrations applied against known), the all-time trace count, the search
+ * index's state and progress, and the verdict — `ok` only when every check that could run is ok, `degraded`
  * with 503 otherwise. The route tests only prove the routes call it.
  */
 import { describe, it, expect } from 'vitest';
@@ -13,6 +13,7 @@ import { SqliteAdapter, SQLITE_DRIVER } from '../../src/storage/sqlite-adapter.j
 import { KNOWN_MIGRATION_IDS } from '../../src/storage/migrations/index.js';
 import type { IStorageAdapter } from '../../src/types/query.js';
 import type { CustomRuleStore } from '../../src/custom-rule-store.js';
+import { CELL_DRIVER, driverHasFts5 } from './storage/fts5-here.js';
 
 const storageThat = (overrides: Partial<Record<keyof IStorageAdapter, unknown>>): IStorageAdapter =>
   ({
@@ -32,6 +33,7 @@ describe('buildHealth', () => {
     expect(body.checks).toEqual({ storage: 'absent', rules_store: 'absent', migrations: { status: 'absent', applied: 0, known: 0 } });
     expect(body).not.toHaveProperty('trace_count');
     expect(body).not.toHaveProperty('storage');
+    expect(body.search).toBeNull();
     expect(body.mode).toBe('real');
     expect(typeof body.uptime_seconds).toBe('number');
     expect(body.judge).toHaveProperty('enabled');
@@ -54,6 +56,8 @@ describe('buildHealth', () => {
       expect(body.checks.migrations).toEqual({ status: 'ok', applied: KNOWN_MIGRATION_IDS.length, known: KNOWN_MIGRATION_IDS.length });
       expect(body).not.toHaveProperty('trace_count');
       expect(body.storage).toBe('connected');
+      // An empty store's index is whole at once; without FTS5 a search always reads the traces.
+      expect(body.search).toEqual(driverHasFts5(CELL_DRIVER) ? { state: 'ready', index: 'fts5', progress: 1 } : { state: 'unavailable', index: 'scan', progress: null });
       expect(body.mode).toBe('demo');
     } finally {
       await storage.close();
@@ -73,6 +77,30 @@ describe('buildHealth', () => {
     expect(body.checks.migrations.status).toBe('ok');
     expect(body.storage).toBe('disconnected');
     expect(body).not.toHaveProperty('trace_count');
+  });
+
+  it('while the search index is being built: its progress as a share, never the counts, and the status stays ok', async () => {
+    const building = (indexed: number, total: number, cjk_pending = 0) =>
+      storageThat({ searchStatus: async () => ({ state: 'building', index: 'scan', total, indexed, cjk_pending, retired: false }) });
+    const { status, body } = await buildHealth({ storage: building(4_321, 10_987) });
+    expect(status).toBe(200);
+    expect(body.status).toBe('ok');
+    expect(body.search).toEqual({ state: 'building', index: 'scan', progress: 0.39 });
+    // Unauthenticated: how far along, not how many.
+    expect(JSON.stringify(body)).not.toMatch(/4321|10987/);
+    // Every trace in, the CJK text still to go: not done, so not 1.
+    expect((await buildHealth({ storage: building(500, 500, 12) })).body.search?.progress).toBe(0.99);
+    expect((await buildHealth({ storage: building(0, 0, 3) })).body.search?.progress).toBe(0.99);
+    // A store that cannot say where its index is: no search block, and nothing degraded.
+    const silent = await buildHealth({
+      storage: storageThat({
+        searchStatus: async () => {
+          throw new Error('database is locked');
+        },
+      }),
+    });
+    expect(silent.status).toBe(200);
+    expect(silent.body.search).toBeNull();
   });
 
   it('a migration this build knows and the database has not applied is a failed check, with the numbers', async () => {

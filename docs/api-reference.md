@@ -1419,6 +1419,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
     "rules_store": "ok",
     "migrations": { "status": "ok", "applied": 11, "known": 11 }
   },
+  "search": { "state": "ready", "index": "fts5", "progress": 1 },
   "storage": "connected",
   "judge": { "enabled": false, "provider": null },
   "mode": "real"
@@ -1427,6 +1428,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
 
 - `driver` — the SQLite driver behind the store: `better-sqlite3` (the native addon, the default) or `node` (Node's built-in `node:sqlite`, chosen with `IRIS_SQLITE_DRIVER=node` or fallen back to when the native module cannot load); `null` on a transport started without storage.
 - `checks.storage` — the database answered a count. The count itself is not reported: this endpoint answers without a key, so it says whether the store works, not how much it holds (the number is `total` on the authenticated `GET /api/v1/traces`); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
+- `search` — the trace search index: `state` is `ready`, `building` (after an upgrade or a rebuild, in the background; a search reads the traces until it is done, with the same results) or `unavailable` (a SQLite without FTS5, where a search always reads the traces); `index` is what a search reads now, `fts5` or `scan`, as on a search response; `progress` is the share of stored traces the index holds, from 0 to 0.99 while it is being built, 1 when ready and `null` without FTS5 (a share, not a count, for the reason above). It is not a check: a search answers in every state, so it never makes `status` degraded. `null` when the store cannot say.
 - `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
 - `version` is read from `package.json` at runtime; `judge` is the provider name when a key is present, never the key; `mode` is `demo` when serving the disposable demo database.
 
@@ -1443,6 +1445,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
     "rules_store": "ok",
     "migrations": { "status": "ok", "applied": 11, "known": 11 }
   },
+  "search": null,
   "storage": "disconnected",
   "judge": { "enabled": false, "provider": null },
   "mode": "real"

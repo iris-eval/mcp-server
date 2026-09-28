@@ -466,9 +466,11 @@ describe('trace search — erasure', () => {
   });
 
   /*
-   * The bulk paths erase differently (search-index.ts, bulkIndexDelete):
-   * a sweep that removes a large share of the index rewrites it once rather
-   * than erasing row by row, and a purge of everything empties it. Each
+   * The bulk paths erase differently: a sweep that removes a large share of
+   * the index deletes without erasing and then merges the index into one
+   * segment, in steps (search-index.ts, the retention sweep), rather than
+   * erasing row by row, and a purge of everything empties it
+   * (bulkIndexDelete). Each
    * must leave the same file: no word of a removed trace, a whole index.
    */
   const secretTraces = (n: number, word: string, timestamp: string): Trace[] =>

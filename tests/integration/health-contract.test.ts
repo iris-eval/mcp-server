@@ -83,11 +83,13 @@ describe('one health contract', () => {
       // Unauthenticated: whether the store answers, never how much it holds.
       expect(body).not.toHaveProperty('trace_count');
       expect(body.storage).toBe('connected');
+      expect(['ready', 'unavailable']).toContain((body.search as { state: string }).state);
       expect(body.mode).toBe('real');
       // Never the key, never a trace.
       expect(JSON.stringify(body)).not.toMatch(/apiKey|Bearer/);
     }
     expect(Object.keys(a).sort()).toEqual(Object.keys(b).sort());
+    expect(a.search).toEqual(b.search);
   });
 
   it('the dashboard health sits outside the rate limits; the API does not', async () => {

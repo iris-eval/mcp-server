@@ -41,6 +41,7 @@ import { randomBytes } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import type { Server } from 'node:http';
 import { openDriver, type Driver } from './storage/driver.js';
+import { searchIndexProgress } from './storage/search-index.js';
 import { ensureIrisDirectory, loadConfig } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
 import { createStorage } from './storage/index.js';
@@ -66,6 +67,7 @@ const CROSS = '✗';
  */
 export const SELF_TEST_STEPS = {
   configuredHome: 'configured IRIS_HOME is writable',
+  searchIndex: 'search index of the configured database',
   judge: 'judge key in this shell',
   retention: 'retention policy for this install',
   tempHome: 'create isolated temp home',
@@ -198,6 +200,39 @@ export function probeConfiguredHome(home: string, dbPath: string): string {
   return `${home} (database ${dbPath} opens for writing)`;
 }
 
+/**
+ * The configured database's search index, read without changing anything:
+ * whether it is whole, how far a build has got, or that this SQLite has no
+ * FTS5. After an upgrade the server builds the index in the background, and
+ * a large store takes minutes; this is where to see how far along it is.
+ * Informational: a search answers in every state.
+ */
+export function describeConfiguredSearchIndex(dbPath: string): string {
+  if (!existsSync(dbPath)) return 'no database yet; the index is created with it';
+  const n = (v: number | null) => (v ?? 0).toLocaleString('en-US');
+  let db: Driver | undefined;
+  try {
+    try {
+      db = openDriver(dbPath, { fileMustExist: true });
+      db.prepare('SELECT 1 FROM sqlite_master LIMIT 1').get();
+    } catch (err) {
+      // The configured-home line above already says the file does not open; this one does not count it twice.
+      return `not read: the database does not open (${errorCode(err)})`;
+    }
+    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'traces'").get() === undefined) return 'no traces stored yet; the index is created at the first start';
+    const s = searchIndexProgress(db);
+    if (s.state === 'unavailable') return `this SQLite (driver ${db.name}) has no FTS5, so a search reads the traces (the same results, slower)`;
+    if (s.state === 'ready') return `ready: ${n(s.total)} trace(s) indexed`;
+    const left = [
+      ...(s.retired ? ['a previous index to erase first'] : []),
+      ...(s.cjk_pending > 0 ? [`the Chinese, Japanese and Korean text of ${n(s.cjk_pending)} trace(s) to index`] : []),
+    ];
+    return `${n(s.indexed)} of ${n(s.total)} trace(s) indexed${left.length ? `, with ${left.join(' and ')}` : ''}; the server finishes it in the background after it starts, and until then a search reads the traces (the same results, slower)`;
+  } finally {
+    db?.close();
+  }
+}
+
 function probeWritable(dir: string, what: string): void {
   const probeFile = join(dir, `.iris-self-test-${randomBytes(4).toString('hex')}`);
   try {
@@ -274,6 +309,8 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
   await step(SELF_TEST_STEPS.configuredHome, () => probeConfiguredHome(userHome, userStoragePath), {
     independent: true,
   });
+
+  await step(SELF_TEST_STEPS.searchIndex, () => describeConfiguredSearchIndex(userStoragePath), { independent: true });
 
   /*
    * The judge line, read from THIS shell's environment before the scrub

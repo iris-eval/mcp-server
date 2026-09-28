@@ -147,7 +147,33 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts
+      - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts tests/unit/storage/stepped-maintenance.test.ts tests/unit/storage/checkpointer.test.ts
+
+  # The retention sweep, the merge it owes, the erasure of a retired search
+  # index and the index build run in steps of about 50 ms with the event loop
+  # free between them, so a stdio client is never kept waiting on the store.
+  # This runs each on 10,000 agent-loop traces and fails when the event loop
+  # is held longer than the limit in tests/stall/event-loop.test.ts. It
+  # measures time, so it runs alone, outside the parallel suite, on both
+  # drivers.
+  stall-guard:
+    name: stall guard (${{ matrix.driver }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        driver: [native, node]
+    env:
+      IRIS_SQLITE_DRIVER: ${{ matrix.driver }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx vitest run --config tests/stall/vitest.config.ts
 
   integration:
     runs-on: ubuntu-latest
