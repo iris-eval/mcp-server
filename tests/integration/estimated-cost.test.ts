@@ -71,7 +71,13 @@ async function mcp(): Promise<{ client: Client; storage: SqliteAdapter }> {
   return { client, storage };
 }
 
-const parse = (r: { content?: unknown }) => JSON.parse((r.content as Array<{ text: string }>)[0].text) as Record<string, unknown>;
+/** The tool's JSON answer. callTool's result is a union: the content form, or the legacy `toolResult` form, which an Iris tool never returns. */
+function parse(r: Awaited<ReturnType<Client['callTool']>>): Record<string, unknown> {
+  if (!('content' in r) || !Array.isArray(r.content)) throw new Error(`expected a content result, got keys ${Object.keys(r).join(', ')}`);
+  const first = r.content[0];
+  if (first?.type !== 'text') throw new Error(`expected a text block first, got ${first?.type ?? 'nothing'}`);
+  return JSON.parse(first.text) as Record<string, unknown>;
+}
 
 describe('log_trace (MCP)', () => {
   it('stores the estimate, answers with it, and the cost rule scores it and says it was estimated', async () => {

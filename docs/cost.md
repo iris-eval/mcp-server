@@ -21,6 +21,24 @@ When a trace arrives through any door (`log_trace`, `POST /api/v1/traces`, `POST
 2. **No spans with token counts.** The trace's `token_usage` is priced at the model named in its `metadata.model`. Both `prompt_tokens` and `completion_tokens` are needed, because input and output tokens have different prices.
 3. **No price.** If a model is not in the pricing table, or no model is named, or there are no token counts, the cost stays `null`. A trace with one unpriced call is not priced at all: a partial sum is too low, and a budget rule would pass a trace it should fail.
 
+## Cached input
+
+Input tokens read from or written to the prompt cache are priced as the provider bills them, when the trace says how many there were. The rest of the input is priced at the input price.
+
+| The trace carries | Read from |
+|---|---|
+| cache reads | `gen_ai.usage.cache_read.input_tokens` on a span (what the `@iris-eval/sdk` and Python wrappers and both LangChain handlers send), `gen_ai.usage.cache_read_input_tokens`, OpenInference's `llm.token_count.prompt_details.cache_read`, or `token_usage.cache_read_tokens` (OpenAI's `token_usage.prompt_tokens_details.cached_tokens` is read as it) |
+| cache writes | `gen_ai.usage.cache_creation.input_tokens`, `gen_ai.usage.cache_creation_input_tokens`, `llm.token_count.prompt_details.cache_write`, or `token_usage.cache_creation_tokens` |
+
+- **The cached counts are a part of the input count.** The GenAI conventions, OpenInference and OpenAI all define them that way, and Iris's own wrappers and handlers record them that way, folding Anthropic's separate counts into the input count.
+- **Anthropic's API reports them beside `input_tokens`.** An instrumentation that passes that shape through can be told apart only when the cached counts are larger than the input count, because a part never is. Then they are added to the input count, and `cost_estimate.notes` says so. A cached count no larger than the input is read as a part.
+- **Prices.** Anthropic's cache reads are priced at its cache-hit price, and its writes at the 5-minute write price. The OpenAI models in the table charge nothing extra to write the cache, so a written token costs an input token (OpenAI's prompt-caching guide adds a write price only from GPT-5.6).
+- **A model priced in `config.json` without `cacheReadUsdPer1M` or `cacheWriteUsdPer1M`.** Its cached tokens are priced at its input price, as before cache prices existed, and `cost_estimate.notes` says which.
+
+On a gpt-4o-mini call with 150,000 input tokens, 100,000 of them cache reads, and 10,000 output tokens, the estimate is $0.021. Priced at the full input rate, it would be $0.0285. On a claude-sonnet-5 call with 2,000 input tokens, 100,000 cache reads, 20,000 cache writes and 1,000 output tokens, it is $0.084, not $0.254.
+
+## What is stored
+
 The estimate is rounded to ten decimal places. Every number it used is stored with it:
 
 ```json
@@ -63,6 +81,8 @@ A trace with no cost carries the reason instead:
 
 `reason` is one of `no_tokens`, `no_model`, `unknown_model` and `disabled` (estimates turned off in `config.json`).
 
+A call that used the prompt cache also carries `cache_read_tokens`, `cache_creation_tokens`, `cache_read_usd_per_1m` and `cache_write_usd_per_1m`. `prompt_tokens` counts every input token, the cached ones included. An estimate that priced anything other than as the provider bills it lists why in `notes`.
+
 ## The pricing table
 
 The built-in prices are the table in [llm-as-judge.md](llm-as-judge.md#models--pricing), the same one the LLM judge's cost cap uses, read from each provider's pricing page on **2026-09-28**. It prices Anthropic and OpenAI models.
@@ -96,7 +116,7 @@ No date is removed by a rule, and no nearest name is taken. `gpt-4o-2024-05-13` 
 {
   "pricing": {
     "models": [
-      { "model": "prod-gpt4o", "inputUsdPer1M": 2.75, "outputUsdPer1M": 11 },
+      { "model": "prod-gpt4o", "inputUsdPer1M": 2.75, "outputUsdPer1M": 11, "cacheReadUsdPer1M": 1.375 },
       { "model": "llama-3.1-70b", "inputUsdPer1M": 0.6, "outputUsdPer1M": 0.8 }
     ],
     "asOf": "2026-09-01"
@@ -107,7 +127,7 @@ No date is removed by a rule, and no nearest name is taken. `gpt-4o-2024-05-13` 
 | Key | Default | What it does |
 |---|---|---|
 | `pricing.estimate` | `true` | `false` turns estimates off: a trace that reports no cost is stored without one, with `reason: "disabled"`. |
-| `pricing.models` | `[]` | Models to price that the built-in table does not know (a deployment name, another provider's model), or at another price than it lists (a negotiated rate). An entry wins over the built-in table for the same id. Ids are matched ignoring case, so two entries that differ only in case are refused at startup. |
+| `pricing.models` | `[]` | Models to price that the built-in table does not know (a deployment name, another provider's model), or at another price than it lists (a negotiated rate). Each entry has `model`, `inputUsdPer1M` and `outputUsdPer1M`, and optionally `cacheReadUsdPer1M` and `cacheWriteUsdPer1M`. An entry wins over the built-in table for the same id. Ids are matched ignoring case, so two entries that differ only in case are refused at startup. |
 | `pricing.asOf` | none | The date you read the prices in `pricing.models` (`YYYY-MM-DD`). It is stored with each estimate that used them and shown in the dashboard. |
 
 The server and `iris-eval ingest` both read `config.json` from your Iris home, so a trace from a hook is priced the same as one sent to the server. `iris-eval --self-test` prints whether estimates are on, the built-in table's date and how many models `config.json` adds. `pricing.models` prices trace costs only; the LLM judge calls the provider and prices its own calls from the built-in table.
@@ -117,7 +137,7 @@ The server and `iris-eval ingest` both read `config.json` from your Iris home, s
 An estimate is the provider's list price for the token counts the trace recorded.
 
 - **Reasoning tokens** are counted in the output tokens by both providers and are billed at the output rate, which is how Iris prices them.
-- **Cached input** is not told apart. OpenAI counts cached tokens inside `prompt_tokens`, so they are priced at the full input rate and the estimate is high by the cache discount. Anthropic's API reports cache reads and writes outside `input_tokens`; when the instrumentation passes its counts through as they came, those tokens are not priced and the estimate is low by them.
+- **A 1-hour cache write** is priced as a 5-minute write (1.25 times the input price, where Anthropic charges 2 times): no trace attribute says which lifetime a write had.
 - **Batch discounts, negotiated rates and a cloud platform's own prices** are not known. Set them in `pricing.models`, or send `cost_usd` with the trace.
 
 ## Where it shows

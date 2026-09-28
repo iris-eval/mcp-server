@@ -37,6 +37,9 @@ export interface PriceMatch {
   pricedAs: string;
   inputUsdPer1M: number;
   outputUsdPer1M: number;
+  /** Null when the price came from config.json and it named none. */
+  cacheReadUsdPer1M: number | null;
+  cacheWriteUsdPer1M: number | null;
   source: 'iris' | 'config';
   asOf: string | null;
 }
@@ -89,11 +92,29 @@ export function priceModel(model: string, using: PricingSettings = settings): Pr
   for (const candidate of stripped ? [id, stripped.id] : [id]) {
     const configured = using.models.find((m) => m.model.trim().toLowerCase() === candidate);
     if (configured) {
-      return { model, pricedAs: configured.model, inputUsdPer1M: configured.inputUsdPer1M, outputUsdPer1M: configured.outputUsdPer1M, source: 'config', asOf: using.asOf ?? null };
+      return {
+        model,
+        pricedAs: configured.model,
+        inputUsdPer1M: configured.inputUsdPer1M,
+        outputUsdPer1M: configured.outputUsdPer1M,
+        cacheReadUsdPer1M: configured.cacheReadUsdPer1M ?? null,
+        cacheWriteUsdPer1M: configured.cacheWriteUsdPer1M ?? null,
+        source: 'config',
+        asOf: using.asOf ?? null,
+      };
     }
   }
 
   const row = builtIn(id, undefined) ?? (stripped ? builtIn(stripped.id, stripped.provider) : null);
   if (!row) return null;
-  return { model, pricedAs: row.model, inputUsdPer1M: row.inputUsdPer1M, outputUsdPer1M: row.outputUsdPer1M, source: 'iris', asOf: PRICING_SOURCED_ON };
+  return {
+    model,
+    pricedAs: row.model,
+    inputUsdPer1M: row.inputUsdPer1M,
+    outputUsdPer1M: row.outputUsdPer1M,
+    cacheReadUsdPer1M: row.cacheReadUsdPer1M,
+    cacheWriteUsdPer1M: row.cacheWriteUsdPer1M,
+    source: 'iris',
+    asOf: PRICING_SOURCED_ON,
+  };
 }

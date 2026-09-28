@@ -48,7 +48,7 @@ describe('priceModel — the spellings that price', () => {
       const match = priceModel(id);
       expect(match).not.toBeNull();
       const want = findPricing(row)!;
-      expect(match).toEqual({ model: id, pricedAs: row, inputUsdPer1M: want.inputUsdPer1M, outputUsdPer1M: want.outputUsdPer1M, source: 'iris', asOf: PRICING_SOURCED_ON });
+      expect(match).toEqual({ model: id, pricedAs: row, inputUsdPer1M: want.inputUsdPer1M, outputUsdPer1M: want.outputUsdPer1M, cacheReadUsdPer1M: want.cacheReadUsdPer1M, cacheWriteUsdPer1M: want.cacheWriteUsdPer1M, source: 'iris', asOf: PRICING_SOURCED_ON });
     });
   }
 });
@@ -100,7 +100,7 @@ describe('the snapshot table', () => {
 describe('pricing.models in config.json', () => {
   it('prices a model the built-in table does not, dated by pricing.asOf', () => {
     setPricingSettings({ estimate: true, models: [{ model: 'My-Azure-GPT4o', inputUsdPer1M: 2.75, outputUsdPer1M: 11 }], asOf: '2026-09-01' });
-    expect(priceModel('my-azure-gpt4o')).toEqual({ model: 'my-azure-gpt4o', pricedAs: 'My-Azure-GPT4o', inputUsdPer1M: 2.75, outputUsdPer1M: 11, source: 'config', asOf: '2026-09-01' });
+    expect(priceModel('my-azure-gpt4o')).toEqual({ model: 'my-azure-gpt4o', pricedAs: 'My-Azure-GPT4o', inputUsdPer1M: 2.75, outputUsdPer1M: 11, cacheReadUsdPer1M: null, cacheWriteUsdPer1M: null, source: 'config', asOf: '2026-09-01' });
   });
 
   it('wins over the built-in row for the same id, with or without a provider prefix; undated when asOf is unset', () => {

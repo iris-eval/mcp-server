@@ -33,15 +33,31 @@
  * What an estimate is: the provider's list price for the tokens the trace
  * recorded. Reasoning tokens are counted in the output tokens by both
  * providers and are priced at the output rate, which is how they are
- * billed. Cached input is not distinguished: OpenAI counts cached tokens
- * inside prompt_tokens, so they are priced at the full input rate (the
- * estimate is high by the cache discount); Anthropic reports cache reads
- * and writes outside input_tokens, so they are not priced (the estimate is
- * low by them). Batch discounts, negotiated rates and a cloud provider's
- * own price are not known to Iris; pricing.models in config.json sets them.
+ * billed. Cached input is priced as the provider bills it when the trace
+ * says how much there was (`gen_ai.usage.cache_read.input_tokens` /
+ * `cache_creation.input_tokens` on a span, or token_usage.cache_read_tokens
+ * / cache_creation_tokens): cache reads at the model's cache-read price,
+ * cache writes at its cache-write price, the rest of the input at the input
+ * price.
+ *
+ * The cached counts are a PART of the input count, as the GenAI
+ * conventions, OpenInference and OpenAI define it, and as Iris's own
+ * wrappers and LangChain handlers record it. Anthropic's API reports them
+ * BESIDE input_tokens instead; an instrumentation that passes that shape
+ * through can be told apart only when the cached counts exceed the input
+ * count, which a part never can. Then they are added to it, and the
+ * estimate's notes say so. A cached count no larger than the input is read
+ * as a part: that is the conventions' meaning, and the one every sender
+ * Iris ships follows.
+ *
+ * A model priced in config.json without a cache price has its cached
+ * tokens priced at its input price, as they were before cache prices
+ * existed, and the notes say so. Batch discounts, negotiated rates and a
+ * cloud provider's own price are not known to Iris; pricing.models in
+ * config.json sets them.
  */
-import type { CostEstimate, CostEstimateCall, Span, Trace } from '../types/trace.js';
-import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from '../otel/usage-keys.js';
+import type { CostEstimate, CostEstimateCall, Span, TokenUsage, Trace } from '../types/trace.js';
+import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from '../otel/usage-keys.js';
 import { AGENT_MODEL_KEYS } from '../eval/llm-judge/family.js';
 import { PRICING_SOURCED_ON } from '../eval/llm-judge/pricing.js';
 import { priceModel, pricingSettings, type PriceMatch, type PricingSettings } from './model-lookup.js';
@@ -49,9 +65,15 @@ import { priceModel, pricingSettings, type PriceMatch, type PricingSettings } fr
 /** The keys a span names its model under, in the order they are priced: the model that answered, then the one asked for. */
 export const SPAN_MODEL_KEYS = ['gen_ai.response.model', 'gen_ai.request.model', 'llm.model_name', 'llm.request.model', 'ai.model.id'] as const;
 
-interface ModelCall {
+/** The tokens of one priced call: every input token, the output, and the cached part of the input. */
+interface Tokens {
   prompt: number;
   completion: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+interface ModelCall extends Tokens {
   /** The ids the call's span (or its nearest ancestor that names one) records, in SPAN_MODEL_KEYS order. */
   models: string[];
 }
@@ -120,11 +142,23 @@ function modelCallsOf(spans: readonly Span[] | undefined): ModelCall[] {
 
   const leaves = carriers.filter((c) => !hasCarrierBelow.has(c.span_id));
   if (leaves.length > 0) {
-    return leaves.map((s) => ({ prompt: numberAt(s.attributes, INPUT_TOKEN_KEYS) ?? 0, completion: numberAt(s.attributes, OUTPUT_TOKEN_KEYS) ?? 0, models: modelsOf(s) }));
+    return leaves.map((s) => ({
+      prompt: numberAt(s.attributes, INPUT_TOKEN_KEYS) ?? 0,
+      completion: numberAt(s.attributes, OUTPUT_TOKEN_KEYS) ?? 0,
+      cacheRead: numberAt(s.attributes, CACHE_READ_KEYS) ?? 0,
+      cacheWrite: numberAt(s.attributes, CACHE_WRITE_KEYS) ?? 0,
+      models: modelsOf(s),
+    }));
   }
   const aggregate = spans.find((s) => numberAt(s.attributes, AGGREGATED_INPUT_KEYS) !== undefined || numberAt(s.attributes, AGGREGATED_OUTPUT_KEYS) !== undefined);
   return aggregate
-    ? [{ prompt: numberAt(aggregate.attributes, AGGREGATED_INPUT_KEYS) ?? 0, completion: numberAt(aggregate.attributes, AGGREGATED_OUTPUT_KEYS) ?? 0, models: modelsOf(aggregate) }]
+    ? [{
+        prompt: numberAt(aggregate.attributes, AGGREGATED_INPUT_KEYS) ?? 0,
+        completion: numberAt(aggregate.attributes, AGGREGATED_OUTPUT_KEYS) ?? 0,
+        cacheRead: numberAt(aggregate.attributes, CACHE_READ_KEYS) ?? 0,
+        cacheWrite: numberAt(aggregate.attributes, CACHE_WRITE_KEYS) ?? 0,
+        models: modelsOf(aggregate),
+      }]
     : [];
 }
 
@@ -133,17 +167,67 @@ function usd(n: number): number {
   return Math.round(n * 1e10) / 1e10;
 }
 
-function priced(match: PriceMatch, prompt: number, completion: number): CostEstimateCall {
+const fmt = (n: number): string => n.toLocaleString('en-US');
+
+/**
+ * One call at its model's prices. Pushes onto `notes` anything priced other
+ * than as the provider bills it: cached counts reported beside the input
+ * count, or a cache price the table does not have.
+ */
+function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall {
+  const cached = t.cacheRead + t.cacheWrite;
+  // A part is never larger than its whole: more cached tokens than input tokens were counted beside the input (Anthropic's API shape).
+  const beside = cached > t.prompt;
+  if (beside) {
+    notes.push(`${match.model}: the cached counts (${fmt(cached)}) are more than the input count (${fmt(t.prompt)}), so they were counted beside it, as Anthropic's API reports them, and added to it.`);
+  }
+  const prompt = beside ? t.prompt + cached : t.prompt;
+  const uncached = prompt - cached;
+  const readPrice = match.cacheReadUsdPer1M ?? match.inputUsdPer1M;
+  const writePrice = match.cacheWriteUsdPer1M ?? match.inputUsdPer1M;
+  if (t.cacheRead > 0 && match.cacheReadUsdPer1M === null) {
+    notes.push(`${match.model}: ${fmt(t.cacheRead)} cache-read tokens are priced at the input price, because pricing.models in config.json names no cacheReadUsdPer1M for ${match.pricedAs}.`);
+  }
+  if (t.cacheWrite > 0 && match.cacheWriteUsdPer1M === null) {
+    notes.push(`${match.model}: ${fmt(t.cacheWrite)} cache-write tokens are priced at the input price, because pricing.models in config.json names no cacheWriteUsdPer1M for ${match.pricedAs}.`);
+  }
+  const perM = (n: number, price: number) => (n / 1_000_000) * price;
   return {
     model: match.model,
     priced_as: match.pricedAs,
     prompt_tokens: prompt,
-    completion_tokens: completion,
+    completion_tokens: t.completion,
     input_usd_per_1m: match.inputUsdPer1M,
     output_usd_per_1m: match.outputUsdPer1M,
-    cost_usd: usd((prompt / 1_000_000) * match.inputUsdPer1M + (completion / 1_000_000) * match.outputUsdPer1M),
+    ...(cached > 0
+      ? {
+          cache_read_tokens: t.cacheRead,
+          cache_creation_tokens: t.cacheWrite,
+          cache_read_usd_per_1m: readPrice,
+          cache_write_usd_per_1m: writePrice,
+        }
+      : {}),
+    cost_usd: usd(perM(uncached, match.inputUsdPer1M) + perM(t.cacheRead, readPrice) + perM(t.cacheWrite, writePrice) + perM(t.completion, match.outputUsdPer1M)),
     price_source: match.source,
     price_as_of: match.asOf,
+  };
+}
+
+const count = (n: unknown): number | undefined => (typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : undefined);
+
+/** The cached part of a trace's token_usage: Iris's own fields, else OpenAI's `prompt_tokens_details.cached_tokens` as sent. */
+function cachedOf(usage: TokenUsage | undefined): { cacheRead: number; cacheWrite: number } {
+  return {
+    cacheRead: count(usage?.cache_read_tokens) ?? count(usage?.prompt_tokens_details?.cached_tokens) ?? 0,
+    cacheWrite: count(usage?.cache_creation_tokens) ?? 0,
+  };
+}
+
+function estimated(basis: 'token_usage' | 'calls', calls: CostEstimateCall[], notes: string[]): { cost_usd: number; estimate: CostEstimate } {
+  const unique = [...new Set(notes)];
+  return {
+    cost_usd: usd(calls.reduce((sum, c) => sum + c.cost_usd, 0)),
+    estimate: { status: 'estimated', basis, calls, ...(unique.length > 0 ? { notes: unique } : {}) },
   };
 }
 
@@ -185,12 +269,12 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
 
     const oneModel = new Set(found.map((m) => `${m.source}:${m.pricedAs}`)).size === 1;
     const usage = trace.token_usage;
-    if (oneModel && typeof usage?.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {
-      const call = priced(found[0], usage.prompt_tokens, usage.completion_tokens);
-      return { cost_usd: call.cost_usd, estimate: { status: 'estimated', basis: 'token_usage', calls: [call] } };
+    const notes: string[] = [];
+    if (oneModel && count(usage?.prompt_tokens) !== undefined && count(usage?.completion_tokens) !== undefined) {
+      const call = priced(found[0], { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) }, notes);
+      return estimated('token_usage', [call], notes);
     }
-    const each = found.map((m, i) => priced(m, calls[i].prompt, calls[i].completion));
-    return { cost_usd: usd(each.reduce((sum, c) => sum + c.cost_usd, 0)), estimate: { status: 'estimated', basis: 'calls', calls: each } };
+    return estimated('calls', found.map((m, i) => priced(m, calls[i], notes)), notes);
   }
 
   const usage = trace.token_usage;
@@ -213,8 +297,8 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
   }
   const match = priceModel(traceModel, using);
   if (!match) return { estimate: unknownModel([traceModel]) };
-  const call = priced(match, prompt, completion);
-  return { cost_usd: call.cost_usd, estimate: { status: 'estimated', basis: 'token_usage', calls: [call] } };
+  const notes: string[] = [];
+  return estimated('token_usage', [priced(match, { prompt, completion, ...cachedOf(usage) }, notes)], notes);
 }
 
 /**

@@ -12,3 +12,13 @@ export const OUTPUT_TOKEN_KEYS = ['gen_ai.usage.output_tokens', 'gen_ai.usage.co
 /** A framework's own whole-run total (Pydantic AI) — when present it is the answer, not one more addend. */
 export const AGGREGATED_INPUT_KEYS = ['gen_ai.aggregated_usage.input_tokens'];
 export const AGGREGATED_OUTPUT_KEYS = ['gen_ai.aggregated_usage.output_tokens'];
+
+/*
+ * Input tokens read from and written to the prompt cache. Each is a PART of
+ * the input count, as the GenAI conventions and OpenInference define it
+ * (and as Iris's own wrappers and LangChain handlers record it). The current
+ * GenAI names first, then the underscore spellings earlier instrumentation
+ * (OpenLLMetry) emits, then OpenInference's prompt details.
+ */
+export const CACHE_READ_KEYS = ['gen_ai.usage.cache_read.input_tokens', 'gen_ai.usage.cache_read_input_tokens', 'llm.token_count.prompt_details.cache_read'];
+export const CACHE_WRITE_KEYS = ['gen_ai.usage.cache_creation.input_tokens', 'gen_ai.usage.cache_creation_input_tokens', 'llm.token_count.prompt_details.cache_write'];

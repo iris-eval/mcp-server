@@ -30,7 +30,7 @@ interface Expected {
   agent: string;
   input: string | RegExp;
   output: string | RegExp;
-  tokens: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  tokens: { prompt_tokens: number; completion_tokens: number; total_tokens: number; cache_read_tokens?: number };
   model: string;
   /** The cost estimated from the tokens at list price (none of these conventions sends a cost), or null when the model is not priced. */
   cost: { usd: number; pricedAs: string } | null;
@@ -45,10 +45,11 @@ const TABLE: Record<string, Expected> = {
     // gen_ai.input.messages / gen_ai.output.messages, read down to the words asked and answered (0.20.0).
     input: 'What is the weather in Lisbon tomorrow?',
     output: 'Lisbon tomorrow: 24 °C, clear skies, a light wind from the northwest.',
-    // The aggregate (812) wins over the leaf sum (402 + 390 = 792); cache_read tokens are not usage.
-    tokens: { prompt_tokens: 812, completion_tokens: 133, total_tokens: 945 },
+    // The aggregate (812) wins over the leaf sum (402 + 390 = 792); the 256 cache-read tokens are a part of the input, never added to it.
+    tokens: { prompt_tokens: 812, completion_tokens: 133, total_tokens: 945, cache_read_tokens: 256 },
     model: 'gpt-4o',
-    cost: { usd: 0.00336, pricedAs: 'gpt-4o' },
+    // 556 uncached input at $2.50, 256 cache reads at $1.25, 133 output at $10 per 1M.
+    cost: { usd: 0.00304, pricedAs: 'gpt-4o' },
     steps: ['get_weather'],
     lacked: [],
   },
@@ -175,7 +176,7 @@ describe('the OTLP door — one fixture per convention', () => {
     ]);
   });
 
-  it('pydantic-ai: the cache-read tokens stay on the span they came on — informational, never usage', () => {
+  it('pydantic-ai: the cache-read tokens stay on the span they came on, and are counted as a part of the input', () => {
     const { trace } = load('pydantic-ai.otlp.json');
     const carrier = trace.spans?.find((s) => s.attributes?.['gen_ai.usage.cache_read.input_tokens'] !== undefined);
     expect(carrier?.attributes?.['gen_ai.usage.cache_read.input_tokens']).toBe(256);
@@ -198,6 +199,6 @@ describe('the OTLP door — one fixture per convention', () => {
     // Usage is summed over the leaf carriers whatever their kind: the totals are the ones asserted above, unchanged.
     expect(load('agent-framework.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 1742, completion_tokens: 136, total_tokens: 1878 });
     expect(load('google-adk.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 318, completion_tokens: 44, total_tokens: 362 });
-    expect(load('pydantic-ai.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 812, completion_tokens: 133, total_tokens: 945 });
+    expect(load('pydantic-ai.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 812, completion_tokens: 133, total_tokens: 945, cache_read_tokens: 256 });
   });
 });

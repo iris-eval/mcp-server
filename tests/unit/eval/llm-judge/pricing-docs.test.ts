@@ -16,14 +16,14 @@ import { MODEL_PRICING, PRICING_SOURCED_ON, findPricing, pricedModels, supported
 const guide = readFileSync(resolve(__dirname, '..', '..', '..', '..', 'docs', 'llm-as-judge.md'), 'utf8');
 
 /** The rows of the first markdown table whose header starts with "| Provider". */
-function guideRows(): Array<{ provider: string; model: string; input: number; output: number; notes: string }> {
+function guideRows(): Array<{ provider: string; model: string; input: number; output: number; cacheRead: number; cacheWrite: number; notes: string }> {
   const lines = guide.split(/\r?\n/);
   const start = lines.findIndex((l) => /^\|\s*Provider\s*\|/.test(l));
   expect(start).toBeGreaterThan(-1);
-  const rows: Array<{ provider: string; model: string; input: number; output: number; notes: string }> = [];
+  const rows: Array<{ provider: string; model: string; input: number; output: number; cacheRead: number; cacheWrite: number; notes: string }> = [];
   for (let i = start + 2; i < lines.length && lines[i].startsWith('|'); i += 1) {
     const cells = lines[i].split('|').slice(1, -1).map((c) => c.trim());
-    rows.push({ provider: cells[0], model: cells[1], input: Number(cells[2]), output: Number(cells[3]), notes: cells[4] ?? '' });
+    rows.push({ provider: cells[0], model: cells[1], input: Number(cells[2]), output: Number(cells[3]), cacheRead: Number(cells[4]), cacheWrite: Number(cells[5]), notes: cells[6] ?? '' });
   }
   return rows;
 }
@@ -38,6 +38,8 @@ describe('the guide’s price table is the code’s', () => {
       expect(r.provider).toBe(p.provider);
       expect(r.input).toBeCloseTo(p.inputUsdPer1M, 6);
       expect(r.output).toBeCloseTo(p.outputUsdPer1M, 6);
+      expect(r.cacheRead, `${r.model} cache read`).toBeCloseTo(p.cacheReadUsdPer1M, 6);
+      expect(r.cacheWrite, `${r.model} cache write`).toBeCloseTo(p.cacheWriteUsdPer1M, 6);
     }
   });
 
@@ -71,6 +73,15 @@ describe('the one table', () => {
   it('every retired entry carries the date it was found absent, and o1-mini is one', () => {
     for (const p of MODEL_PRICING) if (p.retired) expect(p.retired).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(findPricing('o1-mini')?.retired).toBe('2026-09-20');
+  });
+
+  it('every model prices a cache read below its input, and a cache write at or above it', () => {
+    for (const p of MODEL_PRICING) {
+      expect(p.cacheReadUsdPer1M, p.model).toBeLessThan(p.inputUsdPer1M);
+      expect(p.cacheWriteUsdPer1M, p.model).toBeGreaterThanOrEqual(p.inputUsdPer1M);
+      // Anthropic's 5-minute write is 1.25x the input; OpenAI's pre-5.6 models charge no write premium.
+      expect(p.cacheWriteUsdPer1M, p.model).toBeCloseTo(p.provider === 'anthropic' ? p.inputUsdPer1M * 1.25 : p.inputUsdPer1M, 9);
+    }
   });
 
   it('o1-mini is $1.10 in and $4.40 out, as OpenAI’s model page lists it — not its $3 / $12 launch price', () => {

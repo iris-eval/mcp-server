@@ -2,6 +2,9 @@ export interface TokenUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
+  /** Of prompt_tokens, the ones read from and written to the prompt cache. */
+  cache_read_tokens?: number;
+  cache_creation_tokens?: number;
 }
 
 export interface ToolCallRecord {
@@ -37,6 +40,10 @@ export interface CostEstimateCall {
   completion_tokens: number;
   input_usd_per_1m: number;
   output_usd_per_1m: number;
+  cache_read_tokens?: number;
+  cache_creation_tokens?: number;
+  cache_read_usd_per_1m?: number;
+  cache_write_usd_per_1m?: number;
   cost_usd: number;
   price_source: 'iris' | 'config';
   price_as_of: string | null;
@@ -44,7 +51,7 @@ export interface CostEstimateCall {
 
 /** How an estimated cost was computed, or why a trace has none. */
 export type CostEstimate =
-  | { status: 'estimated'; basis: 'token_usage' | 'calls'; calls: CostEstimateCall[] }
+  | { status: 'estimated'; basis: 'token_usage' | 'calls'; calls: CostEstimateCall[]; notes?: string[] }
   | { status: 'unpriced'; reason: 'no_tokens' | 'no_model' | 'unknown_model' | 'disabled'; message: string; models?: string[] };
 
 export interface Trace {

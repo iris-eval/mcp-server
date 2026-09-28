@@ -156,6 +156,15 @@ const TokenUsageSchema = z.object({
   prompt_tokens: z.number().optional(),
   completion_tokens: z.number().optional(),
   total_tokens: z.number().optional(),
+  /*
+   * The cached part of prompt_tokens, so an estimated cost prices it at the
+   * model's cache prices (src/cost/trace-cost.ts). OpenAI's own usage object
+   * is accepted as sent: its prompt_tokens_details.cached_tokens is read as
+   * cache_read_tokens.
+   */
+  cache_read_tokens: z.number().nonnegative().optional(),
+  cache_creation_tokens: z.number().nonnegative().optional(),
+  prompt_tokens_details: z.object({ cached_tokens: z.number().nonnegative().optional() }).optional(),
 });
 
 /*
@@ -172,7 +181,7 @@ export const logTraceInputShape = {
   output: z.string().optional().describe('Agent output text — what the agent produced (pass to evaluate_output for scoring)'),
   tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made, in order, each { tool_name, input?, output?, latency_ms?, error? }; the trajectory rules judge them'),
   latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
-  token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
+  token_usage: TokenUsageSchema.optional().describe('Token usage (prompt/completion/total, and cache_read_tokens / cache_creation_tokens: the cached part of prompt_tokens) — prices the trace when cost_usd is omitted'),
   cost_usd: z.number().optional().describe('Total cost in USD, stored as reported. Omitted: estimated from the token counts and the model (metadata.model or the spans) at list price, and marked estimated'),
   metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
   tools: toolsCatalogueSchema.optional().describe('Your MCP tools/list result, verbatim; lets the rules check call arguments later'),

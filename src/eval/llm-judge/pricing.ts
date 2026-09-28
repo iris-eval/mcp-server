@@ -24,6 +24,20 @@ export interface ModelPricing {
   model: string;
   inputUsdPer1M: number;
   outputUsdPer1M: number;
+  /**
+   * USD per 1M input tokens read from the prompt cache. Used only to price a
+   * trace's cost (src/cost/trace-cost.ts); the judge sends no cached prompt.
+   */
+  cacheReadUsdPer1M: number;
+  /**
+   * USD per 1M input tokens written to the prompt cache. Anthropic charges
+   * 1.25x the input price for a 5-minute write (the default lifetime; a
+   * 1-hour write is 2x, and no trace attribute tells the two apart). The
+   * OpenAI models below charge no write premium — OpenAI's prompt-caching
+   * guide adds one only from GPT-5.6 — so a written token is an input token
+   * and this is their input price.
+   */
+  cacheWriteUsdPer1M: number;
   /** ISO date the provider's pricing page was found to no longer list this model; the price is the last one it did list. */
   retired?: string;
 }
@@ -36,39 +50,49 @@ export const PRICING_SOURCES: Readonly<Record<PricingProvider, string>> = {
   openai: 'https://developers.openai.com/api/docs/pricing',
 };
 
+/**
+ * Where the cache prices were read, beside PRICING_SOURCES: Anthropic's
+ * cache-write and cache-hit columns are on its docs pricing page, and
+ * OpenAI's rule for cache writes is in its prompt-caching guide.
+ */
+export const CACHE_PRICING_SOURCES: Readonly<Record<PricingProvider, readonly string[]>> = {
+  anthropic: ['https://platform.claude.com/docs/en/about-claude/pricing'],
+  openai: ['https://developers.openai.com/api/docs/pricing', 'https://developers.openai.com/api/docs/guides/prompt-caching'],
+};
+
 export const MODEL_PRICING: readonly ModelPricing[] = [
   // Anthropic — current
-  { provider: 'anthropic', model: 'claude-fable-5-1', inputUsdPer1M: 10, outputUsdPer1M: 50 },
-  { provider: 'anthropic', model: 'claude-opus-5-5', inputUsdPer1M: 4, outputUsdPer1M: 20 },
-  { provider: 'anthropic', model: 'claude-sonnet-5', inputUsdPer1M: 2, outputUsdPer1M: 10 },
-  { provider: 'anthropic', model: 'claude-haiku-4-5', inputUsdPer1M: 1, outputUsdPer1M: 5 },
-  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', inputUsdPer1M: 1, outputUsdPer1M: 5 },
+  { provider: 'anthropic', model: 'claude-fable-5-1', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 12.5 },
+  { provider: 'anthropic', model: 'claude-opus-5-5', inputUsdPer1M: 4, outputUsdPer1M: 20, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 },
+  { provider: 'anthropic', model: 'claude-sonnet-5', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5 },
+  { provider: 'anthropic', model: 'claude-haiku-4-5', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 1.25 },
+  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 1.25 },
   // Anthropic — legacy on the provider's page, still priced
-  { provider: 'anthropic', model: 'claude-opus-5', inputUsdPer1M: 5, outputUsdPer1M: 25 },
+  { provider: 'anthropic', model: 'claude-opus-5', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25 },
   // Anthropic — the 4.x line, still priced
-  { provider: 'anthropic', model: 'claude-opus-4-8', inputUsdPer1M: 5, outputUsdPer1M: 25 },
-  { provider: 'anthropic', model: 'claude-opus-4-7', inputUsdPer1M: 5, outputUsdPer1M: 25 },
-  { provider: 'anthropic', model: 'claude-opus-4-6', inputUsdPer1M: 5, outputUsdPer1M: 25 },
-  { provider: 'anthropic', model: 'claude-sonnet-4-6', inputUsdPer1M: 3, outputUsdPer1M: 15 },
-  { provider: 'anthropic', model: 'claude-opus-4-5', inputUsdPer1M: 5, outputUsdPer1M: 25 },
-  { provider: 'anthropic', model: 'claude-sonnet-4-5', inputUsdPer1M: 3, outputUsdPer1M: 15 },
+  { provider: 'anthropic', model: 'claude-opus-4-8', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25 },
+  { provider: 'anthropic', model: 'claude-opus-4-7', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25 },
+  { provider: 'anthropic', model: 'claude-opus-4-6', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25 },
+  { provider: 'anthropic', model: 'claude-sonnet-4-6', inputUsdPer1M: 3, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.3, cacheWriteUsdPer1M: 3.75 },
+  { provider: 'anthropic', model: 'claude-opus-4-5', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25 },
+  { provider: 'anthropic', model: 'claude-sonnet-4-5', inputUsdPer1M: 3, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.3, cacheWriteUsdPer1M: 3.75 },
 
   // OpenAI — current
-  { provider: 'openai', model: 'gpt-5', inputUsdPer1M: 1.25, outputUsdPer1M: 10 },
-  { provider: 'openai', model: 'gpt-5-mini', inputUsdPer1M: 0.25, outputUsdPer1M: 2 },
-  { provider: 'openai', model: 'gpt-4.1-mini', inputUsdPer1M: 0.4, outputUsdPer1M: 1.6 },
-  { provider: 'openai', model: 'gpt-4o', inputUsdPer1M: 2.5, outputUsdPer1M: 10 },
-  { provider: 'openai', model: 'gpt-4o-mini', inputUsdPer1M: 0.15, outputUsdPer1M: 0.6 },
-  { provider: 'openai', model: 'o4-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4 },
-  { provider: 'openai', model: 'o3-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4 },
+  { provider: 'openai', model: 'gpt-5', inputUsdPer1M: 1.25, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.125, cacheWriteUsdPer1M: 1.25 },
+  { provider: 'openai', model: 'gpt-5-mini', inputUsdPer1M: 0.25, outputUsdPer1M: 2, cacheReadUsdPer1M: 0.025, cacheWriteUsdPer1M: 0.25 },
+  { provider: 'openai', model: 'gpt-4.1-mini', inputUsdPer1M: 0.4, outputUsdPer1M: 1.6, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 0.4 },
+  { provider: 'openai', model: 'gpt-4o', inputUsdPer1M: 2.5, outputUsdPer1M: 10, cacheReadUsdPer1M: 1.25, cacheWriteUsdPer1M: 2.5 },
+  { provider: 'openai', model: 'gpt-4o-mini', inputUsdPer1M: 0.15, outputUsdPer1M: 0.6, cacheReadUsdPer1M: 0.075, cacheWriteUsdPer1M: 0.15 },
+  { provider: 'openai', model: 'o4-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.275, cacheWriteUsdPer1M: 1.1 },
+  { provider: 'openai', model: 'o3-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.55, cacheWriteUsdPer1M: 1.1 },
   /*
    * OpenAI — retired from the provider's pricing page; kept so a configuration naming it still works.
    * o1-mini was carried at $3 / $12, its launch price. OpenAI's own model
    * page (https://developers.openai.com/api/docs/models/o1-mini, read
-   * 2026-09-28) lists $1.10 / $4.40, the same as o3-mini; the pricing
-   * page no longer lists the model at all.
+   * 2026-09-28) lists $1.10 / $4.40 and $0.55 cached, the same as
+   * o3-mini; the pricing page no longer lists the model at all.
    */
-  { provider: 'openai', model: 'o1-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, retired: '2026-09-20' },
+  { provider: 'openai', model: 'o1-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.55, cacheWriteUsdPer1M: 1.1, retired: '2026-09-20' },
 ] as const;
 
 /**

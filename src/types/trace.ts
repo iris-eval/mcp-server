@@ -38,9 +38,16 @@ export interface ToolCallRecord {
 }
 
 export interface TokenUsage {
+  /** Every input token, the ones read from or written to the prompt cache included (OpenAI's and the GenAI conventions' count). */
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
+  /** Of prompt_tokens, how many were read from the prompt cache. Priced at the model's cache-read price. */
+  cache_read_tokens?: number;
+  /** Of prompt_tokens, how many were written to the prompt cache. Priced at the model's cache-write price. */
+  cache_creation_tokens?: number;
+  /** OpenAI's usage shape, accepted as sent: `cached_tokens` is read as cache_read_tokens when that is absent. */
+  prompt_tokens_details?: { cached_tokens?: number };
 }
 
 export interface Span {
@@ -158,10 +165,17 @@ export interface CostEstimateCall {
   model: string;
   /** The pricing-table id it matched (after case, a provider prefix or a dated snapshot). */
   priced_as: string;
+  /** Every input token of the call, cached ones included. */
   prompt_tokens: number;
   completion_tokens: number;
   input_usd_per_1m: number;
   output_usd_per_1m: number;
+  /** Present when the call read from or wrote to the prompt cache. */
+  cache_read_tokens?: number;
+  cache_creation_tokens?: number;
+  /** The price the cached tokens were charged at; the input price when the table had no cache price (see `notes`). */
+  cache_read_usd_per_1m?: number;
+  cache_write_usd_per_1m?: number;
   cost_usd: number;
   /** `iris`: the built-in table. `config`: `pricing.models` in config.json. */
   price_source: 'iris' | 'config';
@@ -177,7 +191,13 @@ export interface CostEstimateCall {
  * used when a trace's calls went to more than one model.
  */
 export type CostEstimate =
-  | { status: 'estimated'; basis: 'token_usage' | 'calls'; calls: CostEstimateCall[] }
+  | {
+      status: 'estimated';
+      basis: 'token_usage' | 'calls';
+      calls: CostEstimateCall[];
+      /** What the estimate could not price as the provider bills it, in a sentence each: a cache price the table lacks, cache counts reported beside the input count. */
+      notes?: string[];
+    }
   | {
       status: 'unpriced';
       /** no_tokens: nothing to price. no_model: tokens, but no model named. unknown_model: a model no table prices. disabled: pricing.estimate is false. */

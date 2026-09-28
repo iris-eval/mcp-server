@@ -37,9 +37,14 @@ export function costBasisNote(context: Pick<EvalContext, 'costSource' | 'costEst
   if (context.costSource !== 'estimated') return '';
   const estimate = context.costEstimate;
   if (estimate === undefined || estimate.status !== 'estimated') return ' (estimated by Iris from token counts × list price; the trace reported no cost)';
-  const tokens = estimate.calls.reduce((n, c) => ({ in: n.in + c.prompt_tokens, out: n.out + c.completion_tokens }), { in: 0, out: 0 });
+  const tokens = estimate.calls.reduce(
+    (n, c) => ({ in: n.in + c.prompt_tokens, out: n.out + c.completion_tokens, cached: n.cached + (c.cache_read_tokens ?? 0) + (c.cache_creation_tokens ?? 0) }),
+    { in: 0, out: 0, cached: 0 },
+  );
   const models = [...new Set(estimate.calls.map((c) => c.priced_as))].join(', ');
-  return ` (estimated by Iris: ${tokens.in.toLocaleString('en-US')} input and ${tokens.out.toLocaleString('en-US')} output tokens at ${models} ${priceDates(estimate)}; the trace reported no cost)`;
+  const n = (x: number) => x.toLocaleString('en-US');
+  const cached = tokens.cached > 0 ? ` (${n(tokens.cached)} of them cached)` : '';
+  return ` (estimated by Iris: ${n(tokens.in)} input${cached} and ${n(tokens.out)} output tokens at ${models} ${priceDates(estimate)}; the trace reported no cost)`;
 }
 
 /** The evidence field that says so, on a cost stat: present when the cost was estimated (absent means the cost was reported). */

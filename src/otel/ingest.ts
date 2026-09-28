@@ -19,7 +19,10 @@
  *                `gen_ai.completion`, `gen_ai.content.completion`
  *   tokens       `gen_ai.usage.input_tokens` / `output_tokens` (and the
  *                older `prompt_tokens` / `completion_tokens`, and Iris's
- *                own `iris.*_tokens`), summed over spans
+ *                own `iris.*_tokens`), summed over spans; the cached part
+ *                of the input from `gen_ai.usage.cache_read.input_tokens`
+ *                and `cache_creation.input_tokens` (and OpenInference's
+ *                `llm.token_count.prompt_details.cache_read` / `cache_write`)
  *   cost         `iris.cost_usd`, `gen_ai.usage.cost`, `llm.usage.total_cost`,
  *                summed (cost_source "reported"); when no span carries one,
  *                estimated from each model call's tokens and list price
@@ -43,7 +46,7 @@
 import { z } from 'zod';
 import type { Span, SpanKind, SpanStatus, Trace, ToolDescriptor } from '../types/trace.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
-import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
+import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
@@ -562,6 +565,9 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
     const inputTokens = usageOf(ordered, INPUT_TOKEN_KEYS, AGGREGATED_INPUT_KEYS);
     const outputTokens = usageOf(ordered, OUTPUT_TOKEN_KEYS, AGGREGATED_OUTPUT_KEYS);
     const declaredTotal = usageOf(ordered, TOTAL_TOKEN_KEYS, []);
+    // The cached part of the input, counted at the leaves like the rest: priced at the cache price (src/cost/trace-cost.ts).
+    const cacheRead = usageOf(ordered, CACHE_READ_KEYS, []);
+    const cacheWrite = usageOf(ordered, CACHE_WRITE_KEYS, []);
     const model = firstString(rootFirst, MODEL_KEYS);
     const conversationId = (typeof group.resource['gen_ai.conversation.id'] === 'string' ? (group.resource['gen_ai.conversation.id'] as string) : undefined) ?? firstString(rootFirst, CONVERSATION_KEYS);
     const tools = toolDefinitionsOf(rootFirst);
@@ -571,6 +577,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
             prompt_tokens: inputTokens ?? 0,
             completion_tokens: outputTokens ?? 0,
             total_tokens: declaredTotal ?? (inputTokens ?? 0) + (outputTokens ?? 0),
+            ...(cacheRead !== undefined ? { cache_read_tokens: cacheRead } : {}),
+            ...(cacheWrite !== undefined ? { cache_creation_tokens: cacheWrite } : {}),
           }
         : undefined;
     const cost = sumOf(ordered, COST_KEYS);

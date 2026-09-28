@@ -8,9 +8,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { estimateTraceCost, resolveTraceCost, costFieldsOf } from '../../../src/cost/trace-cost.js';
 import { setPricingSettings } from '../../../src/cost/model-lookup.js';
-import type { Span, Trace } from '../../../src/types/trace.js';
+import type { CostEstimate, Span, Trace } from '../../../src/types/trace.js';
 
 afterEach(() => setPricingSettings(undefined));
+
+/** The estimated form of a CostEstimate, or a failed test naming what it was instead. */
+function estimatedOf(e: CostEstimate): Extract<CostEstimate, { status: 'estimated' }> {
+  if (e.status !== 'estimated') throw new Error(`expected an estimate, got ${e.status}: ${e.message}`);
+  return e;
+}
 
 const base = (extra: Partial<Trace> = {}): Trace => ({ trace_id: 't1', agent_name: 'bot', timestamp: '2026-09-28T10:00:00.000Z', ...extra });
 
@@ -63,8 +69,9 @@ describe('an estimate from token_usage and metadata.model', () => {
   it('needs both token counts: input and output are priced differently', () => {
     const { cost_usd, estimate } = estimateTraceCost(base({ token_usage: { total_tokens: 5000 }, metadata: { model: 'gpt-4o' } }));
     expect(cost_usd).toBeUndefined();
-    expect(estimate).toMatchObject({ status: 'unpriced', reason: 'no_tokens' });
-    expect((estimate as { message: string }).message).toMatch(/both prompt_tokens and completion_tokens/);
+    if (estimate.status !== 'unpriced') throw new Error(`expected no price, got ${estimate.status}`);
+    expect(estimate.reason).toBe('no_tokens');
+    expect(estimate.message).toMatch(/both prompt_tokens and completion_tokens/);
   });
 });
 
@@ -183,6 +190,35 @@ describe('model calls on spans', () => {
   it('a parent cycle in hand-written spans cannot loop', () => {
     const { estimate } = estimateTraceCost(base({ spans: [span('a', { 'gen_ai.request.model': 'gpt-4o', 'gen_ai.usage.input_tokens': 1, 'gen_ai.usage.output_tokens': 1 }, 'b'), span('b', {}, 'a')] }));
     expect(estimate.status).toBe('estimated');
+  });
+});
+
+describe('cached input', () => {
+  it('each call’s cache reads at its own model’s cache price, when the calls went to two models', () => {
+    const { cost_usd, estimate } = estimateTraceCost(
+      base({
+        spans: [
+          // claude-sonnet-5: 10,000 uncached × $2 + 90,000 cache reads × $0.20 + 1,000 × $10 = $0.02 + $0.018 + $0.01
+          span('a', { 'gen_ai.request.model': 'claude-sonnet-5', 'gen_ai.usage.input_tokens': 100_000, 'gen_ai.usage.cache_read.input_tokens': 90_000, 'gen_ai.usage.output_tokens': 1_000 }),
+          // gpt-4o-mini: no cache — 10,000 × $0.15 + 1,000 × $0.60 = $0.0015 + $0.0006
+          span('b', { 'gen_ai.request.model': 'gpt-4o-mini', 'gen_ai.usage.input_tokens': 10_000, 'gen_ai.usage.output_tokens': 1_000 }),
+        ],
+      }),
+    );
+    expect(cost_usd).toBe(0.0501);
+    expect(estimate).toMatchObject({ basis: 'calls', calls: [{ cost_usd: 0.048, cache_read_tokens: 90_000 }, { cost_usd: 0.0021 }] });
+    expect(estimatedOf(estimate).calls[1].cache_read_tokens).toBeUndefined();
+  });
+
+  it('a cached count equal to the input is a part of it (all of it cached), not beside it', () => {
+    const { cost_usd, estimate } = estimateTraceCost(base({ token_usage: { prompt_tokens: 1_000_000, completion_tokens: 0, cache_read_tokens: 1_000_000 }, metadata: { model: 'gpt-4o' } }));
+    expect(cost_usd).toBe(1.25);
+    expect(estimatedOf(estimate).notes).toBeUndefined();
+  });
+
+  it('a negative or non-numeric cache count is ignored, never subtracted', () => {
+    const t = base({ token_usage: { prompt_tokens: 1_000_000, completion_tokens: 0, cache_read_tokens: -5, prompt_tokens_details: { cached_tokens: Number.NaN } }, metadata: { model: 'gpt-4o' } });
+    expect(estimateTraceCost(t).cost_usd).toBe(2.5);
   });
 });
 

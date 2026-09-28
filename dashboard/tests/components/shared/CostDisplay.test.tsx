@@ -4,26 +4,21 @@ import { MemoryRouter } from 'react-router';
 import { axe } from 'jest-axe';
 import { CostDisplay, estimateTooltip } from '../../../src/components/shared/CostDisplay';
 import { TraceTable } from '../../../src/components/traces/TraceTable';
-import type { CostEstimate, Trace } from '../../../src/api/types';
+import type { CostEstimate, CostEstimateCall, Trace } from '../../../src/api/types';
 
-/* The estimate the server stores for 150,000 input and 10,000 output tokens of gpt-4o-mini (src/cost/trace-cost.ts). */
-const ESTIMATE: CostEstimate = {
-  status: 'estimated',
-  basis: 'token_usage',
-  calls: [
-    {
-      model: 'gpt-4o-mini-2024-07-18',
-      priced_as: 'gpt-4o-mini',
-      prompt_tokens: 150_000,
-      completion_tokens: 10_000,
-      input_usd_per_1m: 0.15,
-      output_usd_per_1m: 0.6,
-      cost_usd: 0.0285,
-      price_source: 'iris',
-      price_as_of: '2026-09-28',
-    },
-  ],
+/* The call the server stores for 150,000 input and 10,000 output tokens of gpt-4o-mini (src/cost/trace-cost.ts). */
+const CALL: CostEstimateCall = {
+  model: 'gpt-4o-mini-2024-07-18',
+  priced_as: 'gpt-4o-mini',
+  prompt_tokens: 150_000,
+  completion_tokens: 10_000,
+  input_usd_per_1m: 0.15,
+  output_usd_per_1m: 0.6,
+  cost_usd: 0.0285,
+  price_source: 'iris',
+  price_as_of: '2026-09-28',
 };
+const ESTIMATE: CostEstimate = { status: 'estimated', basis: 'token_usage', calls: [CALL] };
 
 describe('CostDisplay', () => {
   it('formats sub-dollar values to 4 decimal places', () => {
@@ -48,15 +43,27 @@ describe('CostDisplay', () => {
       });
       const tip = screen.getByRole('tooltip');
       expect(tip.textContent).toBe(
-        'Estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-28. The trace reported no cost. Cache and batch discounts and negotiated rates are not applied.',
+        'Estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-28. The trace reported no cost. Batch discounts and negotiated rates are not applied.',
       );
     } finally {
       vi.useRealTimers();
     }
   });
 
+  it('cached tokens are named as priced at cache prices, and the estimate\u2019s notes are carried', () => {
+    const cached: CostEstimate = {
+      status: 'estimated',
+      basis: 'token_usage',
+      calls: [{ ...CALL, cache_read_tokens: 100_000, cache_creation_tokens: 0, cache_read_usd_per_1m: 0.075, cache_write_usd_per_1m: 0.15, cost_usd: 0.021 }],
+      notes: ['prod: 5 cache-read tokens are priced at the input price.'],
+    };
+    expect(estimateTooltip(cached)).toBe(
+      'Estimated by Iris: 150,000 input (100,000 of them cached, at cache prices) and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-28. The trace reported no cost. Batch discounts and negotiated rates are not applied. prod: 5 cache-read tokens are priced at the input price.',
+    );
+  });
+
   it('prices from config.json say so, and an undated config names no date', () => {
-    const fromConfig: CostEstimate = { ...ESTIMATE, calls: [{ ...(ESTIMATE as Extract<CostEstimate, { status: 'estimated' }>).calls[0], priced_as: 'my-deployment', price_source: 'config', price_as_of: null }] };
+    const fromConfig: CostEstimate = { status: 'estimated', basis: 'token_usage', calls: [{ ...CALL, priced_as: 'my-deployment', price_source: 'config', price_as_of: null }] };
     expect(estimateTooltip(fromConfig)).toContain('at my-deployment prices in config.json. The trace reported no cost.');
   });
 

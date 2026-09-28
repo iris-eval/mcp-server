@@ -11,7 +11,7 @@ import type { CostEstimate, CostSource } from '../../api/types';
 import { formatCost } from '../../utils/formatters';
 import { Tooltip } from './Tooltip';
 
-const NOT_APPLIED = 'Cache and batch discounts and negotiated rates are not applied.';
+const NOT_APPLIED = 'Batch discounts and negotiated rates are not applied.';
 
 /** The sentence the "est." marker's tooltip carries. */
 export function estimateTooltip(estimate?: CostEstimate): string {
@@ -20,11 +20,14 @@ export function estimateTooltip(estimate?: CostEstimate): string {
   }
   const input = estimate.calls.reduce((n, c) => n + c.prompt_tokens, 0);
   const output = estimate.calls.reduce((n, c) => n + c.completion_tokens, 0);
+  const cached = estimate.calls.reduce((n, c) => n + (c.cache_read_tokens ?? 0) + (c.cache_creation_tokens ?? 0), 0);
   const models = [...new Set(estimate.calls.map((c) => c.priced_as))].join(', ');
   const dates = [...new Set(estimate.calls.map((c) => c.price_as_of).filter((d): d is string => d !== null))];
   const table = estimate.calls.some((c) => c.price_source === 'config') ? 'prices in config.json' : 'list price';
   const asOf = dates.length > 0 ? ` as of ${dates.join(' and ')}` : '';
-  return `Estimated by Iris: ${input.toLocaleString('en-US')} input and ${output.toLocaleString('en-US')} output tokens at ${models} ${table}${asOf}. The trace reported no cost. ${NOT_APPLIED}`;
+  const cachedText = cached > 0 ? ` (${cached.toLocaleString('en-US')} of them cached, at cache prices)` : '';
+  const notes = estimate.notes && estimate.notes.length > 0 ? ` ${estimate.notes.join(' ')}` : '';
+  return `Estimated by Iris: ${input.toLocaleString('en-US')} input${cachedText} and ${output.toLocaleString('en-US')} output tokens at ${models} ${table}${asOf}. The trace reported no cost. ${NOT_APPLIED}${notes}`;
 }
 
 /** The "est." marker, focusable so its tooltip is reachable from the keyboard. */
