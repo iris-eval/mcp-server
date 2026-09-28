@@ -23,6 +23,7 @@ import { formatCost, formatLatency, formatTimestamp } from '../../utils/formatte
 import { getSignificanceVisual, getVerdictVisual } from './significance';
 import { MakeRuleModal } from './MakeRuleModal';
 import { Tooltip } from '../shared/Tooltip';
+import { EstimatedMark } from '../shared/CostDisplay';
 import { TT } from '../shared/tooltipText';
 
 const SIG_TOOLTIP_DETAIL: Record<string, string> = {
@@ -292,6 +293,7 @@ export function MomentDetailPage() {
                 <span tabIndex={0}>{formatCost(data.costUsd)}</span>
               </Tooltip>
             )}
+            {data.costUsd != null && data.costSource === 'estimated' && <EstimatedMark />}
             {data.latencyMs != null && (
               <Tooltip content={TT.latencyMs}>
                 <span tabIndex={0}>{formatLatency(data.latencyMs)}</span>

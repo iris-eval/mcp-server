@@ -6,6 +6,7 @@ import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
 import { validateConfigFile } from './schema.js';
+import { setPricingSettings } from '../cost/model-lookup.js';
 
 /*
  * Owner-only (0700) for the iris home directory, matching the 0600 the data
@@ -243,6 +244,12 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   assertValidCriticality(config.eval);
   // Likewise the webhook: a URL the schema never saw (the environment's), or an unsigned iris-format hook, refuses startup here.
   assertWebhookConfig(config.notify.webhook);
+  /*
+   * The prices a trace's cost is estimated at. Set here, the one place both
+   * the server and `iris-eval ingest` pass through, so a hook-fed trace and
+   * a served one are priced by the same table (src/cost/model-lookup.ts).
+   */
+  setPricingSettings(config.pricing);
 
   return config;
 }

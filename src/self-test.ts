@@ -55,6 +55,7 @@ import { relevanceJudgeFromEnv, relevanceJudgeState, relevanceJudgeStateLine } f
 import type { IrisConfig, Trace } from './types/index.js';
 import type { IStorageAdapter } from './types/query.js';
 import type { EvalResult } from './types/eval.js';
+import { MODEL_PRICING, PRICING_SOURCED_ON } from './eval/llm-judge/pricing.js';
 
 const CHECK = '✓';
 const CROSS = '✗';
@@ -68,6 +69,7 @@ export const SELF_TEST_STEPS = {
   configuredHome: 'configured IRIS_HOME is writable',
   judge: 'judge key in this shell',
   retention: 'retention policy for this install',
+  pricing: 'cost estimates for this install',
   tempHome: 'create isolated temp home',
   storage: 'initialize storage',
   trace: 'log a trace',
@@ -310,6 +312,20 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     return `traces and evaluations older than ${retention.days} days are deleted ${cadence} (${where})`;
   }, { independent: true });
 
+  /*
+   * Cost estimates, read from THIS install's config before the scrub. A
+   * trace that reports no cost is stored with one priced from its tokens,
+   * and the cost rules act on it — so the diagnostic says whether that is
+   * on, which table prices it, and where to change either.
+   */
+  await step(SELF_TEST_STEPS.pricing, () => {
+    const { pricing } = loadConfig();
+    const where = `pricing in ${join(userHome, 'config.json')}`;
+    if (!pricing.estimate) return `off — a trace that reports no cost is stored without one (${where})`;
+    const own = pricing.models.length > 0 ? `, plus ${pricing.models.length} model${pricing.models.length === 1 ? '' : 's'} priced in config.json${pricing.asOf ? ` as of ${pricing.asOf}` : ''}` : '';
+    return `on — a trace that reports no cost is priced from its token counts at list price and marked estimated; built-in table of ${MODEL_PRICING.length} models as of ${PRICING_SOURCED_ON}${own} (${where})`;
+  }, { independent: true });
+
   await step(SELF_TEST_STEPS.tempHome, () => {
     tempHome = mkdtempSync(join(tmpdir(), 'iris-self-test-'));
     for (const key of SCRUBBED_ENV_VARS) {
@@ -352,13 +368,16 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
       input: 'self-test probe',
       output: 'self-test probe output',
       latency_ms: 5,
-      cost_usd: 0,
+      // No cost: the probe proves the stored trace gets one estimated from these tokens, as a framework's would.
+      token_usage: { prompt_tokens: 1000, completion_tokens: 100, total_tokens: 1100 },
+      metadata: { model: 'gpt-4o-mini' },
       timestamp: new Date().toISOString(),
     };
     await storage!.insertTrace(LOCAL_TENANT, trace);
     const stored = await storage!.getTrace(LOCAL_TENANT, traceId);
     ensure(stored?.trace_id === traceId, 'logged trace did not come back from storage');
-    return `trace ${traceId.slice(0, 8)}… persisted and read back`;
+    ensure(stored.cost_source === 'estimated' && typeof stored.cost_usd === 'number', `the trace's cost was not estimated from its tokens: ${JSON.stringify(stored.cost_estimate ?? null)}`);
+    return `trace ${traceId.slice(0, 8)}… persisted and read back, its cost estimated from its tokens ($${stored.cost_usd.toFixed(6)})`;
   });
 
   const persist = async (result: EvalResult): Promise<void> => {

@@ -19,9 +19,14 @@
  *                `gen_ai.completion`, `gen_ai.content.completion`
  *   tokens       `gen_ai.usage.input_tokens` / `output_tokens` (and the
  *                older `prompt_tokens` / `completion_tokens`, and Iris's
- *                own `iris.*_tokens`), summed over spans
+ *                own `iris.*_tokens`), summed over spans; the cached part
+ *                of the input from `gen_ai.usage.cache_read.input_tokens`
+ *                and `cache_creation.input_tokens` (and OpenInference's
+ *                `llm.token_count.prompt_details.cache_read` / `cache_write`)
  *   cost         `iris.cost_usd`, `gen_ai.usage.cost`, `llm.usage.total_cost`,
- *                summed
+ *                summed (cost_source "reported"); when no span carries one,
+ *                estimated from each model call's tokens and list price
+ *                (cost_source "estimated", src/cost/trace-cost.ts)
  *   run / case   `iris.run`, `iris.case_key` on the resource or the root
  *   evaluate     `iris.evaluate` (true) and `iris.eval_type` on the resource
  *                or the root: the sender asks for this trace to be scored,
@@ -41,6 +46,8 @@
 import { z } from 'zod';
 import type { Span, SpanKind, SpanStatus, Trace, ToolDescriptor } from '../types/trace.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
+import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
+import { resolveTraceCost } from '../cost/trace-cost.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
 
@@ -312,12 +319,7 @@ function statusOf(code: string | number | undefined): SpanStatus {
  */
 const INPUT_KEYS = ['iris.input', 'gen_ai.input.messages', 'gen_ai.prompt', 'input.value', 'traceloop.entity.input', 'ai.prompt'];
 const OUTPUT_KEYS = ['iris.output', 'gen_ai.output.messages', 'gen_ai.completion', 'output.value', 'traceloop.entity.output', 'ai.response.text'];
-const INPUT_TOKEN_KEYS = ['gen_ai.usage.input_tokens', 'gen_ai.usage.prompt_tokens', 'iris.prompt_tokens', 'llm.token_count.prompt', 'gen_ai.response.prompt_tokens', 'ai.usage.promptTokens'];
-const OUTPUT_TOKEN_KEYS = ['gen_ai.usage.output_tokens', 'gen_ai.usage.completion_tokens', 'iris.completion_tokens', 'llm.token_count.completion', 'gen_ai.response.completion_tokens', 'ai.usage.completionTokens'];
 const TOTAL_TOKEN_KEYS = ['gen_ai.usage.total_tokens', 'iris.total_tokens', 'llm.token_count.total'];
-/** A framework's own whole-run total (Pydantic AI) — when present it is the answer, not one more addend. */
-const AGGREGATED_INPUT_KEYS = ['gen_ai.aggregated_usage.input_tokens'];
-const AGGREGATED_OUTPUT_KEYS = ['gen_ai.aggregated_usage.output_tokens'];
 const COST_KEYS = ['iris.cost_usd', 'gen_ai.usage.cost', 'llm.usage.total_cost'];
 const AGENT_NAME_KEYS = ['gen_ai.agent.name'];
 const MODEL_KEYS = ['gen_ai.request.model', 'gen_ai.response.model', 'llm.model_name', 'llm.request.model', 'ai.model.id'];
@@ -563,6 +565,9 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
     const inputTokens = usageOf(ordered, INPUT_TOKEN_KEYS, AGGREGATED_INPUT_KEYS);
     const outputTokens = usageOf(ordered, OUTPUT_TOKEN_KEYS, AGGREGATED_OUTPUT_KEYS);
     const declaredTotal = usageOf(ordered, TOTAL_TOKEN_KEYS, []);
+    // The cached part of the input, counted at the leaves like the rest: priced at the cache price (src/cost/trace-cost.ts).
+    const cacheRead = usageOf(ordered, CACHE_READ_KEYS, []);
+    const cacheWrite = usageOf(ordered, CACHE_WRITE_KEYS, []);
     const model = firstString(rootFirst, MODEL_KEYS);
     const conversationId = (typeof group.resource['gen_ai.conversation.id'] === 'string' ? (group.resource['gen_ai.conversation.id'] as string) : undefined) ?? firstString(rootFirst, CONVERSATION_KEYS);
     const tools = toolDefinitionsOf(rootFirst);
@@ -572,6 +577,9 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
             prompt_tokens: inputTokens ?? 0,
             completion_tokens: outputTokens ?? 0,
             total_tokens: declaredTotal ?? (inputTokens ?? 0) + (outputTokens ?? 0),
+            // Only a count that changes the price: a wrapper reports cached_tokens: 0 on every uncached call.
+            ...(cacheRead !== undefined && cacheRead > 0 ? { cache_read_tokens: cacheRead } : {}),
+            ...(cacheWrite !== undefined && cacheWrite > 0 ? { cache_creation_tokens: cacheWrite } : {}),
           }
         : undefined;
     const cost = sumOf(ordered, COST_KEYS);
@@ -626,7 +634,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       source: 'otel',
     };
     traces.push({
-      trace,
+      // Priced here, so the route stores and scores the trace with its cost settled (src/cost/trace-cost.ts).
+      trace: resolveTraceCost(trace),
       otelTraceId,
       lacked,
       // A boolean true, or the string "true" from an exporter that only writes strings.

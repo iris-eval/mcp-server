@@ -26,7 +26,7 @@ export type ViewName = (typeof VIEW_NAMES)[number];
 
 export const VIEW_DESCRIPTIONS: Record<ViewName, string> = {
   failures_by_rule: 'Which rules fail most in the period — failed, evaluated and pass rate per rule, worst first.',
-  cost_by_agent: 'What each agent cost in the period — traces, costed traces, total, average and maximum cost, most expensive first.',
+  cost_by_agent: 'What each agent cost in the period — traces, costed traces, total, average and maximum cost, and how much of it was estimated from tokens, most expensive first.',
   flaky_cases: 'Cases answered both ways — attempts, passes, rate and the runs involved, least reliable first; min_attempts hides one-offs.',
   unjudged_questions: 'Per question, how many evaluations in the period the rules could not judge, and the reasons named most.',
   regression_alarms: 'Where an agent’s stream crossed its CUSUM line — the rule, the run, the trace, the baseline and the monitored counts.',

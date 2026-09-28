@@ -7,6 +7,7 @@ import { MAX_PATTERN_LENGTH } from './regex-budget.js';
 import { checkArguments, compileToolSchema } from '../schema-validator.js';
 import { compileActionPolicy, matchPolicyRule } from '../action-policy.js';
 import { stepsOf, stepStatsOf } from '../steps.js';
+import { costBasisNote } from '../cost-basis.js';
 
 
 // A rule whose CONFIG is invalid has not evaluated the output — it could not
@@ -407,7 +408,12 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           }
           const cost = context.costUsd;
           const passed = cost <= max;
-          return { ruleName: definition.name, passed, score: passed ? 1 : 0, message: passed ? `Cost ($${cost}) within threshold ($${max})` : `Cost ($${cost}) exceeds threshold ($${max})` };
+          return {
+            ruleName: definition.name,
+            passed,
+            score: passed ? 1 : 0,
+            message: (passed ? `Cost ($${cost}) within threshold ($${max})` : `Cost ($${cost}) exceeds threshold ($${max})`) + costBasisNote(context),
+          };
         }
         /*
          * action_policy — the tools this agent may call, and with what.

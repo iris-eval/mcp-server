@@ -88,8 +88,8 @@ Plus two HTTP-only fields:
 | `input` / `output` | string | the text pair evals run against |
 | `tool_calls` | array | `{ tool_name, input?, output?, latency_ms?, error? }` |
 | `latency_ms` | number | end-to-end latency |
-| `token_usage` | object | `{ prompt_tokens?, completion_tokens?, total_tokens? }` |
-| `cost_usd` | number | authoritative when provided |
+| `token_usage` | object | `{ prompt_tokens?, completion_tokens?, total_tokens?, cache_read_tokens?, cache_creation_tokens? }`; the cache counts are the cached part of `prompt_tokens`, and OpenAI's `prompt_tokens_details.cached_tokens` is accepted as sent ([cost.md](cost.md#cached-input)) |
+| `cost_usd` | number | authoritative when provided (`cost_source: "reported"`); omitted, estimated from `token_usage` and `metadata.model` at list price and marked `cost_source: "estimated"` ([cost.md](cost.md)) |
 | `metadata` | object | opaque key-value tags |
 | `spans` | array | span tree; `span_id` minted server-side when omitted |
 | `timestamp` | string | ISO 8601; defaults to now |

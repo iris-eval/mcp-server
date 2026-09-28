@@ -106,6 +106,10 @@ export const defaultConfig: IrisConfig = {
   logging: {
     level: 'info',
   },
+  pricing: {
+    estimate: true,
+    models: [],
+  },
   notify: {
     webhook: null,
   },

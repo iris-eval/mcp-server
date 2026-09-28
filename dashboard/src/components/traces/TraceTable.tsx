@@ -50,7 +50,7 @@ export function TraceTable({
     {
       key: 'cost_usd',
       header: 'Cost',
-      render: (t) => t.cost_usd != null ? <CostDisplay value={t.cost_usd} /> : '—',
+      render: (t) => t.cost_usd != null ? <CostDisplay value={t.cost_usd} source={t.cost_source} estimate={t.cost_estimate} /> : '—',
       width: '100px',
     },
     {

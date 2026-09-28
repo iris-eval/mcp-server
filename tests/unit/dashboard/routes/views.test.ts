@@ -129,8 +129,8 @@ describe('the views', () => {
     expect(status).toBe(200);
     const rows = body.rows as Array<Record<string, unknown>>;
     expect(rows).toEqual([
-      { agent: 'a', traces: 3, costedTraces: 2, totalCostUsd: 0.4, avgCostUsd: 0.2, maxCostUsd: 0.3 },
-      { agent: 'b', traces: 3, costedTraces: 1, totalCostUsd: 0.05, avgCostUsd: 0.05, maxCostUsd: 0.05 },
+      { agent: 'a', traces: 3, costedTraces: 2, estimatedTraces: 0, totalCostUsd: 0.4, estimatedCostUsd: 0, avgCostUsd: 0.2, maxCostUsd: 0.3 },
+      { agent: 'b', traces: 3, costedTraces: 1, estimatedTraces: 0, totalCostUsd: 0.05, estimatedCostUsd: 0, avgCostUsd: 0.05, maxCostUsd: 0.05 },
     ]);
     // A 24-hour window still holds traces from ten minutes ago, and the envelope names its start.
     const narrow = await get('/views/cost_by_agent?period=24h');

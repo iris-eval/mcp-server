@@ -1,4 +1,4 @@
-import type { Span, Step, ToolCallRecord, ToolDescriptor } from './trace.js';
+import type { CostEstimate, Span, Step, ToolCallRecord, ToolDescriptor } from './trace.js';
 
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
@@ -173,6 +173,15 @@ export interface EvalContext {
   tokenUsage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   costUsd?: number;
   /**
+   * Where costUsd came from: the trace reported it, or Iris estimated it
+   * from token counts × list price at ingest (src/cost/trace-cost.ts). The
+   * cost rules act on either and say which in their message and evidence.
+   * Absent means reported (a caller's own number).
+   */
+  costSource?: 'reported' | 'estimated';
+  /** With an estimated cost: how it was computed, for the rule's message. */
+  costEstimate?: CostEstimate;
+  /**
    * The agent's most recent prior costs, newest first, at most 200 — the
    * baseline `cost_anomaly` reads. Supplied by the engine's callers from the
    * agent's failure log (src/eval/ingest.ts); absent on a bare
@@ -276,7 +285,7 @@ export type Evidence =
   | { type: 'pattern'; name: string; count: number }
   | { type: 'toolCall'; index: number; toolName: string; label: string }
   | { type: 'citation'; url: string; status: 'resolved' | 'dead' | 'unverifiable' | 'supported' | 'unsupported' }
-  | { type: 'count'; stat: string; unit: string; value: number; threshold?: number; thresholdSource?: 'default' | 'config' | 'call' | 'rule' }
+  | { type: 'count'; stat: string; unit: string; value: number; threshold?: number; thresholdSource?: 'default' | 'config' | 'call' | 'rule'; /** On a cost stat: whether the trace reported the cost or Iris estimated it. */ costSource?: 'reported' | 'estimated' }
   /*
    * One judge sample (0.10.0). `score` is what the model returned;
    * `selfReportedPass` is what it CLAIMED about passing, recorded because

@@ -14,6 +14,7 @@ import * as migration012 from './012-datasets.js';
 import * as migration013 from './013-run-baseline.js';
 import * as migration014 from './014-trace-session.js';
 import * as migration015 from './015-trace-search.js';
+import * as migration016 from './016-trace-cost-source.js';
 import { PKG_VERSION } from '../../config/defaults.js';
 
 interface Migration {
@@ -37,6 +38,7 @@ const migrations: Migration[] = [
   migration013,
   migration014,
   migration015,
+  migration016,
 ];
 
 /** Every migration this build knows, in order. */

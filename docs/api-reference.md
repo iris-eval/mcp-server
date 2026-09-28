@@ -77,7 +77,7 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `tool_calls` | `ToolCall[]` | No | -- | Tool calls made during execution |
 | `latency_ms` | `number` | No | -- | Total execution time in milliseconds |
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown |
-| `cost_usd` | `number` | No | -- | Total cost in USD |
+| `cost_usd` | `number` | No | -- | Total cost in USD, stored as reported. Omitted, Iris estimates it from `token_usage` (or the spans' token counts) and the model (`metadata.model` or the spans') at list price, and marks it `cost_source: "estimated"`; see [cost.md](cost.md) |
 | `metadata` | `Record<string, unknown>` | No | -- | Arbitrary metadata key-value pairs |
 | `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output` |
 | `run` | `string` | No | -- | The batch this execution belongs to, for `compare_runs`; never inferred |
@@ -104,9 +104,12 @@ Log an agent execution trace with spans, tool calls, and metrics.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `prompt_tokens` | `number` | No | Input/prompt token count |
+| `prompt_tokens` | `number` | No | Input/prompt token count, cached tokens included |
 | `completion_tokens` | `number` | No | Output/completion token count |
 | `total_tokens` | `number` | No | Total token count |
+| `cache_read_tokens` | `number` | No | Of `prompt_tokens`, how many were read from the prompt cache; an estimated cost prices them at the model's cache-read price ([cost.md](cost.md#cached-input)) |
+| `cache_creation_tokens` | `number` | No | Of `prompt_tokens`, how many were written to the prompt cache, priced at the cache-write price |
+| `prompt_tokens_details` | `{ cached_tokens?: number }` | No | OpenAI's usage shape, accepted as sent; `cached_tokens` is read as `cache_read_tokens` when that is absent |
 
 **Span**
 
@@ -178,9 +181,13 @@ Log an agent execution trace with spans, tool calls, and metrics.
 ```json
 {
   "trace_id": "trc_1a2b3c4d5e6f",
-  "status": "stored"
+  "status": "stored",
+  "cost_usd": 0.0345,
+  "cost_source": "reported"
 }
 ```
+
+`cost_usd` is the stored cost, or `null`. `cost_source` is `reported` (sent with the trace) or `estimated` (Iris priced the trace's token counts at list price because it sent no cost); it is absent when there is no cost. `cost_estimate` carries the calls, tokens and prices of an estimate, or, with no cost, the reason (`status: "unpriced"`, `reason`, `message`). Every read of a stored trace carries the same three fields. [cost.md](cost.md) has the rules.
 
 ---
 
@@ -860,7 +867,8 @@ Returns dashboard summary with key metrics and trends.
 |-------|------|-------------|
 | `total_traces` | `number` | Total trace count |
 | `avg_latency_ms` | `number` | Average execution latency across all traces |
-| `total_cost_usd` | `number` | Sum of all `cost_usd` values |
+| `total_cost_usd` | `number` | Sum of all `cost_usd` values, reported and estimated |
+| `estimated_cost_usd` | `number` | The part of `total_cost_usd` Iris estimated from token counts at list price ([cost.md](cost.md)) |
 | `error_rate` | `number` | Fraction of traces with errors (0-1) |
 | `eval_pass_rate` | `number` | Fraction of evaluations that passed (0-1) |
 | `traces_per_hour` | `Array<{hour, count}>` | Time-series histogram of trace volume |
@@ -1713,6 +1721,8 @@ Used when `eval_type` is `"cost"`. These rules check execution cost and token ef
 | `no_tool_loop` | 1.0 | **Trajectory rule** — the agent must not repeat itself. Catches the waste a USD threshold cannot see: five identical calls can still bill under `cost_threshold`. Requires `tool_calls`; **skips** without them | `max_tool_repeats` (default: `3`) | No call repeated more than `max_tool_repeats` times, and no two-call cycle repeating more than twice |
 
 | `cost_anomaly` | 1.0 | **Measurement** — the trace cost against this agent's own recent history: the Iglewicz–Hoaglin modified z, `0.6745 · (cost − median) / MAD`, over the agent's last 200 costed traces; when every recent trace cost the same, more than 10% over every prior value. Reports and never decides the verdict. **Skips** as `insufficient_history` below 20 prior costed traces, and on a bare `evaluate_output` call with no linked trace. | none — the baseline is the agent's own | `z <= 3.5` (or, with a flat history, `cost <= 1.1 × max prior`) |
+
+**Estimated costs.** A trace that reported no cost is stored with one Iris estimated from its token counts at list price ([cost.md](cost.md)). The cost rules judge it like a reported cost; their message ends with what was estimated and their cost evidence carries `costSource: "estimated"`.
 
 **`cost_under_threshold` scoring:** If over threshold, score is `max(0, 1 - (cost - threshold) / threshold)`. Degrades linearly as cost exceeds the threshold.
 

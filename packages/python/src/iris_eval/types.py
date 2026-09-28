@@ -103,6 +103,8 @@ class Trace(TypedDict, total=False):
     latency_ms: float
     token_usage: TokenUsage
     cost_usd: float
+    cost_source: Literal["reported", "estimated"]
+    cost_estimate: dict[str, Any]
     metadata: dict[str, Any]
     timestamp: str
     tools: list[dict[str, Any]]
@@ -114,10 +116,13 @@ class Trace(TypedDict, total=False):
 
 
 class LoggedTrace(TypedDict, total=False):
-    """What ``POST /api/v1/traces`` answers: the id the server minted, and the evaluation when one was asked for."""
+    """What ``POST /api/v1/traces`` answers: the id the server minted, the stored cost and where it came from, and the evaluation when one was asked for."""
 
     trace_id: str
     status: str
+    cost_usd: float | None
+    cost_source: Literal["reported", "estimated"]
+    cost_estimate: dict[str, Any]
     evaluation: Evaluation
 
 

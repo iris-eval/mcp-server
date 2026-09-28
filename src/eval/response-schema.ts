@@ -49,10 +49,46 @@ export const evidenceSchema = z.discriminatedUnion('type', [
   z.looseObject({ type: z.literal('pattern'), name: z.string(), count: z.number().int().nonnegative() }),
   z.looseObject({ type: z.literal('toolCall'), index: z.number().int().nonnegative(), toolName: z.string(), label: z.string() }),
   z.looseObject({ type: z.literal('citation'), url: z.string(), status: z.enum(['resolved', 'dead', 'unverifiable', 'supported', 'unsupported']) }),
-  z.looseObject({ type: z.literal('count'), stat: z.string(), unit: z.string(), value: z.number(), threshold: z.number().optional(), thresholdSource: z.enum(['default', 'config', 'call', 'rule']).optional() }),
+  z.looseObject({ type: z.literal('count'), stat: z.string(), unit: z.string(), value: z.number(), threshold: z.number().optional(), thresholdSource: z.enum(['default', 'config', 'call', 'rule']).optional(), costSource: z.enum(['reported', 'estimated']).optional() }),
   // A judge's sample: what a judge-decided rule (answers_the_ask with a relevance judge) and a stored judge evaluation carry.
   z.looseObject({ type: z.literal('sample'), score: z.number(), selfReportedPass: z.boolean().optional(), rationaleHash: z.string() }),
 ]);
+/**
+ * How a trace's cost was estimated, or why it has none (src/cost/trace-cost.ts).
+ * Carried by log_trace, POST /api/v1/traces, POST /v1/traces and every read
+ * of a stored trace as `cost_estimate`.
+ */
+export const costEstimateSchema = z.union([
+  z.looseObject({
+    status: z.literal('estimated'),
+    basis: z.enum(['token_usage', 'calls']),
+    calls: z.array(
+      z.looseObject({
+        model: z.string(),
+        priced_as: z.string(),
+        prompt_tokens: z.number(),
+        completion_tokens: z.number(),
+        input_usd_per_1m: z.number(),
+        output_usd_per_1m: z.number(),
+        cache_read_tokens: z.number().optional(),
+        cache_creation_tokens: z.number().optional(),
+        cache_read_usd_per_1m: z.number().optional(),
+        cache_write_usd_per_1m: z.number().optional(),
+        cost_usd: z.number(),
+        price_source: z.enum(['iris', 'config']),
+        price_as_of: z.string().nullable(),
+      }),
+    ),
+    notes: z.array(z.string()).optional(),
+  }),
+  z.looseObject({
+    status: z.literal('unpriced'),
+    reason: z.enum(['no_tokens', 'no_model', 'unknown_model', 'disabled']),
+    message: z.string(),
+    models: z.array(z.string()).optional(),
+  }),
+]);
+
 export const measuredValueSchema = z.looseObject({ stat: z.string(), unit: z.string(), value: z.number() });
 
 export const claimKindSchema = z.enum(['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification']);

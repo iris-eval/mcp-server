@@ -32,6 +32,7 @@ import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
 import type { IngestEvalType } from '../../eval/ingest.js';
 import { logTraceInputShape } from '../../tools/log-trace.js';
+import { costFieldsOf } from '../../cost/trace-cost.js';
 
 /**
  * The most traces one OTLP request may store. A collector's default batch is
@@ -133,6 +134,7 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
         agent_name: trace.agent_name,
         spans: trace.spans?.length ?? 0,
         steps: toSteps({ spans: trace.spans }).length,
+        ...costFieldsOf(trace),
         lacked,
       };
       const wanted = options.evaluateOnIngest || requested;
