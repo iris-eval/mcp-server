@@ -168,7 +168,8 @@ if (skipInstall) {
     const r = run('npx', ['-y', `${npmPackage}@${version}`, '--self-test'], {
       cwd: dir,
       encoding: 'utf-8',
-      env: { ...process.env, IRIS_HOME: home, IRIS_NO_AUTO_LAUNCH: '1' },
+      // Both set: an IRIS_DB_PATH inherited from the caller would point the self-test at their real database.
+      env: { ...process.env, IRIS_HOME: home, IRIS_DB_PATH: join(home, 'iris.db'), IRIS_NO_AUTO_LAUNCH: '1' },
       timeout: 240_000,
     });
     const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;

@@ -5,11 +5,18 @@
  * all three tools + resource reading. Designed for asciinema recording.
  *
  * Usage: npx tsx scripts/demo.ts
+ *
+ * The server runs on a throwaway IRIS_HOME and database, removed at the
+ * end, so the demo's traces never land in the ~/.iris of the Iris you use.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { resolve } from 'node:path';
+import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+const home = mkdtempSync(join(tmpdir(), 'iris-demo-'));
 
 function log(section: string, message: string) {
   process.stderr.write(`\n${'='.repeat(60)}\n`);
@@ -30,6 +37,7 @@ async function main() {
   const transport = new StdioClientTransport({
     command: 'npx',
     args: ['tsx', serverPath],
+    env: { ...getDefaultEnvironment(), IRIS_HOME: home, IRIS_DB_PATH: join(home, 'iris.db'), IRIS_NO_AUTO_LAUNCH: '1' },
   });
 
   const client = new Client({ name: 'iris-demo', version: '1.0.0' });
@@ -128,7 +136,15 @@ async function main() {
   await client.close();
 }
 
-main().catch((err) => {
+function removeHome() {
+  // The server may hold the database a moment longer on Windows; a leftover temp directory is harmless.
+  try {
+    rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch {}
+}
+
+main().then(removeHome, (err) => {
   process.stderr.write(`Demo error: ${err}\n`);
+  removeHome();
   process.exit(1);
 });

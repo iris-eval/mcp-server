@@ -7,6 +7,9 @@
 // The server runs on a throwaway IRIS_HOME and database, removed on exit:
 // run on a developer's machine, it must not open, migrate or read the
 // ~/.iris of the Iris they actually use.
+//
+// Usage: node scripts/check-tools-listed.mjs [server-entry]
+// (default dist/index.js; tests pass a stand-in server).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +20,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const expected = JSON.parse(readFileSync(join(root, '.claims.json'), 'utf8')).mcpTools.names;
 const home = mkdtempSync(join(tmpdir(), 'iris-tools-listed-'));
 
-const child = spawn(process.execPath, [join(root, 'dist', 'index.js')], {
+const entry = resolve(process.argv[2] ?? join(root, 'dist', 'index.js'));
+
+const child = spawn(process.execPath, [entry], {
   cwd: root,
   env: {
     ...process.env,
