@@ -1,0 +1,72 @@
+{
+  "about": "What a LangChain chat model reports for one call's usage, and the span attributes both IrisCallbackHandlers must turn it into: packages/langchain/src/usage.ts (JavaScript) and packages/python/src/iris_eval/_langchain_usage.py (Python). Each case is the message's usage_metadata and response_metadata as the named integration builds them; every handler reads every case, so a trace from either language reads the same in Iris. langchain-anthropic (Python) moves Anthropic's cache-write lifetimes into input_token_details and sets cache_creation to 0 when it does; @langchain/anthropic (JavaScript) keeps cache_creation and leaves the lifetimes in the raw usage under response_metadata.",
+  "cases": [
+    {
+      "name": "langchain-anthropic (Python): the writes split into lifetimes, cache_creation zeroed",
+      "usage_metadata": { "input_tokens": 142, "output_tokens": 6, "total_tokens": 148, "input_token_details": { "cache_read": 100, "cache_creation": 0, "ephemeral_5m_input_tokens": 10, "ephemeral_1h_input_tokens": 20 } },
+      "response_metadata": { "model_name": "claude-sonnet-5", "stop_reason": "end_turn" },
+      "attributes": {
+        "gen_ai.usage.input_tokens": 142,
+        "gen_ai.usage.output_tokens": 6,
+        "gen_ai.usage.cache_read.input_tokens": 100,
+        "gen_ai.usage.cache_creation.input_tokens": 30,
+        "iris.usage.cache_creation.ephemeral_1h_input_tokens": 20
+      }
+    },
+    {
+      "name": "@langchain/anthropic (JavaScript): cache_creation kept, the lifetimes in the raw usage",
+      "usage_metadata": { "input_tokens": 142, "output_tokens": 6, "total_tokens": 148, "input_token_details": { "cache_creation": 30, "cache_read": 100 } },
+      "response_metadata": { "model_provider": "anthropic", "usage": { "cache_creation_input_tokens": 30, "cache_read_input_tokens": 100, "cache_creation": { "ephemeral_5m_input_tokens": 10, "ephemeral_1h_input_tokens": 20 } } },
+      "attributes": {
+        "gen_ai.usage.input_tokens": 142,
+        "gen_ai.usage.output_tokens": 6,
+        "gen_ai.usage.cache_read.input_tokens": 100,
+        "gen_ai.usage.cache_creation.input_tokens": 30,
+        "iris.usage.cache_creation.ephemeral_1h_input_tokens": 20
+      }
+    },
+    {
+      "name": "langchain-anthropic (Python): a split with no writes in either lifetime",
+      "usage_metadata": { "input_tokens": 12, "output_tokens": 6, "total_tokens": 18, "input_token_details": { "cache_read": 0, "cache_creation": 0, "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0 } },
+      "response_metadata": {},
+      "attributes": {
+        "gen_ai.usage.input_tokens": 12,
+        "gen_ai.usage.output_tokens": 6,
+        "gen_ai.usage.cache_read.input_tokens": 0,
+        "gen_ai.usage.cache_creation.input_tokens": 0,
+        "iris.usage.cache_creation.ephemeral_1h_input_tokens": 0
+      }
+    },
+    {
+      "name": "Anthropic without a lifetime split: the writes, and no 1-hour count claimed",
+      "usage_metadata": { "input_tokens": 142, "output_tokens": 6, "total_tokens": 148, "input_token_details": { "cache_read": 100, "cache_creation": 30 } },
+      "response_metadata": { "model_provider": "anthropic", "usage": { "cache_creation_input_tokens": 30, "cache_read_input_tokens": 100 } },
+      "attributes": {
+        "gen_ai.usage.input_tokens": 142,
+        "gen_ai.usage.output_tokens": 6,
+        "gen_ai.usage.cache_read.input_tokens": 100,
+        "gen_ai.usage.cache_creation.input_tokens": 30
+      }
+    },
+    {
+      "name": "OpenAI: cached input and reasoning tokens",
+      "usage_metadata": { "input_tokens": 20, "output_tokens": 12, "total_tokens": 32, "input_token_details": { "cache_read": 4 }, "output_token_details": { "reasoning": 8 } },
+      "response_metadata": { "model_name": "gpt-4o-mini-2024-07-18" },
+      "attributes": {
+        "gen_ai.usage.input_tokens": 20,
+        "gen_ai.usage.output_tokens": 12,
+        "gen_ai.usage.cache_read.input_tokens": 4,
+        "gen_ai.usage.reasoning.output_tokens": 8
+      }
+    },
+    {
+      "name": "no usage details at all",
+      "usage_metadata": { "input_tokens": 9, "output_tokens": 3, "total_tokens": 12 },
+      "response_metadata": {},
+      "attributes": {
+        "gen_ai.usage.input_tokens": 9,
+        "gen_ai.usage.output_tokens": 3
+      }
+    }
+  ]
+}

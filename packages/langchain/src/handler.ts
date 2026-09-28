@@ -23,6 +23,7 @@ import type { ChainValues } from '@langchain/core/utils/types';
 import type { DocumentInterface } from '@langchain/core/documents';
 import { MAX_PART_CHARS, defaultRecorder, newSpanId, newTraceId, nowNanos, programName, resourceFor } from '@iris-eval/sdk';
 import type { Attributes, EvalType, IrisRecorder, SpanRecord } from '@iris-eval/sdk';
+import { usageAttributes } from './usage.js';
 
 export interface IrisCallbackHandlerOptions {
   /** Where the trace goes. Default: the process-wide recorder of `@iris-eval/sdk`, configured from `IRIS_URL` / `IRIS_API_KEY`. */
@@ -346,11 +347,8 @@ export class IrisCallbackHandler extends BaseCallbackHandler {
     if (typeof model === 'string' && model) run.attributes['gen_ai.response.model'] = model;
     const usage = message?.usage_metadata;
     if (usage && typeof usage === 'object') {
-      intAttr(run.attributes, 'gen_ai.usage.input_tokens', usage.input_tokens);
-      intAttr(run.attributes, 'gen_ai.usage.output_tokens', usage.output_tokens);
-      intAttr(run.attributes, 'gen_ai.usage.cache_read.input_tokens', usage.input_token_details?.cache_read);
-      intAttr(run.attributes, 'gen_ai.usage.cache_creation.input_tokens', usage.input_token_details?.cache_creation);
-      intAttr(run.attributes, 'gen_ai.usage.reasoning.output_tokens', usage.output_token_details?.reasoning);
+      // The cache details differ by integration; usage.ts reads both shapes (tests/fixtures/langchain-usage-parity).
+      Object.assign(run.attributes, usageAttributes(usage, meta));
     } else {
       const tokens = (output?.llmOutput?.tokenUsage ?? output?.llmOutput?.token_usage ?? {}) as Record<string, unknown>;
       intAttr(run.attributes, 'gen_ai.usage.input_tokens', tokens.promptTokens ?? tokens.prompt_tokens);

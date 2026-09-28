@@ -29,7 +29,7 @@ Input tokens read from or written to the prompt cache are priced as the provider
 |---|---|
 | cache reads | `gen_ai.usage.cache_read.input_tokens` on a span (what the `@iris-eval/sdk` and Python wrappers and both LangChain handlers send), `gen_ai.usage.cache_read_input_tokens`, OpenInference's `llm.token_count.prompt_details.cache_read`, or `token_usage.cache_read_tokens` (OpenAI's `token_usage.prompt_tokens_details.cached_tokens` is read as it) |
 | cache writes | `gen_ai.usage.cache_creation.input_tokens`, `gen_ai.usage.cache_creation_input_tokens`, `llm.token_count.prompt_details.cache_write`, or `token_usage.cache_creation_tokens` |
-| of the writes, the 1-hour ones | `iris.usage.cache_creation.ephemeral_1h_input_tokens` (the SDK and Python wrappers send it from Anthropic's `usage.cache_creation.ephemeral_1h_input_tokens`; no GenAI convention names it yet), or `token_usage.cache_creation_1h_tokens` |
+| of the writes, the 1-hour ones | `iris.usage.cache_creation.ephemeral_1h_input_tokens` (the SDK and Python wrappers send it from Anthropic's `usage.cache_creation.ephemeral_1h_input_tokens`, and both LangChain handlers from LangChain's usage details; no GenAI convention names it yet), or `token_usage.cache_creation_1h_tokens` |
 
 - **The cached counts are a part of the input count.** The GenAI conventions, OpenInference and OpenAI all define them that way, and Iris's own wrappers and handlers record them that way, folding Anthropic's separate counts into the input count.
 - **Anthropic's API reports them beside `input_tokens`.** An instrumentation that passes that shape through can be told apart only when the cached counts are larger than the input count, because a part never is. Then they are added to the input count, and `cost_estimate.notes` says so. A cached count no larger than the input is read as a part.
@@ -138,7 +138,7 @@ The server and `iris-eval ingest` both read `config.json` from your Iris home, s
 An estimate is the provider's list price for the token counts the trace recorded.
 
 - **Reasoning tokens** are counted in the output tokens by both providers and are billed at the output rate, which is how Iris prices them.
-- **A 1-hour cache write** from an instrumentation that does not report the write lifetimes is priced as a 5-minute write (1.25 times the input price, where Anthropic charges 2 times), and the notes say so. Iris's own wrappers report them.
+- **A 1-hour cache write** from an instrumentation that does not report the write lifetimes is priced as a 5-minute write (1.25 times the input price, where Anthropic charges 2 times), and the notes say so. Iris's own wrappers and LangChain handlers report them.
 - **Batch discounts, negotiated rates and a cloud platform's own prices** are not known. Set them in `pricing.models`, or send `cost_usd` with the trace.
 
 ## Where it shows

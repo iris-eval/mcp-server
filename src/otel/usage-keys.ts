@@ -25,6 +25,6 @@ export const CACHE_WRITE_KEYS = ['gen_ai.usage.cache_creation.input_tokens', 'ge
 /**
  * Of the cache writes, the ones with a 1-hour lifetime (Anthropic's
  * usage.cache_creation.ephemeral_1h_input_tokens). No GenAI convention names
- * the lifetime yet; Iris's wrappers send it under this name.
+ * the lifetime yet; Iris's wrappers and LangChain handlers send it under this name.
  */
 export const CACHE_WRITE_1H_KEYS = ['iris.usage.cache_creation.ephemeral_1h_input_tokens'];
