@@ -120,8 +120,17 @@ export function registerEvaluateOutputTool(
       annotations: {
         readOnlyHint: false,     // Writes an eval_result row
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete
-        idempotentHint: true,    // Deterministic: same inputs → same score (each call writes a distinct result row, but the SCORE is stable). A deployment that set IRIS_RELEVANCE_JUDGE_MODEL adds one judge call, which a model answers
-        openWorldHint: false,    // No external network by default. A deployment that set IRIS_RELEVANCE_JUDGE_MODEL makes one provider call per evaluation that carries input (answers_the_ask); the tool that is only a judge call has openWorldHint:true
+        /*
+         * Both read at registration, which the server does after installing
+         * the relevance judge (IRIS_RELEVANCE_JUDGE_MODEL). Without one the
+         * tool is local and deterministic: same inputs, same score. With one,
+         * each evaluation that carries input calls the judge's provider on
+         * the user's key, so a repeat call spends again and a model answers:
+         * neither idempotent nor closed-world. MCP annotations are static per
+         * registration; the judge is fixed for the life of the process.
+         */
+        idempotentHint: evalEngine.relevanceJudgeInForce() === null,
+        openWorldHint: evalEngine.relevanceJudgeInForce() !== null,
       },
     },
     guarded(async (args, extra) => {

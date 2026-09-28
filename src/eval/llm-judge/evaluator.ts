@@ -144,22 +144,22 @@ function parseJudgeResponse(raw: string): {
   };
 }
 
-export async function evaluateWithLLMJudge(
-  params: LLMJudgeEvaluateParams,
-): Promise<LLMJudgeEvaluationResult> {
+/** What one judge evaluation will send, and the most it can cost. */
+interface JudgePlan {
+  systemPrompt: string;
+  userPrompt: string;
+  strictSystem: string;
+  maxOutputTokens: number;
+  retryMaxOutputTokens: number;
+  /** The pessimistic worst case of both attempts; null when the model is unpriced. */
+  estimatedCost: number | null;
+}
+
+type PlanParams = Pick<LLMJudgeEvaluateParams, 'template' | 'model' | 'output' | 'input' | 'expected' | 'sourceMaterial' | 'maxOutputTokens'>;
+
+function planJudgeCall(params: PlanParams): JudgePlan {
   const template = getTemplate(params.template);
   const maxOutputTokens = params.maxOutputTokens ?? 512;
-  const temperature = params.temperature ?? 0;
-  const maxCost = params.maxCostUsdPerEval ?? 0.25;
-
-  // Pre-check pricing exists — if the model is unknown we can't enforce
-  // the cap, so refuse upfront rather than silently skip cost control.
-  if (!findPricing(params.model)) {
-    throw new Error(
-      `Unknown model "${params.model}" for provider "${params.provider}". Add its pricing to src/eval/llm-judge/pricing.ts before use, or pick a supported model.`,
-    );
-  }
-
   const systemPrompt = template.buildSystem();
   const userPrompt = template.buildUser({
     output: params.output,
@@ -197,6 +197,35 @@ export async function evaluateWithLLMJudge(
   );
   const estimatedCost =
     firstAttemptCost === null || retryCost === null ? null : firstAttemptCost + retryCost;
+  return { systemPrompt, userPrompt, strictSystem, maxOutputTokens, retryMaxOutputTokens, estimatedCost };
+}
+
+/**
+ * The most one judge evaluation can cost: the same pessimistic two-attempt
+ * estimate the per-call cap refuses on. The relevance judge's daily budget
+ * reserves this before a call and settles to the actual cost after, so the
+ * two limits price a call identically. Null for an unpriced model.
+ */
+export function worstCaseJudgeCostUsd(params: PlanParams): number | null {
+  return planJudgeCall(params).estimatedCost;
+}
+
+export async function evaluateWithLLMJudge(
+  params: LLMJudgeEvaluateParams,
+): Promise<LLMJudgeEvaluationResult> {
+  const template = getTemplate(params.template);
+  const temperature = params.temperature ?? 0;
+  const maxCost = params.maxCostUsdPerEval ?? 0.25;
+
+  // Pre-check pricing exists — if the model is unknown we can't enforce
+  // the cap, so refuse upfront rather than silently skip cost control.
+  if (!findPricing(params.model)) {
+    throw new Error(
+      `Unknown model "${params.model}" for provider "${params.provider}". Add its pricing to src/eval/llm-judge/pricing.ts before use, or pick a supported model.`,
+    );
+  }
+
+  const { systemPrompt, userPrompt, strictSystem, maxOutputTokens, retryMaxOutputTokens, estimatedCost } = planJudgeCall(params);
   if (estimatedCost !== null && estimatedCost > maxCost) {
     throw new CostCapError(estimatedCost, maxCost);
   }

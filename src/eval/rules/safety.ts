@@ -340,6 +340,7 @@ function piiPatternSpans(
   pattern: RegExp,
   placeholders?: RegExp[],
   validate?: (match: string) => boolean,
+  limit: number = MAX_EVIDENCE_ITEMS,
 ): { spans: Array<[number, number]>; suppressed: number } {
   const global = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
   const spans: Array<[number, number]> = [];
@@ -350,9 +351,80 @@ function piiPatternSpans(
       suppressed++;
       continue;
     }
-    if (spans.length < MAX_EVIDENCE_ITEMS) spans.push([match.index, match.index + match[0].length]);
+    if (spans.length < limit) spans.push([match.index, match.index + match[0].length]);
   }
   return { spans, suppressed };
+}
+
+/** One PII or credential finding, located in the raw text the scan was given. */
+export interface PiiSpan {
+  start: number;
+  end: number;
+  /** The pattern's name, with " (base64-encoded)" when the value was found inside an encoded run. */
+  label: string;
+}
+
+export interface PiiScan {
+  /** The pattern names that fired, in PII_PATTERNS order; the no_pii message lists them. */
+  found: string[];
+  /** Where each finding is, as offsets into the raw text, at most `limit` of them. */
+  spans: PiiSpan[];
+  /** Documentation placeholders ignored, per pattern that did not fire. */
+  suppressed: Map<string, number>;
+}
+
+export interface PiiScanOptions {
+  /** The most spans to return. Defaults to the evidence cap; the relevance judge's redaction passes Infinity. */
+  limit?: number;
+  /** Locate every encoded run a pattern fires in, not only the first. Redaction needs them all; evidence needs one. */
+  everyEncodedRun?: boolean;
+  /** Replace a pattern's structural check for this scan (no_pii exempts emails the input supplied). */
+  validateFor?: (pattern: PiiPattern) => ((match: string) => boolean) | undefined;
+}
+
+/**
+ * The no_pii detector: every PII and credential pattern over the FOLDED
+ * text, placeholders ignored, structural checks applied, base64 runs that
+ * decode to text read too, and each finding reported as a RAW span. The
+ * rule reads its verdict and evidence from this, and the relevance judge's
+ * redaction (llm-judge/redact.ts) reads its spans, so what Iris flags as a
+ * leak and what it keeps from a judge provider are one detector.
+ */
+export function scanPii(text: string, options: PiiScanOptions = {}): PiiScan {
+  const limit = options.limit ?? MAX_EVIDENCE_ITEMS;
+  const found: string[] = [];
+  const spans: PiiSpan[] = [];
+  const suppressed = new Map<string, number>();
+  const folded = normalise(text, { dropInsertedBreaks: true });
+  // Base64 runs that decode to text are read too; a finding there is
+  // located by the whole encoded run, since the value is not in the raw text.
+  const encoded = decodedBase64Runs(folded.text);
+  for (const p of PII_PATTERNS) {
+    const { name, pattern, placeholders } = p;
+    const validate = options.validateFor ? options.validateFor(p) : p.validate;
+    const { fired, suppressed: ignored } = piiPatternMatches(folded.text, pattern, placeholders, validate);
+    if (fired) {
+      found.push(name);
+      for (const [s, e] of piiPatternSpans(folded.text, pattern, placeholders, validate, limit).spans) {
+        const [start, end] = toRawSpan(folded, s, e);
+        if (spans.length < limit) spans.push({ start, end, label: name });
+      }
+      continue;
+    }
+    const runs = options.everyEncodedRun
+      ? encoded.filter((r) => piiPatternMatches(r.text, pattern, placeholders, validate).fired)
+      : [encoded.find((r) => piiPatternMatches(r.text, pattern, placeholders, validate).fired)].filter((r): r is (typeof encoded)[number] => r !== undefined);
+    if (runs.length > 0) {
+      found.push(`${name} (base64-encoded)`);
+      for (const run of runs) {
+        const [start, end] = toRawSpan(folded, run.start, run.end);
+        if (spans.length < limit) spans.push({ start, end, label: `${name} (base64-encoded)` });
+      }
+    } else if (ignored > 0) {
+      suppressed.set(name, ignored);
+    }
+  }
+  return { found, spans, suppressed };
 }
 
 /**
@@ -408,9 +480,6 @@ export const noPii: EvalRule = {
    */
   critical: true,
   evaluate(context: EvalContext): EvalRuleResult {
-    const found: string[] = [];
-    const evidence: Evidence[] = [];
-    const suppressed = new Map<string, number>();
     /*
      * Match the FOLDED text and report RAW spans (0.10.0). Before this, a
      * full-width digit or a Cyrillic lookalike inside a card number defeated
@@ -418,16 +487,12 @@ export const noPii: EvalRule = {
      * full-width forms and 22% under homoglyphs. The offset map is what
      * keeps the evidence contract — a span still indexes the output the
      * caller sent, and it covers the obfuscating characters as part of the
-     * finding, which is what a redaction pass needs.
+     * finding, which is what a redaction pass needs. scanPii does both.
      */
-    const folded = normalise(context.output, { dropInsertedBreaks: true });
     const givenEmails = emailsInInput(context.input);
     let fromInput = 0;
-    // Base64 runs that decode to text are read too; a finding there is
-    // located by the whole encoded run, since the value is not in the raw text.
-    const encoded = decodedBase64Runs(folded.text);
-    for (const { name, pattern, placeholders, validate: baseValidate } of PII_PATTERNS) {
-      const validate =
+    const { found, spans, suppressed } = scanPii(context.output, {
+      validateFor: ({ name, validate: baseValidate }) =>
         name === 'Email' && givenEmails.size > 0
           ? (match: string) => {
               if (givenEmails.has(canonicalEmail(match))) {
@@ -436,25 +501,9 @@ export const noPii: EvalRule = {
               }
               return baseValidate ? baseValidate(match) : true;
             }
-          : baseValidate;
-      const { fired, suppressed: ignored } = piiPatternMatches(folded.text, pattern, placeholders, validate);
-      if (fired) {
-        found.push(name);
-        for (const [s, e] of piiPatternSpans(folded.text, pattern, placeholders, validate).spans) {
-          const [start, end] = toRawSpan(folded, s, e);
-          if (evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'span', source: 'output', start, end, label: name });
-        }
-        continue;
-      }
-      const run = encoded.find((r) => piiPatternMatches(r.text, pattern, placeholders, validate).fired);
-      if (run) {
-        found.push(`${name} (base64-encoded)`);
-        const [start, end] = toRawSpan(folded, run.start, run.end);
-        if (evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'span', source: 'output', start, end, label: `${name} (base64-encoded)` });
-      } else if (ignored > 0) {
-        suppressed.set(name, ignored);
-      }
-    }
+          : baseValidate,
+    });
+    const evidence: Evidence[] = spans.map(({ start, end, label }) => ({ type: 'span', source: 'output', start, end, label }));
     const passed = found.length === 0;
     const given = passed && fromInput > 0 ? ' — email addresses the input supplied were not counted: the agent was given them' : '';
     return {

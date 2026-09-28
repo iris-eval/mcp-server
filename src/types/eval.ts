@@ -1,4 +1,6 @@
 import type { CostEstimate, Span, Step, ToolCallRecord, ToolDescriptor } from './trace.js';
+import type { TenantId } from './tenant.js';
+import type { JudgeRequest } from '../eval/llm-judge/budget.js';
 
 export type EvalType = 'completeness' | 'relevance' | 'safety' | 'cost' | 'custom';
 
@@ -233,6 +235,21 @@ export interface EvalContext {
    * the engine's, made once, on the one path every evaluation takes.
    */
   relevanceJudgment?: JudgeRecord;
+
+  /**
+   * The tenant this evaluation is for: the relevance judge charges its
+   * daily budget to it. Set by the doors that know it; LOCAL_TENANT when
+   * absent.
+   */
+  tenantId?: TenantId;
+
+  /**
+   * The request this evaluation belongs to, when a door scores many traces
+   * in one (an OTLP batch, evaluate_runs): the relevance judge counts its
+   * calls against IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST across all of
+   * them. Absent, the evaluation is a request of its own.
+   */
+  judgeRequest?: JudgeRequest;
 }
 
 /**
@@ -605,6 +622,20 @@ export interface JudgeRecord {
   agentModel?: string;
   /** The judge shares a model family with that agent: its verdict stands, and is read as a same-family opinion. */
   sameFamily?: boolean;
+  /**
+   * What was replaced before the ask and the answer were sent, counted per
+   * no_pii pattern (`{ "Email": 2 }`); absent when nothing was.
+   */
+  redacted?: Record<string, number>;
+  /** The deployment turned redaction off (IRIS_RELEVANCE_JUDGE_REDACT=off), and this call sent the text as it was. */
+  sentUnredacted?: boolean;
+  /**
+   * Why the judge was not asked although it could have been: the tenant's
+   * daily budget could not cover the call's worst case, or this request had
+   * already made its most judge calls. Nothing was spent; `error` says it in
+   * a sentence.
+   */
+  withheld?: 'daily_budget' | 'request_cap';
   /** Why the judge gave no answer. */
   error?: string;
 }
