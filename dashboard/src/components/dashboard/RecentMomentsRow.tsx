@@ -16,6 +16,7 @@ import { Tooltip } from '../shared/Tooltip';
 import { getSignificanceVisual, getVerdictVisual, LOW_SIGNAL_KINDS } from '../moments/significance';
 import { formatTimeAgo, formatCost } from '../../utils/formatters';
 import { TT } from '../shared/tooltipText';
+import { EstimatedMark } from '../shared/CostDisplay';
 
 const MAX_ROWS = 4;
 
@@ -190,9 +191,12 @@ export function RecentMomentsRow() {
             <span style={styles.agent}>{m.agentName}</span>
             <span style={styles.failedRules}>{failedRulesPreview}</span>
             {m.costUsd != null ? (
-              <Tooltip content={TT.costPerTrace}>
-                <span style={styles.cost} tabIndex={0}>{formatCost(m.costUsd)}</span>
-              </Tooltip>
+              <>
+                <Tooltip content={TT.costPerTrace}>
+                  <span style={styles.cost} tabIndex={0}>{formatCost(m.costUsd)}</span>
+                </Tooltip>
+                {m.costSource === 'estimated' && <EstimatedMark />}
+              </>
             ) : (
               <span style={styles.cost}>—</span>
             )}

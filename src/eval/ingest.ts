@@ -21,6 +21,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import type { Trace } from '../types/trace.js';
 import type { EvalResult, EvalType } from '../types/eval.js';
 import type { TenantId } from '../types/tenant.js';
+import { costContextOf } from './cost-basis.js';
 
 export type IngestEvalType = EvalType | 'all';
 
@@ -81,7 +82,8 @@ export async function evaluateStoredTrace(
   const context = {
     output: trace.output,
     input: trace.input,
-    costUsd: trace.cost_usd,
+    // Reported or estimated at ingest; the cost rules say which.
+    ...costContextOf(trace),
     costHistory,
     tokenUsage: trace.token_usage,
     // What the agent DID, as this same request stored it. Whole-source

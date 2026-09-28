@@ -18,7 +18,9 @@
  *   rotation             add the new key, restart, move the clients, remove
  *                        the old key, restart. Every key authenticates until
  *                        it is removed or expires; a key past `expiresAt`
- *                        stops matching at that instant, no restart needed.
+ *                        stops matching at that instant, no restart needed,
+ *                        and so do the browser sessions it opened
+ *                        (dashboard/session-auth.ts asks `expiryOf`).
  *
  * Matching walks the whole ring on every candidate and compares with
  * `timingSafeEqual` on same-width buffers, so the compare depends neither
@@ -54,6 +56,12 @@ export interface KeyRing {
   readonly expired: readonly string[];
   /** The id of the live key `candidate` is, or null. Constant-time over the whole ring. */
   match(candidate: string, now?: number): string | null;
+  /**
+   * When the key `id` stops matching: epoch ms, null for a key with no
+   * `expiresAt`, undefined for an id the ring does not hold (removed). A
+   * browser session asks this on every request, so it ends when its key does.
+   */
+  expiryOf(id: string): number | null | undefined;
 }
 
 type Entry = { id: string; expiresAt: number | null } & ({ kind: 'plain'; raw: Buffer } | { kind: 'hash'; digest: Buffer });
@@ -165,6 +173,10 @@ export function buildKeyRing(
         if (equal && live && found === null) found = entry.id;
       }
       return found;
+    },
+    expiryOf(id: string): number | null | undefined {
+      const entry = entries.find((e) => e.id === id);
+      return entry === undefined ? undefined : entry.expiresAt;
     },
   };
 }

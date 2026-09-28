@@ -20,6 +20,17 @@ export interface WebhookConfig {
   timeoutMs?: number;
 }
 
+/** One model priced in `config.json` under `pricing.models`, in USD per 1M tokens. */
+export interface ConfiguredModelPrice {
+  model: string;
+  inputUsdPer1M: number;
+  outputUsdPer1M: number;
+  /** Per 1M input tokens read from the prompt cache. Unset: cache reads are priced at inputUsdPer1M, and the estimate says so. */
+  cacheReadUsdPer1M?: number;
+  /** Per 1M input tokens written to the prompt cache. Unset: cache writes are priced at inputUsdPer1M, and the estimate says so. */
+  cacheWriteUsdPer1M?: number;
+}
+
 export interface IrisConfig {
   storage: {
     type: 'sqlite';
@@ -37,6 +48,14 @@ export interface IrisConfig {
      * trace to erase it.
      */
     redact?: 'none' | 'critical_spans';
+    /**
+     * How long one trace search may read before it answers with the matches
+     * it found so far (`search.complete: false`), in milliseconds (50 to
+     * 60,000; default 1,000). A search holds every other request while it
+     * reads, so this is also the longest it can make them wait.
+     * IRIS_SEARCH_BUDGET_MS sets it from the environment.
+     */
+    searchBudgetMs?: number;
   };
   server: {
     name: string;
@@ -169,6 +188,24 @@ export interface IrisConfig {
   };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
+  };
+  /**
+   * The price a trace's cost is estimated at when the trace reports none
+   * (src/cost/). A reported cost is never replaced; an estimate is stored
+   * with `cost_source: "estimated"` and the prices it used.
+   */
+  pricing: {
+    /** Estimate a cost from token counts × list price when a trace reports none. Default true. */
+    estimate: boolean;
+    /**
+     * Models to price beyond the built-in table, or at another price than it
+     * lists (a negotiated rate, a deployment name, a model Iris does not
+     * price). Matched on the id the trace records, ignoring case. An entry
+     * here wins over the built-in table.
+     */
+    models: ConfiguredModelPrice[];
+    /** The date the prices in `models` were read (YYYY-MM-DD), shown beside an estimate that used them. */
+    asOf?: string;
   };
   /** Outbound notifications. `webhook: null` (the default) sends nothing. */
   notify: {

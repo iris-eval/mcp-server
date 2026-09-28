@@ -59,7 +59,7 @@ describe('the search index is built after the server starts, not before it answe
       env: { ...getDefaultEnvironment(), IRIS_HOME: irisHome },
     });
     const client = new Client({ name: 'search-build', version: '0.1.0' });
-    const parse = (r: unknown) => JSON.parse((r as { content: Array<{ text: string }> }).content[0].text) as { total: number; search: { index: string } };
+    const parse = (r: unknown) => JSON.parse((r as { content: Array<{ text: string }> }).content[0].text) as { total: number; search: { index: string; complete: boolean } };
     try {
       const t0 = performance.now();
       await client.connect(transport);
@@ -68,9 +68,11 @@ describe('the search index is built after the server starts, not before it answe
       expect(tools.tools.map((t) => t.name)).toContain('get_traces');
 
       const during = parse(await client.callTool({ name: 'get_traces', arguments: { q: 'zanzibar', limit: 5 } }));
-      expect(during.total).toBe(NEEDLES);
-      // Still building: answered by reading the traces, and answered correctly.
+      // Still building: answered by reading the traces, and answered correctly. A read of 40,000 traces on a busy
+      // runner can pass the search's time budget (#703): then it says so, and has found only needles it read.
       expect(during.search.index).toBe('scan');
+      if (during.search.complete) expect(during.total).toBe(NEEDLES);
+      else expect(during.total).toBeLessThanOrEqual(NEEDLES);
 
       let after = during;
       const deadline = Date.now() + 180_000;
@@ -80,6 +82,7 @@ describe('the search index is built after the server starts, not before it answe
       }
       const indexedMs = performance.now() - t0;
       expect(after.search.index).toBe('fts5');
+      expect(after.search.complete).toBe(true);
       expect(after.total).toBe(NEEDLES);
       // The evidence, in the test log: the client was answered long before the index was ready.
       process.stdout.write(`[search-build] ${TRACES} traces: connected and listed tools in ${connectedMs.toFixed(0)} ms; index ready ${indexedMs.toFixed(0)} ms after spawn\n`);

@@ -25,6 +25,12 @@ import { WEBHOOK_EVENTS, WEBHOOK_FORMATS } from '../notify/event-names.js';
 import type { IrisConfig } from '../types/config.js';
 import { parseSizeLimit } from '../utils/size-limit.js';
 
+/**
+ * storage.searchBudgetMs and IRIS_SEARCH_BUDGET_MS, in milliseconds: long
+ * enough for a search to read something, short enough that the requests
+ * waiting behind it are not left for minutes (#703).
+ */
+export const SEARCH_BUDGET_RANGE_MS = [50, 60_000] as const;
 const port = z.number().int().min(1).max(65535);
 const nonNegativeInt = z.number().int().min(0);
 const nonNegative = z.number().min(0);
@@ -54,6 +60,7 @@ export const configFileSchema = z.strictObject({
       type: z.literal('sqlite').optional(),
       path: name.optional(),
       redact: z.enum(['none', 'critical_spans']).optional(),
+      searchBudgetMs: z.number().int().min(SEARCH_BUDGET_RANGE_MS[0]).max(SEARCH_BUDGET_RANGE_MS[1]).optional(),
     })
     .optional(),
   server: z.strictObject({ name: name.optional(), version: name.optional() }).optional(),
@@ -80,6 +87,24 @@ export const configFileSchema = z.strictObject({
     .optional(),
   otel: z.strictObject({ evaluateOnIngest: z.boolean().optional() }).optional(),
   logging: z.strictObject({ level: z.enum(['debug', 'info', 'warn', 'error']).optional() }).optional(),
+  pricing: z
+    .strictObject({
+      estimate: z.boolean().optional(),
+      models: z
+        .array(z.strictObject({ model: name, inputUsdPer1M: nonNegative, outputUsdPer1M: nonNegative, cacheReadUsdPer1M: nonNegative.optional(), cacheWriteUsdPer1M: nonNegative.optional() }))
+        .superRefine((models, ctx) => {
+          // Matching ignores case, so two entries that differ only in case would be one model at two prices.
+          const seen = new Set<string>();
+          models.forEach((m, i) => {
+            const id = m.model.trim().toLowerCase();
+            if (seen.has(id)) ctx.addIssue({ code: 'custom', path: [i, 'model'], message: `"${m.model}" is priced twice; model ids are matched ignoring case, so keep one entry` });
+            seen.add(id);
+          });
+        })
+        .optional(),
+      asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'a date as YYYY-MM-DD').optional(),
+    })
+    .optional(),
   retention: z.strictObject({ days: nonNegativeInt.optional(), sweepIntervalHours: nonNegative.optional() }).optional(),
   notify: z
     .strictObject({

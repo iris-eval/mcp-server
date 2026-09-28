@@ -10,7 +10,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { buildMatch, describeTerm, matchesTrace, parseSearch, searchableText, tokenize, toFtsQuery, SEARCH_MAX_LENGTH } from '../../../src/storage/search.js';
+import { buildMatch, describeTerm, matchesTrace, parseSearch, searchableText, searchRefusal, tokenize, toFtsQuery, SEARCH_MAX_LENGTH } from '../../../src/storage/search.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
@@ -23,7 +23,7 @@ describe('parseSearch', () => {
     expect(terms('Refund approved')).toEqual(['refund', 'approved']);
     expect(terms('"the agent said" yes')).toEqual(['"the agent said"', 'yes']);
     expect(terms('refund*')).toEqual(['refund*']);
-    expect(terms('"agent sa"*')).toEqual(['"agent sa"*']);
+    expect(terms('"agent sai"*')).toEqual(['"agent sai"*']);
     expect(terms('Café NAÏVE')).toEqual(['cafe', 'naive']);
   });
 
@@ -170,6 +170,8 @@ const hostile = fc
     fc.oneof(
       fc.constantFrom('"', '*', '(', ')', ':', '^', '+', '-', '{', '}', ',', ' ', 'NEAR', 'NEAR(', 'AND', 'OR', 'NOT', 'input:', 'output:', "'", '\\', '\0', '​'),
       fc.constantFrom(...VOCAB),
+      // Prefixes long and short, and repeats of them: normalised, refused or searched, and the two paths agree on each.
+      fc.constantFrom('ref* ', 'refund* ', 'appr* ', 'a* ', 'x1* ', 'said* ', 'ag* ', 'agent* '),
       fc.string({ maxLength: 6 }),
     ),
     { maxLength: 12 },
@@ -197,8 +199,18 @@ describe('search against a real FTS5 index', () => {
   it('answers every hostile query without throwing, and the index and the scan return the same traces', async () => {
     await fc.assert(
       fc.asyncProperty(fc.oneof(hostile, fc.string({ maxLength: 40 }), fc.string({ unit: 'binary', maxLength: 20 })).filter((q) => q.trim() !== ''), async (q) => {
+        const refused = searchRefusal(parseSearch(q));
+        if (refused !== undefined) {
+          // Over what one search may cost (#703): both paths refuse it, in the words the request paths use.
+          await expect(indexed.queryTraces(LOCAL_TENANT, { search: q })).rejects.toThrow(refused);
+          await expect(scanned.queryTraces(LOCAL_TENANT, { search: q })).rejects.toThrow(refused);
+          return;
+        }
         const a = await indexed.queryTraces(LOCAL_TENANT, { search: q, limit: 1000, sort_by: 'timestamp' });
         const b = await scanned.queryTraces(LOCAL_TENANT, { search: q, limit: 1000, sort_by: 'timestamp' });
+        expect(a.search?.complete).toBe(true);
+        expect(b.search?.complete).toBe(true);
+        expect(a.search?.ignored).toEqual(b.search?.ignored);
         expect(a.search?.index).toBe('fts5');
         expect(b.search?.index).toBe('scan');
         expect(a.search?.terms).toEqual(b.search?.terms);
@@ -213,7 +225,7 @@ describe('search against a real FTS5 index', () => {
   it('a query that is only syntax matches nothing, and says it searched no terms', async () => {
     for (const q of ['*', '"', '()', ':', '^', '"*"', '((( )))', '- + {}']) {
       const r = await indexed.queryTraces(LOCAL_TENANT, { search: q });
-      expect(r, q).toMatchObject({ total: 0, traces: [], search: { terms: [], index: 'fts5' } });
+      expect(r, q).toMatchObject({ total: 0, traces: [], search: { terms: [], index: 'fts5', complete: true } });
     }
   });
 });

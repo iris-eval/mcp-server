@@ -5,7 +5,8 @@ import { assertWebhookConfig } from '../notify/config.js';
 import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
-import { validateConfigFile } from './schema.js';
+import { validateConfigFile, SEARCH_BUDGET_RANGE_MS } from './schema.js';
+import { setPricingSettings } from '../cost/model-lookup.js';
 
 /*
  * Owner-only (0700) for the iris home directory, matching the 0600 the data
@@ -89,6 +90,16 @@ function parsePortEnv(value: string, name: string): number {
   return n;
 }
 
+/** IRIS_SEARCH_BUDGET_MS: whole milliseconds within the range config.json's storage.searchBudgetMs accepts; anything else refuses startup. */
+function parseSearchBudgetEnv(value: string): number {
+  const n = Number(value.trim());
+  const [min, max] = SEARCH_BUDGET_RANGE_MS;
+  if (!Number.isInteger(n) || n < min || n > max) {
+    throw new Error(`IRIS_SEARCH_BUDGET_MS=${JSON.stringify(value)} is not a valid search budget (must be a whole number of milliseconds, ${min}-${max})`);
+  }
+  return n;
+}
+
 /*
  * IRIS_DASHBOARD used to be `value === 'true'`, which silently read every
  * other spelling — 1, yes, on, TRUE — as an explicit DISABLE that then
@@ -121,6 +132,9 @@ function loadEnvVars(): Partial<IrisConfig> {
   }
   if (process.env.IRIS_DB_PATH) {
     config.storage = { type: 'sqlite', path: process.env.IRIS_DB_PATH };
+  }
+  if (process.env.IRIS_SEARCH_BUDGET_MS) {
+    config.storage = { ...(config.storage as object), searchBudgetMs: parseSearchBudgetEnv(process.env.IRIS_SEARCH_BUDGET_MS) };
   }
   if (process.env.IRIS_LOG_LEVEL) {
     config.logging = { level: process.env.IRIS_LOG_LEVEL };
@@ -243,6 +257,12 @@ export function loadConfig(cliArgs?: CliArgs): IrisConfig {
   assertValidCriticality(config.eval);
   // Likewise the webhook: a URL the schema never saw (the environment's), or an unsigned iris-format hook, refuses startup here.
   assertWebhookConfig(config.notify.webhook);
+  /*
+   * The prices a trace's cost is estimated at. Set here, the one place both
+   * the server and `iris-eval ingest` pass through, so a hook-fed trace and
+   * a served one are priced by the same table (src/cost/model-lookup.ts).
+   */
+  setPricingSettings(config.pricing);
 
   return config;
 }

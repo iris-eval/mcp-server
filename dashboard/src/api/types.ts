@@ -2,6 +2,9 @@ export interface TokenUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
+  /** Of prompt_tokens, the ones read from and written to the prompt cache. */
+  cache_read_tokens?: number;
+  cache_creation_tokens?: number;
 }
 
 export interface ToolCallRecord {
@@ -26,6 +29,31 @@ export interface Span {
   events?: Array<{ name: string; timestamp: string; attributes?: Record<string, unknown> }>;
 }
 
+/** Where a trace's cost came from: sent with the trace, or estimated by Iris from its token counts × list price. */
+export type CostSource = 'reported' | 'estimated';
+
+/** One model call an estimate priced (the server's CostEstimateCall). */
+export interface CostEstimateCall {
+  model: string;
+  priced_as: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  input_usd_per_1m: number;
+  output_usd_per_1m: number;
+  cache_read_tokens?: number;
+  cache_creation_tokens?: number;
+  cache_read_usd_per_1m?: number;
+  cache_write_usd_per_1m?: number;
+  cost_usd: number;
+  price_source: 'iris' | 'config';
+  price_as_of: string | null;
+}
+
+/** How an estimated cost was computed, or why a trace has none. */
+export type CostEstimate =
+  | { status: 'estimated'; basis: 'token_usage' | 'calls'; calls: CostEstimateCall[]; notes?: string[] }
+  | { status: 'unpriced'; reason: 'no_tokens' | 'no_model' | 'unknown_model' | 'disabled'; message: string; models?: string[] };
+
 export interface Trace {
   trace_id: string;
   agent_name: string;
@@ -36,6 +64,10 @@ export interface Trace {
   latency_ms?: number;
   token_usage?: TokenUsage;
   cost_usd?: number;
+  /** Absent when there is no cost, and on a reported cost stored before 0.20.0 read by an older server. */
+  cost_source?: CostSource;
+  /** How an estimate was computed, or why there is no cost. */
+  cost_estimate?: CostEstimate;
   metadata?: Record<string, unknown>;
   timestamp: string;
   created_at?: string;
@@ -399,8 +431,20 @@ export interface TraceQueryResult {
   total: number;
   limit: number;
   offset: number;
-  /** Present when the query searched: the terms as the server read them, and whether the full-text index answered. */
-  search?: { terms: string[]; index: 'fts5' | 'scan' };
+  /**
+   * Present when the query searched: the terms as the server read them,
+   * whether the full-text index answered, and `complete: false` when the
+   * search stopped at its time budget (`budget_ms`), when the traces and
+   * the total cover only the newest traces it read. `ignored` names the
+   * repeated or implied terms it left out.
+   */
+  search?: {
+    terms: string[];
+    index: 'fts5' | 'scan';
+    complete: boolean;
+    budget_ms?: number;
+    ignored?: Array<{ term: string; reason: string }>;
+  };
 }
 
 export interface TraceDetail {
@@ -413,6 +457,8 @@ export interface DashboardSummary {
   total_traces: number;
   avg_latency_ms: number;
   total_cost_usd: number;
+  /** The part of total_cost_usd that Iris estimated. */
+  estimated_cost_usd?: number;
   error_rate: number;
   eval_pass_rate: number;
   traces_per_hour: Array<{ hour: string; count: number }>;
@@ -437,6 +483,8 @@ export interface EvalStats {
   totalEvals: number;
   safetyViolations: { pii: number; injection: number; hallucination: number };
   totalCost: number;
+  /** The part of totalCost that Iris estimated from token counts × list price. */
+  estimatedCost?: number;
   agentCount: number;
   period: string;
 }
@@ -506,6 +554,8 @@ export interface DecisionMoment {
   output?: string;
   /** Serialized as explicit null when the trace reported no cost — guard with != null, not !== undefined. */
   costUsd?: number | null;
+  /** Where costUsd came from; `estimated` is marked "est." wherever the cost shows. */
+  costSource?: CostSource;
   latencyMs?: number | null;
   verdict: MomentVerdict;
   overallScore: number;

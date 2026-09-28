@@ -15,8 +15,8 @@
  * So the adapter's connection does not checkpoint by itself. This worker
  * thread holds a second connection to the same file and checkpoints from
  * there: PASSIVE every CHECKPOINT_INTERVAL_MS, which copies what it can
- * and never waits on a writer, and TRUNCATE when the adapter asks (after a
- * retention sweep or a purge, so the WAL keeps no copy of what was
+ * and never waits on a writer, and TRUNCATE when the adapter asks (after
+ * delete_trace, a retention sweep or a purge, so the WAL keeps no copy of what was
  * deleted), answering when it is done. Writers go on while it runs: WAL
  * lets one connection append while another checkpoints.
  *
@@ -37,7 +37,7 @@ export const AUTOCHECKPOINT_PAGES = 1000;
 /*
  * The worker's code, run as a CommonJS script. It opens the file with the
  * driver the adapter chose (better-sqlite3 by its resolved path, or
- * node:sqlite), and answers { id, error? } to each request.
+ * node:sqlite), and answers { id, busy?, error? } to each request.
  */
 const WORKER_SOURCE = `
 const { parentPort, workerData } = require('node:worker_threads');
@@ -56,8 +56,10 @@ if (driver === 'better-sqlite3') {
 }
 const run = (mode) => {
   try {
-    pragma('wal_checkpoint(' + mode + ')');
-    return {};
+    const out = pragma('wal_checkpoint(' + mode + ')');
+    const row = Array.isArray(out) ? out[0] : out;
+    // busy: a reader held the log past the busy timeout, so not all of it was copied (and a TRUNCATE did not empty it).
+    return { busy: row ? Number(row.busy) : 0 };
   } catch (err) {
     return { error: String((err && err.message) || err) };
   }
@@ -90,7 +92,7 @@ export class Checkpointer {
   private ready = false;
   private failed = false;
   private nextId = 1;
-  private readonly waiting = new Map<number, (reply: { error?: string }) => void>();
+  private readonly waiting = new Map<number, (reply: { busy?: number; error?: string }) => void>();
   private settle: (active: boolean) => void = () => undefined;
   /** Resolves true once the worker checkpoints, false if it failed first. */
   readonly started: Promise<boolean> = new Promise((resolve) => (this.settle = resolve));
@@ -102,7 +104,7 @@ export class Checkpointer {
       eval: true,
       workerData: { path: options.path, driver: options.driver, modulePath, busyMs: options.busyMs, intervalMs: CHECKPOINT_INTERVAL_MS },
     });
-    this.worker.on('message', (m: { ready?: boolean; id?: number; error?: string }) => {
+    this.worker.on('message', (m: { ready?: boolean; id?: number; busy?: number; error?: string }) => {
       if (m.ready) {
         this.ready = true;
         options.onReady();
@@ -137,7 +139,7 @@ export class Checkpointer {
     this.settle(false);
   }
 
-  private request(message: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'close' }): Promise<{ error?: string }> {
+  private request(message: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'close' }): Promise<{ busy?: number; error?: string }> {
     if (this.failed) return Promise.resolve({ error: 'the checkpoint worker is not running' });
     const id = this.nextId++;
     // Held while a request is in flight: a CLI awaiting its checkpoint must not exit before the answer.
@@ -148,10 +150,16 @@ export class Checkpointer {
     });
   }
 
-  /** A checkpoint on the worker's connection; resolves when it is done. Throws when it failed. */
-  async checkpoint(mode: 'PASSIVE' | 'TRUNCATE'): Promise<void> {
-    const reply = await this.request({ type: 'checkpoint', mode });
+  /**
+   * A TRUNCATE checkpoint on the worker's connection, which waits there for
+   * readers up to the busy timeout. Resolves true when the log was copied
+   * and emptied, false when a reader held it off; throws when the worker
+   * failed.
+   */
+  async truncate(): Promise<boolean> {
+    const reply = await this.request({ type: 'checkpoint', mode: 'TRUNCATE' });
     if (reply.error) throw new Error(reply.error);
+    return !reply.busy;
   }
 
   /** Close the worker's connection and stop it. */

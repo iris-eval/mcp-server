@@ -62,7 +62,9 @@ RUN apk add --no-cache --virtual .build-deps python3 make g++ \
 
 COPY --from=builder /app/dist dist/
 
-RUN mkdir -p /data && chown iris:iris /data
+# /data is the Iris home, owner-only like the 0700 a fresh ~/.iris gets
+# (src/config/index.ts, IRIS_HOME_DIR_MODE).
+RUN mkdir -p /data && chown iris:iris /data && chmod 700 /data
 
 USER iris
 
@@ -86,9 +88,18 @@ USER iris
 # (src/utils/bind-policy.ts): a bare `docker run` of this image stops with
 # one sentence naming IRIS_API_KEY. Run it with `-e IRIS_API_KEY=...`, or
 # `-e IRIS_ALLOW_UNAUTHENTICATED=1` to run open on purpose.
+#
+# IRIS_HOME IS THE VOLUME. Everything Iris writes besides the database
+# (deployed rules in custom-rules.json, audit.log, config.json,
+# preferences.json) lives in the Iris home. Until 0.20.0 only IRIS_DB_PATH
+# pointed into /data, so the home was /home/iris/.iris inside the container
+# layer: recreating the container kept every trace and silently dropped the
+# deployed rules and the audit trail. CI recreates a container on one volume
+# and requires the rule and its audit row to survive.
 ENV IRIS_TRANSPORT=http \
     IRIS_PORT=3000 \
     IRIS_HOST=0.0.0.0 \
+    IRIS_HOME=/data \
     IRIS_DB_PATH=/data/iris.db \
     IRIS_DASHBOARD=true \
     IRIS_DASHBOARD_PORT=6920 \

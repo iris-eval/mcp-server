@@ -16,7 +16,7 @@
  * trace id. The `evaluation` is the same object `evaluate_output` returns.
  */
 import type { EvalResultType, Verdict, Coverage, Interpretation, Provenance, EvalRuleResult } from './types/eval.js';
-import type { Span, TokenUsage, ToolCallRecord, ToolDescriptor } from './types/trace.js';
+import type { CostEstimate, CostSource, Span, TokenUsage, ToolCallRecord, ToolDescriptor } from './types/trace.js';
 
 export interface IrisClientOptions {
   /** Where the dashboard listens, e.g. `http://127.0.0.1:6920`. A trailing slash is fine. */
@@ -70,6 +70,12 @@ export interface EvaluationResponse {
 export interface IngestResponse {
   trace_id: string;
   status: 'stored';
+  /** The stored cost: the one sent, else estimated from token counts × list price, else null. */
+  cost_usd: number | null;
+  /** `reported` (sent with the trace) or `estimated` (computed by Iris); absent when cost_usd is null. */
+  cost_source?: CostSource;
+  /** How the estimate was computed, or why there is no cost. */
+  cost_estimate?: CostEstimate;
   evaluation?: EvaluationResponse;
 }
 

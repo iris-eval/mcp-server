@@ -12,9 +12,15 @@ We aim to acknowledge receipt within 48 hours and provide a detailed response wi
 
 ## Scope
 
-This security policy applies to:
-- The Iris MCP server (`@iris-eval/mcp-server`)
-- The Iris web dashboard
+This security policy applies to everything this repository builds and releases:
+- The Iris MCP server (`@iris-eval/mcp-server` on npm)
+- The Iris web dashboard, which the server serves
+- The container image (`ghcr.io/iris-eval/mcp-server`)
+- The MCPB bundle (`iris-eval.mcpb`, attached to each GitHub release)
+- The `iris-eval` launcher package on npm
+- The JavaScript SDK (`@iris-eval/sdk`) and the LangChain.js handler (`@iris-eval/langchain`)
+- The Python client (`iris-eval` on PyPI)
+- The GitHub Action in `.github/actions/gate`
 - The Iris website (`iris-eval.com`)
 
 ## Open Advisory Posture
@@ -82,5 +88,6 @@ We ask that you:
 - Restrict dashboard access to trusted networks
 - Keep the API key out of the environment block: `IRIS_API_KEY_FILE` reads it from a mounted secret file, and `security.apiKeys[].keyHash` lets `config.json` hold only the sha256 of a key
 - Rotate keys without a gap: add the new key to `security.apiKeys`, restart, move the clients, remove the old key, restart; give a temporary key an `expiresAt`
+- Encrypt the disk or volume that holds the Iris home (`~/.iris`, `IRIS_HOME`, or the image's `/data`). Iris does not encrypt data at rest: `iris.db` and its write-ahead-log files are created owner-only (mode 600), and the Iris home directory is created mode 700; on Windows, file ACLs govern instead. The database stores no LLM provider keys: `IRIS_ANTHROPIC_API_KEY` and `IRIS_OPENAI_API_KEY` are read from the environment and never written to disk. It does store trace inputs and outputs verbatim. Full-disk encryption covers what file permissions do not: a lost or stolen disk, or a backup.
 - Keep Iris updated to the latest version
 - Review eval rule configurations for your specific compliance requirements

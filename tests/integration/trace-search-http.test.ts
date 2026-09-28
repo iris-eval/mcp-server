@@ -58,7 +58,7 @@ describe('GET /api/v1/traces?q=', () => {
     const hit = await get(base, { q: 'order 5521 refund' });
     expect(hit.status).toBe(200);
     expect(hit.json.total).toBe(1);
-    expect(hit.json.search).toEqual({ terms: ['order', '5521', 'refund'], index: 'fts5' });
+    expect(hit.json.search).toEqual({ terms: ['order', '5521', 'refund'], index: 'fts5', complete: true });
     const [trace] = hit.json.traces as Array<{ trace_id: string; match: { field: string; snippet: string } }>;
     expect(trace.trace_id).toBe(refund);
     expect(trace.match.field).toBe('output');
@@ -84,6 +84,20 @@ describe('GET /api/v1/traces?q=', () => {
     expect(blank.status).toBe(200);
     expect(blank.json.total).toBe(1);
     expect(blank.json.search).toBeUndefined();
+  });
+
+  it('answers 400 naming why for a query over what one search may cost (#703)', async () => {
+    const base = await boot();
+    await post(base, { agent_name: 'bot', output: 'hello world' });
+    const short = await get(base, { q: Array(32).fill('w*').join(' ') });
+    expect(short.status).toBe(400);
+    expect(JSON.stringify(short.json.details)).toMatch(/a prefix needs at least 3 letters or digits/);
+    const prefixes = await get(base, { q: 'hell* worl* wide* webs* wire*' });
+    expect(prefixes.status).toBe(400);
+    expect(JSON.stringify(prefixes.json.details)).toMatch(/5 prefix terms/);
+    const ok = await get(base, { q: 'hell* hell* world' });
+    expect(ok.status).toBe(200);
+    expect(ok.json.search).toEqual({ terms: ['hell*', 'world'], index: 'fts5', complete: true, ignored: [{ term: 'hell*', reason: 'repeats an earlier term' }] });
   });
 
   it('answers FTS5 syntax as words, never a 500', async () => {

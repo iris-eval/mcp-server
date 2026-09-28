@@ -12,6 +12,7 @@ import type { RulePreviewResult } from '../../types/custom-rule.js';
 import type { CustomRuleDefinition } from '../../types/eval.js';
 import { DuplicateRuleNameError, replacedRulesWarning, retireSameNamedRules } from '../../tools/deploy-rule.js';
 import { strictBody } from '../validation.js';
+import { costContextOf } from '../../eval/cost-basis.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
@@ -353,7 +354,7 @@ async function previewRule(
     const result = rule.evaluate({
       output: trace.output,
       input: trace.input,
-      costUsd: trace.cost_usd,
+      ...costContextOf(trace),
       tokenUsage: trace.token_usage,
       regexBudget,
     });

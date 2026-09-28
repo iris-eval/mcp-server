@@ -17,6 +17,7 @@ import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
 import { storedTraceContext, traceContextOfCall } from '../otel/trace-context.js';
+import { costContextOf } from '../eval/cost-basis.js';
 
 /** The most inline custom rules one call may carry (see the argument description). */
 export const MAX_INLINE_CUSTOM_RULES = 10;
@@ -69,7 +70,7 @@ const inputSchema = {
   // N=50). Ten is ample for per-call rules; persistent sets belong in
   // deploy_rule, where deploy-time validation probes each pattern.
   custom_rules: z.array(CustomRuleSchema).max(MAX_INLINE_CUSTOM_RULES).optional().describe('Up to 10 one-off rules; they fire whatever eval_type is (eval_type="custom" runs only these)'),
-  cost_usd: z.number().optional().describe('Cost in USD, for the cost bundle and any cost_threshold rule; omitted, they skip rather than pass'),
+  cost_usd: z.number().optional().describe('Cost in USD, for the cost bundle and any cost_threshold rule; omitted, the stored cost of trace_id (reported or estimated), else they skip rather than pass'),
   token_usage: z.object({
     prompt_tokens: z.number().optional(),
     completion_tokens: z.number().optional(),
@@ -165,6 +166,7 @@ export function registerEvaluateOutputTool(
       // every bundle (DEFAULT_EVAL_TYPE) AND a note saying so. The default
       // used to be completeness — six of seven UAT personas read passed:true
       // on PII-laden text with no hint that the safety bundle never ran.
+      const cost = args.cost_usd !== undefined ? { costUsd: args.cost_usd } : trace !== undefined ? costContextOf(trace) : {};
       const evalTypeOmitted = args.eval_type === undefined;
       const evalType = args.eval_type ?? DEFAULT_EVAL_TYPE;
       const context = {
@@ -172,12 +174,14 @@ export function registerEvaluateOutputTool(
         expected: args.expected,
         expectedTrajectory: args.expected_trajectory as ExpectedTrajectory | undefined,
         input: args.input,
-        costUsd: args.cost_usd,
+        // The caller's cost wins; with none, the linked trace's (reported or
+        // estimated at ingest), as tool_calls and tools fall back above.
+        ...cost,
         // The agent's own cost baseline when a trace is linked: the
-        // cost under test is the caller's, the history is the trace's agent's.
+        // cost under test is the one above, the history is the trace's agent's.
         costHistory:
-          trace !== undefined && args.cost_usd !== undefined
-            ? await costHistoryFor(storage, LOCAL_TENANT, { ...trace, cost_usd: args.cost_usd })
+          trace !== undefined && cost.costUsd !== undefined
+            ? await costHistoryFor(storage, LOCAL_TENANT, { ...trace, cost_usd: cost.costUsd })
             : undefined,
         tokenUsage: args.token_usage,
         toolCalls,

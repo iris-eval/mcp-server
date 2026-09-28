@@ -74,8 +74,8 @@ describe('migration 015 — the trace search index', () => {
     }
   });
 
-  it('is the fifteenth known migration, and the last', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(15);
+  it('is the fifteenth known migration', () => {
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[14]).toBe('015-trace-search');
     expect(KNOWN_MIGRATION_IDS[13]).toBe('014-trace-session');
   });

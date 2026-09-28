@@ -10,8 +10,8 @@
  * addon's own classes.
  *
  * This file is the seam. Everything above it — the adapter, the twelve
- * migrations, the self-test — talks to a `Driver` with five verbs:
- * prepare, exec, pragma, transaction, close. Two drivers implement it:
+ * migrations, the self-test — talks to a `Driver` with six verbs:
+ * prepare, exec, pragma, transaction, fn, close. Two drivers implement it:
  *
  *   native   better-sqlite3, the default — fastest, and what every number
  *            in the proof was measured on.
@@ -67,6 +67,14 @@ export interface Driver {
    * node:sqlite does not, and turns it off only where it can.
    */
   writeShadowTables<R>(fn: () => R): R;
+  /**
+   * Define a SQL function on this connection, callable from statements
+   * only (never from a trigger or view the file carries), and not
+   * deterministic. An error it throws ends the statement and reaches the
+   * caller as it was thrown: the search reads its matches through one, so
+   * it can stop at its time budget and keep what it read (sqlite-adapter).
+   */
+  fn(name: string, impl: (...args: unknown[]) => unknown): void;
   close(): void;
 }
 
@@ -75,6 +83,8 @@ export interface OpenOptions {
   timeout?: number;
   /** Refuse to create the file (the self-test's read of an existing database). */
   fileMustExist?: boolean;
+  /** Open for reading only (the search worker's connection): no statement on it can write the file. */
+  readOnly?: boolean;
   /** Force a driver; unset reads IRIS_SQLITE_DRIVER, then defaults to native with the fallback. */
   driver?: 'native' | 'node';
   /** Whether a native load failure may fall back to the built-in (default true; a test turns it off). */
@@ -93,16 +103,18 @@ export const NODE_SQLITE_MIN = '22.13.0';
 /* ---- The native driver: better-sqlite3 ---- */
 
 type NativeStatement = { run(...p: unknown[]): { changes: number; lastInsertRowid: number | bigint }; get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[] };
+type FunctionOptions = { deterministic: boolean; directOnly: boolean };
 type NativeDatabase = {
   prepare(sql: string): NativeStatement;
   exec(sql: string): unknown;
   pragma(text: string): unknown;
+  function(name: string, options: FunctionOptions, impl: (...args: unknown[]) => unknown): unknown;
   transaction<F extends (...args: never[]) => unknown>(fn: F): F & { immediate: F };
   /** Also switches SQLITE_DBCONFIG_DEFENSIVE: off in unsafe mode, on outside it. */
   unsafeMode(on: boolean): unknown;
   close(): void;
 };
-type NativeModule = new (path: string, options?: { timeout?: number; fileMustExist?: boolean }) => NativeDatabase;
+type NativeModule = new (path: string, options?: { timeout?: number; fileMustExist?: boolean; readonly?: boolean }) => NativeDatabase;
 
 const require = createRequire(import.meta.url);
 
@@ -114,7 +126,11 @@ function defaultLoadNative(): NativeModule {
 }
 
 function nativeDriver(Database: NativeModule, path: string, options: OpenOptions, reason: string): Driver {
-  const db = new Database(path, { ...(options.timeout !== undefined ? { timeout: options.timeout } : {}), ...(options.fileMustExist ? { fileMustExist: true } : {}) });
+  const db = new Database(path, {
+    ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
+    ...(options.fileMustExist ? { fileMustExist: true } : {}),
+    ...(options.readOnly ? { readonly: true } : {}),
+  });
   return {
     name: 'better-sqlite3',
     reason,
@@ -132,6 +148,9 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
         db.unsafeMode(false);
       }
     },
+    fn: (name, impl) => {
+      db.function(name, { deterministic: false, directOnly: true }, impl);
+    },
     close: () => db.close(),
   };
 }
@@ -139,7 +158,13 @@ function nativeDriver(Database: NativeModule, path: string, options: OpenOptions
 /* ---- The built-in driver: node:sqlite ---- */
 
 type NodeStatement = { run(...p: unknown[]): { changes: number | bigint; lastInsertRowid: number | bigint }; get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[] };
-type NodeDatabase = { prepare(sql: string): NodeStatement; exec(sql: string): void; close(): void; enableDefensive?(on: boolean): void };
+type NodeDatabase = {
+  prepare(sql: string): NodeStatement;
+  exec(sql: string): void;
+  function(name: string, options: FunctionOptions, impl: (...args: unknown[]) => unknown): void;
+  close(): void;
+  enableDefensive?(on: boolean): void;
+};
 type NodeSqliteModule = { DatabaseSync: new (path: string, options?: Record<string, unknown>) => NodeDatabase };
 
 function defaultLoadNode(): NodeSqliteModule {
@@ -160,7 +185,7 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
     throw new Error(`SQLite database file does not exist: ${path}`);
   }
   // No extension loading — a plugin-shaped .so is not something a trace store should ever load.
-  const db = new mod.DatabaseSync(path, { allowExtension: false });
+  const db = new mod.DatabaseSync(path, { allowExtension: false, ...(options.readOnly ? { readOnly: true } : {}) });
   if (options.timeout !== undefined) db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(options.timeout))}`);
   // The hardening the built-in exposes: schema text is never trusted to run functions or virtual tables.
   db.exec('PRAGMA trusted_schema = OFF');
@@ -226,6 +251,10 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
       } finally {
         db.enableDefensive(true);
       }
+    },
+    fn: (name, impl) => {
+      // Every built-in with FTS5 (22.16+) has it; one without never runs the statements that call it (the search reads the traces instead).
+      if (typeof db.function === 'function') db.function(name, { deterministic: false, directOnly: true }, impl);
     },
     close: () => db.close(),
   };

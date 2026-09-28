@@ -174,6 +174,7 @@ export function HealthView() {
       totalEvals: evalsCurrent,
       evalsDelta,
       totalCost: costCurrent,
+      estimatedCost: stats.estimatedCost ?? 0,
       costDelta,
       agentCount: stats.agentCount,
     };
@@ -268,7 +269,8 @@ export function HealthView() {
           label="Total cost"
           icon={DollarSign}
           value={kpis ? formatCost(kpis.totalCost) : '—'}
-          sub={`${fmtDelta(kpis?.costDelta)} vs prior ${period}`}
+          // The estimated part is named: an estimate is Iris's price for a trace that reported none, not a bill.
+          sub={`${fmtDelta(kpis?.costDelta)} vs prior ${period}${kpis && kpis.estimatedCost > 0 ? ` · ${formatCost(kpis.estimatedCost)} est.` : ''}`}
           accent="iris"
         />
         <StatTile

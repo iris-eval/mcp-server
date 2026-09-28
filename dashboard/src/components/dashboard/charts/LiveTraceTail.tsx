@@ -21,6 +21,7 @@ import { Icon } from '../../shared/Icon';
 import { Tooltip } from '../../shared/Tooltip';
 import { formatTimeAgo, formatCost } from '../../../utils/formatters';
 import type { Trace } from '../../../api/types';
+import { EstimatedMark } from '../../shared/CostDisplay';
 
 const TAIL_LIMIT = 12;
 
@@ -194,6 +195,7 @@ export function LiveTraceTail() {
           <span style={styles.cost} data-tail-cost={t.trace_id}>
             {/* `!= null`: the API serializes a missing cost as null, not undefined (one null once took the whole Stream view down). */}
             {t.cost_usd != null ? formatCost(t.cost_usd) : '—'}
+            {t.cost_usd != null && t.cost_source === 'estimated' && <EstimatedMark estimate={t.cost_estimate} />}
           </span>
           <span style={styles.snippet}>{snippet(t)}</span>
         </Link>

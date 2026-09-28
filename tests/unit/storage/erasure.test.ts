@@ -8,12 +8,16 @@
  * expected text and the rule messages, stamp erased_at,
  * and keep the scores and the evidence offsets.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { generateTraceId } from '../../../src/utils/ids.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
+import { SEARCH_DRIVER } from './fts5-here.js';
 
 const SSN_OUTPUT = 'Done. For the record, the customer SSN is 536-22-8145 and the invoice is settled.';
 
@@ -82,5 +86,83 @@ describe('erasure', () => {
     expect(await storage.deleteTrace(LOCAL_TENANT, 'f'.repeat(32))).toBe(false);
     expect((await storage.getEvalById(LOCAL_TENANT, evalId))!.output_text).toBe(SSN_OUTPUT);
     await storage.close();
+  });
+});
+
+/*
+ * delete_trace leaves no readable copy of the trace on disk once it returns
+ * (#703). secure_delete zeroes the pages the delete frees, but in WAL mode
+ * the zeroed pages go to iris.db-wal and iris.db keeps the old ones until a
+ * checkpoint copies the new ones over: the text stayed readable in iris.db
+ * for as long as the process ran. The retention sweep and --purge already
+ * checkpointed; delete_trace now does too. Each case below reads the file's
+ * bytes straight after the delete, with no checkpoint of its own, for Latin
+ * text and for CJK text, whose two-character pieces are stored beside the
+ * index (search-index.ts) and must go as well.
+ */
+describe('delete_trace leaves no text on disk', () => {
+  const dirs: string[] = [];
+  const open: SqliteAdapter[] = [];
+  afterEach(async () => {
+    for (const s of open.splice(0)) await s.close().catch(() => undefined);
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+
+  const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
+
+  async function stored(output: string, needles: string[]) {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-delete-residue-'));
+    dirs.push(dir);
+    const path = join(dir, 'iris.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await s.initialize();
+    open.push(s);
+    await s.whenSearchIndexReady();
+    await s.insertTraces(LOCAL_TENANT, [
+      { trace_id: 'secret', agent_name: 'erasure', input: 'q', output, timestamp: '2026-09-28T00:00:00.000Z' },
+      { trace_id: 'kept', agent_name: 'erasure', input: 'q', output: 'an ordinary answer 普通的回答', timestamp: '2026-09-28T00:01:00.000Z' },
+    ]);
+    // In iris.db itself before the delete, as a trace is once any checkpoint has run since it was written.
+    await s.checkpoint();
+    for (const n of needles) expect(holds(path, n), n).toBe(true);
+    return { s, path };
+  }
+
+  function assertGone(path: string, needles: string[]) {
+    for (const n of needles) {
+      expect(holds(path, n), `${n} in iris.db`).toBe(false);
+      expect(holds(`${path}-wal`, n), `${n} in iris.db-wal`).toBe(false);
+    }
+  }
+
+  it('Latin text: gone from iris.db and its WAL when delete_trace returns', async () => {
+    const secret = 'ZEBRAQUOKKASECRETTOKEN42';
+    const { s, path } = await stored(`my secret is ${secret}`, [secret]);
+    expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
+    assertGone(path, [secret]);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(1);
+  });
+
+  it('CJK text: the text and every piece of it the index kept are gone when delete_trace returns', async () => {
+    const secret = '鼗鼙鼛鼜';
+    const needles = [secret, '鼗鼙', '鼙鼛', '鼛鼜'];
+    const { s, path } = await stored(`密码是${secret}不要外传`, needles);
+    expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
+    assertGone(path, needles);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: '普通' })).total).toBe(1);
+  });
+
+  it('a trace written since the last checkpoint: gone from the WAL too', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-delete-residue-'));
+    dirs.push(dir);
+    const path = join(dir, 'iris.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await s.initialize();
+    open.push(s);
+    const secret = 'WALONLYSECRET77';
+    await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'secret', agent_name: 'erasure', input: 'q', output: `wal ${secret}`, timestamp: '2026-09-28T00:00:00.000Z' }]);
+    expect(holds(`${path}-wal`, secret) || holds(path, secret)).toBe(true);
+    expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
+    assertGone(path, [secret]);
   });
 });

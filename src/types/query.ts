@@ -46,11 +46,37 @@ export interface TraceQueryResult {
   search?: TraceSearchInfo;
 }
 
+/**
+ * Where a store's searches run. `ready`: on the search worker, a thread of
+ * their own. `not_started`: the worker starts with the first search.
+ * `unavailable`: it could not start, so searches run on the server's
+ * thread, and `detail` says why. `not_used`: a store in memory, which
+ * searches on the server's thread by design.
+ */
+export interface SearchWorkerStatus {
+  status: 'ready' | 'not_started' | 'unavailable' | 'not_used';
+  /** One line for a person: the status, and for `unavailable` the reason. */
+  detail: string;
+}
+
 export interface TraceSearchInfo {
   /** Each term as it was searched: `refund`, `"agent said"`, `refund*`. */
   terms: string[];
   /** `fts5`: the full-text index, ranked by BM25. `scan`: this SQLite has no FTS5, so the traces were read and ranked by how often the terms occur. */
   index: 'fts5' | 'scan';
+  /**
+   * false when the search stopped at its time budget (storage.searchBudgetMs,
+   * IRIS_SEARCH_BUDGET_MS; #703) before it had read every match. The traces
+   * are then the best matches among the newest traces it read, and `total`
+   * counts only the matches it found: a narrower search (more words, a
+   * phrase, a filter such as `since` or `agent_name`) reads less and can
+   * complete.
+   */
+  complete: boolean;
+  /** With complete false: the budget, in milliseconds, the search stopped at. */
+  budget_ms?: number;
+  /** Terms in the query that were not searched, because the terms kept find exactly the same traces: a repeat, or a prefix another term implies (`ref*` beside `refund`). */
+  ignored?: Array<{ term: string; reason: string }>;
 }
 
 /*
@@ -80,6 +106,8 @@ export interface EvalStats {
   totalEvals: number;
   safetyViolations: { pii: number; injection: number; hallucination: number };
   totalCost: number;
+  /** The part of totalCost Iris estimated from token counts × list price (cost_source "estimated"). */
+  estimatedCost: number;
   agentCount: number;
   period: EvalStatsPeriod;
 }
@@ -238,7 +266,11 @@ export interface AgentCostRow {
   agent: string;
   traces: number;
   costedTraces: number;
+  /** Of costedTraces, how many carry a cost Iris estimated rather than one the trace reported. */
+  estimatedTraces: number;
   totalCostUsd: number;
+  /** The part of totalCostUsd that was estimated. */
+  estimatedCostUsd: number;
   /** Null when no trace carried a cost. */
   avgCostUsd: number | null;
   maxCostUsd: number | null;
@@ -248,6 +280,8 @@ export interface DashboardSummary {
   total_traces: number;
   avg_latency_ms: number;
   total_cost_usd: number;
+  /** The part of total_cost_usd Iris estimated from token counts × list price (cost_source "estimated"). */
+  estimated_cost_usd: number;
   error_rate: number;
   eval_pass_rate: number;
   traces_per_hour: Array<{ hour: string; count: number }>;
@@ -280,6 +314,8 @@ export interface IStorageAdapter {
   readonly driver: string;
   /** Why that driver was chosen, for the self-test and the startup log. */
   readonly driverReason?: string;
+  /** Where searches run, for the health contract and the self-test (#703). */
+  searchWorkerStatus?(): SearchWorkerStatus;
   initialize(): Promise<void>;
   close(): Promise<void>;
   /** Applied migrations against the ones this build knows; the health contract's `checks.migrations`. */

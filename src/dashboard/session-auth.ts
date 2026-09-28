@@ -29,6 +29,14 @@
  * in), Path=/ (this origin only), Secure when the request arrived over
  * HTTPS. Sessions die with the process; there is no persistence to leak.
  *
+ * A session is only as good as the key it came from. Each one records the
+ * id of the key the browser presented; its expiry, and the cookie's
+ * Max-Age, are capped at that key's `expiresAt`; and every request asks the
+ * ring about that key again. A key that has expired, or that the ring no
+ * longer holds, ends every browser session it opened at that instant, the
+ * same instant it stops passing the Bearer check. Until 0.20.0 a session
+ * outlived an expired key by up to 30 days.
+ *
  * Brute force: the key exchange is capped at SIGN_IN_ATTEMPTS_PER_MINUTE
  * per client address by its own limiter below, and the whole of this
  * layer — cookie check, Bearer check and the exchange alike — sits behind
@@ -55,10 +63,18 @@ export interface SessionAuthOptions {
   maxSessions?: number;
 }
 
-function keyMatches(candidateRaw: string, keys: KeyRing): boolean {
+/** The id of the live key the candidate is, or null. */
+function keyMatches(candidateRaw: string, keys: KeyRing): string | null {
   // The same ring the Bearer middleware uses: the candidate is
   // hashed and compared to every configured key in constant time.
-  return keys.match(candidateRaw) !== null;
+  return keys.match(candidateRaw);
+}
+
+interface Session {
+  /** Epoch ms: SESSION_TTL_MS after sign-in, or the key's own expiry when that is sooner. */
+  expires: number;
+  /** The key the browser presented. The session lives only while that key does. */
+  keyId: string;
 }
 
 function readCookie(req: Request, name: string): string | undefined {
@@ -132,8 +148,16 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
     return bearerAuth;
   }
 
-  /** token → expiry (epoch ms). Insertion order doubles as age order. */
-  const sessions = new Map<string, number>();
+  /** token → session. Insertion order doubles as age order. */
+  const sessions = new Map<string, Session>();
+
+  /** A session is live while its own expiry is ahead AND its key is still in the ring and unexpired. */
+  function live(session: Session, now: number): boolean {
+    if (session.expires <= now) return false;
+    const keyExpiry = keys.expiryOf(session.keyId);
+    if (keyExpiry === undefined) return false;
+    return keyExpiry === null || keyExpiry > now;
+  }
 
   /*
    * At the cap, expired sessions are swept first; if the map is still full
@@ -142,25 +166,25 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
    * still valid, so a burst of sign-ins — or one holder of the key —
    * silently logged every live browser out.
    */
-  function createSession(): string | null {
-    const now = Date.now();
+  function createSession(keyId: string, now: number): { token: string; expires: number } | null {
     if (sessions.size >= maxSessions) {
-      for (const [token, expires] of sessions) {
-        if (expires <= now) sessions.delete(token);
+      for (const [token, session] of sessions) {
+        if (!live(session, now)) sessions.delete(token);
       }
       if (sessions.size >= maxSessions) return null;
     }
     const token = randomBytes(32).toString('base64url');
-    sessions.set(token, now + SESSION_TTL_MS);
-    return token;
+    const expires = Math.min(now + SESSION_TTL_MS, keys.expiryOf(keyId) ?? Number.POSITIVE_INFINITY);
+    sessions.set(token, { expires, keyId });
+    return { token, expires };
   }
 
   function hasSession(req: Request): boolean {
     const token = readCookie(req, SESSION_COOKIE);
     if (!token) return false;
-    const expires = sessions.get(token);
-    if (expires === undefined) return false;
-    if (expires <= Date.now()) {
+    const session = sessions.get(token);
+    if (session === undefined) return false;
+    if (!live(session, Date.now())) {
       sessions.delete(token);
       return false;
     }
@@ -168,15 +192,17 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
   }
 
   /** False when the cap refused the session; nothing is set then. */
-  function setSessionCookie(req: Request, res: Response): boolean {
-    const token = createSession();
-    if (token === null) return false;
+  function setSessionCookie(req: Request, res: Response, keyId: string): boolean {
+    const now = Date.now();
+    const created = createSession(keyId, now);
+    if (created === null) return false;
     const attrs = [
-      `${SESSION_COOKIE}=${token}`,
+      `${SESSION_COOKIE}=${created.token}`,
       'HttpOnly',
       'SameSite=Lax',
       'Path=/',
-      `Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
+      // The browser drops the cookie when the server stops honouring it.
+      `Max-Age=${Math.floor((created.expires - now) / 1000)}`,
     ];
     if (req.protocol === 'https') attrs.push('Secure');
     res.append('Set-Cookie', attrs.join('; '));
@@ -204,11 +230,12 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
   const exchange: RequestHandler = (req, res, next) => {
     // 1. `?key=` on a page URL — the one-line team recipe.
     if (req.method === 'GET' && !req.path.startsWith('/api/') && typeof req.query.key === 'string') {
-      if (!keyMatches(req.query.key, keys)) {
+      const keyId = keyMatches(req.query.key, keys);
+      if (keyId === null) {
         sendSignIn(res, 403, 'That API key did not match.');
         return;
       }
-      if (!setSessionCookie(req, res)) {
+      if (!setSessionCookie(req, res, keyId)) {
         sendSignIn(res, 503, SESSION_CAP_MESSAGE);
         return;
       }
@@ -227,11 +254,12 @@ export function createSessionAuth(opts: SessionAuthOptions): RequestHandler {
         }
         const body = req.body as { key?: unknown } | undefined;
         const key = typeof body?.key === 'string' ? body.key : '';
-        if (!key || !keyMatches(key, keys)) {
+        const keyId = key ? keyMatches(key, keys) : null;
+        if (keyId === null) {
           sendSignIn(res, 403, 'That API key did not match.');
           return;
         }
-        if (!setSessionCookie(req, res)) {
+        if (!setSessionCookie(req, res, keyId)) {
           sendSignIn(res, 503, SESSION_CAP_MESSAGE);
           return;
         }

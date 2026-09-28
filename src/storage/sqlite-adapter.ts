@@ -32,6 +32,8 @@ import type {
   DashboardSummary,
   TraceQueryOptions,
   TraceQueryResult,
+  TraceSearchInfo,
+  SearchWorkerStatus,
   EvalStatsPeriod,
   EvalStats,
   AgentFailureLogEntry,
@@ -55,8 +57,11 @@ import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES } from './checkpointer.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, readSpanText, indexCjk, indexCjkPending, cjkIndexed, BM25_WEIGHTS, CJK_BM25_WEIGHTS, CJK_TABLE, CJK_PENDING_TABLE, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
-import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, hasCjk, mayHoldCjk, toCjkFtsQuery, type ParsedSearch } from './search.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
+import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
+import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
+import { resolveTraceCost } from '../cost/trace-cost.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 
@@ -117,7 +122,25 @@ export interface SqliteAdapterOptions {
    * unset, `info` lines are dropped and `warn` lines go to stderr.
    */
   log?: (level: 'info' | 'warn', line: string) => void;
+  /** storage.searchBudgetMs — how long one search may read before it answers with what it found (default SEARCH_BUDGET_MS). */
+  searchBudgetMs?: number;
+  /** false runs every search on this connection, on the caller's thread (the benchmark's comparison); default: on a worker thread, for a store in a file. */
+  searchWorker?: boolean;
+  /** Tests only: the module the search worker runs, to make it fail to start. */
+  searchWorkerEntry?: URL;
 }
+
+/**
+ * How long one search may read matches, in milliseconds, before it stops
+ * and answers with what it found (`search.complete: false`). A search runs
+ * on the event loop, and every MCP and HTTP request waits while it does, so
+ * this is also the longest a search can hold them (#703). At 100,000
+ * traces on the machine in the changelog, a word in every trace takes about
+ * a quarter of it, and the costliest query the limits allow about 600 ms.
+ */
+export const SEARCH_BUDGET_MS = 1000;
+/** How often a delete's checkpoint is tried again while a reader holds it off (eraseFromFile). */
+const ERASE_RETRY_MS = 20;
 
 /** The retention sweep's step, in traces: from one, because erasing one trace row by row can take 120 ms by itself. */
 const SWEEP_BATCH = 1;
@@ -219,18 +242,6 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
-/** What queryTraces hands its search half: the filters as SQL, and the page wanted. */
-interface SearchPlan {
-  whereClause: string;
-  params: unknown[];
-  /** Whether any filter other than the tenant applies. */
-  filtered: boolean;
-  sortBy: string;
-  sortOrder: string;
-  limit: number;
-  offset: number;
-}
-
 /** The native driver's name — the default, and what the proof was measured on. */
 export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
@@ -273,12 +284,23 @@ export class SqliteAdapter implements IStorageAdapter {
   private closing = false;
   private readonly fts5Override: boolean | undefined;
   private readonly log: (level: 'info' | 'warn', line: string) => void;
+  /** storage.searchBudgetMs — see SEARCH_BUDGET_MS. */
+  private readonly searchBudgetMs: number;
+  /** Whether searches run on a worker thread (SqliteAdapterOptions.searchWorker); the client once one has started. */
+  private readonly searchOnWorker: boolean;
+  private searchWorker: SearchWorkerClient | undefined;
+  private readonly searchWorkerEntry: URL | undefined;
+  /** Why the search worker could not start, once it has not: searches then stay on this thread. */
+  private searchWorkerFailure: string | undefined;
+  /** A delete's checkpoint waiting for a reader (eraseFromFile). */
+  private eraseRetry: NodeJS.Timeout | undefined;
 
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
     this.redact = options?.redact ?? 'none';
     this.fts5Override = options?.fts5;
     this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
+    this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
     /*
      * The busy wait belongs to the CONNECTION, not to a pragma run after
      * the first statement. `PRAGMA journal_mode = WAL` on a cold file takes
@@ -290,6 +312,10 @@ export class SqliteAdapter implements IStorageAdapter {
      * BEGIN IMMEDIATE; the statement before it was never covered.
      */
     this.db = openDriver(dbPath, { timeout: BUSY_TIMEOUT_MS, ...(options?.driver ? { driver: options.driver } : {}) });
+    installSearchFunctions(this.db);
+    // A store in memory has no file a second connection could open: it searches on this one.
+    this.searchOnWorker = (options?.searchWorker ?? true) && dbPath !== ':memory:';
+    this.searchWorkerEntry = options?.searchWorkerEntry;
   }
 
   /** Applied against known — the health contract's `checks.migrations`. */
@@ -397,8 +423,50 @@ export class SqliteAdapter implements IStorageAdapter {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
     await Promise.all([this.searchBuild, this.merging, ...this.sweeps]);
+    // The search thread closes its own connection before this one closes.
+    await this.searchWorker?.close();
+    this.searchWorker = undefined;
+    // A delete still waiting for a reader to finish (eraseFromFile): nothing of this process reads now.
+    if (this.eraseRetry) {
+      clearInterval(this.eraseRetry);
+      this.eraseRetry = undefined;
+      await this.truncateCheckpointNow();
+    }
     await this.checkpointer?.close();
     this.db.close();
+  }
+
+  /**
+   * Choose a search's page: on the search worker when this store has one
+   * (search-worker-client.ts), else on this connection. A worker that
+   * could not start (its thread failed before it could open the file) is
+   * no reason to fail the search: it runs here, and the next search tries
+   * a worker again.
+   */
+  private async match(request: MatchRequest): Promise<MatchResult> {
+    if (!this.searchOnWorker || this.closing || this.searchWorkerFailure !== undefined) return matchSearch(this.db, request);
+    // The driver this connection ended up with, never the one asked for: a machine that fell back to node:sqlite here would fail to open the native one there.
+    this.searchWorker ??= new SearchWorkerClient({ path: this.dbPath, driver: this.db.name === 'node' ? 'node' : 'native', busyTimeoutMs: BUSY_TIMEOUT_MS }, undefined, this.searchWorkerEntry);
+    try {
+      return await this.searchWorker.search(request);
+    } catch (err) {
+      if (!(err instanceof SearchWorkerUnavailable)) throw err;
+      // It will not start on this machine: say so once, and search here from now on.
+      this.searchWorkerFailure = err.reason;
+      const client = this.searchWorker;
+      this.searchWorker = undefined;
+      void client.close();
+      warnSearchWorkerUnavailable(err.reason);
+      return matchSearch(this.db, request);
+    }
+  }
+
+  /** Where this store's searches run (SearchWorkerStatus): for the health contract and the self-test. */
+  searchWorkerStatus(): SearchWorkerStatus {
+    if (!this.searchOnWorker) return { status: 'not_used', detail: 'not used: a store in memory searches on the main thread' };
+    if (this.searchWorkerFailure !== undefined) return { status: 'unavailable', detail: `unavailable (${this.searchWorkerFailure}), searches run on the main thread` };
+    if (this.searchWorker?.isReady()) return { status: 'ready', detail: 'ready: searches run on their own thread' };
+    return { status: 'not_started', detail: 'not started: it starts with the first search' };
   }
 
   /**
@@ -540,8 +608,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertSpanStmt = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
@@ -550,7 +618,13 @@ export class SqliteAdapter implements IStorageAdapter {
 
 
     /** Inserts the trace and its spans; whether any of its text could hold CJK (search-index.ts, the CJK stream). */
-    const insertOne = (t: Trace): boolean => {
+    const insertOne = (raw: Trace): boolean => {
+      /*
+       * The cost settled on write. Every door settles it before it stores
+       * (so its evaluation reads the same number); this is the backstop for
+       * a door that does not, and a no-op on a trace already settled.
+       */
+      const t = resolveTraceCost(raw);
       const toolCalls = t.tool_calls ? JSON.stringify(t.tool_calls) : null;
       const metadata = t.metadata ? JSON.stringify(t.metadata) : null;
       let cjk = mayHoldCjk(t.input) || mayHoldCjk(t.output) || mayHoldCjk(toolCalls) || mayHoldCjk(metadata);
@@ -581,6 +655,8 @@ export class SqliteAdapter implements IStorageAdapter {
         resolveCaseKey(t.case_key, t.input),
         t.source ?? null,
         t.session_id ?? null,
+        t.cost_source ?? null,
+        t.cost_estimate ? JSON.stringify(t.cost_estimate) : null,
       );
 
       if (t.spans) {
@@ -697,6 +773,9 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
     const search = options.search !== undefined && options.search.trim() !== '' ? parseSearch(options.search) : undefined;
+    // Both request paths refuse these first, with the same words; this keeps any other caller to the same limits.
+    const refused = search ? searchRefusal(search) : undefined;
+    if (refused !== undefined) throw new Error(`Invalid search: ${refused}`);
     // A search is ranked by relevance unless the caller chose an order.
     const sortBy = options.sort_by ?? (search ? 'relevance' : 'timestamp');
     const sortOrder = options.sort_order ?? 'desc';
@@ -715,7 +794,7 @@ export class SqliteAdapter implements IStorageAdapter {
     const offset = options.offset ?? 0;
 
     if (search) {
-      return this.searchTraces(tenantId, search, { whereClause, params, filtered: conditions.length > 1, sortBy, sortOrder, limit, offset });
+      return await this.searchTraces(tenantId, search, { whereClause, params, filtered: conditions.length > 1, sortBy, sortOrder, limit, offset });
     }
 
     const countRow = this.db
@@ -740,75 +819,30 @@ export class SqliteAdapter implements IStorageAdapter {
    * the FTS5 index when this SQLite has it and a read of the traces when it
    * does not. Either way the page is chosen from trace ids first and the
    * full rows are read for that page only, so a query that matches most of
-   * the store sorts ids and scores, not every input and output.
+   * the store sorts ids and scores, not every input and output. Choosing
+   * the page (search-match.ts) runs on the search worker; what is left
+   * here, reading the page's rows and building their snippets, costs what
+   * the page does, not what the store does.
    */
-  private searchTraces(tenantId: TenantId, parsed: ParsedSearch, q: SearchPlan): TraceQueryResult {
+  private async searchTraces(tenantId: TenantId, parsed: ParsedSearch, q: SearchPlan): Promise<TraceQueryResult> {
     const index: 'fts5' | 'scan' = this.searchIndex === 'ready' ? 'fts5' : 'scan';
-    const info = { terms: parsed.terms.map(describeTerm), index };
-    if (parsed.terms.length === 0) return { traces: [], total: 0, limit: q.limit, offset: q.offset, search: info };
+    let complete = true;
+    const info = (): TraceSearchInfo => ({
+      terms: parsed.terms.map(describeTerm),
+      index,
+      complete,
+      ...(complete ? {} : { budget_ms: this.searchBudgetMs }),
+      ...(parsed.ignored ? { ignored: parsed.ignored } : {}),
+    });
+    if (parsed.terms.length === 0) return { traces: [], total: 0, limit: q.limit, offset: q.offset, search: info() };
 
     let total: number;
     let pageIds: string[];
-    if (index === 'fts5') {
-      const match = toFtsQuery(parsed);
-      /*
-       * The traces table is joined only when a filter or the sort needs a
-       * column of it; a plain ranked search is answered from the index and
-       * the id table alone. When it is joined, idx_traces_search_filter
-       * covers every column the filters read, so the join never reads a
-       * trace row (search-index.ts has the measurement). The total comes
-       * from the same pass as the page (COUNT(*) OVER ()), and from a second
-       * count only when the page is empty because the offset ran past it.
-       */
-      const joinTraces = q.filtered || q.sortBy !== 'relevance';
-      let matched: string;
-      let matchedParams: unknown[];
-      if (!parsed.terms.some((t) => t.tokens.some(hasCjk)) && !cjkIndexed(this.db)) {
-        matched =
-          `SELECT d.trace_id AS matched_id, d.doc_id AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS relevance ` +
-          `FROM ${SEARCH_TABLE} JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = ${SEARCH_TABLE}.rowid ` +
-          `WHERE ${SEARCH_TABLE} MATCH ? AND d.tenant_id = ?`;
-        matchedParams = [match, tenantId];
-      } else {
-        /*
-         * The query holds CJK, or some trace has a CJK stream (search-index.ts):
-         * each term must match in the index or in the CJK stream, and the
-         * relevance is the two bm25 scores added. A store and a query
-         * without CJK never take this path.
-         */
-        const perTerm = parsed.terms.map((t) => ({ main: toFtsQuery({ terms: [t] }), cjk: toCjkFtsQuery(t) }));
-        const inMain = `SELECT rowid FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ?`;
-        const inCjk = `SELECT rowid FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?`;
-        // Every trace either table matches for any term, with its two scores added; then each term must match in one of them.
-        const scored =
-          `SELECT doc, SUM(r) AS relevance FROM (` +
-          `SELECT rowid AS doc, bm25(${SEARCH_TABLE}, ${BM25_WEIGHTS}) AS r FROM ${SEARCH_TABLE} WHERE ${SEARCH_TABLE} MATCH ? ` +
-          `UNION ALL SELECT rowid AS doc, bm25(${CJK_TABLE}, ${CJK_BM25_WEIGHTS}) AS r FROM ${CJK_TABLE} WHERE ${CJK_TABLE} MATCH ?) GROUP BY doc`;
-        const everyTerm = perTerm.length > 1 ? ` AND ${perTerm.map(() => `(d.doc_id IN (${inMain}) OR d.doc_id IN (${inCjk}))`).join(' AND ')}` : '';
-        matched = `SELECT d.trace_id AS matched_id, d.doc_id AS doc, x.relevance AS relevance FROM (${scored}) x JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = x.doc WHERE d.tenant_id = ?${everyTerm}`;
-        matchedParams = [perTerm.map((p) => p.main).join(' OR '), perTerm.map((p) => `(${p.cjk})`).join(' OR '), tenantId, ...(perTerm.length > 1 ? perTerm.flatMap((p) => [p.main, p.cjk]) : [])];
-      }
-      const from = joinTraces ? `FROM (${matched}) m JOIN traces ON traces.trace_id = m.matched_id ${q.whereClause}` : `FROM (${matched}) m`;
-      const params = joinTraces ? [...matchedParams, ...q.params] : matchedParams;
-      // bm25 is lower for a better match, so "desc" (the default) is best first; the newest indexed wins a tie.
-      const order =
-        q.sortBy === 'relevance'
-          ? `m.relevance ${q.sortOrder === 'desc' ? 'ASC' : 'DESC'}, m.doc DESC`
-          : `traces.${q.sortBy} ${q.sortOrder}, m.relevance ASC, m.doc DESC`;
-      const rows = this.db
-        .prepare(`SELECT m.matched_id AS trace_id, COUNT(*) OVER () AS total ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)
-        .all(...params, q.limit, q.offset) as Array<{ trace_id: string; total: number }>;
-      pageIds = rows.map((r) => r.trace_id);
-      total =
-        rows.length > 0
-          ? Number(rows[0].total)
-          : q.offset === 0
-            ? 0
-            : Number((this.db.prepare(`SELECT COUNT(*) AS count ${from}`).get(...params) as { count: number }).count);
-    } else {
-      ({ total, pageIds } = this.scanForSearch(parsed, q));
-    }
 
+    let matches: Array<TraceMatch | null>;
+    ({ total, pageIds, matches, complete } = await this.match({ tenantId, parsed, plan: q, index, budgetMs: this.searchBudgetMs }));
+
+    // The snippets came with the page (search-match.ts builds them where it chose it); only the rows are read here.
     const byId = new Map<string, Trace>();
     if (pageIds.length > 0) {
       const rows = this.db
@@ -816,93 +850,13 @@ export class SqliteAdapter implements IStorageAdapter {
         .all(tenantId, ...pageIds) as Array<Record<string, unknown>>;
       for (const row of rows) byId.set(row.trace_id as string, this.rowToTrace(row));
     }
-    // Span text is read only for the traces whose own fields do not hold every term: the snippet comes from those fields otherwise.
-    const needSpans = [...byId.values()].filter((t) => !matchesTrace(searchableText(t), parsed).matched).map((t) => t.trace_id);
-    const spanText = readSpanText(this.db, needSpans);
-    const traces = pageIds.flatMap((id) => {
+    const traces = pageIds.flatMap((id, i) => {
       const trace = byId.get(id);
       if (!trace) return [];
-      const spans = spanText.get(id);
-      const match = buildMatch(searchableText(trace, spans?.text), parsed, undefined, spans?.parts);
+      const match = matches[i];
       return [match ? { ...trace, match } : trace];
     });
-    return { traces, total, limit: q.limit, offset: q.offset, search: info };
-  }
-
-  /**
-   * Search without FTS5: read the traces the filters admit, in batches by
-   * rowid so memory stays flat, and test each with the tokenizer the index
-   * would have used. Relevance is how many times the terms occur (in the
-   * trace's own fields, or with its spans when those alone do not match).
-   */
-  private scanForSearch(parsed: ParsedSearch, q: SearchPlan): { total: number; pageIds: string[] } {
-    const BATCH = 500;
-    const read = this.db.prepare(
-      `SELECT rowid AS rid, trace_id, input, output, tool_calls, metadata, timestamp, latency_ms, cost_usd FROM traces ${q.whereClause} AND rowid > ? ORDER BY rowid LIMIT ${BATCH}`,
-    );
-    const parse = (v: unknown): unknown => {
-      if (typeof v !== 'string') return undefined;
-      try {
-        return JSON.parse(v);
-      } catch {
-        return v;
-      }
-    };
-    const found: Array<{ id: string; hits: number; timestamp: string; key: number | string | null }> = [];
-    let after = 0;
-    for (;;) {
-      const rows = read.all(...q.params, after) as Array<Record<string, unknown>>;
-      /*
-       * A trace's own fields first; its span text (a JSON walk in SQL, the
-       * costly part) only for the traces those fields do not match and whose
-       * stored span JSON could hold the missing words (spansMayMatch). A
-       * trace matched by its own fields is ranked by the hits in them.
-       */
-      const own = rows.map((row) => {
-        const fields = searchableText({ input: row.input, output: row.output, tool_calls: parse(row.tool_calls), metadata: parse(row.metadata) });
-        return { row, fields, result: matchesTrace(fields, parsed) };
-      });
-      const unmatched = own.filter((o) => !o.result.matched);
-      const raw = new Map<string, string>();
-      if (unmatched.length > 0) {
-        const ids = unmatched.map((o) => o.row.trace_id as string);
-        const rawRows = this.db
-          .prepare(`SELECT trace_id, group_concat(COALESCE(attributes, '') || char(10) || COALESCE(events, ''), char(10)) AS raw FROM spans WHERE trace_id IN (${ids.map(() => '?').join(', ')}) GROUP BY trace_id`)
-          .all(...ids) as Array<{ trace_id: string; raw: string }>;
-        for (const r of rawRows) raw.set(r.trace_id, r.raw);
-      }
-      const spanText = readSpanText(
-        this.db,
-        unmatched.filter((o) => raw.has(o.row.trace_id as string) && spansMayMatch(o.fields, parsed, raw.get(o.row.trace_id as string)!)).map((o) => o.row.trace_id as string),
-      );
-      for (const { row, fields, result } of own) {
-        const spans = spanText.get(row.trace_id as string);
-        const { matched, hits } = result.matched || !spans ? result : matchesTrace({ ...fields, spans: spans.text }, parsed);
-        if (!matched) continue;
-        found.push({
-          id: row.trace_id as string,
-          hits,
-          timestamp: row.timestamp as string,
-          key: q.sortBy === 'relevance' ? null : ((row[q.sortBy] as number | string | null | undefined) ?? null),
-        });
-      }
-      if (rows.length < BATCH) break;
-      after = Number(rows[rows.length - 1].rid);
-    }
-    // SQLite's order, so the fallback pages exactly as the indexed path would: NULL before any value.
-    const cmp = (a: number | string | null, b: number | string | null): number => {
-      if (a === b) return 0;
-      if (a === null) return -1;
-      if (b === null) return 1;
-      return a < b ? -1 : 1;
-    };
-    const dir = q.sortOrder === 'desc' ? -1 : 1;
-    found.sort((a, b) =>
-      q.sortBy === 'relevance'
-        ? dir * (a.hits - b.hits) || cmp(b.timestamp, a.timestamp) || cmp(a.id, b.id)
-        : dir * cmp(a.key, b.key) || b.hits - a.hits || cmp(a.id, b.id),
-    );
-    return { total: found.length, pageIds: found.slice(q.offset, q.offset + q.limit).map((f) => f.id) };
+    return { traces, total, limit: q.limit, offset: q.offset, search: info() };
   }
 
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
@@ -1187,7 +1141,9 @@ export class SqliteAdapter implements IStorageAdapter {
         `SELECT agent_name,
                 COUNT(*)                     AS traces,
                 COUNT(cost_usd)              AS costed,
+                COUNT(CASE WHEN cost_source = 'estimated' THEN 1 END) AS estimated,
                 COALESCE(SUM(cost_usd), 0)   AS total,
+                COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) AS estimated_total,
                 AVG(cost_usd)                AS avg,
                 MAX(cost_usd)                AS max
            FROM traces
@@ -1196,12 +1152,14 @@ export class SqliteAdapter implements IStorageAdapter {
           ORDER BY total DESC, agent_name ASC
           LIMIT ?`,
       )
-      .all(tenantId, since, since, limit) as Array<{ agent_name: string; traces: number; costed: number; total: number; avg: number | null; max: number | null }>;
+      .all(tenantId, since, since, limit) as Array<{ agent_name: string; traces: number; costed: number; estimated: number; total: number; estimated_total: number; avg: number | null; max: number | null }>;
     return rows.map((r) => ({
       agent: r.agent_name,
       traces: r.traces,
       costedTraces: r.costed,
+      estimatedTraces: r.estimated,
       totalCostUsd: Math.round(r.total * 1e6) / 1e6,
+      estimatedCostUsd: Math.round(r.estimated_total * 1e6) / 1e6,
       avgCostUsd: r.avg === null ? null : Math.round(r.avg * 1e6) / 1e6,
       maxCostUsd: r.max,
     }));
@@ -1482,9 +1440,10 @@ export class SqliteAdapter implements IStorageAdapter {
       SELECT
         COUNT(*) as total_traces,
         COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
-        COALESCE(SUM(cost_usd), 0) as total_cost_usd
+        COALESCE(SUM(cost_usd), 0) as total_cost_usd,
+        COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) as estimated_cost_usd
       FROM traces WHERE tenant_id = ? AND timestamp >= ?
-    `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number };
+    `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number; estimated_cost_usd: number };
 
     const errorCount = this.db.prepare(`
       SELECT COUNT(DISTINCT t.trace_id) as count
@@ -1516,6 +1475,7 @@ export class SqliteAdapter implements IStorageAdapter {
       total_traces: stats.total_traces,
       avg_latency_ms: Math.round(stats.avg_latency_ms * 100) / 100,
       total_cost_usd: Math.round(stats.total_cost_usd * 10000) / 10000,
+      estimated_cost_usd: Math.round(stats.estimated_cost_usd * 10000) / 10000,
       error_rate: stats.total_traces > 0 ? errorCount.count / stats.total_traces : 0,
       eval_pass_rate: evalStats.total > 0 ? evalStats.passed_count / evalStats.total : 0,
       traces_per_hour: tracesPerHour,
@@ -1572,10 +1532,11 @@ export class SqliteAdapter implements IStorageAdapter {
     `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
 
     const cost = this.db.prepare(`
-      SELECT COALESCE(SUM(cost_usd), 0) AS total_cost
+      SELECT COALESCE(SUM(cost_usd), 0) AS total_cost,
+             COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) AS estimated_cost
       FROM traces
       WHERE tenant_id = ? AND timestamp >= ?
-    `).get(tenantId, since) as { total_cost: number };
+    `).get(tenantId, since) as { total_cost: number; estimated_cost: number };
 
     const agents = this.db.prepare(`
       SELECT COUNT(DISTINCT agent_name) AS agent_count
@@ -1633,6 +1594,7 @@ export class SqliteAdapter implements IStorageAdapter {
       totalEvals: agg.total_evals,
       safetyViolations: violations,
       totalCost: Math.round(cost.total_cost * 10000) / 10000,
+      estimatedCost: Math.round(cost.estimated_cost * 10000) / 10000,
       agentCount: agents.agent_count,
       period,
     };
@@ -2101,23 +2063,14 @@ export class SqliteAdapter implements IStorageAdapter {
     return counts;
   }
 
+  /**
+   * Copy the WAL into iris.db and empty it, so deleted rows survive in
+   * neither (the retention sweep and --purge call this after they delete).
+   * The same route as delete_trace's: tried now, and while a reader holds
+   * it off, again until nothing is reading (eraseFromFile).
+   */
   async checkpoint(): Promise<void> {
-    if (this.dbPath === ':memory:') return;
-    // On the worker's connection when it runs, so the copy, the sync and any wait for a reader never hold the event loop.
-    if (this.checkpointer?.active) {
-      try {
-        await this.checkpointer.checkpoint('TRUNCATE');
-      } catch {
-        // Best effort, as below: a reader in another process held the log past the busy timeout. The next one picks the pages up.
-      }
-      return;
-    }
-    try {
-      this.db.pragma('wal_checkpoint(TRUNCATE)');
-    } catch {
-      // Best effort: a checkpoint can be refused while another connection
-      // holds a read transaction. The next one will pick the pages up.
-    }
+    await this.eraseFromFile();
   }
 
   async deleteTrace(tenantId: TenantId, traceId: string): Promise<boolean> {
@@ -2137,7 +2090,73 @@ export class SqliteAdapter implements IStorageAdapter {
       this.eraseEvaluationsOfTraces(tid, [id]);
       return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?').run(tid, id).changes;
     });
-    return run(tenantId, traceId) > 0;
+    const deleted = run(tenantId, traceId) > 0;
+    /*
+     * secure_delete zeroes the freed pages, but in WAL mode the zeroed
+     * pages go to the WAL and iris.db keeps the old ones, with the trace's
+     * text on them, until a checkpoint copies them back (#703). The
+     * retention sweep and --purge checkpoint after they delete; so does
+     * this, so the text is gone from the file when the call returns, not at
+     * some later checkpoint. TRUNCATE also empties the WAL, which held the
+     * text again if the trace was written since the last checkpoint.
+     */
+    if (deleted) await this.eraseFromFile();
+    return deleted;
+  }
+
+  /**
+   * Copy freed pages into iris.db and empty the WAL, now if nothing is
+   * reading the file, else as soon as nothing is. A TRUNCATE checkpoint
+   * waits for every reader that started before it, and the search worker
+   * is one: waiting here held the event loop for the rest of that search
+   * (500 to 600 ms for the costliest at 100,000 traces, measured on the
+   * machine in the changelog). So it is tried without waiting, and while a
+   * reader holds it off, tried again every ERASE_RETRY_MS, off the event
+   * loop's back; close() makes the last try, after the worker has closed.
+   */
+  private async eraseFromFile(): Promise<void> {
+    if (this.dbPath === ':memory:' || this.closing || (await this.truncateCheckpointNow())) return;
+    let trying = false;
+    this.eraseRetry ??= setInterval(() => {
+      if (trying) return;
+      trying = true;
+      void this.truncateCheckpointNow().then((done) => {
+        trying = false;
+        if (!done && !this.closing) return;
+        clearInterval(this.eraseRetry);
+        this.eraseRetry = undefined;
+      });
+    }, ERASE_RETRY_MS).unref();
+  }
+
+  /**
+   * A TRUNCATE checkpoint; whether it emptied the WAL. On the checkpoint
+   * worker's connection when it runs (checkpointer.ts), where the copy, the
+   * sync and a wait for a reader never hold the event loop; else on this
+   * connection, giving up at once rather than wait for a reader.
+   */
+  private async truncateCheckpointNow(): Promise<boolean> {
+    if (this.checkpointer?.active) {
+      try {
+        return await this.checkpointer.truncate();
+      } catch {
+        // The worker stopped mid-request: this connection takes over, below.
+      }
+    }
+    return this.truncateCheckpointHere();
+  }
+
+  private truncateCheckpointHere(): boolean {
+    this.db.pragma('busy_timeout = 0');
+    try {
+      const out = this.db.pragma('wal_checkpoint(TRUNCATE)') as { busy: number } | Array<{ busy: number }> | undefined;
+      const row = Array.isArray(out) ? out[0] : out;
+      return row !== undefined && Number(row.busy) === 0;
+    } catch {
+      return false;
+    } finally {
+      this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
+    }
   }
 
   /**
@@ -2245,6 +2264,13 @@ export class SqliteAdapter implements IStorageAdapter {
       case_key: (row.case_key as string | null) ?? undefined,
       ...(row.session_id != null ? { session_id: row.session_id as string } : {}),
       ...(row.source != null ? { source: row.source as Trace['source'] } : {}),
+      /*
+       * A cost stored before migration 016 has no source column value, and
+       * was reported: no version before 0.20.0 estimated one. Read so,
+       * rather than rewritten at upgrade (016 says why).
+       */
+      ...(row.cost_source != null ? { cost_source: row.cost_source as Trace['cost_source'] } : row.cost_usd != null ? { cost_source: 'reported' as const } : {}),
+      ...(row.cost_estimate != null ? { cost_estimate: JSON.parse(row.cost_estimate as string) as Trace['cost_estimate'] } : {}),
     };
   }
 

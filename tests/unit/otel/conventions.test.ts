@@ -30,8 +30,10 @@ interface Expected {
   agent: string;
   input: string | RegExp;
   output: string | RegExp;
-  tokens: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  tokens: { prompt_tokens: number; completion_tokens: number; total_tokens: number; cache_read_tokens?: number };
   model: string;
+  /** The cost estimated from the tokens at list price (none of these conventions sends a cost), or null when the model is not priced. */
+  cost: { usd: number; pricedAs: string } | null;
   session?: string;
   steps: string[];
   lacked: Array<string | RegExp>;
@@ -43,9 +45,11 @@ const TABLE: Record<string, Expected> = {
     // gen_ai.input.messages / gen_ai.output.messages, read down to the words asked and answered (0.20.0).
     input: 'What is the weather in Lisbon tomorrow?',
     output: 'Lisbon tomorrow: 24 °C, clear skies, a light wind from the northwest.',
-    // The aggregate (812) wins over the leaf sum (402 + 390 = 792); cache_read tokens are not usage.
-    tokens: { prompt_tokens: 812, completion_tokens: 133, total_tokens: 945 },
+    // The aggregate (812) wins over the leaf sum (402 + 390 = 792); the 256 cache-read tokens are a part of the input, never added to it.
+    tokens: { prompt_tokens: 812, completion_tokens: 133, total_tokens: 945, cache_read_tokens: 256 },
     model: 'gpt-4o',
+    // 556 uncached input at $2.50, 256 cache reads at $1.25, 133 output at $10 per 1M.
+    cost: { usd: 0.00304, pricedAs: 'gpt-4o' },
     steps: ['get_weather'],
     lacked: [],
   },
@@ -55,6 +59,7 @@ const TABLE: Record<string, Expected> = {
     output: /showers on Saturday/,
     tokens: { prompt_tokens: 318, completion_tokens: 44, total_tokens: 362 },
     model: 'gemini-2.5-flash',
+    cost: null,
     session: 'session-4f2a',
     steps: ['get_weather'],
     // No service.name on the resource, but gen_ai.agent.name named the agent — so nothing is lacked.
@@ -66,6 +71,7 @@ const TABLE: Record<string, Expected> = {
     output: 'Order 4471 shipped on 19 September and arrives tomorrow.',
     tokens: { prompt_tokens: 210, completion_tokens: 27, total_tokens: 237 },
     model: 'gpt-4o-mini',
+    cost: { usd: 0.0000477, pricedAs: 'gpt-4o-mini' },
     steps: ['lookup_order'],
     lacked: [],
   },
@@ -75,6 +81,7 @@ const TABLE: Record<string, Expected> = {
     output: 'Launch plan: three phases over six weeks, research first.',
     tokens: { prompt_tokens: 640, completion_tokens: 88, total_tokens: 728 },
     model: 'gpt-4o',
+    cost: { usd: 0.00248, pricedAs: 'gpt-4o' },
     session: 'crew-run-19',
     steps: ['web_search'],
     lacked: [],
@@ -85,6 +92,7 @@ const TABLE: Record<string, Expected> = {
     output: '"Refunds are accepted within 30 days of purchase."',
     tokens: { prompt_tokens: 155, completion_tokens: 12, total_tokens: 167 },
     model: 'gpt-4o-mini',
+    cost: { usd: 0.00003045, pricedAs: 'gpt-4o-mini' },
     steps: ['retrieve_policy'],
     lacked: [],
   },
@@ -95,6 +103,7 @@ const TABLE: Record<string, Expected> = {
     // invoke_agent carries 1742/136 beside chat children carrying 812/96 and 930/40: counted once, never 3484.
     tokens: { prompt_tokens: 1742, completion_tokens: 136, total_tokens: 1878 },
     model: 'gpt-4o-mini',
+    cost: { usd: 0.0003429, pricedAs: 'gpt-4o-mini' },
     steps: ['get_release_facts'],
     lacked: [],
   },
@@ -105,6 +114,7 @@ const TABLE: Record<string, Expected> = {
     output: 'The sky appears blue because shorter blue wavelengths of sunlight are scattered by the atmosphere more than other colors.',
     tokens: { prompt_tokens: 16, completion_tokens: 29, total_tokens: 45 },
     model: 'gpt-4o',
+    cost: { usd: 0.00033, pricedAs: 'gpt-4o' },
     steps: [],
     lacked: [],
   },
@@ -115,6 +125,7 @@ const TABLE: Record<string, Expected> = {
     // ai.generateText and its doGenerate child both carry 58/24: counted once, never 116/48.
     tokens: { prompt_tokens: 58, completion_tokens: 24, total_tokens: 82 },
     model: 'claude-sonnet-5',
+    cost: { usd: 0.000356, pricedAs: 'claude-sonnet-5' },
     steps: ['get_oncall'],
     lacked: [],
   },
@@ -138,8 +149,17 @@ describe('the OTLP door — one fixture per convention', () => {
       matches(trace.input, want.input);
       matches(trace.output, want.output);
       expect(trace.token_usage).toEqual(want.tokens);
-      // No framework in the table emits a cost attribute (the GenAI registry has none); the door invents none.
-      expect(trace.cost_usd).toBeUndefined();
+      // No framework in the table emits a cost attribute (the GenAI registry has none), so the cost is the
+      // tokens above at the list price of the model below: marked estimated, never passed off as reported.
+      if (want.cost === null) {
+        expect(trace.cost_usd).toBeUndefined();
+        expect(trace.cost_source).toBeUndefined();
+        expect(trace.cost_estimate).toMatchObject({ status: 'unpriced', reason: 'unknown_model', models: [want.model] });
+      } else {
+        expect(trace.cost_usd).toBeCloseTo(want.cost.usd, 12);
+        expect(trace.cost_source).toBe('estimated');
+        expect(trace.cost_estimate).toMatchObject({ status: 'estimated', basis: 'token_usage', calls: [{ priced_as: want.cost.pricedAs, prompt_tokens: want.tokens.prompt_tokens, completion_tokens: want.tokens.completion_tokens }] });
+      }
       expect(trace.metadata?.model).toBe(want.model);
       expect(trace.session_id).toBe(want.session);
       expect(steps).toEqual(want.steps);
@@ -156,7 +176,7 @@ describe('the OTLP door — one fixture per convention', () => {
     ]);
   });
 
-  it('pydantic-ai: the cache-read tokens stay on the span they came on — informational, never usage', () => {
+  it('pydantic-ai: the cache-read tokens stay on the span they came on, and are counted as a part of the input', () => {
     const { trace } = load('pydantic-ai.otlp.json');
     const carrier = trace.spans?.find((s) => s.attributes?.['gen_ai.usage.cache_read.input_tokens'] !== undefined);
     expect(carrier?.attributes?.['gen_ai.usage.cache_read.input_tokens']).toBe(256);
@@ -179,6 +199,6 @@ describe('the OTLP door — one fixture per convention', () => {
     // Usage is summed over the leaf carriers whatever their kind: the totals are the ones asserted above, unchanged.
     expect(load('agent-framework.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 1742, completion_tokens: 136, total_tokens: 1878 });
     expect(load('google-adk.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 318, completion_tokens: 44, total_tokens: 362 });
-    expect(load('pydantic-ai.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 812, completion_tokens: 133, total_tokens: 945 });
+    expect(load('pydantic-ai.otlp.json').trace.token_usage).toEqual({ prompt_tokens: 812, completion_tokens: 133, total_tokens: 945, cache_read_tokens: 256 });
   });
 });

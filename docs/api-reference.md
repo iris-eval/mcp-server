@@ -77,7 +77,7 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `tool_calls` | `ToolCall[]` | No | -- | Tool calls made during execution |
 | `latency_ms` | `number` | No | -- | Total execution time in milliseconds |
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown |
-| `cost_usd` | `number` | No | -- | Total cost in USD |
+| `cost_usd` | `number` | No | -- | Total cost in USD, stored as reported. Omitted, Iris estimates it from `token_usage` (or the spans' token counts) and the model (`metadata.model` or the spans') at list price, and marks it `cost_source: "estimated"`; see [cost.md](cost.md) |
 | `metadata` | `Record<string, unknown>` | No | -- | Arbitrary metadata key-value pairs |
 | `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output` |
 | `run` | `string` | No | -- | The batch this execution belongs to, for `compare_runs`; never inferred |
@@ -104,9 +104,12 @@ Log an agent execution trace with spans, tool calls, and metrics.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `prompt_tokens` | `number` | No | Input/prompt token count |
+| `prompt_tokens` | `number` | No | Input/prompt token count, cached tokens included |
 | `completion_tokens` | `number` | No | Output/completion token count |
 | `total_tokens` | `number` | No | Total token count |
+| `cache_read_tokens` | `number` | No | Of `prompt_tokens`, how many were read from the prompt cache; an estimated cost prices them at the model's cache-read price ([cost.md](cost.md#cached-input)) |
+| `cache_creation_tokens` | `number` | No | Of `prompt_tokens`, how many were written to the prompt cache, priced at the cache-write price |
+| `prompt_tokens_details` | `{ cached_tokens?: number }` | No | OpenAI's usage shape, accepted as sent; `cached_tokens` is read as `cache_read_tokens` when that is absent |
 
 **Span**
 
@@ -178,9 +181,13 @@ Log an agent execution trace with spans, tool calls, and metrics.
 ```json
 {
   "trace_id": "trc_1a2b3c4d5e6f",
-  "status": "stored"
+  "status": "stored",
+  "cost_usd": 0.0345,
+  "cost_source": "reported"
 }
 ```
+
+`cost_usd` is the stored cost, or `null`. `cost_source` is `reported` (sent with the trace) or `estimated` (Iris priced the trace's token counts at list price because it sent no cost); it is absent when there is no cost. `cost_estimate` carries the calls, tokens and prices of an estimate, or, with no cost, the reason (`status: "unpriced"`, `reason`, `message`). Every read of a stored trace carries the same three fields. [cost.md](cost.md) has the rules.
 
 ---
 
@@ -333,7 +340,7 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 | `agent_name` | `string` | No | -- | Filter by agent name (exact match) |
 | `framework` | `string` | No | -- | Filter by framework (exact match) |
 | `session` | `string` | No | -- | The turns of one conversation, as logged with `session_id` |
-| `q` | `string` | No | -- | Full-text search over input, output, tool-call values, metadata values and span text; at most 500 characters. See [Searching traces](#searching-traces) |
+| `q` | `string` | No | -- | Full-text search over input, output, tool-call values, metadata values and span text; at most 500 characters, 16 terms and 4 prefix terms, each prefix at least 3 characters before the `*`. See [Searching traces](#searching-traces) |
 | `since` | `string` | No | -- | ISO 8601 timestamp lower bound |
 | `until` | `string` | No | -- | ISO 8601 timestamp upper bound |
 | `min_score` | `number` | No | -- | Minimum eval score filter |
@@ -364,7 +371,17 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 
 Whatever `q` contains is read as words, never as query syntax: `AND`, `OR`, `NOT`, `NEAR(`, parentheses, column prefixes like `input:` and unbalanced quotes are searched as the words they contain, so no input can fail the query or widen it. A `q` with no letter or digit in it (`*`, `()`) is refused with a message saying so, rather than answered with an empty page. A blank `q` is no search.
 
-Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call value, a metadata value or span text) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in (and, for `spans`, the `span` it matched in, by `span_id` and `name`), a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur).
+**What one search may cost.** A search runs on the server's event loop, and every other MCP and HTTP request waits while it runs. So each query is held to limits before it runs, and to a time budget while it runs:
+
+- A repeated term, or a one-word prefix that another one-word term implies (`ref*` beside `refund` or `refunded*`), is searched once. The traces that match are the same, and the ranking can differ slightly because each term is scored once. `search.ignored` lists each term left out and why.
+- A prefix needs at least 3 letters or digits before the `*`: `ref*`, not `re*`. A one- or two-letter prefix starts most of the words in a store, so it narrows nothing and costs a merge of all of them. One character is enough when it is Chinese, Japanese or Korean (`批*`), because one such character is a word.
+- A query carries at most 16 terms (a `"quoted phrase"` is one term), and at most 4 of them may be prefixes.
+
+A query over a limit is refused before anything is read, with a message that names the term and the limit: `get_traces` answers with an error, and `GET /api/v1/traces` with a 400. The dashboard's search box shows the prefix rule as a hint instead of sending the query.
+
+A search then reads matches, newest trace first, for at most `storage.searchBudgetMs` in `config.json` (or `IRIS_SEARCH_BUDGET_MS`), 1,000 ms by default. If it reaches the budget before it has read every match, it stops and answers with the best matches among the traces it read. `search.complete` is then `false` and `search.budget_ms` gives the budget, and `total` counts only the matches found, so it is a lower bound. A narrower search (more words, a phrase, or a filter such as `since` or `agent_name`) reads less and can complete. Some work comes before the first match and cannot be stopped: expanding a prefix into the words it starts, and counting the traces each term is in for the ranking. When the query or the store holds Chinese, Japanese or Korean text, ranking every match also comes first. The limits above bound that work: at 100,000 traces on the benchmark machine, the costliest query they allow (four of the broadest three-letter prefixes) took 0.6 s, and a word in every trace 0.2 s. It runs on a worker thread with its own read-only connection, so it never holds other requests: the server's thread only reads the page's rows. (A store in memory, which a second connection cannot open, searches on its own connection.)
+
+Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call value, a metadata value or span text) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in (and, for `spans`, the `span` it matched in, by `span_id` and `name`), a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur); `complete`, `false` when the search stopped at its time budget (above); and `ignored` when terms were left out.
 
 ```json
 {
@@ -390,11 +407,11 @@ Results are ranked by relevance (BM25, with a word in `input` or `output` weight
   "total": 1,
   "limit": 50,
   "offset": 0,
-  "search": { "terms": ["refund", "approved"], "index": "fts5" }
+  "search": { "terms": ["refund", "approved"], "index": "fts5", "complete": true }
 }
 ```
 
-The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. For a trace with Chinese, Japanese or Korean text, the file also keeps the two-character pieces that text is indexed as, a derived copy, because the index cannot recompute them itself when the trace is deleted; they are removed with the trace on every route, and their pages are zeroed. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). Span text costs more where there is some: at 100,000 traces that are each an agent loop sent over OTLP, the file is 993 MB where it would be 841 MB without span text, and an insert takes about three times as long. On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`, the same results, slower). At 100,000 traces the build took 33.4 s, and 158.8 s when every trace carried an agent loop's spans. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
+The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. For a trace with Chinese, Japanese or Korean text, the file also keeps the two-character pieces that text is indexed as, a derived copy, because the index cannot recompute them itself when the trace is deleted; they are removed with the trace on every route, and their pages are zeroed. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). Span text costs more where there is some: at 100,000 traces that are each an agent loop sent over OTLP, the file is 993 MB where it would be 841 MB without span text, and an insert takes about three times as long. On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`: the same results, slower, and on a large store stopped at the time budget above). At 100,000 traces the build took 33.4 s, and 158.8 s when every trace carried an agent loop's spans. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
 
 #### Example Request
 
@@ -860,7 +877,8 @@ Returns dashboard summary with key metrics and trends.
 |-------|------|-------------|
 | `total_traces` | `number` | Total trace count |
 | `avg_latency_ms` | `number` | Average execution latency across all traces |
-| `total_cost_usd` | `number` | Sum of all `cost_usd` values |
+| `total_cost_usd` | `number` | Sum of all `cost_usd` values, reported and estimated |
+| `estimated_cost_usd` | `number` | The part of `total_cost_usd` Iris estimated from token counts at list price ([cost.md](cost.md)) |
 | `error_rate` | `number` | Fraction of traces with errors (0-1) |
 | `eval_pass_rate` | `number` | Fraction of evaluations that passed (0-1) |
 | `traces_per_hour` | `Array<{hour, count}>` | Time-series histogram of trace volume |
@@ -950,7 +968,7 @@ With no `--api-key` / `IRIS_API_KEY` configured, every route is open — the loo
 - **Several keys, and rotation without a gap** (0.15.0): `security.apiKeys` in `config.json` holds further keys — each with an `id` and exactly one of `keyFile` (a file whose trimmed contents are the key) or `keyHash` (the sha256 hex of the key), plus an optional `expiresAt` after which it stops matching at that instant. `IRIS_API_KEY_FILE` / `security.apiKeyFile` reads the primary key from a file. Every configured key authenticates on the Bearer path and on the browser sign-in until it is removed or expires; the compare is constant-time over the whole ring. `security.rateLimit.mcpKeyBy: "apiKey"` counts the MCP endpoint's per-minute budget per key rather than per client address.
 - **Rate limits** (per client address, per minute): `security.rateLimit.api` (default 600) for the dashboard API and `security.rateLimit.mcp` (default 20) for the MCP endpoint, both in `config.json`. Over the limit the API answers `429`; the MCP endpoint answers a JSON-RPC error (`-32029`) whose message names `security.rateLimit.mcp`.
 - **Browsers** cannot send a Bearer header, so any dashboard *page* URL accepts the key once as `?key=<api key>`. The server exchanges it for a random 256-bit session token in an `HttpOnly`, `SameSite=Lax`, `Path=/` cookie (`Secure` when the request arrived over HTTPS) and answers `302` to the same URL with `key` stripped from the address bar, so a shared link opens the dashboard without leaving the key in anyone's history. A page opened without a session gets a `401` sign-in form (HTML, only for requests that accept HTML — API paths still get the JSON `401`); the form's `POST /session` does the same exchange and lands on `/`. A wrong key is a `403` sign-in page and sets no cookie. A request carrying a valid session cookie skips the Bearer check; every other request falls through to it unchanged.
-- **Sessions** live in the server process only — 30-day TTL, at most 256 live at a time, nothing written to disk, all gone on restart — and the key itself is never stored in the browser. At the cap, expired sessions are swept first; a sign-in that still finds every slot live is refused with `503` and sets no cookie — a live session is never evicted to make room. The key exchange is capped at 10 attempts per client address per minute, and the whole session/Bearer layer additionally sits behind a per-address rate limiter, so no authorization decision runs unthrottled.
+- **Sessions** live in the server process only — 30-day TTL, at most 256 live at a time, nothing written to disk, all gone on restart — and the key itself is never stored in the browser. A session is tied to the key that opened it: its lifetime and the cookie's `Max-Age` are capped at that key's `expiresAt`, and it ends on the first request after that key expires or leaves the key ring, the same instant the Bearer path refuses the key (0.20.0; before, a session outlived an expired key by up to 30 days). At the cap, expired sessions are swept first; a sign-in that still finds every slot live is refused with `503` and sets no cookie — a live session is never evicted to make room. The key exchange is capped at 10 attempts per client address per minute, and the whole session/Bearer layer additionally sits behind a per-address rate limiter, so no authorization decision runs unthrottled.
 
 ### POST /api/v1/traces
 
@@ -1006,7 +1024,7 @@ List traces with filtering and pagination.
 | `agent_name` | `string` | -- | -- | Filter by agent name |
 | `framework` | `string` | -- | -- | Filter by framework |
 | `session` | `string` | -- | -- | The turns of one conversation, as logged with `session_id` |
-| `q` | `string` | -- | at most 500 characters; at least one letter or digit | Full-text search, as [`get_traces`](#searching-traces) reads it |
+| `q` | `string` | -- | at most 500 characters; at least one letter or digit; the [limits on one search](#searching-traces) | Full-text search, as [`get_traces`](#searching-traces) reads it |
 | `since` | `string` | -- | ISO 8601 timestamp or date | Timestamp lower bound (inclusive) |
 | `until` | `string` | -- | ISO 8601 timestamp or date; not earlier than `since` | Timestamp upper bound (inclusive) |
 | `min_score` | `number` | -- | 0..1; not above `max_score` | Minimum latest-eval score |
@@ -1414,6 +1432,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
   "version": "0.15.0",
   "uptime_seconds": 3600,
   "driver": "better-sqlite3",
+  "search_worker": { "status": "ready", "detail": "ready: searches run on their own thread" },
   "checks": {
     "storage": "ok",
     "rules_store": "ok",
@@ -1427,6 +1446,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
 ```
 
 - `driver` — the SQLite driver behind the store: `better-sqlite3` (the native addon, the default) or `node` (Node's built-in `node:sqlite`, chosen with `IRIS_SQLITE_DRIVER=node` or fallen back to when the native module cannot load); `null` on a transport started without storage.
+- `search_worker` — where searches run: `ready` (on their own thread, so a slow search never holds other requests), `not_started` (the thread starts with the first search), `unavailable` (it could not start on this machine, so searches run on the main thread; `detail` gives the reason, and the server also logs it once), or `not_used` (a store in memory, which searches on the main thread by design); `null` without storage. It is informational: search works in every case, so it never makes `status` `degraded`. `--self-test` prints the same line.
 - `checks.storage` — the database answered a count. The count itself is not reported: this endpoint answers without a key, so it says whether the store works, not how much it holds (the number is `total` on the authenticated `GET /api/v1/traces`); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
 - `search` — the trace search index: `state` is `ready`, `building` (after an upgrade or a rebuild, in the background; a search reads the traces until it is done, with the same results) or `unavailable` (a SQLite without FTS5, where a search always reads the traces); `index` is what a search reads now, `fts5` or `scan`, as on a search response; `progress` is the share of stored traces the index holds, from 0 to 0.99 while it is being built, 1 when ready and `null` without FTS5 (a share, not a count, for the reason above). It is not a check: a search answers in every state, so it never makes `status` degraded. `null` when the store cannot say.
 - `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
@@ -1440,6 +1460,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
   "version": "0.15.0",
   "uptime_seconds": 3600,
   "driver": "better-sqlite3",
+  "search_worker": { "status": "ready", "detail": "ready: searches run on their own thread" },
   "checks": {
     "storage": "fail",
     "rules_store": "ok",
@@ -1716,6 +1737,8 @@ Used when `eval_type` is `"cost"`. These rules check execution cost and token ef
 | `no_tool_loop` | 1.0 | **Trajectory rule** — the agent must not repeat itself. Catches the waste a USD threshold cannot see: five identical calls can still bill under `cost_threshold`. Requires `tool_calls`; **skips** without them | `max_tool_repeats` (default: `3`) | No call repeated more than `max_tool_repeats` times, and no two-call cycle repeating more than twice |
 
 | `cost_anomaly` | 1.0 | **Measurement** — the trace cost against this agent's own recent history: the Iglewicz–Hoaglin modified z, `0.6745 · (cost − median) / MAD`, over the agent's last 200 costed traces; when every recent trace cost the same, more than 10% over every prior value. Reports and never decides the verdict. **Skips** as `insufficient_history` below 20 prior costed traces, and on a bare `evaluate_output` call with no linked trace. | none — the baseline is the agent's own | `z <= 3.5` (or, with a flat history, `cost <= 1.1 × max prior`) |
+
+**Estimated costs.** A trace that reported no cost is stored with one Iris estimated from its token counts at list price ([cost.md](cost.md)). The cost rules judge it like a reported cost; their message ends with what was estimated and their cost evidence carries `costSource: "estimated"`.
 
 **`cost_under_threshold` scoring:** If over threshold, score is `max(0, 1 - (cost - threshold) / threshold)`. Degrades linearly as cost exceeds the threshold.
 

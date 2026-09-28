@@ -353,12 +353,21 @@ jobs:
           npm init -y > /dev/null
           npm install --no-audit --no-fund "$RUNNER_TEMP/pack/$tarball"
           ./node_modules/.bin/iris-eval --version
-      # Exact versions: a client release that changes what it reads is found by bumping one here, not by a red run.
-      - name: Install the clients at pinned versions
+      # Exact versions, from a committed lockfile: .github/real-clients pins
+      # each client and its whole tree by integrity hash, and `npm ci`
+      # installs exactly that on every OS. A client release that changes
+      # what it reads is found by bumping one there (Dependabot proposes
+      # it), not by a red run.
+      - name: Install the clients from their lockfile
         run: |
-          npm install -g @anthropic-ai/claude-code@2.1.282 @google/gemini-cli@0.61.0
-          claude --version
-          gemini --version
+          cd .github/real-clients
+          npm ci --no-audit --no-fund
+          bin="$PWD/node_modules/.bin"
+          # Windows runners: a native path, so cmd.exe (which the tests spawn through for .cmd shims) resolves it.
+          if command -v cygpath > /dev/null; then bin="$(cygpath -w "$bin")"; fi
+          echo "$bin" >> "$GITHUB_PATH"
+          ./node_modules/.bin/claude --version
+          ./node_modules/.bin/gemini --version
       - name: The clients connect to the server install wrote
         env:
           IRIS_REAL_CLIENTS: '1'
@@ -688,6 +697,42 @@ jobs:
           echo "GET /mcp -> $code"
           docker rm -f iris-ci
           test "$code" != "000"
+
+      - name: The volume holds the Iris home — a deployed rule and its audit row survive a new container
+        # Until 0.20.0 the image pointed only IRIS_DB_PATH into /data; the
+        # Iris home (custom-rules.json, audit.log, config.json) stayed in the
+        # container layer, so recreating the container kept the traces and
+        # dropped the deployed rules and the audit trail. This deploys a rule
+        # through the API, replaces the container with a new one on the same
+        # volume, and requires the new one to serve the rule and its audit row.
+        run: |
+          set -euo pipefail
+          key=ci-persist-key
+          base=http://127.0.0.1:6920
+          docker volume create iris-ci-home > /dev/null
+          start() {
+            docker run -d --name "$1" -p 6920:6920 -e IRIS_API_KEY="$key" -v iris-ci-home:/data iris-eval/mcp-server:ci > /dev/null
+            for _ in $(seq 1 30); do
+              if curl -fsS -o /dev/null "$base/api/v1/health"; then return 0; fi
+              sleep 2
+            done
+            echo "::error::$1 never answered"; docker logs "$1"; return 1
+          }
+          start iris-home-a
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/api/v1/rules/custom" \
+            -H "authorization: Bearer $key" -H 'content-type: application/json' \
+            -d '{"name":"ci-persist","evalType":"completeness","severity":"medium","definition":{"name":"ci-persist","type":"min_length","config":{"min":10}}}')
+          [ "$code" = 201 ] || { echo "::error::deploying the rule answered HTTP $code"; docker rm -f iris-home-a; exit 1; }
+          docker rm -f iris-home-a > /dev/null
+          start iris-home-b
+          rules=$(curl -fsS "$base/api/v1/rules/custom" -H "authorization: Bearer $key")
+          audit=$(curl -fsS "$base/api/v1/audit?limit=50" -H "authorization: Bearer $key")
+          docker exec iris-home-b ls -la /data
+          docker rm -f iris-home-b > /dev/null
+          docker volume rm iris-ci-home > /dev/null
+          echo "$rules" | grep -q '"name":"ci-persist"' || { echo "::error::the deployed rule did not survive a new container: $rules"; exit 1; }
+          echo "$audit" | grep -q 'ci-persist' || { echo "::error::the audit row did not survive a new container: $audit"; exit 1; }
+          echo "a new container on the same volume serves the rule and its audit row"
 
   # Directories that build Iris from a clone (Glama runs `pnpm install &&
   # pnpm run build`, then starts the server and reads tools/list) failed for

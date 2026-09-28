@@ -6,7 +6,9 @@
  * command name runs. packages/iris-eval takes it and starts the real server:
  * it depends on @iris-eval/mcp-server alone, at an open-ended range, so a
  * fresh install gets the server's latest release and the launcher itself
- * never needs one. Its version is frozen and it runs no install scripts.
+ * needs one only when the launcher itself changes. Its version is pinned
+ * (LAUNCHER_VERSION) and it runs no install scripts; release.yml publishes a
+ * new launcher version with provenance.
  *
  * This suite holds the manifest and the bin. That the bin starts the server
  * packed from this commit is proved on Linux, macOS and Windows by
@@ -27,7 +29,7 @@ const server = json('package.json');
 const launcher = json('packages/iris-eval/package.json');
 
 describe('the iris-eval launcher package', () => {
-  it('takes the command name as its npm name, installs that one command, and is frozen at its version', () => {
+  it('takes the command name as its npm name, installs that one command, and is pinned at its version', () => {
     expect(launcher.name).toBe(COMMAND);
     expect(Object.keys(launcher.bin)).toEqual([COMMAND]);
     expect(launcher.version).toBe(LAUNCHER_VERSION);

@@ -6,14 +6,19 @@
 //                .github/workflows/release.yml packs and publishes to npm;
 //   pypi         packages/python/pyproject.toml, the Python client, which
 //                .github/workflows/publish-python.yml builds and publishes;
+//   npm          a library in NPM_PACKAGE_DIRS (the JavaScript SDK and the
+//                LangChain.js handler), which release.yml's build-packages
+//                job builds and packs and its publish-packages job publishes
+//                to npm with provenance, when its version is not on npm yet;
 //   private      a package.json marked "private": true — npm refuses to
 //                publish it;
 //   launcher     packages/iris-eval, the unscoped npm name `iris-eval`:
 //                it depends on the server alone, at LAUNCHER_SERVER_RANGE,
 //                an open-ended range, and starts it, so `npx iris-eval`
-//                runs the server's latest release. Its own version is
-//                frozen at LAUNCHER_VERSION and it runs no scripts, so it
-//                never needs a release when the server has one.
+//                runs the server's latest release. Its version is pinned at
+//                LAUNCHER_VERSION and it runs no scripts, so it needs a
+//                release only when the launcher itself changes; release.yml
+//                publishes it the way it publishes the npm kind.
 // Anything else is unclassified, and tests/package-inventory.test.ts fails on
 // it. That is the point: two in-repo packages once sat for weeks with install
 // commands on public surfaces, CI jobs building them and publish workflows
@@ -21,11 +26,12 @@
 // package was. The classification is read from the manifests themselves, not
 // from a list here, so a new package cannot escape it.
 //
-// The generator runs offline, so whether the launcher is on the registry is
-// a recorded fact, not a probe: LAUNCHER_PUBLISHED. iris-eval@1.0.0 was
-// published by hand on 2026-09-26 (`npm view iris-eval version` → 1.0.0); no
-// workflow publishes it, and the open dependency range means it never needs
-// another release.
+// The generator runs offline, so whether a package is on the registry is a
+// recorded fact, not a probe: LAUNCHER_PUBLISHED and NPM_PUBLISHED. Flip one
+// in the PR that follows the release that first published it.
+// iris-eval@1.0.0 was published by hand on 2026-09-26 (`npm view iris-eval
+// version` → 1.0.0), without provenance; 1.0.1 is the same launcher, published
+// by release.yml with provenance.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
@@ -35,11 +41,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, '..', '..');
 
 export const LAUNCHER_DIR = 'packages/iris-eval';
-export const LAUNCHER_VERSION = '1.0.0';
+export const LAUNCHER_VERSION = '1.0.1';
 /** The first server release with `install`; open-ended so the launcher never needs a release. */
 export const LAUNCHER_SERVER_RANGE = '>=0.19.0';
 export const LAUNCHER_PUBLISHED = true;
 export const PYPI_DIR = 'packages/python';
+/** The libraries release.yml publishes to npm, in publish order: a package comes after every package it depends on. */
+export const NPM_PACKAGE_DIRS = ['packages/sdk', 'packages/langchain'];
+/** Whether each is on the registry: a recorded fact (see above). */
+export const NPM_PUBLISHED = { 'packages/sdk': false, 'packages/langchain': false };
 
 /** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server) and examples. */
 export const EXCLUDED_TOP_LEVEL = new Set(['website', 'dashboard', 'examples']);
@@ -107,6 +117,7 @@ export function classify(manifest, root = ROOT) {
   const common = { ...base, name: pkg.name ?? null, version: pkg.version ?? null };
   if (dir === '.') return { ...common, kind: 'release', published: true };
   if (pkg.private === true) return { ...common, kind: 'private', published: false };
+  if (NPM_PACKAGE_DIRS.includes(dir)) return { ...common, kind: 'npm', published: NPM_PUBLISHED[dir] === true };
   if (dir === LAUNCHER_DIR) {
     const server = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).name;
     const fields = DEPENDENCY_FIELDS.filter((f) => pkg[f] !== undefined);
@@ -114,11 +125,11 @@ export function classify(manifest, root = ROOT) {
     if (fields.join() !== 'dependencies' || Object.keys(deps).join() !== server || deps[server] !== LAUNCHER_SERVER_RANGE) {
       return { ...common, kind: 'unclassified', published: false, reason: `the launcher must depend on ${server}@${LAUNCHER_SERVER_RANGE} and nothing else` };
     }
-    if (pkg.version !== LAUNCHER_VERSION) return { ...common, kind: 'unclassified', published: false, reason: `the launcher is frozen at ${LAUNCHER_VERSION}; it says ${pkg.version}` };
+    if (pkg.version !== LAUNCHER_VERSION) return { ...common, kind: 'unclassified', published: false, reason: `the launcher is pinned at ${LAUNCHER_VERSION}; it says ${pkg.version}` };
     if (pkg.scripts !== undefined) return { ...common, kind: 'unclassified', published: false, reason: 'the launcher must run no scripts' };
     return { ...common, kind: 'launcher', published: LAUNCHER_PUBLISHED };
   }
-  return { ...common, kind: 'unclassified', published: false, reason: 'not the released server, not the PyPI client, not "private": true and not the launcher' };
+  return { ...common, kind: 'unclassified', published: false, reason: 'not the released server, not the PyPI client, not an npm library release.yml publishes, not "private": true and not the launcher' };
 }
 
 export function inventory(root = ROOT) {

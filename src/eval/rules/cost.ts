@@ -5,6 +5,7 @@ import { stepScopeNote, stepsOf } from '../steps.js';
 import { stepBudget } from './expected-trajectory.js';
 import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
 import type { Step } from '../../types/trace.js';
+import { costBasisNote, costSourceEvidence } from '../cost-basis.js';
 import { COST_ANOMALY_FLAT_MARGIN, COST_ANOMALY_MIN_HISTORY, COST_ANOMALY_WINDOW, COST_ANOMALY_Z, costAnomaly as anomalyOf, describeCostAnomaly } from '../cost-anomaly.js';
 
 export const costUnderThreshold: EvalRule = {
@@ -30,10 +31,10 @@ export const costUnderThreshold: EvalRule = {
       passed,
       score: passed ? 1 : Math.max(0, 1 - (cost - threshold) / threshold),
       value: { stat: 'cost', unit: 'usd', value: cost },
-      evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: cost, threshold, thresholdSource: thresholdSourceOf(context, 'cost_threshold') }],
-      message: passed
+      evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: cost, threshold, thresholdSource: thresholdSourceOf(context, 'cost_threshold'), ...costSourceEvidence(context) }],
+      message: (passed
         ? `Cost ($${cost.toFixed(4)}) is under threshold ($${threshold.toFixed(4)})`
-        : `Cost ($${cost.toFixed(4)}) exceeds threshold ($${threshold.toFixed(4)})`,
+        : `Cost ($${cost.toFixed(4)}) exceeds threshold ($${threshold.toFixed(4)})`) + costBasisNote(context),
     };
   },
 };
@@ -437,8 +438,8 @@ export const costAnomaly: EvalRule = {
       };
     }
     const evidence: Evidence[] = anomaly.fallback
-      ? [{ type: 'count', stat: 'cost_over_prior_maximum', unit: 'ratio', value: anomaly.costUsd / anomaly.maxPrior, threshold: 1 + COST_ANOMALY_FLAT_MARGIN, thresholdSource: 'rule' }]
-      : [{ type: 'count', stat: 'modified_z', unit: 'z', value: anomaly.z!, threshold: COST_ANOMALY_Z, thresholdSource: 'rule' }];
+      ? [{ type: 'count', stat: 'cost_over_prior_maximum', unit: 'ratio', value: anomaly.costUsd / anomaly.maxPrior, threshold: 1 + COST_ANOMALY_FLAT_MARGIN, thresholdSource: 'rule', ...costSourceEvidence(context) }]
+      : [{ type: 'count', stat: 'modified_z', unit: 'z', value: anomaly.z!, threshold: COST_ANOMALY_Z, thresholdSource: 'rule', ...costSourceEvidence(context) }];
     const dearest = dearestCall(context, anomaly.costUsd);
     if (dearest !== null && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push(dearest.evidence);
     const passed = !anomaly.anomalous;
@@ -454,11 +455,12 @@ export const costAnomaly: EvalRule = {
       score,
       value: { stat: 'cost', unit: 'usd', value: anomaly.costUsd },
       evidence,
-      message: passed
-        ? anomaly.fallback
-          ? `Cost (${usd(anomaly.costUsd)}) is within ${COST_ANOMALY_FLAT_MARGIN * 100}% of the most this agent has cost before (${usd(anomaly.maxPrior)}; its last ${anomaly.n} traces all cost about the same)`
-          : `Cost (${usd(anomaly.costUsd)}) is usual for this agent: modified z = ${anomaly.z!.toFixed(1)} against a median of ${usd(anomaly.median)} (MAD ${usd(anomaly.mad)}) over its last ${anomaly.n} traces`
-        : `${describeCostAnomaly(anomaly)}${dearest === null ? '' : ` ${dearest.sentence}`}`,
+      message:
+        (passed
+          ? anomaly.fallback
+            ? `Cost (${usd(anomaly.costUsd)}) is within ${COST_ANOMALY_FLAT_MARGIN * 100}% of the most this agent has cost before (${usd(anomaly.maxPrior)}; its last ${anomaly.n} traces all cost about the same)`
+            : `Cost (${usd(anomaly.costUsd)}) is usual for this agent: modified z = ${anomaly.z!.toFixed(1)} against a median of ${usd(anomaly.median)} (MAD ${usd(anomaly.mad)}) over its last ${anomaly.n} traces`
+          : `${describeCostAnomaly(anomaly)}${dearest === null ? '' : ` ${dearest.sentence}`}`) + costBasisNote(context),
     };
   },
 };

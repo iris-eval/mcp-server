@@ -15,8 +15,9 @@ import type { DormantRule } from '../eval/dormant.js';
 import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 import { evaluateStoredTrace } from '../eval/ingest.js';
 import { sessionFromBaggage, traceContextOfCall, withTraceContext } from '../otel/trace-context.js';
-import { evaluateOutputResponseSchema } from '../eval/response-schema.js';
+import { costEstimateSchema, evaluateOutputResponseSchema } from '../eval/response-schema.js';
 import { irisError } from './errors.js';
+import { costFieldsOf, resolveTraceCost } from '../cost/trace-cost.js';
 
 /*
  * The tool-call record — one entry of `tool_calls[]`.
@@ -155,6 +156,15 @@ const TokenUsageSchema = z.object({
   prompt_tokens: z.number().optional(),
   completion_tokens: z.number().optional(),
   total_tokens: z.number().optional(),
+  /*
+   * The cached part of prompt_tokens, so an estimated cost prices it at the
+   * model's cache prices (src/cost/trace-cost.ts). OpenAI's own usage object
+   * is accepted as sent: its prompt_tokens_details.cached_tokens is read as
+   * cache_read_tokens.
+   */
+  cache_read_tokens: z.number().nonnegative().optional(),
+  cache_creation_tokens: z.number().nonnegative().optional(),
+  prompt_tokens_details: z.object({ cached_tokens: z.number().nonnegative().optional() }).optional(),
 });
 
 /*
@@ -171,8 +181,8 @@ export const logTraceInputShape = {
   output: z.string().optional().describe('Agent output text — what the agent produced (pass to evaluate_output for scoring)'),
   tool_calls: z.array(toolCallSchema).optional().describe('Tool calls made, in order, each { tool_name, input?, output?, latency_ms?, error? }; the trajectory rules judge them'),
   latency_ms: z.number().optional().describe('Total execution time in milliseconds (end-to-end agent latency)'),
-  token_usage: TokenUsageSchema.optional().describe('Token usage breakdown (prompt/completion/total — used for cost analysis)'),
-  cost_usd: z.number().optional().describe('Total cost in USD — overrides per-span aggregation when provided (treated as authoritative)'),
+  token_usage: TokenUsageSchema.optional().describe('Token usage (prompt/completion/total, and cache_read_tokens / cache_creation_tokens: the cached part of prompt_tokens) — prices the trace when cost_usd is omitted'),
+  cost_usd: z.number().optional().describe('Total cost in USD, stored as reported. Omitted: estimated from the token counts and the model (metadata.model or the spans) at list price, and marked estimated'),
   metadata: z.record(z.string(), z.unknown()).optional().describe('Opaque key-value tags (e.g. {requestId, userId, env}) — queryable in dashboard, not via get_traces filters'),
   tools: toolsCatalogueSchema.optional().describe('Your MCP tools/list result, verbatim; lets the rules check call arguments later'),
   run: z.string().optional().describe('The batch this execution belongs to (a CI job id, a sweep); compare_runs compares two runs'),
@@ -193,6 +203,9 @@ export const logTraceInputShape = {
 export const logTraceOutputSchema = z.looseObject({
   trace_id: z.string().describe('the stored trace id, 32 hex — pass it to evaluate_output, get_traces or delete_trace'),
   status: z.literal('stored').describe('always "stored" on success'),
+  cost_usd: z.number().nullable().describe('the stored cost: the one sent, else estimated from token counts × list price, else null'),
+  cost_source: z.enum(['reported', 'estimated']).optional().describe('reported (sent with the trace) or estimated (computed by Iris); absent when cost_usd is null'),
+  cost_estimate: costEstimateSchema.optional().describe('with an estimate: the calls, tokens and prices it used; with no cost: why (reason, message)'),
   evaluation: evaluateOutputResponseSchema.optional().describe('present when evaluate was true: the same object evaluate_output returns for this trace, stored and linked'),
 });
 
@@ -259,7 +272,8 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
       const traceId = generateTraceId();
       const timestamp = args.timestamp ?? new Date().toISOString();
 
-      const trace = {
+      // Settled before it is stored or scored: reported, estimated from tokens × list price, or null with the reason (src/cost/trace-cost.ts).
+      const trace = resolveTraceCost({
         trace_id: traceId,
         agent_name: args.agent_name,
         framework: args.framework,
@@ -294,7 +308,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
           span_id: s.span_id ?? generateSpanId(),
           trace_id: traceId,
         })),
-      };
+      });
 
       await storage.insertTrace(LOCAL_TENANT, trace);
 
@@ -309,7 +323,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
 
       const traceLink = { uri: traceUri(traceId), name: `trace ${traceId}`, description: 'The stored trace with its spans and, later, its evaluations' };
       if (!args.evaluate || !evalEngine) {
-        return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored' }, [traceLink]);
+        return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored', ...costFieldsOf(trace) }, [traceLink]);
       }
 
       // The same primitive POST /api/v1/traces uses (src/eval/ingest.ts):
@@ -319,7 +333,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         dormant: options?.dormant?.(),
         rulesChanged: options?.rulesChanged?.(),
       });
-      return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored', evaluation: response }, [
+      return respond(logTraceOutputSchema, { trace_id: traceId, status: 'stored', ...costFieldsOf(trace), evaluation: response }, [
         ...evaluationLinks(result.id, traceId).filter((l) => l.uri !== traceLink.uri),
         traceLink,
       ]);

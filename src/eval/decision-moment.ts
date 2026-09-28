@@ -119,6 +119,7 @@ export function deriveMoment(trace: Trace, evals: EvalResult[], history?: AgentF
     input: trace.input,
     output: trace.output,
     costUsd: trace.cost_usd,
+    ...(trace.cost_source !== undefined ? { costSource: trace.cost_source } : {}),
     latencyMs: trace.latency_ms,
     verdict,
     overallScore,
@@ -280,8 +281,8 @@ function classifySignificance({
       return {
         kind: 'cost-spike',
         score: 0.9,
-        label: `Cost: $${trace.cost_usd.toFixed(4)} (${anomaly.fallback ? `${((anomaly.costUsd / anomaly.maxPrior - 1) * 100).toFixed(0)}% over the prior maximum` : `modified z ${anomaly.z!.toFixed(1)}`})`,
-        reason: describeCostAnomaly(anomaly),
+        label: `Cost: $${trace.cost_usd.toFixed(4)}${trace.cost_source === 'estimated' ? ' est.' : ''} (${anomaly.fallback ? `${((anomaly.costUsd / anomaly.maxPrior - 1) * 100).toFixed(0)}% over the prior maximum` : `modified z ${anomaly.z!.toFixed(1)}`})`,
+        reason: describeCostAnomaly(anomaly) + (trace.cost_source === 'estimated' ? ' The cost was estimated by Iris from the token counts at list price; the trace reported none.' : ''),
       };
     }
   }

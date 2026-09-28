@@ -31,6 +31,7 @@ import { generateSpanId, generateTraceId } from '../utils/ids.js';
 import { COMMAND } from '../identity.js';
 import { resolveCaseKey } from '../eval/case-key.js';
 import { registerPlugins } from '../eval/plugins.js';
+import { costFieldsOf, resolveTraceCost } from '../cost/trace-cost.js';
 
 export const FAIL_ON = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any'] as const;
 export type FailOn = (typeof FAIL_ON)[number];
@@ -169,7 +170,8 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       }
       const body = parsed.data;
       const traceId = generateTraceId();
-      const trace: Trace & { output?: string } = {
+      // Settled before it is stored or scored, as on every other door (src/cost/trace-cost.ts).
+      const trace: Trace & { output?: string } = resolveTraceCost({
         trace_id: traceId,
         agent_name: body.agent_name,
         framework: body.framework,
@@ -186,7 +188,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
         case_key: body.case_key,
         source: o.source,
         spans: body.spans?.map((s) => ({ ...s, span_id: s.span_id ?? generateSpanId(), trace_id: traceId })),
-      };
+      });
       const wantEvaluate = o.evaluate || body.evaluate === true;
       if (wantEvaluate && trace.output === undefined) {
         rejected++;
@@ -196,7 +198,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       await storage.insertTrace(LOCAL_TENANT, trace);
       stored++;
       if (!wantEvaluate) {
-        o.stdout.write(JSON.stringify({ trace_id: traceId, status: 'stored' }) + '\n');
+        o.stdout.write(JSON.stringify({ trace_id: traceId, status: 'stored', ...costFieldsOf(trace) }) + '\n');
         continue;
       }
       const { result, response } = await evaluateStoredTrace(engine, storage, LOCAL_TENANT, trace as Trace & { output: string }, {
@@ -212,6 +214,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
         passed: result.passed,
         verdict: { state: verdict.state, basis: verdict.basis, by: verdict.by },
         ...(unjudged.length > 0 ? { unjudged } : {}),
+        ...costFieldsOf(trace),
       };
       evaluated++;
       // Gated unless a dataset was named and this trace's case key is not in it.

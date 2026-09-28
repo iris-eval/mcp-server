@@ -28,10 +28,14 @@ docs/capabilities.md text eol=lf
 docs/evaluators.template.md text eol=lf
 docs/evaluators.md text eol=lf
 
-# The iris-eval launcher is published by hand from a checkout: its bin must
-# start with an LF shebang on every platform: a carriage return after "node"
-# fails on macOS and Linux under installers that do not rewrite it.
+# The iris-eval launcher is packed from a checkout (release.yml does it on
+# Linux; 1.0.0 was packed by hand): its bin must start with an LF shebang on
+# every platform: a carriage return after "node" fails on macOS and Linux
+# under installers that do not rewrite it.
 packages/iris-eval/** text eol=lf
 
 # The MCPB bundle icon (mcpb/manifest.json): bytes, never a text conversion.
 mcpb/icon.png binary
+
+# SQLite files written by released versions for the migration tests: bytes, never text.
+tests/fixtures/db/*.db binary

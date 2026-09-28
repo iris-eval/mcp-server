@@ -129,7 +129,7 @@ describe('trace search — what it finds', () => {
     const ranked = await s.queryTraces(LOCAL_TENANT, { search: 'refund' });
     expect(ranked.traces.map((t) => t.trace_id)).toEqual(['noisy', 'refund']);
     expect(ranked.total).toBe(2);
-    expect(ranked.search).toEqual({ terms: ['refund'], index: 'fts5' });
+    expect(ranked.search).toEqual({ terms: ['refund'], index: 'fts5', complete: true });
     const worstFirst = await s.queryTraces(LOCAL_TENANT, { search: 'refund', sort_order: 'asc' });
     expect(worstFirst.traces.map((t) => t.trace_id)).toEqual(['refund', 'noisy']);
     const newest = await s.queryTraces(LOCAL_TENANT, { search: 'refund', sort_by: 'timestamp' });
@@ -399,7 +399,7 @@ describe('trace search — a SQLite without FTS5', () => {
     expect(tables).toEqual([]);
     await bare.insertTraces(LOCAL_TENANT, [refundTrace, weatherTrace, noisyTrace]);
     const scanned = await bare.queryTraces(LOCAL_TENANT, { search: 'refund' });
-    expect(scanned.search).toEqual({ terms: ['refund'], index: 'scan' });
+    expect(scanned.search).toEqual({ terms: ['refund'], index: 'scan', complete: true });
     expect(scanned.traces.map((t) => t.trace_id)).toEqual(['noisy', 'refund']);
     expect(scanned.traces[0].match?.fragments.some((f) => f.hit)).toBe(true);
     await bare.close();
