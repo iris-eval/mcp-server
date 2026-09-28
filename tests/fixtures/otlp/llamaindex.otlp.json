@@ -1,0 +1,1102 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.45.0"
+            }
+          },
+          {
+            "key": "service.instance.id",
+            "value": {
+              "stringValue": "d534872b-92d3-47b8-a829-85fb8ee663e6"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "weather-agent"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "openinference.instrumentation.llama_index",
+            "version": "4.5.2"
+          },
+          "spans": [
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "8bf29e88ce0eb54a",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.init_run",
+              "kind": 1,
+              "startTimeUnixNano": "1790612347444091600",
+              "endTimeUnixNano": "1790612347652499600",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37E30>\", \"ev\": \"AgentWorkflowStartEvent()\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "27c801a29e4f62d5",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.setup_agent",
+              "kind": 1,
+              "startTimeUnixNano": "1790612347654567400",
+              "endTimeUnixNano": "1790612347656576000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37D40>\", \"ev\": \"AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current c..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "75f3efa7dc4881af",
+              "parentSpanId": "df6dca7e025a3a54",
+              "name": "OpenAI._prepare_chat_with_tools",
+              "kind": 1,
+              "startTimeUnixNano": "1790612347660595100",
+              "endTimeUnixNano": "1790612347662605100",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "llm.invocation_parameters",
+                  "value": {
+                    "stringValue": "{\"context_window\":128000,\"num_output\":-1,\"is_chat_model\":true,\"is_function_calling_model\":true,\"model_name\":\"gpt-4o-mini\",\"system_role\":\"system\"}"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"tools\": [\"<FunctionTool object>\"], \"user_msg\": null, \"chat_history\": [\"ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')])\", \"ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])\"], \"verbose\": false, \"allow_parallel_tool_calls\": true, \"tool_required\": false}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"messages\": [\"ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')])\", \"ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])\"], \"tools\": [{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"get_weather(city: 'str') -> 'str'\\nThe current weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\", \"additionalProperties\": false}, \"strict\": false}}], \"tool_choice\": \"auto\", \"parallel_tool_calls\": true}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "dd588c4181ee05f0",
+              "parentSpanId": "df6dca7e025a3a54",
+              "name": "OpenAI.astream_chat",
+              "kind": 1,
+              "startTimeUnixNano": "1790612347662605100",
+              "endTimeUnixNano": "1790612347744665200",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "llm.invocation_parameters",
+                  "value": {
+                    "stringValue": "{\"context_window\":128000,\"num_output\":-1,\"is_chat_model\":true,\"is_function_calling_model\":true,\"model_name\":\"gpt-4o-mini\",\"system_role\":\"system\"}"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.tools.0.tool.json_schema",
+                  "value": {
+                    "stringValue": "{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"get_weather(city: 'str') -> 'str'\\nThe current weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\", \"additionalProperties\": false}, \"strict\": false}}"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"messages\": [\"ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')])\", \"ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])\"], \"kwargs\": {\"tools\": [{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"get_weather(city: 'str') -> 'str'\\nThe current weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\", \"additionalProperties\": false}, \"strict\": false}}], \"tool_choice\": \"auto\", \"parallel_tool_calls\": true}}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "system"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "Answer questions about the weather. Use get_weather for current conditions."
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.content",
+                  "value": {
+                    "stringValue": "What is the weather in Paris?"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "assistant: "
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion",
+                  "value": {
+                    "intValue": "12"
+                  }
+                },
+                {
+                  "key": "llm.token_count.total",
+                  "value": {
+                    "intValue": "27"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.contents.0.message_content.type",
+                  "value": {
+                    "stringValue": "text"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.contents.0.message_content.text",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.id",
+                  "value": {
+                    "stringValue": "call_1"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.function.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments",
+                  "value": {
+                    "stringValue": "{\"city\":\"Paris\"}"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1790612348450228100",
+                  "name": "First Token Stream Event"
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "df6dca7e025a3a54",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.run_agent_step",
+              "kind": 1,
+              "startTimeUnixNano": "1790612347658585200",
+              "endTimeUnixNano": "1790612348457934200",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FAB8350>\", \"ev\": \"AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')]), ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(argument..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "a3739bda1089267a",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.parse_agent_output",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348459682400",
+              "endTimeUnixNano": "1790612348459682400",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37E60>\", \"ev\": \"AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(arguments='{\\\"city\\\":\\\"Paris\\\"}', name='get_weather'), type='function')]}, blocks=[TextBlock(block_type='text', text=''), ToolCallBlock(block_type='tool_call', tool_call_id='call_1', tool_name='get_weather', tool_kwargs='{\\\"city\\\":\\\"Paris\\\"}')]), structured_response=None, current_agent_name='weather_agent', raw={'id': 'chatcmpl-scripted-1', 'choices': [], 'created': 1790000000, 'model': 'gpt-4o-mini', 'object': 'chat.completion.chunk', 'moderation': None, 'service_tier': None, 'system_fingerprint': 'fp_scripted', 'usage': {'completion_tokens': 12, 'prompt_tokens': 15, 'total_tokens': 27, 'completion_tokens_details': None, 'prompt_tokens_details': None}}, tool_calls=[ToolSelection(tool_id='call_1', tool_name='get_weather', tool_kwargs={'city': 'Paris'})], retry_messages=[])\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "4e1606c895e09d8b",
+              "parentSpanId": "7475286b9921e36a",
+              "name": "FunctionTool.acall",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348461253800",
+              "endTimeUnixNano": "1790612348463276300",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "tool.description",
+                  "value": {
+                    "stringValue": "get_weather(city: 'str') -> 'str'\nThe current weather for a city."
+                  }
+                },
+                {
+                  "key": "tool.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "tool.parameters",
+                  "value": {
+                    "stringValue": "{\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\"}"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"kwargs\": {\"city\": \"Paris\"}}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"blocks\":[{\"text\":\"18 degrees and sunny in Paris\"}],\"tool_name\":\"get_weather\",\"raw_input\":{\"args\":[],\"kwargs\":{\"city\":\"Paris\"}},\"raw_output\":\"18 degrees and sunny in Paris\",\"is_error\":false}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "TOOL"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "7475286b9921e36a",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.call_tool",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348461253800",
+              "endTimeUnixNano": "1790612348465284000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC992B0>\", \"ev\": \"ToolCall(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1')\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "ToolCallResult(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1', tool_output=ToolOutput(blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')], tool_nam..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "aadd8c4cf06d000e",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.aggregate_tool_results",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348465284000",
+              "endTimeUnixNano": "1790612348467291300",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37F20>\", \"ev\": \"ToolCallResult(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1', tool_output=ToolOutput(blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')], tool_name='get_weather', raw_input={'args': (), 'kwargs': {'city': 'Paris'}}, raw_output='18 degrees and sunny in Paris', is_error=False), return_direct=False)\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "5e46c4d3112be8ba",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.setup_agent",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348469296000",
+              "endTimeUnixNano": "1790612348469296000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37C50>\", \"ev\": \"AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current c..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "27e0729824f0da5c",
+              "parentSpanId": "efb034750d5a5ec8",
+              "name": "OpenAI._prepare_chat_with_tools",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348471300400",
+              "endTimeUnixNano": "1790612348471300400",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "llm.invocation_parameters",
+                  "value": {
+                    "stringValue": "{\"context_window\":128000,\"num_output\":-1,\"is_chat_model\":true,\"is_function_calling_model\":true,\"model_name\":\"gpt-4o-mini\",\"system_role\":\"system\"}"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"tools\": [\"<FunctionTool object>\"], \"user_msg\": null, \"chat_history\": [\"ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')])\", \"ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])\", \"ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(arguments='{\\\"city\\\":\\\"Paris\\\"}', name='get_weather'), type='function')]}, blocks=[TextBlock(block_type='text', text=''), ToolCallBlock(block_type='tool_call', tool_call_id='call_1', tool_name='get_weather', tool_kwargs='{\\\"city\\\":\\\"Paris\\\"}')])\", \"ChatMessage(role=<MessageRole.TOOL: 'tool'>, additional_kwargs={'tool_call_id': 'call_1'}, blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')])\"], \"verbose\": false, \"allow_parallel_tool_calls\": true, \"tool_required\": false}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"messages\": [\"ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')])\", \"ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])\", \"ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(arguments='{\\\"city\\\":\\\"Paris\\\"}', name='get_weather'), type='function')]}, blocks=[TextBlock(block_type='text', text=''), ToolCallBlock(block_type='tool_call', tool_call_id='call_1', tool_name='get_weather', tool_kwargs='{\\\"city\\\":\\\"Paris\\\"}')])\", \"ChatMessage(role=<MessageRole.TOOL: 'tool'>, additional_kwargs={'tool_call_id': 'call_1'}, blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')])\"], \"tools\": [{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"get_weather(city: 'str') -> 'str'\\nThe current weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\", \"additionalProperties\": false}, \"strict\": false}}], \"tool_choice\": \"auto\", \"parallel_tool_calls\": true}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "79239703c3d1f6a6",
+              "parentSpanId": "efb034750d5a5ec8",
+              "name": "OpenAI.astream_chat",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348473357700",
+              "endTimeUnixNano": "1790612348473357700",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "llm.invocation_parameters",
+                  "value": {
+                    "stringValue": "{\"context_window\":128000,\"num_output\":-1,\"is_chat_model\":true,\"is_function_calling_model\":true,\"model_name\":\"gpt-4o-mini\",\"system_role\":\"system\"}"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.tools.0.tool.json_schema",
+                  "value": {
+                    "stringValue": "{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"get_weather(city: 'str') -> 'str'\\nThe current weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\", \"additionalProperties\": false}, \"strict\": false}}"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"messages\": [\"ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')])\", \"ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])\", \"ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(arguments='{\\\"city\\\":\\\"Paris\\\"}', name='get_weather'), type='function')]}, blocks=[TextBlock(block_type='text', text=''), ToolCallBlock(block_type='tool_call', tool_call_id='call_1', tool_name='get_weather', tool_kwargs='{\\\"city\\\":\\\"Paris\\\"}')])\", \"ChatMessage(role=<MessageRole.TOOL: 'tool'>, additional_kwargs={'tool_call_id': 'call_1'}, blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')])\"], \"kwargs\": {\"tools\": [{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"get_weather(city: 'str') -> 'str'\\nThe current weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\": \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"type\": \"object\", \"additionalProperties\": false}, \"strict\": false}}], \"tool_choice\": \"auto\", \"parallel_tool_calls\": true}}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "system"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "Answer questions about the weather. Use get_weather for current conditions."
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.content",
+                  "value": {
+                    "stringValue": "What is the weather in Paris?"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.contents.0.message_content.type",
+                  "value": {
+                    "stringValue": "text"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.contents.0.message_content.text",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.tool_calls.0.tool_call.id",
+                  "value": {
+                    "stringValue": "call_1"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.tool_calls.0.tool_call.function.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.tool_calls.0.tool_call.function.arguments",
+                  "value": {
+                    "stringValue": "{\"city\":\"Paris\"}"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.3.message.role",
+                  "value": {
+                    "stringValue": "tool"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.3.message.content",
+                  "value": {
+                    "stringValue": "18 degrees and sunny in Paris"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.3.message.tool_call_id",
+                  "value": {
+                    "stringValue": "call_1"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "assistant: It is 18 degrees and sunny in Paris."
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt",
+                  "value": {
+                    "intValue": "35"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion",
+                  "value": {
+                    "intValue": "8"
+                  }
+                },
+                {
+                  "key": "llm.token_count.total",
+                  "value": {
+                    "intValue": "43"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.content",
+                  "value": {
+                    "stringValue": "It is 18 degrees and sunny in Paris."
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1790612348481493000",
+                  "name": "First Token Stream Event"
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "efb034750d5a5ec8",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.run_agent_step",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348471300400",
+              "endTimeUnixNano": "1790612348486129700",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA62ED57C0>\", \"ev\": \"AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')]), ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='It is 18 degrees and sunny in Paris.')]), structured_res..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "11ec8f1662e80654",
+              "parentSpanId": "9cf68f64c6703b3d",
+              "name": "BaseWorkflowAgent.parse_agent_output",
+              "kind": 1,
+              "startTimeUnixNano": "1790612348488135500",
+              "endTimeUnixNano": "1790612348490143800",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA6307F0E0>\", \"ev\": \"AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='It is 18 degrees and sunny in Paris.')]), structured_response=None, current_agent_name='weather_agent', raw={'id': 'chatcmpl-scripted-2', 'choices': [], 'created': 1790000000, 'model': 'gpt-4o-mini', 'object': 'chat.completion.chunk', 'moderation': None, 'service_tier': None, 'system_fingerprint': 'fp_scripted', 'usage': {'completion_tokens': 8, 'prompt_tokens': 35, 'total_tokens': 43, 'completion_tokens_details': None, 'prompt_tokens_details': None}}, tool_calls=[], retry_messages=[])\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "StopEvent(result=AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='It is 18 degrees and sunny in Paris.')]..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            },
+            {
+              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
+              "spanId": "9cf68f64c6703b3d",
+              "name": "FunctionAgent.run",
+              "kind": 1,
+              "startTimeUnixNano": "1790612347439381700",
+              "endTimeUnixNano": "1790612348491153000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "StopEvent(result=AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='It is 18 degrees and sunny in Paris.')]..."
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "text/plain"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 256
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -72,18 +72,40 @@ export const SPAN_ATTRIBUTE_PRECEDENCE = {
  */
 const JSON_STRING_ARGUMENT_KEYS = new Set(['gen_ai.tool.call.arguments', 'tool_call.function.arguments', 'ai.toolCall.args']);
 
-/** A span's call arguments: the first key that carries them, a JSON-string key read as the object it encodes. */
+/**
+ * A Python call captured as its signature — `{"kwargs": {"city": "Paris"}}`,
+ * with an empty `args` beside it or none — is what OpenInference's LlamaIndex
+ * instrumentor records as a tool's `input.value`. The call's arguments are the
+ * keyword arguments; checked as sent, every LlamaIndex tool call failed its
+ * schema for a missing `city` and an unexpected `kwargs`.
+ */
+function keywordArguments(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const o = value as Record<string, unknown>;
+  const keys = Object.keys(o);
+  const onlySignature = keys.length > 0 && keys.every((k) => k === 'args' || k === 'kwargs');
+  const noPositional = o.args === undefined || (Array.isArray(o.args) && o.args.length === 0);
+  return onlySignature && noPositional && o.kwargs && typeof o.kwargs === 'object' && !Array.isArray(o.kwargs) ? o.kwargs : value;
+}
+
+/**
+ * A span's call arguments: the first key that carries them, a JSON-string key
+ * read as the object it encodes. OpenInference's `input.value` is JSON when
+ * the span says so (`input.mime_type: application/json`, as its OpenAI Agents
+ * SDK and LlamaIndex instrumentors write a tool's arguments).
+ */
 function argumentsOf(span: Span): unknown {
   const bag = span.attributes;
   if (!bag) return undefined;
   for (const key of SPAN_ATTRIBUTE_PRECEDENCE.input) {
     const value = bag[key];
     if (value === undefined) continue;
-    if (typeof value === 'string' && JSON_STRING_ARGUMENT_KEYS.has(key)) {
+    const json = JSON_STRING_ARGUMENT_KEYS.has(key) || (key === 'input.value' && bag['input.mime_type'] === 'application/json');
+    if (typeof value === 'string' && json) {
       const trimmed = value.trim();
       if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
         try {
-          return JSON.parse(trimmed) as unknown;
+          return keywordArguments(JSON.parse(trimmed) as unknown);
         } catch {
           return value;
         }

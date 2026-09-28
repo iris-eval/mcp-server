@@ -142,7 +142,8 @@ function responsesBody(d, model, n, status = 'completed') {
     output: status === 'completed' ? output : [],
     parallel_tool_calls: true,
     tool_choice: 'auto',
-    tools: [],
+    // The tools the request offered, echoed as the Responses API does.
+    tools: d.tools ?? [],
     error: null,
     incomplete_details: null,
     usage:
@@ -251,7 +252,7 @@ export async function startScriptedProvider({ port = 0, host = '127.0.0.1' } = {
         return;
       }
       n += 1;
-      const d = decide(api, body);
+      const d = { ...decide(api, body), tools: Array.isArray(body.tools) ? body.tools : [] };
       const model = typeof body.model === 'string' ? body.model : 'scripted-model';
       if (d.kind === 'error') {
         const error =

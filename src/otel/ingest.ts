@@ -9,14 +9,20 @@
  * already carries, with nothing re-instrumented.
  *
  * What a trace is read from, in order:
- *   agent_name   resource `service.name`, else `iris.agent_name` (resource
- *                or root span), else "otel" — and the answer says it lacked
- *                service.name
- *   input        the first of `iris.input`, `gen_ai.input.messages`,
- *                `gen_ai.prompt` on the root span, then any span in start
- *                order, then a `gen_ai.content.prompt` event
+ *   agent_name   resource `service.name` (not the SDKs' `unknown_service`
+ *                default), else `iris.agent_name` (resource or root span),
+ *                else `gen_ai.agent.name` / OpenInference's `agent.name`,
+ *                else "otel" — and the answer says it lacked service.name
+ *   input        on the root span `iris.input`, then OpenInference's
+ *                `llm.input_messages.*`, then `gen_ai.input.messages`,
+ *                `gen_ai.prompt` and the other conventions' keys; then the
+ *                first model call's `llm.input_messages.*`, then any span in
+ *                start order, then a `gen_ai.content.prompt` event. A Python
+ *                object's repr is never read as the words
  *   output       the same for `iris.output`, `gen_ai.output.messages`,
- *                `gen_ai.completion`, `gen_ai.content.completion`
+ *                `gen_ai.completion`, `llm.output_messages.*`,
+ *                `gen_ai.content.completion` — past the root, the span that
+ *                ended last first: a run's output is what it ended with
  *   tokens       `gen_ai.usage.input_tokens` / `output_tokens` (and the
  *                older `prompt_tokens` / `completion_tokens`, and Iris's
  *                own `iris.*_tokens`), summed over spans; the cached part
@@ -321,7 +327,18 @@ const INPUT_KEYS = ['iris.input', 'gen_ai.input.messages', 'gen_ai.prompt', 'inp
 const OUTPUT_KEYS = ['iris.output', 'gen_ai.output.messages', 'gen_ai.completion', 'output.value', 'traceloop.entity.output', 'ai.response.text'];
 const TOTAL_TOKEN_KEYS = ['gen_ai.usage.total_tokens', 'iris.total_tokens', 'llm.token_count.total'];
 const COST_KEYS = ['iris.cost_usd', 'gen_ai.usage.cost', 'llm.usage.total_cost'];
-const AGENT_NAME_KEYS = ['gen_ai.agent.name'];
+/** The GenAI conventions' agent, then OpenInference's (the OpenAI Agents SDK instrumentor sets it on the agent's span). */
+const AGENT_NAME_KEYS = ['gen_ai.agent.name', 'agent.name'];
+/**
+ * What every OTel SDK names a service nobody named: `unknown_service`, or
+ * `unknown_service:<process>` (`unknown_service:python.exe`,
+ * `unknown_service:node`). It names the runtime, not the agent; read as the
+ * agent it filed every unnamed Python app under one name and hid the agent
+ * the spans themselves named.
+ */
+function isDefaultServiceName(name: string): boolean {
+  return name === 'unknown_service' || name.startsWith('unknown_service:');
+}
 const MODEL_KEYS = ['gen_ai.request.model', 'gen_ai.response.model', 'llm.model_name', 'llm.request.model', 'ai.model.id'];
 const CONVERSATION_KEYS = ['gen_ai.conversation.id', 'session.id'];
 const TOOL_DEFINITION_KEYS = ['gen_ai.tool.definitions'];
@@ -353,14 +370,92 @@ function indexedText(attrs: Record<string, unknown>, prefix: string): string | u
   return parts.length > 0 ? parts.join('\n') : undefined;
 }
 
-function firstText(spans: readonly MappedSpan[], keys: readonly string[], eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
-  const side = keys === INPUT_KEYS ? 'input' : 'output';
-  const found = rawFirstText(spans, keys, eventName, eventKey, indexedPrefix);
+/**
+ * A Python object's repr — `StopEvent(result=AgentOutput(...))`,
+ * `AgentWorkflowStartEvent()` — is what OpenInference records as
+ * `input.value` / `output.value` on a LlamaIndex workflow's own steps. It
+ * holds the words somewhere inside, but it is not them: read as the trace's
+ * output, the rules judged a class name. A value of that shape is passed over
+ * for the next carrier; natural-language text does not open with
+ * `Name(field=` and close on `)` — or on the `...` OpenInference cuts a long
+ * repr off with at 200 characters.
+ */
+const OBJECT_REPR = /^[A-Z][A-Za-z0-9_]*\((?:\)|[A-Za-z_][A-Za-z0-9_]*=)/;
+export function isObjectRepr(text: string): boolean {
+  const t = text.trim();
+  return (t.endsWith(')') || t.endsWith('...')) && OBJECT_REPR.test(t);
+}
+
+const OI_MESSAGE = /^llm\.(input|output)_messages\.(\d+)\.message\.(role|content|contents\.(\d+)\.message_content\.text)$/;
+
+/**
+ * OpenInference writes a model call's messages as one attribute per field —
+ * `llm.input_messages.1.message.role`, `….message.content`, or the parts
+ * under `….message.contents.0.message_content.text` — and the OpenAI Agents
+ * SDK's Python instrumentor starts the input at index 1 (the instructions are
+ * not a message there). Read in index order to the last user message for the input
+ * and the last assistant message with words for the output.
+ */
+export function openInferenceWords(attrs: Record<string, unknown>, side: Side): string | undefined {
+  const messages = new Map<number, { role?: string; content?: string; parts: Map<number, string> }>();
+  for (const [key, value] of Object.entries(attrs)) {
+    const m = OI_MESSAGE.exec(key);
+    if (!m || m[1] !== side || typeof value !== 'string') continue;
+    const index = Number(m[2]);
+    const message = messages.get(index) ?? { parts: new Map<number, string>() };
+    if (m[3] === 'role') message.role = value;
+    else if (m[3] === 'content') message.content = value;
+    else message.parts.set(Number(m[4]), value);
+    messages.set(index, message);
+  }
+  const wanted = side === 'input' ? USER_ROLES : ASSISTANT_ROLES;
+  const ordered = [...messages.entries()].sort((a, b) => a[0] - b[0]).map(([, message]) => message);
+  for (let i = ordered.length - 1; i >= 0; i -= 1) {
+    const { role, content, parts } = ordered[i];
+    if (role === undefined || !wanted.has(role)) continue;
+    const words = content !== undefined && content.length > 0 ? content : [...parts.entries()].sort((a, b) => a[0] - b[0]).map(([, t]) => t).filter((t) => t.length > 0).join('\n');
+    if (words.length > 0) return words;
+  }
+  return undefined;
+}
+
+/**
+ * The spans in the order a side is read: the root first, then — for the
+ * input — the rest in start order, and — for the output — the rest latest
+ * end first. A run's output is what it ended with; the OpenAI Agents SDK puts
+ * nothing on its root, and reading its spans in start order took the first
+ * model call's answer, which was a tool call.
+ */
+function readingOrder(rootFirst: readonly MappedSpan[], side: Side): MappedSpan[] {
+  if (side === 'input' || rootFirst.length < 2) return [...rootFirst];
+  const [root, ...rest] = rootFirst;
+  const endOf = (m: MappedSpan) => (m.span.end_time !== undefined ? Date.parse(m.span.end_time) : m.startMs);
+  return [root, ...rest.map((m, i) => ({ m, i })).sort((a, b) => endOf(b.m) - endOf(a.m) || a.i - b.i).map(({ m }) => m)];
+}
+
+function firstText(rootFirst: readonly MappedSpan[], side: Side, eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
+  const found = rawFirstText(readingOrder(rootFirst, side), side, eventName, eventKey, indexedPrefix);
   return found === undefined ? undefined : wordsOf(found, side);
 }
 
-function rawFirstText(spans: readonly MappedSpan[], keys: readonly string[], eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
-  for (const s of spans) for (const k of keys) if (s.attrs[k] !== undefined) return asText(s.attrs[k]);
+function keyText(s: MappedSpan, keys: readonly string[]): string | undefined {
+  for (const k of keys) {
+    if (s.attrs[k] === undefined) continue;
+    const text = asText(s.attrs[k]);
+    if (text !== undefined && !isObjectRepr(text)) return text;
+  }
+  return undefined;
+}
+
+function rawFirstText(spans: readonly MappedSpan[], side: Side, eventName: string, eventKey: string, indexedPrefix?: string): string | undefined {
+  const keys = side === 'input' ? INPUT_KEYS : OUTPUT_KEYS;
+  const [root, ...rest] = spans;
+  // On the root: Iris's own key, then the model call's messages when the root is one, then the rest of the keys.
+  const onRoot = root === undefined ? undefined : keyText(root, keys.slice(0, 1)) ?? openInferenceWords(root.attrs, side) ?? keyText(root, keys);
+  if (onRoot !== undefined) return onRoot;
+  // The model calls' own messages before a framework step's arguments: in a LlamaIndex workflow those are object reprs.
+  for (const s of rest) { const t = openInferenceWords(s.attrs, side); if (t !== undefined) return t; }
+  for (const s of rest) { const t = keyText(s, keys); if (t !== undefined) return t; }
   if (indexedPrefix !== undefined) for (const s of spans) { const t = indexedText(s.attrs, indexedPrefix); if (t !== undefined) return t; }
   for (const s of spans) for (const e of s.events) if (e.name === eventName && e.attrs[eventKey] !== undefined) return asText(e.attrs[eventKey]);
   return undefined;
@@ -402,8 +497,40 @@ function usageOf(spans: readonly MappedSpan[], keys: readonly string[], aggregat
   return leaves.reduce((total, s) => total + (firstNumber(s.attrs, keys) ?? 0), 0);
 }
 
+const OI_TOOL_SCHEMA = /^llm\.tools\.(\d+)\.tool\.json_schema$/;
+
+/**
+ * OpenInference's tool catalogue: one `llm.tools.N.tool.json_schema` per tool
+ * offered to a model call (the LlamaIndex and OpenAI Agents SDK instrumentors
+ * write it), each the
+ * provider's own tool object — OpenAI's `{ type: 'function', function: {...} }`
+ * or a flat `{ name, description, parameters }`. Returned as one JSON array
+ * of flat tools, the shape `gen_ai.tool.definitions` carries.
+ */
+function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
+  for (const s of spans) {
+    const entries = Object.entries(s.attrs)
+      .map(([key, value]) => [OI_TOOL_SCHEMA.exec(key), value] as const)
+      .filter((e): e is readonly [RegExpExecArray, string] => e[0] !== null && typeof e[1] === 'string')
+      .sort((a, b) => Number(a[0][1]) - Number(b[0][1]));
+    if (entries.length === 0) continue;
+    const tools: unknown[] = [];
+    for (const [, value] of entries) {
+      try {
+        const parsed = JSON.parse(value) as Record<string, unknown>;
+        const fn = parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed;
+        tools.push(fn);
+      } catch {
+        // one unreadable schema does not lose the others
+      }
+    }
+    if (tools.length > 0) return JSON.stringify(tools);
+  }
+  return undefined;
+}
+
 function toolDefinitionsOf(spans: readonly MappedSpan[]): ToolDescriptor[] | undefined {
-  const raw = firstString(spans, TOOL_DEFINITION_KEYS);
+  const raw = firstString(spans, TOOL_DEFINITION_KEYS) ?? openInferenceTools(spans);
   if (raw === undefined) return undefined;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -549,18 +676,18 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
 
     const serviceName = group.resource['service.name'];
     const declaredAgent = group.resource['iris.agent_name'] ?? root.attrs['iris.agent_name'];
-    // gen_ai.agent.name (ADK, Agent Framework, AutoGen, Pydantic AI set it on invoke_agent) before the "otel" default.
+    // gen_ai.agent.name (ADK, Agent Framework, AutoGen, Pydantic AI set it on invoke_agent), or OpenInference's agent.name, before the "otel" default.
     const conventionAgent = firstString(rootFirst, AGENT_NAME_KEYS);
     const agentName =
-      typeof serviceName === 'string' && serviceName.length > 0 ? serviceName
+      typeof serviceName === 'string' && serviceName.length > 0 && !isDefaultServiceName(serviceName) ? serviceName
       : typeof declaredAgent === 'string' && declaredAgent.length > 0 ? declaredAgent
       : conventionAgent ?? 'otel';
     if (agentName === 'otel') lacked.push('service.name (agent_name defaulted to "otel"; set service.name on the resource, iris.agent_name, or gen_ai.agent.name)');
 
-    const input = firstText(rootFirst, INPUT_KEYS, 'gen_ai.content.prompt', 'gen_ai.prompt', 'gen_ai.prompt');
-    const output = firstText(rootFirst, OUTPUT_KEYS, 'gen_ai.content.completion', 'gen_ai.completion', 'gen_ai.completion');
-    if (input === undefined) lacked.push('input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, traceloop.entity.input or ai.prompt on any span or event)');
-    if (output === undefined) lacked.push('output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, traceloop.entity.output or ai.response.text on any span or event — the rules that read the output will not run)');
+    const input = firstText(rootFirst, 'input', 'gen_ai.content.prompt', 'gen_ai.prompt', 'gen_ai.prompt');
+    const output = firstText(rootFirst, 'output', 'gen_ai.content.completion', 'gen_ai.completion', 'gen_ai.completion');
+    if (input === undefined) lacked.push('input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, llm.input_messages, traceloop.entity.input or ai.prompt on any span or event; a Python repr is not read as one)');
+    if (output === undefined) lacked.push('output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, llm.output_messages, traceloop.entity.output or ai.response.text on any span or event; a Python repr is not read as one — the rules that read the output will not run)');
 
     const inputTokens = usageOf(ordered, INPUT_TOKEN_KEYS, AGGREGATED_INPUT_KEYS);
     const outputTokens = usageOf(ordered, OUTPUT_TOKEN_KEYS, AGGREGATED_OUTPUT_KEYS);

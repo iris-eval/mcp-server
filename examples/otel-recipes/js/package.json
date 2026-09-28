@@ -1,0 +1,17 @@
+{
+  "name": "iris-otel-recipe-openai-agents-js",
+  "private": true,
+  "description": "The OpenAI Agents SDK (JavaScript) recipe in docs/otel-recipes.md, pinned to the versions it was proven against.",
+  "type": "module",
+  "dependencies": {
+    "@arizeai/openinference-core": "2.7.1",
+    "@arizeai/openinference-instrumentation-openai-agents": "0.2.15",
+    "@openai/agents": "0.18.0",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-trace-base": "2.11.0",
+    "@opentelemetry/sdk-trace-node": "2.11.0",
+    "zod": "4.6.5"
+  }
+}

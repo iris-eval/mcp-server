@@ -18,6 +18,9 @@ const FRAMEWORKS = [
   'Google ADK',
   "LangGraph via LangSmith's export",
   'CrewAI via OpenInference',
+  'OpenAI Agents SDK (Python)',
+  'OpenAI Agents SDK (JavaScript)',
+  'LlamaIndex',
   'AutoGen',
   'Microsoft Agent Framework',
   'Semantic Kernel',
@@ -82,6 +85,38 @@ describe('docs/otel-recipes.md', () => {
       for (const s of r.sources) expect(s, `${r.title}: ${s}`).toMatch(/^https:\/\/[^\s]+$/);
       expect(r.body, `${r.title} does not name the door`).toMatch(/127\.0\.0\.1:6920/);
       expect(r.body, `${r.title} does not say what Iris reads`).toMatch(/^What Iris reads:/m);
+    }
+  });
+
+  /*
+   * The captured recipes are run in CI (tests/otel-recipes/test_recipes_e2e.py)
+   * from scripts under examples/otel-recipes/. What the page shows must be what
+   * runs: every code line of the recipe is a line of its script, and every
+   * package the install line names is pinned where CI installs from.
+   */
+  const RUN: Record<string, { script: string; pins: string }> = {
+    'OpenAI Agents SDK (Python)': { script: 'examples/otel-recipes/openai_agents_run.py', pins: 'examples/otel-recipes/requirements-openai-agents.txt' },
+    'OpenAI Agents SDK (JavaScript)': { script: 'examples/otel-recipes/js/openai-agents-run.mjs', pins: 'examples/otel-recipes/js/package.json' },
+    LlamaIndex: { script: 'examples/otel-recipes/llamaindex_run.py', pins: 'examples/otel-recipes/requirements-llamaindex.txt' },
+  };
+
+  it('a recipe run in CI shows only lines its script runs, and installs only what CI pins', () => {
+    for (const [title, { script, pins }] of Object.entries(RUN)) {
+      const r = all.find((x) => x.title === title)!;
+      expect(r, title).toBeDefined();
+      // A lint marker on the script's line (`# noqa: E402`) is not part of what the reader copies.
+      const scriptLines = new Set(read(script).split('\n').map((l) => l.replace(/\s+# noqa: [A-Z0-9, ]+$/, '').trim()));
+      const blocks = [...r.body.matchAll(/```(?:python|ts)\n([\s\S]*?)```/g)].map((m) => m[1]);
+      expect(blocks.length, `${title} shows no code`).toBeGreaterThanOrEqual(2);
+      const shown = blocks.join('\n').split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+      for (const line of shown) expect(scriptLines.has(line), `${title}: "${line}" is not a line of ${script}`).toBe(true);
+      const install = r.body.match(/^(?:pip|npm) install (.+)$/m)?.[1];
+      expect(install, `${title} has no install line`).toBeDefined();
+      const pinned = pins.endsWith('.json')
+        ? new Set(Object.keys((JSON.parse(read(pins)) as { dependencies: Record<string, string> }).dependencies))
+        : new Set(read(pins).split('\n').filter((l) => /^[a-z]/.test(l)).map((l) => l.split('==')[0]));
+      for (const pkg of install!.split(/\s+/)) expect(pinned.has(pkg), `${title}: ${pkg} is not pinned in ${pins}`).toBe(true);
+      expect(existsSync(join(root, r.fixture!.replace('.otlp.json', '.pb'))), `${title}: the captured request body is missing`).toBe(true);
     }
   });
 
