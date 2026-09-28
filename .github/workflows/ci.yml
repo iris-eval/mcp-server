@@ -167,6 +167,72 @@ jobs:
       - run: npm ci
       - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts
 
+  # The test jobs install better-sqlite3's prebuilt binary. When that download
+  # fails, `prebuild-install || node-gyp rebuild` compiles it here instead,
+  # against this Node's headers, and a binary compiled against Node 24.19+
+  # headers aborts the process the first time V8 frees one of its statements
+  # ("Assertion failed: (env) != nullptr", nodejs/node#65446; every 24.x
+  # release so far). A user whose download failed gets that binary too.
+  # This job compiles it on purpose on Linux, macOS and Windows and requires: the binary
+  # aborts under collection exactly when Iris predicts it; Iris never loads
+  # it there (it holds the store with node:sqlite, and says why); and the
+  # real server, started and stopped over stdio again and again, ends every
+  # session cleanly. Node 22 is the control: its headers never changed, so
+  # its binary is safe and Iris keeps the native driver. When a Node 24
+  # release carries the fix, the collect test here fails with the version
+  # to add to runtimeKeepsAddonHooks.
+  native-from-source:
+    name: native addon built from source (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22, 24]
+        exclude:
+          # The node-gyp that ships with Node 22's npm 10 cannot identify the
+          # runner's Visual Studio 18 ("unknown version"), so nothing compiles
+          # there and npm drops the optional module (the install-without-
+          # better-sqlite3 job covers that path). The Node 22 control runs on
+          # Linux and macOS.
+          - os: windows-latest
+            node-version: 22
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install, compiling better-sqlite3 here instead of downloading it
+        env:
+          npm_config_build_from_source: 'true'
+        # --foreground-scripts: the compiler's output is in the log, including when the optional build fails and npm drops the module.
+        run: npm ci --foreground-scripts
+      - name: The binary was compiled on this runner, against this Node's headers
+        run: |
+          # A prebuilt download holds only build/Release; node-gyp leaves its config beside it.
+          test -d node_modules/better-sqlite3 || { echo "::error::better-sqlite3 did not compile here and npm dropped it (it is optional); the install log above says why"; exit 1; }
+          test -f node_modules/better-sqlite3/build/config.gypi || { echo "::error::better-sqlite3 was not compiled here, so this job proves nothing"; exit 1; }
+          node -e "
+            const fs = require('fs');
+            const marked = fs.readFileSync('node_modules/better-sqlite3/build/Release/better_sqlite3.node').includes('RemoveEnvironmentCleanupHook');
+            console.log('Node ' + process.versions.node + ': binary carries the ObjectWrap cleanup-hook call: ' + marked);
+            if (process.versions.node.startsWith('24.') && !marked) { console.error('::error::Node 24 headers should have compiled the call in; this job proves nothing'); process.exit(1); }
+          "
+      - run: npx vitest run tests/integration/native-addon-collect.test.ts tests/integration/native-teardown-stdio.test.ts tests/unit/storage/driver.test.ts
+      - name: The self-test names the driver and why
+        run: |
+          IRIS_HOME="$RUNNER_TEMP/iris-home" IRIS_DB_PATH="$RUNNER_TEMP/iris-home/iris.db" node --import tsx src/index.ts --self-test | tee self-test.txt
+          if [ "${{ matrix.node-version }}" = 24 ]; then
+            grep -q "driver node: better-sqlite3 here was compiled against Node headers that abort" self-test.txt
+          else
+            grep -q "driver better-sqlite3" self-test.txt
+          fi
+
   integration:
     runs-on: ubuntu-latest
     needs: test
