@@ -10,11 +10,22 @@
  * transactions on the built-in roll back and nest as the native ones do.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import { SqliteAdapter, SQLITE_DRIVER } from '../../../src/storage/sqlite-adapter.js';
-import { openDriver, requestedDriver, nodeSqliteAvailable, DRIVER_VAR, type Driver } from '../../../src/storage/driver.js';
+import {
+  openDriver,
+  requestedDriver,
+  nodeSqliteAvailable,
+  nativeAbortsOnCollect,
+  nativeBinaryPath,
+  runtimeKeepsAddonHooks,
+  OBJECTWRAP_HOOK_SYMBOL,
+  DRIVER_VAR,
+  type Driver,
+} from '../../../src/storage/driver.js';
 import { KNOWN_MIGRATION_IDS } from '../../../src/storage/migrations/index.js';
 import { buildHealth } from '../../../src/health.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
@@ -52,7 +63,8 @@ describe('the seam', () => {
     const storage = new SqliteAdapter(':memory:');
     await storage.initialize();
     try {
-      expect(storage.driver).toBe('better-sqlite3');
+      // Except where this binary would abort the process on this Node: the CI job that compiles it from source on Node 24.
+      expect(storage.driver).toBe(nativeAbortsOnCollect(nativeBinaryPath()) ? 'node' : 'better-sqlite3');
       expect(SQLITE_DRIVER).toBe('better-sqlite3');
     } finally {
       await storage.close();
@@ -258,5 +270,120 @@ describe('the seam', () => {
 
   it('fileMustExist refuses a missing file on the native driver, as the self-test relies on', () => {
     expect(() => openDriver(join(tempDb(), '..', 'nope.db'), { fileMustExist: true, driver: 'native' })).toThrow();
+  });
+});
+
+/*
+ * A better-sqlite3 binary compiled against Node 24.19+ headers aborts the
+ * process the first time V8 frees one of its statements, on every Node that
+ * lacks the global cleanup-hook list (nodejs/node#65446). The integration
+ * tests run the real binary (native-addon-collect) and the real server
+ * (native-teardown-stdio); these hold the decision itself.
+ */
+describe('a native binary that would abort on a collected statement', () => {
+  const binaryFile = (marked: boolean): string => {
+    const file = join(tempDb(), '..', marked ? 'marked.node' : 'plain.node');
+    // The mark sits among the binary's imported names, as the linker writes it.
+    writeFileSync(file, Buffer.concat([Buffer.alloc(4096, 0x7f), Buffer.from(marked ? `_ZN4node28${OBJECTWRAP_HOOK_SYMBOL}EPN2v87IsolateEPFvPvES3_` : '_ZN4node25AddEnvironmentCleanupHookEPN2v87IsolateEPFvPvES3_'), Buffer.alloc(4096, 0)]));
+    return file;
+  };
+
+  it('the runtimes that keep the cleanup-hook list: 26.4.0 and later, and no 24.x release yet', () => {
+    const table = ['22.13.0', '22.23.3', '24.18.1', '24.19.0', '24.21.0', '26.3.1', '26.4.0', '26.10.0', '27.0.0'].map((v) => [v, runtimeKeepsAddonHooks(v)]);
+    expect(Object.fromEntries(table)).toEqual({
+      '22.13.0': false,
+      '22.23.3': false,
+      '24.18.1': false,
+      '24.19.0': false,
+      '24.21.0': false,
+      '26.3.1': false,
+      '26.4.0': true,
+      '26.10.0': true,
+      '27.0.0': true,
+    });
+  });
+
+  it('a binary is refused only when it carries the mark and the runtime lacks the list; an unreadable or missing one is not evidence', () => {
+    const marked = binaryFile(true);
+    const plain = binaryFile(false);
+    expect(nativeAbortsOnCollect(marked, '24.21.0')).toBe(true);
+    expect(nativeAbortsOnCollect(marked, '26.3.1')).toBe(true);
+    expect(nativeAbortsOnCollect(marked, '26.4.0')).toBe(false);
+    expect(nativeAbortsOnCollect(plain, '24.21.0')).toBe(false);
+    expect(nativeAbortsOnCollect(join(marked, '..', 'missing.node'), '24.21.0')).toBe(false);
+    expect(nativeAbortsOnCollect(undefined, '24.21.0')).toBe(false);
+  });
+
+  it('the file inspected is the one better-sqlite3 loads', () => {
+    const binary = nativeBinaryPath();
+    expect(binary).toBeDefined();
+    expect(existsSync(binary!)).toBe(true);
+    // Loading it here would plant a statement this process could abort on: the binary itself is the evidence then.
+    if (nativeAbortsOnCollect(binary)) return;
+    const req = createRequire(import.meta.url);
+    const Database = req('better-sqlite3') as new (p: string) => { close(): void };
+    new Database(':memory:').close();
+    expect(Object.keys(req.cache).map((k) => k.toLowerCase())).toContain(binary!.toLowerCase());
+  });
+
+  it('by default, Iris does not load a marked binary on a runtime without the list: it warns once and holds the file with the built-in', () => {
+    if (!builtIn) return withoutBuiltIn(tempDb());
+    const warnings: string[] = [];
+    let loaded = false;
+    const d = openDriver(tempDb(), {
+      nativeBinary: () => binaryFile(true),
+      loadNative: () => {
+        loaded = true;
+        throw new Error('the marked binary was loaded');
+      },
+      warn: (line) => warnings.push(line),
+    });
+    drivers.push(d);
+    if (runtimeKeepsAddonHooks()) {
+      // This Node survives the mark: the binary is loaded as any other (the stub fails to load, and that is what the fallback names).
+      expect(loaded).toBe(true);
+      expect(d.reason).toMatch(/^better-sqlite3 could not load \(the marked binary was loaded\)/);
+      return;
+    }
+    expect(loaded).toBe(false);
+    expect(d.name).toBe('node');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/was compiled against Node headers that make it abort on Node \d+\.\d+\.\d+ when it frees a statement \(nodejs\/node#65446\); using Node's built-in SQLite/);
+    expect(warnings[0]).toMatch(/npm rebuild better-sqlite3/);
+    expect(warnings[0]).toMatch(/IRIS_SQLITE_DRIVER=node/);
+    expect(d.reason).toMatch(/^better-sqlite3 here was compiled against Node headers that abort on Node .* \(nodejs\/node#65446\), so Iris uses Node's built-in SQLite$/);
+    d.exec('CREATE TABLE t (a TEXT)');
+    expect(d.prepare('INSERT INTO t VALUES (?)').run('x').changes).toBe(1);
+  });
+
+  it('with IRIS_SQLITE_DRIVER=native, a marked binary is refused before it loads, naming the Node issue and the fix', () => {
+    if (runtimeKeepsAddonHooks()) return expect(nativeAbortsOnCollect(binaryFile(true))).toBe(false);
+    expect(() =>
+      openDriver(tempDb(), {
+        driver: 'native',
+        nativeBinary: () => binaryFile(true),
+        loadNative: () => {
+          throw new Error('the marked binary was loaded');
+        },
+        warn: () => {
+          throw new Error('must not warn');
+        },
+      }),
+    ).toThrow(/abort on Node .* when it frees a statement \(nodejs\/node#65446\)\. IRIS_SQLITE_DRIVER=native forbids the fallback; unset it .* or reinstall the prebuilt binary with npm rebuild better-sqlite3/);
+  });
+
+  it('a plain binary is loaded as before', () => {
+    let loaded = false;
+    expect(() =>
+      openDriver(tempDb(), {
+        driver: 'native',
+        nativeBinary: () => binaryFile(false),
+        loadNative: () => {
+          loaded = true;
+          throw new Error('invalid ELF header');
+        },
+      }),
+    ).toThrow(/could not load \(invalid ELF header\)/);
+    expect(loaded).toBe(true);
   });
 });
