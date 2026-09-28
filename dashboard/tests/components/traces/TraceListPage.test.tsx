@@ -203,3 +203,22 @@ describe('TraceListPage search', () => {
     expect(lastParams()).toMatchObject({ q: 'refund', offset: '0' });
   });
 });
+
+describe('TraceListPage export (#4)', () => {
+  beforeEach(() => {
+    useTracesMock.mockReset();
+    useTracesMock.mockReturnValue(ready({ ...page([trace('t-1')]), total: 321 }));
+  });
+
+  it('offers every matching trace — the count the list reports — with the search and filters, never the page', () => {
+    renderAt('/traces?q=refund');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by agent' }), { target: { value: 'support-bot' } });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(lastParams().offset).toBe('50');
+    fireEvent.click(screen.getByRole('button', { name: 'Export 321 traces' }));
+    const href = screen.getByRole('link', { name: /CSV/ }).getAttribute('href')!;
+    const url = new URL(href, 'http://localhost');
+    expect(url.pathname).toBe('/api/v1/traces/export');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ agent_name: 'support-bot', q: 'refund', format: 'csv' });
+  });
+});

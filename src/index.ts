@@ -86,6 +86,15 @@ if (process.argv[2] === 'install') {
   process.exit(await runInstall(process.argv.slice(3), { stdout: process.stdout, stderr: process.stderr }));
 }
 
+/*
+ * `export` likewise: its flags are the export endpoint's query parameters,
+ * not the server's, and stdout carries the export itself.
+ */
+if (process.argv[2] === 'export') {
+  const { runExport } = await import('./cli/export.js');
+  process.exit(await runExport(process.argv.slice(3), { stdout: process.stdout, stderr: process.stderr }));
+}
+
 let parsed;
 try {
   parsed = parseArgs({
@@ -161,6 +170,7 @@ Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 Usage: ${COMMAND} [options]
        ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--dataset <id|label>] [--redact <mode>] [--source cli|hook]
        ${COMMAND} install <client> [--uninstall] | --list | --upgrade   (add Iris to an MCP client's config, or move every client to this version; install --help)
+       ${COMMAND} export traces|evaluations --format csv|jsonl [--out <file>] [filters]   (export --help for the filters)
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
@@ -280,12 +290,12 @@ Dashboard preferences ($IRIS_HOME/preferences.json, default ~/.iris/preferences.
  * combined with a server mode: it opens the store, does its work and exits.
  */
 const verb = parsed.positionals[0];
-if (verb === 'install') {
-  process.stderr.write(`${COMMAND}: install comes first and takes no server flags: ${COMMAND} install <client>.\nRun \`${COMMAND} install --help\` for usage.\n`);
+if (verb === 'install' || verb === 'export') {
+  process.stderr.write(`${COMMAND}: ${verb} comes first and takes no server flags: ${COMMAND} ${verb} ${verb === 'install' ? '<client>' : 'traces|evaluations'}.\nRun \`${COMMAND} ${verb} --help\` for usage.\n`);
   process.exit(2);
 }
 if (parsed.positionals.length > 1 || (verb !== undefined && verb !== 'ingest')) {
-  process.stderr.write(`${COMMAND}: unknown command "${parsed.positionals.join(' ')}". The commands are "ingest" and "install".\nRun \`${COMMAND} --help\` for usage.\n`);
+  process.stderr.write(`${COMMAND}: unknown command "${parsed.positionals.join(' ')}". The commands are "ingest", "export" and "install".\nRun \`${COMMAND} --help\` for usage.\n`);
   process.exit(2);
 }
 if (verb === 'ingest') {

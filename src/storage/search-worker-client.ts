@@ -68,7 +68,7 @@ export function resetSearchWorkerWarning(): void {
 interface Pending {
   resolve: (r: MatchResult) => void;
   reject: (e: Error) => void;
-  timer: NodeJS.Timeout;
+  timer: NodeJS.Timeout | undefined;
 }
 
 export class SearchWorkerClient {
@@ -99,8 +99,13 @@ export class SearchWorkerClient {
     const w = this.worker ?? this.start();
     const id = this.nextId++;
     return new Promise<MatchResult>((resolve, reject) => {
-      const timer = setTimeout(() => this.stuck(w), request.budgetMs + this.graceMs);
-      timer.unref();
+      /*
+       * No stuck timer for a search with no budget (an export's, which must
+       * read every match): it has no deadline to be late for, and setTimeout
+       * reads Infinity as 1 ms, which would call every such search stuck.
+       */
+      const timer = Number.isFinite(request.budgetMs) ? setTimeout(() => this.stuck(w), request.budgetMs + this.graceMs) : undefined;
+      timer?.unref();
       this.pending.set(id, { resolve, reject, timer });
       w.ref();
       w.postMessage({ id, request });

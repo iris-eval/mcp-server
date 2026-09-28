@@ -32,8 +32,10 @@ export interface MatchRequest {
   plan: SearchPlan;
   /** `fts5` when the index holds every trace; `scan` reads the traces. */
   index: 'fts5' | 'scan';
-  /** Milliseconds this search may read for, from when it starts (SEARCH_BUDGET_MS). */
+  /** Milliseconds this search may read for, from when it starts (SEARCH_BUDGET_MS). Infinity for an export, which must hold every match. */
   budgetMs: number;
+  /** False: the ids only, without each trace's snippet (an export reads every match and shows no snippet). Default true. */
+  snippets?: boolean;
 }
 
 /** The page chosen, in order, with each trace's snippet; how many matched, and whether the read reached the end. */
@@ -154,7 +156,7 @@ export function matchSearch(db: Driver, req: MatchRequest): MatchResult {
   const deadline = performance.now() + req.budgetMs;
   if (req.parsed.terms.length === 0) return { total: 0, pageIds: [], matches: [], complete: true };
   const page = req.index === 'fts5' ? matchIndex(db, req, deadline) : scanForSearch(db, req.parsed, req.plan, deadline);
-  return { ...page, matches: snippets(db, req.tenantId, req.parsed, page.pageIds) };
+  return { ...page, matches: req.snippets === false ? [] : snippets(db, req.tenantId, req.parsed, page.pageIds) };
 }
 
 /**

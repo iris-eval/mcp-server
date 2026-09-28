@@ -35,6 +35,24 @@ export interface TraceQueryOptions {
   sort_order?: 'asc' | 'desc';
 }
 
+/** What an export reads: a trace query without the page. */
+export type TraceExportOptions = Omit<TraceQueryOptions, 'limit' | 'offset'>;
+
+/** One trace as an export writes it: the trace, its spans and its evaluations newest first — the shape GET /api/v1/traces/:id answers. */
+export interface TraceRecord {
+  trace: Trace;
+  spans: Span[];
+  evals: EvalResult[];
+}
+
+/** The evaluation list's filters, shared by the page and the export. */
+export interface EvalResultFilter {
+  eval_type?: string;
+  passed?: boolean;
+  since?: string;
+  until?: string;
+}
+
 /** A trace in a search result: the trace, and where it matched. */
 export type SearchedTrace = Trace & { match?: TraceMatch };
 
@@ -394,15 +412,20 @@ export interface IStorageAdapter {
   costByAgent(tenantId: TenantId, since: string | null, limit: number): Promise<AgentCostRow[]>;
   queryEvalResults(
     tenantId: TenantId,
-    options: {
-      eval_type?: string;
-      passed?: boolean;
-      since?: string;
-      until?: string;
+    options: EvalResultFilter & {
       limit?: number;
       offset?: number;
     },
   ): Promise<{ results: EvalResult[]; total: number }>;
+  /**
+   * Every trace a query matches, in page order, `batchSize` at a time, each
+   * with its spans and evaluations. Membership and order are fixed when the
+   * export starts; memory is bounded by the batch, not by the store; the
+   * generator yields to the event loop between batches.
+   */
+  exportTraces(tenantId: TenantId, options: TraceExportOptions, batchSize?: number): AsyncGenerator<TraceRecord[]>;
+  /** Every evaluation a filter matches, newest first, `batchSize` at a time — as exportTraces. */
+  exportEvalResults(tenantId: TenantId, filter: EvalResultFilter, batchSize?: number): AsyncGenerator<EvalResult[]>;
   getDashboardSummary(tenantId: TenantId, sinceHours?: number): Promise<DashboardSummary>;
   /**
    * The retention sweep. It runs while the server serves, so it works in

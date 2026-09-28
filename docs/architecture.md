@@ -167,9 +167,10 @@ src/
     server.ts           Express app for REST API + static file serving
     session-auth.ts     Browser sign-in for an --api-key dashboard (?key= → HttpOnly session cookie), in front of the Bearer middleware
     validation.ts       Zod schemas for query parameters and strict request bodies
+    export-response.ts  Streams an export: headers, backpressure, a broken connection on a failure part-way
     routes/
-      traces.ts         POST /api/v1/traces (ingest), GET /api/v1/traces, GET /api/v1/traces/:id
-      evaluations.ts    GET /api/v1/evaluations
+      traces.ts         POST /api/v1/traces (ingest), GET /api/v1/traces, GET /api/v1/traces/export, GET /api/v1/traces/:id
+      evaluations.ts    GET /api/v1/evaluations, GET /api/v1/evaluations/export
       summary.ts        GET /api/v1/summary
       filters.ts        GET /api/v1/filters
       health.ts         GET /api/v1/health
@@ -517,6 +518,7 @@ API endpoints:
 | `/api/v1/traces` | GET | Paginated trace list with filters (agent, framework, time range) and sorting |
 | `/api/v1/traces/:id` | GET | Full trace detail with spans and eval results |
 | `/api/v1/evaluations` | GET | Paginated eval results with filters (type, passed, time range) |
+| `/api/v1/traces/export`, `/api/v1/evaluations/export` | GET | Every row the list's filters and search admit, streamed as CSV or JSON Lines (`src/export/`); the pages' Export button links here |
 | `/api/v1/filters` | GET | Distinct agent names and frameworks for filter dropdowns |
 
 ### Client side
