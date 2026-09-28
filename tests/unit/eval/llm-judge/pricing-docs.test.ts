@@ -73,6 +73,10 @@ describe('the one table', () => {
     expect(findPricing('o1-mini')?.retired).toBe('2026-09-20');
   });
 
+  it('o1-mini is $1.10 in and $4.40 out, as OpenAI’s model page lists it — not its $3 / $12 launch price', () => {
+    expect(findPricing('o1-mini')).toMatchObject({ provider: 'openai', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4 });
+  });
+
   it('the truthbase lists exactly the priced, non-retired models, in table order', () => {
     const claims = JSON.parse(readFileSync(resolve(__dirname, '..', '..', '..', '..', '.claims.json'), 'utf8')) as { llmJudgeTemplates: { supportedModels: string[] } };
     expect(claims.llmJudgeTemplates.supportedModels).toEqual(MODEL_PRICING.filter((p) => !p.retired).map((p) => p.model));

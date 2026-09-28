@@ -40,7 +40,7 @@ The estimate is rounded to ten decimal places. Every number it used is stored wi
         "output_usd_per_1m": 0.6,
         "cost_usd": 0.0285,
         "price_source": "iris",
-        "price_as_of": "2026-09-25"
+        "price_as_of": "2026-09-28"
       }
     ]
   }
@@ -56,7 +56,7 @@ A trace with no cost carries the reason instead:
     "status": "unpriced",
     "reason": "unknown_model",
     "models": ["gemini-2.5-flash"],
-    "message": "No cost: the model \"gemini-2.5-flash\" is not in Iris's pricing table (as of 2026-09-25). Send cost_usd with the trace (or iris.cost_usd on a span), or price it under pricing.models in config.json."
+    "message": "No cost: the model \"gemini-2.5-flash\" is not in Iris's pricing table (as of 2026-09-28). Send cost_usd with the trace (or iris.cost_usd on a span), or price it under pricing.models in config.json."
   }
 }
 ```
@@ -65,7 +65,7 @@ A trace with no cost carries the reason instead:
 
 ## The pricing table
 
-The built-in prices are the table in [llm-as-judge.md](llm-as-judge.md#models--pricing), the same one the LLM judge's cost cap uses, read from each provider's pricing page on **2026-09-25**. It prices Anthropic and OpenAI models.
+The built-in prices are the table in [llm-as-judge.md](llm-as-judge.md#models--pricing), the same one the LLM judge's cost cap uses, read from each provider's pricing page on **2026-09-28**. It prices Anthropic and OpenAI models.
 
 A model id is matched in this order, and nothing else:
 
@@ -84,6 +84,7 @@ A model id is matched in this order, and nothing else:
 | `gpt-4o-mini-2024-07-18` | `gpt-4o-mini` |
 | `o4-mini-2025-04-16` | `o4-mini` |
 | `o3-mini-2025-01-31` | `o3-mini` |
+| `o1-mini-2024-09-12` | `o1-mini` |
 | `claude-sonnet-4-5-20250929` | `claude-sonnet-4-5` |
 | `claude-opus-4-5-20251101` | `claude-opus-4-5` |
 
@@ -122,7 +123,7 @@ An estimate is the provider's list price for the token counts the trace recorded
 ## Where it shows
 
 - **API and tools.** `log_trace`, `POST /api/v1/traces`, each trace in the answer from `POST /v1/traces`, and each line from `iris-eval ingest` carry `cost_usd`, `cost_source` and `cost_estimate`. So do `get_traces`, `GET /api/v1/traces`, `GET /api/v1/traces/:id` and `iris://traces/{trace_id}`. `GET /api/v1/summary` adds `estimated_cost_usd`, `GET /api/v1/eval-stats` adds `estimatedCost`, and the `cost_by_agent` view adds `estimatedTraces` and `estimatedCostUsd`: the estimated part of each total.
-- **Rules.** `cost_under_threshold`, `cost_anomaly` and a custom `cost_threshold` rule judge an estimated cost like a reported one. Their message ends with what was estimated, for example `(estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-25; the trace reported no cost)`, and their cost evidence carries `costSource: "estimated"`. `evaluate_output` with a `trace_id` and no `cost_usd` uses the trace's stored cost.
+- **Rules.** `cost_under_threshold`, `cost_anomaly` and a custom `cost_threshold` rule judge an estimated cost like a reported one. Their message ends with what was estimated, for example `(estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-28; the trace reported no cost)`, and their cost evidence carries `costSource: "estimated"`. `evaluate_output` with a `trace_id` and no `cost_usd` uses the trace's stored cost.
 - **Alerts.** The `cost_anomaly` webhook's `detail` carries `cost_source`, and its summary is the rule's message.
 - **Dashboard.** An estimated cost is followed by **est.** in the trace list, on the trace page, in the live stream and on the moments. Its tooltip names the tokens, the model it was priced as and the date of the prices. On the trace page, a trace with no cost says why. The total-cost tile names the estimated part.
 

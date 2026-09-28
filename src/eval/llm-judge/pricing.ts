@@ -29,7 +29,7 @@ export interface ModelPricing {
 }
 
 /** The date the table was last read from PRICING_SOURCES. */
-export const PRICING_SOURCED_ON = '2026-09-25';
+export const PRICING_SOURCED_ON = '2026-09-28';
 
 export const PRICING_SOURCES: Readonly<Record<PricingProvider, string>> = {
   anthropic: 'https://claude.com/pricing',
@@ -61,8 +61,14 @@ export const MODEL_PRICING: readonly ModelPricing[] = [
   { provider: 'openai', model: 'gpt-4o-mini', inputUsdPer1M: 0.15, outputUsdPer1M: 0.6 },
   { provider: 'openai', model: 'o4-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4 },
   { provider: 'openai', model: 'o3-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4 },
-  // OpenAI — retired from the provider's pricing page; last known price kept
-  { provider: 'openai', model: 'o1-mini', inputUsdPer1M: 3, outputUsdPer1M: 12, retired: '2026-09-20' },
+  /*
+   * OpenAI — retired from the provider's pricing page; kept so a configuration naming it still works.
+   * o1-mini was carried at $3 / $12, its launch price. OpenAI's own model
+   * page (https://developers.openai.com/api/docs/models/o1-mini, read
+   * 2026-09-28) lists $1.10 / $4.40, the same as o3-mini; the pricing
+   * page no longer lists the model at all.
+   */
+  { provider: 'openai', model: 'o1-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, retired: '2026-09-20' },
 ] as const;
 
 /**
@@ -90,6 +96,7 @@ export const MODEL_SNAPSHOTS: Readonly<Record<string, string>> = {
   'gpt-4o-mini-2024-07-18': 'gpt-4o-mini',
   'o4-mini-2025-04-16': 'o4-mini',
   'o3-mini-2025-01-31': 'o3-mini',
+  'o1-mini-2024-09-12': 'o1-mini',
   // Anthropic
   'claude-sonnet-4-5-20250929': 'claude-sonnet-4-5',
   'claude-opus-4-5-20251101': 'claude-opus-4-5',

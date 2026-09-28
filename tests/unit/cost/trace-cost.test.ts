@@ -52,7 +52,7 @@ describe('an estimate from token_usage and metadata.model', () => {
     expect(t.cost_estimate).toEqual({
       status: 'estimated',
       basis: 'token_usage',
-      calls: [{ model: 'gpt-4o-mini', priced_as: 'gpt-4o-mini', prompt_tokens: 150_000, completion_tokens: 10_000, input_usd_per_1m: 0.15, output_usd_per_1m: 0.6, cost_usd: 0.0285, price_source: 'iris', price_as_of: '2026-09-25' }],
+      calls: [{ model: 'gpt-4o-mini', priced_as: 'gpt-4o-mini', prompt_tokens: 150_000, completion_tokens: 10_000, input_usd_per_1m: 0.15, output_usd_per_1m: 0.6, cost_usd: 0.0285, price_source: 'iris', price_as_of: '2026-09-28' }],
     });
   });
 
@@ -77,7 +77,7 @@ describe('no estimate, and the reason', () => {
       status: 'unpriced',
       reason: 'unknown_model',
       models: ['llama-3.1-70b'],
-      message: 'No cost: the model "llama-3.1-70b" is not in Iris\'s pricing table (as of 2026-09-25). Send cost_usd with the trace (or iris.cost_usd on a span), or price it under pricing.models in config.json.',
+      message: 'No cost: the model "llama-3.1-70b" is not in Iris\'s pricing table (as of 2026-09-28). Send cost_usd with the trace (or iris.cost_usd on a span), or price it under pricing.models in config.json.',
     });
     expect(costFieldsOf(t)).toEqual({ cost_usd: null, cost_estimate: t.cost_estimate });
   });

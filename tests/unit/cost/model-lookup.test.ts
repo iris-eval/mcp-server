@@ -31,6 +31,7 @@ describe('priceModel — the spellings that price', () => {
     ['gpt-4.1-mini-2025-04-14', 'gpt-4.1-mini'],
     ['o4-mini-2025-04-16', 'o4-mini'],
     ['o3-mini-2025-01-31', 'o3-mini'],
+    ['o1-mini-2024-09-12', 'o1-mini'],
     ['claude-sonnet-4-5-20250929', 'claude-sonnet-4-5'],
     ['claude-opus-4-5-20251101', 'claude-opus-4-5'],
     // a provider prefix naming the provider that prices it (routers, LiteLLM, Pydantic AI)

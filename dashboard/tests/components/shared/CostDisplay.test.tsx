@@ -20,7 +20,7 @@ const ESTIMATE: CostEstimate = {
       output_usd_per_1m: 0.6,
       cost_usd: 0.0285,
       price_source: 'iris',
-      price_as_of: '2026-09-25',
+      price_as_of: '2026-09-28',
     },
   ],
 };
@@ -48,7 +48,7 @@ describe('CostDisplay', () => {
       });
       const tip = screen.getByRole('tooltip');
       expect(tip.textContent).toBe(
-        'Estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-25. The trace reported no cost. Cache and batch discounts and negotiated rates are not applied.',
+        'Estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-28. The trace reported no cost. Cache and batch discounts and negotiated rates are not applied.',
       );
     } finally {
       vi.useRealTimers();

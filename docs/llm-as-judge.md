@@ -136,7 +136,7 @@ What is measured without a key, on every CI run:
 
 Iris carries a curated pricing table. Using an unknown model is an immediate error — the engine can't enforce the cost cap without pricing data.
 
-Read from the providers' own pricing pages on 2026-09-25 (Anthropic: claude.com/pricing; OpenAI: developers.openai.com/api/docs/pricing). This table is held to `src/eval/llm-judge/pricing.ts` by a test; edit the code, then this table, and the test says when they disagree.
+Read from the providers' own pricing pages on 2026-09-28 (Anthropic: claude.com/pricing; OpenAI: developers.openai.com/api/docs/pricing). This table is held to `src/eval/llm-judge/pricing.ts` by a test; edit the code, then this table, and the test says when they disagree.
 
 | Provider  | Model                            | Input $/1M | Output $/1M | Notes                                                        |
 |-----------|----------------------------------|------------|-------------|--------------------------------------------------------------|
@@ -159,7 +159,7 @@ Read from the providers' own pricing pages on 2026-09-25 (Anthropic: claude.com/
 | openai    | gpt-4o-mini                      | 0.15       | 0.60        | Cheapest option; lower fidelity                              |
 | openai    | o4-mini                          | 1.10       | 4.40        | Reasoning model                                              |
 | openai    | o3-mini                          | 1.10       | 4.40        | Reasoning model                                              |
-| openai    | o1-mini                          | 3.00       | 12.00       | Retired 2026-09-20: absent from the provider's page; last known price kept |
+| openai    | o1-mini                          | 1.10       | 4.40        | Retired 2026-09-20: absent from the provider's pricing page; price from its model page (read 2026-09-28), which was $3 / $12 here before 0.20.0 |
 
 To add a new model: edit `src/eval/llm-judge/pricing.ts`, add the row here, add a CHANGELOG note. A model the provider stops pricing is marked retired, never deleted.
 

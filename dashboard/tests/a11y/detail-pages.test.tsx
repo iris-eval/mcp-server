@@ -255,7 +255,7 @@ describe('a11y · TraceDetailPage', () => {
           cost_estimate: {
             status: 'estimated',
             basis: 'token_usage',
-            calls: [{ model: 'gpt-4o-mini', priced_as: 'gpt-4o-mini', prompt_tokens: 150000, completion_tokens: 10000, input_usd_per_1m: 0.15, output_usd_per_1m: 0.6, cost_usd: 0.0285, price_source: 'iris', price_as_of: '2026-09-25' }],
+            calls: [{ model: 'gpt-4o-mini', priced_as: 'gpt-4o-mini', prompt_tokens: 150000, completion_tokens: 10000, input_usd_per_1m: 0.15, output_usd_per_1m: 0.6, cost_usd: 0.0285, price_source: 'iris', price_as_of: '2026-09-28' }],
           },
         },
       },
@@ -273,7 +273,7 @@ describe('a11y · TraceDetailPage', () => {
         trace: {
           ...traceFixture.trace,
           cost_usd: undefined,
-          cost_estimate: { status: 'unpriced', reason: 'unknown_model', message: 'No cost: the model "gemini-2.5-flash" is not in Iris\'s pricing table (as of 2026-09-25).', models: ['gemini-2.5-flash'] },
+          cost_estimate: { status: 'unpriced', reason: 'unknown_model', message: 'No cost: the model "gemini-2.5-flash" is not in Iris\'s pricing table (as of 2026-09-28).', models: ['gemini-2.5-flash'] },
         },
       },
       loading: false,
