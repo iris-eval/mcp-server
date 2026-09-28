@@ -13,6 +13,24 @@ permissions:
   contents: read
 
 jobs:
+  # Every workflow file in .github/workflows, linted on every pull request:
+  # YAML syntax, expressions, job and step references, action inputs, and
+  # each `run:` script through shellcheck. publish-python.yml once reached
+  # main unparseable (a plain scalar holding `:all: -r` read as a mapping),
+  # and nothing noticed, because the workflow runs on a tag, not a pull
+  # request. The image is actionlint 1.7.12 (it bundles shellcheck), pinned
+  # by its multi-arch index digest; bump the version and the digest together
+  # (`docker buildx imagetools inspect rhysd/actionlint:<version>`).
+  actionlint:
+    name: Workflows lint (actionlint)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: actionlint over every workflow
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
   lint-and-typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -272,7 +290,7 @@ jobs:
           CC: /bin/false
           CXX: /bin/false
         run: |
-          tarball="$(cd "$RUNNER_TEMP/pack" && ls *.tgz)"
+          tarball="$(cd "$RUNNER_TEMP/pack" && ls -- *.tgz)"
           mkdir -p "$RUNNER_TEMP/project"
           cd "$RUNNER_TEMP/project"
           npm init -y > /dev/null
@@ -321,7 +339,7 @@ jobs:
           path: ${{ runner.temp }}/pack
       - name: Install the tarball into an empty project
         run: |
-          tarball="$(cd "$RUNNER_TEMP/pack" && ls *.tgz)"
+          tarball="$(cd "$RUNNER_TEMP/pack" && ls -- *.tgz)"
           mkdir -p "$RUNNER_TEMP/project"
           cd "$RUNNER_TEMP/project"
           npm init -y > /dev/null
@@ -371,7 +389,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/mcpb"
           npm pack --pack-destination "$RUNNER_TEMP/mcpb"
-          tarball="$RUNNER_TEMP/mcpb/$(cd "$RUNNER_TEMP/mcpb" && ls *.tgz)"
+          tarball="$RUNNER_TEMP/mcpb/$(cd "$RUNNER_TEMP/mcpb" && ls -- *.tgz)"
           node scripts/mcpb/pack.mjs --tarball "$tarball" --out "$RUNNER_TEMP/mcpb/iris-eval.mcpb"
           node scripts/mcpb/pack.mjs --tarball "$tarball" --out "$RUNNER_TEMP/second.mcpb"
           cmp "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/second.mcpb" || { echo "::error::two builds of the bundle from the same inputs differ"; exit 1; }
@@ -425,7 +443,7 @@ jobs:
           "$mcpb" info "$RUNNER_TEMP/mcpb/iris-eval.mcpb"
       - name: Rebuilt on this runner from the same tarball, the bundle is the same bytes
         run: |
-          tarball="$RUNNER_TEMP/mcpb/$(cd "$RUNNER_TEMP/mcpb" && ls *.tgz)"
+          tarball="$RUNNER_TEMP/mcpb/$(cd "$RUNNER_TEMP/mcpb" && ls -- *.tgz)"
           node scripts/mcpb/pack.mjs --tarball "$tarball" --out "$RUNNER_TEMP/rebuilt.mcpb"
           cmp "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/rebuilt.mcpb" || { echo "::error::the bundle rebuilt on ${{ matrix.os }} (Node ${{ matrix.node-version }}) differs from the one built on Linux"; exit 1; }
       - name: It starts from the host's launch config and lists every tool
