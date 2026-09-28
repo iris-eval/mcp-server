@@ -431,8 +431,20 @@ export interface TraceQueryResult {
   total: number;
   limit: number;
   offset: number;
-  /** Present when the query searched: the terms as the server read them, and whether the full-text index answered. */
-  search?: { terms: string[]; index: 'fts5' | 'scan' };
+  /**
+   * Present when the query searched: the terms as the server read them,
+   * whether the full-text index answered, and `complete: false` when the
+   * search stopped at its time budget (`budget_ms`), when the traces and
+   * the total cover only the newest traces it read. `ignored` names the
+   * repeated or implied terms it left out.
+   */
+  search?: {
+    terms: string[];
+    index: 'fts5' | 'scan';
+    complete: boolean;
+    budget_ms?: number;
+    ignored?: Array<{ term: string; reason: string }>;
+  };
 }
 
 export interface TraceDetail {

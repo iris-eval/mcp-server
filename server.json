@@ -70,6 +70,13 @@
           "name": "IRIS_SQLITE_DRIVER"
         },
         {
+          "description": "How long one trace search may read before it answers with the matches found so far, in milliseconds (50-60000, default 1000)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_SEARCH_BUDGET_MS"
+        },
+        {
           "description": "Log level: debug, info, warn, error",
           "isRequired": false,
           "format": "string",

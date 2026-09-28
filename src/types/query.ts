@@ -50,6 +50,19 @@ export interface TraceSearchInfo {
   terms: string[];
   /** `fts5`: the full-text index, ranked by BM25. `scan`: this SQLite has no FTS5, so the traces were read and ranked by how often the terms occur. */
   index: 'fts5' | 'scan';
+  /**
+   * false when the search stopped at its time budget (storage.searchBudgetMs,
+   * IRIS_SEARCH_BUDGET_MS; #703) before it had read every match. The traces
+   * are then the best matches among the newest traces it read, and `total`
+   * counts only the matches it found: a narrower search (more words, a
+   * phrase, a filter such as `since` or `agent_name`) reads less and can
+   * complete.
+   */
+  complete: boolean;
+  /** With complete false: the budget, in milliseconds, the search stopped at. */
+  budget_ms?: number;
+  /** Terms in the query that were not searched, because the terms kept find exactly the same traces: a repeat, or a prefix another term implies (`ref*` beside `refund`). */
+  ignored?: Array<{ term: string; reason: string }>;
 }
 
 /*

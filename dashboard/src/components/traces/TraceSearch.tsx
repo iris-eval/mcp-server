@@ -9,16 +9,37 @@ import { useEffect, useId, useRef, useState } from 'react';
  * search can be linked, reloaded and left with the back button.
  *
  * The server reads any text as words (quotes, stars and parentheses are
- * never query syntax) and refuses a query with no word in it; the box
- * checks the same thing first, so typing "(" shows a hint instead of an
- * error.
+ * never query syntax) and refuses a query with no word in it, and one with
+ * a prefix too short to narrow anything (#703); the box checks both first,
+ * so typing "(" or "re*" shows a hint instead of an error. The server's
+ * other limits (how many terms) come back as its own message.
  */
 export const SEARCH_DEBOUNCE_MS = 250;
 export const SEARCH_MAX_LENGTH = 500;
+/** The server's SEARCH_MIN_PREFIX_CHARS (src/storage/search.ts); a test holds the two equal. */
+export const SEARCH_MIN_PREFIX_CHARS = 3;
 
 /** Whether the text has anything the server can search: a letter or a digit. */
 export function hasSearchableWord(text: string): boolean {
   return /[\p{L}\p{N}]/u.test(text);
+}
+
+const CJK_RE = /[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Hangul}\u3005\u30fc]/u;
+
+/**
+ * The prefixes the server would refuse as too short: a word written
+ * straight before the `*` that ends a word (or before the closing quote of
+ * a phrase the `*` follows) with fewer than SEARCH_MIN_PREFIX_CHARS letters
+ * or digits, and no Chinese, Japanese or Korean in it, where one character
+ * is enough. A `*` inside a word is punctuation, not a prefix.
+ */
+export function shortPrefixes(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/([\p{L}\p{N}\p{M}]+)"?\*+(?=[\s"]|$)/gu)) {
+    const word = m[1];
+    if (!CJK_RE.test(word) && Array.from(word.replace(/\p{M}/gu, '')).length < SEARCH_MIN_PREFIX_CHARS) out.push(`${word}*`);
+  }
+  return out;
 }
 
 const styles = {

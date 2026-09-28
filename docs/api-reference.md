@@ -340,7 +340,7 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 | `agent_name` | `string` | No | -- | Filter by agent name (exact match) |
 | `framework` | `string` | No | -- | Filter by framework (exact match) |
 | `session` | `string` | No | -- | The turns of one conversation, as logged with `session_id` |
-| `q` | `string` | No | -- | Full-text search over input, output, tool-call values, metadata values and span text; at most 500 characters. See [Searching traces](#searching-traces) |
+| `q` | `string` | No | -- | Full-text search over input, output, tool-call values, metadata values and span text; at most 500 characters, 16 terms and 4 prefix terms, each prefix at least 3 characters before the `*`. See [Searching traces](#searching-traces) |
 | `since` | `string` | No | -- | ISO 8601 timestamp lower bound |
 | `until` | `string` | No | -- | ISO 8601 timestamp upper bound |
 | `min_score` | `number` | No | -- | Minimum eval score filter |
@@ -371,7 +371,17 @@ Query stored traces with filters, full-text search, pagination, and optional sum
 
 Whatever `q` contains is read as words, never as query syntax: `AND`, `OR`, `NOT`, `NEAR(`, parentheses, column prefixes like `input:` and unbalanced quotes are searched as the words they contain, so no input can fail the query or widen it. A `q` with no letter or digit in it (`*`, `()`) is refused with a message saying so, rather than answered with an empty page. A blank `q` is no search.
 
-Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call value, a metadata value or span text) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in (and, for `spans`, the `span` it matched in, by `span_id` and `name`), a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur).
+**What one search may cost.** A search runs on the server's event loop, and every other MCP and HTTP request waits while it runs. So each query is held to limits before it runs, and to a time budget while it runs:
+
+- A repeated term, or a one-word prefix that another one-word term implies (`ref*` beside `refund` or `refunded*`), is searched once. The traces that match are the same, and the ranking can differ slightly because each term is scored once. `search.ignored` lists each term left out and why.
+- A prefix needs at least 3 letters or digits before the `*`: `ref*`, not `re*`. A one- or two-letter prefix starts most of the words in a store, so it narrows nothing and costs a merge of all of them. One character is enough when it is Chinese, Japanese or Korean (`批*`), because one such character is a word.
+- A query carries at most 16 terms (a `"quoted phrase"` is one term), and at most 4 of them may be prefixes.
+
+A query over a limit is refused before anything is read, with a message that names the term and the limit: `get_traces` answers with an error, and `GET /api/v1/traces` with a 400. The dashboard's search box shows the prefix rule as a hint instead of sending the query.
+
+A search then reads matches, newest trace first, for at most `storage.searchBudgetMs` in `config.json` (or `IRIS_SEARCH_BUDGET_MS`), 1,000 ms by default. If it reaches the budget before it has read every match, it stops and answers with the best matches among the traces it read. `search.complete` is then `false` and `search.budget_ms` gives the budget, and `total` counts only the matches found, so it is a lower bound. A narrower search (more words, a phrase, or a filter such as `since` or `agent_name`) reads less and can complete. Some work comes before the first match and cannot be stopped: expanding a prefix into the words it starts, and counting the traces each term is in for the ranking. When the query or the store holds Chinese, Japanese or Korean text, ranking every match also comes first. The limits above bound that work: at 100,000 traces on the benchmark machine, the costliest query they allow (four of the broadest three-letter prefixes) took 0.6 s, and a word in every trace 0.2 s.
+
+Results are ranked by relevance (BM25, with a word in `input` or `output` weighted twice a word in a tool-call value, a metadata value or span text) unless `sort_by` names another order, and every other filter still applies. Each trace carries `match`: the field it matched in (and, for `spans`, the `span` it matched in, by `span_id` and `name`), a `snippet` of up to 24 words around the matches, and the same snippet as `fragments`, in order, with `hit: true` on the matched words, so a client can highlight them without parsing markup or counting offsets. The response carries `search`: the terms as they were searched, and `index` — `fts5` for the full-text index, or `scan` on a SQLite without FTS5 (Node's built-in `node:sqlite` before Node 22.16.0, used when better-sqlite3 cannot load or `IRIS_SQLITE_DRIVER=node`), where Iris reads the traces one by one with the same matching (slower; ranked by how often the words occur); `complete`, `false` when the search stopped at its time budget (above); and `ignored` when terms were left out.
 
 ```json
 {
@@ -397,11 +407,11 @@ Results are ranked by relevance (BM25, with a word in `input` or `output` weight
   "total": 1,
   "limit": 50,
   "offset": 0,
-  "search": { "terms": ["refund", "approved"], "index": "fts5" }
+  "search": { "terms": ["refund", "approved"], "index": "fts5", "complete": true }
 }
 ```
 
-The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. For a trace with Chinese, Japanese or Korean text, the file also keeps the two-character pieces that text is indexed as, a derived copy, because the index cannot recompute them itself when the trace is deleted; they are removed with the trace on every route, and their pages are zeroed. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). Span text costs more where there is some: at 100,000 traces that are each an agent loop sent over OTLP, the file is 993 MB where it would be 841 MB without span text, and an insert takes about three times as long. On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`, the same results, slower). At 100,000 traces the build took 33.4 s, and 158.8 s when every trace carried an agent loop's spans. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
+The index lives in the same SQLite file and is kept in step on every insert, update and delete, including the retention sweep and `--purge`; deleting a trace removes its words from the index as well as its row. For a trace with Chinese, Japanese or Korean text, the file also keeps the two-character pieces that text is indexed as, a derived copy, because the index cannot recompute them itself when the trace is deleted; they are removed with the trace on every route, and their pages are zeroed. It makes the file about two thirds larger (125 MB to 211 MB at 100,000 traces on the benchmark machine). Span text costs more where there is some: at 100,000 traces that are each an agent loop sent over OTLP, the file is 993 MB where it would be 841 MB without span text, and an insert takes about three times as long. On the first start after upgrading, the traces already stored are indexed in the background: the server answers at once, and until the index holds every trace a search reads the traces directly (`index: "scan"`: the same results, slower, and on a large store stopped at the time budget above). At 100,000 traces the build took 33.4 s, and 158.8 s when every trace carried an agent loop's spans. Measured query times at 10,000 and 100,000 traces are in the [changelog](../CHANGELOG.md) entry for full-text search.
 
 #### Example Request
 
@@ -1014,7 +1024,7 @@ List traces with filtering and pagination.
 | `agent_name` | `string` | -- | -- | Filter by agent name |
 | `framework` | `string` | -- | -- | Filter by framework |
 | `session` | `string` | -- | -- | The turns of one conversation, as logged with `session_id` |
-| `q` | `string` | -- | at most 500 characters; at least one letter or digit | Full-text search, as [`get_traces`](#searching-traces) reads it |
+| `q` | `string` | -- | at most 500 characters; at least one letter or digit; the [limits on one search](#searching-traces) | Full-text search, as [`get_traces`](#searching-traces) reads it |
 | `since` | `string` | -- | ISO 8601 timestamp or date | Timestamp lower bound (inclusive) |
 | `until` | `string` | -- | ISO 8601 timestamp or date; not earlier than `since` | Timestamp upper bound (inclusive) |
 | `min_score` | `number` | -- | 0..1; not above `max_score` | Minimum latest-eval score |

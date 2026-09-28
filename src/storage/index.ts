@@ -5,7 +5,10 @@ import { SqliteAdapter } from './sqlite-adapter.js';
 export function createStorage(config: IrisConfig): IStorageAdapter {
   switch (config.storage.type) {
     case 'sqlite':
-      return new SqliteAdapter(config.storage.path, { redact: config.storage.redact ?? 'none' });
+      return new SqliteAdapter(config.storage.path, {
+        redact: config.storage.redact ?? 'none',
+        ...(config.storage.searchBudgetMs !== undefined ? { searchBudgetMs: config.storage.searchBudgetMs } : {}),
+      });
     default:
       throw new Error(`Unsupported storage type: ${config.storage.type} (supported: sqlite)`);
   }
