@@ -9,13 +9,22 @@
  * (src/storage/search-index.ts, never holding the event loop). This runs
  * each on a store of agent-loop traces (three model calls and two tool calls
  * each, sent the way OTLP stores them: the heaviest shape the benchmark
- * knows) and fails when a 1 ms timer ever waits longer than STALL_LIMIT_MS.
+ * knows) and fails when the event loop is ever held longer than
+ * STALL_LIMIT_MS.
+ *
+ * Held means the main thread's own CPU time between two callbacks of a
+ * 1 ms timer, not the wall clock between them. A hosted runner deschedules
+ * the process now and then for hundreds of milliseconds (this job saw 300
+ * to 400 ms gaps in steps whose code had not changed); that time is not
+ * spent in a statement, and the wall clock cannot tell the two apart. A
+ * statement that holds the loop spends its time on this thread, so its CPU
+ * time is what the guard reads. The wall-clock gap is printed beside it.
  *
  * On the same store, the code before the steps held the loop for the whole
  * sweep (one transaction) and for the whole drop of a retired index (one
  * statement); the numbers are in the pull request that added this guard.
  *
- * It measures time, so it runs alone in CI's stall-guard job
+ * It still runs alone, in CI's stall-guard job
  * (tests/stall/vitest.config.ts), never inside the parallel suite.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -91,14 +100,29 @@ function trace(i: number, now: number): Trace {
   };
 }
 
-/** The longest gap between two callbacks of a 1 ms timer while `work` runs: the longest a request would have waited. */
-async function longestStall(work: () => Promise<unknown>): Promise<number> {
+/** This thread's CPU time, in milliseconds (Node 23.9+; before that the whole process's, which only overstates). */
+const threadCpuMs = (): number => {
+  const usage = typeof process.threadCpuUsage === 'function' ? process.threadCpuUsage() : process.cpuUsage();
+  return (usage.user + usage.system) / 1000;
+};
+
+/**
+ * While `work` runs, the longest stretch between two callbacks of a 1 ms
+ * timer: `held`, the CPU time this thread spent in it (what a statement
+ * holding the loop costs), and `wall`, its length on the clock.
+ */
+async function longestStall(work: () => Promise<unknown>): Promise<{ held: number; wall: number }> {
   let last = performance.now();
-  let worst = 0;
+  let lastCpu = threadCpuMs();
+  let held = 0;
+  let wall = 0;
   const timer = setInterval(() => {
     const now = performance.now();
-    worst = Math.max(worst, now - last);
+    const cpu = threadCpuMs();
+    held = Math.max(held, cpu - lastCpu);
+    wall = Math.max(wall, now - last);
     last = now;
+    lastCpu = cpu;
   }, 1);
   try {
     await work();
@@ -107,8 +131,11 @@ async function longestStall(work: () => Promise<unknown>): Promise<number> {
   } finally {
     clearInterval(timer);
   }
-  return worst;
+  return { held, wall };
 }
+
+const report = (what: string, stall: { held: number; wall: number }) =>
+  process.stdout.write(`[stall] ${what}: longest hold ${stall.held.toFixed(0)} ms of this thread's CPU (${stall.wall.toFixed(0)} ms on the clock)\n`);
 
 const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
 const count = (s: SqliteAdapter, sql: string) => Number((dbOf(s).prepare(sql).get() as { n: number }).n);
@@ -156,10 +183,10 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     const stall = await longestStall(async () => {
       swept = await s.deleteTracesOlderThan(LOCAL_TENANT, 30);
     });
-    process.stdout.write(`[stall] retention sweep of ${swept} traces: longest stall ${stall.toFixed(0)} ms\n`);
+    report(`retention sweep of ${swept} traces`, stall);
     expect(swept).toBe(TRACES * OLD);
     expect(count(s, 'SELECT COUNT(*) AS n FROM trace_search_erase_owed')).toBe(0);
-    expect(stall).toBeLessThan(STALL_LIMIT_MS);
+    expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
     await s.close();
   });
 
@@ -173,10 +200,10 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     await s.initialize();
     expect(retiredRemain(dbOf(s))).toBe(true);
     const stall = await longestStall(() => s.whenIdle());
-    process.stdout.write(`[stall] retired index erased and ${TRACES} traces indexed again: longest stall ${stall.toFixed(0)} ms\n`);
+    report(`retired index erased and ${TRACES} traces indexed again`, stall);
     expect(retiredRemain(dbOf(s))).toBe(false);
     expect(await s.whenSearchIndexReady()).toBe('ready');
-    expect(stall).toBeLessThan(STALL_LIMIT_MS);
+    expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
     await s.close();
   });
 
@@ -184,10 +211,10 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     const s = new SqliteAdapter(copy(unindexed, 'upgrade.db'), { driver: SEARCH_DRIVER });
     await s.initialize();
     const stall = await longestStall(() => s.whenIdle());
-    process.stdout.write(`[stall] index built for ${TRACES} traces after an upgrade: longest stall ${stall.toFixed(0)} ms\n`);
+    report(`index built for ${TRACES} traces after an upgrade`, stall);
     expect(await s.whenSearchIndexReady()).toBe('ready');
     expect(count(s, 'SELECT COUNT(*) AS n FROM trace_search_docs')).toBe(TRACES);
-    expect(stall).toBeLessThan(STALL_LIMIT_MS);
+    expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
     await s.close();
   });
 });
