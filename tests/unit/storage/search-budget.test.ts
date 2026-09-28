@@ -326,7 +326,7 @@ describe('the time budget', () => {
     const path = join(dir, 'scan.db');
     const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER, fts5: false });
     await s.initialize();
-    const long = reviewStore().slice(0, 1000).map((t) => ({ ...t, output: `${t.output} ${t.output} ${t.output} ${t.output} ${t.output} ${t.output}` }));
+    const long = reviewStore().map((t) => ({ ...t, output: Array(10).fill(t.output).join(' ') }));
     await s.insertTraces(LOCAL_TENANT, long);
     await s.close();
     const read = async (searchBudgetMs: number) => {
