@@ -16,9 +16,11 @@
  * thread holds a second connection to the same file and checkpoints from
  * there: PASSIVE every CHECKPOINT_INTERVAL_MS, which copies what it can
  * and never waits on a writer, and TRUNCATE when the adapter asks (after
- * delete_trace, a retention sweep or a purge, so the WAL keeps no copy of what was
- * deleted), answering when it is done. Writers go on while it runs: WAL
- * lets one connection append while another checkpoints.
+ * delete_trace, a retention sweep or a purge, so the WAL keeps no copy of
+ * what was deleted), answering when it is done or that a reader held it
+ * off, in which case the adapter tries again while the reader reads.
+ * Writers go on while it runs: WAL lets one connection append while
+ * another checkpoints.
  *
  * Until the worker says it is ready, and again if it ever fails, the
  * adapter's connection checkpoints by itself as before (the default 1,000
@@ -55,6 +57,8 @@ if (driver === 'better-sqlite3') {
   pragma = (text) => db.prepare('PRAGMA ' + text).get();
 }
 const run = (mode) => {
+  // A TRUNCATE never waits for a reader: it answers busy, and the adapter tries again while the reader reads.
+  if (mode === 'TRUNCATE') pragma('busy_timeout = 0');
   try {
     const out = pragma('wal_checkpoint(' + mode + ')');
     const row = Array.isArray(out) ? out[0] : out;
@@ -62,6 +66,8 @@ const run = (mode) => {
     return { busy: row ? Number(row.busy) : 0 };
   } catch (err) {
     return { error: String((err && err.message) || err) };
+  } finally {
+    if (mode === 'TRUNCATE') pragma('busy_timeout = ' + busyMs);
   }
 };
 const timer = setInterval(() => run('PASSIVE'), intervalMs);
@@ -151,10 +157,10 @@ export class Checkpointer {
   }
 
   /**
-   * A TRUNCATE checkpoint on the worker's connection, which waits there for
-   * readers up to the busy timeout. Resolves true when the log was copied
-   * and emptied, false when a reader held it off; throws when the worker
-   * failed.
+   * A TRUNCATE checkpoint on the worker's connection, which gives up at once
+   * rather than wait for a reader (a search reading the file, say: a delete
+   * must not wait for it). Resolves true when the log was copied and
+   * emptied, false when a reader held it off; throws when the worker failed.
    */
   async truncate(): Promise<boolean> {
     const reply = await this.request({ type: 'checkpoint', mode: 'TRUNCATE' });

@@ -2130,10 +2130,10 @@ export class SqliteAdapter implements IStorageAdapter {
   }
 
   /**
-   * A TRUNCATE checkpoint; whether it emptied the WAL. On the checkpoint
-   * worker's connection when it runs (checkpointer.ts), where the copy, the
-   * sync and a wait for a reader never hold the event loop; else on this
-   * connection, giving up at once rather than wait for a reader.
+   * A TRUNCATE checkpoint that gives up at once rather than wait for a
+   * reader; whether it emptied the WAL. On the checkpoint worker's
+   * connection when it runs (checkpointer.ts), so the copy and the sync
+   * never hold the event loop; else on this connection.
    */
   private async truncateCheckpointNow(): Promise<boolean> {
     if (this.checkpointer?.active) {
