@@ -288,6 +288,11 @@ describe('writeShadowTables', () => {
   };
 
   it('on better-sqlite3: a shadow table is read-only outside it, writable inside it, and read-only again after work that throws', () => {
+    if (nativeAbortsOnCollect(nativeBinaryPath())) {
+      // A binary that aborts Node when it frees a statement (the job that builds the addon from source): the seam refuses it, so there is no native connection to hold to this.
+      expect(() => openDriver(tempDb(), { driver: 'native' })).toThrow(/nodejs\/node#65446/);
+      return;
+    }
     const d = withIndex(openDriver(tempDb(), { driver: 'native' }));
     drivers.push(d);
     expect(() => shadowDelete(d)).toThrow(/may not be modified/);
