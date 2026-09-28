@@ -844,9 +844,13 @@ export function indexInsertedTraces(db: Driver, tenantId: string, traceIds: read
  *     a closing server left unfinished is carried on by the next start.
  *
  * Other writes go on between the steps with secure-delete on: a step turns
- * it off and back on inside its own transaction.
+ * it off and back on inside its own transaction. It turns FTS5's automerge
+ * off the same way, so no merge of older segments lands inside a delete
+ * step; the merge owed does that work, in steps of its own.
  */
 export const ERASE_OWED_TABLE = 'trace_search_erase_owed';
+/** FTS5's default automerge: a sweep step turns it off for its own deletes and back to this, so no merge lands inside a step. */
+const AUTOMERGE = 4;
 const CREATE_OWED = `CREATE TABLE IF NOT EXISTS ${ERASE_OWED_TABLE} (fts TEXT PRIMARY KEY)`;
 
 export type SweepEraseMode = 'rows' | 'merge';
@@ -865,14 +869,14 @@ function ftsTables(db: Driver): string[] {
 export function deleteOwingMerge<T>(db: Driver, remove: () => T): T {
   if (!objectExists(db, 'table', SEARCH_TABLE)) return remove();
   const tables = ftsTables(db);
-  for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 0)`);
+  for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 0); INSERT INTO ${t} (${t}, rank) VALUES ('automerge', 0)`);
   try {
     const out = remove();
     const owe = db.prepare(`INSERT OR IGNORE INTO ${ERASE_OWED_TABLE} (fts) VALUES (?)`);
     for (const t of tables) owe.run(t);
     return out;
   } finally {
-    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 1)`);
+    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 1); INSERT INTO ${t} (${t}, rank) VALUES ('automerge', ${AUTOMERGE})`);
   }
 }
 

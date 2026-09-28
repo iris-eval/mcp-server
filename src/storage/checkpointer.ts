@@ -7,7 +7,7 @@
  * connection that commits: here, the event loop. On a large file that
  * commit is the slow one. Measured at 100,000 agent-loop traces (a 1 GB
  * file) on the machine in the changelog, the retention sweep's steps
- * committed in 3 ms at the median and up to 650 ms when a checkpoint
+ * committed in 3 ms at the median and up to 567 ms when a checkpoint
  * landed in them; with the automatic checkpoint off, the slowest commit
  * took 20 ms. Every write paid it, log_trace included; background steps
  * sized to 50 ms could not.

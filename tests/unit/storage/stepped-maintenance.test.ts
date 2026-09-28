@@ -119,8 +119,10 @@ describe('the retention sweep runs in steps', () => {
     integrity(s);
     expect((await s.queryTraces(LOCAL_TENANT, { search: word })).total).toBe(0);
     expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(300);
-    // secure-delete is back on for the deletes that follow.
-    expect(Number((dbOf(s).prepare("SELECT v FROM trace_search_config WHERE k = 'secure-delete'").get() as { v: number }).v)).toBe(1);
+    // secure-delete is back on for the deletes that follow, and automerge (off inside each step) back at FTS5's default.
+    const config = (k: string) => Number((dbOf(s).prepare('SELECT v FROM trace_search_config WHERE k = ?').get(k) as { v: number }).v);
+    expect(config('secure-delete')).toBe(1);
+    expect(config('automerge')).toBe(4);
   });
 
   it('a small sweep erases each trace as it deletes it, and owes no merge', async () => {

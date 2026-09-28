@@ -2103,14 +2103,14 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async checkpoint(): Promise<void> {
     if (this.dbPath === ':memory:') return;
-    // On the worker's connection when it runs, so the copy and the sync never hold the event loop.
+    // On the worker's connection when it runs, so the copy, the sync and any wait for a reader never hold the event loop.
     if (this.checkpointer?.active) {
       try {
         await this.checkpointer.checkpoint('TRUNCATE');
-        return;
       } catch {
-        // Refused there (a reader held the log): try on this connection, as before.
+        // Best effort, as below: a reader in another process held the log past the busy timeout. The next one picks the pages up.
       }
+      return;
     }
     try {
       this.db.pragma('wal_checkpoint(TRUNCATE)');

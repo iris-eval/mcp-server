@@ -4,8 +4,8 @@
  * A stdio client waits for the server's answer to `initialize`. The sweep
  * used to run before the transport connected, as one transaction, so a
  * store with a day's traces past the window kept every client waiting for
- * the whole sweep (12 s at 100,000 agent-loop traces with 3% due, measured
- * on the machine in the changelog). It now starts once the transport is
+ * the whole sweep (8.6 s and 17.6 s at 100,000 agent-loop traces with 3% due,
+ * measured on the machine in the changelog). It now starts once the transport is
  * connected and runs in steps (src/storage/search-index.ts). This starts
  * the real server over stdio on a store with traces past the window, and
  * requires the log to say the transport connected before the sweep
