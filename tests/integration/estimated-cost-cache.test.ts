@@ -85,7 +85,7 @@ function otlp(attributes: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-type Stored = { cost_usd: number | null; cost_source?: string; cost_estimate?: { status: string; notes?: string[]; calls?: Array<Record<string, unknown>> } };
+type Stored = { trace_id: string; cost_usd: number | null; cost_source?: string; cost_estimate?: { status: string; notes?: string[]; calls?: Array<Record<string, unknown>> } };
 
 async function send(base: string, attributes: Record<string, unknown>): Promise<Stored> {
   const res = await fetch(`${base}/v1/traces`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(otlp(attributes)) });
@@ -117,6 +117,23 @@ describe('OpenAI cached input, as wrapOpenAI records it', () => {
     expect(stored.cost_source).toBe('estimated');
     expect(stored.cost_estimate?.calls?.[0]).toMatchObject({ prompt_tokens: 150_000, cache_read_tokens: 100_000, cache_creation_tokens: 0, cache_read_usd_per_1m: 0.075, cache_write_usd_per_1m: 0.15 });
     expect(stored.cost_estimate?.notes).toBeUndefined();
+  });
+});
+
+describe('an uncached call', () => {
+  it('stores the token usage it always did: a wrapper’s cached_tokens: 0 adds no cache field', async () => {
+    const base = await dashboard();
+    const stored = await send(
+      base,
+      wrapped({
+        api: 'chat',
+        request: { model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'Hi' }] },
+        response: { id: 'c', model: 'gpt-4o-mini', choices: [{ index: 0, message: { role: 'assistant', content: 'Hello.' }, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16, prompt_tokens_details: { cached_tokens: 0 } } },
+      }),
+    );
+    const detail = (await (await fetch(`${base}/api/v1/traces/${stored.trace_id}`)).json()) as { trace: { token_usage: unknown } };
+    expect(detail.trace.token_usage).toEqual({ prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 });
+    expect(stored.cost_estimate?.calls?.[0].cache_read_tokens).toBeUndefined();
   });
 });
 

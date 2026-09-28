@@ -577,8 +577,9 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
             prompt_tokens: inputTokens ?? 0,
             completion_tokens: outputTokens ?? 0,
             total_tokens: declaredTotal ?? (inputTokens ?? 0) + (outputTokens ?? 0),
-            ...(cacheRead !== undefined ? { cache_read_tokens: cacheRead } : {}),
-            ...(cacheWrite !== undefined ? { cache_creation_tokens: cacheWrite } : {}),
+            // Only a count that changes the price: a wrapper reports cached_tokens: 0 on every uncached call.
+            ...(cacheRead !== undefined && cacheRead > 0 ? { cache_read_tokens: cacheRead } : {}),
+            ...(cacheWrite !== undefined && cacheWrite > 0 ? { cache_creation_tokens: cacheWrite } : {}),
           }
         : undefined;
     const cost = sumOf(ordered, COST_KEYS);
