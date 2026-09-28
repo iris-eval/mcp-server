@@ -11,6 +11,7 @@ import { generateTraceId, generateSpanId } from '../../utils/ids.js';
 import { bestEffortExport } from '../../otel/lazy.js';
 import { traceQuerySchema, ingestTraceSchema } from '../validation.js';
 import { searchOf } from '../../tools/get-traces.js';
+import { costFieldsOf, resolveTraceCost } from '../../cost/trace-cost.js';
 
 export interface TraceRouteOptions {
   /**
@@ -57,7 +58,8 @@ export function registerTraceRoutes(
       const traceId = generateTraceId();
       const timestamp = body.timestamp ?? new Date().toISOString();
 
-      const trace: Trace = {
+      // Settled before it is stored or scored, exactly as log_trace does (src/cost/trace-cost.ts).
+      const trace: Trace = resolveTraceCost({
         trace_id: traceId,
         agent_name: body.agent_name,
         framework: body.framework,
@@ -80,7 +82,7 @@ export function registerTraceRoutes(
           span_id: s.span_id ?? generateSpanId(),
           trace_id: traceId,
         })),
-      };
+      });
 
       await storage.insertTrace(tenantId, trace);
 
@@ -92,7 +94,7 @@ export function registerTraceRoutes(
       });
 
       if (!body.evaluate || !options?.evalEngine) {
-        res.status(201).json({ trace_id: traceId, status: 'stored' });
+        res.status(201).json({ trace_id: traceId, status: 'stored', ...costFieldsOf(trace) });
         return;
       }
 
@@ -105,7 +107,7 @@ export function registerTraceRoutes(
         dormant: options?.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
         rulesChanged: options?.customRuleStore?.changesSinceStart(tenantId),
       });
-      res.status(201).json({ trace_id: traceId, status: 'stored', evaluation: response });
+      res.status(201).json({ trace_id: traceId, status: 'stored', ...costFieldsOf(trace), evaluation: response });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid trace payload', details: (err as unknown as { issues: unknown }).issues });

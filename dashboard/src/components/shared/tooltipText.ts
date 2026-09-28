@@ -63,8 +63,8 @@ export const TT = {
   avgScore: 'Weighted average eval score across this period (0–1). A quality gradient only; the composer never consults it.',
   totalEvals: 'Number of distinct evaluations recorded — one per evaluate_output call.',
   agentsMonitored: 'Distinct agents that have logged at least one trace this period.',
-  totalCost: 'Sum of trace-level USD cost for this period.',
-  costPerTrace: 'Cost in USD attributed to this single trace by the agent (token usage × model pricing).',
+  totalCost: 'Sum of trace-level USD cost for this period: the costs traces reported, plus the ones Iris estimated (token counts × list price) for traces that reported none. The estimated part is shown as est.',
+  costPerTrace: 'Cost in USD of this single trace: the one it reported, or, marked est., the one Iris estimated from its token counts at list price.',
   latencyMs: 'End-to-end latency the agent reported for this trace.',
   verbosityRatio: 'Output-to-input token ratio. High values may indicate verbose padding.',
 

@@ -79,6 +79,8 @@ export interface EvalStats {
   totalEvals: number;
   safetyViolations: { pii: number; injection: number; hallucination: number };
   totalCost: number;
+  /** The part of totalCost Iris estimated from token counts × list price (cost_source "estimated"). */
+  estimatedCost: number;
   agentCount: number;
   period: EvalStatsPeriod;
 }
@@ -237,7 +239,11 @@ export interface AgentCostRow {
   agent: string;
   traces: number;
   costedTraces: number;
+  /** Of costedTraces, how many carry a cost Iris estimated rather than one the trace reported. */
+  estimatedTraces: number;
   totalCostUsd: number;
+  /** The part of totalCostUsd that was estimated. */
+  estimatedCostUsd: number;
   /** Null when no trace carried a cost. */
   avgCostUsd: number | null;
   maxCostUsd: number | null;
@@ -247,6 +253,8 @@ export interface DashboardSummary {
   total_traces: number;
   avg_latency_ms: number;
   total_cost_usd: number;
+  /** The part of total_cost_usd Iris estimated from token counts × list price (cost_source "estimated"). */
+  estimated_cost_usd: number;
   error_rate: number;
   eval_pass_rate: number;
   traces_per_hour: Array<{ hour: string; count: number }>;

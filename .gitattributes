@@ -35,3 +35,6 @@ packages/iris-eval/** text eol=lf
 
 # The MCPB bundle icon (mcpb/manifest.json): bytes, never a text conversion.
 mcpb/icon.png binary
+
+# SQLite files written by released versions for the migration tests: bytes, never text.
+tests/fixtures/db/*.db binary

@@ -24,6 +24,8 @@ import { labelSentence, reevaluateSentence } from '../evals/labelText';
 import { Badge } from '../shared/Badge';
 import { LatencyDisplay } from '../shared/LatencyDisplay';
 import { CostDisplay } from '../shared/CostDisplay';
+import { Tooltip } from '../shared/Tooltip';
+import type { CostEstimate } from '../../api/types';
 import { CopyableId } from '../shared/CopyableId';
 import { JsonViewer } from '../shared/JsonViewer';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
@@ -32,6 +34,14 @@ import { EmptyState } from '../shared/EmptyState';
 /* Static styling lives in utilities.css (.detail-* block). */
 
 type LabelsByEval = Record<string, Record<string, VerdictLabelValue>>;
+
+/** A short word beside the dash when a trace has no cost; the tooltip carries the server's full sentence. */
+const UNPRICED_LABEL: Record<Extract<CostEstimate, { status: 'unpriced' }>['reason'], string> = {
+  no_tokens: 'no token counts',
+  no_model: 'no model named',
+  unknown_model: 'model not priced',
+  disabled: 'estimates off',
+};
 
 export function TraceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -129,7 +139,17 @@ export function TraceDetailPage() {
           <div><span className="detail-card__label">Agent</span><br /><strong>{trace.agent_name}</strong></div>
           <div><span className="detail-card__label">Framework</span><br />{trace.framework ? <Badge label={trace.framework} /> : '—'}</div>
           <div><span className="detail-card__label">Latency</span><br />{trace.latency_ms != null ? <LatencyDisplay ms={trace.latency_ms} /> : '—'}</div>
-          <div><span className="detail-card__label">Cost</span><br />{trace.cost_usd != null ? <CostDisplay value={trace.cost_usd} /> : '—'}</div>
+          <div>
+            <span className="detail-card__label">Cost</span><br />
+            {trace.cost_usd != null ? (
+              <CostDisplay value={trace.cost_usd} source={trace.cost_source} estimate={trace.cost_estimate} />
+            ) : trace.cost_estimate?.status === 'unpriced' ? (
+              // Why there is no cost — an unknown model, no token counts — in the server's own sentence.
+              <Tooltip content={trace.cost_estimate.message}>
+                <span tabIndex={0} data-cost-unpriced={trace.cost_estimate.reason}>— <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>{UNPRICED_LABEL[trace.cost_estimate.reason]}</span></span>
+              </Tooltip>
+            ) : '—'}
+          </div>
           <div><span className="detail-card__label">Time</span><br />{new Date(trace.timestamp).toLocaleString()}</div>
         </div>
       </section>

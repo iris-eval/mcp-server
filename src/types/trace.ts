@@ -144,6 +144,49 @@ export interface ToolDescriptor {
   _meta?: Record<string, unknown>;
 }
 
+/**
+ * Where a trace's `cost_usd` came from. `reported`: the producer sent it
+ * (`cost_usd`, or a cost attribute on its spans). `estimated`: Iris computed
+ * it at ingest from the trace's token counts and its model's list price,
+ * because the producer sent none (src/cost/trace-cost.ts).
+ */
+export type CostSource = 'reported' | 'estimated';
+
+/** One model call an estimate priced. */
+export interface CostEstimateCall {
+  /** The model id as the trace recorded it. */
+  model: string;
+  /** The pricing-table id it matched (after case, a provider prefix or a dated snapshot). */
+  priced_as: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  input_usd_per_1m: number;
+  output_usd_per_1m: number;
+  cost_usd: number;
+  /** `iris`: the built-in table. `config`: `pricing.models` in config.json. */
+  price_source: 'iris' | 'config';
+  /** The date the price was read: the built-in table's, or `pricing.asOf`; null when the config named none. */
+  price_as_of: string | null;
+}
+
+/**
+ * How an estimated cost was computed, or why a trace has no cost.
+ *
+ * `basis` says which token counts were priced: `token_usage` is the trace's
+ * own counts at its one model; `calls` is each model call at its own model,
+ * used when a trace's calls went to more than one model.
+ */
+export type CostEstimate =
+  | { status: 'estimated'; basis: 'token_usage' | 'calls'; calls: CostEstimateCall[] }
+  | {
+      status: 'unpriced';
+      /** no_tokens: nothing to price. no_model: tokens, but no model named. unknown_model: a model no table prices. disabled: pricing.estimate is false. */
+      reason: 'no_tokens' | 'no_model' | 'unknown_model' | 'disabled';
+      message: string;
+      /** With unknown_model: the ids no table priced. */
+      models?: string[];
+    };
+
 export interface Trace {
   trace_id: string;
   agent_name: string;
@@ -154,6 +197,10 @@ export interface Trace {
   latency_ms?: number;
   token_usage?: TokenUsage;
   cost_usd?: number;
+  /** Where cost_usd came from. Absent when there is no cost. Set by the server, never accepted from a caller. */
+  cost_source?: CostSource;
+  /** How an estimated cost was computed, or why there is none. Absent on a reported cost and on traces stored before 0.20.0. */
+  cost_estimate?: CostEstimate;
   metadata?: Record<string, unknown>;
   timestamp: string;
   created_at?: string;

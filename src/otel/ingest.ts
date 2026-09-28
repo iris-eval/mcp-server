@@ -21,7 +21,9 @@
  *                older `prompt_tokens` / `completion_tokens`, and Iris's
  *                own `iris.*_tokens`), summed over spans
  *   cost         `iris.cost_usd`, `gen_ai.usage.cost`, `llm.usage.total_cost`,
- *                summed
+ *                summed (cost_source "reported"); when no span carries one,
+ *                estimated from each model call's tokens and list price
+ *                (cost_source "estimated", src/cost/trace-cost.ts)
  *   run / case   `iris.run`, `iris.case_key` on the resource or the root
  *   evaluate     `iris.evaluate` (true) and `iris.eval_type` on the resource
  *                or the root: the sender asks for this trace to be scored,
@@ -41,6 +43,8 @@
 import { z } from 'zod';
 import type { Span, SpanKind, SpanStatus, Trace, ToolDescriptor } from '../types/trace.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
+import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
+import { resolveTraceCost } from '../cost/trace-cost.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
 
@@ -312,12 +316,7 @@ function statusOf(code: string | number | undefined): SpanStatus {
  */
 const INPUT_KEYS = ['iris.input', 'gen_ai.input.messages', 'gen_ai.prompt', 'input.value', 'traceloop.entity.input', 'ai.prompt'];
 const OUTPUT_KEYS = ['iris.output', 'gen_ai.output.messages', 'gen_ai.completion', 'output.value', 'traceloop.entity.output', 'ai.response.text'];
-const INPUT_TOKEN_KEYS = ['gen_ai.usage.input_tokens', 'gen_ai.usage.prompt_tokens', 'iris.prompt_tokens', 'llm.token_count.prompt', 'gen_ai.response.prompt_tokens', 'ai.usage.promptTokens'];
-const OUTPUT_TOKEN_KEYS = ['gen_ai.usage.output_tokens', 'gen_ai.usage.completion_tokens', 'iris.completion_tokens', 'llm.token_count.completion', 'gen_ai.response.completion_tokens', 'ai.usage.completionTokens'];
 const TOTAL_TOKEN_KEYS = ['gen_ai.usage.total_tokens', 'iris.total_tokens', 'llm.token_count.total'];
-/** A framework's own whole-run total (Pydantic AI) — when present it is the answer, not one more addend. */
-const AGGREGATED_INPUT_KEYS = ['gen_ai.aggregated_usage.input_tokens'];
-const AGGREGATED_OUTPUT_KEYS = ['gen_ai.aggregated_usage.output_tokens'];
 const COST_KEYS = ['iris.cost_usd', 'gen_ai.usage.cost', 'llm.usage.total_cost'];
 const AGENT_NAME_KEYS = ['gen_ai.agent.name'];
 const MODEL_KEYS = ['gen_ai.request.model', 'gen_ai.response.model', 'llm.model_name', 'llm.request.model', 'ai.model.id'];
@@ -626,7 +625,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       source: 'otel',
     };
     traces.push({
-      trace,
+      // Priced here, so the route stores and scores the trace with its cost settled (src/cost/trace-cost.ts).
+      trace: resolveTraceCost(trace),
       otelTraceId,
       lacked,
       // A boolean true, or the string "true" from an exporter that only writes strings.

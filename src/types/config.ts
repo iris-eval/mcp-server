@@ -20,6 +20,13 @@ export interface WebhookConfig {
   timeoutMs?: number;
 }
 
+/** One model priced in `config.json` under `pricing.models`, in USD per 1M tokens. */
+export interface ConfiguredModelPrice {
+  model: string;
+  inputUsdPer1M: number;
+  outputUsdPer1M: number;
+}
+
 export interface IrisConfig {
   storage: {
     type: 'sqlite';
@@ -169,6 +176,24 @@ export interface IrisConfig {
   };
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
+  };
+  /**
+   * The price a trace's cost is estimated at when the trace reports none
+   * (src/cost/). A reported cost is never replaced; an estimate is stored
+   * with `cost_source: "estimated"` and the prices it used.
+   */
+  pricing: {
+    /** Estimate a cost from token counts × list price when a trace reports none. Default true. */
+    estimate: boolean;
+    /**
+     * Models to price beyond the built-in table, or at another price than it
+     * lists (a negotiated rate, a deployment name, a model Iris does not
+     * price). Matched on the id the trace records, ignoring case. An entry
+     * here wins over the built-in table.
+     */
+    models: ConfiguredModelPrice[];
+    /** The date the prices in `models` were read (YYYY-MM-DD), shown beside an estimate that used them. */
+    asOf?: string;
   };
   /** Outbound notifications. `webhook: null` (the default) sends nothing. */
   notify: {

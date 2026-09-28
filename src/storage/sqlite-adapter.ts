@@ -56,6 +56,7 @@ import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, dropRetiredIndex, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, readSpanText, indexCjk, indexCjkPending, cjkIndexed, BM25_WEIGHTS, CJK_BM25_WEIGHTS, CJK_TABLE, CJK_PENDING_TABLE, SEARCH_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, toFtsQuery, describeTerm, buildMatch, matchesTrace, searchableText, spansMayMatch, hasCjk, mayHoldCjk, toCjkFtsQuery, type ParsedSearch } from './search.js';
+import { resolveTraceCost } from '../cost/trace-cost.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
 
@@ -419,8 +420,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertSpanStmt = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
@@ -429,7 +430,13 @@ export class SqliteAdapter implements IStorageAdapter {
 
 
     /** Inserts the trace and its spans; whether any of its text could hold CJK (search-index.ts, the CJK stream). */
-    const insertOne = (t: Trace): boolean => {
+    const insertOne = (raw: Trace): boolean => {
+      /*
+       * The cost settled on write. Every door settles it before it stores
+       * (so its evaluation reads the same number); this is the backstop for
+       * a door that does not, and a no-op on a trace already settled.
+       */
+      const t = resolveTraceCost(raw);
       const toolCalls = t.tool_calls ? JSON.stringify(t.tool_calls) : null;
       const metadata = t.metadata ? JSON.stringify(t.metadata) : null;
       let cjk = mayHoldCjk(t.input) || mayHoldCjk(t.output) || mayHoldCjk(toolCalls) || mayHoldCjk(metadata);
@@ -460,6 +467,8 @@ export class SqliteAdapter implements IStorageAdapter {
         resolveCaseKey(t.case_key, t.input),
         t.source ?? null,
         t.session_id ?? null,
+        t.cost_source ?? null,
+        t.cost_estimate ? JSON.stringify(t.cost_estimate) : null,
       );
 
       if (t.spans) {
@@ -1066,7 +1075,9 @@ export class SqliteAdapter implements IStorageAdapter {
         `SELECT agent_name,
                 COUNT(*)                     AS traces,
                 COUNT(cost_usd)              AS costed,
+                COUNT(CASE WHEN cost_source = 'estimated' THEN 1 END) AS estimated,
                 COALESCE(SUM(cost_usd), 0)   AS total,
+                COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) AS estimated_total,
                 AVG(cost_usd)                AS avg,
                 MAX(cost_usd)                AS max
            FROM traces
@@ -1075,12 +1086,14 @@ export class SqliteAdapter implements IStorageAdapter {
           ORDER BY total DESC, agent_name ASC
           LIMIT ?`,
       )
-      .all(tenantId, since, since, limit) as Array<{ agent_name: string; traces: number; costed: number; total: number; avg: number | null; max: number | null }>;
+      .all(tenantId, since, since, limit) as Array<{ agent_name: string; traces: number; costed: number; estimated: number; total: number; estimated_total: number; avg: number | null; max: number | null }>;
     return rows.map((r) => ({
       agent: r.agent_name,
       traces: r.traces,
       costedTraces: r.costed,
+      estimatedTraces: r.estimated,
       totalCostUsd: Math.round(r.total * 1e6) / 1e6,
+      estimatedCostUsd: Math.round(r.estimated_total * 1e6) / 1e6,
       avgCostUsd: r.avg === null ? null : Math.round(r.avg * 1e6) / 1e6,
       maxCostUsd: r.max,
     }));
@@ -1361,9 +1374,10 @@ export class SqliteAdapter implements IStorageAdapter {
       SELECT
         COUNT(*) as total_traces,
         COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
-        COALESCE(SUM(cost_usd), 0) as total_cost_usd
+        COALESCE(SUM(cost_usd), 0) as total_cost_usd,
+        COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) as estimated_cost_usd
       FROM traces WHERE tenant_id = ? AND timestamp >= ?
-    `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number };
+    `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number; estimated_cost_usd: number };
 
     const errorCount = this.db.prepare(`
       SELECT COUNT(DISTINCT t.trace_id) as count
@@ -1395,6 +1409,7 @@ export class SqliteAdapter implements IStorageAdapter {
       total_traces: stats.total_traces,
       avg_latency_ms: Math.round(stats.avg_latency_ms * 100) / 100,
       total_cost_usd: Math.round(stats.total_cost_usd * 10000) / 10000,
+      estimated_cost_usd: Math.round(stats.estimated_cost_usd * 10000) / 10000,
       error_rate: stats.total_traces > 0 ? errorCount.count / stats.total_traces : 0,
       eval_pass_rate: evalStats.total > 0 ? evalStats.passed_count / evalStats.total : 0,
       traces_per_hour: tracesPerHour,
@@ -1451,10 +1466,11 @@ export class SqliteAdapter implements IStorageAdapter {
     `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
 
     const cost = this.db.prepare(`
-      SELECT COALESCE(SUM(cost_usd), 0) AS total_cost
+      SELECT COALESCE(SUM(cost_usd), 0) AS total_cost,
+             COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) AS estimated_cost
       FROM traces
       WHERE tenant_id = ? AND timestamp >= ?
-    `).get(tenantId, since) as { total_cost: number };
+    `).get(tenantId, since) as { total_cost: number; estimated_cost: number };
 
     const agents = this.db.prepare(`
       SELECT COUNT(DISTINCT agent_name) AS agent_count
@@ -1512,6 +1528,7 @@ export class SqliteAdapter implements IStorageAdapter {
       totalEvals: agg.total_evals,
       safetyViolations: violations,
       totalCost: Math.round(cost.total_cost * 10000) / 10000,
+      estimatedCost: Math.round(cost.estimated_cost * 10000) / 10000,
       agentCount: agents.agent_count,
       period,
     };
@@ -2060,6 +2077,13 @@ export class SqliteAdapter implements IStorageAdapter {
       case_key: (row.case_key as string | null) ?? undefined,
       ...(row.session_id != null ? { session_id: row.session_id as string } : {}),
       ...(row.source != null ? { source: row.source as Trace['source'] } : {}),
+      /*
+       * A cost stored before migration 016 has no source column value, and
+       * was reported: no version before 0.20.0 estimated one. Read so,
+       * rather than rewritten at upgrade (016 says why).
+       */
+      ...(row.cost_source != null ? { cost_source: row.cost_source as Trace['cost_source'] } : row.cost_usd != null ? { cost_source: 'reported' as const } : {}),
+      ...(row.cost_estimate != null ? { cost_estimate: JSON.parse(row.cost_estimate as string) as Trace['cost_estimate'] } : {}),
     };
   }
 

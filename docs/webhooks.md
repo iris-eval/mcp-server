@@ -94,7 +94,7 @@ x-iris-event: detector_veto
 }
 ```
 
-The body carries ids, the verdict, the rules and the numbers — **never the agent's input or output**. A receiver that wants the text reads the trace by id through `GET /api/v1/traces/:id`, with the same key as any other read; nothing leaves the box on the webhook that the dashboard's own redaction and retention do not govern. `detail` is the event's own numbers: the alarm (`p0`, `monitoredN`, `monitoredFails`, `h`, `statistic`), the anomaly (`cost_usd`, `modified_z`, `threshold`), the case's tally (`attempts`, `passed`, `runs`).
+The body carries ids, the verdict, the rules and the numbers — **never the agent's input or output**. A receiver that wants the text reads the trace by id through `GET /api/v1/traces/:id`, with the same key as any other read; nothing leaves the box on the webhook that the dashboard's own redaction and retention do not govern. `detail` is the event's own numbers: the alarm (`p0`, `monitoredN`, `monitoredFails`, `h`, `statistic`), the anomaly (`cost_usd`, `cost_source` — `reported`, or `estimated` when Iris priced the trace's tokens because it sent no cost — `modified_z`, `threshold`), the case's tally (`attempts`, `passed`, `runs`).
 
 ### Verify it
 

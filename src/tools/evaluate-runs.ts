@@ -11,6 +11,7 @@ import { guarded, respond } from './respond.js';
 import { irisError } from './errors.js';
 import { insertLinkedEvalResult } from './trace-link.js';
 import type { RuleChangesSinceStart } from '../custom-rule-store.js';
+import { costContextOf } from '../eval/cost-basis.js';
 
 /*
  * Score a run again under today's rules.
@@ -154,7 +155,7 @@ export function registerEvaluateRunsTool(
         const result = await evalEngine.evaluateAll({
           output: trace.output,
           input: trace.input,
-          costUsd: trace.cost_usd,
+          ...costContextOf(trace),
           costHistory: await costHistoryFor(storage, LOCAL_TENANT, trace),
           tokenUsage: trace.token_usage,
           toolCalls: trace.tool_calls,

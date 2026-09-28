@@ -65,6 +65,36 @@ export const MODEL_PRICING: readonly ModelPricing[] = [
   { provider: 'openai', model: 'o1-mini', inputUsdPer1M: 3, outputUsdPer1M: 12, retired: '2026-09-20' },
 ] as const;
 
+/**
+ * Dated snapshot ids that ARE a priced model, each mapped to its row above.
+ *
+ * Used only to price a trace's recorded model (src/cost/model-lookup.ts),
+ * never by the judge, which calls the id it was given. A snapshot is listed
+ * here only when the provider prices it the same as the row it maps to, so
+ * no date is ever stripped by rule: gpt-4o-2024-05-13 is deliberately
+ * absent because OpenAI priced it at $5 / $15, not gpt-4o's $2.50 / $10, and
+ * a rule that dropped the date would have priced it at half. A snapshot not
+ * listed is reported as an unknown model, never guessed. Each pair was read
+ * from the model's own page (its snapshot list and price) on the provider's
+ * docs on 2026-09-28. From the 4.6 generation on, Anthropic's ids carry no
+ * date, so they need no entry. A fine-tuned id (`ft:gpt-4o-mini-2024-07-18:...`)
+ * is priced differently and matches nothing here.
+ */
+export const MODEL_SNAPSHOTS: Readonly<Record<string, string>> = {
+  // OpenAI
+  'gpt-5-2025-08-07': 'gpt-5',
+  'gpt-5-mini-2025-08-07': 'gpt-5-mini',
+  'gpt-4.1-mini-2025-04-14': 'gpt-4.1-mini',
+  'gpt-4o-2024-08-06': 'gpt-4o',
+  'gpt-4o-2024-11-20': 'gpt-4o',
+  'gpt-4o-mini-2024-07-18': 'gpt-4o-mini',
+  'o4-mini-2025-04-16': 'o4-mini',
+  'o3-mini-2025-01-31': 'o3-mini',
+  // Anthropic
+  'claude-sonnet-4-5-20250929': 'claude-sonnet-4-5',
+  'claude-opus-4-5-20251101': 'claude-opus-4-5',
+};
+
 export function findPricing(model: string): ModelPricing | null {
   return MODEL_PRICING.find((p) => p.model === model) ?? null;
 }

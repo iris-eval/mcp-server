@@ -244,6 +244,48 @@ describe('a11y · TraceDetailPage', () => {
     expect(results.violations).toEqual([]);
   });
 
+  it('an estimated cost is marked est., and a trace with no cost says why, with no violations', async () => {
+    useTraceDetailMock.mockReturnValue({
+      data: {
+        ...traceFixture,
+        trace: {
+          ...traceFixture.trace,
+          cost_usd: 0.0285,
+          cost_source: 'estimated',
+          cost_estimate: {
+            status: 'estimated',
+            basis: 'token_usage',
+            calls: [{ model: 'gpt-4o-mini', priced_as: 'gpt-4o-mini', prompt_tokens: 150000, completion_tokens: 10000, input_usd_per_1m: 0.15, output_usd_per_1m: 0.6, cost_usd: 0.0285, price_source: 'iris', price_as_of: '2026-09-25' }],
+          },
+        },
+      },
+      loading: false,
+      error: null,
+    });
+    const estimated = renderTrace(<TraceDetailPage />);
+    expect(estimated.querySelector('[data-cost-estimated]')?.textContent).toBe('est.');
+    expect((await axe(estimated)).violations).toEqual([]);
+    estimated.remove();
+
+    useTraceDetailMock.mockReturnValue({
+      data: {
+        ...traceFixture,
+        trace: {
+          ...traceFixture.trace,
+          cost_usd: undefined,
+          cost_estimate: { status: 'unpriced', reason: 'unknown_model', message: 'No cost: the model "gemini-2.5-flash" is not in Iris\'s pricing table (as of 2026-09-25).', models: ['gemini-2.5-flash'] },
+        },
+      },
+      loading: false,
+      error: null,
+    });
+    const unpriced = renderTrace(<TraceDetailPage />);
+    const why = unpriced.querySelector('[data-cost-unpriced="unknown_model"]');
+    expect(why?.textContent).toBe('— model not priced');
+    expect(unpriced.querySelector('[data-cost-estimated]')).toBeNull();
+    expect((await axe(unpriced)).violations).toEqual([]);
+  });
+
   it('every section has aria-labelledby pointing to an h2 id', () => {
     useTraceDetailMock.mockReturnValue({
       data: traceFixture,

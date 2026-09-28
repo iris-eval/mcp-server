@@ -81,6 +81,8 @@ export interface DecisionMoment {
   output?: string;
   /** Trace-level cost in USD. */
   costUsd?: number;
+  /** Where costUsd came from: `reported` by the trace, or `estimated` by Iris from its token counts × list price. */
+  costSource?: 'reported' | 'estimated';
   /** Trace-level end-to-end latency. */
   latencyMs?: number;
   /** Aggregated eval verdict across all eval_types that ran on this trace. */

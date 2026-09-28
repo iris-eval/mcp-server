@@ -113,6 +113,8 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
         summary: anomaly.message,
         detail: {
           cost_usd: anomaly.value?.value ?? trace?.cost_usd ?? null,
+          // reported (the trace sent it) or estimated (Iris priced its tokens); the summary says so too.
+          cost_source: trace?.cost_source ?? null,
           modified_z: z && 'value' in z ? z.value : null,
           threshold: z && 'threshold' in z ? z.threshold : null,
         },

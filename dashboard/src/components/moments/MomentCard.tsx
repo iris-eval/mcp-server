@@ -5,6 +5,7 @@ import { formatCost, formatLatency, formatTimeAgo } from '../../utils/formatters
 import { getSignificanceVisual, getVerdictVisual } from './significance';
 import { Tooltip } from '../shared/Tooltip';
 import { TT } from '../shared/tooltipText';
+import { EstimatedMark } from '../shared/CostDisplay';
 
 /* Map significance kind → tooltip text. */
 const SIG_TOOLTIP: Record<string, string> = {
@@ -135,6 +136,9 @@ export function MomentCard({
           <Tooltip content={TT.costPerTrace}>
             <span tabIndex={0}>{formatCost(moment.costUsd)}</span>
           </Tooltip>
+        )}
+        {moment.costUsd != null && moment.costSource === 'estimated' && (
+          <EstimatedMark />
         )}
         {moment.latencyMs != null && (
           <Tooltip content={TT.latencyMs}>

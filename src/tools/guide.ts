@@ -82,7 +82,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       custom_rules:
         'Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight, severity — an unknown key is rejected',
       cost_usd:
-        'Cost in USD — consulted by the cost bundle (eval_type="cost" or "all") AND by any cost_threshold custom rule regardless of eval_type; omit it and such a rule skips rather than passes (a critical one is listed in critical_skipped)',
+        'Cost in USD — consulted by the cost bundle (eval_type="cost" or "all") AND by any cost_threshold custom rule regardless of eval_type; omitted, the cost stored on trace_id is used (reported, or estimated at ingest from token counts × list price, and the rule says which), else such a rule skips rather than passes (a critical one is listed in critical_skipped)',
       tools:
         'What the agent COULD have called — your MCP tools/list result, pasted verbatim. Needed to judge whether a call carried valid arguments; without it the rules that check that SKIP rather than pass. Loaded from the trace when trace_id names one that carries it',
       tool_calls:

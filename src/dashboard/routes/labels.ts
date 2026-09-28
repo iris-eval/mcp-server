@@ -28,6 +28,7 @@ import { builtInRules } from '../../eval/criticality.js';
 import { costHistoryFor } from '../../eval/ingest.js';
 import { toEvaluationResponse } from '../../eval/response.js';
 import { insertLinkedEvalResult } from '../../tools/trace-link.js';
+import { costContextOf } from '../../eval/cost-basis.js';
 
 const LabelBody = strictBody({
   eval_id: z.string().min(1).max(200),
@@ -208,7 +209,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       output: trace.output,
       input: trace.input,
       expected: before.expected_text,
-      costUsd: trace.cost_usd,
+      ...costContextOf(trace),
       costHistory: await costHistoryFor(storage, tenantId, trace),
       tokenUsage: trace.token_usage,
       toolCalls: trace.tool_calls,

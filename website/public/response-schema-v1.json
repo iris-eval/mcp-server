@@ -876,6 +876,13 @@
                         "call",
                         "rule"
                       ]
+                    },
+                    "costSource": {
+                      "type": "string",
+                      "enum": [
+                        "reported",
+                        "estimated"
+                      ]
                     }
                   },
                   "required": [
