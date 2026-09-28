@@ -199,12 +199,50 @@ describe.each(DRIVERS)('the %s driver keeps its statements', (driver) => {
     expect(read.all()).toEqual([{ a: 1, b: 'y' }]);
   });
 
-  it('close forgets the statements', () => {
+  it('two connections in one process never share a statement: each reads its own file', () => {
+    const one = openHere();
+    const two = openHere();
+    one.exec('CREATE TABLE t (a TEXT); INSERT INTO t VALUES (\'one\')');
+    two.exec('CREATE TABLE t (a TEXT); INSERT INTO t VALUES (\'two\')');
+    const a = one.prepare('SELECT a FROM t');
+    const b = two.prepare('SELECT a FROM t');
+    expect(a).not.toBe(b);
+    expect(a.all()).toEqual([{ a: 'one' }]);
+    expect(b.all()).toEqual([{ a: 'two' }]);
+    expect(one.prepare('SELECT a FROM t').get()).toEqual({ a: 'one' });
+  });
+
+  it('after close, prepare throws the driver module\'s own closed-connection error, never a kept statement', () => {
+    // What the module itself says when asked to prepare on a closed connection.
+    const expected = (() => {
+      const raw = driver === 'native' ? new (require('better-sqlite3') as new (p: string) => { prepare(s: string): unknown; close(): void })(':memory:') : new (require('node:sqlite') as { DatabaseSync: new (p: string) => { prepare(s: string): unknown; close(): void } }).DatabaseSync(':memory:');
+      raw.close();
+      try {
+        raw.prepare('SELECT 1');
+      } catch (err) {
+        return (err as Error).message;
+      }
+      throw new Error('the module prepared on a closed connection');
+    })();
     const d = openDriver(tempDb(), { driver });
     d.exec('CREATE TABLE t (a INTEGER)');
     const read = d.prepare('SELECT a FROM t');
+    expect(read.all()).toEqual([]);
     d.close();
+    expect(() => d.prepare('SELECT a FROM t')).toThrow(expected);
+    expect(() => d.prepare('SELECT a FROM t')).toThrow(expected);
+    // A statement taken before the close fails too; it is never handed out again.
     expect(() => read.all()).toThrow();
+  });
+
+  it('a store used after close rejects with the same closed-connection error', async () => {
+    const store = new SqliteAdapter(tempDb(), { driver });
+    await store.initialize();
+    await store.insertTrace(LOCAL_TENANT, { trace_id: 't1', agent_name: 'a', output: 'An answer.', timestamp: '2026-09-01T00:00:00.000Z' });
+    expect((await store.getTrace(LOCAL_TENANT, 't1'))?.trace_id).toBe('t1');
+    await store.close();
+    await expect(store.getTrace(LOCAL_TENANT, 't1')).rejects.toThrow(driver === 'native' ? /database connection is not open/ : /database is not open/);
+    await expect(store.getAgentFailureLog(LOCAL_TENANT, 'a')).rejects.toThrow(driver === 'native' ? /database connection is not open/ : /database is not open/);
   });
 });
 

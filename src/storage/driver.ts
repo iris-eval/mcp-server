@@ -414,9 +414,12 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
     return now;
   };
   const statements = statementCache((sql) => {
-    const preparedAgainst = currentSchema();
+    // Prepared first: on a closed connection this throws the driver's own "database is not open".
     let st = db.prepare(sql);
-    let preparedAt = preparedAgainst;
+    const loadedBefore = loaded;
+    let preparedAt = currentSchema();
+    // The schema moved under that prepare: compile again against the one just loaded.
+    if (preparedAt !== loadedBefore) st = db.prepare(sql);
     const current = (): NodeStatement => {
       const now = currentSchema();
       if (now !== preparedAt) {
