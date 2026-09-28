@@ -14,7 +14,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
-import { LOCAL_TENANT } from '../../../src/types/tenant.js';
+import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
@@ -190,23 +190,91 @@ describe('the CJK stream stays exact', () => {
     assertIndexHealthy(next);
   });
 
-  it('leaves none of a deleted trace’s CJK words in iris.db or iris.db-wal', async () => {
+  /*
+   * The CJK stream keeps, for each CJK trace, the text its row was given:
+   * a copy derived from the trace's own text. It must leave the file with
+   * the trace on every route, as the trace's row and its index words do.
+   * Each route below starts with the secret on disk, in the index and in
+   * the stored text, and must end with none of its characters' pieces in
+   * iris.db or iris.db-wal.
+   */
+  const secret = '鼗鼙鼛鼜';
+  const pieces = [secret, '鼗鼙', '鼙鼛', '鼛鼜'];
+  const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
+  async function withSecret(extra: Partial<Trace> = {}, tenant = LOCAL_TENANT) {
     const path = tempDb();
     const s = await adapter(path);
-    // A word found nowhere else: rare characters, so neither the file's other pages nor the rest of the corpus hold it.
-    const word = '鼗鼙鼛鼜';
-    await s.insertTraces(LOCAL_TENANT, [trace('zh9', `密码是${word}不要外传`), ...corpus]);
+    await s.insertTraces(tenant, [trace('zh9', `密码是${secret}不要外传`, extra)]);
+    await s.insertTraces(LOCAL_TENANT, corpus);
     await s.checkpoint();
-    const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
-    // Anti-theater: its bigram is on disk, in the stream and the stored text.
     expect(holds(path, '鼗鼙')).toBe(true);
-    expect(await s.deleteTrace(LOCAL_TENANT, 'zh9')).toBe(true);
+    const stored = dbOf(s).prepare("SELECT output FROM trace_search_cjk_docs WHERE output LIKE '%鼗鼙%'").all();
+    expect(stored).toHaveLength(1);
+    return { s, path };
+  }
+  async function assertErased(s: SqliteAdapter, path: string) {
     await s.checkpoint();
-    for (const needle of [word, '鼗鼙', '鼙鼛', '鼛鼜']) {
-      expect(holds(path, needle)).toBe(false);
-      expect(holds(`${path}-wal`, needle)).toBe(false);
+    for (const needle of pieces) {
+      expect(holds(path, needle), needle).toBe(false);
+      expect(holds(`${path}-wal`, needle), needle).toBe(false);
     }
+    expect(dbOf(s).prepare('SELECT COUNT(*) AS n FROM trace_search_cjk_docs d LEFT JOIN trace_search_docs x ON x.doc_id = d.doc_id WHERE x.doc_id IS NULL').get()).toEqual({ n: 0 });
+    assertIndexHealthy(s);
+  }
+
+  it('erases a CJK trace’s stored stream with delete_trace', async () => {
+    const { s, path } = await withSecret();
+    expect(await s.deleteTrace(LOCAL_TENANT, 'zh9')).toBe(true);
+    await assertErased(s, path);
     expect(await ids(s, '批准')).toEqual(['zh1']);
+  });
+
+  it('erases it with a DELETE nobody wrote an index update for', async () => {
+    const { s, path } = await withSecret();
+    dbOf(s).prepare("DELETE FROM traces WHERE trace_id = 'zh9'").run();
+    await assertErased(s, path);
+  });
+
+  it('erases it with a retention sweep large enough to rewrite both indexes', async () => {
+    // The secret and two more are old; more than 1 in 125 of the index goes, so the sweep rewrites the index once (search-index.ts, bulkIndexDelete).
+    const { s, path } = await withSecret({ timestamp: '2020-01-01T00:00:00.000Z' });
+    await s.insertTraces(LOCAL_TENANT, [trace('old1', '旧的记录一', { timestamp: '2020-01-02T00:00:00.000Z' }), trace('old2', '旧的记录二', { timestamp: '2020-01-03T00:00:00.000Z' })]);
+    await s.checkpoint();
+    expect(await s.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(3);
+    await assertErased(s, path);
+    expect(await ids(s, '批准')).toEqual(['zh1']);
+  });
+
+  it('erases it with --purge of the tenant that holds it, and keeps the other tenant’s CJK searchable', async () => {
+    const { s, path } = await withSecret({}, asTenantId('acme'));
+    await s.purge(asTenantId('acme'));
+    await assertErased(s, path);
+    expect(await ids(s, '批准')).toEqual(['zh1']);
+  });
+
+  it('erases every stream with --purge of the last tenant, which empties both indexes outright', async () => {
+    const path = tempDb();
+    const s = await adapter(path);
+    await s.insertTraces(LOCAL_TENANT, [trace('zh9', `密码是${secret}不要外传`), ...corpus]);
+    await s.checkpoint();
+    expect(holds(path, '鼗鼙')).toBe(true);
+    await s.purge(LOCAL_TENANT);
+    await assertErased(s, path);
+    expect(dbOf(s).prepare('SELECT (SELECT COUNT(*) FROM trace_search_cjk_docs) AS docs, (SELECT COUNT(*) FROM trace_search_cjk_pending) AS pending').get()).toEqual({ docs: 0, pending: 0 });
+  });
+
+  it('erases the old stream when the metadata patch replaces a trace’s CJK text', async () => {
+    const { s, path } = await withSecret();
+    await s.updateTraceMetadata(LOCAL_TENANT, 'zh9', { note: 'escalated' });
+    // The output still holds the secret: the stream is rebuilt from it, so its pieces stay; the note's replaced text does not.
+    await s.updateTraceMetadata(LOCAL_TENANT, 'zh1', { note: `备注${'鼝鼞'}` });
+    await s.checkpoint();
+    expect(holds(path, '鼝鼞')).toBe(true);
+    await s.updateTraceMetadata(LOCAL_TENANT, 'zh1', { note: 'plain' });
+    await s.checkpoint();
+    expect(holds(path, '鼝鼞')).toBe(false);
+    expect(holds(`${path}-wal`, '鼝鼞')).toBe(false);
+    assertIndexHealthy(s);
   });
 
   it('an index built before the CJK stream keeps its words, and streams its CJK traces at the next start', async () => {

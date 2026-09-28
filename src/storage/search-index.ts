@@ -17,7 +17,12 @@
  *                      second copy would be a second place the text of a
  *                      deleted trace could survive, and would double the
  *                      file. The snippet is built from the trace row the
- *                      query returns anyway (search.ts).
+ *                      query returns anyway (search.ts). The one exception
+ *                      is CJK text (below, the CJK stream): for a trace
+ *                      that holds Chinese, Japanese or Korean, the pieces
+ *                      that index it are kept beside it, because a trigger
+ *                      cannot rebuild them; they leave with the trace on
+ *                      every route and their pages are zeroed.
  *   idx_traces_search_filter
  *                      a covering index for the join back to traces; see
  *                      SEARCH_FILTER_INDEX below.
