@@ -555,7 +555,11 @@ async function main(): Promise<void> {
     logger.warn('HTTP transport running without API key authentication — set IRIS_API_KEY (or IRIS_API_KEY_FILE) for production');
   }
 
+  let shuttingDown = false;
   const shutdown = async () => {
+    // A signal after the client closed stdin (or a second Ctrl+C) must not close the store twice.
+    if (shuttingDown) return;
+    shuttingDown = true;
     logger.info('Shutting down gracefully...');
 
     const closePromises = httpServers.map(
@@ -575,6 +579,19 @@ async function main(): Promise<void> {
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  /*
+   * An MCP client ends a stdio session by closing the server's stdin, and
+   * only signals it if it has not exited a moment later. With nothing else
+   * serving, the process used to drain and exit without closing the store,
+   * and a search-index build kept running for a client that had gone (1.5 s
+   * on 80,000 traces, measured). Now the end of stdin is a shutdown: the
+   * build stops at its next step and the store is closed in order.
+   * With the dashboard up, stdin ending (a server started with </dev/null)
+   * is not the end of the process, as before.
+   */
+  if (config.transport.type !== 'http' && httpServers.length === 0) {
+    process.stdin.once('end', () => void shutdown());
+  }
 }
 
 function printDemoBanner(summary: SeedDemoDataSummary, url: string): void {
