@@ -40,6 +40,8 @@ export interface PriceMatch {
   /** Null when the price came from config.json and it named none. */
   cacheReadUsdPer1M: number | null;
   cacheWriteUsdPer1M: number | null;
+  /** Null when the table has no 1-hour write price for the model. */
+  cacheWrite1hUsdPer1M: number | null;
   source: 'iris' | 'config';
   asOf: string | null;
 }
@@ -99,6 +101,7 @@ export function priceModel(model: string, using: PricingSettings = settings): Pr
         outputUsdPer1M: configured.outputUsdPer1M,
         cacheReadUsdPer1M: configured.cacheReadUsdPer1M ?? null,
         cacheWriteUsdPer1M: configured.cacheWriteUsdPer1M ?? null,
+        cacheWrite1hUsdPer1M: configured.cacheWrite1hUsdPer1M ?? null,
         source: 'config',
         asOf: using.asOf ?? null,
       };
@@ -114,6 +117,7 @@ export function priceModel(model: string, using: PricingSettings = settings): Pr
     outputUsdPer1M: row.outputUsdPer1M,
     cacheReadUsdPer1M: row.cacheReadUsdPer1M,
     cacheWriteUsdPer1M: row.cacheWriteUsdPer1M,
+    cacheWrite1hUsdPer1M: row.cacheWrite1hUsdPer1M ?? null,
     source: 'iris',
     asOf: PRICING_SOURCED_ON,
   };

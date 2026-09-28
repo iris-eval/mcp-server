@@ -9,7 +9,7 @@
  * hand from the table:
  *
  *   gpt-4o-mini       $0.15 input, $0.075 cache read, $0.60 output per 1M
- *   claude-sonnet-5   $2 input, $0.20 cache read, $2.50 cache write (5 min), $10 output
+ *   claude-sonnet-5   $2 input, $0.20 cache read, $2.50 cache write (5 min), $4 (1 hour), $10 output
  *
  * Then the other shapes a sender uses: OpenInference's prompt details, the
  * underscore attribute names that report Anthropic's cache counts beside the
@@ -149,16 +149,71 @@ describe('Anthropic cache reads and writes, as wrapAnthropic records them', () =
         role: 'assistant',
         content: [{ type: 'text', text: 'The report says revenue grew.' }],
         stop_reason: 'end_turn',
-        usage: { input_tokens: 2_000, output_tokens: 1_000, cache_read_input_tokens: 100_000, cache_creation_input_tokens: 20_000 },
+        usage: {
+          input_tokens: 2_000,
+          output_tokens: 1_000,
+          cache_read_input_tokens: 100_000,
+          cache_creation_input_tokens: 20_000,
+          cache_creation: { ephemeral_5m_input_tokens: 20_000, ephemeral_1h_input_tokens: 0 },
+        },
       },
     });
-    // The wrapper folds Anthropic's separate counts into the conventions' input count.
-    expect(attrs).toMatchObject({ 'gen_ai.usage.input_tokens': 122_000, 'gen_ai.usage.cache_read.input_tokens': 100_000, 'gen_ai.usage.cache_creation.input_tokens': 20_000 });
+    // The wrapper folds Anthropic's separate counts into the conventions' input count, and carries the write lifetimes.
+    expect(attrs).toMatchObject({
+      'gen_ai.usage.input_tokens': 122_000,
+      'gen_ai.usage.cache_read.input_tokens': 100_000,
+      'gen_ai.usage.cache_creation.input_tokens': 20_000,
+      'iris.usage.cache_creation.ephemeral_1h_input_tokens': 0,
+    });
     const stored = await send(base, attrs);
     // 2,000 × $2 + 100,000 × $0.20 + 20,000 × $2.50 + 1,000 × $10 per 1M = $0.004 + $0.02 + $0.05 + $0.01
     expect(stored.cost_usd).toBeCloseTo(0.084, 12);
     expect(stored.cost_estimate?.calls?.[0]).toMatchObject({ prompt_tokens: 122_000, cache_read_tokens: 100_000, cache_creation_tokens: 20_000, cache_read_usd_per_1m: 0.2, cache_write_usd_per_1m: 2.5 });
     expect(stored.cost_estimate?.notes).toBeUndefined();
+  });
+
+  it('1-hour cache writes at the 1-hour price: $0.1065 where every write at the 5-minute price gave $0.084', async () => {
+    const base = await dashboard();
+    const attrs = wrapped({
+      api: 'messages',
+      request: { model: 'claude-sonnet-5', max_tokens: 2000, messages: [{ role: 'user', content: 'Summarise the report.' }] },
+      response: {
+        id: 'msg_2',
+        model: 'claude-sonnet-5',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'The report says revenue grew.' }],
+        stop_reason: 'end_turn',
+        usage: {
+          input_tokens: 2_000,
+          output_tokens: 1_000,
+          cache_read_input_tokens: 100_000,
+          cache_creation_input_tokens: 20_000,
+          cache_creation: { ephemeral_5m_input_tokens: 5_000, ephemeral_1h_input_tokens: 15_000 },
+        },
+      },
+    });
+    expect(attrs).toMatchObject({ 'iris.usage.cache_creation.ephemeral_1h_input_tokens': 15_000 });
+    const stored = await send(base, attrs);
+    // 2,000 × $2 + 100,000 × $0.20 + 5,000 × $2.50 + 15,000 × $4 + 1,000 × $10 per 1M = $0.004 + $0.02 + $0.0125 + $0.06 + $0.01
+    expect(stored.cost_usd).toBeCloseTo(0.1065, 12);
+    expect(stored.cost_estimate?.calls?.[0]).toMatchObject({ cache_creation_tokens: 20_000, cache_creation_1h_tokens: 15_000, cache_write_usd_per_1m: 2.5, cache_write_1h_usd_per_1m: 4 });
+    expect(stored.cost_estimate?.notes).toBeUndefined();
+  });
+
+  it('cache writes without the lifetime split are priced as 5-minute writes, and the estimate says so', async () => {
+    const base = await dashboard();
+    const stored = await send(base, {
+      'gen_ai.request.model': 'claude-sonnet-5',
+      'gen_ai.usage.input_tokens': 122_000,
+      'gen_ai.usage.output_tokens': 1_000,
+      'gen_ai.usage.cache_read.input_tokens': 100_000,
+      'gen_ai.usage.cache_creation.input_tokens': 20_000,
+      'gen_ai.completion': 'The report says revenue grew.',
+    });
+    expect(stored.cost_usd).toBeCloseTo(0.084, 12);
+    expect(stored.cost_estimate?.notes).toEqual([
+      'claude-sonnet-5: 20,000 cache-write tokens are priced as 5-minute writes; the trace does not say how many had a 1-hour lifetime, which costs more.',
+    ]);
   });
 
   it('cache counts reported beside the input count (Anthropic API names, passed through) are added to it, and the estimate says so', async () => {
@@ -175,6 +230,7 @@ describe('Anthropic cache reads and writes, as wrapAnthropic records them', () =
     expect(stored.cost_estimate?.calls?.[0]).toMatchObject({ prompt_tokens: 122_000 });
     expect(stored.cost_estimate?.notes).toEqual([
       "claude-sonnet-5: the cached counts (120,000) are more than the input count (2,000), so they were counted beside it, as Anthropic's API reports them, and added to it.",
+      'claude-sonnet-5: 20,000 cache-write tokens are priced as 5-minute writes; the trace does not say how many had a 1-hour lifetime, which costs more.',
     ]);
   });
 });

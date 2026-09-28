@@ -46,6 +46,8 @@ export interface TokenUsage {
   cache_read_tokens?: number;
   /** Of prompt_tokens, how many were written to the prompt cache. Priced at the model's cache-write price. */
   cache_creation_tokens?: number;
+  /** Of cache_creation_tokens, how many were written with a 1-hour lifetime; priced at the model's 1-hour write price. Absent: the trace did not say, and every write is priced as a 5-minute write. */
+  cache_creation_1h_tokens?: number;
   /** OpenAI's usage shape, accepted as sent: `cached_tokens` is read as cache_read_tokens when that is absent. */
   prompt_tokens_details?: { cached_tokens?: number };
 }
@@ -176,6 +178,9 @@ export interface CostEstimateCall {
   /** The price the cached tokens were charged at; the input price when the table had no cache price (see `notes`). */
   cache_read_usd_per_1m?: number;
   cache_write_usd_per_1m?: number;
+  /** Present when the trace said how many of its cache writes had a 1-hour lifetime. */
+  cache_creation_1h_tokens?: number;
+  cache_write_1h_usd_per_1m?: number;
   cost_usd: number;
   /** `iris`: the built-in table. `config`: `pricing.models` in config.json. */
   price_source: 'iris' | 'config';

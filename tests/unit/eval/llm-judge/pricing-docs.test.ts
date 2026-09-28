@@ -16,14 +16,14 @@ import { MODEL_PRICING, PRICING_SOURCED_ON, findPricing, pricedModels, supported
 const guide = readFileSync(resolve(__dirname, '..', '..', '..', '..', 'docs', 'llm-as-judge.md'), 'utf8');
 
 /** The rows of the first markdown table whose header starts with "| Provider". */
-function guideRows(): Array<{ provider: string; model: string; input: number; output: number; cacheRead: number; cacheWrite: number; notes: string }> {
+function guideRows(): Array<{ provider: string; model: string; input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h: string; notes: string }> {
   const lines = guide.split(/\r?\n/);
   const start = lines.findIndex((l) => /^\|\s*Provider\s*\|/.test(l));
   expect(start).toBeGreaterThan(-1);
-  const rows: Array<{ provider: string; model: string; input: number; output: number; cacheRead: number; cacheWrite: number; notes: string }> = [];
+  const rows: Array<{ provider: string; model: string; input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h: string; notes: string }> = [];
   for (let i = start + 2; i < lines.length && lines[i].startsWith('|'); i += 1) {
     const cells = lines[i].split('|').slice(1, -1).map((c) => c.trim());
-    rows.push({ provider: cells[0], model: cells[1], input: Number(cells[2]), output: Number(cells[3]), cacheRead: Number(cells[4]), cacheWrite: Number(cells[5]), notes: cells[6] ?? '' });
+    rows.push({ provider: cells[0], model: cells[1], input: Number(cells[2]), output: Number(cells[3]), cacheRead: Number(cells[4]), cacheWrite: Number(cells[5]), cacheWrite1h: cells[6], notes: cells[7] ?? '' });
   }
   return rows;
 }
@@ -40,6 +40,9 @@ describe('the guide’s price table is the code’s', () => {
       expect(r.output).toBeCloseTo(p.outputUsdPer1M, 6);
       expect(r.cacheRead, `${r.model} cache read`).toBeCloseTo(p.cacheReadUsdPer1M, 6);
       expect(r.cacheWrite, `${r.model} cache write`).toBeCloseTo(p.cacheWriteUsdPer1M, 6);
+      // A dash where the provider has no 1-hour write.
+      if (p.cacheWrite1hUsdPer1M === undefined) expect(r.cacheWrite1h, `${r.model} 1h cache write`).toBe('—');
+      else expect(Number(r.cacheWrite1h), `${r.model} 1h cache write`).toBeCloseTo(p.cacheWrite1hUsdPer1M, 6);
     }
   });
 
@@ -81,6 +84,9 @@ describe('the one table', () => {
       expect(p.cacheWriteUsdPer1M, p.model).toBeGreaterThanOrEqual(p.inputUsdPer1M);
       // Anthropic's 5-minute write is 1.25x the input; OpenAI's pre-5.6 models charge no write premium.
       expect(p.cacheWriteUsdPer1M, p.model).toBeCloseTo(p.provider === 'anthropic' ? p.inputUsdPer1M * 1.25 : p.inputUsdPer1M, 9);
+      // Anthropic's 1-hour write is 2x the input; OpenAI has no write lifetime.
+      if (p.provider === 'anthropic') expect(p.cacheWrite1hUsdPer1M, p.model).toBeCloseTo(p.inputUsdPer1M * 2, 9);
+      else expect(p.cacheWrite1hUsdPer1M, p.model).toBeUndefined();
     }
   });
 

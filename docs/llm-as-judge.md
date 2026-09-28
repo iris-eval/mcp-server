@@ -146,30 +146,30 @@ Iris carries a curated pricing table. Using an unknown model is an immediate err
 
 Read from the providers' own pricing pages on 2026-09-28 (Anthropic: claude.com/pricing, and platform.claude.com/docs/en/about-claude/pricing for the cache columns; OpenAI: developers.openai.com/api/docs/pricing). This table is held to `src/eval/llm-judge/pricing.ts` by a test; edit the code, then this table, and the test says when they disagree.
 
-The two cache columns price a trace's estimated cost ([cost.md](cost.md)), not a judge call. Anthropic's cache write is the 5-minute write (1.25 times the input price; a 1-hour write is 2 times, and a trace does not say which it was). The OpenAI models here charge nothing extra to write the cache, so their cache-write price is the input price: OpenAI's prompt-caching guide adds a write price only from GPT-5.6.
+The two cache columns price a trace's estimated cost ([cost.md](cost.md)), not a judge call. Anthropic's cache write is the 5-minute write (1.25 times the input price); the 1-hour write is 2 times, and is priced when the trace carries Anthropic's split of its writes, which Iris's wrappers send. The OpenAI models here charge nothing extra to write the cache, so their cache-write price is the input price: OpenAI's prompt-caching guide adds a write price only from GPT-5.6.
 
-| Provider  | Model                            | Input $/1M | Output $/1M | Cache read $/1M | Cache write $/1M | Notes                                                        |
-|-----------|----------------------------------|------------|-------------|-----------------|------------------|--------------------------------------------------------------|
-| anthropic | claude-fable-5-1                 | 10.00      | 50.00       | 0.25            | 12.50            | Highest quality, dearest                                     |
-| anthropic | claude-opus-5-5                  | 4.00       | 20.00       | 0.20            | 5.00             |                                                              |
-| anthropic | claude-sonnet-5                  | 2.00       | 10.00       | 0.20            | 2.50             | Good default for production eval                             |
-| anthropic | claude-haiku-4-5                 | 1.00       | 5.00        | 0.10            | 1.25             | Recommended for high volume                                  |
-| anthropic | claude-haiku-4-5-20251001        | 1.00       | 5.00        | 0.10            | 1.25             | Same model, dated id                                         |
-| anthropic | claude-opus-5                    | 5.00       | 25.00       | 0.50            | 6.25             | Legacy on the provider's page                                |
-| anthropic | claude-opus-4-8                  | 5.00       | 25.00       | 0.50            | 6.25             |                                                              |
-| anthropic | claude-opus-4-7                  | 5.00       | 25.00       | 0.50            | 6.25             | Was listed at 15/75 before 0.14.0; corrected (#478, Roy Tong) |
-| anthropic | claude-opus-4-6                  | 5.00       | 25.00       | 0.50            | 6.25             |                                                              |
-| anthropic | claude-sonnet-4-6                | 3.00       | 15.00       | 0.30            | 3.75             |                                                              |
-| anthropic | claude-opus-4-5                  | 5.00       | 25.00       | 0.50            | 6.25             |                                                              |
-| anthropic | claude-sonnet-4-5                | 3.00       | 15.00       | 0.30            | 3.75             |                                                              |
-| openai    | gpt-5                            | 1.25       | 10.00       | 0.125           | 1.25             |                                                              |
-| openai    | gpt-5-mini                       | 0.25       | 2.00        | 0.025           | 0.25             |                                                              |
-| openai    | gpt-4.1-mini                     | 0.40       | 1.60        | 0.10            | 0.40             |                                                              |
-| openai    | gpt-4o                           | 2.50       | 10.00       | 1.25            | 2.50             |                                                              |
-| openai    | gpt-4o-mini                      | 0.15       | 0.60        | 0.075           | 0.15             | Cheapest option; lower fidelity                              |
-| openai    | o4-mini                          | 1.10       | 4.40        | 0.275           | 1.10             | Reasoning model                                              |
-| openai    | o3-mini                          | 1.10       | 4.40        | 0.55            | 1.10             | Reasoning model                                              |
-| openai    | o1-mini                          | 1.10       | 4.40        | 0.55            | 1.10             | Retired 2026-09-20: absent from the provider's pricing page; price from its model page (read 2026-09-28), which was $3 / $12 here before 0.20.0 |
+| Provider  | Model                            | Input $/1M | Output $/1M | Cache read $/1M | Cache write $/1M | 1h cache write $/1M | Notes                                                        |
+|-----------|----------------------------------|------------|-------------|-----------------|------------------|---------------------|--------------------------------------------------------------|
+| anthropic | claude-fable-5-1                 | 10.00      | 50.00       | 0.25            | 12.50            | 20.00               | Highest quality, dearest                                     |
+| anthropic | claude-opus-5-5                  | 4.00       | 20.00       | 0.20            | 5.00             | 8.00                |                                                              |
+| anthropic | claude-sonnet-5                  | 2.00       | 10.00       | 0.20            | 2.50             | 4.00                | Good default for production eval                             |
+| anthropic | claude-haiku-4-5                 | 1.00       | 5.00        | 0.10            | 1.25             | 2.00                | Recommended for high volume                                  |
+| anthropic | claude-haiku-4-5-20251001        | 1.00       | 5.00        | 0.10            | 1.25             | 2.00                | Same model, dated id                                         |
+| anthropic | claude-opus-5                    | 5.00       | 25.00       | 0.50            | 6.25             | 10.00               | Legacy on the provider's page                                |
+| anthropic | claude-opus-4-8                  | 5.00       | 25.00       | 0.50            | 6.25             | 10.00               |                                                              |
+| anthropic | claude-opus-4-7                  | 5.00       | 25.00       | 0.50            | 6.25             | 10.00               | Was listed at 15/75 before 0.14.0; corrected (#478, Roy Tong) |
+| anthropic | claude-opus-4-6                  | 5.00       | 25.00       | 0.50            | 6.25             | 10.00               |                                                              |
+| anthropic | claude-sonnet-4-6                | 3.00       | 15.00       | 0.30            | 3.75             | 6.00                |                                                              |
+| anthropic | claude-opus-4-5                  | 5.00       | 25.00       | 0.50            | 6.25             | 10.00               |                                                              |
+| anthropic | claude-sonnet-4-5                | 3.00       | 15.00       | 0.30            | 3.75             | 6.00                |                                                              |
+| openai    | gpt-5                            | 1.25       | 10.00       | 0.125           | 1.25             | —                   |                                                              |
+| openai    | gpt-5-mini                       | 0.25       | 2.00        | 0.025           | 0.25             | —                   |                                                              |
+| openai    | gpt-4.1-mini                     | 0.40       | 1.60        | 0.10            | 0.40             | —                   |                                                              |
+| openai    | gpt-4o                           | 2.50       | 10.00       | 1.25            | 2.50             | —                   |                                                              |
+| openai    | gpt-4o-mini                      | 0.15       | 0.60        | 0.075           | 0.15             | —                   | Cheapest option; lower fidelity                              |
+| openai    | o4-mini                          | 1.10       | 4.40        | 0.275           | 1.10             | —                   | Reasoning model                                              |
+| openai    | o3-mini                          | 1.10       | 4.40        | 0.55            | 1.10             | —                   | Reasoning model                                              |
+| openai    | o1-mini                          | 1.10       | 4.40        | 0.55            | 1.10             | —                   | Retired 2026-09-20: absent from the provider's pricing page; price from its model page (read 2026-09-28), which was $3 / $12 here before 0.20.0 |
 
 To add a new model: edit `src/eval/llm-judge/pricing.ts`, add the row here, add a CHANGELOG note. A model the provider stops pricing is marked retired, never deleted.
 

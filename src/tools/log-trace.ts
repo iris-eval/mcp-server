@@ -164,6 +164,7 @@ const TokenUsageSchema = z.object({
    */
   cache_read_tokens: z.number().nonnegative().optional(),
   cache_creation_tokens: z.number().nonnegative().optional(),
+  cache_creation_1h_tokens: z.number().nonnegative().optional(),
   prompt_tokens_details: z.object({ cached_tokens: z.number().nonnegative().optional() }).optional(),
 });
 

@@ -22,3 +22,9 @@ export const AGGREGATED_OUTPUT_KEYS = ['gen_ai.aggregated_usage.output_tokens'];
  */
 export const CACHE_READ_KEYS = ['gen_ai.usage.cache_read.input_tokens', 'gen_ai.usage.cache_read_input_tokens', 'llm.token_count.prompt_details.cache_read'];
 export const CACHE_WRITE_KEYS = ['gen_ai.usage.cache_creation.input_tokens', 'gen_ai.usage.cache_creation_input_tokens', 'llm.token_count.prompt_details.cache_write'];
+/**
+ * Of the cache writes, the ones with a 1-hour lifetime (Anthropic's
+ * usage.cache_creation.ephemeral_1h_input_tokens). No GenAI convention names
+ * the lifetime yet; Iris's wrappers send it under this name.
+ */
+export const CACHE_WRITE_1H_KEYS = ['iris.usage.cache_creation.ephemeral_1h_input_tokens'];

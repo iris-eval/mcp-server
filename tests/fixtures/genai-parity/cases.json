@@ -88,7 +88,7 @@
         "model": "claude-opus-5-5",
         "content": [{ "type": "thinking", "thinking": "The tool said 18C." }, { "type": "text", "text": "18C and clear." }],
         "stop_reason": "end_turn",
-        "usage": { "input_tokens": 12, "output_tokens": 6, "cache_read_input_tokens": 100, "cache_creation_input_tokens": 0 }
+        "usage": { "input_tokens": 12, "output_tokens": 6, "cache_read_input_tokens": 100, "cache_creation_input_tokens": 30, "cache_creation": { "ephemeral_5m_input_tokens": 10, "ephemeral_1h_input_tokens": 20 } }
       }
     },
     {

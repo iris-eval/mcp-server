@@ -366,11 +366,14 @@ def _usage(api: str, response: Mapping[str, Any]) -> dict[str, int | float | Non
     cache_read = _num(u.get("cache_read_input_tokens"))
     cache_creation = _num(u.get("cache_creation_input_tokens"))
     given = _num(u.get("input_tokens"))
+    # The write lifetimes, when the API reports them: {ephemeral_5m_input_tokens, ephemeral_1h_input_tokens}.
+    cache_creation_1h = details("cache_creation", "ephemeral_1h_input_tokens")
     return {
         "input": None if given is None else given + (cache_read or 0) + (cache_creation or 0),
         "output": _num(u.get("output_tokens")),
         "cache_read": cache_read,
         "cache_creation": cache_creation,
+        "cache_creation_1h": cache_creation_1h,
     }
 
 
@@ -461,6 +464,8 @@ def genai_span(
             ("output", "gen_ai.usage.output_tokens"),
             ("cache_read", "gen_ai.usage.cache_read.input_tokens"),
             ("cache_creation", "gen_ai.usage.cache_creation.input_tokens"),
+            # No GenAI convention names the write lifetime yet; Iris's own attribute carries Anthropic's split.
+            ("cache_creation_1h", "iris.usage.cache_creation.ephemeral_1h_input_tokens"),
             ("reasoning", "gen_ai.usage.reasoning.output_tokens"),
         ):
             if usage.get(key) is not None:

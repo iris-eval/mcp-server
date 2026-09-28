@@ -216,6 +216,26 @@ describe('cached input', () => {
     expect(estimatedOf(estimate).notes).toBeUndefined();
   });
 
+  it('token_usage.cache_creation_1h_tokens prices the 1-hour writes at the 1-hour price', () => {
+    // claude-sonnet-5: 10,000 writes of which 4,000 1-hour: 6,000 × $2.50 + 4,000 × $4 per 1M = $0.015 + $0.016; no other input.
+    const { cost_usd, estimate } = estimateTraceCost(base({ token_usage: { prompt_tokens: 10_000, completion_tokens: 0, cache_creation_tokens: 10_000, cache_creation_1h_tokens: 4_000 }, metadata: { model: 'claude-sonnet-5' } }));
+    expect(cost_usd).toBe(0.031);
+    expect(estimatedOf(estimate).notes).toBeUndefined();
+  });
+
+  it('1-hour writes on a model with no 1-hour price are priced at its write price, and the estimate says so', () => {
+    setPricingSettings({ estimate: true, models: [{ model: 'prod-claude', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5 }] });
+    const { cost_usd, estimate } = estimateTraceCost(base({ token_usage: { prompt_tokens: 10_000, completion_tokens: 0, cache_creation_tokens: 10_000, cache_creation_1h_tokens: 4_000 }, metadata: { model: 'prod-claude' } }));
+    expect(cost_usd).toBe(0.025);
+    expect(estimatedOf(estimate).notes).toEqual(['prod-claude: 4,000 1-hour cache-write tokens are priced at the cache-write price, because no 1-hour write price is known for prod-claude.']);
+  });
+
+  it('a 1-hour count larger than the writes is held to the writes', () => {
+    const { cost_usd } = estimateTraceCost(base({ token_usage: { prompt_tokens: 10_000, completion_tokens: 0, cache_creation_tokens: 10_000, cache_creation_1h_tokens: 50_000 }, metadata: { model: 'claude-sonnet-5' } }));
+    // All 10,000 writes at $4 per 1M.
+    expect(cost_usd).toBe(0.04);
+  });
+
   it('a negative or non-numeric cache count is ignored, never subtracted', () => {
     const t = base({ token_usage: { prompt_tokens: 1_000_000, completion_tokens: 0, cache_read_tokens: -5, prompt_tokens_details: { cached_tokens: Number.NaN } }, metadata: { model: 'gpt-4o' } });
     expect(estimateTraceCost(t).cost_usd).toBe(2.5);
