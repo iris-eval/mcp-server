@@ -140,6 +140,9 @@ def test_a_tool_calling_run_arrives_with_its_words_tool_call_usage_session_and_v
     assert trace["token_usage"] == {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70}
     assert trace["session_id"] == "session-paris-1"
     assert trace["metadata"]["model"] == "gpt-4o-mini"
+    # No cost on the wire; the door estimates it: 50 x $0.15 + 20 x $0.60 per million tokens for gpt-4o-mini.
+    assert trace["cost_source"] == "estimated"
+    assert trace["cost_usd"] == pytest.approx(0.0000195)
     assert [t["name"] for t in trace["tools"]] == ["get_weather"]
     tools = [s for s in spans if s["kind"] == "TOOL"]
     assert [s["attributes"]["tool.name"] for s in tools] == ["get_weather"]

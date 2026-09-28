@@ -70,7 +70,7 @@ describe.each(CAPTURES)('%s, as its OpenInference instrumentation exports it', (
     expect(decoded).toEqual(twin);
   });
 
-  it('is one trace with its agent, words, usage, model and session, and nothing lacked', () => {
+  it('is one trace with its agent, words, usage, estimated cost, model and session, and nothing lacked', () => {
     expect(mapped.traces).toHaveLength(1);
     const { trace, lacked } = mapped.traces[0];
     expect(lacked).toEqual([]);
@@ -79,7 +79,11 @@ describe.each(CAPTURES)('%s, as its OpenInference instrumentation exports it', (
     expect(trace.output).toBe('It is 18 degrees and sunny in Paris.');
     // Two model calls: 15 in and 12 out for the tool request, 35 in and 8 out for the answer.
     expect(trace.token_usage).toEqual({ prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 });
-    expect(trace.cost_usd).toBeUndefined();
+    // OpenInference records no cost; the door estimates one from the tokens and the model, marked estimated:
+    // 50 x $0.15 + 20 x $0.60 per million gpt-4o-mini tokens.
+    expect(trace.cost_usd).toBeCloseTo(0.0000195, 12);
+    expect(trace.cost_source).toBe('estimated');
+    expect(trace.cost_estimate).toMatchObject({ status: 'estimated', calls: [{ priced_as: 'gpt-4o-mini', prompt_tokens: 50, completion_tokens: 20 }] });
     expect(trace.metadata?.model).toBe('gpt-4o-mini');
     expect(trace.session_id).toBe('session-paris-1');
     expect(trace.source).toBe('otel');
