@@ -59,8 +59,8 @@ import { rememberRiskEstimate, storedRiskEstimate, RISK_KEY_VERSION } from '../e
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
-import { runMigrations, migrationState, inspectMigrations, assertCompatible, DOWNGRADING_URL, type MigrationState } from './migrations/index.js';
-import { backupDatabase, type BackupResult } from './backup.js';
+import { runMigrations, migrationState, inspectMigrations, assertCompatible, DOWNGRADING_URL, type MigrationState, type MigrationPlan } from './migrations/index.js';
+import { backupDatabase, backupDatabaseWith, type BackupResult } from './backup.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES, TAIL_CHECKPOINT_PAGES, STEP_TRUNCATE_PAGES } from './checkpointer.js';
 import { readPathsMissing, DROP_REPLACED, READ_PATH_INDEX_NAMES } from './read-paths.js';
@@ -169,9 +169,26 @@ export interface SqliteAdapterOptions {
    * Tests only: the log sizes, in pages, at which this connection checkpoints
    * while the worker runs (default TAIL_CHECKPOINT_PAGES) and a background
    * step has the worker empty the log (default STEP_TRUNCATE_PAGES), so a test
-   * can prove what they do on a log a tenth the size.
+   * can prove what they do on a smaller log.
    */
   checkpointPages?: { tail: number; stepTruncate: number };
+  /**
+   * On a file with migrations pending, let initialize() return before the
+   * copy and the migrations, which then run on the checkpoint worker's
+   * connection; whenReady() resolves when they are done (default false:
+   * initialize() returns with the file migrated). The server sets it, so
+   * it answers its client while a large file is copied and migrated.
+   */
+  upgradeAfterStart?: boolean;
+}
+
+/** Where a store is on its way to serving: whenReady() resolves at `ready`. */
+export interface StoreReadiness {
+  state: 'opening' | 'copying' | 'migrating' | 'ready' | 'failed';
+  /** When it entered this state (epoch ms). */
+  since: number;
+  /** For `failed`, the reason. */
+  detail?: string;
 }
 
 /** What a start that migrated an existing file did: the storage layer's half of #704. */
@@ -435,7 +452,11 @@ export class SqliteAdapter implements IStorageAdapter {
   /** A delete's checkpoint waiting for a reader (eraseFromFile). */
   private eraseRetry: NodeJS.Timeout | undefined;
   private readonly backupFirst: boolean;
+  private readonly upgradeAfterStart: boolean;
   private upgrade: UpgradeReport | undefined;
+  /** Resolves once the store serves: with initialize(), or when the upgrade after the start is done (upgradeAfterStart). */
+  private ready: Promise<void> = Promise.resolve();
+  private readyState: StoreReadiness = { state: 'opening', since: Date.now() };
   /** The highest traces rowid known to be in the search index; see catchUpOtherWriters. */
   private indexedThrough = 0;
 
@@ -449,6 +470,7 @@ export class SqliteAdapter implements IStorageAdapter {
     this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
     this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
     this.backupFirst = options?.backup ?? true;
+    this.upgradeAfterStart = options?.upgradeAfterStart ?? false;
     /*
      * The busy wait belongs to the CONNECTION, not to a pragma run after
      * the first statement. `PRAGMA journal_mode = WAL` on a cold file takes
@@ -469,6 +491,20 @@ export class SqliteAdapter implements IStorageAdapter {
   /** What this start's migration did to an existing file; undefined when it applied nothing to one. */
   upgradeReport(): UpgradeReport | undefined {
     return this.upgrade;
+  }
+
+  /**
+   * Resolves once the store serves: when initialize() does, or, for an
+   * upgrade after the start, once the copy, the migrations and the search
+   * index's reconcile are done. Rejects with the reason the upgrade failed.
+   */
+  whenReady(): Promise<void> {
+    return this.ready;
+  }
+
+  /** Where the store is on its way to serving (StoreReadiness). */
+  readiness(): StoreReadiness {
+    return this.readyState;
   }
 
   /** Applied against known — the health contract's `checks.migrations`. */
@@ -552,30 +588,6 @@ export class SqliteAdapter implements IStorageAdapter {
      */
     this.db.pragma('secure_delete = ON');
     if (this.fts5Override !== undefined) assumeFts5(this.db, this.fts5Override);
-    try {
-      /*
-       * A file that already holds data and has migrations pending is copied
-       * first (backup.ts): a migration cannot be undone, and the release
-       * before it may not open the file afterwards. The compatibility check
-       * comes before the copy, so a file this release refuses is left alone.
-       */
-      const plan = inspectMigrations(this.db);
-      assertCompatible(plan);
-      const upgrading = plan.pending.length > 0 && plan.applied.length > 0 && this.dbPath !== ':memory:';
-      const backup: BackupResult = upgrading && this.backupFirst ? backupDatabase(this.db, this.dbPath, { from: plan.lastWriter, to: PKG_VERSION }) : { taken: false, reason: 'copies are turned off for this store' };
-      runMigrations(this.db);
-      if (upgrading) {
-        this.upgrade = { dbPath: this.dbPath, from: plan.lastWriter, to: PKG_VERSION, applied: plan.pending, floorBefore: plan.floor, floorAfter: plan.floorAfter, backup };
-        process.stderr.write(`${upgradeLine(this.upgrade)}\n`);
-      }
-      // After the migrations, every start: build, repair or stand down the search index (search-index.ts).
-      this.searchIndex = reconcileSearchIndex(this.db, fts5Available(this.db));
-      if (this.searchIndex === 'ready') this.indexedThrough = this.maxTraceRowid();
-    } catch (err) {
-      // A refused boot (a newer writer, a failed migration) must not leak the handle.
-      this.db.close();
-      throw err;
-    }
     /*
      * iris.db holds agent inputs and outputs verbatim, and a tool that
      * detects PII necessarily stores the PII it found. better-sqlite3
@@ -587,6 +599,91 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.dbPath !== ':memory:') {
       ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
     }
+    /*
+     * A file that already holds data and has migrations pending is copied
+     * first (backup.ts): a migration cannot be undone, and the release
+     * before it may not open the file afterwards. The compatibility check
+     * comes before the copy, so a file this release refuses is left alone.
+     */
+    const plan = inspectMigrations(this.db);
+    const upgrading = plan.pending.length > 0 && plan.applied.length > 0 && this.dbPath !== ':memory:';
+    if (upgrading && this.upgradeAfterStart) {
+      this.ready = this.upgradeInBackground(plan);
+      // Read through whenReady(); a rejection nobody has asked about yet is not an unhandled one.
+      this.ready.catch(() => undefined);
+      return;
+    }
+    try {
+      const backup: BackupResult = upgrading && this.backupFirst ? backupDatabase(this.db, this.dbPath, { from: plan.lastWriter, to: PKG_VERSION }) : { taken: false, reason: 'copies are turned off for this store' };
+      runMigrations(this.db);
+      if (upgrading) this.recordUpgrade(plan, backup);
+      this.reconcile();
+    } catch (err) {
+      // A refused boot (a failed migration) must not leak the handle.
+      this.db.close();
+      throw err;
+    }
+    this.startBackgroundWork();
+  }
+
+  /**
+   * The copy and the migrations after the start (upgradeAfterStart), on the
+   * checkpoint worker's connection, so neither holds the event loop: VACUUM
+   * INTO alone takes 2.4 to 2.7 s at 100,000 agent-loop traces. The copy is
+   * finished before the first migration writes, and nothing else writes
+   * meanwhile: the store's own background work starts after, and the server
+   * holds requests until whenReady(). Without a worker, the adapter's
+   * connection does both, as initialize() does.
+   */
+  private async upgradeInBackground(plan: MigrationPlan): Promise<void> {
+    const at = (state: StoreReadiness['state'], detail?: string) => (this.readyState = { state, since: Date.now(), ...(detail !== undefined ? { detail } : {}) });
+    try {
+      this.ensureCheckpointer();
+      const worker = this.checkpointer;
+      const onWorker = worker !== undefined && (await worker.whenStarted()) && worker.active;
+      at('copying');
+      const options = { from: plan.lastWriter, to: PKG_VERSION };
+      const backup: BackupResult = !this.backupFirst
+        ? { taken: false, reason: 'copies are turned off for this store' }
+        : onWorker
+          ? await backupDatabaseWith(this.db, this.dbPath, options, (sql) => worker.exec(sql))
+          : backupDatabase(this.db, this.dbPath, options);
+      if (this.closing) throw new Error('the store was closed before its upgrade ran');
+      at('migrating');
+      if (onWorker) {
+        try {
+          await worker.migrate();
+        } catch (err) {
+          // A migration that failed fails here as it would at the start; a worker that stopped mid-way leaves the rest to this connection.
+          if (worker.active) throw err;
+          runMigrations(this.db);
+        }
+      } else {
+        runMigrations(this.db);
+      }
+      this.recordUpgrade(plan, backup);
+      this.reconcile();
+      this.startBackgroundWork();
+    } catch (err) {
+      at('failed', err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  }
+
+  private recordUpgrade(plan: MigrationPlan, backup: BackupResult): void {
+    this.upgrade = { dbPath: this.dbPath, from: plan.lastWriter, to: PKG_VERSION, applied: plan.pending, floorBefore: plan.floor, floorAfter: plan.floorAfter, backup };
+    process.stderr.write(`${upgradeLine(this.upgrade)}\n`);
+  }
+
+  /** After the migrations, every start: build, repair or stand down the search index (search-index.ts). The store serves from here. */
+  private reconcile(): void {
+    this.searchIndex = reconcileSearchIndex(this.db, fts5Available(this.db));
+    if (this.searchIndex === 'ready') this.indexedThrough = this.maxTraceRowid();
+    this.readyState = { state: 'ready', since: Date.now() };
+  }
+
+  /** The work that runs behind the start, once the file is migrated and reconciled. */
+  private startBackgroundWork(): void {
     // The covering index a search's filters read (search-index.ts, CREATE_FILTER_INDEX): at once on a store with no traces, where there is nothing to read; after the start on one with traces.
     if (this.searchIndex !== 'unavailable' && filterIndexMissing(this.db)) {
       if (this.db.prepare('SELECT 1 FROM traces LIMIT 1').get() === undefined) this.db.exec(CREATE_FILTER_INDEX);
@@ -637,6 +734,8 @@ export class SqliteAdapter implements IStorageAdapter {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
     this.markClosing();
+    // An upgrade after the start runs to the end of the step it is in: a copy is not followed by the migrations, and a migration is never cut off.
+    await this.ready.catch(() => undefined);
     await Promise.all([this.filterIndex, this.readPaths, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();

@@ -132,6 +132,40 @@ export interface BackupOptions {
  * older copies. Never throws: a copy that cannot be made is a reason.
  */
 export function backupDatabase(db: Driver, dbPath: string, options: BackupOptions): BackupResult {
+  const planned = planBackup(db, dbPath, options);
+  if (!('path' in planned)) return planned;
+  try {
+    db.exec(vacuumInto(planned.path));
+  } catch (err) {
+    return copyFailed(planned.path, err);
+  }
+  pruneBackups(dbPath);
+  return { taken: true, path: planned.path, bytes: planned.needed };
+}
+
+/**
+ * backupDatabase, with the copy itself written by `exec` on another
+ * connection to the same file: the checkpoint worker's, so the seconds a
+ * large file takes to copy are not spent on the event loop
+ * (sqlite-adapter.ts, the upgrade after the start). `db` only reads the
+ * sizes the disk check needs.
+ */
+export async function backupDatabaseWith(db: Driver, dbPath: string, options: BackupOptions, exec: (sql: string) => Promise<void>): Promise<BackupResult> {
+  const planned = planBackup(db, dbPath, options);
+  if (!('path' in planned)) return planned;
+  try {
+    await exec(vacuumInto(planned.path));
+  } catch (err) {
+    return copyFailed(planned.path, err);
+  }
+  pruneBackups(dbPath);
+  return { taken: true, path: planned.path, bytes: planned.needed };
+}
+
+const vacuumInto = (path: string) => `VACUUM INTO '${path.replace(/'/g, "''")}'`;
+
+/** The copy's path, created empty and owner-only, and the bytes it will take; or why there will be none. */
+function planBackup(db: Driver, dbPath: string, options: BackupOptions): { path: string; needed: number } | { taken: false; reason: string } {
   const read = (name: string) => Number(Object.values(db.prepare(`PRAGMA ${name}`).get() as Record<string, number>)[0]);
   const pageSize = read('page_size');
   const pages = read('page_count');
@@ -144,28 +178,24 @@ export function backupDatabase(db: Driver, dbPath: string, options: BackupOption
   }
 
   const at = options.now ?? new Date();
-  let path = '';
   // The file is created first, empty and owner-only (VACUUM INTO writes into an empty file), so the copy is never readable by other accounts and two processes never pick one name.
   for (let n = 0; ; n++) {
-    path = backupPath(dbPath, options.from ?? 'unknown', options.to, at, n);
+    const path = backupPath(dbPath, options.from ?? 'unknown', options.to, at, n);
     try {
       closeSync(openSync(path, 'wx', OWNER_ONLY_FILE_MODE));
-      break;
+      return { path, needed };
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'EEXIST' && n < 100) continue;
       return { taken: false, reason: `${path} could not be created (${(err as NodeJS.ErrnoException).code ?? (err as Error).message})` };
     }
   }
+}
+
+function copyFailed(path: string, err: unknown): BackupResult {
   try {
-    db.exec(`VACUUM INTO '${path.replace(/'/g, "''")}'`);
-  } catch (err) {
-    try {
-      unlinkSync(path);
-    } catch {
-      // Nothing was written, or it is already gone.
-    }
-    return { taken: false, reason: `writing ${path} failed (${err instanceof Error ? err.message : String(err)})` };
+    unlinkSync(path);
+  } catch {
+    // Nothing was written, or it is already gone.
   }
-  pruneBackups(dbPath);
-  return { taken: true, path, bytes: needed };
+  return { taken: false, reason: `writing ${path} failed (${err instanceof Error ? err.message : String(err)})` };
 }

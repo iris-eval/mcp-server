@@ -80,6 +80,13 @@ export interface HealthReport {
    * `status`. Null when there is no storage or it reports nothing.
    */
   indexes: 'ready' | 'building' | null;
+  /**
+   * While the store is being upgraded after the start (the copy, then the
+   * migrations; storage/ready.ts), or after that failed: what it is doing
+   * and since when. Null when it serves. Requests wait for it meanwhile,
+   * and are refused once it has failed.
+   */
+  upgrade: { state: 'opening' | 'copying' | 'migrating' | 'failed'; since: string; reason?: string } | null;
   /** The word the pre-0.15.0 contract used; kept for readers of it. */
   storage?: 'connected' | 'disconnected';
   judge: {
@@ -131,6 +138,7 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
     },
     search: null,
     indexes: deps.storage?.readIndexesState?.() ?? null,
+    upgrade: null,
     judge: { enabled: judge.enabled, provider: judge.provider },
     mode: deps.mode ?? 'real',
   };
@@ -157,7 +165,13 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
      * The count proves the store answers; the number itself is not
      * reported (see the header). limit 1 keeps the row fetch negligible.
      */
+    const readiness = deps.storage.readiness?.();
+    if (readiness && readiness.state !== 'ready') {
+      // Being upgraded: the store answers nothing until it is done, and health answers now rather than wait for it.
+      body.upgrade = { state: readiness.state, since: new Date(readiness.since).toISOString(), ...(readiness.detail !== undefined ? { reason: readiness.detail } : {}) };
+    }
     try {
+      if (body.upgrade) throw new Error('upgrading');
       await deps.storage.queryTraces(LOCAL_TENANT, { limit: 1, offset: 0 });
       body.storage = 'connected';
       body.checks.storage = 'ok';
@@ -172,7 +186,8 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
       body.checks.migrations = { status: 'fail', applied: 0, known: 0 };
     }
     try {
-      const s = await deps.storage.searchStatus?.();
+      // Before the store serves, the index has not been reconciled: `search` stays null rather than read as unavailable.
+      const s = body.upgrade ? undefined : await deps.storage.searchStatus?.();
       if (s) body.search = { state: s.state, index: s.index, progress: searchProgress(s) };
     } catch {
       // A store that cannot say where its index is still answers searches; the storage check reports the store.

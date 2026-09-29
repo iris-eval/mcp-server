@@ -15,8 +15,10 @@
  *
  * Messages in:  { id, type: 'checkpoint', mode: 'TRUNCATE' } to empty the
  *               log without waiting for a reader; { id, type: 'exec', sql }
- *               to run one statement; { type: 'close' } to close the
- *               connection and let the thread end.
+ *               to run one statement; { id, type: 'migrate' } to apply the
+ *               pending migrations (runMigrations, the same code the
+ *               adapter runs); { type: 'close' } to close the connection
+ *               and let the thread end.
  * Messages out: { ready: true } once the connection is open;
  *               { id, busy?, error? } per request.
  */
@@ -68,7 +70,9 @@ const tick = () => {
 timer = setTimeout(tick, data.intervalMs);
 
 let open = true;
-port.on('message', (m: { id: number; type: 'checkpoint'; mode: 'TRUNCATE' } | { id: number; type: 'exec'; sql: string } | { type: 'close' }) => {
+type Request = { id: number; type: 'checkpoint'; mode: 'TRUNCATE' } | { id: number; type: 'exec'; sql: string } | { id: number; type: 'migrate' } | { type: 'close' };
+
+port.on('message', (m: Request) => {
   if (m.type === 'close') {
     // Close the connection here, on its own thread, then let the thread end with nothing left to run.
     clearTimeout(timer);
@@ -77,6 +81,16 @@ port.on('message', (m: { id: number; type: 'checkpoint'; mode: 'TRUNCATE' } | { 
       db.close();
     }
     port.close();
+    return;
+  }
+  if (m.type === 'migrate') {
+    // Loaded here, not at the top: a thread that only checkpoints never needs the migrations.
+    import('./migrations/index.js')
+      .then(({ runMigrations }) => {
+        runMigrations(db);
+        port.postMessage({ id: m.id });
+      })
+      .catch((err: unknown) => port.postMessage({ id: m.id, error: err instanceof Error ? err.message : String(err) }));
     return;
   }
   try {

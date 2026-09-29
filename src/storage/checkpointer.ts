@@ -181,7 +181,7 @@ export class Checkpointer {
     this.settle(false);
   }
 
-  private request(message: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'exec'; sql: string } | { type: 'close' }): Promise<{ busy?: number; error?: string }> {
+  private request(message: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'exec'; sql: string } | { type: 'migrate' } | { type: 'close' }): Promise<{ busy?: number; error?: string }> {
     if (this.failed) return Promise.resolve({ error: 'the checkpoint worker is not running' });
     const id = this.nextId++;
     // Held while a request is in flight: a CLI awaiting its checkpoint must not exit before the answer.
@@ -243,6 +243,18 @@ export class Checkpointer {
    */
   async exec(sql: string): Promise<void> {
     const reply = await this.request({ type: 'exec', sql });
+    if (reply.error) throw new Error(reply.error);
+  }
+
+  /**
+   * Apply the pending migrations on the worker's connection, off the event
+   * loop: the upgrade after the start (sqlite-adapter.ts). Each migration
+   * holds the write lock while it runs. Throws with the migration's own
+   * message when one failed; the ones before it stay applied, as they do
+   * on the adapter's connection.
+   */
+  async migrate(): Promise<void> {
+    const reply = await this.request({ type: 'migrate' });
     if (reply.error) throw new Error(reply.error);
   }
 

@@ -13,6 +13,9 @@ import { buildInstructions } from './instructions.js';
 import { buildCapabilities, type Capabilities } from './capabilities.js';
 import { judgeState } from './judge-enablement.js';
 import { relevanceJudgeFromEnv, relevanceJudgeStartupWarnings, relevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
+import type { StoreGate } from './storage/ready.js';
+import { errorResult } from './tools/respond.js';
+import { toIrisError } from './tools/errors.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -29,6 +32,41 @@ export interface IrisServerOptions {
   mode?: 'real' | 'demo';
   /** Where a warning line goes: the relevance judge's budget says here when it first refuses a call on a day. */
   warn?: (line: string) => void;
+  /** Hold tool calls and resource reads until the store serves (storage/ready.ts); none when it serves from the start. */
+  gate?: StoreGate;
+}
+
+/** Resources that never read the store answer during an upgrade too. */
+const UNGATED_RESOURCES = new Set(['capabilities', 'proof']);
+
+/**
+ * Every tool call and resource read registered on `server` from here on
+ * waits at the gate first (storage/ready.ts). A call refused there gets
+ * the same error envelope as any other failure.
+ */
+function gateRequests(server: McpServer, gate: StoreGate): void {
+  type Handler = (...args: unknown[]) => unknown;
+  const registerTool = server.registerTool.bind(server) as unknown as (name: string, config: unknown, handler: Handler) => unknown;
+  (server as unknown as { registerTool: typeof registerTool }).registerTool = (name, config, handler) =>
+    registerTool(name, config, async (...args: unknown[]) => {
+      if (!gate.open) {
+        try {
+          await gate.wait();
+        } catch (err) {
+          return errorResult(toIrisError(err));
+        }
+      }
+      return handler(...args);
+    });
+  const registerResource = server.registerResource.bind(server) as unknown as (...args: unknown[]) => unknown;
+  (server as unknown as { registerResource: typeof registerResource }).registerResource = (...args: unknown[]) => {
+    const read = args[args.length - 1] as Handler;
+    if (typeof args[0] === 'string' && UNGATED_RESOURCES.has(args[0])) return registerResource(...args);
+    return registerResource(...args.slice(0, -1), async (...a: unknown[]) => {
+      if (!gate.open) await gate.wait();
+      return read(...a);
+    });
+  };
 }
 
 export function createIrisServer(
@@ -87,6 +125,7 @@ export function createIrisServer(
   const capabilities = (): Capabilities =>
     buildCapabilities({ config, evalEngine, customRuleStore: ruleStore, mode: options?.mode });
 
+  if (options?.gate) gateRequests(mcpServer, options.gate);
   registerAllTools(mcpServer, storage, evalEngine, ruleStore);
   registerAllResources(mcpServer, storage, capabilities, ruleStore.auditPath);
   registerPrompts(mcpServer, config.server.version);

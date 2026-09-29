@@ -168,6 +168,17 @@ export function toIrisError(err: unknown): IrisError {
     });
   }
 
+  if (name === 'StoreNotReadyError') {
+    // The store was being upgraded (storage/ready.ts): its sentence says what it was doing.
+    const retryable = (err as { retryable?: boolean }).retryable === true;
+    return irisError('IRIS_STORAGE_ERROR', message, {
+      retryable,
+      recovery: retryable
+        ? ['Retry the same call in a few seconds; nothing was read or stored.']
+        : ['Nothing was read or stored. Restart the server to try the upgrade again, and see its log for the reason.', 'Run `npx @iris-eval/mcp-server --self-test` to probe the configured home and database.'],
+    });
+  }
+
   if (isSqliteError(err)) {
     const code = (err as { code?: string }).code ?? '';
     return irisError('IRIS_STORAGE_ERROR', `Iris storage failed: ${message}`, {

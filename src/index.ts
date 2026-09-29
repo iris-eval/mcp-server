@@ -7,6 +7,7 @@ import { loadConfig, loadSecurityConfig, configFilePath, fixedApiKey, type CliAr
 import { PKG_VERSION } from './config/defaults.js';
 import { COMMAND } from './identity.js';
 import { createStorage } from './storage/index.js';
+import { storeGate, STORE_READY_WAIT_MS } from './storage/ready.js';
 import { withDemoIngestGuard } from './storage/demo-guard.js';
 import { createIrisServer } from './server.js';
 import { runRetentionSweep, scheduleRetentionSweep } from './retention.js';
@@ -460,10 +461,23 @@ async function main(): Promise<void> {
   // Refuse a non-loopback bind with no API key before any port is taken. See bind-policy.
   validateBindPolicy(config);
 
-  const storage = createStorage(config, { log: (level, line) => logger[level](line) });
-  await storage.initialize();
-  announceUpgrade(storage.upgradeReport?.());
+  /*
+   * A file with migrations pending is copied and migrated after the
+   * transport connects, off the event loop (sqlite-adapter.ts,
+   * upgradeAfterStart), so a large file never keeps the client from its
+   * first answer. Every door waits for it at the gate (storage/ready.ts).
+   */
+  const store = createStorage(config, { log: (level, line) => logger[level](line), upgradeAfterStart: true });
+  await store.initialize();
+  const gate = storeGate(store);
+  const storage = gate.storage;
   logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path}; driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'})`);
+  const upgradingNow = store.readiness?.().state !== undefined && store.readiness?.().state !== 'ready';
+  if (upgradingNow) logger.info(`Upgrading the database after the start; requests wait for it, at most ${STORE_READY_WAIT_MS / 1000} s each.`);
+  void gate.ready.then(
+    () => announceUpgrade(store.upgradeReport?.()),
+    (err: unknown) => logger.error(`The database could not be made ready (${err instanceof Error ? err.message : String(err)}); every request is refused until the server is restarted.`),
+  );
 
   // Load the custom rule store first so it can be shared between the
   // MCP server (for deploy_rule / delete_rule / list_rules tools) and
@@ -471,7 +485,7 @@ async function main(): Promise<void> {
   // via either surface is immediately visible from the other.
   const customRuleStore = createCustomRuleStore();
 
-  const { mcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore, { warn: (line) => logger.warn(line) });
+  const { mcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore, { warn: (line) => logger.warn(line), gate });
 
   // Load deployed custom rules from ~/.iris/custom-rules.json (B3 — workflow inversion).
   // Each enabled rule is registered with the engine under its evalType so it fires on
@@ -495,8 +509,11 @@ async function main(): Promise<void> {
   // any port is bound — the sentence names the path and the problem.
   await registerPlugins(evalEngine, config, { log: (line) => logger.info(line) });
 
-  // The deployment's own labels, read once at boot; every label write refreshes them.
-  await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
+  // The deployment's own labels, read once at boot; every label write refreshes them. No request is answered before they are read.
+  const labels = refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
+  gate.hold(labels);
+  // On a start with nothing to upgrade, a store that cannot give its labels still stops the start here, as it always has.
+  if (!upgradingNow) await labels;
 
   // The webhook: installed on the store, so every door that
   // writes an evaluation reaches it; never in demo mode (runDemo below).
@@ -556,6 +573,7 @@ async function main(): Promise<void> {
       preferenceStore,
       // The server reports its mode on /health and /capabilities; the dashboard's DEMO chip reads it.
       mode: values.demo ? 'demo' : 'real',
+      gate,
     });
     const server = dashboardServer.start();
     httpServers.push(server);
