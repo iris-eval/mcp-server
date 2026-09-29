@@ -60,10 +60,10 @@ const trace = (id: string, agent: string, extra: Record<string, unknown> = {}) =
 });
 
 describe('migration 019 — the read-path indexes', () => {
-  it('is the last known migration, after 016', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(17);
-    expect(KNOWN_MIGRATION_IDS[16]).toBe('019-read-paths');
-    expect(KNOWN_MIGRATION_IDS[15]).toBe('016-trace-cost-source');
+  it('is the last known migration, after 018', () => {
+    expect(KNOWN_MIGRATION_IDS).toHaveLength(19);
+    expect(KNOWN_MIGRATION_IDS[18]).toBe('019-read-paths');
+    expect(KNOWN_MIGRATION_IDS[17]).toBe('018-eval-risk-estimate');
   });
 
   for (const fts5 of [true, false]) {
