@@ -27,7 +27,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
+import { SqliteAdapter, RISK_FILL_QUERIES } from '../../../src/storage/sqlite-adapter.js';
+import { RISK_KEY_VERSION } from '../../../src/eval/risk.js';
 import { nodeSqliteAvailable, type Driver, type Statement } from '../../../src/storage/driver.js';
 import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
@@ -210,7 +211,7 @@ const JOINS: Array<{ name: string; sql: RegExp; order: RegExp[] }> = [
 ];
 
 /** Beyond the named indexes: reads whose shape matters on its own. */
-const SHAPES: Array<{ name: string; sql: RegExp; plan: (lines: string[], rows: PlanRow[]) => void }> = [
+const SHAPES: Array<{ name: string; sql: RegExp; fts?: true; plan: (lines: string[], rows: PlanRow[]) => void }> = [
   {
     name: 'the latest evaluation of a trace, for min_score / max_score',
     sql: /SELECT e2\.rowid FROM eval_results e2/,
@@ -220,6 +221,22 @@ const SHAPES: Array<{ name: string; sql: RegExp; plan: (lines: string[], rows: P
     name: 'a page in time order streams from its index, never sorts the traces',
     sql: /^SELECT \* FROM traces INDEXED BY \w+ .* ORDER BY timestamp desc LIMIT/s,
     plan: (_lines, rows) => expect(topLevel(rows).join(' | ')).not.toMatch(/TEMP B-TREE FOR ORDER BY/),
+  },
+  {
+    name: 'an export walks its index a batch at a time, sorting at most the ties of one timestamp',
+    sql: /ORDER BY (timestamp|created_at) (DESC|ASC), rowid (DESC|ASC) LIMIT/,
+    plan: (_lines, rows) => expect(topLevel(rows).join(' | ')).not.toMatch(/TEMP B-TREE FOR ORDER BY/),
+  },
+  {
+    name: 'an export reads its batch of rows by primary key',
+    sql: /INDEXED BY sqlite_autoindex_(traces|eval_results)_1 WHERE tenant_id = \? AND (trace_id|id) IN/,
+    plan: (lines) => expect(lines).toContainEqual(expect.stringMatching(/^SEARCH (traces|eval_results) USING INDEX sqlite_autoindex_(traces|eval_results)_1 \((trace_id|id)=\?\)/)),
+  },
+  {
+    name: 'a search finds its page of ids by doc id, one lookup each',
+    fts: true,
+    sql: /FROM json_each\(\?\) j CROSS JOIN trace_search_docs d ON d\.doc_id = j\.value/,
+    plan: (lines) => expect(lines).toEqual([expect.stringMatching(/^SCAN j VIRTUAL TABLE INDEX/), expect.stringMatching(/^SEARCH d USING INTEGER PRIMARY KEY \(rowid=\?\)/)]),
   },
   {
     name: 'the filter values are one index seek each',
@@ -232,6 +249,13 @@ const SHAPES: Array<{ name: string; sql: RegExp; plan: (lines: string[], rows: P
 ];
 
 /* ---- The hot reads ---- */
+
+/** Read an export to its end. */
+async function drain(batches: AsyncGenerator<unknown[]>): Promise<number> {
+  let n = 0;
+  for await (const batch of batches) n += batch.length;
+  return n;
+}
 
 const T = LOCAL_TENANT;
 /** `indexOnly`: every read of traces or spans in the call answers from index entries, never a row. */
@@ -258,6 +282,26 @@ const HOT: Array<{ name: string; fts?: true; indexOnly?: true; read: (s: SqliteA
   { name: 'get_traces, min_score and max_score', read: (s) => s.queryTraces(T, { limit: 50, filter: { min_score: 0.2, max_score: 0.8 } }) },
   { name: 'moments window, 200 newest', read: (s) => s.queryTraces(T, { limit: 200, sort_by: 'timestamp', sort_order: 'desc', filter: {} }) },
   { name: 'page evaluations', read: async (s) => s.getEvalsByTraceIds(T, (await s.queryTraces(T, { limit: 200 })).traces.map((t) => t.trace_id)) },
+  // The exports (#4): the dashboard's CSV and JSON Lines downloads, in batches small enough here that every keyset step runs.
+  { name: 'export traces, newest first', read: (s) => drain(s.exportTraces(T, {}, 64)) },
+  { name: 'export traces, oldest first', read: (s) => drain(s.exportTraces(T, { sort_order: 'asc' }, 64)) },
+  { name: 'export traces, one agent', read: (s) => drain(s.exportTraces(T, { filter: { agent_name: 'a1' } }, 16)) },
+  { name: 'export traces, one agent since a time', read: (s) => drain(s.exportTraces(T, { filter: { agent_name: 'a2', since: at(250) }, sort_order: 'asc' }, 16)) },
+  { name: 'export traces, one session', read: (s) => drain(s.exportTraces(T, { filter: { session_id: 's-5' } }, 2)) },
+  { name: 'export traces, one framework in a window', read: (s) => drain(s.exportTraces(T, { filter: { framework: 'autogen', since: at(100), until: at(300) } }, 16)) },
+  { name: 'export traces, by cost', read: (s) => drain(s.exportTraces(T, { sort_by: 'cost_usd', sort_order: 'desc' }, 64)) },
+  { name: 'export traces, a search', fts: true, read: (s) => drain(s.exportTraces(T, { search: 'refund' }, 64)) },
+  { name: 'export evaluations', read: (s) => drain(s.exportEvalResults(T, {}, 64)) },
+  { name: 'export evaluations, failed in a window', read: (s) => drain(s.exportEvalResults(T, { passed: false, since: new Date(BASE).toISOString() }, 16)) },
+  // The start's fill of stored risk estimates (migration 018): each of its reads, as a start with nothing left to fill runs them.
+  {
+    name: 'the risk estimate fill at a start',
+    read: async (s) => {
+      const db = (s as unknown as { db: Driver }).db;
+      const [unversioned, below, above] = RISK_FILL_QUERIES.map((sql) => db.prepare(sql));
+      return [unversioned.all(8), below.all(RISK_KEY_VERSION, 8), above.all(RISK_KEY_VERSION, 8)];
+    },
+  },
   // Search: get_traces with q, the dashboard search box.
   { name: 'search, ranked', fts: true, read: (s) => s.queryTraces(T, { limit: 50, search: 'refund' }) },
   { name: 'search, by time', fts: true, read: (s) => s.queryTraces(T, { limit: 50, search: 'refund', sort_by: 'timestamp' }) },
@@ -288,6 +332,8 @@ async function open(driver: 'native' | 'node', fts5: boolean, stats: Stats): Pro
   await store.initialize();
   await store.whenSearchIndexReady();
   await seed(store);
+  // Nothing of the start's own runs while a read is captured.
+  await store.whenRiskEstimatesStored();
   const db = (store as unknown as { db: Driver }).db;
   applyStats(db, stats);
   return { store, db };
@@ -306,6 +352,7 @@ describe('every hot read keeps its plan', () => {
         const statsRows = (db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'sqlite_stat1'").get() as { n: number }).n;
         expect(statsRows).toBe(stats === 'none' ? 0 : 1);
         const joinsSeen = new Set<string>();
+        const shapesSeen = new Set<string>();
         for (const hot of HOT) {
           if (hot.fts && !fts5) continue;
           const { issued, restore } = capture(db);
@@ -328,12 +375,17 @@ describe('every hot read keeps its plan', () => {
               expect(at.every((i) => i >= 0), where).toBe(true);
               expect([...at].sort((a, b) => a - b), where).toEqual(at);
             }
-            for (const s of SHAPES.filter((x) => x.sql.test(statement.sql))) s.plan(lines, rows);
+            for (const s of SHAPES.filter((x) => x.sql.test(statement.sql))) {
+              shapesSeen.add(s.name);
+              s.plan(lines, rows);
+            }
             if (hot.indexOnly) for (const line of lines.filter((l) => /^SEARCH (traces|t|spans|s) /.test(l))) expect(line, where).toMatch(/ USING COVERING INDEX /);
           }
         }
         // Every join was exercised, including both ways of reading the failure log.
         expect([...joinsSeen].sort()).toEqual(JOINS.map((j) => j.name).filter((n) => fts5 || !n.startsWith('search')).sort());
+        // And every shape was checked on some statement.
+        expect([...shapesSeen].sort()).toEqual(SHAPES.filter((s) => fts5 || !s.fts).map((s) => s.name).sort());
       } finally {
         await store.close();
       }
