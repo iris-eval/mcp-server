@@ -800,8 +800,9 @@ export class SqliteAdapter implements IStorageAdapter {
   private async beforeWriteStep(): Promise<void> {
     const worker = this.checkpointer;
     if (worker?.active && !worker.truncateInProgress && worker.logBytes() >= STEP_TRUNCATE_PAGES * this.pageBytes()) void worker.truncate().catch(() => undefined);
-    if (worker?.truncateInProgress) {
-      await worker.whenTruncated();
+    // Checked again after each yield: the erasure's retry can start a TRUNCATE while this waits, and the step must start in the turn that saw none.
+    while (this.checkpointer?.truncateInProgress) {
+      await this.checkpointer.whenTruncated();
       // The worker's answer arrives as an I/O event: a step run from it would run in the same turn of the event loop as the next one, back to back.
       await yieldToRequests();
     }
@@ -877,7 +878,8 @@ export class SqliteAdapter implements IStorageAdapter {
       while (!this.closing) {
         await this.beforeWriteStep();
         const started = performance.now();
-        const written = step(rows);
+        // IMMEDIATE: it reads the rows it rewrites, and the write lock is taken before that read.
+        const written = step.immediate(rows);
         // Fewer than asked for: none are left.
         if (written < rows) break;
         rows = nextStepSize(written, performance.now() - started, RISK_FILL_ROWS_RANGE);
@@ -2755,7 +2757,17 @@ export class SqliteAdapter implements IStorageAdapter {
       this.eraseEvaluationsOfTraces(tid, [id]);
       return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?').run(tid, id).changes;
     });
-    const deleted = run(tenantId, traceId) > 0;
+    /*
+     * Read-then-write under IMMEDIATE, so the write lock is taken before the
+     * read. Deferred, a TRUNCATE the checkpoint worker ran between the read
+     * and the write (an erasure it was just asked for) moved the log under
+     * the read's snapshot, and the delete failed with "database is locked"
+     * at once, without waiting: the stress test hit it 3 times in 26
+     * runs. A TRUNCATE already in flight is waited out here, off the event
+     * loop, rather than in the busy handler, on it.
+     */
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
+    const deleted = run.immediate(tenantId, traceId) > 0;
     /*
      * secure_delete zeroes the freed pages, but in WAL mode the zeroed
      * pages go to the WAL and iris.db keeps the old ones, with the trace's

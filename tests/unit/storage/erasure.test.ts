@@ -8,8 +8,8 @@
  * expected text and the rule messages, stamp erased_at,
  * and keep the scores and the evidence offsets.
  */
-import { afterEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
@@ -172,4 +172,68 @@ describe('delete_trace leaves no text on disk', () => {
     expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
     assertGone(path, [secret], s);
   });
+});
+
+/*
+ * The same guarantee while everything that can hold the file is busy: the
+ * checkpoint worker starting (it starts at the store's first write, and a
+ * delete straight after that write met it still opening its connection on
+ * a Windows runner, so the text was still on disk when delete_trace
+ * returned), the worker copying the log, and the search index being built
+ * and merged in steps behind the start. Each store is a copy of one whose
+ * traces have no index yet, so its build runs throughout.
+ */
+describe('delete_trace leaves no text on disk while the store works in the background', () => {
+  const STORES = 12;
+  const DELETES_PER_STORE = 8;
+  let base: string;
+  const dirs: string[] = [];
+  const open: SqliteAdapter[] = [];
+
+  beforeAll(async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-erasure-stress-'));
+    dirs.push(dir);
+    base = join(dir, 'base.db');
+    const s = new SqliteAdapter(base, { driver: SEARCH_DRIVER, fts5: false });
+    await s.initialize();
+    const at = Date.now();
+    await s.insertTraces(
+      LOCAL_TENANT,
+      Array.from({ length: 3000 }, (_, i) => ({ trace_id: `bg-${i}`, agent_name: 'erasure', input: `question ${i}`, output: `an ordinary answer ${i} ${'with some words '.repeat(20)}`, timestamp: new Date(at - i * 1000).toISOString() })),
+    );
+    await s.checkpoint();
+    await s.close();
+  }, 60_000);
+
+  afterAll(async () => {
+    for (const st of open.splice(0)) await st.close().catch(() => undefined);
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+
+  const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
+
+  it(`${STORES} stores, ${DELETES_PER_STORE} deletes each, the first straight after the store's first write: every secret is gone from iris.db and its WAL when the call returns`, async () => {
+    const left: string[] = [];
+    for (let k = 0; k < STORES; k += 1) {
+      const dir = mkdtempSync(join(tmpdir(), 'iris-erasure-stress-'));
+      dirs.push(dir);
+      const path = join(dir, 'iris.db');
+      copyFileSync(base, path);
+      const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+      open.push(s);
+      await s.initialize();
+      for (let d = 0; d < DELETES_PER_STORE; d += 1) {
+        const secret = `STRESSSECRET${k}X${d}Q${'Z'.repeat(8)}`;
+        await s.insertTraces(LOCAL_TENANT, [{ trace_id: `secret-${d}`, agent_name: 'erasure', input: 'q', output: `the code is ${secret}`, timestamp: new Date().toISOString() }]);
+        expect(await s.deleteTrace(LOCAL_TENANT, `secret-${d}`)).toBe(true);
+        const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string } }).checkpointer;
+        if (holds(path, secret) || holds(`${path}-wal`, secret)) left.push(`${secret} (store ${k}, delete ${d}; iris.db ${holds(path, secret)}, WAL ${holds(`${path}-wal`, secret)}; worker ${w ? `active ${w.active}, stopped ${w.stopped}` : 'none'})`);
+        // Let the build, the merges and the worker's copies run between deletes.
+        await new Promise((r) => setTimeout(r, d % 2 === 0 ? 0 : 30));
+      }
+      await s.close();
+      open.splice(open.indexOf(s), 1);
+    }
+    expect(left).toEqual([]);
+  }, 180_000);
 });

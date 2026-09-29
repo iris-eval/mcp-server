@@ -28,7 +28,7 @@
  * (tests/stall/vitest.config.ts), never inside the parallel suite.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -46,6 +46,17 @@ const TRACES = 10_000;
 const OLD = 0.3;
 /** Evaluations without a stored risk estimate, as 0.19.0 left them: a fill in one transaction would hold the loop for seconds. */
 const EVALS = 10_000;
+/**
+ * The ceiling on iris.db-wal while writes never pause and while the index
+ * is built. The server's own connection checkpoints at
+ * TAIL_CHECKPOINT_PAGES (64 MB) and background steps have the worker empty
+ * the log at STEP_TRUNCATE_PAGES (32 MB); twice the first is room for the
+ * worker's own copy holding the checkpoint lock a while. With the worker
+ * alone, as 0.20.0's first checkpoint worker had it, the log grew with
+ * every write: 2.6 GB by the end of an index build at 100,000 traces, and
+ * in these two cases 1.1 GB and 149 MB (67 and 35 MB now).
+ */
+const WAL_CEILING_MB = 128;
 /** Steps aim at 50 ms of work; the rest is room for a slower runner and a garbage collection. */
 const STALL_LIMIT_MS = 250;
 
@@ -244,6 +255,55 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     expect(await s.whenSearchIndexReady()).toBe('ready');
     expect(count(s, 'SELECT COUNT(*) AS n FROM trace_search_docs')).toBe(TRACES);
     expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
+    await s.close();
+  });
+
+  /** The log's size on disk, in MB, sampled every few milliseconds while `work` runs: its largest. */
+  async function largestLog(path: string, work: () => Promise<unknown>): Promise<number> {
+    const size = () => {
+      try {
+        return statSync(`${path}-wal`).size / 2 ** 20;
+      } catch {
+        return 0;
+      }
+    };
+    let largest = size();
+    const timer = setInterval(() => (largest = Math.max(largest, size())), 5);
+    try {
+      await work();
+    } finally {
+      clearInterval(timer);
+    }
+    return Math.max(largest, size());
+  }
+
+  it(`the log stays under ${WAL_CEILING_MB} MB while agent-loop traces are written back to back`, async () => {
+    const path = copy(indexed, 'wal-writes.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await s.initialize();
+    const now = Date.now();
+    // Each trace one write, as log_trace stores them, with no pause. With the worker alone the log reached 1.1 GB here; now about 67 MB.
+    const largest = await largestLog(path, async () => {
+      for (let i = 0; i < 6_000; i += 1) {
+        await s.insertTrace(LOCAL_TENANT, trace(TRACES + i, now));
+        await new Promise((r) => setImmediate(r));
+      }
+    });
+    process.stdout.write(`[wal] 6,000 agent-loop traces written back to back: largest log ${largest.toFixed(1)} MB\n`);
+    expect(largest).toBeLessThan(WAL_CEILING_MB);
+    await s.close();
+  });
+
+  it(`the log stays under ${WAL_CEILING_MB} MB while the index is built after an upgrade`, async () => {
+    const path = copy(unindexed, 'wal-build.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    const largest = await largestLog(path, async () => {
+      await s.initialize();
+      await s.whenIdle();
+    });
+    process.stdout.write(`[wal] index built for ${TRACES} traces: largest log ${largest.toFixed(1)} MB\n`);
+    expect(await s.whenSearchIndexReady()).toBe('ready');
+    expect(largest).toBeLessThan(WAL_CEILING_MB);
     await s.close();
   });
 });
