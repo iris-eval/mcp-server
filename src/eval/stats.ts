@@ -43,18 +43,35 @@ export function normal(rng: () => number): number {
 }
 
 /**
- * Gamma(shape, 1) by Marsaglia–Tsang. For shape < 1 the standard boost:
- * draw Gamma(shape + 1) and scale by U^(1/shape).
+ * The constants a Gamma(shape, 1) draw needs, worked out once. A caller that
+ * draws the same shape thousands of times (the risk estimate's 2,000 draws)
+ * keeps these and calls drawGamma; gamma() below works them out per call.
+ * Either way it is this one sampler, so the two cannot drift apart.
  */
-export function gamma(shape: number, rng: () => number): number {
+export interface GammaShape {
+  /** Marsaglia–Tsang's d and c, for shape ≥ 1 (for shape < 1, those of shape + 1). */
+  d: number;
+  c: number;
+  /** 1 / shape when shape < 1 (the boost), else 0. */
+  boost: number;
+}
+
+export function gammaShape(shape: number): GammaShape {
   if (!(shape > 0)) throw new Error(`gamma: shape must be positive, got ${shape}`);
-  if (shape < 1) {
-    let u = 0;
-    while (u === 0) u = rng();
-    return gamma(shape + 1, rng) * Math.pow(u, 1 / shape);
-  }
-  const d = shape - 1 / 3;
-  const c = 1 / Math.sqrt(9 * d);
+  const s = shape < 1 ? shape + 1 : shape;
+  const d = s - 1 / 3;
+  return { d, c: 1 / Math.sqrt(9 * d), boost: shape < 1 ? 1 / shape : 0 };
+}
+
+/**
+ * Gamma(shape, 1) by Marsaglia–Tsang. For shape < 1 the standard boost:
+ * draw U, then Gamma(shape + 1), and scale by U^(1/shape).
+ */
+export function drawGamma(g: GammaShape, rng: () => number): number {
+  // The boost's uniform is drawn before the Gamma(shape + 1) it scales.
+  let u0 = 0;
+  if (g.boost !== 0) while (u0 === 0) u0 = rng();
+  const { d, c } = g;
   for (;;) {
     let x: number;
     let v: number;
@@ -64,9 +81,14 @@ export function gamma(shape: number, rng: () => number): number {
     } while (v <= 0);
     v = v * v * v;
     const u = rng();
-    if (u < 1 - 0.0331 * x * x * x * x) return d * v;
-    if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+    if (u < 1 - 0.0331 * x * x * x * x || Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) {
+      return g.boost !== 0 ? d * v * Math.pow(u0, g.boost) : d * v;
+    }
   }
+}
+
+export function gamma(shape: number, rng: () => number): number {
+  return drawGamma(gammaShape(shape), rng);
 }
 
 /** Beta(a, b) as X / (X + Y) with X ~ Gamma(a), Y ~ Gamma(b). */

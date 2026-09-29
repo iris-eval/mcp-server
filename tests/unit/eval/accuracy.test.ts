@@ -107,6 +107,54 @@ describe('accuracy — the published numbers and their intervals', () => {
     expect(ppvInterval('no_stub_output', 0.2)).toBe(ppvInterval('no_stub_output', 0.2)); // memoised
   });
 
+  /*
+   * The interval as 0.19.0 computed it, drawing afresh on every call, so
+   * the per-rule draws and the exact-prevalence memo are checked against
+   * something they did not produce.
+   */
+  const fresh = (rule: string, prevalence: number, which: 'ppv' | 'miss') => {
+    const counts = publishedAccuracyFor(rule)!;
+    const fn = which === 'ppv' ? ppv : missRate;
+    const rng = mulberry32(fnv1a(`${which}:${rule}:${publishedProvenance().corpusVersion}`));
+    const draws: number[] = [];
+    for (let i = 0; i < 2000; i++) {
+      const s = beta(counts.tp + 0.5, counts.fn + 0.5, rng);
+      const p = beta(counts.tn + 0.5, counts.fp + 0.5, rng);
+      draws.push(fn(s, p, prevalence));
+    }
+    const [lo, hi] = percentile95(draws);
+    const sens = (counts.tp + 0.5) / (counts.tp + counts.fn + 1);
+    const spec = (counts.tn + 0.5) / (counts.tn + counts.fp + 1);
+    const r4 = (x: number) => Math.round(x * 10_000) / 10_000;
+    return { point: r4(fn(sens, spec, prevalence)), lo: r4(lo), hi: r4(hi) };
+  };
+
+  it('remembers an interval per exact prevalence: two that round to the same three decimals get their own', () => {
+    resetAccuracyMemo();
+    // Both are "0.010" to three decimals; until 0.20.0 the second call returned the first one's interval.
+    const first = ppvInterval('no_pii', 0.0101);
+    const second = ppvInterval('no_pii', 0.0104);
+    expect(first).toEqual(fresh('no_pii', 0.0101, 'ppv'));
+    expect(second).toEqual(fresh('no_pii', 0.0104, 'ppv'));
+    expect(second).not.toEqual(first);
+    const missA = missRateInterval('no_pii', 0.3001);
+    const missB = missRateInterval('no_pii', 0.3004);
+    expect(missB).toEqual(fresh('no_pii', 0.3004, 'miss'));
+    expect(missB).not.toEqual(missA);
+  });
+
+  it('drawing once per rule gives every interval the per-call draws gave, for every rule and many prevalences', () => {
+    resetAccuracyMemo();
+    for (const rule of publishedRuleNames()) {
+      const counts = publishedAccuracyFor(rule)!;
+      if (counts.tp + counts.fn === 0 || counts.tn + counts.fp === 0) continue;
+      for (const prevalence of [0.001, 0.0101, 0.0104, 0.05, 0.2, 0.3333, 0.5, 0.9]) {
+        expect(ppvInterval(rule, prevalence), `${rule} ppv ${prevalence}`).toEqual(fresh(rule, prevalence, 'ppv'));
+        expect(missRateInterval(rule, prevalence), `${rule} miss ${prevalence}`).toEqual(fresh(rule, prevalence, 'miss'));
+      }
+    }
+  });
+
   it('a rule that did not fire gets a residual miss rate below the prevalence', () => {
     const miss = missRateInterval('no_hallucination_markers', 0.3);
     expect(miss).not.toBeNull();
