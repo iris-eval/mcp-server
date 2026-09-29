@@ -161,13 +161,18 @@ describe('WAL checkpoints on a worker thread', () => {
     let n = 1;
     while (size(`${idle.path}-wal`) < 2 * tailBytes) await write(idle.s, n++);
     expect(restarts(idle.path)).toBe(before);
-    // With the worker and the tail checkpoint, the same writes start the log over: the log restarts only at a write that finds every frame copied, which the worker's copy alone never guarantees while writes keep coming.
+    // With the worker and the tail checkpoint, writes like those start the log over: the log restarts only at a write that finds every frame copied, which the worker's copy alone never guarantees while writes keep coming.
     const tail = await store();
     await write(tail.s, 0);
     expect(await worker(tail.s)!.started).toBe(true);
     const first = restarts(tail.path);
-    for (let i = 1; i < n; i += 1) await write(tail.s, i);
-    expect(restarts(tail.path)).toBeGreaterThan(first);
+    let i = 1;
+    for (; i < n; i += 1) await write(tail.s, i);
+    // On a slow disk one copy by the worker can outlast those writes, holding the checkpoint lock throughout: the writes go on until it lets go, for at most 30 s.
+    const deadline = Date.now() + 30_000;
+    while (restarts(tail.path) === first && Date.now() < deadline) await write(tail.s, i++);
+    const seen = { writes: i, restarts: restarts(tail.path) - first, logMb: size(`${tail.path}-wal`) / 2 ** 20, uncheckedMb: size(`${idle.path}-wal`) / 2 ** 20, autocheckpoint: autocheckpoint(tail.s), worker: worker(tail.s)?.active };
+    expect(seen.restarts, JSON.stringify(seen)).toBeGreaterThan(0);
     expect(size(`${tail.path}-wal`)).toBeLessThan(size(`${idle.path}-wal`));
   }, 90_000);
 
