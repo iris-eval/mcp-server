@@ -39,16 +39,16 @@ interface Raw {
   body: Buffer;
 }
 
-function get(base: string, path: string, headers: Record<string, string> = {}, method = 'GET'): Promise<Raw> {
+function get(base: string, path: string, headers: Record<string, string> = {}, method = 'GET', body?: string): Promise<Raw> {
   return new Promise((resolve, reject) => {
-    const req = request(`${base}${path}`, { method, headers }, (res) => {
+    const req = request(`${base}${path}`, { method, headers: body === undefined ? headers : { 'content-type': 'application/json', ...headers } }, (res) => {
       const chunks: Buffer[] = [];
       res.on('data', (c: Buffer) => chunks.push(c));
       res.on('end', () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks) }));
       res.on('error', reject);
     });
     req.on('error', reject);
-    req.end();
+    req.end(body);
   });
 }
 
@@ -205,8 +205,11 @@ describe('compressed JSON responses', () => {
 
   beforeAll(async () => {
     const app = express();
+    app.use(express.json());
     app.use(compressJsonResponses());
     app.get('/big', (_req, res) => res.json(big));
+    // The same body as the answer to each kind of write.
+    for (const method of ['post', 'put', 'patch', 'delete'] as const) app[method]('/big', (_req, res) => res.status(method === 'post' ? 201 : 200).json(big));
     app.get('/small', (_req, res) => res.json(small));
     app.get('/no-transform', (_req, res) => res.set('Cache-Control', 'no-transform').json(big));
     app.get('/encoded', (_req, res) => {
@@ -259,6 +262,19 @@ describe('compressed JSON responses', () => {
     const r = await get(base, '/missing', { 'accept-encoding': 'br' });
     expect(r.status).toBe(404);
     expect(r.headers['content-encoding']).toBe('br');
+  });
+
+  it('compresses the answer to a read only: a write gets its acknowledgement as it is, with no Vary', async () => {
+    const head = await get(base, '/big', { 'accept-encoding': 'br' }, 'HEAD');
+    expect(head.headers['content-encoding']).toBe('br');
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      // A DELETE carries no body, as the dashboard's own deletes do.
+      const r = await get(base, '/big', { 'accept-encoding': 'br, gzip' }, method, method === 'DELETE' ? undefined : '{}');
+      expect(r.status, method).toBe(method === 'POST' ? 201 : 200);
+      expect(r.headers['content-encoding'], method).toBeUndefined();
+      expect(r.headers.vary ?? '', method).not.toMatch(/Accept-Encoding/i);
+      expect(JSON.parse(r.body.toString('utf8')), method).toEqual(big);
+    }
   });
 
   it('leaves a small body alone', async () => {
@@ -347,5 +363,19 @@ describe('the dashboard server', () => {
     expect(br.headers['content-encoding']).toBe('br');
     expect(br.body.length).toBeLessThan(plain.body.length);
     expect(JSON.parse(decode(br).toString('utf8'))).toEqual(JSON.parse(plain.body.toString('utf8')));
+  });
+
+  it('answers an evaluated ingest uncompressed, and compresses the trace when it is read back', async () => {
+    const trace = { agent_name: 'bot', input: 'Where is my order?', output: `The order shipped on Monday. ${'It is on its way. '.repeat(40)}`, evaluate: true };
+    const posted = await get(base, '/api/v1/traces', { 'accept-encoding': 'br, gzip' }, 'POST', JSON.stringify(trace));
+    expect(posted.status).toBe(201);
+    // Big enough that a read of this size would be compressed: the method is what decides.
+    expect(posted.body.length).toBeGreaterThan(COMPRESS_MIN_BYTES);
+    expect(posted.headers['content-encoding']).toBeUndefined();
+    const { trace_id } = JSON.parse(posted.body.toString('utf8')) as { trace_id: string };
+    const read = await get(base, `/api/v1/traces/${trace_id}`, { 'accept-encoding': 'br, gzip' });
+    expect(read.status).toBe(200);
+    expect(read.headers['content-encoding']).toBe('br');
+    expect((JSON.parse(decode(read).toString('utf8')) as { trace: { trace_id: string } }).trace.trace_id).toBe(trace_id);
   });
 });
