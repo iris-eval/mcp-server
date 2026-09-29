@@ -1,6 +1,8 @@
 import type { Driver } from '../driver.js';
 
 export const id = '007-eval-provenance';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.9.0';
 
 /*
  * What an evaluation cannot reconstruct about itself after the fact: the

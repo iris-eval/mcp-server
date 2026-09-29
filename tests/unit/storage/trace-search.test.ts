@@ -285,7 +285,6 @@ describe('trace search — the index stays in step', () => {
       dbOf(s).prepare("INSERT INTO traces (tenant_id, trace_id, agent_name, output, timestamp) VALUES ('local', ?, 'hand', ?, ?)").run(id, output, at(9));
     insertByHand('by-hand', 'inserted by an operator with sqlite3');
     insertByHand('by-hand-gone', 'inserted and then deleted by an operator');
-    expect(await ids(s, 'operator')).toEqual([]);
     dbOf(s).prepare("DELETE FROM traces WHERE trace_id = 'by-hand-gone'").run();
     assertIndexHealthy(s, { docs: 1, traces: 2 });
     await s.close();
@@ -295,6 +294,25 @@ describe('trace search — the index stays in step', () => {
     assertIndexHealthy(next);
     expect(await ids(next, 'operator')).toEqual(['by-hand']);
     expect(await ids(next, 'approved')).toEqual(['refund']);
+  });
+
+  it('a trace another process stored without indexing it is found by the next search, and indexed behind it (#704)', async () => {
+    const s = await adapter(tempDb());
+    await s.insertTraces(LOCAL_TENANT, [refundTrace]);
+    expect(await ids(s, 'approved')).toEqual(['refund']);
+    // A writer that does not index: an operator with sqlite3, or a release from before the index.
+    dbOf(s).prepare("INSERT INTO traces (tenant_id, trace_id, agent_name, output, timestamp) VALUES ('local', 'by-hand', 'hand', 'written by an older release', ?)").run(at(9));
+    const found = await s.queryTraces(LOCAL_TENANT, { search: 'older release' });
+    expect(found.traces.map((t) => t.trace_id)).toEqual(['by-hand']);
+    expect(found.search?.index).toBe('scan');
+    expect(await s.whenSearchIndexReady()).toBe('ready');
+    assertIndexHealthy(s, { docs: 2, traces: 2 });
+    const indexed = await s.queryTraces(LOCAL_TENANT, { search: 'older release' });
+    expect(indexed.traces.map((t) => t.trace_id)).toEqual(['by-hand']);
+    expect(indexed.search?.index).toBe('fts5');
+    // The adapter's own inserts are indexed as they are stored, so they never send the index back to building.
+    await s.insertTraces(LOCAL_TENANT, [weatherTrace]);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'zurich' })).search?.index).toBe('fts5');
   });
 
   it('pages past the last match with the total still counted', async () => {

@@ -1,6 +1,8 @@
 import type { Driver } from '../driver.js';
 
 export const id = '005-normalize-created-at';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.4.6';
 
 /*
  * Normalize created_at to ISO-8601 UTC.

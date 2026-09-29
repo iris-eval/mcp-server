@@ -26,6 +26,13 @@
  * EPERM stack. A diagnostic that cannot fail the way the product fails is
  * not a diagnostic.
  *
+ * The same holds for the file's schema and the clients that share it
+ * (#704): the diagnostic used to print PASS on a database a newer release
+ * had migrated past this version, and on one that MCP clients pinned to an
+ * older release could no longer open — exactly when a user runs it. Two
+ * more steps read the configured database on a read-only connection and
+ * each client's config, and change neither.
+ *
  * Budget: everything is in-process or loopback. No LLM calls, no network
  * beyond 127.0.0.1, and the whole sequence completes in well under the
  * 10-second target (the heavy cost is process start-up, not the checks).
@@ -59,6 +66,11 @@ import type { IrisConfig, Trace } from './types/index.js';
 import type { IStorageAdapter } from './types/query.js';
 import type { EvalResult } from './types/eval.js';
 import { MODEL_PRICING, PRICING_SOURCED_ON } from './eval/llm-judge/pricing.js';
+import { inspectMigrations, IncompatibleDatabaseError, KNOWN_MIGRATION_IDS, type MigrationPlan } from './storage/migrations/index.js';
+import { listBackups } from './storage/backup.js';
+import { currentEnvironment, type Environment } from './cli/install/clients.js';
+import { joinNames, pinsBelow, readClientPins } from './cli/install/pins.js';
+import { upgradeCommand } from './cli/upgrade-notice.js';
 
 const CHECK = '✓';
 const CROSS = '✗';
@@ -70,6 +82,8 @@ const CROSS = '✗';
  */
 export const SELF_TEST_STEPS = {
   configuredHome: 'configured IRIS_HOME is writable',
+  database: 'configured database opens with this version',
+  clients: 'MCP clients on this machine can open it',
   searchIndex: 'search index of the configured database',
   judge: 'judge key in this shell',
   retention: 'retention policy for this install',
@@ -256,7 +270,70 @@ function probeWritable(dir: string, what: string): void {
   }
 }
 
-export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number> {
+/**
+ * The configured database's migrations against this version's (#704), read
+ * on a read-only connection: nothing is applied, nothing is written. The
+ * server refuses a file a newer release migrated past this version's
+ * floor; this is the same check, made before the server is started, with
+ * the way out. A missing file is fine: the server creates it.
+ */
+export function probeDatabaseSchema(dbPath: string): { detail: string; plan: MigrationPlan | null } {
+  if (!existsSync(dbPath)) return { detail: 'no database yet; this version creates it on first start', plan: null };
+  let plan: MigrationPlan;
+  let db: Driver | undefined;
+  try {
+    db = openDriver(dbPath, { fileMustExist: true, readOnly: true });
+    plan = inspectMigrations(db);
+  } catch (err) {
+    throw new Error(`database "${dbPath}" could not be read (${errorCode(err)}) — the server would fail at startup the same way.`);
+  } finally {
+    db?.close();
+  }
+  if (plan.blocking.length > 0) {
+    const copy = listBackups(dbPath)[0];
+    throw new Error(
+      `${new IncompatibleDatabaseError(plan).message}${copy ? ` The newest copy taken before an upgrade is ${copy.path} (from ${copy.from}, taken ${copy.takenAt.toISOString()}).` : ''} Nothing was changed.`,
+    );
+  }
+  const known = KNOWN_MIGRATION_IDS.length;
+  if (plan.applied.length === 0) return { detail: 'empty; this version sets it up on first start', plan };
+  if (plan.pending.length > 0) {
+    const lockout = plan.floorAfter !== plan.floor ? `; from then on Iris before ${plan.floorAfter} cannot open it` : '';
+    return {
+      detail: `schema ${known - plan.pending.length} of ${known}: the next start applies ${plan.pending.join(', ')}, after copying the file next to it${lockout}`,
+      plan,
+    };
+  }
+  const newer = plan.unknown.length > 0 ? `, with ${plan.unknown.map((r) => r.id).join(', ')} from Iris ${plan.lastWriter ?? 'a newer release'}, which this version can use` : '';
+  return { detail: `up to date (schema ${known} of ${known}${newer}); Iris ${plan.floor} and later can open it`, plan };
+}
+
+/**
+ * Which clients' pins can open the database (#704): the ones pinned below
+ * its floor refuse to start. Read-only, like probeDatabaseSchema.
+ */
+export function probeClientPins(plan: MigrationPlan | null, environment: Environment): string {
+  const pins = readClientPins(environment).filter((p) => p.kind !== 'absent');
+  if (pins.length === 0) return 'no MCP client config on this machine runs Iris';
+  const summary = pins.map((p) => `${p.profile.id} ${p.kind === 'pinned' ? p.version : p.kind}`).join(', ');
+  const name = (list: ReturnType<typeof pinsBelow>) => joinNames(list.map((p) => `${p.profile.displayName} (Iris ${p.version})`));
+  const broken = plan?.floor ? pinsBelow(pins, plan.floor) : [];
+  if (broken.length > 0) {
+    throw new Error(`${name(broken)} cannot open this database and will refuse to start. Move every client to this version: ${upgradeCommand()}`);
+  }
+  const later = plan?.floorAfter && plan.floorAfter !== plan.floor ? pinsBelow(pins, plan.floorAfter) : [];
+  if (later.length > 0) {
+    return `${summary}; ${name(later)} will not open it once this version upgrades it — move every client first: ${upgradeCommand()}`;
+  }
+  return summary;
+}
+
+export interface SelfTestOptions {
+  /** Where the MCP client configs are read from. Defaults to this process's home and environment. */
+  clientEnvironment?: Environment;
+}
+
+export async function runSelfTest(write: WriteLine = stdoutLine, options: SelfTestOptions = {}): Promise<number> {
   write(`Iris self-test v${PKG_VERSION}`);
   write('');
 
@@ -314,6 +391,14 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
     independent: true,
   });
 
+  // The configured file's migrations, then the clients that share it (#704): both read-only, both before the scrub.
+  let plan: MigrationPlan | null = null;
+  await step(SELF_TEST_STEPS.database, () => {
+    const probe = probeDatabaseSchema(userStoragePath);
+    plan = probe.plan;
+    return probe.detail;
+  }, { independent: true });
+  await step(SELF_TEST_STEPS.clients, () => probeClientPins(plan, options.clientEnvironment ?? currentEnvironment()), { independent: true });
   await step(SELF_TEST_STEPS.searchIndex, () => describeConfiguredSearchIndex(userStoragePath), { independent: true });
 
   /*

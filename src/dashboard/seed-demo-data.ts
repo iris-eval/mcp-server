@@ -25,6 +25,7 @@
 import { join, dirname } from 'node:path';
 import { mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { SqliteAdapter } from '../storage/sqlite-adapter.js';
+import { listBackups } from '../storage/backup.js';
 import { EvalEngine } from '../eval/engine.js';
 import { evaluateStoredTrace } from '../eval/ingest.js';
 import { createCustomRule } from '../eval/rules/custom.js';
@@ -578,6 +579,8 @@ export function clearDemoData(): { removed: string[] } {
     demoPreferencesPath(),
     demoCustomRulesPath(),
     demoAuditLogPath(),
+    // Copies taken before a migration of demo.db (storage/backup.ts).
+    ...listBackups(dbPath).map((b) => b.path),
   ];
   const removed: string[] = [];
   for (const path of candidates) {

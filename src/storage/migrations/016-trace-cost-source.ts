@@ -23,6 +23,20 @@ import type { Driver } from '../driver.js';
  */
 export const id = '016-trace-cost-source';
 
+/*
+ * The oldest release that can use a database with these columns: 0.19.0,
+ * one below the release that added them. 0.19.0 names its columns on every
+ * insert and ignores the two new ones on read, so what it writes is a row
+ * with cost_source NULL, which this release reads as reported when the row
+ * has a cost and as no cost when it has none: the same as every row stored
+ * before this migration. Its metadata patch, deletes and retention sweep
+ * leave an estimated row's source and estimate as they were. Checked with
+ * the released 0.19.0's own adapter (tests/upgrade/). 015 still holds the
+ * file at 0.20.0, so this floor takes effect only once a later release
+ * lowers that one.
+ */
+export const compatFloor = '0.19.0';
+
 export function up(db: Driver): void {
   db.exec(`
     ALTER TABLE traces ADD COLUMN cost_source TEXT;

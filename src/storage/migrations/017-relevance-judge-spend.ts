@@ -15,6 +15,16 @@ import type { Driver } from '../driver.js';
  */
 export const id = '017-relevance-judge-spend';
 
+/*
+ * The oldest release that can use a database with this table: 0.19.0.
+ * 0.19.0 has no relevance judge, so it spends nothing and never reads or
+ * writes the table; the budget still counts every call made by a release
+ * that judges, and 0.19.0's inserts, patches, deletes and retention sweep
+ * leave the table's rows as they were. Checked with the released 0.19.0's
+ * own adapter (tests/upgrade/). 015 still holds the file at 0.20.0.
+ */
+export const compatFloor = '0.19.0';
+
 export function up(db: Driver): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS relevance_judge_spend (

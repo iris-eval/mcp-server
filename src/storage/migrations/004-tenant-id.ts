@@ -1,6 +1,8 @@
 import type { Driver } from '../driver.js';
 
 export const id = '004-tenant-id';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.4.0';
 
 /*
  * Migration 004 — tenant scaffolding.

@@ -18,6 +18,7 @@ import type { Readable, Writable } from 'node:stream';
 import { z } from 'zod';
 import { loadConfig, type CliArgs } from '../config/index.js';
 import { createStorage } from '../storage/index.js';
+import { announceUpgrade } from './upgrade-notice.js';
 import { createCustomRuleStore } from '../custom-rule-store.js';
 import { createCustomRule } from '../eval/rules/custom.js';
 import { EvalEngine } from '../eval/engine.js';
@@ -124,6 +125,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
   if (o.redact) config.storage.redact = o.redact;
   const storage = createStorage(config);
   await storage.initialize();
+  announceUpgrade(storage.upgradeReport?.(), { write: (line) => o.stderr.write(line) });
   let stored = 0;
   let tripped = 0;
   let rejected = 0;

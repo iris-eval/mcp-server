@@ -71,7 +71,7 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     process.env.IRIS_API_KEY = 'decoy-key';
 
     const lines: string[] = [];
-    const code = await runSelfTest((line) => lines.push(line));
+    const code = await runSelfTest((line) => lines.push(line), { clientEnvironment: { platform: process.platform, home: decoyHome, env: {} } });
     const out = lines.join('\n');
 
     expect(code).toBe(0);
@@ -121,7 +121,7 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     process.env.TMP = bogusTmp;
 
     const lines: string[] = [];
-    const code = await runSelfTest((line) => lines.push(line));
+    const code = await runSelfTest((line) => lines.push(line), { clientEnvironment: { platform: process.platform, home: decoyHome, env: {} } });
     const out = lines.join('\n');
 
     expect(code).toBe(1);
@@ -147,7 +147,7 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     delete process.env.IRIS_DB_PATH;
 
     const lines: string[] = [];
-    const code = await runSelfTest((line) => lines.push(line));
+    const code = await runSelfTest((line) => lines.push(line), { clientEnvironment: { platform: process.platform, home: decoyHome, env: {} } });
     const out = lines.join('\n');
 
     expect(code).toBe(1);
@@ -174,7 +174,7 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     writeFileSync(dbPath, '');
 
     const lines: string[] = [];
-    const code = await runSelfTest((line) => lines.push(line));
+    const code = await runSelfTest((line) => lines.push(line), { clientEnvironment: { platform: process.platform, home: decoyHome, env: {} } });
     const out = lines.join('\n');
 
     expect(code).toBe(0);
@@ -195,7 +195,7 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     writeFileSync(dbPath, 'this is not an sqlite file, just enough bytes to be rejected as one\n'.repeat(4));
 
     const lines: string[] = [];
-    const code = await runSelfTest((line) => lines.push(line));
+    const code = await runSelfTest((line) => lines.push(line), { clientEnvironment: { platform: process.platform, home: decoyHome, env: {} } });
 
     expect(code).toBe(1);
     const cross = lines.find((l) => l.startsWith(`✗ ${SELF_TEST_STEPS.configuredHome}`));

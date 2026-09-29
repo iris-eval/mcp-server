@@ -1,4 +1,4 @@
-import type { CaseResultRow, DatasetCase, DatasetDetail, DatasetSummary, RunResultRow, RunSummaryRow } from '../storage/sqlite-adapter.js';
+import type { CaseResultRow, DatasetCase, DatasetDetail, DatasetSummary, RunResultRow, RunSummaryRow, UpgradeReport } from '../storage/sqlite-adapter.js';
 import type { Trace, Span } from './trace.js';
 import type { EvalResult, QuestionId } from './eval.js';
 import type { TenantId } from './tenant.js';
@@ -329,6 +329,8 @@ export interface IStorageAdapter {
    * opens the file (src/eval/llm-judge/budget.ts).
    */
   judgeSpendLedger(): JudgeSpendLedger;
+  /** What initialize() did to an existing file it migrated (the copy it took first, the new floor); undefined when it migrated none. */
+  upgradeReport?(): UpgradeReport | undefined;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
   /**
    * Store several traces in ONE transaction: all of them or none. The OTLP

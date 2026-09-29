@@ -58,7 +58,7 @@ describe('install — arguments and output', () => {
     mkdirSync(join(home, '.cursor'));
     const { code, stdout } = await run(['--list']);
     expect(code).toBe(0);
-    expect(stdout).toContain(`cursor          ${join(home, '.cursor', 'mcp.json')}`);
+    expect(stdout).toContain(`cursor          no Iris entry     ${join(home, '.cursor', 'mcp.json')}`);
     expect(stdout).toMatch(/Not found here .*claude-desktop/);
   });
 
